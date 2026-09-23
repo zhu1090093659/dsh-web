@@ -206,10 +206,20 @@ describe('hosts CRUD (one handler per path)', () => {
     expect(authPatch.status).toBe(200)
     expect(stub.dropAliasCalls).toEqual(['web-01'])
 
+    // A transport change (ProxyCommand) is just as connection-relevant.
+    const proxyPatch = await fetch('http://127.0.0.1:' + port + SSH_API.hosts + '?alias=web-01', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ proxyCommand: 'corp proxy %h %p' }),
+    })
+    expect(proxyPatch.status).toBe(200)
+    expect(store.find('web-01')?.proxyCommand).toBe('corp proxy %h %p')
+    expect(stub.dropAliasCalls).toEqual(['web-01', 'web-01'])
+
     const del = await fetch('http://127.0.0.1:' + port + SSH_API.hosts + '?alias=web-01', { method: 'DELETE' })
     expect(del.status).toBe(200)
     expect(store.list()).toHaveLength(0)
-    expect(stub.dropAliasCalls).toEqual(['web-01', 'web-01'])
+    expect(stub.dropAliasCalls).toEqual(['web-01', 'web-01', 'web-01'])
   })
 
   it('rejects unknown methods on the hosts path with 405', async () => {
@@ -402,3 +412,28 @@ describe('terminal upgrade', () => {
     ws.terminate()
   })
 })
+
+describe('cluster route', () => {
+  it('rejects with 400 when no selectors are provided', async () => {
+    const res = await fetch('http://127.0.0.1:' + port + SSH_API.cluster, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: 'uptime' }),
+    })
+    expect(res.status).toBe(400)
+    const body = await res.json() as { error: string }
+    expect(body.error).toContain('ssh_cluster requires aliases, environment, or tags')
+  })
+
+  it('accepts cluster requests with valid selectors', async () => {
+    const res = await fetch('http://127.0.0.1:' + port + SSH_API.cluster, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: 'uptime', aliases: ['web-01'] }),
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json() as { results: unknown[] }
+    expect(Array.isArray(body.results)).toBe(true)
+  })
+})
+

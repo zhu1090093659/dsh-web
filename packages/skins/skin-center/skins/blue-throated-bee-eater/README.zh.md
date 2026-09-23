@@ -7,8 +7,15 @@
 ## 是什么
 
 - **纯资产**：`skin.json`（v2 清单）+ `skin.css`（token 重映射）+
-  `assets/blue-throated-bee-eater.jpg`（背景照片）+ 双语 README 与 NOTICE。
-  无 package.json、无构建步骤；皮肤中心包是唯一加载器。
+  `assets/blue-throated-bee-eater.jpg`（背景照片）+
+  `assets/selected-grass.svg`（选中行草地边）+ `assets/selected-flower.svg`
+  （草地花角落场景）+ 双语 README 与 NOTICE。无 package.json、无构建步骤；
+  皮肤中心包是唯一加载器。
+- **选中元素草地**：选中的侧栏行与标签页底缘是一片低矮草地；选中行左边框
+  附近从草地长出一朵白瓣栗心小花，没骨晕染、带一片叶与一枚小花苞——
+  正是蜂虎的“餐桌”。场景画在标题左侧的空置 marker 槽位区域，锚定 shell
+  稳定的 `data-pane` / `treeitem` / `aria-selected` 钩子，因此绝不遮挡文字；
+  皮肤目录资产不可达的场合回退为柔和的湛蓝渐变。
 - **token 优先**：亮色值挂在 `:root`，暗色值挂在
   `body[data-ds-dark-theme]`；加载器把每条选择器作用域到
   `html[data-dsh-skin="blue-throated-bee-eater"]`。

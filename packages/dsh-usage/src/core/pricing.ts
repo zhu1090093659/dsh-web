@@ -1,13 +1,19 @@
 /**
- * DeepSeek official peak/off-peak pricing: the published V4 price book plus
- * the peak-window clock, folded into a per-call spend estimate the ledger
- * stamps at fold time (the provider bills each request in the period the
- * request ran in, so pricing at the fold is the honest estimate).
+ * DeepSeek official peak/off-peak pricing: the published price book plus the
+ * peak-window clock, folded into a per-call spend estimate the ledger stamps
+ * at fold time (the provider bills each request in the period the request ran
+ * in, so pricing at the fold is the honest estimate).
  *
- * Policy (api-docs.deepseek.com pricing page, effective 2026-08-17): peak
- * hours are Beijing time Monday-Friday 09:00-12:00 and 14:00-18:00; every
- * other hour (nights, weekends) is off-peak and billed at half the peak
- * price. All prices here are CNY per million tokens.
+ * Policy (api-docs.deepseek.com pricing page, effective 2026-09-10 12:00
+ * Beijing): peak hours are Beijing time Monday-Friday 09:00-12:00 and
+ * 14:00-18:00; every other hour (nights, weekends) is off-peak and billed at
+ * half the peak price. All prices here are CNY per million tokens.
+ *
+ * The published rows are `deepseek-flash` (DeepSeek-V4.1-Flash) and
+ * `deepseek-v4-pro` (DeepSeek-V4-Pro-0813). The retired flash ids
+ * (`deepseek-v4-flash`, `deepseek-v4-flash-vision-exp`) stay accepted and bill
+ * at the flash row; DeepSeek routes `deepseek-v4-pro` to V4.1-Flash from the
+ * retirement instant below until V4.1 Pro ships.
  * @module @linxin666/dsh-usage/core/pricing
  */
 
@@ -40,19 +46,26 @@ interface ModelPrice {
   output: { offPeak: number; peak: number }
 }
 
-/** deepseek-v4-flash (and the flash-class vision experiment). */
+/** deepseek-flash (DeepSeek-V4.1-Flash), including the retired flash-class ids it now serves. */
 const FLASH_PRICE: ModelPrice = {
-  cacheHit: { offPeak: 0.05, peak: 0.1 },
-  inputMiss: { offPeak: 1.5, peak: 3.0 },
-  output: { offPeak: 4.5, peak: 9.0 },
+  cacheHit: { offPeak: 0.02, peak: 0.04 },
+  inputMiss: { offPeak: 1.0, peak: 2.0 },
+  output: { offPeak: 4.0, peak: 8.0 },
 }
 
-/** deepseek-v4-pro. */
+/** deepseek-v4-pro (DeepSeek-V4-Pro-0813); superseded by the flash row at the retirement instant. */
 const PRO_PRICE: ModelPrice = {
   cacheHit: { offPeak: 0.15, peak: 0.3 },
   inputMiss: { offPeak: 4.5, peak: 9.0 },
   output: { offPeak: 13.5, peak: 27.0 },
 }
+
+/**
+ * The instant DeepSeek starts serving `deepseek-v4-pro` requests from
+ * V4.1-Flash and billing the flash row: 2026-09-14 12:00 Beijing (UTC+8).
+ * Drop the pro row's time fence once V4.1 Pro ships with a published row.
+ */
+const V4_PRO_FOLDED_INTO_FLASH_AT_MS = Date.UTC(2026, 8, 14, 4, 0)
 
 function withinWindow(minuteOfDay: number): PeakWindow | undefined {
   return PEAK_WINDOWS.find((window) => minuteOfDay >= window.from && minuteOfDay < window.to)
@@ -87,9 +100,10 @@ export function deepseekPeriodAt(ms: number): { peak: boolean; boundaryMs: numbe
   return { peak: false, boundaryMs: ms + 86_400_000 }
 }
 
-/** The price row for a model id; unknown ids take the flash-class row (documented estimate). */
-function priceFor(model: string): ModelPrice {
-  return model.includes('v4-pro') ? PRO_PRICE : FLASH_PRICE
+/** The price row for a model id at `atMs`; unknown ids take the flash-class row (documented estimate). */
+function priceFor(model: string, atMs: number): ModelPrice {
+  const proPriced = model.includes('v4-pro') && atMs < V4_PRO_FOLDED_INTO_FLASH_AT_MS
+  return proPriced ? PRO_PRICE : FLASH_PRICE
 }
 
 /**
@@ -99,7 +113,7 @@ function priceFor(model: string): ModelPrice {
  * by route family). Rounded to micro-CNY so the ledger stays readable.
  */
 export function deepseekModelSpend(model: string, totals: Readonly<UsageTokenTotals>, atMs: number): number {
-  const price = priceFor(model)
+  const price = priceFor(model, atMs)
   const period = deepseekPeriodAt(atMs)
   const column = period.peak ? 'peak' : 'offPeak'
   const spend = (totals.cacheReadTokens * price.cacheHit[column]

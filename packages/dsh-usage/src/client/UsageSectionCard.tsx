@@ -1,26 +1,27 @@
 /**
- * The usage statistics settings section: two tabs (用量: today's usage,
- * balances, trend; 个人套餐: per-provider plan quota windows) plus a compact
- * settings row. Data comes from the host's loopback-fenced
+ * The usage statistics settings section: three tabs (用量: today's usage,
+ * balances, trend; 个人套餐: per-provider plan quota windows; Token 银行:
+ * the whale-yuan voucher minted from the DeepSeek official family's usage)
+ * plus a compact settings row. Data comes from the host's loopback-fenced
  * /api/dsh-usage/overview document; polling runs only while the section is
  * mounted and the tab is visible.
  * @module @linxin666/dsh-usage/client/UsageSectionCard
  */
 
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { UsageStoreInstance } from './usage-store.ts'
 import { t } from './locales.ts'
 import styles from './usage.module.css'
 import { isDeepSeekProviderRoute } from '../core/adapters.ts'
 import { deepseekPeriodAt } from '../core/pricing.ts'
-import type { ProviderSnapshotView, UsageOverviewView, UsageProviderSummary, UsageTokenTotals } from '../core/types.ts'
+import { deepseekVoucherData, drawVoucher, faceValue, formatDay, formatDenomination, loadVoucherArt } from './voucher.ts'
+import type { ObservedSpendView, ProviderSnapshotView, UsageOverviewView, UsageProviderSummary, UsageTokenTotals, UsageWindowSummary } from '../core/types.ts'
 
 /** The settings fields this section edits (immediate-apply semantics). */
 export interface UsageSettings {
   enabled?: boolean
   pollIntervalSec?: number
-  bubbleMode?: string
 }
 
 /** The registration-side face the section's slot entry injects. */
@@ -31,8 +32,8 @@ export interface UsageSectionFace {
   poll: () => void
   /** Force a host probe cycle now (resolves with the fresh overview). */
   refresh: () => void
-  /** Whether a forced refresh is in flight (component-local state mirrors it). */
-  settings: SettingsScope<UsageSettings>
+  /** The shared configuration form this section's settings row reads and writes. */
+  settings: ConfigForm<UsageSettings>
 }
 
 export interface UsageSectionProps extends UsageSectionFace {
@@ -81,6 +82,12 @@ function toneClass(percent: number): string {
   if (percent >= 90) return styles.barLow
   if (percent >= 70) return styles.barWarn
   return styles.barFill
+}
+
+/** A provider row backed by a configured credential (api key, env key, or OAuth grant). */
+function isConfigured(provider: ProviderSnapshotView): boolean {
+  // An older wire document without the credential field renders as before.
+  return provider.credential !== 'none'
 }
 
 function TotalsRow(props: { totals: UsageTokenTotals }): ReactNode {
@@ -144,13 +151,23 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
   const ui = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const settingsSnapshot = settings.getSnapshot()
   const settingsValue = settingsSnapshot.value ?? {}
-  const [tab, setTab] = useState<'usage' | 'plans'>('usage')
+  const [tab, setTab] = useState<'usage' | 'plans' | 'bank'>('usage')
   const [refreshing, setRefreshing] = useState(false)
+  // The enable checkbox writes through the shared form, so subscribing here
+  // keeps the flag below live: the form republishes the Host's accepted value,
+  // and the poll starts and stops with it instead of waiting for an unrelated
+  // render.
+  const [, bumpSettings] = useState(0)
+  useEffect(() => settings.subscribe(() => bumpSettings((count) => count + 1)), [settings])
+  const enabled = settingsValue.enabled ?? true
 
-  // Poll while mounted and visible; the overview is cheap (no probes — the
-  // host's own cycle owns those) so 10 s keeps balances fresh-ish between
+  // Poll while mounted, enabled and visible; the overview is cheap (no probes —
+  // the host's own cycle owns those) so 10 s keeps balances fresh-ish between
   // manual refreshes.
   useEffect(() => {
+    // A disabled plugin deregisters its host routes, so the poll must stop with
+    // it; the section re-enables by writing the flag back through the checkbox.
+    if (!enabled) return undefined
     poll()
     let timer: number | undefined
     const start = (): void => {
@@ -171,7 +188,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
       if (timer !== undefined) window.clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [poll])
+  }, [poll, enabled])
 
   const snapshot = ui.snapshot
 
@@ -185,11 +202,22 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
     }
   }
 
-  if (ui.status === 'error') {
-    return <div className={styles.section} data-dsh-plugin="usage">{t('usage.error', { error: ui.error ?? '' })}</div>
-  }
-  if (snapshot === null) {
-    return <div className={styles.section} data-dsh-plugin="usage">{t('usage.loading')}</div>
+  // Disabled, failed and still-loading states keep the settings row mounted:
+  // it owns the enable checkbox, so replacing the whole panel would leave the
+  // user no way back from the UI.
+  if (!enabled || ui.status === 'error' || snapshot === null) {
+    return (
+      <div className={styles.section} data-dsh-plugin="usage">
+        <span className={styles.muted} data-dsh-part="status-line">
+          {!enabled
+            ? t('usage.disabled')
+            : ui.status === 'error'
+              ? t('usage.error', { error: ui.error ?? '' })
+              : t('usage.loading')}
+        </span>
+        <SettingsRow settings={settings} snapshot={settingsSnapshot.status === 'ready' ? settingsSnapshot : undefined} value={settingsValue} />
+      </div>
+    )
   }
 
   const current = snapshot.current
@@ -199,10 +227,11 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
   const deepseekPeriod = deepseekPeriodAt(Date.now())
   const deepseekVisible = (current.provider !== undefined && isDeepSeekProviderRoute(current.provider))
     || snapshot.usage.today.providers.some((row) => isDeepSeekProviderRoute(row.provider))
-  // Plans tab: only routes with a real coding-plan/subscription adapter
-  // (planSupported; an older host without the flag falls back to "has a plan
-  // fact"). Balance-only providers (DeepSeek, ZenMux, ...) never appear here.
-  const planProviders = snapshot.providers.filter((provider) => provider.planSupported === true || (provider.planSupported === undefined && provider.plan !== undefined))
+  // Plans tab: only configured routes with a real coding-plan/subscription
+  // adapter (planSupported; an older host without the flag falls back to "has
+  // a plan fact"). Balance-only providers (DeepSeek, ZenMux, ...) and
+  // unconfigured routes (credential 'none') never appear here.
+  const planProviders = snapshot.providers.filter((provider) => isConfigured(provider) && (provider.planSupported === true || (provider.planSupported === undefined && provider.plan !== undefined)))
 
   return (
     <div className={styles.section} data-dsh-plugin="usage">
@@ -226,6 +255,9 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
         </button>
         <button type="button" role="tab" aria-selected={tab === 'plans'} className={tab === 'plans' ? `${styles.tab} ${styles.tabActive}` : styles.tab} onClick={() => setTab('plans')}>
           {t('usage.tab.plans')}
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'bank'} className={tab === 'bank' ? `${styles.tab} ${styles.tabActive}` : styles.tab} onClick={() => setTab('bank')}>
+          {t('usage.tab.bank')}
         </button>
       </div>
 
@@ -265,15 +297,18 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
           <div className={styles.card} data-dsh-part="balance-card">
             <span className={styles.cardTitle}>{t('usage.balance')}</span>
             {(() => {
-              const rows = snapshot.providers.filter((provider) => provider.balanceSupported === true || (provider.balanceSupported === undefined && provider.supported))
-              if (rows.length === 0) return <span className={styles.muted}>{t('usage.balance.unsupported')}</span>
+              const configured = snapshot.providers.filter(isConfigured)
+              const rows = configured.filter((provider) => provider.balanceSupported === true || (provider.balanceSupported === undefined && provider.supported))
+              if (rows.length === 0) {
+                return <span className={styles.muted}>{configured.length === 0 ? t('usage.balance.noneConfigured') : t('usage.balance.unsupported')}</span>
+              }
               return rows.map((provider) => (
                 <ProviderRow key={provider.provider} provider={provider} current={current.provider} />
               ))
             })()}
-            {snapshot.providers.some((provider) => provider.error !== undefined) && (
+            {snapshot.providers.some((provider) => isConfigured(provider) && provider.error !== undefined) && (
               <span className={styles.errorLine}>
-                {snapshot.providers.filter((provider) => provider.error !== undefined).map((provider) => `${provider.displayName}: ${t('usage.provider.error', { error: provider.error ?? '' })}`).join(t('usage.errorListSeparator'))}
+                {snapshot.providers.filter((provider) => isConfigured(provider) && provider.error !== undefined).map((provider) => `${provider.displayName}: ${t('usage.provider.error', { error: provider.error ?? '' })}`).join(t('usage.errorListSeparator'))}
               </span>
             )}
           </div>
@@ -289,6 +324,8 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
           ? <div className={styles.card}><span className={styles.muted}>{t('usage.plan.noneConfigured')}</span></div>
           : planProviders.map((provider) => <PlanCard key={provider.provider} provider={provider} current={current.provider} />)
       )}
+
+      {tab === 'bank' && <VoucherCard window={snapshot.usage.all ?? snapshot.usage.range} observedSpend={snapshot.usage.observedSpend} />}
     </div>
   )
 }
@@ -362,6 +399,105 @@ function totalOf(totals: UsageTokenTotals): number {
   return totals.inputTokens + totals.cacheReadTokens + totals.cacheWriteTokens + totals.outputTokens
 }
 
+/**
+ * The Token 银行 card: the DeepSeek official family's retained-ledger usage
+ * minted onto the whale-yuan note at 1,000,000 tokens per whale yuan. The window
+ * prefers the host's whole-ledger aggregate and falls back to the 30-day
+ * trend when an older host serves no `all`; the spend line prefers the
+ * official balance watch and falls back to the fold-time estimate; the
+ * artwork draw failure degrades to an error line and never takes the
+ * section down.
+ */
+function VoucherCard(props: { window?: UsageWindowSummary; observedSpend?: ObservedSpendView }): ReactNode {
+  const { window: ledger, observedSpend } = props
+  const data = deepseekVoucherData(ledger)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [drawError, setDrawError] = useState<string | undefined>(undefined)
+  const dataKey = data === undefined ? '' : `${data.from}|${data.to}|${data.tokens}|${data.calls}|${data.cost}`
+
+  useEffect(() => {
+    if (data === undefined) return
+    const voucher = data
+    let cancelled = false
+    loadVoucherArt().then((art) => {
+      if (cancelled) return
+      const canvas = canvasRef.current
+      if (canvas !== null) {
+        try {
+          drawVoucher(canvas, art, voucher)
+        } catch (error) {
+          if (!cancelled) setDrawError(error instanceof Error ? error.message : String(error))
+        }
+      }
+    }, (error) => {
+      if (!cancelled) setDrawError(error instanceof Error ? error.message : String(error))
+    })
+    return () => {
+      cancelled = true
+    }
+  // dataKey covers every field the draw and the buttons read.
+  }, [dataKey])
+
+  const onSave = (): void => {
+    const canvas = canvasRef.current
+    if (canvas === null || data === undefined) return
+    canvas.toBlob((blob) => {
+      if (blob === null) return
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `dsh-whale-voucher-${data.to}.png`
+      anchor.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    }, 'image/png')
+  }
+
+  const shareSupported = typeof navigator !== 'undefined' && typeof navigator.canShare === 'function'
+  const onShare = (): void => {
+    const canvas = canvasRef.current
+    if (canvas === null || data === undefined || !shareSupported) return
+    canvas.toBlob(async (blob) => {
+      if (blob === null) return
+      const file = new File([blob], `dsh-whale-voucher-${data.to}.png`, { type: 'image/png' })
+      if (!navigator.canShare({ files: [file] })) return
+      try {
+        await navigator.share({ files: [file], title: t('usage.bank.title') })
+      } catch {
+        // A user-cancelled share sheet rejects; nothing to report.
+      }
+    }, 'image/png')
+  }
+
+  return (
+    <div className={styles.card} data-dsh-part="bank-card">
+      <span className={styles.cardTitle}>{t('usage.bank.title')}</span>
+      {data === undefined
+        ? <span className={styles.muted}>{t('usage.bank.noUsage')}</span>
+        : <>
+            <span className={styles.muted}>{t('usage.bank.hint')}</span>
+            <div className={styles.voucherPreview} data-dsh-part="voucher-preview">
+              <canvas ref={canvasRef} aria-label={t('usage.bank.title')} />
+            </div>
+            {drawError !== undefined && <span className={styles.errorLine}>{t('usage.bank.drawError', { error: drawError })}</span>}
+            <div className={styles.providerRow}>
+              <span className={styles.providerName}>{t('usage.bank.minted', { minted: formatDenomination(faceValue(data.tokens)), tokens: formatTokens(data.tokens) })}</span>
+              <span className={styles.providerTokens}>{t('usage.calls', { n: data.calls })}</span>
+            </div>
+            <span className={styles.muted}>
+              {observedSpend !== undefined
+                ? t('usage.bank.spend.observed', { cost: observedSpend.cny.toFixed(2), since: formatDay(observedSpend.since) })
+                : t('usage.bank.spend.estimated', { cost: data.cost.toFixed(2) })}
+            </span>
+            <span className={styles.muted}>{t('usage.bank.window', { from: data.from, to: data.to })}</span>
+            <div className={styles.buttonRow}>
+              <button type="button" className={styles.refreshBtn} onClick={onSave}>{t('usage.bank.save')}</button>
+              {shareSupported && <button type="button" className={styles.refreshBtn} onClick={onShare}>{t('usage.bank.share')}</button>}
+            </div>
+          </>}
+    </div>
+  )
+}
+
 function PlanCard(props: { provider: ProviderSnapshotView; current?: string }): ReactNode {
   const { provider, current } = props
   return (
@@ -398,14 +534,39 @@ function PlanCard(props: { provider: ProviderSnapshotView; current?: string }): 
   )
 }
 
+/**
+ * The compact settings row. Both controls write through the shared form the
+ * moment the user changes them, and the Host answers each write with a
+ * boolean: a refused (or transport-failed) write is surfaced as a failed save,
+ * because a value that did not land must never read as applied.
+ */
 function SettingsRow(props: {
   settings: UsageSectionProps['settings']
-  snapshot?: { writable: boolean }
+  snapshot?: ConfigFormSnapshot<UsageSettings>
   value: UsageSettings
 }): ReactNode {
   const { settings, snapshot, value } = props
   const disabled = snapshot === undefined || !snapshot.writable
-  const bubbleMode = typeof value.bubbleMode === 'string' && ['always', 'change', 'off'].includes(value.bubbleMode) ? value.bubbleMode : 'always'
+  const [failure, setFailure] = useState<string | undefined>(undefined)
+
+  const write = (field: 'enabled' | 'pollIntervalSec', next: boolean | number): void => {
+    setFailure(undefined)
+    let answer: Promise<boolean>
+    try {
+      answer = settings.set(field, next)
+    } catch (error) {
+      setFailure(error instanceof Error ? error.message : String(error))
+      return
+    }
+    // false is the contract's refusal/skip answer (the Host rejected the value,
+    // the entry is not writable, or the write was dropped); a rejecting
+    // transport reports through the same failed-save surface.
+    Promise.resolve(answer).then(
+      (accepted) => { if (!accepted) setFailure('') },
+      (error: unknown) => { setFailure(error instanceof Error ? error.message : String(error)) },
+    )
+  }
+
   return (
     <div className={styles.card} data-dsh-part="settings-row">
       <span className={styles.cardTitle}>{t('usage.config.title')}</span>
@@ -415,7 +576,7 @@ function SettingsRow(props: {
             type="checkbox"
             checked={value.enabled ?? true}
             disabled={disabled}
-            onChange={(event) => { void settings.set('enabled', event.target.checked) }}
+            onChange={(event) => { write('enabled', event.target.checked) }}
           />
           {t('usage.config.enabled')}
         </label>
@@ -429,23 +590,16 @@ function SettingsRow(props: {
             disabled={disabled}
             onChange={(event) => {
               const parsed = Number(event.target.value)
-              if (Number.isFinite(parsed) && parsed >= 30 && parsed <= 3600) void settings.set('pollIntervalSec', Math.round(parsed))
+              if (Number.isFinite(parsed) && parsed >= 30 && parsed <= 3600) write('pollIntervalSec', Math.round(parsed))
             }}
           />
         </label>
-        <label className={styles.settingItem}>
-          {t('usage.config.bubbleMode')}
-          <select
-            value={bubbleMode}
-            disabled={disabled}
-            onChange={(event) => { void settings.set('bubbleMode', event.target.value) }}
-          >
-            <option value="always">{t('usage.config.bubbleMode.always')}</option>
-            <option value="change">{t('usage.config.bubbleMode.change')}</option>
-            <option value="off">{t('usage.config.bubbleMode.off')}</option>
-          </select>
-        </label>
       </div>
+      {failure !== undefined && (
+        <span className={styles.errorLine} role="status">
+          {t('usage.config.saveFailed')}{failure === '' ? '' : ' - ' + failure}
+        </span>
+      )}
     </div>
   )
 }

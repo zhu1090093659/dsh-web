@@ -5,7 +5,7 @@
  * activation. The hosts tab's connect action switches here to the terminal
  * tab with the chosen alias preselected.
  */
-import { useState } from 'react'
+import { useCallback, useState, useSyncExternalStore } from 'react'
 import type { SshApi } from '../api.ts'
 import type { PanelController } from './controller.ts'
 import { tt, type TerminalFontSource } from './helpers.ts'
@@ -46,6 +46,10 @@ interface ConnectRequest {
 
 /** The tabbed SSH panel. */
 export function SshPanel({ controller, api, terminalFont }: SshPanelProps) {
+  const panelOpen = useSyncExternalStore(
+    useCallback(listener => controller.subscribe(listener), [controller]),
+    useCallback(() => controller.getSnapshot().panelOpen, [controller]),
+  )
   const [activeTab, setActiveTab] = useState<SshTab>('hosts')
   const [connectRequest, setConnectRequest] = useState<ConnectRequest | null>(null)
 
@@ -81,7 +85,7 @@ export function SshPanel({ controller, api, terminalFont }: SshPanelProps) {
         {activeTab === 'hosts' && <HostsTab api={api} onConnect={handleConnect} />}
         {activeTab === 'terminal' && <TerminalTab api={api} presetAlias={connectRequest?.alias} requestId={connectRequest?.nonce} terminalFont={terminalFont} />}
         {activeTab === 'transfer' && <TransferTab api={api} />}
-        {activeTab === 'tunnels' && <TunnelsTab api={api} />}
+        {activeTab === 'tunnels' && <TunnelsTab api={api} active={panelOpen} />}
         {activeTab === 'cluster' && <ClusterTab api={api} />}
       </div>
     </div>

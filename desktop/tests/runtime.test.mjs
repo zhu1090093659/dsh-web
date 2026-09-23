@@ -15,6 +15,7 @@ const {
   resolveDshHome,
   childEnv,
   isProgrammaticLaunch,
+  shouldRaiseWindowOnSecondInstance,
   profileAction,
   applyProfileSeed,
   parseShasums,
@@ -157,6 +158,31 @@ test('isProgrammaticLaunch marks doctor/CLI child spawns and not user launches (
   assert.equal(isProgrammaticLaunch(['/app/cli.mjs', 'supervisor']), true);
 });
 
+test('shouldRaiseWindowOnSecondInstance rejects destroyed windows, quitting apps, and programmatic launches (#1465)', () => {
+  const userArgv = ['C:\\app\\DeepSeek Harness.exe'];
+  const progArgv = ['C:\\app\\DeepSeek Harness.exe', 'supervisor'];
+
+  const liveWindow = { isDestroyed: () => false };
+  const destroyedWindow = { isDestroyed: () => true };
+
+  // Normal live launch
+  assert.equal(shouldRaiseWindowOnSecondInstance(userArgv, { quitting: false, window: liveWindow }), true);
+
+  // Programmatic launch is suppressed
+  assert.equal(shouldRaiseWindowOnSecondInstance(progArgv, { quitting: false, window: liveWindow }), false);
+
+  // Quitting app is suppressed even if window exists
+  assert.equal(shouldRaiseWindowOnSecondInstance(userArgv, { quitting: true, window: liveWindow }), false);
+
+  // Null/undefined window is suppressed
+  assert.equal(shouldRaiseWindowOnSecondInstance(userArgv, { quitting: false, window: null }), false);
+  assert.equal(shouldRaiseWindowOnSecondInstance(userArgv, { quitting: false, window: undefined }), false);
+
+  // Destroyed window is suppressed (#1465 Object has been destroyed bug)
+  assert.equal(shouldRaiseWindowOnSecondInstance(userArgv, { quitting: false, window: destroyedWindow }), false);
+  assert.equal(shouldRaiseWindowOnSecondInstance(userArgv, { quitting: true, window: destroyedWindow }), false);
+});
+
 test('isPortFree sees an open listener as occupied', async () => {
   const blocker = await listenOn(0);
   const port = blocker.address().port;
@@ -203,7 +229,7 @@ test('ensureProfileFallbacks creates junctions for declared peerDependencies', (
   fs.writeFileSync(path.join(pluginDir, 'package.json'), JSON.stringify({
     name: 'my-plugin',
     peerDependencies: {
-      '@deepseek-ai/dsh-client-ui-primitives': '^0.1.2-rc.1',
+      '@deepseek-ai/dsh-client-ui-primitives': '^0.1.5-alpha.2',
     },
   }));
   fs.writeFileSync(path.join(profileDir, 'package.json'), JSON.stringify({

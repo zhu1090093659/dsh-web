@@ -483,14 +483,15 @@
 }
 
 .modal {
+  box-sizing: border-box;
   background: var(--dsw-alias-bg-base, #ffffff);
   color: var(--dsw-alias-label-primary, #1f2328);
   border: 1px solid var(--dsw-alias-border-l2, #d0d7de);
   border-radius: 14px;
   padding: 18px 20px;
   width: min(560px, 94vw);
-  max-height: 82vh;
-  overflow: auto;
+  max-height: min(82vh, calc(100% - 32px));
+  overflow: hidden;
   outline: none;
   display: flex;
   flex-direction: column;
@@ -509,6 +510,7 @@
 }
 
 .modalTitle {
+  flex: 0 0 auto;
   font-size: 15px;
   font-weight: 600;
 }
@@ -518,9 +520,11 @@
 }
 
 .modalActions {
+  flex: 0 0 auto;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  margin-top: auto;
 }
 
 @keyframes overlayIn {
@@ -559,6 +563,9 @@
 /* Delete confirmation */
 
 .confirmBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -601,6 +608,9 @@
 /* Batch progress */
 
 .batchBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -655,6 +665,9 @@
 /* Session preview */
 
 .previewBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;

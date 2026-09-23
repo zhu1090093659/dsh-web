@@ -11,12 +11,12 @@ Users of the image understanding tool (describe_image) often configure free or p
 Introduce multi-endpoint candidate lists, rotation scheduling, and automatic failover in @linxin666/dsh-tool-describe-image:
 
 - **Configuration schema**: Added endpoints array to Config (each supporting 
-ame, aseURL, model, piKey, piKeyEnv, piStyle, maxOutputTokens, and enabled), along with otationMode (ound-robin or ailover) and etryNextOnFailure (auto-retry on failure).
-- **Full backward compatibility**: When endpoints is omitted, the plugin seamlessly falls back to the top-level single aseURL + model configuration with zero breaking changes.
+ame, \baseURL, model, \apiKey, \apiKeyEnv, \apiStyle, maxOutputTokens, and enabled), along with \rotationMode (\round-robin or \failover) and \retryNextOnFailure (auto-retry on failure).
+- **Full backward compatibility**: When endpoints is omitted, the plugin seamlessly falls back to the top-level single \baseURL + model configuration with zero breaking changes.
 - **Execution engine**:
-  - ound-robin: Maintains an instance invocation cursor to cycle through active endpoints sequentially.
-  - ailover: Prioritizes the primary endpoint and falls back down the list only upon errors.
-  - On 429, 5xx, or network failure with etryNextOnFailure: true (default), tries the next candidate endpoint in order; if all fail, produces an aggregated summary of every endpoint error.
+  - \round-robin: Maintains an instance invocation cursor to cycle through active endpoints sequentially.
+  - \failover: Prioritizes the primary endpoint and falls back down the list only upon errors.
+  - On 429, 5xx, or network failure with \retryNextOnFailure: true (default), tries the next candidate endpoint in order; if all fail, produces an aggregated summary of every endpoint error.
 - **Transparent model return & semantic cache**: Returns the actual answering model id (output.model); semantic caching keys on the actual invoked endpoint specifications.
 - **Settings Card UI**: Extended settings card to expose rotation strategy and retry toggles with bilingual support (zh/en).
 

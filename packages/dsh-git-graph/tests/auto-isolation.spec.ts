@@ -133,6 +133,52 @@ describe('installAutoIsolation', () => {
     expect(git.addWorktree).toHaveBeenCalledWith('/repo', expect.any(String), undefined)
   })
 
+  it('creates one worktree when the new-session button is clicked twice quickly', async () => {
+    const { scope, workspaces, create, git } = fakeScope()
+    installAutoIsolation(scope, git as unknown as GitApi)
+    // Both clicks land before the first flow awaits, exactly like a double click.
+    workspaces.startSession('ws-main')
+    workspaces.startSession('ws-main')
+    await flush()
+    expect(git.addWorktree).toHaveBeenCalledTimes(1)
+    expect(create).toHaveBeenCalledTimes(1)
+  })
+
+  it('accepts a later new-session click once the previous flow settled', async () => {
+    const { scope, workspaces, git } = fakeScope()
+    installAutoIsolation(scope, git as unknown as GitApi)
+    workspaces.startSession('ws-main')
+    await flush()
+    workspaces.startSession('ws-main')
+    await flush()
+    expect(git.addWorktree).toHaveBeenCalledTimes(2)
+  })
+
+  it('drops the registration and the worktree when starting the session throws', async () => {
+    const { scope, workspaces, startSession, git } = fakeScope()
+    const drop = vi.fn(async () => {})
+    ;(workspaces as unknown as { delete?: unknown }).delete = drop
+    installAutoIsolation(scope, git as unknown as GitApi)
+    // The official call throws after the workspace row exists.
+    startSession.mockImplementationOnce(() => { throw new Error('session start failed') })
+    workspaces.startSession('ws-main')
+    await flush()
+    expect(drop).toHaveBeenCalledWith(expect.stringMatching(/^ws-/))
+    expect(git.removeWorktree).toHaveBeenCalledWith('/repo', expect.stringContaining(HOME), { force: true })
+    // The fallback still starts the session in the original workspace.
+    expect(startSession).toHaveBeenCalledWith('ws-main')
+  })
+
+  it('keeps rolling back when the service exposes no registration removal', async () => {
+    const { scope, workspaces, startSession, git } = fakeScope()
+    installAutoIsolation(scope, git as unknown as GitApi)
+    startSession.mockImplementationOnce(() => { throw new Error('session start failed') })
+    workspaces.startSession('ws-main')
+    await flush()
+    expect(git.removeWorktree).toHaveBeenCalledWith('/repo', expect.stringContaining(HOME), { force: true })
+    expect(startSession).toHaveBeenCalledWith('ws-main')
+  })
+
   it('refuses to wrap a shape-mismatched service and restores on dispose', async () => {
     const { scope, workspaces, startSession } = fakeScope()
     const broken = { ...workspaces, create: 42 }

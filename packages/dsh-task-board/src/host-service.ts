@@ -1,5 +1,6 @@
 import type { TypertGateway } from '@deepseek-ai/dsh-api-gateway'
 import { nextRunAtMs } from './core/schedule.ts'
+import { reusableSessionId } from './core/session-reuse.ts'
 import { HostTaskLedger, type OpenedRun, type OpenExecutionReference } from './host-ledger.ts'
 import { HostExecutionRunner, SessionLaunchError, type SessionCommandDispatcher, type SessionSummary, type TaskBoardWorkspaceRegistry } from './host-runner.ts'
 import { PowerInhibitor } from './power-inhibitor.ts'
@@ -21,6 +22,13 @@ export class TaskBoardHostService {
   private pollInFlight = false
   private tickInFlight = false
   private active = true
+  /**
+   * Ids the last roster poll saw as present and idle; undefined while the
+   * roster is unknown. Session reuse (issue #1419) requires this positive
+   * evidence, so a launch before the first successful poll mints a fresh
+   * conversation instead of prompting into a session it cannot see.
+   */
+  private idleSessionIds: ReadonlySet<string> | undefined
   private preventIdleSleep = false
   private lastPowerJson = ''
   private readonly now: () => number
@@ -37,6 +45,7 @@ export class TaskBoardHostService {
     this.runner = new HostExecutionRunner(gateway, options.commandDispatcher, options.workspaceRegistry)
     this.power = options.power ?? new PowerInhibitor()
     this.now = options.now ?? Date.now
+    installStreamErrorGuards()
     this.ledger.subscribe(() => {
       this.syncPowerReasons()
       this.emit()
@@ -127,7 +136,8 @@ export class TaskBoardHostService {
 
   private async launch(opened: OpenedRun): Promise<void> {
     try {
-      const sessionId = await this.runner.launch(opened.task)
+      const reuseSessionId = reusableSessionId(opened.task, this.idleSessionIds)
+      const sessionId = await this.runner.launch(opened.task, reuseSessionId === undefined ? {} : { reuseSessionId })
       this.ledger.attachSession(opened.task.id, opened.execution.id, sessionId)
     } catch (error) {
       if (error instanceof SessionLaunchError) {
@@ -143,6 +153,7 @@ export class TaskBoardHostService {
     const running = await this.runner.listRunning()
     const previous = this.power.snapshot()
     if (!running.known) {
+      this.idleSessionIds = undefined
       this.power.updateReasons({
         runningSessions: previous.runningSessions,
         armedSchedules: this.ledger.armedScheduleCount(),
@@ -150,6 +161,7 @@ export class TaskBoardHostService {
       })
       return
     }
+    this.idleSessionIds = new Set(running.items.filter(item => !item.running).map(item => item.sessionId))
     // Read after the RPC so executions attached while it was in flight are
     // included in this pass, matching the former full-state snapshot timing.
     const runtime = this.ledger.runtimeView()
@@ -203,7 +215,7 @@ export class TaskBoardHostService {
 
   private scheduleLaunch(opened: OpenedRun): void {
     void this.launch(opened).catch(error => {
-      console.error('[dsh-task-board] execution launch settlement failed', error)
+      safeConsoleError('[dsh-task-board] execution launch settlement failed', error)
     })
   }
 
@@ -211,7 +223,7 @@ export class TaskBoardHostService {
     if (this.pollInFlight || this.disposed) return
     this.pollInFlight = true
     void this.pollSessions().catch(error => {
-      console.error('[dsh-task-board] session polling failed', error)
+      safeConsoleError('[dsh-task-board] session polling failed', error)
     }).finally(() => { this.pollInFlight = false })
   }
 
@@ -219,7 +231,7 @@ export class TaskBoardHostService {
     if (this.tickInFlight || this.disposed) return
     this.tickInFlight = true
     void this.tickSchedule(first).catch(error => {
-      console.error('[dsh-task-board] scheduler tick failed', error)
+      safeConsoleError('[dsh-task-board] scheduler tick failed', error)
     }).finally(() => { this.tickInFlight = false })
   }
 
@@ -235,5 +247,35 @@ export class TaskBoardHostService {
 
   private emit(): void {
     for (const listener of [...this.listeners]) listener()
+  }
+}
+
+/**
+ * Install stream error listeners on process.stderr and process.stdout so that
+ * transient write failures (e.g. ENOSPC when the disk is full, or EPIPE on a
+ * closed pipe) never emit unhandled 'error' events that kill the Node.js host process.
+ */
+export function installStreamErrorGuards(): void {
+  for (const stream of [process.stderr, process.stdout]) {
+    if (stream && typeof stream.on === 'function') {
+      const hasErrorListener = typeof stream.listenerCount === 'function' && stream.listenerCount('error') > 0
+      if (!hasErrorListener) {
+        stream.on('error', () => {
+          // Swallow write stream errors to keep the host process alive
+        })
+      }
+    }
+  }
+}
+
+/**
+ * Defensively log to console.error without letting stderr write failures
+ * (e.g. ENOSPC from SyncWriteStream on redirected logs) crash the host process.
+ */
+export function safeConsoleError(message: string, ...args: unknown[]): void {
+  try {
+    console.error(message, ...args)
+  } catch {
+    // Best-effort stderr write; ignore write errors when stderr stream fails
   }
 }

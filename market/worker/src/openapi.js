@@ -34,7 +34,7 @@ export default {
     },
     '/api/install': {
       post: {
-        summary: 'Record one successful Workshop install (skins, pets or community plugins); one event per install, Turnstile-gated',
+        summary: 'Record one successful Workshop install (skins, pets, community plugins or presets); one event per install, Turnstile-gated',
         requestBody: {
           required: true,
           content: {
@@ -43,7 +43,7 @@ export default {
                 type: 'object',
                 required: ['kind', 'asset_id', 'device_fp', 'install_id', 'turnstile_token'],
                 properties: {
-                  kind: { type: 'string', enum: ['skin', 'pet', 'plugin'] },
+                  kind: { type: 'string', enum: ['skin', 'pet', 'plugin', 'preset'] },
                   asset_id: { type: 'string' },
                   device_fp: { type: 'string' },
                   install_id: { type: 'string' },
@@ -72,7 +72,7 @@ export default {
                 type: 'object',
                 required: ['kind', 'asset_id', 'device_fp'],
                 properties: {
-                  kind: { type: 'string', enum: ['skin', 'pet', 'plugin'] },
+                  kind: { type: 'string', enum: ['skin', 'pet', 'plugin', 'preset'] },
                   asset_id: { type: 'string' },
                   device_fp: { type: 'string' },
                   turnstile_token: { type: 'string' },
@@ -139,7 +139,7 @@ export default {
     '/api/telemetry/summary': {
       get: {
         summary: 'Aggregate UV/PV summary; counts only, never raw events',
-        description: 'Served from a rollup cache refreshed by the cron trigger and on demand; windows up to 30 days can lag 30 minutes, 90/365-day windows up to 12 hours. A stale cached window is served when the live aggregation cannot run.',
+        description: 'Served from per-UTC-day rollup tables that the cron trigger rewrites and backfills; aggregation cost is days x catalog, not days x events. The daily series is an exact per-day distinct count, while interval item, channel and version numbers are the sum of the per-day distinct counts (a window-wide DISTINCT would need every day\'s visitor set in memory). Windows up to 30 days can lag 30 minutes, 90/365-day windows up to 12 hours; a stale cached window is served when the live aggregation cannot run, and a window whose days are still being backfilled keeps the previous cache row instead of a short series. Each payload carries generated_at (epoch ms when the rollup was computed) and degraded (labels of auxiliary breakdowns skipped: "channels" / "versions").',
         parameters: [
           { name: 'x-telemetry-key', in: 'header', required: false, schema: { type: 'string' }, description: 'Required when TELEMETRY_READ_KEY is configured; the key is never accepted as a URL query parameter' },
           { name: 'days', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: 365 } },

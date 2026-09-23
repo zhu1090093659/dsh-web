@@ -17,7 +17,8 @@ import { dshRequirementOf, meetsMinimumDsh, parseDshVersion } from '../core/vers
 import { readPatchText, readProfileManifest, type ProfileFacts } from './profile.ts'
 import { legacyMigrationFor, targetSpecForLegacy } from './legacy-migration.ts'
 import { setRowEnabled, writePatchAtomic } from './rows.ts'
-import { buildPluginRow, claimedEntryRowsOf, snapshotGateway } from './state.ts'
+import { buildPluginRow, claimedEntryRowsOf, findRowOwner, LOCKED_ENTRY_IDS, snapshotGateway } from './state.ts'
+import { createOutputCapture, type OutputCapture } from './console-output.ts'
 
 /** Route prefix the browser half mirrors. */
 export const GATEWAY_PREFIX = '/api/plugin-manager'
@@ -28,8 +29,8 @@ const REGISTRY_TIMEOUT_MS = 30_000
 /** Deadline for one dsh --version probe. */
 const VERSION_TIMEOUT_MS = 10_000
 
-/** Bounded capture of the version probe output. */
-const VERSION_MAX_OUTPUT_CHARS = 4_096
+/** Bounded capture of the version probe output, counted in bytes. */
+const VERSION_MAX_OUTPUT_BYTES = 4_096
 
 /** Grace period after SIGTERM before a stuck probe child is SIGKILLed. */
 const VERSION_ESCALATION_TIMEOUT_MS = 5_000
@@ -40,11 +41,7 @@ const VERSION_PROBE_TTL_MS = 5 * 60_000
 /** Minimum gap between failed version probes (avoids a spawn per request). */
 const VERSION_PROBE_COOLDOWN_MS = 60_000
 
-/**
- * Entry ids that must stay mounted so the local plugin-management escape hatch
- * remains available. Aggregate packages may still disable every other entry.
- */
-const SELF_MANAGED_ENTRY_IDS = new Set(['ui-plugin-manager', 'web-ui-plugin-manager'])
+
 
 /** Dependencies every route shares. */
 export interface GatewayRouteDeps {
@@ -75,9 +72,9 @@ export interface RegistryVersionManifest {
   engines?: unknown
 }
 
-/** Append bounded probe output. */
-function captureProbe(chunk: Buffer, buffer: { value: string }): void {
-  buffer.value = (buffer.value + chunk.toString()).slice(-VERSION_MAX_OUTPUT_CHARS)
+/** Append bounded probe output (bytes accumulate; one decode at read time). */
+function captureProbe(chunk: Buffer, buffer: OutputCapture): void {
+  buffer.push(chunk)
 }
 
 /**
@@ -107,7 +104,7 @@ async function probeDshVersion(cliAvailable: () => boolean): Promise<string | un
   if (!cliAvailable()) return undefined
   const binary = findDshBinary()
   if (binary === null) return undefined
-  const output = { value: '' }
+  const output = createOutputCapture(VERSION_MAX_OUTPUT_BYTES)
   const child = spawnDsh(binary, ['--version'], process.env)
   child.stdout?.on('data', (chunk: Buffer) => { captureProbe(chunk, output) })
   child.stderr?.on('data', (chunk: Buffer) => { captureProbe(chunk, output) })
@@ -133,7 +130,7 @@ async function probeDshVersion(cliAvailable: () => boolean): Promise<string | un
     child.once('close', finish)
   })
   if (code !== 0) return undefined
-  const version = output.value.trim().split(/\r?\n/, 1)[0]?.trim() ?? ''
+  const version = output.read().trim().split(/\r?\n/, 1)[0]?.trim() ?? ''
   return parseDshVersion(version) === undefined ? undefined : version
 }
 
@@ -365,25 +362,40 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
       // carries the entry's own name: the include semantics skip a bare row
       // whose name mismatches the inserted entry.
       const manifest = await readProfileManifest(facts.packageJsonPath)
-      if (manifest.dependencies[target] === undefined) {
-        return { error: `plugin-manager: plugin ${target} is not installed` } as const
+      let ownerName = target
+      let entries: Array<{ id: string; name: string; baseEnabled: boolean }>
+      if (manifest.dependencies[target] !== undefined) {
+        entries = await claimedEntryRowsOf(facts, target)
+      } else {
+        // Row-level toggle: the id is one entry row claimed by an aggregate's
+        // bundle patch (e.g. web-ui-pet), not a dependency name. Only that
+        // row gets the override; its siblings keep their state.
+        const owner = await findRowOwner(facts, Object.keys(manifest.dependencies), target)
+        if (owner === undefined) {
+          return { error: `plugin-manager: plugin ${target} is not installed` } as const
+        }
+        if (!enabled && LOCKED_ENTRY_IDS.has(target)) {
+          // Never persist a disabled override that would take down the manager
+          // tab itself, its settings surface, or the aggregate compat face —
+          // the UI performing these writes must stay reachable to undo them.
+          return { error: `plugin-manager: row ${target} is required by this manager and cannot be disabled` } as const
+        }
+        ownerName = owner.packageName
+        entries = [owner.row]
       }
-      const entries = await claimedEntryRowsOf(facts, target)
       let next = patchText
       for (const entry of entries) {
-        // Never persist a disabled override for the gateway that performs this
-        // write. For an aggregate package, all sibling entries are still
-        // disabled; for the standalone manager this makes the request a no-op.
-        const entryEnabled = enabled || SELF_MANAGED_ENTRY_IDS.has(entry.id)
-        next = setRowEnabled(next, facts.patchPath, entry.id, entry.name, entryEnabled)
+        // A whole-package disable still force-keeps the locked rows mounted.
+        const entryEnabled = enabled || LOCKED_ENTRY_IDS.has(entry.id)
+        next = setRowEnabled(next, facts.patchPath, entry.id, entry.name, entryEnabled, entry.baseEnabled)
       }
       if (next !== patchText) {
         await writePatchAtomic(facts.patchPath, next)
       }
       const snapshot = await snapshotGateway(facts, next)
-      const plugin = snapshot.plugins.find(item => item.id === target)
+      const plugin = snapshot.plugins.find(item => item.id === ownerName)
       return plugin === undefined
-        ? { error: `plugin-manager: plugin ${target} is not installed` } as const
+        ? { error: `plugin-manager: plugin ${ownerName} is not installed` } as const
         : { plugin } as const
     })
     if ('error' in outcome) {

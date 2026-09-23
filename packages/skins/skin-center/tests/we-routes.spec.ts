@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFile } from 'node:fs/promises'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { TexFormat, decodePngToRgba } from '../src/pkg-extract.ts'
-import { makeWeRoutes, SCENE_EXTRACTOR_VERSION, WE_API_PREFIX } from '../src/we-routes.ts'
+import { makeWeRoutes, safeStoreId, SCENE_EXTRACTOR_VERSION, WE_API_PREFIX } from '../src/we-routes.ts'
 
 // The probe path reads scene payloads through node:fs/promises; spy on it so
 // the cache tests can assert exactly when a payload is (not) re-read.
@@ -658,6 +658,36 @@ describe('scene container resolution (#521)', () => {
     expect(String(resRes.headers['content-type'])).toContain('image/png')
   })
 
+  it('serves a material named with URL-reserved characters through its encoded URL (issue #1458)', async () => {
+    const texName = '# background 100%'
+    makeProject(join(library, '888'), { title: 'Encoded scene', type: 'scene', file: 'scene.json' }, {
+      'scene.json': JSON.stringify({ objects: [{ name: 'bg', image: 'models/bg.json' }] }),
+      'models/bg.json': JSON.stringify({ material: 'materials/bg.json', width: 64, height: 64 }),
+      'materials/bg.json': JSON.stringify({ passes: [{ shader: 'genericimage', textures: [texName] }] }),
+    })
+    writeFileSync(join(library, '888', 'materials', texName + '.tex'), tex64Red)
+
+    const probe = await call('GET', WE_API_PREFIX + '/scene-probe?id=888')
+    expect(probe.status).toBe(200)
+    expect(probe.body.ok).toBe(true)
+    const token = String(probe.body.sceneUrl).split('/').pop()
+
+    const manifestRes = await call('GET', WE_API_PREFIX + '/scene-manifest/' + token)
+    expect(manifestRes.status).toBe(200)
+    const layer = (manifestRes.body.manifest as { layers: Array<{ texUrl?: string }> }).layers[0]
+    expect(layer.texUrl).toBe(WE_API_PREFIX + '/scene-resource/' + token + '/materials/%23%20background%20100%25.tex')
+
+    // The encoded URL the manifest hands the browser resolves to the texture.
+    const encoded = await callRaw('GET', String(layer.texUrl))
+    expect(encoded.status).toBe(200)
+    expect(String(encoded.headers['content-type'])).toContain('image/png')
+
+    // The pre-fix raw form documents the reported failure: the request stops at
+    // the fragment separator and the route finds no such material.
+    const raw = await callRaw('GET', WE_API_PREFIX + '/scene-resource/' + token + '/materials/#%20background%20100%25.tex')
+    expect(raw.status).toBe(404)
+  })
+
   it('keeps supported water and particle passes live when embedded scripts are ignored', async () => {
     makeProject(join(library, '777'), { title: 'Scripted water and meteors', type: 'scene', file: 'scene.json' }, {
       'scene.json': JSON.stringify({
@@ -725,6 +755,62 @@ describe('import lifecycle', () => {
     expect(removed.status).toBe(200)
     expect(existsSync(join(store, '111'))).toBe(false)
     expect(existsSync(join(library, '111'))).toBe(true)
+  })
+
+  // #1668: safeStoreId keeps '.', so an id like 'imported/..' used to join
+  // one level above the store root and the recursive delete removed the whole
+  // skin-center tree. Every dot-only segment must now be rejected before the
+  // join, for the two routes that delete (or refresh) a store entry.
+  it('operator cannot reach a dot-segment remove id that escapes the store root', async () => {
+    // Given an import store with a sibling directory the traversal id would reach
+    const sibling = join(store, '..', 'beside-store')
+    mkdirSync(store, { recursive: true })
+    mkdirSync(sibling, { recursive: true })
+    writeFileSync(join(sibling, 'canary.txt'), 'USER-DATA', 'utf8')
+
+    // When the operator posts /remove and /reimport with dot-only ids
+    for (const id of ['imported/..', 'imported/.', 'imported/']) {
+      const removed = await call('POST', WE_API_PREFIX + '/remove', { body: { id } })
+      const reimported = await call('POST', WE_API_PREFIX + '/reimport', { body: { id } })
+
+      // Then each request is refused as a bad id
+      expect(removed.status, 'remove ' + id).toBe(400)
+      expect(removed.body).toEqual({ ok: false, error: 'bad-id' })
+      expect(reimported.status, 'reimport ' + id).toBe(400)
+    }
+
+    // Then the store and the user data beside it are untouched
+    expect(existsSync(store)).toBe(true)
+    expect(existsSync(join(sibling, 'canary.txt'))).toBe(true)
+  })
+
+  it('operator gets an id sanitized into a store name that is never a path segment', () => {
+    // Given the ids that occur in the wild
+    const ordinary = ['111', 'a b/c']
+
+    // When they are folded into store directory names
+    // Then ordinary ids are preserved, traversal stays neutralized, and a
+    // dot-only segment can no longer name the parent directory
+    expect(ordinary.map(id => safeStoreId(id))).toEqual(['111', 'a_b_c'])
+    expect(safeStoreId('..')).toBe('__')
+    expect(safeStoreId('.')).toBe('_')
+    expect(safeStoreId('../..')).toBe('.._..')
+    const traversalIds = ['..', '.', '../..'].map(id => safeStoreId(id))
+    expect(traversalIds.some(safe => /^\.{1,2}$/.test(safe))).toBe(false)
+  })
+
+  it('operator still deletes a genuine imported entry after the traversal guard', async () => {
+    // Given an imported copy that really lives inside the store
+    mkdirSync(join(store, '111'), { recursive: true })
+    writeFileSync(join(store, '111', 'project.json'), '{}', 'utf8')
+
+    // When the operator removes it by its ordinary imported id
+    const removed = await call('POST', WE_API_PREFIX + '/remove', { body: { id: 'imported/111' } })
+
+    // Then the copy is gone and the store root itself survives
+    expect(removed.status).toBe(200)
+    expect(existsSync(join(store, '111'))).toBe(false)
+    expect(existsSync(store)).toBe(true)
   })
 
   it('rejects bad ids and cross-site posts', async () => {

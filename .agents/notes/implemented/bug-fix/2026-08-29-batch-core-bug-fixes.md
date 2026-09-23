@@ -17,12 +17,12 @@ o-repeat mode.
 ## Decision
 
 1. **Windows Script Cross-Platform Compatibility (#1275, #1257)**:
-   - Added Windows command/shell resolution for pnpm, prioritized System32 bsdtar, and handled EXDEV with copyFileSync fallback in uild-cohort-tarballs.mjs;
-   - Used ileURLToPath(moduleUrl) in dsh-perf/src/bsm/service.ts.
+   - Added Windows command/shell resolution for pnpm, prioritized System32 bsdtar, and handled EXDEV with copyFileSync fallback in \build-cohort-tarballs.mjs;
+   - Used \fileURLToPath(moduleUrl) in dsh-perf/src/bsm/service.ts.
 2. **Eliminated YAML Tag Warnings (#1272)**:
-   - Removed unparsed oot: !!js in dsh-perf/cordis.patch.yml, sanitized !!js tag expressions in scripts/aggregate.mjs, and regenerated aggregate cordis.patch.yml.
+   - Removed unparsed \root: !!js in dsh-perf/cordis.patch.yml, sanitized !!js tag expressions in scripts/aggregate.mjs, and regenerated aggregate cordis.patch.yml.
 3. **Preserved Wide Table Rendering (#1269)**:
-   - Excluded .md-table-wide rows from content-visibility and linked P0 CSS injection to the enderDegrade setting.
+   - Excluded .md-table-wide rows from content-visibility and linked P0 CSS injection to the \renderDegrade setting.
 4. **Silent Windows Supervisor Task (#1267)**:
    - Generated supervisor.vbs silent wrapper executed via wscript.exe to suppress console popup.
 5. **Skin Layout & Flow Animation (#1265, #1258)**:

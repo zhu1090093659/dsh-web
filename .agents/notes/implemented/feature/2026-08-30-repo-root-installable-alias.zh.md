@@ -10,7 +10,7 @@ Status: implemented
 
 仓库根现在是已发布聚合包之上的薄别名 bundle：
 
-- 根 `package.json` 声明 `"dsh": { "bundle": { "patch": "./packages/dsh-web-all/cordis.patch.yml" } }`、`dependencies: { "@linxin666/dsh-web-all": "^0.3.6" }`，并用两项 `files` 白名单保证打包式 git 安装只携带清单；
+- 根 `package.json` 声明 `"dsh": { "bundle": { "patch": "./packages/dsh-web-all/cordis.patch.yml" } }`、`dependencies: { "@linxin666/dsh-web-all": "0.3.20" }`（精确对应同提交补丁的已发布聚合包，见[精确聚合包钉版](../../bug-fix/2026-09-10-root-alias-exact-aggregate-pin.md)），并用两项 `files` 白名单保证打包式 git 安装只携带清单；
 - checkout 的 `pnpm-workspace.yaml` 设 `linkWorkspacePackages: true`：仓库内部该依赖链接 workspace 工程（同源源码，不拉 npm 副本），profile 安装时则从 npm registry 解析。
 
 `dsh plugin --profile web add github:zhu1090093659/dsh-web` 由此挂载全家桶：根包进入 `dsh.profile.bundles` 层栈，它的 patch 就是聚合包自己生成的 `web-ui-*` 装配清单，npm 聚合包依赖（安装时解析）提供各行引用的全部模块。
@@ -25,7 +25,7 @@ Status: implemented
 
 - npm 渠道的滞后限制 git 安装拿到的东西：patch 来自仓库 commit，成员代码来自最新已发布的聚合包，所以源码 patch 新引用了未发布成员时，要等那一版发布后该行才能解析。发布流程不需要改动，但 patch 增加成员行后应及时发布。
 - 别名与 npm 聚合包在同一 profile 中互斥：两者产出完全相同的 `web-ui-*` 行，同时安装会因重复 id 冲突（根 README 已写明）。
-- 家族跨过 0.3 大版本时需要上调根依赖范围 `^0.3.6`。
+- 每次家族发版都要把根依赖重新钉到该版本，`scripts/verify-version.mjs` 在它与 tag 不一致时直接让发布失败（见[精确聚合包钉版](../../bug-fix/2026-09-10-root-alias-exact-aggregate-pin.md)）。
 - `linkWorkspacePackages: true` 对整个 checkout 生效；没有其他 workspace 包以 range 规格声明与 workspace 工程同名的依赖，所以只有根依赖受影响。
 
 ## Testing

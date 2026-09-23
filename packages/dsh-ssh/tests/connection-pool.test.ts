@@ -10,7 +10,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildConnectConfig, connectChain, connectClient } from '../src/engine/connection-pool.ts'
+import { buildConnectConfig, connectChain, connectClient, parseJumpSpec } from '../src/engine/connection-pool.ts'
 import type { SshHostEntry } from '../src/protocol.ts'
 import type { HostStore } from '../src/store.ts'
 
@@ -110,6 +110,19 @@ function passwordEntry(alias: string, overrides: Partial<SshHostEntry> = {}): Ss
     updatedAt: 1,
     ...overrides,
   } as SshHostEntry
+}
+
+/** The minimal pool engine shape connectChain consumes. */
+function poolEngine(store: HostStore): unknown {
+  return {
+    store,
+    opts: {
+      idleTimeoutMs: 1, connectTimeoutMs: 1, keepaliveIntervalMs: 1,
+      maxOutputBytes: 1, defaultExecTimeoutMs: 1, defaultMaxWorkers: 1, sftpConcurrency: 1,
+    },
+    pool: new Map(),
+    acquireQueue: new Map(),
+  }
 }
 
 /** Distinctive engine options used to verify timeouts reach the ssh2 config. */
@@ -316,5 +329,75 @@ describe('connectChain', () => {
     expect(hopAInstance.endCalls).toBe(1)
     // The failed hop B is destroyed by connectClient on its own failure.
     expect(hopBInstance.destroyCalls).toBe(1)
+  })
+
+  it('seeds the transport from the entry ProxyCommand', async () => {
+    const entry = passwordEntry('proxied', { proxyCommand: 'echo %h %p' })
+    sshMock.behaviors.push((client) => { client.emit('ready') })
+    const engine = poolEngine(fakeStore([entry]))
+
+    await connectChain(engine as never, entry)
+
+    const instance = sshMock.instances[0]
+    const sock = instance?.connectConfig?.['sock'] as { destroy?: unknown } | undefined
+    expect(sock).toBeDefined()
+    expect(typeof sock?.destroy).toBe('function')
+    ;(sock as { destroy: () => void }).destroy()
+  })
+
+  it('resolves an address-form hop and reuses the target credentials', async () => {
+    const target = passwordEntry('target', { proxyJump: ['ops@bastion.example.com:2222'] })
+    sshMock.behaviors.push((client) => { client.emit('ready') })
+    sshMock.behaviors.push((client) => { client.emit('ready') })
+    const engine = poolEngine(fakeStore([target]))
+
+    await connectChain(engine as never, target)
+
+    const hopConfig = sshMock.instances[0]?.connectConfig as Record<string, unknown> | undefined
+    expect(hopConfig?.['host']).toBe('bastion.example.com')
+    expect(hopConfig?.['port']).toBe(2222)
+    expect(hopConfig?.['username']).toBe('ops')
+    // An ad-hoc hop carries no auth of its own; it reuses the target's.
+    expect(hopConfig?.['password']).toBe('secret')
+  })
+
+  it('names the hop when a hop connect fails', async () => {
+    const target = passwordEntry('target', { proxyJump: ['ops@bastion.example.com:2222'] })
+    sshMock.behaviors.push((client) => { client.emit('error', new Error('handshake dropped')) })
+    const engine = poolEngine(fakeStore([target]))
+
+    await expect(connectChain(engine as never, target))
+      .rejects.toThrow("proxyJump hop 'ops@bastion.example.com:2222' (ops@bastion.example.com:2222): handshake dropped")
+  })
+
+  it('refuses a ProxyCommand on a hop that is not the first one', async () => {
+    const hopA = passwordEntry('a', { proxyCommand: 'echo a' })
+    const hopB = passwordEntry('b', { proxyCommand: 'echo b' })
+    const target = passwordEntry('target', { proxyJump: ['a', 'b'] })
+    sshMock.behaviors.push((client) => { client.emit('ready') })
+    const engine = poolEngine(fakeStore([hopA, hopB, target]))
+
+    await expect(connectChain(engine as never, target)).rejects.toThrow(/only supported on the first hop/)
+    expect(sshMock.instances[0]?.endCalls).toBe(1)
+  })
+
+  it('refuses an entry that declares both transports (hand-edited store file)', async () => {
+    const hop = passwordEntry('hop')
+    const entry = passwordEntry('both', { proxyJump: ['hop'], proxyCommand: 'echo %h' })
+    const engine = poolEngine(fakeStore([hop, entry]))
+
+    await expect(connectChain(engine as never, entry)).rejects.toThrow(/both proxyCommand and proxyJump/)
+    expect(sshMock.instances).toHaveLength(0)
+  })
+})
+
+describe('parseJumpSpec', () => {
+  it('parses [user@]host[:port] and rejects what is not an address', () => {
+    expect(parseJumpSpec('bastion')).toEqual({ host: 'bastion' })
+    expect(parseJumpSpec('ops@bastion.example.com:2222')).toEqual({ host: 'bastion.example.com', port: 2222, user: 'ops' })
+    expect(parseJumpSpec('[::1]:22')).toEqual({ host: '::1', port: 22 })
+    expect(parseJumpSpec('host:0')).toBeUndefined()
+    expect(parseJumpSpec('host:not-a-port')).toBeUndefined()
+    expect(parseJumpSpec('   ')).toBeUndefined()
   })
 })

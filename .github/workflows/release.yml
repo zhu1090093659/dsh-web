@@ -140,6 +140,16 @@ jobs:
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
           pnpm -r publish --no-git-checks --access public --registry=https://registry.npmjs.org/ --tag latest
 
+      # pnpm's per-package success lines are not a trust boundary: the
+      # registry can lag minutes behind a publish (v0.3.18) or lose a version
+      # silently, and the mount smoke's auto rewrite would paper over a
+      # missing family dependency with a workspace tarball. Assert every
+      # family version resolves from the registry, retrying propagation lag,
+      # before the mount smoke and the GitHub Release run.
+      - name: Verify published versions on the registry
+        if: env.NPM_PUBLISH_ENABLED == 'true'
+        run: node scripts/verify-registry.mjs "${{ steps.tag.outputs.version }}"
+
       # Dual-publish the final legacy aggregate name for the transition
       # window. The legacy tarball is derived from the fresh current package,
       # carries the old browser loader id, and announces dsh.migrate so the
@@ -183,7 +193,7 @@ jobs:
       # Pin the DSH CLI the lane mounts into (same pin as ci.yml's
       # plugin-mount lane).
       - name: Install dsh CLI (pinned)
-        run: npm install -g @deepseek-ai/dsh@0.1.2-rc.1
+        run: npm install -g @deepseek-ai/dsh@0.1.7-alpha.1
 
       # The aggregate tarball must be produced from a fresh build.
       - name: Build

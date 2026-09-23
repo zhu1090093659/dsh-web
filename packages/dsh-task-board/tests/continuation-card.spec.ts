@@ -116,10 +116,8 @@ describe('continuation card: vertical action -> controller -> ledger -> snapshot
   function fakeSessions() {
     const listeners = new Set<() => void>()
     return {
-      list: {
-        getSnapshot: () => ({ current: undefined }),
-        subscribe: (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn) } },
-      },
+      current: () => undefined,
+      subscribe: (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn) } },
       open: () => {},
     }
   }

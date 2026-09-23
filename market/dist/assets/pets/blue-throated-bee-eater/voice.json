@@ -1,0 +1,13 @@
+{
+  "voicePackVersion": 1,
+  "panel": {
+    "stats": {
+      "treats": "小蜜蜂 {n}"
+    },
+    "actions": [
+      "feed",
+      "rename",
+      "hide"
+    ]
+  }
+}

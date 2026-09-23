@@ -8,7 +8,7 @@
  * card-store pattern.
  */
 
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 
@@ -114,7 +114,7 @@ interface PlannedWrite {
   judge: (() => boolean) | undefined
 }
 
-/** One durable write inside the save's atomic scope mutation. */
+/** One durable write inside the save's atomic form mutation. */
 export interface BatchedWrite {
   /** Field this entry writes. */
   field: string
@@ -211,34 +211,34 @@ export class CardForm<T> {
   private readonly specs: Map<string, FieldSpec>
   private readonly staged = new Map<string, StagedEdit>()
   private readonly listeners = new Set<() => void>()
-  /** The scope subscription installed in the constructor; released by dispose(). */
-  private readonly disposeScope: () => void
+  /** The form subscription installed in the constructor; released by dispose(). */
+  private readonly disposeForm: () => void
   private disposed = false
   private saving = false
   private failed = false
   private failedReason: string | undefined
 
-  /** @param scope - the bound settings scope for this card's namespace. */
+  /** @param scope - the bound configuration form for this card's namespace. */
   constructor(
-    private readonly scope: SettingsScope<T>,
+    private readonly scope: ConfigForm<T>,
     specs: FieldSpec[],
   ) {
     this.specs = new Map(specs.map(spec => [spec.field, spec]))
-    this.disposeScope = scope.subscribe(() => { this.publish() })
+    this.disposeForm = scope.subscribe(() => { this.publish() })
   }
 
   /**
-   * Release the scope subscription and every bound store listener. The card
+   * Release the form subscription and every bound store listener. The card
    * must call this on teardown; later calls are no-ops.
    */
   dispose(): void {
     if (this.disposed) return
     this.disposed = true
-    this.disposeScope()
+    this.disposeForm()
     this.listeners.clear()
   }
 
-  /** Publish a projection of this form, rebuilt whenever the scope or a draft changes. */
+  /** Publish a projection of this form, rebuilt whenever the form or a draft changes. */
   bind<S>(project: () => S): SnapshotStore<S> {
     const store = createSnapshotStore(project())
     this.listeners.add(() => { store.set(project()) })
@@ -295,19 +295,19 @@ export class CardForm<T> {
   }
 
   /**
-   * Write every staged edit in one atomic scope mutation, then re-seed from
+   * Write every staged edit in one atomic form mutation, then re-seed from
    * what the Host accepted.
    *
    * The whole batch rides one mutate, so cross-field validate hooks
    * (baseURL+model) judge it as a unit: the Host either applies every write
-   * or refuses the batch. The 0.1.2 scope contract never rejects a refused
-   * mutation — the scope recovers with a fresh Host view and resolves — so
-   * resolution alone proves nothing: the outcome is judged by reading the
-   * settled snapshot back, one planned write at a time, and one missed write
-   * fails the whole save. A scope that still rejects on refusal (the dsh-web
-   * bridge scope) reports through the same failure path with its rejection
-   * message. A save that did not land keeps its drafts, so the user can
-   * correct them instead of retyping.
+   * or refuses the batch. The form contract answers a refusal or a skipped
+   * write with `false` (it recovers with a fresh Host view instead of
+   * throwing), so the outcome is judged twice: the answer itself, and then the
+   * settled snapshot read back one planned write at a time. One missed write
+   * fails the whole save. A transport that rejects instead (the dsh-web bridge
+   * controller on a dead connection) reports through the same failure path
+   * with its rejection message. A save that did not land keeps its drafts, so
+   * the user can correct them instead of retyping.
    * @returns settlement after the mutation and the read-back.
    */
   async save(): Promise<void> {
@@ -323,30 +323,33 @@ export class CardForm<T> {
     this.failed = false
     this.failedReason = undefined
     this.publish()
-    // One atomic namespace mutation: the 0.1.2 scope contract takes ordered
-    // path operations, so the whole staged batch is validated, persisted, and
+    // One atomic namespace mutation: the form contract takes ordered path
+    // operations, so the whole staged batch is validated, persisted, and
     // recovered together — either every write lands or none does.
     const ops: Array<{ op: 'set'; path: string[]; value: string | number | boolean } | { op: 'unset'; path: string[] }> = valid.map(item => item.op.op === 'set'
       ? { op: 'set', path: [item.field], value: (item.op as { value: string | number | boolean }).value }
       : { op: 'unset', path: [item.field] })
     let failedReason: string | undefined
+    let accepted = false
     try {
-      await this.scope.mutate(ops)
+      accepted = await this.scope.mutate(ops)
     } catch (error) {
       failedReason = error instanceof Error ? error.message : String(error)
     }
-    // The 0.1.2 scope resolves even a refused mutation (it recovers with a
-    // fresh view instead of throwing), so resolution alone proves nothing:
-    // judge every planned write against the settled snapshot. The mutation is
-    // atomic, so one missed write fails the whole save and keeps the drafts.
-    const landed = failedReason === undefined && valid.every(item => item.judge())
+    // `false` is the contract's refusal/skip answer, and the form still
+    // resolves after a refusal (it recovers with a fresh view), so the answer
+    // alone is not enough: judge every planned write against the settled
+    // snapshot as well. The mutation is atomic, so one missed write fails the
+    // whole save and keeps the drafts.
+    const landed = accepted && failedReason === undefined && valid.every(item => item.judge())
     for (const [field, before] of pending) {
       if (landed && this.staged.get(field) === before) this.staged.delete(field)
     }
     this.saving = false
     this.failed = !landed
-    // A read-back failure carries no server reason: the card surfaces its
-    // generic failure copy; a rejecting scope (the bridge) adds its message.
+    // A refused or unlanded batch carries no server reason: the card surfaces
+    // its generic failure copy; a rejecting transport (the bridge) adds its
+    // message.
     this.failedReason = failedReason
     this.publish()
   }
@@ -381,7 +384,7 @@ export class CardForm<T> {
    */
   private landedSet(field: string, value: unknown): boolean {
     // A redacted secret never appears in any wire view layer: the Host strips
-    // role('secret') fields and reports them through a sidecar the scope
+    // role('secret') fields and reports them through a sidecar the form
     // snapshot does not expose, so there is nothing to compare the draft
     // against. Settling is the only signal the form has; the rest of the
     // batch, when one exists, still carries the atomic verdict by read-back.
@@ -412,7 +415,7 @@ export class CardForm<T> {
     return spec
   }
 
-  private snapshotOf(): SettingsScopeSnapshot<T> {
+  private snapshotOf(): ConfigFormSnapshot<T> {
     return this.scope.getSnapshot()
   }
 

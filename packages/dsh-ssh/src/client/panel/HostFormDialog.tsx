@@ -31,6 +31,7 @@ interface FormState {
   password: string
   agentPath: string
   proxyJump: string
+  proxyCommand: string
   description: string
   environment: string
   tags: string
@@ -55,6 +56,7 @@ function blankOf(editing: SshHostSummary | null | undefined): FormState {
     password: '',
     agentPath: '',
     proxyJump: (editing?.proxyJump ?? []).join(', '),
+    proxyCommand: editing?.proxyCommand ?? '',
     description: editing?.description ?? '',
     environment: editing?.environment ?? '',
     tags: (editing?.tags ?? []).join(', '),
@@ -121,6 +123,9 @@ export function HostFormDialog({ api, editing, onClose, onSaved }: HostFormDialo
       user,
       auth,
       proxyJump: splitList(form.proxyJump),
+      // Always sent (never omitted): an empty value is the explicit clear,
+      // because the API cannot express "remove this field" any other way.
+      proxyCommand: form.proxyCommand.trim(),
       description: form.description.trim() === '' ? undefined : form.description.trim(),
       environment: form.environment.trim() === '' ? undefined : form.environment.trim(),
       tags: splitList(form.tags),
@@ -211,6 +216,16 @@ export function HostFormDialog({ api, editing, onClose, onSaved }: HostFormDialo
           <span className={css.fieldLabel}>{tt('form.proxyJump')}</span>
           <input className={css.input} value={form.proxyJump} onChange={event => { set('proxyJump', event.target.value) }} />
           <span className={css.hint}>{tt('form.proxyJumpHint')}</span>
+        </label>
+        <label className={css.field}>
+          <span className={css.fieldLabel}>{tt('form.proxyCommand')}</span>
+          <input
+            className={css.input}
+            value={form.proxyCommand}
+            placeholder="corp-vpn proxy %h %p %r"
+            onChange={event => { set('proxyCommand', event.target.value) }}
+          />
+          <span className={css.hint}>{tt('form.proxyCommandHint')}</span>
         </label>
         <div className={css.formRow}>
           <label className={css.field}>

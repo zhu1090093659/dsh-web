@@ -1,0 +1,12 @@
+import { chromium } from 'playwright'
+const browser = await chromium.launch({ headless: true })
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+await page.goto('http://127.0.0.1:3092/', { waitUntil: 'load', timeout: 60000 })
+await page.waitForTimeout(5500)
+await page.screenshot({ path: 'docs/archive/blue-throated-bee-eater-pet/gui-pet-dock-a.png' })
+await page.waitForTimeout(600)
+await page.screenshot({ path: 'docs/archive/blue-throated-bee-eater-pet/gui-pet-dock-b.png' })
+await page.waitForTimeout(600)
+await page.screenshot({ path: 'docs/archive/blue-throated-bee-eater-pet/gui-pet-dock-c.png' })
+await browser.close()
+console.log('DONE')

@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { setTimeout as delay } from 'node:timers/promises'
-import { dirname } from 'node:path/posix'
+import { dirname } from 'node:path'
 import type { FsLike } from './fs.ts'
 
 let atomicWriteSequence = 0

@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-09-04-remote-web-ui-docker-pairing-adaptation.md: 7d7801506273b645717b7f7378b64e2da2c216d5
-2026-09-04-remote-web-ui-docker-pairing-adaptation.zh.md: 1a71b0d638b13914ca4677045c4acbf7a67dc9a2
+2026-09-04-remote-web-ui-docker-pairing-adaptation.md: 7cc272f7a7aeef2af6cb1cfcb0c77cbbaa48d5f4
+2026-09-04-remote-web-ui-docker-pairing-adaptation.zh.md: 9853e919fe2a6178e593892cc2c1075001624372

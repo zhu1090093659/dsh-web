@@ -27,6 +27,7 @@ The bilingual root README pair keeps only one dark Blue Fantasy screenshot and a
 - The root README pair is maintained manually and is outside the packages/docs triplet gate, so both sides still require manual comparison of headings, tables, links and images before delivery.
 - Skin image assets and existing generators remain unchanged; documentation simplification does not remove any skin or Workshop asset.
 - Partially superseded by [root README SEO pass and signature feature sections](../../archived/process/2026-08-25-root-readme-seo-feature-sections.md): LiangShen Mode returned to the root README (feature section, install command, npm table row and license row); the skins and pets catalog simplification still stands.
+- Further superseded in part by [root README feature focus and the DSH Desktop section](../process/2026-09-10-root-readme-feature-focus-and-desktop.md): the reassembled LiangShen Mode presentation was removed again together with the rescue-mode and external-archive sections; the skins and pets catalog simplification still stands.
 
 ## Testing
 

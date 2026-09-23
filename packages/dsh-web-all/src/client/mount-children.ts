@@ -21,8 +21,14 @@
  * The boot payload's entries carry client-bundle package ids only (the host
  * graphRow wire shape: id/url/rev per served bundle). Patch row ids such as
  * `web-ui-market` never appear there, so boot entries cannot express per-row
- * enable state — hiding UI for disabled family rows (#1372) needs a
- * host-provided row-state signal, not this graph.
+ * enable state. Row gating (#1372) instead asks the host half which family
+ * rows are active (GET /api/dsh-web-all/rows, served from the shell's
+ * active-row ledger): a row disabled through a user patch override never
+ * applies its shell entry, so its folded client child stays unmounted and its
+ * settings tabs never reach the page. The fetch is FAIL-OPEN by contract:
+ * any uncertainty (network error, non-200, shape mismatch, timeout, or a
+ * stale host half that predates the route) mounts every child exactly like
+ * before, so a row-state outage can never take the family UI down.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import { clientChildren } from './children.generated.ts'
@@ -53,11 +59,59 @@ function mountedRegistry(): Set<string> {
   return registry[MOUNTED_PLUGINS]
 }
 
-/** Mount every generated family child that has no client bundle of its own. */
-export function mountClientChildren(ctx: ClientContext): void {
+/** Same-origin row-state route served by the host shell (src/shell.ts). */
+const ROWS_ROUTE = '/api/dsh-web-all/rows'
+
+/** Row-state fetch ceiling: a hung route must not delay the family UI. */
+const ROWS_TIMEOUT_MS = 1500
+
+/**
+ * Ask the host half which family rows are active. Returns undefined on ANY
+ * uncertainty — network error, non-200, shape mismatch, timeout, or a stale
+ * host half without the route — so the caller fails open and mounts every
+ * child (the pre-gating behavior). Only a shape-clean answer may hide a
+ * child.
+ */
+async function fetchActiveRows(): Promise<Set<string> | undefined> {
+  let response: Response
+  const controller = new AbortController()
+  const timer = setTimeout(() => { controller.abort() }, ROWS_TIMEOUT_MS)
+  try {
+    response = await fetch(ROWS_ROUTE, {
+      signal: controller.signal,
+      headers: { accept: 'application/json' },
+      cache: 'no-store',
+    })
+  } catch {
+    return undefined
+  } finally {
+    clearTimeout(timer)
+  }
+  if (!response.ok) return undefined
+  let body: unknown
+  try {
+    body = await response.json()
+  } catch {
+    return undefined
+  }
+  if (typeof body !== 'object' || body === null) return undefined
+  const children = (body as { ok?: unknown; children?: unknown })
+  if (children.ok !== true || !Array.isArray(children.children)) return undefined
+  if (children.children.some(name => typeof name !== 'string')) return undefined
+  return new Set(children.children as string[])
+}
+
+/**
+ * Mount every generated family child that has no client bundle of its own and
+ * whose family row is active. Never rejects: row-state uncertainty fails
+ * open, and per-child failures degrade alone.
+ */
+export async function mountClientChildren(ctx: ClientContext): Promise<void> {
+  const active = await fetchActiveRows()
   const own = ownClientEntryIds()
   const registry = mountedRegistry()
   for (const child of clientChildren) {
+    if (active !== undefined && !active.has(child.name)) continue
     if (own.has(child.name)) continue
     if (registry.has(child.name)) continue
     registry.add(child.name)

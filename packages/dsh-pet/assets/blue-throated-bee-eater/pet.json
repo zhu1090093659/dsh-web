@@ -1,0 +1,204 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-pet/pet-manifest-v2.schema.json",
+  "petManifestVersion": 2,
+  "id": "blue-throated-bee-eater",
+  "displayName": "蓝喉蜂虎",
+  "author": "dsh-web",
+  "version": "1.0.0",
+  "description": "A chibi flat-illustration Blue-throated Bee-eater (Merops philippinus): azure throat, teal-green plumage and a chestnut crown, matched to the blue-throated-bee-eater skin palette. A perch-loving flyer that waves its wing, hops to catch bees and tilts its head to review your code.",
+  "license": "Apache-2.0",
+  "renderer": "sprite2d",
+  "sprite2d": {
+    "spritesheetPath": "spritesheet.webp",
+    "cell": {
+      "width": 192,
+      "height": 208
+    },
+    "columns": 8,
+    "atlasRows": 9,
+    "frames": [
+      6,
+      8,
+      8,
+      4,
+      5,
+      8,
+      6,
+      6,
+      6
+    ],
+    "tracks": {
+      "idle": {
+        "durations": [
+          500,
+          500,
+          600,
+          500,
+          500,
+          600
+        ]
+      },
+      "running-right": {
+        "durations": [
+          300,
+          300,
+          300,
+          300,
+          300,
+          300,
+          300,
+          400
+        ]
+      },
+      "running-left": {
+        "durations": [
+          300,
+          300,
+          300,
+          300,
+          300,
+          300,
+          300,
+          400
+        ]
+      },
+      "waving": {
+        "durations": [
+          450,
+          450,
+          450,
+          450
+        ]
+      },
+      "jumping": {
+        "durations": [
+          400,
+          400,
+          400,
+          450,
+          450
+        ]
+      },
+      "failed": {
+        "durations": [
+          550,
+          550,
+          550,
+          600,
+          650,
+          700,
+          550,
+          550
+        ]
+      },
+      "waiting": {
+        "durations": [
+          550,
+          550,
+          600,
+          550,
+          550,
+          600
+        ]
+      },
+      "running": {
+        "durations": [
+          330,
+          330,
+          330,
+          330,
+          330,
+          400
+        ]
+      },
+      "review": {
+        "durations": [
+          650,
+          650,
+          650,
+          650,
+          650,
+          650
+        ]
+      }
+    }
+  },
+  "sequences": {
+    "idle": [
+      "idle",
+      "waving",
+      "idle",
+      "waiting",
+      "idle",
+      "idle"
+    ],
+    "waiting": [
+      "waiting",
+      "idle",
+      "waving",
+      "waiting",
+      "idle",
+      "waiting"
+    ],
+    "thinking": [
+      "waiting",
+      "running",
+      "idle",
+      "running",
+      "waiting",
+      "running"
+    ],
+    "tool": [
+      "running-right",
+      "running",
+      "running-left",
+      "running",
+      "running-right"
+    ],
+    "review": [
+      "review",
+      "waiting",
+      "review",
+      "running",
+      "review",
+      "idle"
+    ],
+    "done": [
+      "jumping",
+      "waving",
+      "idle",
+      "waving",
+      "idle",
+      "waving"
+    ],
+    "failed": [
+      "failed",
+      "waiting",
+      "failed",
+      "idle",
+      "waiting",
+      "failed"
+    ]
+  },
+  "remarks": {
+    "pet": [
+      "挠挠头顶的栗红羽冠……舒服。",
+      "喉咙的湛蓝是向晴空借的颜色。",
+      "（警惕地看了看你手里有没有蜜蜂。）"
+    ],
+    "petCooldown": [
+      "刚刚才挠过啦。",
+      "羽冠要留给我自己理。"
+    ],
+    "feed": [
+      "嘿嘿，小蜜蜂！谢啦！",
+      "最爱的小蜜蜂来啦～"
+    ],
+    "feedCooldown": [
+      "吃饱啦，翅膀都收起来了。"
+    ],
+    "noTreats": [
+      "小蜜蜂没了……那我自己去抓两只吧。"
+    ]
+  }
+}

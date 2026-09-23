@@ -31,11 +31,15 @@ Each Agent Note belongs to exactly one class folder from this closed set:
 
 The `architecture` / `process` line: architecture is about the source we ship; process is the surrounding tooling, documentation, and workflow. `refactor` is deliberately absent — it overlaps `simplification`, whose discriminator "does observable behavior change?" already covers it.
 
-## When to write one
+## When to write one, Pre-edit Review, and Owning Note
 
+### Pre-edit Review
+Before modifying existing subsystems, plugin protocols, or architectural contracts, search `.agents/notes/implemented/` for the note owning that decision (Owning Note). Review its `Alternatives considered` and `Consequences` to understand past trade-offs and avoid re-introducing rejected designs.
+
+### The Owning Note Rule
 Every non-trivial change MUST add or update at least one Agent Note in the same change. A change is non-trivial when it alters behavior, architecture, a contract shared across files or packages, process or tooling, testing strategy, an on-disk, wire, or configuration format, or another decision a maintainer may reasonably revisit. A proposal for substantial future work starts in `proposed/`; an already-made decision starts in `implemented/`.
 
-Updating the Agent Note that already owns the decision satisfies the rule; do not create duplicates. Only a purely mechanical or local edit with no change to behavior, contracts, structure, process, or rationale is exempt. An Agent Note is never edited into a different decision: supersede it with a new one and keep both cross-linked unless a full consolidation preserves every unique rationale, alternative, consequence, and required verification while repairing every inbound link.
+Updating the Agent Note that already owns the decision satisfies the rule; do not create duplicates. When refactoring or updating code details, update the Owning Note's facts in place to keep it current with shipped reality. Only a purely mechanical or local edit with no change to behavior, contracts, structure, process, or rationale is exempt. An Agent Note is never edited into a different decision: supersede it with a new one and keep both cross-linked unless a full consolidation preserves every unique rationale, alternative, consequence, and required verification while repairing every inbound link. Follow the "One home per fact" rule across documentation.
 
 Every new Agent Note triggers a supersession check: search the active tree for older notes covering the same decision or mechanism before writing.
 
@@ -83,32 +87,9 @@ Archive an implemented Agent Note when the shipped decision is complete and its 
 
 The archive is path-encoded as `archived/{class}/yyyy-mm-dd-topic-title.md`; `implemented` is absent because only implemented notes can enter it. An archival change moves the complete triplet, inserts an identical `Archived: YYYY-MM-DD` line immediately below each `Status: implemented` line, re-records the sidecar hashes, and repairs or deletes inbound links — these are the only permitted content changes during archival. Once sealed, archived notes are permanently frozen: never edit, translate, reformat, move, or delete them, and never treat them as authority for current behavior. See [archived/AGENTS.md](archived/AGENTS.md).
 
-## Prompt layering and caching
+## Engineering workflow ownership
 
-To maximize LLM KV Cache reuse and avoid Context Bloat across agent runs, maintain prompt prefix stability across three discrete layers:
-
-1. **Layer 1 (Global Static Prefix)**: System identity, invariant governance constraints (Mode 2 design-driven rules, zero-emoji policy), core tool definitions. Located at the absolute head of the prompt. Never inject dynamic timestamps or ephemeral session IDs into Layer 1.
-2. **Layer 2 (Repository and Domain Static Prefix)**: Repository-root `AGENTS.md`, active Skill definitions, directory architecture boundaries. Stays stable across sessions on the same repository to maximize prompt cache hits.
-3. **Layer 3 (Dynamic Context Tail)**: Mem0 memory snippets, CodeGraph symbol query results, targeted file diffs, and immediate user instructions. Placed at the prompt tail so dynamic additions do not invalidate the cached Layer 1 and Layer 2 prefix.
-
-## CI self-healing protocol
-
-When automated builds, local pre-push checks, or GitHub Actions pipelines fail, agents must follow this deterministic 4-step self-healing loop rather than retrying blindly:
-
-1. **Log Isolation**: Extract exact logs, stack traces, and failure exit codes from the failing step. Do not guess or modify code without diagnostic evidence.
-2. **Local Minimal Repro**: Reproduce the failure locally using the narrowest possible command (for example, a single test file or targeted typecheck command) rather than executing the entire test suite.
-3. **Targeted Minimal Diff**: Author a surgical patch directly resolving the identified root cause. Do not combine the fix with unrelated formatting or speculative refactors.
-4. **Pre-Push Gate Check**: Run the repository's full required pre-push gate suite (`pnpm typecheck && pnpm test && pnpm docs:check && pnpm i18n:check`) locally to ensure the fix introduces no regressions before committing or pushing.
-
-## Pareto model tiering and anti-thrashing
-
-To achieve cost-efficient, high-throughput autonomous software engineering:
-
-1. **Subagent Model Tiering**:
-   - Default to lightweight, cost-effective models (`flash` / `flash_lite`) for read-only research, codebase grep/discovery, static checks, and documentation/i18n synchronization.
-   - Escalate to high-reasoning models (`pro` / high-tier) only for architecture design (planning), multi-package cross-boundary refactoring, and root-cause analysis of subtle bugs.
-2. **Tool Scoping**: Expose only the tool subset necessary for the specific subagent role or skill, avoiding bloated tool schemas in the context window.
-3. **Anti-Thrashing Circuit Breaker**: If an agent makes 3 consecutive unsuccessful attempts on the same file or error, or begins reverting and re-applying contradictory edits, it must break the loop immediately, articulate the exact obstacle, and request human clarification.
+[dsh-web-agent-coding](../skills/dsh-web-agent-coding/SKILL.md) owns context use, model selection, failure recovery, and task-specific validation. Agent Notes record the reasoning behind decisions; they do not duplicate the active workflow or grant execution, synchronization, or release authorization.
 
 ## The evolution loop
 

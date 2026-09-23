@@ -25,3 +25,13 @@
 *.exe binary
 *.dll binary
 *.node binary
+*.wasm binary
+*.bin binary
+
+# 脚本与可执行文件强制 LF（确保跨平台与 CI / Linux / macOS / WSL 兼容执行，防止 bad interpreter）
+*.sh text eol=lf
+scripts/* text eol=lf
+
+# Windows 批处理脚本（如未来新增）保持 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf

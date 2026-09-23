@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-09-09-doctor-capsule-windows-spawn-and-named-tunnel-flags.md: 38ae95abdb0daa6460b6fec085e1e1c7ef5d12ad
+2026-09-09-doctor-capsule-windows-spawn-and-named-tunnel-flags.zh.md: ffa22b7e528afaf3156b5df201689a7ce760d3fb

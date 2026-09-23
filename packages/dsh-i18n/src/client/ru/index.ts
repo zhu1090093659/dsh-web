@@ -8,9 +8,12 @@
  */
 import { ru as doctor } from './doctor.ts'
 import { ru as gitGraph } from './git-graph.ts'
+import { ru as liangshen } from './liangshen.ts'
 import { ru as market } from './market.ts'
+import { ru as modelCapabilities } from './model-capabilities.ts'
 import { ru as pet } from './pet.ts'
 import { ru as pluginManager } from './plugin-manager.ts'
+import { ru as presetCenter } from './preset-center.ts'
 import { ru as remoteWebUi } from './remote-web-ui.ts'
 import { ru as sessionId } from './session-id.ts'
 import { ru as sessionArchive } from './session-archive.ts'
@@ -25,9 +28,12 @@ import { ru as webSettings } from './web-settings.ts'
 export const ruDictionaries: Record<string, Record<string, string>> = {
   'doctor': doctor,
   'git-graph': gitGraph,
+  'liangshen': liangshen,
   'dsh-web-ui-market': market,
+  'model-caps': modelCapabilities,
   'pet': pet,
   'settings.pluginManager': pluginManager,
+  'dsh-web-ui-preset-center': presetCenter,
   'remote': remoteWebUi,
   'session-id': sessionId,
   'dsh-web-ui-session-archive': sessionArchive,

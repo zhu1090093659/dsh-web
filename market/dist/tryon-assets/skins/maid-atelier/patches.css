@@ -39,9 +39,13 @@ html[data-dsh-skin="maid-atelier"] body:has([data-skin-chrome="character-stage"]
 }
 
 html[data-dsh-skin="maid-atelier"] [data-skin-chrome="character-stage"] {
-  z-index: -1;
+  /* The stage is prepended to <body>, so at z-index 0 it paints behind the
+     app's positioned surfaces (they come later in paint order) without
+     depending on whether the root background gets painted. The negative
+     z-index plus paint containment combination was dropped by the Electron
+     compositor, hiding both maids (#1501 item 2). */
+  z-index: 0;
   pointer-events: none;
-  contain: strict;
   position: fixed;
   inset: 0;
   overflow: hidden;
@@ -150,11 +154,11 @@ html[data-dsh-skin="maid-atelier"] body[data-maid-low-power] [data-maid-characte
 
 html[data-dsh-skin="maid-atelier"] [data-skin-chrome="top-trim"] {
   translate: var(--maid-sidebar-width) 0;
-  z-index: 20;
+  z-index: 1;
   pointer-events: none;
   contain: paint;
   height: 76px;
-  position: fixed;
+  position: absolute;
   inset: 0 0 auto;
   overflow: hidden;
 }
@@ -1241,9 +1245,9 @@ html[data-dsh-skin="maid-atelier"] [class*="headline"] {
   font-weight: 600;
 }
 
-html[data-dsh-skin="maid-atelier"] [data-phase="hero"] [class*="headline"]:has( > [class*="fish"]) {
+html[data-dsh-skin="maid-atelier"] [data-phase="hero"] :is([class*="headline"], [class*="Headline"]):has([class*="fish"]) {
   grid-template-rows: auto auto;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: 1fr;
   justify-content: center;
   align-items: center;
   gap: 13px 9px;
@@ -1257,7 +1261,7 @@ html[data-dsh-skin="maid-atelier"] [data-phase="hero"] [class*="headline"]:has( 
   display: grid !important;
 }
 
-html[data-dsh-skin="maid-atelier"] [data-phase="hero"] [class*="headline"]:has( > [class*="fish"]):before {
+html[data-dsh-skin="maid-atelier"] [data-phase="hero"] :is([class*="headline"], [class*="Headline"]):has([class*="fish"]):before {
   content: "";
   z-index: -1;
   background: radial-gradient(circle, #d9b76f 0 2px, #0000 2.5px) 0 / 8px 8px no-repeat, radial-gradient(circle, #d9b76f 0 2px, #0000 2.5px) 100% / 8px 8px no-repeat, linear-gradient(90deg, #0000, #c5a468d1 16% 84%, #0000);
@@ -1268,7 +1272,7 @@ html[data-dsh-skin="maid-atelier"] [data-phase="hero"] [class*="headline"]:has( 
   right: 13%;
 }
 
-html[data-dsh-skin="maid-atelier"] [data-phase="hero"] [class*="headline"]:has( > [class*="fish"]):after {
+html[data-dsh-skin="maid-atelier"] [data-phase="hero"] :is([class*="headline"], [class*="Headline"]):has([class*="fish"]):after {
   content: "";
   background: linear-gradient(45deg, #0000 42%, #c5a468 43% 57%, #0000 58%) 50% / 10px 10px no-repeat, linear-gradient(135deg, #0000 42%, #c5a468 43% 57%, #0000 58%) 50% / 10px 10px no-repeat, linear-gradient(90deg, #0000, #c5a468bd 10% 47%, #0000 47% 53%, #c5a468bd 53% 90%, #0000) 50% 3px / 100% 1px no-repeat, linear-gradient(90deg, #0000, #e2cfaabd 18% 46%, #0000 46% 54%, #e2cfaabd 54% 82%, #0000) 50% 7px / 100% 1px no-repeat;
   height: 12px;
@@ -1278,7 +1282,7 @@ html[data-dsh-skin="maid-atelier"] [data-phase="hero"] [class*="headline"]:has( 
   right: 8%;
 }
 
-html[data-dsh-skin="maid-atelier"] [data-phase="hero"] [class*="headline"]:has( > [class*="fish"]) > [class*="fish"] {
+html[data-dsh-skin="maid-atelier"] [data-phase="hero"] :is([class*="headline"], [class*="Headline"]) :is([class*="fishHitbox"], [class*="fish"]) {
   box-sizing: border-box;
   outline-offset: 4px;
   width: 70px;
@@ -1291,32 +1295,43 @@ html[data-dsh-skin="maid-atelier"] [data-phase="hero"] [class*="headline"]:has( 
   outline: 1px solid #e2cfaac2;
   grid-area: 1 / 1 / auto / -1;
   justify-self: center;
+  align-self: center;
   margin: 0;
   padding: 15px;
   inset: auto;
   box-shadow: 0 0 0 8px #fffdf83d, 0 5px 16px #21336029, inset 0 0 0 2px #ffffffb8;
   position: static !important;
   transform: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-html[data-dsh-skin="maid-atelier"] [data-phase="hero"] [class*="headlineText"] {
+html[data-dsh-skin="maid-atelier"] [data-phase="hero"] :is([class*="headlineText"], [class*="titleGroup"]) {
   letter-spacing: 0;
-  grid-area: 2 / 2;
-  align-self: center;
+  grid-area: 2 / 1 / auto / -1 !important;
+  justify-self: center !important;
+  align-self: center !important;
   font-weight: 600;
-  position: static !important;
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px;
 }
 
 html[data-dsh-skin="maid-atelier"] [data-phase="hero"] [class*="previewBadge"] {
   color: #526487;
   background: #fffdf87a;
   border-color: #c5a4687a;
-  grid-area: 2 / 3;
-  place-self: center start;
-  position: static !important;
+  position: absolute !important;
+  left: calc(100% + 8px) !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  white-space: nowrap !important;
 }
 
-html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] [data-phase="hero"] [class*="headline"]:has( > [class*="fish"]) > [class*="fish"] {
+html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] [data-phase="hero"] :is([class*="headline"], [class*="Headline"]) :is([class*="fishHitbox"], [class*="fish"]) {
   color: #6f86be;
   background: #eef2fbc2;
 }
@@ -1326,7 +1341,7 @@ html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] [class*="headline"] 
   text-shadow: 0 2px 5px #03091cd1, 0 0 20px #748ecd42;
 }
 
-html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] [data-phase="hero"] [class*="headlineText"] {
+html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] [data-phase="hero"] :is([class*="headlineText"], [class*="titleGroup"]) {
   color: #fffaf0;
   letter-spacing: 0;
   -webkit-text-stroke: .35px #040b22e6;
@@ -1509,7 +1524,10 @@ html[data-dsh-skin="maid-atelier"] body[data-maid-composer-motion] [data-compose
 
 html[data-dsh-skin="maid-atelier"] [data-composer-card]:after {
   content: "";
-  z-index: 0;
+  /* Behind the card's own content. The card isolates its stacking context, so
+     -1 still paints above the background this layer inherits from it, while the
+     typed text can never end up underneath the layer (#1501 item 1). */
+  z-index: -1;
   background: inherit;
   pointer-events: none;
   border-radius: 38px;
@@ -1525,22 +1543,33 @@ html[data-dsh-skin="maid-atelier"] [data-composer-card] > * {
 /* The composer card keeps its deep-navy fill in BOTH schemes (the abyssal
    lace card is scheme-invariant), so the composer text must stay on the
    light porcelain scale in light mode too. The shell paints the typed text
-   through a highlight backdrop div (the textarea overlays it with a
-   transparent -webkit-text-fill-color and only contributes caret and
-   selection; [data-input-mirror] is a visibility:hidden measuring copy),
-   and the backdrop inherits the light-scheme ink (#172347) — dark-on-navy
-   and unreadable (issue #1085). Pin the backdrop, caret, and placeholder
-   colors explicitly. */
+   either through a highlight backdrop div (issue #1085) or natively inside
+   a Lexical contenteditable input (issue #1405). Pin the backdrop, lexical
+   input element, caret, and placeholder colors explicitly to prevent the
+   light-scheme ink (#172347) from rendering dark-on-navy unreadable text. */
 html[data-dsh-skin="maid-atelier"] [data-composer-card] [class*="backdrop"],
-html[data-dsh-skin="maid-atelier"] [data-composer-card] [data-input-mirror] {
+html[data-dsh-skin="maid-atelier"] [data-composer-card] [data-input-mirror],
+html[data-dsh-skin="maid-atelier"] [data-composer-card] [data-composer-input],
+html[data-dsh-skin="maid-atelier"] [data-composer-card] [data-lexical-editor],
+html[data-dsh-skin="maid-atelier"] [data-composer-card] [contenteditable="true"],
+html[data-dsh-skin="maid-atelier"] [data-composer-card] .uV2eYG_input {
   color: #eef3fc;
 }
 
-html[data-dsh-skin="maid-atelier"] [data-composer-card] textarea {
+html[data-dsh-skin="maid-atelier"] [data-composer-card] :is([data-composer-input], [data-lexical-editor], [contenteditable="true"]) span {
+  color: inherit;
+}
+
+html[data-dsh-skin="maid-atelier"] [data-composer-card] textarea,
+html[data-dsh-skin="maid-atelier"] [data-composer-card] [data-composer-input],
+html[data-dsh-skin="maid-atelier"] [data-composer-card] [data-lexical-editor],
+html[data-dsh-skin="maid-atelier"] [data-composer-card] [contenteditable="true"] {
   caret-color: #bcd2ff;
 }
 
-html[data-dsh-skin="maid-atelier"] [data-composer-card] textarea::placeholder {
+html[data-dsh-skin="maid-atelier"] [data-composer-card] textarea::placeholder,
+html[data-dsh-skin="maid-atelier"] [data-composer-card] [class*="placeholder"],
+html[data-dsh-skin="maid-atelier"] [data-composer-card] [data-placeholder] {
   color: #b6c2e0;
   opacity: 1;
 }
@@ -1566,6 +1595,27 @@ html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] [data-slot="conversa
 }
 
 html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] [data-slot="conversation.composer.dock"] > * [class*="sep"] {
+  color: #aebdde80;
+}
+
+/* #1501 item 3: the session statistics strip renders under
+   [data-slot="conversation.composer"], not inside the .dock slot, so the pairs
+   above never reached it and its text inherited --dsw-alias-label-tertiary
+   (#6f7c99 light / #96a6c9 dark) over the composer's own surface. Color only:
+   the strip's background is already transparent. */
+html[data-dsh-skin="maid-atelier"] body:not([data-ds-dark-theme]) [data-composer-stats] {
+  color: #33415f;
+}
+
+html[data-dsh-skin="maid-atelier"] body:not([data-ds-dark-theme]) [data-composer-stats] [class*="sep"] {
+  color: #7d8aa6;
+}
+
+html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] [data-composer-stats] {
+  color: #aebdde;
+}
+
+html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] [data-composer-stats] [class*="sep"] {
   color: #aebdde80;
 }
 
@@ -2395,6 +2445,80 @@ html[data-dsh-skin="maid-atelier"] [class*="titlebar"] [class*="button"]:hover {
     opacity: 0;
     transform: translate(calc(100vw + 240px));
   }
+}
+
+/* dsh-better-sidebar mounts its workbench directly on document.body and
+   inherits the skin's global tokens. Restore a self-contained porcelain
+   palette so its shell, panes and terminal are not transparent over the
+   palace art and keep readable labels in both themes. */
+html[data-dsh-skin="maid-atelier"] [data-dsh-better-sidebar] {
+  --dsw-specific-sidebar-fill: rgba(230, 237, 250, 0.96);
+  --dsw-alias-bg-base: rgba(248, 250, 255, 0.96);
+  --dsw-alias-bg-layer-1: rgba(235, 240, 250, 0.92);
+  --dsw-alias-bg-layer-2: rgba(224, 231, 246, 0.94);
+  --dsw-alias-bg-layer-3: rgba(214, 223, 242, 0.96);
+  --dsw-alias-bg-overlay: rgba(248, 250, 255, 0.98);
+  --dsw-alias-label-primary: #172347;
+  --dsw-alias-label-primary-bluish: #243866;
+  --dsw-alias-label-secondary: #4d5d7f;
+  --dsw-alias-label-tertiary: #6f7c99;
+  --dsw-alias-label-caption: #8a94aa;
+  --dsw-alias-border-l1: rgba(71, 91, 145, 0.18);
+  --dsw-alias-border-l2-darkmode-thin: rgba(71, 91, 145, 0.25);
+  --dsw-alias-border-l2: rgba(71, 91, 145, 0.3);
+  --dsw-alias-border-l3: rgba(197, 164, 104, 0.64);
+  --dsw-alias-brand-primary: #526aa8;
+  --dsw-alias-brand-text: #172347;
+  --dsw-alias-button-elevated-fill: rgba(255, 253, 248, 0.9);
+  --dsw-alias-button-floating-fill: rgba(255, 253, 248, 0.94);
+  --dsw-alias-button-floating-hover: #ece6d8;
+  --dsw-alias-button-info-fill: #536eae;
+  --dsw-alias-button-info-hover: #405a99;
+  --dsw-alias-interactive-bg-active: rgba(197, 164, 104, 0.24);
+  --dsw-alias-interactive-bg-hover: rgba(103, 126, 183, 0.12);
+  --dsw-alias-interactive-bg-hover-solid: #e2e8f5;
+  --dsw-alias-state-business-primary: #536eae;
+  --dsw-alias-state-business-tertiary: #e1e7f5;
+  --dsw-alias-state-warn-tertiary: rgba(218, 180, 104, 0.2);
+  --dsw-alias-state-warn-label: #815c18;
+  --dsw-specific-input-major: rgba(255, 253, 248, 0.86);
+  --dsw-specific-selector: rgba(226, 232, 246, 0.9);
+  color: #172347;
+}
+
+html[data-dsh-skin="maid-atelier"] body[data-ds-dark-theme] [data-dsh-better-sidebar] {
+  --dsw-specific-sidebar-fill: rgba(10, 22, 54, 0.96);
+  --dsw-alias-bg-base: rgba(13, 25, 59, 0.96);
+  --dsw-alias-bg-layer-1: rgba(18, 31, 67, 0.94);
+  --dsw-alias-bg-layer-2: rgba(24, 40, 80, 0.95);
+  --dsw-alias-bg-layer-3: rgba(32, 49, 91, 0.96);
+  --dsw-alias-bg-overlay: rgba(13, 25, 59, 0.98);
+  --dsw-alias-label-primary: #e7ecf7;
+  --dsw-alias-label-primary-bluish: #d5dff3;
+  --dsw-alias-label-secondary: #bdc9e3;
+  --dsw-alias-label-tertiary: #96a6c9;
+  --dsw-alias-label-caption: #7f90b4;
+  --dsw-alias-border-l1: rgba(151, 169, 216, 0.2);
+  --dsw-alias-border-l2-darkmode-thin: rgba(151, 169, 216, 0.3);
+  --dsw-alias-border-l2: rgba(151, 169, 216, 0.34);
+  --dsw-alias-border-l3: rgba(211, 180, 119, 0.66);
+  --dsw-alias-brand-primary: #9bb0e1;
+  --dsw-alias-brand-text: #e7ecf7;
+  --dsw-alias-button-elevated-fill: rgba(28, 44, 84, 0.94);
+  --dsw-alias-button-floating-fill: rgba(31, 49, 92, 0.96);
+  --dsw-alias-button-floating-hover: #354d88;
+  --dsw-alias-button-info-fill: #8ca4dc;
+  --dsw-alias-button-info-hover: #a3b7e5;
+  --dsw-alias-interactive-bg-active: rgba(211, 180, 119, 0.24);
+  --dsw-alias-interactive-bg-hover: rgba(164, 183, 229, 0.14);
+  --dsw-alias-interactive-bg-hover-solid: #293f78;
+  --dsw-alias-state-business-primary: #9bb0e1;
+  --dsw-alias-state-business-tertiary: #293d73;
+  --dsw-alias-state-warn-tertiary: rgba(211, 164, 72, 0.18);
+  --dsw-alias-state-warn-label: #f0cf8c;
+  --dsw-specific-input-major: rgba(17, 30, 66, 0.9);
+  --dsw-specific-selector: rgba(45, 64, 111, 0.92);
+  color: #e7ecf7;
 }
 
 html[data-dsh-skin="maid-atelier"] [id="root"] { background: transparent; }

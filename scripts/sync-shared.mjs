@@ -27,7 +27,7 @@ export const REPO_ROOT = resolve(SCRIPT_DIR, '..')
  * live exactly once under shared/; consumers import the committed copy.
  */
 // Consumers of the settings card trio: one list, three derivations below.
-const SETTINGS_CONSUMERS = ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-tool-describe-image','dsh-doctor', 'dsh-market']
+const SETTINGS_CONSUMERS = ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-tool-describe-image','dsh-doctor', 'dsh-market', 'dsh-liangshen']
 const SETTINGS_CARD_CONSUMERS = [...SETTINGS_CONSUMERS]
 
 const MANIFEST = [
@@ -47,6 +47,21 @@ const MANIFEST = [
     targets: SETTINGS_CARD_CONSUMERS.map(pkg => `packages/${pkg}/src/client/settings-card.module.css`),
   },
   {
+    // Family plugin-card seat: one card component, dispatched into whichever
+    // plugin-card seat the running host declares (the family group's list seat
+    // or the official keyed one), with the refusal logged instead of swallowed
+    // (issue #1589).
+    file: 'plugin-card-seat.ts',
+    source: 'shared/client/settings/plugin-card-seat.ts',
+    targets: [
+      'packages/dsh-remote-web-ui/src/client/plugin-card-seat.ts',
+      'packages/dsh-task-board/src/client/plugin-card-seat.ts',
+      'packages/dsh-tool-describe-image/src/client/plugin-card-seat.ts',
+      'packages/dsh-doctor/src/client/plugin-card-seat.ts',
+      'packages/dsh-liangshen/src/client/plugin-card-seat.ts',
+    ],
+  },
+  {
     file: 'poll-guard.ts',
     source: 'shared/host/poll-guard.ts',
     targets: [
@@ -63,6 +78,7 @@ const MANIFEST = [
       'packages/dsh-task-board/src/host/run-guarded.ts',
       'packages/dsh-git-graph/src/host/run-guarded.ts',
       'packages/dsh-pet/src/host/run-guarded.ts',
+      'packages/dsh-preset-center/src/host/run-guarded.ts',
     ],
   },
   {
@@ -80,6 +96,7 @@ const MANIFEST = [
       'packages/dsh-git-graph/src/host/dsh-home.ts',
       'packages/dsh-usage/src/dsh-home.ts',
       'packages/dsh-session-archive/src/dsh-home.ts',
+      'packages/dsh-preset-center/src/dsh-home.ts',
     ],
   },
   {
@@ -115,6 +132,8 @@ const MANIFEST = [
       'packages/dsh-market/src/mount-once.ts',
       'packages/dsh-usage/src/mount-once.ts',
       'packages/dsh-session-archive/src/mount-once.ts',
+      'packages/dsh-model-capabilities/src/mount-once.ts',
+      'packages/dsh-preset-center/src/mount-once.ts',
     ],
   },
 
@@ -143,14 +162,31 @@ const MANIFEST = [
     targets: ['packages/dsh-git-graph/src/client/sse-leader.ts'],
   },
   {
+    // Main-view Session derivation: the Client Session Controller dropped its
+    // global `current` selection at 0.1.6-alpha.2 in favour of per-source
+    // ownership counts, so every plugin that needs "the session the main view
+    // shows" shares this one derivation instead of guessing at a replacement.
+    file: 'main-session.ts',
+    source: 'shared/client/main-session.ts',
+    targets: [
+      'packages/dsh-pet/src/client/main-session.ts',
+      'packages/dsh-task-board/src/client/main-session.ts',
+      'packages/dsh-session-id/src/client/main-session.ts',
+      'packages/dsh-liangshen/src/client/main-session.ts',
+      'packages/dsh-doctor/src/client/main-session.ts',
+      'packages/dsh-git-graph/src/client/main-session.ts',
+      'packages/dsh-session-archive/src/client/main-session.ts',
+    ],
+  },
+  {
     file: 'pair-access.ts',
     source: 'shared/host/pair-access.ts',
-    targets: ['packages/dsh-git-graph/src/host/pair-access.ts', 'packages/dsh-pet/src/pair-access.ts', 'packages/dsh-skill-explorer/src/pair-access.ts'],
+    targets: ['packages/dsh-git-graph/src/host/pair-access.ts', 'packages/dsh-pet/src/pair-access.ts', 'packages/dsh-skill-explorer/src/pair-access.ts', 'packages/dsh-usage/src/host/pair-access.ts'],
   },
   {
     file: 'loopback.ts',
     source: 'shared/host/loopback.ts',
-    targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-git-graph/src/host/loopback.ts', 'packages/dsh-remote-web-ui/src/loopback.ts', 'packages/dsh-task-board/src/loopback.ts', 'packages/dsh-skill-explorer/src/loopback.ts', 'packages/dsh-pet/src/loopback.ts', 'packages/dsh-plugin-manager/src/host/loopback.ts', 'packages/dsh-tool-describe-image/src/loopback.ts', 'packages/dsh-doctor/src/host/loopback.ts', 'packages/dsh-market/src/loopback.ts', 'packages/dsh-usage/src/host/loopback.ts', 'packages/dsh-session-archive/src/host/loopback.ts'],
+    targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-git-graph/src/host/loopback.ts', 'packages/dsh-remote-web-ui/src/loopback.ts', 'packages/dsh-task-board/src/loopback.ts', 'packages/dsh-skill-explorer/src/loopback.ts', 'packages/dsh-pet/src/loopback.ts', 'packages/dsh-plugin-manager/src/host/loopback.ts', 'packages/dsh-tool-describe-image/src/loopback.ts', 'packages/dsh-doctor/src/host/loopback.ts', 'packages/dsh-market/src/loopback.ts', 'packages/dsh-usage/src/host/loopback.ts', 'packages/dsh-session-archive/src/host/loopback.ts', 'packages/dsh-preset-center/src/loopback.ts'],
   },
   {
     file: 'http.ts',
@@ -170,6 +206,7 @@ const MANIFEST = [
       'packages/dsh-task-board/src/http.ts',
       'packages/dsh-usage/src/host/http.ts',
       'packages/dsh-session-archive/src/host/http.ts',
+      'packages/dsh-preset-center/src/http.ts',
     ],
   },
   {
@@ -182,12 +219,36 @@ const MANIFEST = [
     ],
   },
   {
+    // Page-wide body mutation hub: exactly one document.body childList
+    // observer shared by every family consumer (sidebar entries, center
+    // panels, the aggregate shell shims), instead of one per plugin.
+    file: 'body-mutations.ts',
+    source: 'shared/client/body-mutations.ts',
+    targets: [
+      'packages/dsh-ssh/src/client/body-mutations.ts',
+      'packages/dsh-task-board/src/client/body-mutations.ts',
+      'packages/dsh-skill-explorer/src/client/body-mutations.ts',
+      'packages/dsh-web-all/src/client/body-mutations.ts',
+    ],
+  },
+  {
     file: 'sidebar-entry-core.ts',
     source: 'shared/client/sidebar-entry-core.ts',
     targets: [
       'packages/dsh-ssh/src/client/sidebar-entry-core.ts',
       'packages/dsh-task-board/src/client/sidebar-entry-core.ts',
       'packages/dsh-skill-explorer/src/client/sidebar-entry-core.ts',
+    ],
+  },
+  {
+    // Child-process output capture: byte accumulation with a single decode so
+    // a Windows console's code page (CP936/GBK) never becomes replacement
+    // characters, and a character split across two `data` reads is restored.
+    file: 'console-output.ts',
+    source: 'shared/host/console-output.ts',
+    targets: [
+      'packages/dsh-plugin-manager/src/host/console-output.ts',
+      'packages/dsh-remote-web-ui/src/console-output.ts',
     ],
   },
   {

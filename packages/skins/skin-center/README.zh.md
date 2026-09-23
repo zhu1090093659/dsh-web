@@ -30,9 +30,10 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-skin-center
 
 - **总开关**：开关整张卡片（试穿 / 应用 / 背景控制）；持久化在 v2 活跃状态文档中。
 - **背景滑杆**：遮蔽（0–100%）、两个背景模糊半径、输入卡模糊（0–20 px）与气泡不透明度（0–100%），持久化在同一 v2 文档中。
-- **背景持久化（支持远程）**：背景设置存放在 v2 活跃状态文档（`$DSH_HOME/skin-center-active.json` 的 `background` 段），经 `GET|POST /api/skin-center/v2/active` 读写，因此已配对的远程桌面（settings 通道仅限本机回环）也能读取并跨会话保存。旧的 `skin-background` 设置命名空间保留为官方设置页的输入面：已定制的配置在启动时一次性迁移进 v2 存储，之后的设置页修改由客户端转发。卡片内的修改不回写 `settings.yaml`，设置页可能显示旧值，直到下一次从设置页修改。
-- **壁纸面板**：媒体库文件夹、选择、渲染模式（实时 / 静态帧）、压暗、模糊、隐藏时暂停、声音开关与音量；持久化在 `skin-wallpaper` 命名空间。
-- **自定义主题**：浅色/深色的强调色、背景色、前景色、对比度配置及应用标记，以版本化契约独立持久化在 `skin-custom-theme` 命名空间；壁纸选择与渲染仍完全由 `skin-wallpaper` 负责。
+- **背景持久化（支持远程）**：背景设置存放在 v2 活跃状态文档（`$DSH_HOME/skin-center-active.json` 的 `background` 段），经 `GET|POST /api/skin-center/v2/active` 读写，因此已配对的远程桌面（settings 通道仅限本机回环）也能读取并跨会话保存。插件自身配置中的 `skin-background` 段保留为设置页的输入面：已定制的配置在启动时一次性迁移进 v2 存储，之后的设置页修改由客户端转发。卡片内的修改不回写该设置页，因此它可能显示旧值，直到下一次从设置页修改。
+- **壁纸面板**：媒体库文件夹、选择、渲染模式（实时 / 静态帧）、压暗、模糊、隐藏时暂停、声音开关与音量；持久化在插件自身配置的 `skin-wallpaper` 段。
+- **自定义主题**：浅色/深色的强调色、背景色、前景色、对比度配置及应用标记，以版本化契约持久化在插件自身配置的 `skin-custom-theme` 段；壁纸选择与渲染仍完全由 `skin-wallpaper` 负责。
+- **这些设置放在哪里**：以上三段同属一份插件配置——该 profile 条目自己的 `Config`。宿主据此 schema 在 GUI 中生成该条目的设置页，卡片写入的是同一批值；不存在单独的 settings 文档。
 - **用户皮肤目录**：`$DSH_HOME/skins/<id>/`；覆盖优先级为 `DSH_SKINS_HOME`、`DSH_SKINS_DIR`、`$DSH_HOME/skins`。
 
 ## 安全模型

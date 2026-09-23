@@ -136,7 +136,7 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
             // without this the pool would keep running commands on the old
             // host/credentials until the idle sweep (up to 30 min later).
             const patch = body as Record<string, unknown>
-            if (['host', 'port', 'user', 'auth', 'proxyJump'].some(key => patch[key] !== undefined)) {
+            if (['host', 'port', 'user', 'auth', 'proxyJump', 'proxyCommand'].some(key => patch[key] !== undefined)) {
               engine.dropAlias(alias)
             }
             writeJson(res, 200, { host: store.summarize(entry) })
@@ -225,6 +225,13 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
         const environment = typeof body?.environment === 'string' ? body.environment : undefined
         const timeoutMs = typeof body?.timeoutMs === 'number' ? body.timeoutMs : undefined
         const maxWorkers = typeof body?.maxWorkers === 'number' ? body.maxWorkers : undefined
+        const hasAliases = aliases?.some(alias => alias.trim() !== '') === true
+        const hasEnvironment = typeof environment === 'string' && environment.trim() !== ''
+        const hasTags = tags?.some(tag => tag.trim() !== '') === true
+        if (!hasAliases && !hasEnvironment && !hasTags) {
+          writeJson(res, 400, { error: 'ssh_cluster requires aliases, environment, or tags to limit the target set' })
+          return
+        }
         try {
           writeJson(res, 200, { results: await engine.cluster({ command, aliases, environment, tags, timeoutMs, maxWorkers }) })
         } catch (error) {

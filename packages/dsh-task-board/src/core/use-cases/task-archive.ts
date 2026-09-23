@@ -1,6 +1,6 @@
 /**
- * Archive/restore task use case: move a settled (done/failed) task off the
- * main board and back. The task keeps its status, execution history, and
+ * Archive/restore task use case: move a task off the main board and back,
+ * whatever its status but `running`. The task keeps its status, execution history, and
  * transcript references, while archiving disarms any schedule so it cannot
  * create more execution records until the user restores and re-enables it.
  */
@@ -16,10 +16,10 @@ export interface ArchiveTaskResult {
 }
 
 /**
- * Archive one task: only settled statuses (done/failed) can be archived;
- * a running or not-yet-settled task stays on the board (its runner still
- * owns its lifecycle). Archiving disarms a schedule; already-archived tasks
- * are a no-op.
+ * Archive one task: only a `running` task stays on the board (its runner
+ * still owns its lifecycle until the execution settles); every other status
+ * can be archived. Archiving disarms a schedule; already-archived tasks are
+ * a no-op.
  */
 export function applyArchiveTask(
   tasks: readonly TaskRecord[],

@@ -19,6 +19,7 @@
   }
   if (gl) {
     var reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    var bgEnabled = !reduceMotion
     var W = 0, H = 0, time = 0, last = 0, raf = 0, running = false, contextLost = false
     var scroll = { target: window.scrollY || 0, smooth: window.scrollY || 0 }
     var clicks = []
@@ -156,7 +157,7 @@
       }
 
       function start() {
-        if (running || reduceMotion || document.hidden || contextLost) return
+        if (running || !bgEnabled || document.hidden || contextLost) return
         running = true
         last = performance.now()
         raf = requestAnimationFrame(frame)
@@ -173,16 +174,28 @@
       resize()
       if (reduceMotion) { time = 7.2; draw() } else { draw(); start() }
       canvas.classList.add('ready')
+      // 背景动效开关：关闭时停止 RAF（保留静态帧），恢复时重新绘制。
+      window.marketWave = {
+        setEnabled: function (on) {
+          bgEnabled = !!on
+          if (bgEnabled) { draw(); start() } else { stop() }
+        },
+      }
     }
   }
 
   // ====================================================================
   // 市场应用
   // ====================================================================
-  var KIND_LABEL = { skin: '皮肤', pet: '宠物', plugin: '插件' }
+  var KINDS = ['skin', 'pet', 'plugin', 'preset']
+  var KIND_LABEL = { picks: '编辑推荐', all: '探索', skin: '皮肤', pet: '宠物', plugin: '插件', preset: '预设' }
+  var LIST_LABEL = { picks: '编辑推荐', all: '发现更多', skin: '皮肤画廊', pet: '桌面伙伴', plugin: '扩展你的工具', preset: '找到你的 Agent' }
+  var KIND_ICON = { plugin: '</>', preset: 'Aa' }
   var CAT_LABEL = {
     agent: 'Agent', ui: '界面', tools: '工具', knowledge: '知识',
-    integration: '集成', security: '安全', utility: '实用', other: '其他'
+    integration: '集成', security: '安全', utility: '实用', other: '其他',
+    // 预设分类（词表见 scripts/market-build 的 PRESET_CATEGORIES）。
+    roleplay: '角色扮演'
   }
   // 二级分类（category → subcategory）：词表与合法集合见 community-index 的同名映射。
   var SUB_ORDER = {
@@ -203,15 +216,28 @@
     access: '访问控制', policy: '审批策略', cleanup: '系统整理',
     stats: '统计', notify: '通知', net: '网络与传输',
   }
+  // 标签筛选只用带中文名的词条；皮肤 tag 与插件/预设分类共用同一行筛选。
+  var TAG_LABEL = Object.assign({
+    ocean: '海洋', whale: '鲸鱼', dark: '深色', light: '浅色', anime: '二次元',
+    workflow: '工作流', coding: '编程', sprite2d: '像素伙伴', frames2d: '动态伙伴',
+  }, CAT_LABEL, SUB_LABEL)
+
   var state = {
-    kind: 'skin',
-    sort: 'hot',
+    kind: 'all',
+    sort: 'popular',
     query: '',
+    tag: 'all',
     cat: 'all',
     subcat: 'all',
-    data: { skin: [], pet: [], plugin: [] },
-    votes: { skin: {}, pet: {}, plugin: {} },
-    installs: { skin: {}, pet: {}, plugin: {} },
+    savedOnly: false,
+    limit: 12,
+    motionOn: true,
+    item: null,
+    data: { skin: [], pet: [], plugin: [], preset: [] },
+    // 编辑推荐固定清单（{ kind, id } 引用），由 manifest/editor-picks.json 提供。
+    picks: [],
+    votes: { skin: {}, pet: {}, plugin: {}, preset: {} },
+    installs: { skin: {}, pet: {}, plugin: {}, preset: {} },
     npmDownloads: {},
     apiOk: false,
   }
@@ -223,11 +249,8 @@
     if (text != null) e.textContent = text
     return e
   }
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
-    })
-  }
+  function entryOf(kind, item) { return { kind: kind, item: item } }
+  function entryKey(kind, item) { return kind + ':' + item.id }
 
   function deviceFp() {
     var KEY = 'dsh-market-fp'
@@ -249,6 +272,19 @@
   }
   var myVotes = loadMyVotes()
 
+  // 我的收藏：仅存本机，不参与任何服务端统计。
+  var SAVED_KEY = 'dsh-market-saved'
+  var savedKeys = (function () {
+    try {
+      var arr = JSON.parse(window.localStorage.getItem(SAVED_KEY) || '[]')
+      return Array.isArray(arr) ? arr.filter(function (x) { return typeof x === 'string' }) : []
+    } catch (e) { return [] }
+  })()
+  function persistSaved() {
+    try { window.localStorage.setItem(SAVED_KEY, JSON.stringify(savedKeys)) } catch (e) { }
+  }
+  function isSaved(kind, id) { return savedKeys.indexOf(kind + ':' + id) !== -1 }
+
   function votesFor(kind, id) { return (state.votes[kind] && state.votes[kind][id]) || 0 }
   function installsFor(kind, id) { return (state.installs[kind] && state.installs[kind][id]) || 0 }
   function npmDownloadsFor(item) { return (item.npm && state.npmDownloads[item.npm]) || null }
@@ -257,6 +293,13 @@
     if (kind === 'skin') return item.preview && item.preview.light
     if (kind === 'pet') return (item.previews && item.previews[0]) || item.spritesheet
     return ''
+  }
+  function tagsFor(entry) {
+    var item = entry.item
+    var out = Array.isArray(item.tags) ? item.tags.slice() : []
+    if (item.category) out.push(item.category)
+    if (item.subcategory) out.push(item.subcategory)
+    return out
   }
 
   function fetchJson(url) {
@@ -271,235 +314,334 @@
       safe(fetchJson('manifest/skins.json')).then(function (x) { state.data.skin = x ? x.items : [] }),
       safe(fetchJson('manifest/pets.json')).then(function (x) { state.data.pet = x ? x.items : [] }),
       safe(fetchJson('manifest/plugins.json')).then(function (x) { state.data.plugin = x ? x.items : [] }),
+      safe(fetchJson('manifest/presets.json')).then(function (x) { state.data.preset = x ? x.items : [] }),
+      safe(fetchJson('manifest/editor-picks.json')).then(function (x) { state.picks = (x && x.items) || [] }),
       safe(fetchJson('/api/stats')).then(function (s) {
         state.apiOk = !!s
-        if (s && s.skin) state.votes = { skin: s.skin || {}, pet: s.pet || {}, plugin: s.plugin || {} }
-        if (s && s.installs) state.installs = { skin: s.installs.skin || {}, pet: s.installs.pet || {}, plugin: s.installs.plugin || {} }
+        if (s && s.skin) state.votes = { skin: s.skin || {}, pet: s.pet || {}, plugin: s.plugin || {}, preset: s.preset || {} }
+        if (s && s.installs) state.installs = { skin: s.installs.skin || {}, pet: s.installs.pet || {}, plugin: s.installs.plugin || {}, preset: s.installs.preset || {} }
       }),
       safe(fetchJson('/api/npm-downloads')).then(function (d) {
         state.npmDownloads = (d && d.downloads) || {}
       }),
-    ]).then(function () { renderTabCounts(); renderAll() })
+    ]).then(function () {
+      renderAll()
+      openFromHash()
+    })
   }
 
-  function sortedFor(kind) {
-    var items = state.data[kind].slice()
-    items.sort(function (a, b) {
-      if (state.sort === 'rank') return (a.rank || 999) - (b.rank || 999)
-      var va = votesFor(kind, a.id), vb = votesFor(kind, b.id)
-      if (va !== vb) return vb - va
-      return (a.rank || 999) - (b.rank || 999)
+  // 编辑推荐：把固定引用解析成真实类别条目（保持清单顺序，丢弃重复 / 越界 / 解析不到的引用）。
+  function pickEntries() {
+    var out = [], seen = {}
+    state.picks.forEach(function (pick) {
+      var kind = pick && pick.kind, id = pick && pick.id
+      if (kind !== 'skin' && kind !== 'pet' && kind !== 'plugin') return
+      if (!id || seen[kind + ':' + id]) return
+      var item = (state.data[kind] || []).filter(function (it) { return it.id === id })[0]
+      if (!item) return
+      seen[kind + ':' + id] = true
+      out.push(entryOf(kind, item))
     })
-    return items
+    return out
   }
-  function podiumTop(kind) {
-    var items = state.data[kind].slice()
-    items.sort(function (a, b) {
-      var va = votesFor(kind, a.id), vb = votesFor(kind, b.id)
-      if (va !== vb) return vb - va
-      return (a.rank || 999) - (b.rank || 999)
-    })
-    return items.slice(0, 3)
+  function entriesOf(kind) {
+    if (kind === 'picks') return pickEntries()
+    return state.data[kind].map(function (it) { return entryOf(kind, it) })
   }
-  function matches(item) {
-    if (state.cat !== 'all' && item.category !== state.cat) return false
-    if (state.cat !== 'all' && state.subcat !== 'all' && item.subcategory !== state.subcat) return false
-    if (!state.query) return true
-    var q = state.query.toLowerCase()
-    var parts = [item.name, item.nameEn, item.displayName, item.author, item.description, item.descriptionEn, item.tagline]
-    if (item.tags) parts = parts.concat(item.tags)
+  function allEntries() {
+    var out = []
+    KINDS.forEach(function (k) { state.data[k].forEach(function (it) { out.push(entryOf(k, it)) }) })
+    return out
+  }
+  function matchesQuery(entry, q) {
+    var item = entry.item
+    var parts = [item.name, item.nameEn, item.displayName, item.author,
+      item.description, item.descriptionEn, item.tagline]
+    if (Array.isArray(item.tags)) parts = parts.concat(item.tags)
     parts.push(CAT_LABEL[item.category] || '', SUB_LABEL[item.subcategory] || '')
-    var hay = parts.filter(Boolean).join(' ').toLowerCase()
-    return hay.indexOf(q) !== -1
+    tagsFor(entry).forEach(function (t) { parts.push(TAG_LABEL[t] || '') })
+    return parts.filter(Boolean).join(' ').toLowerCase().indexOf(q) !== -1
   }
-
-  function renderTabCounts() {
-    var counts = { skin: state.data.skin.length, pet: state.data.pet.length, plugin: state.data.plugin.length }
-    document.querySelectorAll('.mk-tab').forEach(function (t) {
-      var k = t.getAttribute('data-kind')
-      var span = t.querySelector('.mk-tab-count')
-      if (!span) { span = el('span', 'mk-tab-count'); t.appendChild(span) }
-      span.textContent = String(counts[k] || 0)
+  // baseEntries 只做「浏览上下文」过滤（分类 / 收藏 / 搜索），供标签计数使用。
+  function baseEntries() {
+    var list = state.kind === 'all' ? allEntries() : entriesOf(state.kind)
+    var q = state.query.toLowerCase()
+    return list.filter(function (entry) {
+      if (state.savedOnly && !isSaved(entry.kind, entry.item.id)) return false
+      if (q && !matchesQuery(entry, q)) return false
+      return true
     })
   }
-
-  function renderPodium() {
-    var root = $('#podium')
-    root.innerHTML = ''
-    // 冠军台只展示当前 tab 类别；布局为经典阶梯：第 1 名居中最高，
-    // 第 2 名在左、略低，第 3 名在右、更低（DOM 按 1/2/3 顺序，
-    // 视觉顺序由 CSS order 重排为 2/1/3）。
-    var kind = state.kind
-    var group = el('div', 'mk-podium-group')
-    var title = el('div', 'mk-podium-title', KIND_LABEL[kind])
-    title.appendChild(el('span', 'mk-podium-kind', 'TOP 3'))
-    group.appendChild(title)
-    var list = el('div', 'mk-podium-list')
-    var top = podiumTop(kind)
-    if (!top.length) {
-      list.appendChild(el('div', 'mk-podium-empty', '暂无条目'))
-    } else {
-      top.forEach(function (item, i) {
-        var rank = i + 1
-        var votes = votesFor(kind, item.id)
-        var pending = votes === 0
-        var slot = el('button', 'mk-podium-slot rank-' + rank + (pending ? ' pending' : ''))
-        slot.type = 'button'
-        slot.setAttribute('aria-label', KIND_LABEL[kind] + ' 第 ' + rank + ' 名: ' + (item.name || item.displayName))
-        slot.appendChild(el('span', 'mk-medal', String(rank)))
-        var src = thumbSrc(kind, item)
-        if (src) {
-          var img = el('img', 'mk-podium-thumb')
-          img.src = src
-          img.alt = ''
-          img.loading = 'lazy'
-          slot.appendChild(img)
-        }
-        slot.appendChild(el('div', 'mk-podium-name', item.name || item.displayName))
-        slot.appendChild(el('div', 'mk-podium-votes', pending ? '待点亮' : votes + ' 票'))
-        slot.addEventListener('click', function () { openDetail(kind, item.id) })
-        list.appendChild(slot)
-      })
+  function compareEntries(a, b) {
+    var A = a.item, B = b.item
+    if (state.sort === 'rank') return (A.rank || 999) - (B.rank || 999)
+    if (state.sort === 'name') {
+      return String(A.name || A.displayName || '').localeCompare(String(B.name || B.displayName || ''), 'zh-CN')
     }
-    group.appendChild(list)
-    root.appendChild(group)
+    if (state.sort === 'installs') {
+      var d = installsFor(b.kind, B.id) - installsFor(a.kind, A.id)
+      if (d) return d
+    }
+    var va = votesFor(a.kind, A.id), vb = votesFor(b.kind, B.id)
+    if (va !== vb) return vb - va
+    return (A.rank || 999) - (B.rank || 999)
   }
-
-  function renderCatFilter() {
-    var box = $('#catFilter')
-    var subBox = $('#subCatFilter')
-    box.innerHTML = ''
-    subBox.innerHTML = ''
-    if (state.kind !== 'plugin') { box.style.display = 'none'; subBox.style.display = 'none'; return }
-    box.style.display = ''
-    var cats = {}
-    state.data.plugin.forEach(function (p) { var c = p.category || 'other'; cats[c] = (cats[c] || 0) + 1 })
-    box.appendChild(mkChipKey('all', '全部', state.data.plugin.length))
-    Object.keys(cats).sort().forEach(function (c) { box.appendChild(mkChipKey(c, CAT_LABEL[c] || c, cats[c])) })
-    // 二级行只在选中具体一级分类时出现；切换一级分类时复位二级。
-    if (state.cat === 'all') { subBox.style.display = 'none'; return }
-    subBox.style.display = ''
-    var subs = {}
-    state.data.plugin.forEach(function (p) {
-      if (p.category !== state.cat || !p.subcategory) return
-      subs[p.subcategory] = (subs[p.subcategory] || 0) + 1
-    })
-    var subTotal = 0
-    Object.keys(subs).forEach(function (k) { subTotal += subs[k] })
-    subBox.appendChild(mkSubChipKey('all', '全部', subTotal))
-    var order = SUB_ORDER[state.cat] || []
-    var keys = order.filter(function (k) { return subs[k] })
-    Object.keys(subs).sort().forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k) })
-    keys.forEach(function (k) { subBox.appendChild(mkSubChipKey(k, SUB_LABEL[k] || k, subs[k])) })
-    function mkSubChipKey(key, label, count) {
-      var b = el('button', 'mk-chip mk-chip-sub' + (state.subcat === key ? ' on' : ''), label + (count ? ' ' + count : ''))
-      b.type = 'button'
-      b.addEventListener('click', function () { state.subcat = key; renderCatFilter(); renderGrid() })
-      return b
+  function visibleEntries() {
+    var list = baseEntries()
+    // 编辑推荐只固定展示清单本身：保持清单顺序，不做分类 / 标签筛选，也不参与排序。
+    if (state.kind === 'picks') return list
+    if (state.kind === 'plugin' || state.kind === 'preset') {
+      if (state.cat !== 'all') list = list.filter(function (e) { return e.item.category === state.cat })
+      if (state.subcat !== 'all') list = list.filter(function (e) { return e.item.subcategory === state.subcat })
     }
-    function mkChipKey(key, label, count) {
-      var b = el('button', 'mk-chip' + (state.cat === key ? ' on' : ''), label + (count ? ' ' + count : ''))
-      b.type = 'button'
-      b.addEventListener('click', function () { state.cat = key; state.subcat = 'all'; renderCatFilter(); renderGrid() })
-      return b
-    }
+    if (state.tag !== 'all') list = list.filter(function (e) { return tagsFor(e).indexOf(state.tag) !== -1 })
+    return list.sort(compareEntries)
   }
 
   function metricLabel(kind, item) {
-    var parts = []
     var installs = installsFor(kind, item.id)
-    if (installs > 0) parts.push('安装 ' + installs)
-    var npmDownload = npmDownloadsFor(item)
-    if (npmDownload !== null) parts.push('npm 近 30 天 ' + npmDownload)
-    return parts.join(' · ')
+    if (installs > 0) return installs + ' 次安装'
+    var npm = npmDownloadsFor(item)
+    if (npm !== null && npm !== undefined) return 'npm 近 30 天 ' + npm
+    return ''
   }
 
-  function renderCard(kind, item) {
-    var card = el('article', 'mk-card')
-    // Community plugins carry no artwork: skip the media block so the card
-    // renders text only; classification labels live in the meta line.
-    var media = null
-    if (kind !== 'plugin') {
-      media = el('div', 'mk-card-media')
-      // (plugin branch removed; skins and pets keep their media below)
-      var src = thumbSrc(kind, item)
-      if (src) {
-        var img = el('img')
-        img.src = src
-        img.alt = ''
-        img.loading = 'lazy'
-        media.appendChild(img)
-      }
-      if (kind === 'pet') media.classList.add('mk-card-media-pet')
-      if (kind === 'skin') {
-        media.classList.add('mk-card-media-skin')
-        if (item.accent) {
-          var bar = el('div', 'mk-accent-bar')
-          bar.style.background = item.accent
-          media.appendChild(bar)
-        }
-      }
+  // ---------- 卡片 ----------
+  function pictureButton(kind, item) {
+    var media = el('button', 'picture')
+    media.type = 'button'
+    media.setAttribute('data-open', entryKey(kind, item))
+    if (kind === 'pet') media.classList.add('mk-card-media-pet')
+    var src = thumbSrc(kind, item)
+    if (src) {
+      var img = el('img')
+      img.src = src
+      img.alt = ''
+      img.loading = 'lazy'
+      media.appendChild(img)
     }
-    if (media) card.appendChild(media)
-    var body = el('div', 'mk-card-body')
-    var name = (kind !== 'pet' && item.repo)
-      ? el('a', 'mk-card-name', item.name || item.displayName)
-      : el('div', 'mk-card-name', item.name || item.displayName)
-    if (item.nameEn && item.nameEn !== item.name) name.appendChild(el('span', 'mk-card-name-en', item.nameEn))
-    if (name.tagName === 'A') {
+    if (kind !== 'pet') media.appendChild(el('span', 'preview-hint', '查看作品 ↗'))
+    return media
+  }
+  function heartButton(kind, item) {
+    var liked = hasMyVote(kind, item.id)
+    var label = item.name || item.displayName || ''
+    var b = el('button', 'like' + (liked ? ' is-liked' : ''))
+    b.type = 'button'
+    b.setAttribute('data-like', entryKey(kind, item))
+    b.setAttribute('aria-pressed', String(liked))
+    b.setAttribute('aria-label', (liked ? '取消点赞 ' : '点赞 ') + label)
+    b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg><span></span>'
+    b.querySelector('span').textContent = String(votesFor(kind, item.id))
+    return b
+  }
+  function cardName(kind, item) {
+    var text = item.name || item.displayName || ''
+    // 皮肤、插件与预设都可回链源码仓库；宠物没有独立仓库，渲染为纯文本。
+    var name
+    if (kind !== 'pet' && item.repo) {
+      name = el('a', 'mk-card-name', text)
       name.href = item.repo
       name.target = '_blank'
       name.rel = 'noopener'
+    } else {
+      name = el('div', 'mk-card-name', text)
     }
-    body.appendChild(name)
-    var meta = []
-    if (item.author) meta.push(item.author)
-    if (kind === 'skin' && item.version) meta.push('v' + item.version)
-    if (kind === 'plugin') meta.push(CAT_LABEL[item.category] || item.category)
-    if (kind === 'plugin' && item.subcategory) meta.push(SUB_LABEL[item.subcategory] || item.subcategory)
-    if (kind === 'pet' && item.renderer) meta.push(item.renderer)
-    body.appendChild(el('div', 'mk-card-meta', meta.join(' · ')))
-    var metric = metricLabel(kind, item)
-    if (metric) body.appendChild(el('div', 'mk-card-metric', metric))
-    var desc = item.tagline || item.description || item.descriptionEn || (kind === 'pet' ? '' : '')
-    body.appendChild(el('div', 'mk-card-desc', desc))
-    var actions = el('div', 'mk-card-actions')
-    var liked = hasMyVote(kind, item.id)
-    var like = el('button', 'mk-like' + (liked ? ' on' : ''))
-    like.type = 'button'
-    like.appendChild(el('span', 'mk-like-ico', liked ? '已赞' : '赞'))
-    like.appendChild(el('span', null, String(votesFor(kind, item.id))))
-    like.addEventListener('click', function () { toggleLike(kind, item.id) })
-    actions.appendChild(like)
-    var detail = el('button', 'mk-detail', '详情')
-    detail.type = 'button'
-    detail.addEventListener('click', function () { openDetail(kind, item.id) })
-    actions.appendChild(detail)
-    body.appendChild(actions)
-    card.appendChild(body)
+    return name
+  }
+  function renderCard(entry) {
+    var kind = entry.kind, item = entry.item
+    var card = el('article', 'card')
+    if (kind === 'plugin' || kind === 'preset') {
+      var body = el('button', 'picture card-text')
+      body.type = 'button'
+      body.setAttribute('data-open', entryKey(kind, item))
+      body.appendChild(el('span', 'code-icon', KIND_ICON[kind] || 'Aa'))
+      body.appendChild(el('span', 'category-label', CAT_LABEL[item.category] || KIND_LABEL[kind]))
+      body.appendChild(el('p', null, item.description || item.descriptionEn || ''))
+      card.appendChild(body)
+    } else {
+      card.appendChild(pictureButton(kind, item))
+    }
+    var info = el('div', 'info')
+    var h3 = el('h3')
+    h3.appendChild(cardName(kind, item))
+    info.appendChild(h3)
+    var sub = item.nameEn && item.nameEn !== item.name ? item.nameEn : (item.author || '')
+    if (kind === 'plugin' || kind === 'preset') sub = item.author || CAT_LABEL[item.category] || ''
+    info.appendChild(el('div', 'sub', sub))
+    var meta = el('div', 'meta')
+    meta.appendChild(el('span', null, metricLabel(kind, item)))
+    meta.appendChild(heartButton(kind, item))
+    info.appendChild(meta)
+    card.appendChild(info)
     return card
   }
 
-  function renderGrid() {
+  // ---------- 人气推荐陈列 ----------
+  function featureCard(item, main) {
+    var card = el('article', 'feature ' + (main ? 'main-feature' : 'small-feature'))
+    card.appendChild(pictureButton('skin', item))
+    var bottom = el('div', 'feature-bottom')
+    var left = el('div')
+    if (main) {
+      left.appendChild(el('div', 'label', '人气推荐'))
+      left.appendChild(el('h2', null, item.name))
+    } else {
+      left.appendChild(el('h3', null, item.name))
+    }
+    left.appendChild(el('div', 'sub', item.nameEn || item.author || ''))
+    bottom.appendChild(left)
+    if (main) {
+      var actions = el('div', 'feature-actions')
+      var preview = el('button', 'primary', '预览作品 ↗')
+      preview.type = 'button'
+      preview.setAttribute('data-open', entryKey('skin', item))
+      actions.appendChild(preview)
+      actions.appendChild(heartButton('skin', item))
+      bottom.appendChild(actions)
+    } else {
+      bottom.appendChild(heartButton('skin', item))
+    }
+    card.appendChild(bottom)
+    return card
+  }
+  function renderShowcase() {
+    var box = $('#showcase')
+    box.innerHTML = ''
+    var show = state.kind === 'all' && !state.query && !state.savedOnly
+    box.hidden = !show
+    if (!show) return
+    var picks = state.data.skin.slice().sort(function (a, b) {
+      var va = votesFor('skin', a.id), vb = votesFor('skin', b.id)
+      if (va !== vb) return vb - va
+      return (a.rank || 999) - (b.rank || 999)
+    }).slice(0, 3)
+    if (!picks.length) { box.hidden = true; return }
+    box.appendChild(featureCard(picks[0], true))
+    var side = el('div', 'side')
+    picks.slice(1).forEach(function (item) { side.appendChild(featureCard(item, false)) })
+    box.appendChild(side)
+  }
+
+  // ---------- 筛选 ----------
+  function filterChip(label, selected, attr, value, sub) {
+    var b = el('button', 'filter-chip' + (sub ? ' sub' : '') + (selected ? ' selected' : ''), label)
+    b.type = 'button'
+    b.setAttribute(attr, value)
+    b.setAttribute('aria-pressed', String(!!selected))
+    return b
+  }
+  function renderFilters() {
+    var box = $('#filters')
+    box.innerHTML = ''
+    if (state.kind === 'picks') { state.tag = 'all'; return }
+    if (state.kind === 'plugin' || state.kind === 'preset') {
+      var items = state.data[state.kind]
+      var cats = {}
+      items.forEach(function (p) { var c = p.category || 'other'; cats[c] = (cats[c] || 0) + 1 })
+      box.appendChild(filterChip('全部', state.cat === 'all', 'data-cat', 'all', false))
+      Object.keys(cats).sort().forEach(function (c) {
+        box.appendChild(filterChip(CAT_LABEL[c] || c, state.cat === c, 'data-cat', c, false))
+      })
+      if (state.cat === 'all') return
+      var subs = {}
+      items.forEach(function (p) {
+        if (p.category !== state.cat || !p.subcategory) return
+        subs[p.subcategory] = (subs[p.subcategory] || 0) + 1
+      })
+      var keys = (SUB_ORDER[state.cat] || []).filter(function (k) { return subs[k] })
+      Object.keys(subs).sort().forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k) })
+      if (keys.length) {
+        var total = keys.reduce(function (n, k) { return n + subs[k] }, 0)
+        box.appendChild(filterChip('全部', state.subcat === 'all', 'data-subcat', 'all', true))
+        keys.forEach(function (k) {
+          box.appendChild(filterChip(SUB_LABEL[k] || k, state.subcat === k, 'data-subcat', k, true))
+        })
+      }
+      return
+    }
+    if (state.kind === 'all' && !state.query && !state.savedOnly) { state.tag = 'all'; return }
+    var counts = {}
+    baseEntries().forEach(function (e) {
+      tagsFor(e).forEach(function (t) { counts[t] = (counts[t] || 0) + 1 })
+    })
+    var tagKeys = Object.keys(counts)
+      .filter(function (t) { return TAG_LABEL[t] && counts[t] > 1 })
+      .sort(function (a, b) { return counts[b] - counts[a] || a.localeCompare(b) })
+      .slice(0, 6)
+    if (!tagKeys.length) { state.tag = 'all'; return }
+    box.appendChild(filterChip('全部', state.tag === 'all', 'data-tag', 'all', false))
+    tagKeys.forEach(function (t) {
+      box.appendChild(filterChip(TAG_LABEL[t], state.tag === t, 'data-tag', t, false))
+    })
+  }
+
+  // ---------- 列表 ----------
+  function renderEmpty() {
+    var box = el('div', 'empty')
+    box.appendChild(el('div', 'empty-symbol', '⌕'))
+    box.appendChild(el('h3', null, state.savedOnly ? '还没有匹配的收藏' : '没有找到这件灵感'))
+    box.appendChild(el('p', null, state.savedOnly
+      ? '打开作品详情，将喜欢的作品加入收藏。'
+      : '试试作品名称、作者，或者换一个关键词。'))
+    var reset = el('button', null, '浏览全部作品')
+    reset.type = 'button'
+    reset.setAttribute('data-reset', '')
+    box.appendChild(reset)
+    return box
+  }
+  function renderList() {
     var grid = $('#grid')
     grid.innerHTML = ''
-    var items = sortedFor(state.kind).filter(matches)
-    if (!items.length) {
-      grid.appendChild(el('div', 'mk-empty', '没有匹配的条目'))
+    var list = visibleEntries()
+    if (!list.length) {
+      grid.appendChild(renderEmpty())
     } else {
-      items.forEach(function (it) { grid.appendChild(renderCard(state.kind, it)) })
+      list.slice(0, state.limit).forEach(function (entry) { grid.appendChild(renderCard(entry)) })
     }
-    $('#toolbarInfo').textContent = '共 ' + items.length + ' 个条目'
+    $('#listTitle').textContent = state.savedOnly ? '我的收藏' : LIST_LABEL[state.kind]
+    $('#count').textContent = list.length + ' 件作品'
+    var more = $('#loadMore')
+    more.innerHTML = ''
+    if (list.length > state.limit) {
+      var btn = el('button', 'secondary')
+      btn.type = 'button'
+      btn.id = 'more'
+      btn.appendChild(document.createTextNode('探索更多作品'))
+      btn.appendChild(el('span', null, state.limit + ' / ' + list.length))
+      more.appendChild(btn)
+    } else if (list.length) {
+      more.appendChild(el('span', null, '你已经看完这些作品了'))
+    }
   }
-
+  function renderTabs() {
+    document.querySelectorAll('nav [data-kind]').forEach(function (tab) {
+      var on = tab.getAttribute('data-kind') === state.kind
+      tab.classList.toggle('on', on)
+      tab.setAttribute('aria-pressed', String(on))
+    })
+    var sort = $('#sort')
+    // 编辑推荐的顺序由清单固定，排序下拉在该分区禁用。
+    if (sort) { sort.value = state.sort; sort.disabled = state.kind === 'picks' }
+    var saved = $('#savedFilter')
+    if (saved) saved.setAttribute('aria-pressed', String(state.savedOnly))
+  }
   function renderAll() {
-    renderPodium()
-    renderCatFilter()
-    renderGrid()
+    renderTabs()
+    renderShowcase()
+    renderFilters()
+    renderList()
     $('#apiState').textContent = state.apiOk ? '' : '离线模式：点赞暂不可用'
+    applyMotion()
   }
 
+  // ---------- 点赞 ----------
   var likeSeq = {}
+  function resyncDetail() {
+    var dlg = $('#detail')
+    if (dlg.open && state.item) openDetail(state.item.kind, state.item.id)
+  }
   function toggleLike(kind, id) {
     if (!state.apiOk) { toast('点赞服务暂时不可用，请稍后再试'); return }
     var key = kind + ':' + id
@@ -512,6 +654,7 @@
     saveMyVotes(myVotes)
     state.votes[kind][id] = Math.max(0, prevVotes + (nextLiked ? 1 : -1))
     renderAll()
+    resyncDetail()
     turnstileToken().then(function (token) {
       return fetch('/api/like', {
         method: 'POST',
@@ -525,14 +668,26 @@
       if (likeSeq[key] !== seq) return
       if (typeof d.votes === 'number') state.votes[kind][id] = d.votes
       renderAll()
+      resyncDetail()
     }).catch(function () {
       if (likeSeq[key] !== seq) return
       myVotes[key] = wasLiked
       saveMyVotes(myVotes)
       state.votes[kind][id] = prevVotes
       renderAll()
+      resyncDetail()
       toast('点赞失败，请稍后再试')
     })
+  }
+  function toggleSave(kind, id) {
+    var key = kind + ':' + id
+    var idx = savedKeys.indexOf(key)
+    if (idx === -1) savedKeys.push(key)
+    else savedKeys.splice(idx, 1)
+    persistSaved()
+    renderList()
+    resyncDetail()
+    toast(idx === -1 ? '已加入我的收藏' : '已取消收藏')
   }
 
   // ---------- 详情弹层 ----------
@@ -540,6 +695,7 @@
     var item = null
     state.data[kind].forEach(function (it) { if (it.id === id) item = it })
     if (!item) return
+    state.item = { kind: kind, id: id }
     var dlg = $('#detail')
     dlg.innerHTML = ''
     var close = el('button', 'mk-dialog-close', '×')
@@ -550,7 +706,9 @@
     var media = el('div', 'mk-dialog-media')
     var info = el('div', 'mk-dialog-info')
     var head = el('div', 'mk-dialog-head')
-    head.appendChild(el('div', 'mk-dialog-title', item.name || item.displayName))
+    var title = el('div', 'mk-dialog-title', item.name || item.displayName)
+    title.id = 'detail-title'
+    head.appendChild(title)
     if (item.nameEn && item.nameEn !== item.name) head.appendChild(el('span', 'mk-tag', item.nameEn))
     info.appendChild(head)
 
@@ -571,7 +729,7 @@
       }
       skinImg.src = skinSrc('light')
       function mkMode(theme, label) {
-        var b = el('button', 'mk-chip' + (theme === 'light' ? ' on' : ''), label)
+        var b = el('button', 'mk-skin-mode' + (theme === 'light' ? ' on' : ''), label)
         b.type = 'button'
         b.addEventListener('click', function () {
           skinImg.src = skinSrc(theme)
@@ -590,7 +748,7 @@
       if (item.description) info.appendChild(el('div', 'mk-dialog-text', item.description))
       if (item.tags && item.tags.length) {
         var tags = el('div', 'mk-dialog-tags')
-        item.tags.forEach(function (t) { tags.appendChild(el('span', 'mk-tag', t)) })
+        item.tags.forEach(function (t) { tags.appendChild(el('span', 'mk-tag', TAG_LABEL[t] || t)) })
         info.appendChild(tags)
       }
       var install = el('div', 'mk-install')
@@ -653,6 +811,43 @@
       steps2.appendChild(el('li', null, '内置鲸鱼娘开箱即用；自定义宠物目录放入 $DSH_HOME/pets/<id>/'))
       install2.appendChild(steps2)
       info.appendChild(install2)
+    } else if (kind === 'preset') {
+      // Preset detail is text only, exactly like a community plugin: no
+      // artwork block, the author line opens the info column.
+      var presetMeta = []
+      presetMeta.push(CAT_LABEL[item.category] || item.category)
+      if (item.author) presetMeta.push(item.author)
+      if (item.version) presetMeta.push('v' + item.version)
+      if (presetMeta.length) info.appendChild(el('div', 'mk-dialog-tagline', presetMeta.join(' · ')))
+      if (item.description) info.appendChild(el('div', 'mk-dialog-text', item.description))
+      if (item.descriptionEn) {
+        var presetEn = el('div', 'mk-dialog-text')
+        presetEn.style.marginTop = '8px'
+        presetEn.textContent = item.descriptionEn
+        info.appendChild(presetEn)
+      }
+      if (item.tags && item.tags.length) {
+        var presetTags = el('div', 'mk-dialog-tags')
+        item.tags.forEach(function (t) { presetTags.appendChild(el('span', 'mk-tag', TAG_LABEL[t] || t)) })
+        info.appendChild(presetTags)
+      }
+      if (item.repo) {
+        var presetSource = el('div', null)
+        var presetRepo = el('a', null, '源码仓库')
+        presetRepo.href = item.repo
+        presetRepo.target = '_blank'
+        presetRepo.rel = 'noopener'
+        presetSource.appendChild(presetRepo)
+        presetSource.style.marginTop = '10px'
+        info.appendChild(presetSource)
+      }
+      var install4 = el('div', 'mk-install')
+      install4.appendChild(el('div', 'mk-install-title', '安装方式'))
+      var steps4 = el('ol', 'mk-install-steps')
+      steps4.appendChild(el('li', null, '运行 dsh plugin --profile web add @linxin666/dsh-client-ui-preset-center'))
+      steps4.appendChild(el('li', null, '在设置页创意工坊的预设分区安装并启用该预设；启用前不会出现在新会话的预设列表'))
+      install4.appendChild(steps4)
+      info.appendChild(install4)
     } else {
       // Plugin detail is text only: no artwork block, the classification and
       // author line opens the info column.
@@ -697,12 +892,34 @@
       info.appendChild(install3)
     }
 
-    if (kind !== 'plugin') inner.appendChild(media)
+    var actions = el('div', 'mk-dialog-actions')
+    actions.appendChild(heartButton(kind, item))
+    var saved = isSaved(kind, item.id)
+    var saveBtn = el('button', 'secondary' + (saved ? ' is-saved' : ''), saved ? '已收藏' : '收藏作品')
+    saveBtn.type = 'button'
+    saveBtn.setAttribute('data-save', entryKey(kind, item))
+    saveBtn.setAttribute('aria-pressed', String(saved))
+    actions.appendChild(saveBtn)
+    info.appendChild(actions)
+
+    if (kind !== 'plugin' && kind !== 'preset') inner.appendChild(media)
     inner.appendChild(info)
     dlg.appendChild(close)
     dlg.appendChild(inner)
-    if (dlg.showModal) dlg.showModal()
-    else dlg.setAttribute('open', '')
+    if (!dlg.open) {
+      if (dlg.showModal) dlg.showModal()
+      else dlg.setAttribute('open', '')
+    }
+    history.replaceState(null, '', '#' + encodeURIComponent(kind + ':' + id))
+  }
+  function openFromHash() {
+    var raw = ''
+    try { raw = decodeURIComponent((location.hash || '').replace(/^#/, '')) } catch (e) { return }
+    var parts = raw.split(':')
+    if (parts.length !== 2 || KINDS.indexOf(parts[0]) === -1) return
+    var kind = parts[0], id = parts[1]
+    var found = state.data[kind].some(function (it) { return it.id === id })
+    if (found) openDetail(kind, id)
   }
 
   function copyText(t, btn) {
@@ -730,38 +947,104 @@
   function toast(msg) {
     var t = $('#toast')
     t.textContent = msg
+    t.hidden = false
     t.classList.add('show')
     clearTimeout(toastTimer)
-    toastTimer = setTimeout(function () { t.classList.remove('show') }, 2200)
+    toastTimer = setTimeout(function () { t.classList.remove('show'); t.hidden = true }, 2200)
+  }
+
+  // ---------- 背景动效开关 ----------
+  var reduceQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null
+  if (reduceQuery && reduceQuery.matches) state.motionOn = false
+  function applyMotion() {
+    var ocean = document.querySelector('.ocean')
+    if (ocean) ocean.classList.toggle('paused', !state.motionOn)
+    if (window.marketWave && window.marketWave.setEnabled) window.marketWave.setEnabled(state.motionOn)
+    var btn = $('#motion')
+    if (!btn) return
+    var forced = !!(reduceQuery && reduceQuery.matches)
+    btn.disabled = forced
+    btn.setAttribute('aria-pressed', String(state.motionOn))
+    btn.textContent = forced ? '背景动效：已遵循系统设置' : '背景动效：' + (state.motionOn ? '开启' : '关闭')
   }
 
   // ---------- 事件绑定 ----------
+  function resetView() {
+    state.kind = 'all'
+    state.query = ''
+    state.tag = 'all'
+    state.cat = 'all'
+    state.subcat = 'all'
+    state.savedOnly = false
+    state.limit = 12
+    var search = $('#search')
+    if (search) search.value = ''
+    var dlg = $('#detail')
+    if (dlg.open) dlg.close()
+    renderAll()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  function onDocumentClick(e) {
+    var target = e.target
+    if (!target || !target.closest) return
+    var b = target.closest('button')
+    if (!b) return
+    if (b.dataset.open) { var p = b.dataset.open.split(':'); openDetail(p[0], p[1]); return }
+    if (b.dataset.like) { var q = b.dataset.like.split(':'); toggleLike(q[0], q[1]); return }
+    if (b.dataset.save) { var s = b.dataset.save.split(':'); toggleSave(s[0], s[1]); return }
+    if (b.dataset.tag) { state.tag = b.dataset.tag; state.limit = 12; renderFilters(); renderList(); return }
+    if (b.dataset.cat) { state.cat = b.dataset.cat; state.subcat = 'all'; state.limit = 12; renderFilters(); renderList(); return }
+    if (b.dataset.subcat) { state.subcat = b.dataset.subcat; state.limit = 12; renderFilters(); renderList(); return }
+    if (b.id === 'more') { state.limit += 12; renderList(); return }
+    if (b.hasAttribute('data-reset')) { resetView(); return }
+  }
   function bind() {
-    document.querySelectorAll('.mk-tab').forEach(function (tab) {
+    document.querySelectorAll('nav [data-kind]').forEach(function (tab) {
       tab.addEventListener('click', function () {
-        state.kind = tab.getAttribute('data-kind')
+        var kind = tab.getAttribute('data-kind')
+        if (kind === state.kind) return
+        state.kind = kind
         state.cat = 'all'
         state.subcat = 'all'
-        document.querySelectorAll('.mk-tab').forEach(function (t) {
-          var on = t === tab
-          t.classList.toggle('on', on)
-          t.setAttribute('aria-selected', String(on))
-        })
+        state.tag = 'all'
+        state.limit = 12
         renderAll()
       })
     })
-    document.querySelectorAll('[data-sort]').forEach(function (chip) {
-      chip.addEventListener('click', function () {
-        state.sort = chip.getAttribute('data-sort')
-        document.querySelectorAll('[data-sort]').forEach(function (c) { c.classList.toggle('on', c === chip) })
-        renderGrid()
-      })
-    })
+    var brand = document.querySelector('.brand')
+    if (brand) brand.addEventListener('click', function (e) { e.preventDefault(); resetView() })
     var search = $('#search')
-    search.addEventListener('input', function () { state.query = search.value.trim(); renderGrid() })
+    search.addEventListener('input', function () {
+      state.query = search.value.trim()
+      state.tag = 'all'
+      state.limit = 12
+      renderAll()
+    })
+    $('#sort').addEventListener('change', function (e) { state.sort = e.target.value; renderList() })
+    $('#savedFilter').addEventListener('click', function () {
+      state.savedOnly = !state.savedOnly
+      state.tag = 'all'
+      state.cat = 'all'
+      state.subcat = 'all'
+      state.limit = 12
+      renderAll()
+    })
+    $('#motion').addEventListener('click', function () {
+      if (reduceQuery && reduceQuery.matches) return
+      state.motionOn = !state.motionOn
+      applyMotion()
+    })
+    if (reduceQuery && reduceQuery.addEventListener) {
+      reduceQuery.addEventListener('change', function (e) { state.motionOn = !e.matches; applyMotion() })
+    }
+    document.addEventListener('click', onDocumentClick)
     var dlg = $('#detail')
     dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close() })
-    dlg.addEventListener('close', function () { dlg.innerHTML = '' })
+    dlg.addEventListener('close', function () {
+      dlg.innerHTML = ''
+      state.item = null
+      if (location.hash) history.replaceState(null, '', location.pathname + location.search)
+    })
   }
 
   // ---------- Turnstile (invisible) for public-site likes ----------
@@ -831,7 +1114,6 @@
   // ---------- 右上角 GitHub 仓库按钮（仓库 + Star 数） ----------
   var GITHUB_REPO = 'zhu1090093659/dsh-web'
   function formatStars(n) {
-    if (n >= 10000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
     if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
     return String(n)
   }

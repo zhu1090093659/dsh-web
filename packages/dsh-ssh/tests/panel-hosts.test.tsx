@@ -168,3 +168,53 @@ describe('HostsTab grouped view', () => {
     expect(vi.mocked(api.testHost).mock.calls.length).toBeGreaterThan(0)
   })
 })
+
+describe('HostsTab proxy transport surfaces', () => {
+  function makeApi(): SshApi {
+    return {
+      listHosts: vi.fn(async () => [
+        makeHost('via-proxy', { proxyCommand: 'corp proxy %h %p' }),
+        makeHost('direct'),
+      ]),
+      testHost: vi.fn(async () => ({ ok: true, latencyMs: 1 })),
+      importSshConfig: vi.fn(async () => ({
+        parsed: 3,
+        added: 1,
+        skipped: 2,
+        skippedBlocks: [
+          { name: '*.cluster', reason: 'wildcard' as const },
+          { name: 'dev-db', reason: 'existing' as const },
+        ],
+      })),
+    } as unknown as SshApi
+  }
+
+  async function renderTab(api: SshApi): Promise<HTMLElement> {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    mountedRoots.push({ root })
+    await act(async () => { root.render(<HostsTab api={api} onConnect={() => {}} />) })
+    await act(async () => { await Promise.resolve() })
+    return container
+  }
+
+  it('marks a ProxyCommand host and lists every skipped import block with its reason', async () => {
+    const api = makeApi()
+    const container = await renderTab(api)
+    // The badge marks the host whose transport is a ProxyCommand, and its
+    // tooltip carries the command itself.
+    const badge = [...container.querySelectorAll('span')].find(el => el.textContent === '代理')
+    expect(badge).toBeDefined()
+    expect(badge?.getAttribute('title')).toBe('corp proxy %h %p')
+    expect(container.textContent).toContain('via-proxy.example.com')
+
+    const importButton = [...container.querySelectorAll('button')].find(button => button.textContent === '导入 ~/.ssh/config')!
+    await act(async () => { importButton.click() })
+    await act(async () => { await Promise.resolve() })
+    expect(container.textContent).toContain('解析 3 个配置块')
+    expect(container.textContent).toContain('*.cluster')
+    expect(container.textContent).toContain('通配符 pattern，需手动配置')
+    expect(container.textContent).toContain('别名已存在')
+  })
+})

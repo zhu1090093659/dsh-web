@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-09-08-windows-update-encoding-and-enospc-guard.md: cdf3a9f8b34db051ecd650aa97614428c546096d
+2026-09-08-windows-update-encoding-and-enospc-guard.zh.md: 7e89f2a04e9ef579e19438815cbc778f0a8f1709

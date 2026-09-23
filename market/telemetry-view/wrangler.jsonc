@@ -4,5 +4,11 @@
   "main": "src/index.js",
   "compatibility_date": "2026-08-01",
   "routes": [{ "pattern": "tv.dsh-market.com", "custom_domain": true }],
+  // Summary fetches must ride this binding: this worker runs inside the
+  // market worker's invocation chain (forwarded for tv.dsh-market.com), and
+  // a public fetch back to dsh-market.com would re-enter the same worker in
+  // that chain, trip Cloudflare's loop protection, and fail as a 522 from
+  // the custom-domain placeholder origin.
+  "services": [{ "binding": "MARKET", "service": "dsh-market" }],
   "observability": { "enabled": true }
 }

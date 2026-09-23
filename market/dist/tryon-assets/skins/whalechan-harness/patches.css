@@ -1,0 +1,751 @@
+html[data-dsh-skin="whalechan-harness"] [data-slot="sidebar.brand.mark"] > svg,
+ html[data-dsh-skin="whalechan-harness"] [data-slot="conversation.hero.brand.mark"] > svg { display: none !important; }
+
+ html[data-dsh-skin="whalechan-harness"] [data-slot="sidebar.brand.mark"]::after,
+ html[data-dsh-skin="whalechan-harness"] [data-slot="conversation.hero.brand.mark"]::after {
+  content: ""; display: inline-block; width: 1.75em; height: 1.75em;
+  background: url('assets/whalechan-riding-whale-64.png') center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 2px 6px rgb(36 139 218 / 28%)); vertical-align: middle;
+}
+ html[data-dsh-skin="whalechan-harness"] [data-slot="conversation.hero.brand.mark"]::after { width: 56px; height: 56px; }
+
+ html[data-dsh-skin="whalechan-harness"] [data-conversation-scroll] {
+  background:
+    radial-gradient(circle at 76% 20%, rgb(99 216 242 / 7%), transparent 30%),
+    radial-gradient(circle at 18% 76%, rgb(36 139 218 / 5%), transparent 34%),
+    var(--dsw-alias-bg-base);
+}
+
+ html[data-dsh-skin="whalechan-harness"] [data-context-injection-body="true"] {
+  position: relative; padding-left: 48px !important;
+  background-image: linear-gradient(90deg, color-mix(in srgb, #6257d9 8%, transparent), transparent 42%);
+  border-radius: 12px;
+}
+ html[data-dsh-skin="whalechan-harness"] [data-context-injection-body="true"]::before {
+  content: ""; position: absolute; left: 5px; top: 6px; width: 38px; height: 38px;
+  background: url('assets/status/05-context-feeding.png') center/contain no-repeat;
+  filter: drop-shadow(0 2px 4px rgb(98 87 217 / 20%)); pointer-events: none;
+}
+
+/* Context compaction keeps the native disclosure chevrons on hover/focus,
+   while the resting API glyph becomes a compact Whale-chan memory vignette. */
+ html[data-dsh-skin="whalechan-harness"] [data-compaction-icon="context"] {
+  width:20px; height:20px; color:transparent; position:relative;
+}
+ html[data-dsh-skin="whalechan-harness"] [data-compaction-icon="context"] > svg { display:none !important; }
+ html[data-dsh-skin="whalechan-harness"] [data-compaction-icon="context"]::after {
+  content:""; position:absolute; inset:0;
+  background:url('assets/ui-fanart/compact-memory-20.png') center/contain no-repeat;
+  filter:drop-shadow(0 1px 2px rgb(20 47 84 / 22%)); pointer-events:none;
+}
+ html[data-dsh-skin="whalechan-harness"] [class*="compactionLeading"] { width:20px; height:20px; margin-right:6px; }
+
+/* Native Workspace rows: preserve the existing hover chevron and row geometry,
+   replacing only the open/closed folder seat. */
+ html[data-dsh-skin="whalechan-harness"] .YDXeBa_projectRow[aria-expanded] > .YDXeBa_folder {
+  color:transparent !important; position:relative;
+}
+ html[data-dsh-skin="whalechan-harness"] .YDXeBa_projectRow[aria-expanded] > .YDXeBa_folder > svg { display:none !important; }
+ html[data-dsh-skin="whalechan-harness"] .YDXeBa_projectRow[aria-expanded] > .YDXeBa_folder::after {
+  content:""; position:absolute; width:16px; height:16px; inset:2px 0 auto 0;
+  background:url('assets/ui-fanart/workspace-folder-closed-16.png') center/contain no-repeat;
+  filter:drop-shadow(0 1px 1px rgb(20 47 84 / 18%)); pointer-events:none;
+}
+ html[data-dsh-skin="whalechan-harness"] .YDXeBa_projectRow[aria-expanded="true"] > .YDXeBa_folder::after {
+  background-image:url('assets/ui-fanart/workspace-folder-open-16.png');
+}
+
+/* dsh-explorer-editor currently renders folder/file emoji. Replace those text
+   glyphs without touching the tree caret, keyboard navigation, or row actions. */
+ html[data-dsh-skin="whalechan-harness"] .dshf-icon-dir,
+ html[data-dsh-skin="whalechan-harness"] .dshf-icon-file {
+  width:18px; height:18px; font-size:0 !important; color:transparent !important;
+  background:center/contain no-repeat; filter:drop-shadow(0 1px 1px rgb(20 47 84 / 18%));
+}
+ html[data-dsh-skin="whalechan-harness"] .dshf-icon-dir {
+  background-image:url('assets/ui-fanart/file-folder-closed-18.png');
+}
+ html[data-dsh-skin="whalechan-harness"] .dshf-node[aria-expanded="true"] > .dshf-icon-dir {
+  background-image:url('assets/ui-fanart/file-folder-open-18.png');
+}
+ html[data-dsh-skin="whalechan-harness"] .dshf-icon-file {
+  background-image:url('assets/ui-fanart/file-document-18.png');
+}
+ html[data-dsh-skin="whalechan-harness"] .dshf-toolbar button[aria-label="新建目录"],
+ html[data-dsh-skin="whalechan-harness"] .dshf-toolbar button[aria-label="新建文件夹"],
+ html[data-dsh-skin="whalechan-harness"] .dshf-toolbar button[aria-label="New folder"] { position:relative; }
+ html[data-dsh-skin="whalechan-harness"] .dshf-toolbar button[aria-label="新建目录"] > svg,
+ html[data-dsh-skin="whalechan-harness"] .dshf-toolbar button[aria-label="新建文件夹"] > svg,
+ html[data-dsh-skin="whalechan-harness"] .dshf-toolbar button[aria-label="New folder"] > svg { visibility:hidden; }
+ html[data-dsh-skin="whalechan-harness"] .dshf-toolbar button[aria-label="新建目录"]::after,
+ html[data-dsh-skin="whalechan-harness"] .dshf-toolbar button[aria-label="新建文件夹"]::after,
+ html[data-dsh-skin="whalechan-harness"] .dshf-toolbar button[aria-label="New folder"]::after {
+  content:""; position:absolute; width:18px; height:18px; inset:50% auto auto 50%;
+  transform:translate(-50%,-50%);
+  background:url('assets/ui-fanart/file-folder-add-18.png') center/contain no-repeat;
+  pointer-events:none;
+}
+ html[data-dsh-skin="whalechan-harness"] .dshf-tabs > .dshf-tab:first-child > svg,
+ html[data-dsh-skin="whalechan-harness"] .dshf-tabs > .dshf-tab:nth-child(2) > svg { visibility:hidden; }
+ html[data-dsh-skin="whalechan-harness"] .dshf-tabs > .dshf-tab { position:relative; }
+ html[data-dsh-skin="whalechan-harness"] .dshf-tabs > .dshf-tab:first-child::before,
+ html[data-dsh-skin="whalechan-harness"] .dshf-tabs > .dshf-tab:nth-child(2)::before {
+  content:""; width:16px; height:16px; flex:none;
+  background:center/contain no-repeat; pointer-events:none;
+}
+ html[data-dsh-skin="whalechan-harness"] .dshf-tabs > .dshf-tab:first-child::before {
+  background-image:url('assets/ui-fanart/workspace-folder-closed-16.png');
+}
+ html[data-dsh-skin="whalechan-harness"] .dshf-tabs > .dshf-tab:nth-child(2)::before {
+  background-image:url('assets/ui-fanart/file-folder-open-16.png');
+}
+
+/* ==========================================================================
+   Whale-chan Comprehensive Control Emblems (Retina High-DPI Crisp Rendering)
+   Covers all interface controls, actions, navigation, and state glyphs.
+   ========================================================================== */
+
+/* 全量隐藏已替换按钮中的原生 SVG */
+ html[data-dsh-skin="whalechan-harness"] :is(
+  button.hHd-Xa_newSession,
+  button.qDHVXG_searchButton,
+  button.qDHVXG_iconButton[aria-label*="工作区"],
+  button.qDHVXG_iconButton[aria-label*="workspace" i],
+  button.qDHVXG_iconButton[aria-label="视图选项"],
+  button.qDHVXG_iconButton[aria-label="View options"],
+  button.VOzbGW_trigger,
+  button.dshf-toggle,
+  button.hHd-Xa_toggle,
+  button.uV2eYG_primary,
+  button.uV2eYG_add,
+  button.Sh0Q9G_trigger,
+  button.nL4_yW_sessionLogButton,
+  button.h8S2Va_trigger,
+  button.p-xYUq_action[aria-label="复制"],
+  button.p-xYUq_action[aria-label="Copy"],
+  button.p-xYUq_action[aria-label="在新对话中分支"],
+  button.p-xYUq_action[aria-label="Branch in new conversation"],
+  button.YDXeBa_iconButton[aria-label*="新建会话"],
+  button.YDXeBa_iconButton[aria-label*="操作"],
+  button.nLMEza_iconBtn[aria-label="暂停目标"],
+  button.nLMEza_iconBtn[aria-label="编辑目标"],
+  button.nLMEza_iconBtn[aria-label="清除目标"],
+  button.ydkMvW_close,
+  button[aria-label="待办"], button[aria-label="Todo"],
+  button[aria-label="队列"], button[aria-label="Queue"]
+) {
+  position: relative;
+}
+
+ html[data-dsh-skin="whalechan-harness"] :is(
+  button.hHd-Xa_newSession,
+  button.qDHVXG_searchButton,
+  button.qDHVXG_iconButton[aria-label*="工作区"],
+  button.qDHVXG_iconButton[aria-label*="workspace" i],
+  button.qDHVXG_iconButton[aria-label="视图选项"],
+  button.qDHVXG_iconButton[aria-label="View options"],
+  button.VOzbGW_trigger,
+  button.dshf-toggle,
+  button.hHd-Xa_toggle,
+  button.uV2eYG_primary,
+  button.uV2eYG_add,
+  button.p-xYUq_action[aria-label="复制"],
+  button.p-xYUq_action[aria-label="Copy"],
+  button.p-xYUq_action[aria-label="在新对话中分支"],
+  button.p-xYUq_action[aria-label="Branch in new conversation"],
+  button.YDXeBa_iconButton[aria-label*="新建会话"],
+  button.YDXeBa_iconButton[aria-label*="操作"],
+  button.nLMEza_iconBtn[aria-label="暂停目标"],
+  button.nLMEza_iconBtn[aria-label="编辑目标"],
+  button.nLMEza_iconBtn[aria-label="清除目标"],
+  button.ydkMvW_close,
+  button[aria-label="待办"], button[aria-label="Todo"],
+  button[aria-label="队列"], button[aria-label="Queue"]
+) svg {
+  visibility: hidden !important;
+}
+
+/* 统一的高清 2x 缩放渲染，解决图标模糊问题 */
+ html[data-dsh-skin="whalechan-harness"] :is(
+  button.hHd-Xa_newSession,
+  button.qDHVXG_searchButton,
+  button.qDHVXG_iconButton[aria-label*="工作区"],
+  button.qDHVXG_iconButton[aria-label*="workspace" i],
+  button.qDHVXG_iconButton[aria-label="视图选项"],
+  button.qDHVXG_iconButton[aria-label="View options"],
+  button.VOzbGW_trigger,
+  button.dshf-toggle,
+  button.hHd-Xa_toggle,
+  button.uV2eYG_primary,
+  button.uV2eYG_add,
+  button.p-xYUq_action[aria-label="复制"],
+  button.p-xYUq_action[aria-label="Copy"],
+  button.p-xYUq_action[aria-label="在新对话中分支"],
+  button.p-xYUq_action[aria-label="Branch in new conversation"],
+  button.YDXeBa_iconButton[aria-label*="新建会话"],
+  button.YDXeBa_iconButton[aria-label*="操作"],
+  button.nLMEza_iconBtn[aria-label="暂停目标"],
+  button.nLMEza_iconBtn[aria-label="编辑目标"],
+  button.nLMEza_iconBtn[aria-label="清除目标"],
+  button.ydkMvW_close,
+  button[aria-label="待办"], button[aria-label="Todo"],
+  button[aria-label="队列"], button[aria-label="Queue"]
+)::after {
+  content: ""; position: absolute; width: 18px; height: 18px; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--whale-control-icon) center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 1px 2px rgb(20 47 84 / 16%));
+  pointer-events: none;
+}
+
+/* 具体按键的高倍率 64px 资源指定（在18px盒子里通过物理下采样渲染出最强锐度和细腻细节） */
+/* 新会话按钮 */
+ html[data-dsh-skin="whalechan-harness"] button.hHd-Xa_newSession {
+  position: relative;
+}
+ html[data-dsh-skin="whalechan-harness"] button.hHd-Xa_newSession svg {
+  visibility: hidden !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.hHd-Xa_newSession span.hHd-Xa_newSessionLabel {
+  position: relative;
+  padding-left: 24px !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.hHd-Xa_newSession span.hHd-Xa_newSessionLabel::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  background: url('assets/control-fanart/control-new-session-64.png') center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 1px 2px rgb(20 47 84 / 16%));
+  pointer-events: none;
+}
+ html[data-dsh-skin="whalechan-harness"] button.hHd-Xa_newSession::after {
+  display: none !important;
+}
+
+ html[data-dsh-skin="whalechan-harness"] button.qDHVXG_searchButton {
+  --whale-control-icon: url('assets/control-fanart/control-search-64.png');
+}
+
+ html[data-dsh-skin="whalechan-harness"] button.qDHVXG_iconButton[aria-label*="工作区"],
+ html[data-dsh-skin="whalechan-harness"] button.qDHVXG_iconButton[aria-label*="workspace" i] {
+  --whale-control-icon: url('assets/control-fanart/control-workspace-add-64.png');
+}
+
+ html[data-dsh-skin="whalechan-harness"] button.qDHVXG_iconButton[aria-label="视图选项"],
+ html[data-dsh-skin="whalechan-harness"] button.qDHVXG_iconButton[aria-label="View options"] {
+  --whale-control-icon: url('assets/control-fanart/control-view-options-64.png');
+}
+
+/* 侧边栏底部设置与文件管理器 */
+ html[data-dsh-skin="whalechan-harness"] button.VOzbGW_trigger {
+  --whale-control-icon: url('assets/control-fanart/control-settings-64.png');
+  padding-left: 36px !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.VOzbGW_trigger::after {
+  left: 8px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+ html[data-dsh-skin="whalechan-harness"] button.dshf-toggle {
+  --whale-control-icon: url('assets/control-fanart/control-files-nav-64.png');
+  padding-left: 36px !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.dshf-toggle::after {
+  left: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+/* 侧边栏展开与收起 */
+ html[data-dsh-skin="whalechan-harness"] button.hHd-Xa_toggle {
+  --whale-control-icon: url('assets/control-fanart/control-sidebar-close-64.png');
+}
+ html[data-dsh-skin="whalechan-harness"] button.hHd-Xa_toggle[aria-label="打开侧边栏"],
+ html[data-dsh-skin="whalechan-harness"] button.hHd-Xa_toggle[aria-label="Open sidebar"] {
+  --whale-control-icon: url('assets/control-fanart/control-sidebar-open-64.png');
+}
+
+/* 发送与停止 */
+ html[data-dsh-skin="whalechan-harness"] button.uV2eYG_primary[aria-label="发送消息"],
+ html[data-dsh-skin="whalechan-harness"] button.uV2eYG_primary[aria-label="Send message"] {
+  --whale-control-icon: url('assets/control-fanart/control-send-64.png');
+}
+ html[data-dsh-skin="whalechan-harness"] button.uV2eYG_primary[aria-label="停止生成"],
+ html[data-dsh-skin="whalechan-harness"] button.uV2eYG_primary[aria-label="Stop generating"] {
+  --whale-control-icon: url('assets/control-fanart/control-stop-64.png');
+}
+
+/* 复制与分支 */
+ html[data-dsh-skin="whalechan-harness"] button.p-xYUq_action[aria-label="复制"],
+ html[data-dsh-skin="whalechan-harness"] button.p-xYUq_action[aria-label="Copy"] {
+  --whale-control-icon: url('assets/control-fanart/control-copy-64.png');
+}
+ html[data-dsh-skin="whalechan-harness"] button.p-xYUq_action[aria-label="在新对话中分支"],
+ html[data-dsh-skin="whalechan-harness"] button.p-xYUq_action[aria-label="Branch in new conversation"] {
+  --whale-control-icon: url('assets/control-fanart/control-branch-64.png');
+}
+
+/* 列表行操作：新建会话与更多操作省略号 */
+ html[data-dsh-skin="whalechan-harness"] button.YDXeBa_iconButton[aria-label*="新建会话"] {
+  --whale-control-icon: url('assets/control-fanart/control-add-session-64.png');
+}
+ html[data-dsh-skin="whalechan-harness"] button.YDXeBa_iconButton[aria-label*="操作"] {
+  --whale-control-icon: url('assets/control-fanart/control-more-options-64.png');
+}
+
+/* 目标控制：暂停、编辑、清除 */
+ html[data-dsh-skin="whalechan-harness"] button.nLMEza_iconBtn[aria-label="暂停目标"] {
+  --whale-control-icon: url('assets/control-fanart/control-goal-pause-64.png');
+}
+ html[data-dsh-skin="whalechan-harness"] button.nLMEza_iconBtn[aria-label="编辑目标"] {
+  --whale-control-icon: url('assets/control-fanart/control-goal-edit-64.png');
+}
+ html[data-dsh-skin="whalechan-harness"] button.nLMEza_iconBtn[aria-label="清除目标"] {
+  --whale-control-icon: url('assets/control-fanart/control-goal-clear-64.png');
+}
+
+/* 输入框命令添加按钮 */
+ html[data-dsh-skin="whalechan-harness"] button.uV2eYG_add {
+  --whale-control-icon: url('assets/control-fanart/control-command-add-64.png');
+}
+
+/* 顶部子代理菜单触发器与 Session log */
+ html[data-dsh-skin="whalechan-harness"] button.h8S2Va_trigger {
+  padding-left: 24px !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.h8S2Va_trigger svg {
+  visibility: hidden !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.h8S2Va_trigger::after {
+  content: ""; position: absolute; width: 16px; height: 16px; left: 4px; top: 50%;
+  transform: translateY(-50%);
+  background: url('assets/control-fanart/control-subagents-64.png') center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  pointer-events: none;
+}
+ html[data-dsh-skin="whalechan-harness"] button.nL4_yW_sessionLogButton {
+  padding-right: 22px !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.nL4_yW_sessionLogButton svg { visibility: hidden !important; }
+ html[data-dsh-skin="whalechan-harness"] button.nL4_yW_sessionLogButton::after {
+  content: ""; position: absolute; width: 14px; height: 14px; right: 6px; top: 50%;
+  transform: translateY(-50%);
+  background: url('assets/control-fanart/control-session-log-64.png') center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  pointer-events: none;
+}
+
+/* 详情关闭按钮 */
+ html[data-dsh-skin="whalechan-harness"] button.ydkMvW_close {
+  --whale-control-icon: url('assets/control-fanart/control-close-panel-64.png');
+}
+
+/* 待办与队列 */
+ html[data-dsh-skin="whalechan-harness"] button[aria-label="待办"],
+ html[data-dsh-skin="whalechan-harness"] button[aria-label="Todo"] {
+  --whale-control-icon: url('assets/control-fanart/control-todo-64.png');
+}
+ html[data-dsh-skin="whalechan-harness"] button[aria-label="队列"],
+ html[data-dsh-skin="whalechan-harness"] button[aria-label="Queue"] {
+  --whale-control-icon: url('assets/control-fanart/control-queue-64.png');
+}
+
+/* 点赞与点踩 (Feedback actions) */
+ html[data-dsh-skin="whalechan-harness"] button._8_XoUG_action[aria-label="好的回答"],
+ html[data-dsh-skin="whalechan-harness"] button._8_XoUG_action[aria-label="Good response"] {
+  position: relative;
+}
+ html[data-dsh-skin="whalechan-harness"] button._8_XoUG_action[aria-label="好的回答"] svg,
+ html[data-dsh-skin="whalechan-harness"] button._8_XoUG_action[aria-label="Good response"] svg {
+  visibility: hidden !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button._8_XoUG_action[aria-label="好的回答"]::after,
+ html[data-dsh-skin="whalechan-harness"] button._8_XoUG_action[aria-label="Good response"]::after {
+  content: ""; position: absolute; width: 16px; height: 16px; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: url('assets/control-fanart/control-like-64.png') center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 1px 2px rgb(20 47 84 / 16%));
+  pointer-events: none;
+}
+
+ html[data-dsh-skin="whalechan-harness"] button._8_XoUG_action[aria-label="有问题的回答"],
+ html[data-dsh-skin="whalechan-harness"] button._8_XoUG_action[aria-label="Bad response"] {
+  position: relative;
+}
+ html[data-dsh-skin="whalechan-harness"] button._8_XoUG_action[aria-label="有问题的回答"] svg,
+ html[data-dsh-skin="whalechan-harness"] button._8_XoUG_action[aria-label="Bad response"] svg {
+  visibility: hidden !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button._8_XoUG_action[aria-label="有问题的回答"]::after,
+ html[data-dsh-skin="whalechan-harness"] button._8_XoUG_action[aria-label="Bad response"]::after {
+  content: ""; position: absolute; width: 16px; height: 16px; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: url('assets/control-fanart/control-dislike-64.png') center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 1px 2px rgb(20 47 84 / 16%));
+  pointer-events: none;
+}
+
+/* 下拉箭头与模式图标：恢复干净的原生轻量 Chevron 箭头，移除突兀的蓝尾巴 */
+ html[data-dsh-skin="whalechan-harness"] span.Sh0Q9G_chevron svg,
+ html[data-dsh-skin="whalechan-harness"] svg._7KE1Ra_chevron,
+ html[data-dsh-skin="whalechan-harness"] span.lXshSW_chevron svg {
+  visibility: visible !important;
+}
+ html[data-dsh-skin="whalechan-harness"] span.Sh0Q9G_chevron::after,
+ html[data-dsh-skin="whalechan-harness"] span.lXshSW_chevron::after,
+ html[data-dsh-skin="whalechan-harness"] button._7KE1Ra_trigger::after {
+  display: none !important;
+}
+
+/* 真实动态驱动的上下文环形用量 (Context meter) 纯净动态渲染 */
+ html[data-dsh-skin="whalechan-harness"] button.JObwrW_trigger {
+  position: relative;
+}
+ html[data-dsh-skin="whalechan-harness"] button.JObwrW_trigger svg {
+  visibility: visible !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.JObwrW_trigger circle.JObwrW_track {
+  stroke: color-mix(in srgb, var(--dsw-alias-brand-primary, #248bda) 22%, transparent) !important;
+  stroke-width: 2.2 !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.JObwrW_trigger circle.JObwrW_fill {
+  stroke: #27bbd1 !important;
+  stroke-width: 2.5 !important;
+  stroke-linecap: round !important;
+  filter: drop-shadow(0 0 3px rgb(39 187 209 / 55%)) !important;
+}
+/* 移除中心遮挡进度的尾巴，保持圆环内部晶莹透亮 */
+ html[data-dsh-skin="whalechan-harness"] button.JObwrW_trigger::after {
+  display: none !important;
+}
+
+/* 权限盾牌 (Access mode shield) */
+ html[data-dsh-skin="whalechan-harness"] span.Sh0Q9G_triggerIcon {
+  position: relative;
+}
+ html[data-dsh-skin="whalechan-harness"] span.Sh0Q9G_triggerIcon svg {
+  visibility: hidden !important;
+}
+ html[data-dsh-skin="whalechan-harness"] span.Sh0Q9G_triggerIcon::after {
+  content: ""; position: absolute; width: 16px; height: 16px; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: url('assets/control-fanart/perm-shield-full-64.png') center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  pointer-events: none;
+}
+ html[data-dsh-skin="whalechan-harness"] button.Sh0Q9G_trigger[data-permission-mode="read-only"] span.Sh0Q9G_triggerIcon::after {
+  background-image: url('assets/control-fanart/perm-shield-readonly-64.png') !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.Sh0Q9G_trigger[data-permission-mode="workspace-write"] span.Sh0Q9G_triggerIcon::after {
+  background-image: url('assets/control-fanart/perm-shield-write-64.png') !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.Sh0Q9G_trigger[data-permission-mode="danger-full-access"] span.Sh0Q9G_triggerIcon::after {
+  background-image: url('assets/control-fanart/perm-shield-full-64.png') !important;
+}
+
+/* 权限下拉菜单项目图标 (Permission select menu items - Read Only / Workspace Write / Full access) */
+ html[data-dsh-skin="whalechan-harness"] [role="menu"] [role="menuitem"] span[class*="itemIcon"] svg path {
+  display: none !important;
+}
+ html[data-dsh-skin="whalechan-harness"] [role="menu"] [role="menuitem"] span[class*="itemIcon"] svg {
+  background-position: center !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  image-rendering: -webkit-optimize-contrast !important;
+  filter: drop-shadow(0 1px 2px rgb(20 47 84 / 16%)) !important;
+}
+ html[data-dsh-skin="whalechan-harness"] [role="menuitem"][data-permission-option="read-only"] span[class*="itemIcon"] svg,
+ html[data-dsh-skin="whalechan-harness"] [role="menu"] ._viewport_19372_21 > div:nth-child(1) [role="menuitem"] span[class*="itemIcon"] svg {
+  background-image: url('assets/control-fanart/perm-shield-readonly-64.png') !important;
+}
+ html[data-dsh-skin="whalechan-harness"] [role="menuitem"][data-permission-option="workspace-write"] span[class*="itemIcon"] svg,
+ html[data-dsh-skin="whalechan-harness"] [role="menu"] ._viewport_19372_21 > div:nth-child(2) [role="menuitem"] span[class*="itemIcon"] svg {
+  background-image: url('assets/control-fanart/perm-shield-write-64.png') !important;
+}
+ html[data-dsh-skin="whalechan-harness"] [role="menuitem"][data-permission-option="danger-full-access"] span[class*="itemIcon"] svg,
+ html[data-dsh-skin="whalechan-harness"] [role="menu"] ._viewport_19372_21 > div:nth-child(3) [role="menuitem"] span[class*="itemIcon"] svg {
+  background-image: url('assets/control-fanart/perm-shield-full-64.png') !important;
+}
+
+/* 预设标志 (Agent preset icon) */
+ html[data-dsh-skin="whalechan-harness"] span.SVAs4q_label svg.SVAs4q_icon {
+  visibility: hidden !important;
+}
+ html[data-dsh-skin="whalechan-harness"] span.SVAs4q_label {
+  position: relative; padding-left: 20px !important;
+}
+ html[data-dsh-skin="whalechan-harness"] span.SVAs4q_label::before {
+  content: ""; position: absolute; width: 16px; height: 16px; left: 0; top: 50%;
+  transform: translateY(-50%);
+  background: url('assets/control-fanart/hero-agent-mode-64.png') center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  pointer-events: none;
+}
+
+/* Hero 初始栏：工作区文件夹 (Workspace folder) 与 智能体模式 (Agent Mode) */
+ html[data-dsh-skin="whalechan-harness"] button.pXSMma_workspace svg.pXSMma_folder,
+ html[data-dsh-skin="whalechan-harness"] button[class*="workspace"] svg[class*="folder"] {
+  background: url('assets/control-fanart/workspace-folder-closed-64.png') center/contain no-repeat !important;
+  image-rendering: -webkit-optimize-contrast !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.pXSMma_workspace svg.pXSMma_folder path,
+ html[data-dsh-skin="whalechan-harness"] button[class*="workspace"] svg[class*="folder"] path {
+  display: none !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.cubgiG_seat svg.cubgiG_seatIcon,
+ html[data-dsh-skin="whalechan-harness"] button[class*="seat"] svg[class*="seatIcon"] {
+  background: url('assets/control-fanart/hero-agent-mode-64.png') center/contain no-repeat !important;
+  image-rendering: -webkit-optimize-contrast !important;
+}
+ html[data-dsh-skin="whalechan-harness"] button.cubgiG_seat svg.cubgiG_seatIcon path,
+ html[data-dsh-skin="whalechan-harness"] button[class*="seat"] svg[class*="seatIcon"] path {
+  display: none !important;
+}
+
+/* 任务列表头图标与目标指南针徽章 */
+ html[data-dsh-skin="whalechan-harness"] span.lXshSW_lead svg,
+ html[data-dsh-skin="whalechan-harness"] span.nLMEza_goalGlyph svg {
+  visibility: hidden !important;
+}
+ html[data-dsh-skin="whalechan-harness"] span.lXshSW_lead {
+  position: relative;
+}
+ html[data-dsh-skin="whalechan-harness"] span.lXshSW_lead::after {
+  content: ""; position: absolute; width: 16px; height: 16px; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: url('assets/control-fanart/control-todo-64.png') center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  pointer-events: none;
+}
+ html[data-dsh-skin="whalechan-harness"] span.nLMEza_goalGlyph {
+  position: relative;
+}
+ html[data-dsh-skin="whalechan-harness"] span.nLMEza_goalGlyph::after {
+  content: ""; position: absolute; width: 16px; height: 16px; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: url('assets/control-fanart/control-goal-edit-64.png') center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  pointer-events: none;
+}
+
+/* 活动运行中的状态指示器 (Active session beacon / spinner)
+   精准锁定在 .YDXeBa_slot 与顶部子代理活动位点，消除浮动与位置错位 */
+ html[data-dsh-skin="whalechan-harness"] span.YDXeBa_slot svg._matrix_10orb_4,
+ html[data-dsh-skin="whalechan-harness"] span.h8S2Va_activitySlot svg._matrix_10orb_4 {
+  visibility: hidden !important;
+}
+ html[data-dsh-skin="whalechan-harness"] span.YDXeBa_slot:has(svg._matrix_10orb_4),
+ html[data-dsh-skin="whalechan-harness"] span.h8S2Va_activitySlot:has(svg._matrix_10orb_4) {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+ html[data-dsh-skin="whalechan-harness"] span.YDXeBa_slot:has(svg._matrix_10orb_4)::after {
+  content: ""; position: absolute; width: 14px; height: 14px; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: url('assets/control-fanart/session-active-beacon-64.png') center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 0 3px rgb(39 187 209 / 45%));
+  pointer-events: none;
+}
+ html[data-dsh-skin="whalechan-harness"] span.h8S2Va_activitySlot:has(svg._matrix_10orb_4)::after {
+  content: ""; position: absolute; width: 14px; height: 14px; left: 50%; top: 50%;
+  transform: translate(-50%, -50%) !important;
+  background: url('assets/control-fanart/session-active-beacon-64.png') center/contain no-repeat !important;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 0 3px rgb(39 187 209 / 55%));
+  pointer-events: none;
+  animation: whalechan-beacon-pulse 2.4s ease-in-out infinite !important;
+}
+
+/* 上下文注入卡片 (Context Injection node) 独立专属同人图标 */
+ html[data-dsh-skin="whalechan-harness"] [data-chat-flow-kind="context"] span._iconIdle_9cl6j_42 svg {
+  visibility: hidden !important;
+}
+ html[data-dsh-skin="whalechan-harness"] [data-chat-flow-kind="context"] span._iconIdle_9cl6j_42 {
+  position: relative !important;
+}
+ html[data-dsh-skin="whalechan-harness"] [data-chat-flow-kind="context"] span._iconIdle_9cl6j_42::after {
+  content: ""; position: absolute; width: 16px; height: 16px; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: url('assets/control-fanart/context-injection-card-64.png') center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 1px 2px rgb(20 47 84 / 16%));
+  pointer-events: none;
+}
+
+/* 权限变更 / 沙箱模式命令行 (Permission & sandbox command row) 独立专属同人图标 */
+ html[data-dsh-skin="whalechan-harness"] ._Xvjua_root[data-variant="others"] span._leading_9cl6j_23 svg {
+  visibility: hidden !important;
+}
+ html[data-dsh-skin="whalechan-harness"] ._Xvjua_root[data-variant="others"] span._leading_9cl6j_23 {
+  position: relative !important;
+}
+ html[data-dsh-skin="whalechan-harness"] ._Xvjua_root[data-variant="others"] span._leading_9cl6j_23::after {
+  content: ""; position: absolute; width: 16px; height: 16px; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: url('assets/control-fanart/command-permission-shield-64.png') center/contain no-repeat;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 1px 2px rgb(20 47 84 / 16%));
+  pointer-events: none;
+}
+
+/* Generic fallback for MCP, user-defined, and unknown tools. Exact Harness
+   built-ins below retain profession-specific Whale-chan fan-art. */
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] {
+  --whale-tool-icon: url('assets/tool-fanart/toolcall-64.png');
+  --whale-tool-color: #248bda;
+  --whale-tool-soft: rgb(36 139 218 / 9%);
+  --whale-state-color: #248bda;
+  --whale-state-symbol: "";
+  --whale-state-icon: none;
+}
+/* Built-in Harness tools retain their profession-specific fan-art. Any tool
+   without an exact rule (including user MCP tools) keeps the generic Tool Call art. */
+ html[data-dsh-skin="whalechan-harness"] [data-tool="pwsh" i][data-state] { --whale-tool-icon:url('assets/tool-fanart/pwsh-64.png'); --whale-tool-color:#4057b2; --whale-tool-soft:rgb(64 87 178 / 9%); }
+ html[data-dsh-skin="whalechan-harness"] [data-tool="read" i][data-state] { --whale-tool-icon:url('assets/tool-fanart/read-64.png'); }
+ html[data-dsh-skin="whalechan-harness"] [data-tool="write" i][data-state] { --whale-tool-icon:url('assets/tool-fanart/write-64.png'); }
+ html[data-dsh-skin="whalechan-harness"] [data-tool="edit" i][data-state] { --whale-tool-icon:url('assets/tool-fanart/edit-64.png'); }
+ html[data-dsh-skin="whalechan-harness"] [data-tool="glob" i][data-state] { --whale-tool-icon:url('assets/tool-fanart/glob-64.png'); --whale-tool-color:#27a9c2; }
+ html[data-dsh-skin="whalechan-harness"] [data-tool="grep" i][data-state] { --whale-tool-icon:url('assets/tool-fanart/grep-64.png'); --whale-tool-color:#27a9c2; }
+ html[data-dsh-skin="whalechan-harness"] [data-tool="web_search" i][data-state] { --whale-tool-icon:url('assets/tool-fanart/web-64.png'); --whale-tool-color:#24a68a; --whale-tool-soft:rgb(36 166 138 / 9%); }
+ html[data-dsh-skin="whalechan-harness"] [data-tool="image_gen" i][data-state] { --whale-tool-icon:url('assets/tool-fanart/image-64.png'); --whale-tool-color:#795fd6; --whale-tool-soft:rgb(121 95 214 / 9%); }
+ html[data-dsh-skin="whalechan-harness"] [data-tool="subagent" i][data-state],
+ html[data-dsh-skin="whalechan-harness"] [data-tool="subagent_fork" i][data-state] { --whale-tool-icon:url('assets/tool-fanart/subagent-64.png'); --whale-tool-color:#3d9be5; }
+ html[data-dsh-skin="whalechan-harness"] [data-tool="workflow" i][data-state] { --whale-tool-icon:url('assets/tool-fanart/workflow-64.png'); --whale-tool-color:#3d9be5; }
+ html[data-dsh-skin="whalechan-harness"] [data-tool="ask_user_question" i][data-state] { --whale-tool-icon:url('assets/tool-fanart/ask-64.png'); --whale-tool-color:#795fd6; }
+ html[data-dsh-skin="whalechan-harness"] [data-tool="todo_write" i][data-state] { --whale-tool-icon:url('assets/tool-fanart/todo-64.png'); --whale-tool-color:#6257d9; }
+
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state="running"],
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state="ongoing"] { --whale-state-color:#27bbd1; --whale-state-symbol:""; }
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state="ok"],
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state="success"] {
+  --whale-state-color:#43be78; --whale-state-symbol:"";
+  --whale-state-icon:url('assets/status-icons/success-spark.svg');
+}
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state="error"] {
+  --whale-state-color:#e5656e; --whale-state-symbol:"";
+  --whale-state-icon:url('assets/status-icons/error-splash.svg');
+}
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state="warning"],
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state="stopped"] { --whale-state-color:#e8ad45; --whale-state-symbol:""; }
+
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] [class*="leading"] {
+  width: 34px !important; min-width: 34px; height: 34px; margin-right: 8px !important;
+  color: transparent !important; position: relative; overflow: visible !important; flex-shrink: 0;
+}
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] [class*="leading"] > svg,
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] [class*="leading"] > span,
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] [class*="leading"] > [data-state],
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] [class*="leading"] ._dot_10orb_3,
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] [class*="leading"] ._matrix_10orb_4 { display:none !important; }
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] [class*="leading"]::after {
+  content:""; position:absolute; inset:0;
+  background:var(--whale-tool-icon) center/contain no-repeat; pointer-events:none;
+  filter:drop-shadow(0 1px 2px rgb(20 47 84 / 16%));
+}
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] [class*="leading"]::before {
+  content:var(--whale-state-symbol); box-sizing:border-box; position:absolute; z-index:2;
+  right:-2px; bottom:-1px; display:block; width:15px; height:15px;
+  border:0; border-radius:0; color:transparent;
+  background:var(--whale-state-icon) center/contain no-repeat;
+  filter:drop-shadow(0 1px 2px rgb(20 47 84 / 20%)); pointer-events:none;
+}
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state="running"] [class*="leading"]::before,
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state="ongoing"] [class*="leading"]::before {
+  right:0; bottom:1px; width:10px; height:10px; border-radius:50%;
+  border:2px solid color-mix(in srgb, var(--whale-state-color) 28%, var(--dsw-alias-bg-base, #fff));
+  border-top-color:var(--whale-state-color); background:var(--dsw-alias-bg-base, #fff);
+  filter:none; animation:whalechan-state-spin .85s linear infinite;
+}
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state="warning"] [class*="leading"]::before,
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state="stopped"] [class*="leading"]::before {
+  right:1px; bottom:2px; width:8px; height:8px; border:1.5px solid var(--dsw-alias-bg-base,#fff);
+  border-radius:50%; background:#e8ad45; filter:none;
+}
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] [class*="row"] {
+  border-radius:10px; transition:background-color .16s ease, box-shadow .16s ease;
+}
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] [class*="row"]:hover {
+  background:linear-gradient(90deg, var(--whale-tool-soft), transparent 72%);
+  box-shadow:inset 2px 0 0 var(--whale-tool-color);
+}
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] [class*="title"] { font-weight:550; }
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] span[data-state="error"],
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] span[data-state="warning"],
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] svg[data-state="ongoing"],
+ html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] :is(._dot_10orb_3, ._matrix_10orb_4) { display:none !important; }
+
+ html[data-dsh-skin="whalechan-harness"] [class*="turnStatus"]::before {
+  content: ""; display: inline-block; width: 32px; height: 32px; margin-right: 6px;
+  background: url('assets/status/08-rice-before-reasoning.png') center/contain no-repeat;
+  vertical-align: middle; animation: whalechan-bob 1.8s ease-in-out infinite;
+}
+ html[data-dsh-skin="whalechan-harness"] [class*="turnStatus"] { color: #248bda; }
+
+/* ReasoningRow exposes data-variant="think"; replace its native Think icon in
+   both running and settled states, rather than guessing generated class names. */
+ html[data-dsh-skin="whalechan-harness"] [data-variant="think"][data-state] [class*="leading"] {
+  width:34px !important; min-width:34px; height:34px; margin-right:8px !important;
+  color:transparent !important; position:relative; overflow:visible !important;
+}
+ html[data-dsh-skin="whalechan-harness"] [data-variant="think"][data-state] [class*="leading"] > svg,
+ html[data-dsh-skin="whalechan-harness"] [data-variant="think"][data-state] [class*="leading"] > span { display:none !important; }
+ html[data-dsh-skin="whalechan-harness"] [data-variant="think"][data-state] [class*="leading"]::after {
+  content:""; position:absolute; inset:0;
+  background:url('assets/tool-fanart/thinking-64.png') center/contain no-repeat;
+  filter:drop-shadow(0 1px 2px rgb(20 47 84 / 16%)); pointer-events:none;
+}
+ html[data-dsh-skin="whalechan-harness"] [data-variant="think"][data-state="running"] [class*="leading"]::before {
+  content:""; box-sizing:border-box; position:absolute; z-index:2; right:1px; bottom:2px;
+  width:11px; height:11px; border:2px solid rgb(39 187 209 / 28%);
+  border-top-color:#27bbd1; border-radius:50%; background:var(--dsw-alias-bg-base,#fff);
+  animation:whalechan-state-spin .85s linear infinite;
+}
+
+ html[data-dsh-skin="whalechan-harness"] [data-composer-card="true"] {
+  border-color: color-mix(in srgb, #248bda 28%, var(--dsw-alias-border-l2, transparent));
+  box-shadow: 0 12px 36px rgb(36 139 218 / 9%);
+}
+ html[data-dsh-skin="whalechan-harness"] [data-conversation-scroll]::after {
+  content: ""; position: fixed; right: 28px; bottom: 62px; width: 82px; height: 82px;
+  opacity: .055; background: url('assets/status/07-subagent-outsourcing.png') center/contain no-repeat;
+  pointer-events: none; filter: saturate(.8);
+}
+html[data-dsh-skin="whalechan-harness"] body[data-ds-dark-theme]  [data-conversation-scroll]::after,
+ html[data-dsh-skin="whalechan-harness"] body[data-ds-dark-theme] [data-conversation-scroll]::after { opacity: .09; }
+
+@keyframes whalechan-bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
+@keyframes whalechan-state-spin { to { transform:rotate(360deg); } }
+@keyframes whalechan-beacon-pulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.95;
+    filter: drop-shadow(0 0 3px rgb(39 187 209 / 45%));
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 1;
+    filter: drop-shadow(0 0 6px rgb(39 187 209 / 80%));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+   html[data-dsh-skin="whalechan-harness"] [class*="turnStatus"]::before,
+   html[data-dsh-skin="whalechan-harness"] [data-tool][data-state] [class*="leading"]::before { animation:none; transition:none; }
+}
+
+html[data-dsh-skin="whalechan-harness"] [id="root"] { background: transparent; }
+
+html[data-dsh-skin="whalechan-harness"] body { --shiki-background: var(--dsw-alias-markdown-code-block); }

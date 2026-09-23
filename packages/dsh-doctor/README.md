@@ -121,7 +121,8 @@ Exit codes: 0 ok, 1 repaired and verified, 2 attention needed, 3 blocked
 
 ## Config
 
-The host settings namespace is `doctor`:
+The doctor policy lives in the plugin's own Host config (the entry the Web UI
+plugins card edits; `doctor` on a standalone install):
 
 | Key | Default | Meaning |
 | --- | --- | --- |

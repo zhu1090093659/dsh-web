@@ -1,0 +1,254 @@
+/**
+ * Blueprint — L1 token layer.
+ *
+ * Light values on :root, dark values under body[data-ds-dark-theme].
+ * Only official --dsw-alias-* / --dsw-specific-* semantic tokens are remapped
+ * here; texture and the HUD live in patches.css + hooks.mjs.
+ */
+
+:root {
+  color: #2b2723;
+  background-color: #ece3d2;
+
+  /* surfaces — warm drafting paper: cream base, warm off-white panels (no
+     pure white anywhere, which is what made the shell read as glaring).
+     bg-base carries alpha so the backdrop shows through the full-bleed
+     columns; the opaque canvas colour lives on .dsh-bp-bg-base */
+  --dsw-alias-bg-base: #ece3d28c;
+  --dsw-alias-bg-layer-1: #f8f3e8;
+  --dsw-alias-bg-layer-2: #f1e9da;
+  --dsw-alias-bg-layer-3: #e6dbc6;
+  --dsw-alias-bg-mask-1: #f8f3e8cc;
+  --dsw-alias-bg-mask-2: #f8f3e899;
+  --dsw-alias-bg-mask-3: #f8f3e866;
+  --dsw-alias-bg-mask-drop: #ece3d280;
+  --dsw-alias-bg-mask-photo: #ece3d2a6;
+  --dsw-alias-bg-module-platform: #f1e9da;
+  --dsw-alias-bg-multi-select: #7a624226;
+  --dsw-alias-bg-overlay: #f8f3e8e0;
+  --dsw-alias-bg-skeleton: #6b5a3e10;
+
+  /* borders — sepia hairlines */
+  --dsw-alias-border-inverted: #f8f3e8;
+  --dsw-alias-border-inverted2: #f1e9da;
+  --dsw-alias-border-l1: #6b5a3e14;
+  --dsw-alias-border-l2: #6b5a3e24;
+  --dsw-alias-border-l2-darkmode-thin: #6b5a3e14;
+  --dsw-alias-border-l3: #6b5a3e36;
+  --dsw-alias-border-l4: #6b5a3e48;
+
+  /* labels — warm ink ramp, all tiers keep >= 4.5:1 on layer-1 */
+  --dsw-alias-label-primary: #2b2723;
+  --dsw-alias-label-primary-bluish: #6f5a3c;
+  --dsw-alias-label-primary-dimmed: #6b6154;
+  --dsw-alias-label-primary-foreground: #f8f3e8;
+  --dsw-alias-label-primary-inverted: #f8f3e8;
+  --dsw-alias-label-secondary: #4a4238;
+  --dsw-alias-label-tertiary: #5c5346;
+  --dsw-alias-label-dimmed: #5f5648;
+  --dsw-alias-label-caption: #6b6154;
+
+  /* brand + interactive — the ink stays blueprint blue on warm paper */
+  --dsw-alias-brand-primary: #6b5340;
+  --dsw-alias-brand-primary-invert: #f8f3e8;
+  --dsw-alias-brand-text: #5f4d33;
+  --dsw-alias-interactive-bg-hover: #7a624214;
+  --dsw-alias-interactive-bg-hover-accent: #7a624224;
+  --dsw-alias-interactive-bg-hover-danger: #b4453f1f;
+  --dsw-alias-interactive-bg-hover-solid: #e6dbc6;
+  --dsw-alias-interactive-bg-active: #7a624224;
+
+  /* buttons */
+  --dsw-alias-button-primary-fill: #6b5340;
+  --dsw-alias-button-primary-hover: #7d6449;
+  --dsw-alias-button-primary-dimmed: #f0e9da;
+  --dsw-alias-button-contrast-fill: #2b2723;
+  --dsw-alias-button-elevated-fill: #f8f3e8;
+  --dsw-alias-button-floating-fill: #f8f3e8;
+  --dsw-alias-button-floating-hover: #f1e9da;
+  --dsw-alias-button-ghost-active-border: #7a62424d;
+  --dsw-alias-button-ghost-active-fill: #7a62421a;
+  --dsw-alias-button-ghost-active-hover: #7a624226;
+  --dsw-alias-button-info-fill: #6b5340;
+  --dsw-alias-button-info-hover: #7d6449;
+  --dsw-alias-button-tool-bar-fill: #f8f3e8;
+  --dsw-alias-button-tool-bar-fill-invisible: #f8f3e800;
+  --dsw-alias-button-tool-bar-hover: #f1e9da;
+
+  /* markdown */
+  --dsw-alias-markdown-citation: #6b5340;
+  --dsw-alias-markdown-code-block: #f1e9da;
+  --dsw-alias-markdown-code-block-banner: #e6dbc6;
+  --dsw-alias-markdown-code-segment-selected: #7a624233;
+  --dsw-alias-markdown-code-segment-unselected: #f1e9da;
+  --dsw-alias-markdown-inline-code: #e6dbc6;
+  --dsw-alias-markdown-placeholder: #5f5648;
+  --dsw-alias-markdown-tag: #e6dbc6;
+
+  /* state */
+  --dsw-alias-state-business-primary: #6b5340;
+  --dsw-alias-state-business-tertiary: #ece1cc;
+  --dsw-alias-state-error-primary: #b4453f;
+  --dsw-alias-state-error-secondary: #c9726c;
+  --dsw-alias-state-danger-primary: #a83a34;
+  --dsw-alias-state-danger-tertiary: #a83a3414;
+  --dsw-alias-state-success-primary: #2b7047;
+  --dsw-alias-state-success-secondary: #5c9c74;
+  --dsw-alias-state-success-tertiary: #dcece0;
+  --dsw-alias-state-warn-label: #9a6a12;
+  --dsw-alias-state-warn-primary: #9a6a12;
+  --dsw-alias-state-warn-secondary: #b8873a;
+  --dsw-alias-state-warn-tertiary: #f0e3c4;
+
+  /* overlays */
+  --dsw-alias-toast-bg: #2b2723;
+  --dsw-alias-tooltip-bg: #2b2723;
+  --dsw-alias-tooltip-fg: #f8f3e8;
+
+  /* shell anchors */
+  --dsw-specific-bubble: #f8f3e8;
+  --dsw-specific-bubble-highlight: #f1e9da;
+  --dsw-specific-input-major: #f8f3e8;
+  --dsw-specific-login-input: #f1e9da;
+  --dsw-specific-menu: #f8f3e8;
+  --dsw-specific-selector: #f1e9da;
+  --dsw-specific-sidebar-fill: #e0d3b8;
+  --dsw-specific-sidebar-nav-item-active: #7a624224;
+  --dsw-specific-sidebar-nav-item-active-accent: #6b5340;
+  --dsw-specific-sidebar-nav-item-hover: #7a624214;
+  /* elevated surface (goal bar / todo panel / queue dock / composer accessory) */
+  --dsw-specific-tip: #f1e9da;
+
+  /* scrollbars */
+  --dsw-alias-scrollbar-bg-l1: #6b5a3e14;
+  --dsw-alias-scrollbar-bg-l2: #6b5a3e20;
+  --dsw-alias-scrollbar-hover-l1: #6b5a3e2e;
+  --dsw-alias-scrollbar-hover-l2: #6b5a3e38;
+
+  /* elevation */
+  --dsw-shadow-lv1: 0 1px 2px #6b5a3e14;
+  --dsw-shadow-lv2: 0 4px 12px #6b5a3e1f;
+  --dsw-shadow-lv3: 0 12px 32px #6b5a3e2b;
+}
+
+body[data-ds-dark-theme] {
+  color: #dceaf7;
+  background-color: #08243d;
+
+  /* surfaces */
+  --dsw-alias-bg-base: #08243d73;
+  --dsw-alias-bg-layer-1: #0d3152;
+  --dsw-alias-bg-layer-2: #113a5f;
+  --dsw-alias-bg-layer-3: #16456f;
+  --dsw-alias-bg-mask-1: #0d3152cc;
+  --dsw-alias-bg-mask-2: #0d315299;
+  --dsw-alias-bg-mask-3: #0d315266;
+  --dsw-alias-bg-mask-drop: #08243d80;
+  --dsw-alias-bg-mask-photo: #08243da6;
+  --dsw-alias-bg-module-platform: #0f3658;
+  --dsw-alias-bg-multi-select: #4fd1ff26;
+  --dsw-alias-bg-overlay: #0d3152e0;
+  --dsw-alias-bg-skeleton: #4fd1ff10;
+
+  /* borders */
+  --dsw-alias-border-inverted: #08243d;
+  --dsw-alias-border-inverted2: #0d3152;
+  --dsw-alias-border-l1: #9fd8ff14;
+  --dsw-alias-border-l2: #9fd8ff24;
+  --dsw-alias-border-l2-darkmode-thin: #9fd8ff1a;
+  --dsw-alias-border-l3: #9fd8ff38;
+  --dsw-alias-border-l4: #9fd8ff4d;
+
+  /* labels */
+  --dsw-alias-label-primary: #dceaf7;
+  --dsw-alias-label-primary-bluish: #a9d8f7;
+  --dsw-alias-label-primary-dimmed: #9dbcd6;
+  --dsw-alias-label-primary-foreground: #04222f;
+  --dsw-alias-label-primary-inverted: #08243d;
+  --dsw-alias-label-secondary: #b8d0e6;
+  --dsw-alias-label-tertiary: #9db8cd;
+  --dsw-alias-label-dimmed: #8aa8c2;
+  --dsw-alias-label-caption: #7f9db8;
+
+  /* brand + interactive */
+  --dsw-alias-brand-primary: #4fd1ff;
+  --dsw-alias-brand-primary-invert: #04222f;
+  --dsw-alias-brand-text: #bdeaff;
+  --dsw-alias-interactive-bg-hover: #4fd1ff18;
+  --dsw-alias-interactive-bg-hover-accent: #4fd1ff26;
+  --dsw-alias-interactive-bg-hover-danger: #ff6b6b1f;
+  --dsw-alias-interactive-bg-hover-solid: #16456f;
+  --dsw-alias-interactive-bg-active: #4fd1ff2b;
+
+  /* buttons */
+  --dsw-alias-button-primary-fill: #4fd1ff;
+  --dsw-alias-button-primary-hover: #7fdcff;
+  --dsw-alias-button-primary-dimmed: #14506b;
+  --dsw-alias-button-contrast-fill: #062033;
+  --dsw-alias-button-elevated-fill: #113a5f;
+  --dsw-alias-button-floating-fill: #0d3152;
+  --dsw-alias-button-floating-hover: #16456f;
+  --dsw-alias-button-ghost-active-border: #4fd1ff4d;
+  --dsw-alias-button-ghost-active-fill: #4fd1ff1a;
+  --dsw-alias-button-ghost-active-hover: #4fd1ff26;
+  --dsw-alias-button-info-fill: #4fd1ff;
+  --dsw-alias-button-info-hover: #7fdcff;
+  --dsw-alias-button-tool-bar-fill: #113a5f;
+  --dsw-alias-button-tool-bar-fill-invisible: #0d315200;
+  --dsw-alias-button-tool-bar-hover: #16456f;
+
+  /* markdown */
+  --dsw-alias-markdown-citation: #4fd1ff;
+  --dsw-alias-markdown-code-block: #0a2c49;
+  --dsw-alias-markdown-code-block-banner: #113a5f;
+  --dsw-alias-markdown-code-segment-selected: #4fd1ff33;
+  --dsw-alias-markdown-code-segment-unselected: #0a2c49;
+  --dsw-alias-markdown-inline-code: #16456f;
+  --dsw-alias-markdown-placeholder: #7f9db8;
+  --dsw-alias-markdown-tag: #113a5f;
+
+  /* state */
+  --dsw-alias-state-business-primary: #4fd1ff;
+  --dsw-alias-state-business-tertiary: #14506b;
+  --dsw-alias-state-error-primary: #ff6b6b;
+  --dsw-alias-state-error-secondary: #ff9b9b;
+  --dsw-alias-state-danger-primary: #ff8a8a;
+  --dsw-alias-state-danger-tertiary: #ff6b6b1f;
+  --dsw-alias-state-success-primary: #4ade80;
+  --dsw-alias-state-success-secondary: #86efac;
+  --dsw-alias-state-success-tertiary: #1b4a30;
+  --dsw-alias-state-warn-label: #f0b24a;
+  --dsw-alias-state-warn-primary: #f0b24a;
+  --dsw-alias-state-warn-secondary: #f7c97a;
+  --dsw-alias-state-warn-tertiary: #b07d1a;
+
+  /* overlays */
+  --dsw-alias-toast-bg: #113a5f;
+  --dsw-alias-tooltip-bg: #dceaf7;
+  --dsw-alias-tooltip-fg: #08243d;
+
+  /* shell anchors */
+  --dsw-specific-bubble: #0d3152;
+  --dsw-specific-bubble-highlight: #16456f;
+  --dsw-specific-input-major: #0d3152;
+  --dsw-specific-login-input: #113a5f;
+  --dsw-specific-menu: #0d3152;
+  --dsw-specific-selector: #113a5f;
+  --dsw-specific-sidebar-fill: #0a2c49;
+  --dsw-specific-sidebar-nav-item-active: #4fd1ff2b;
+  --dsw-specific-sidebar-nav-item-active-accent: #4fd1ff;
+  --dsw-specific-sidebar-nav-item-hover: #4fd1ff18;
+  /* elevated surface (goal bar / todo panel / queue dock / composer accessory) */
+  --dsw-specific-tip: #16456f;
+
+  /* scrollbars */
+  --dsw-alias-scrollbar-bg-l1: #4fd1ff1a;
+  --dsw-alias-scrollbar-bg-l2: #4fd1ff26;
+  --dsw-alias-scrollbar-hover-l1: #4fd1ff2e;
+  --dsw-alias-scrollbar-hover-l2: #4fd1ff45;
+
+  /* elevation */
+  --dsw-shadow-lv1: 0 1px 2px #00000066;
+  --dsw-shadow-lv2: 0 4px 12px #00000080;
+  --dsw-shadow-lv3: 0 12px 32px #00000099;
+}

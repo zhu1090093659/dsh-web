@@ -11,12 +11,12 @@ Status: implemented
 在 @linxin666/dsh-tool-describe-image 中引入多端点候选列表、轮询调度与故障转移容灾机制：
 
 - **配置结构**：在 Config 中新增 endpoints 数组（每个端点支持独立的 
-ame、aseURL、model、piKey、piKeyEnv、piStyle、maxOutputTokens、enabled），并支持顶层 otationMode（ound-robin 轮询或 ailover 故障转移）与 etryNextOnFailure（失败顺延重试）。
-- **向后完全兼容**：若未配置 endpoints 数组，系统无缝回退到顶层单一 aseURL + model 配置，既有配置文件与测试无需任何调整。
+ame、\baseURL、model、\apiKey、\apiKeyEnv、\apiStyle、maxOutputTokens、enabled），并支持顶层 \rotationMode（\round-robin 轮询或 \failover 故障转移）与 \retryNextOnFailure（失败顺延重试）。
+- **向后完全兼容**：若未配置 endpoints 数组，系统无缝回退到顶层单一 \baseURL + model 配置，既有配置文件与测试无需任何调整。
 - **调度引擎**：
-  - ound-robin：维护实例内调用游标，按启用端点顺序依次轮换候选模型。
-  - ailover：优先使用主端点（列表首项），仅在发生异常时顺序降级。
-  - 遇到 429、5xx 或网络故障时，若开启 etryNextOnFailure（默认开启），自动尝试候选列表中的下一个端点；若全部端点均失败，合并输出所有端点的清晰错误明细。
+  - \round-robin：维护实例内调用游标，按启用端点顺序依次轮换候选模型。
+  - \failover：优先使用主端点（列表首项），仅在发生异常时顺序降级。
+  - 遇到 429、5xx 或网络故障时，若开启 \retryNextOnFailure（默认开启），自动尝试候选列表中的下一个端点；若全部端点均失败，合并输出所有端点的清晰错误明细。
 - **返回模型透明与语义缓存**：执行成功后返回实际响应模型的 ID（output.model）；短时语义缓存以实际调用的模型与图片内容为 key 精准缓存。
 - **前端设置卡**：设置卡支持多端点调度策略切换与重试配置，并提供多语言（zh/en）支持。
 

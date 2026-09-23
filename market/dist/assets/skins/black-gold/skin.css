@@ -1,0 +1,234 @@
+/**
+ * Black Gold Gilded (黑金鎏金) — L1 token layer.
+ *
+ * Light values (象牙金) on :root, dark values (黑漆描金) under
+ * body[data-ds-dark-theme]. The loader force-scopes every selector under
+ * html[data-dsh-skin="black-gold"] and clones :root theme tokens onto body,
+ * so the light block is written the canonical way.
+ *
+ * Division of labour with patches.css: this sheet owns the *metal* — the ink
+ * ramp and the gold ramp. The *ornament* (缠枝角花, 回纹带, 金箔, 描金双线)
+ * lives in patches.css + assets/, because none of it is expressible as a token.
+ *
+ * Body text is pale gold-cream rather than saturated gold: the saturated gold
+ * is reserved for accents, rules and the CTA, which is what makes it read as
+ * metal instead of as a colour wash.
+ */
+
+/* 市场渲染器只注入样式、不跑加载器的 :root→body 克隆，所以调色板必须
+   同时声明在 body 上，否则浅色模式下会被 facade 自带的浅色 token 盖住。 */
+:root,
+body {
+  color: #f2e9d4;
+  /* 透明：body::after 在 z-index -1，会被 body 自身背景整层盖住。
+     底色改由 body::after 自己提供（见 patches.css）。 */
+  background-color: transparent;
+
+  /* surfaces — warm black lacquer, alpha so the gold dust reads through */
+  --dsw-alias-bg-base: #0a08067a;
+  --dsw-alias-bg-layer-1: #12100c;
+  --dsw-alias-bg-layer-2: #191510;
+  --dsw-alias-bg-layer-3: #211c15;
+  --dsw-alias-bg-overlay: #191510f5;
+  --dsw-alias-bg-module-platform: #12100c;
+  --dsw-alias-bg-multi-select: #211c15;
+  --dsw-alias-bg-skeleton: #c9ab6e12;
+
+  /* borders */
+  --dsw-alias-border-inverted: #211c15;
+  --dsw-alias-border-inverted2: #12100c;
+  --dsw-alias-border-l1: #c9ab6e38;
+  --dsw-alias-border-l2: #c9ab6e57;
+  --dsw-alias-border-l2-darkmode-thin: #c9ab6e38;
+  --dsw-alias-border-l3: #c9ab6e75;
+  --dsw-alias-border-l4: #c9ab6e9e;
+
+  /* labels — pale gold ink; the saturated gold stays an accent */
+  --dsw-alias-label-primary: #f2e9d4;
+  --dsw-alias-label-primary-bluish: #e4d2a6;
+  --dsw-alias-label-primary-dimmed: #cabfa3;
+  --dsw-alias-label-secondary: #cabfa3;
+  --dsw-alias-label-tertiary: #a1967c;
+  --dsw-alias-label-caption: #736a56;
+  --dsw-alias-label-dimmed: #403b31;
+  --dsw-alias-label-primary-inverted: #1a1509;
+
+  /* brand + interactive */
+  --dsw-alias-brand-primary: #c9ab6e;
+  --dsw-alias-brand-text: #1a1509;
+  --dsw-alias-interactive-bg-hover: #c9ab6e38;
+  --dsw-alias-interactive-bg-active: #c9ab6e38;
+  --dsw-alias-interactive-bg-hover-solid: #241d13;
+  --dsw-alias-interactive-bg-hover-accent: #c9ab6e45;
+  --dsw-alias-link: #e4d2a6;
+
+  /* primary action set (matched: fill / hover / dimmed / foreground) */
+  --dsw-alias-button-primary-fill: #c9ab6e;
+  --dsw-alias-button-primary-hover: #e4d2a6;
+  --dsw-alias-button-primary-dimmed: #c9ab6e66;
+  --dsw-alias-label-primary-foreground: #1a1509;
+  --dsw-alias-button-contrast-fill: #1a1509;
+  --dsw-alias-button-info-fill: #c9ab6e;
+  --dsw-alias-button-info-hover: #e4d2a6;
+
+  /* states */
+  --dsw-alias-state-business-primary: #c9ab6e;
+  --dsw-alias-state-business-tertiary: #c9ab6e29;
+  --dsw-alias-state-success-primary: #7fbf8f;
+  --dsw-alias-state-success-secondary: #9ed4ab;
+  --dsw-alias-state-success-tertiary: #7fbf8f24;
+  --dsw-alias-state-warn-primary: #e0a63f;
+  --dsw-alias-state-warn-secondary: #f0c46f;
+  --dsw-alias-state-warn-tertiary: #e0a63f24;
+  --dsw-alias-state-warn-label: #e0a63f;
+  --dsw-alias-state-error-primary: #d9604f;
+  --dsw-alias-state-error-secondary: #e8806f;
+
+  /* markdown surfaces */
+  --dsw-alias-markdown-code-block: #060504e0;
+  --dsw-alias-markdown-code-block-banner: #12100cf0;
+  --dsw-alias-markdown-inline-code: #211c15e6;
+  --dsw-alias-markdown-tag: #211c15e6;
+  --dsw-alias-markdown-citation: #211c15e6;
+
+  /* scrollbars */
+  --dsw-alias-scrollbar-bg-l1: #c9ab6e40;
+  --dsw-alias-scrollbar-bg-l2: #c9ab6e40;
+  --dsw-alias-scrollbar-hover-l1: #c9ab6e73;
+  --dsw-alias-scrollbar-hover-l2: #c9ab6e73;
+
+  /* overlays */
+  --dsw-alias-tooltip-bg: #211c15;
+  --dsw-alias-tooltip-fg: #f2e9d4;
+
+  /* shell anchors */
+  --dsw-specific-sidebar-fill: #0c0a0780;
+  --dsw-specific-sidebar-nav-item-hover: #c9ab6e38;
+  --dsw-specific-sidebar-nav-item-active: #c9ab6e38;
+  --dsw-specific-sidebar-nav-item-active-accent: #c9ab6e66;
+  --dsw-specific-bubble: #241d13db;
+  --dsw-specific-bubble-highlight: #3a3323;
+  --dsw-specific-input-major: #16120dcc;
+  --dsw-specific-selector: #241d13;
+  --dsw-specific-tip: #211c15e6;
+  /* 暗色专用：字体不参与明暗切换 */
+  --dsw-font-family: 'Cascadia Mono', Consolas, 'SF Mono', ui-monospace, 'Microsoft YaHei', monospace;
+}
+
+body[data-ds-dark-theme] {
+  color: #f2e9d4;
+  /* 透明：body::after 在 z-index -1，会被 body 自身背景整层盖住。
+     底色改由 body::after 自己提供（见 patches.css）。 */
+  background-color: transparent;
+
+  /* surfaces — warm black lacquer, alpha so the gold dust reads through */
+  --dsw-alias-bg-base: #0a08067a;
+  --dsw-alias-bg-layer-1: #12100c;
+  --dsw-alias-bg-layer-2: #191510;
+  --dsw-alias-bg-layer-3: #211c15;
+  --dsw-alias-bg-overlay: #191510f5;
+  --dsw-alias-bg-module-platform: #12100c;
+  --dsw-alias-bg-multi-select: #211c15;
+  --dsw-alias-bg-skeleton: #c9ab6e12;
+
+  /* borders */
+  --dsw-alias-border-inverted: #211c15;
+  --dsw-alias-border-inverted2: #12100c;
+  --dsw-alias-border-l1: #c9ab6e38;
+  --dsw-alias-border-l2: #c9ab6e57;
+  --dsw-alias-border-l2-darkmode-thin: #c9ab6e38;
+  --dsw-alias-border-l3: #c9ab6e75;
+  --dsw-alias-border-l4: #c9ab6e9e;
+
+  /* labels — pale gold ink; the saturated gold stays an accent */
+  --dsw-alias-label-primary: #f2e9d4;
+  --dsw-alias-label-primary-bluish: #e4d2a6;
+  --dsw-alias-label-primary-dimmed: #cabfa3;
+  --dsw-alias-label-secondary: #cabfa3;
+  --dsw-alias-label-tertiary: #a1967c;
+  --dsw-alias-label-caption: #736a56;
+  --dsw-alias-label-dimmed: #403b31;
+  --dsw-alias-label-primary-inverted: #1a1509;
+
+  /* brand + interactive */
+  --dsw-alias-brand-primary: #c9ab6e;
+  --dsw-alias-brand-text: #1a1509;
+  --dsw-alias-interactive-bg-hover: #c9ab6e38;
+  --dsw-alias-interactive-bg-active: #c9ab6e38;
+  --dsw-alias-interactive-bg-hover-solid: #241d13;
+  --dsw-alias-interactive-bg-hover-accent: #c9ab6e45;
+  --dsw-alias-link: #e4d2a6;
+
+  /* primary action set (matched: fill / hover / dimmed / foreground) */
+  --dsw-alias-button-primary-fill: #c9ab6e;
+  --dsw-alias-button-primary-hover: #e4d2a6;
+  --dsw-alias-button-primary-dimmed: #c9ab6e66;
+  --dsw-alias-label-primary-foreground: #1a1509;
+  --dsw-alias-button-contrast-fill: #1a1509;
+  --dsw-alias-button-info-fill: #c9ab6e;
+  --dsw-alias-button-info-hover: #e4d2a6;
+
+  /* states */
+  --dsw-alias-state-business-primary: #c9ab6e;
+  --dsw-alias-state-business-tertiary: #c9ab6e29;
+  --dsw-alias-state-success-primary: #7fbf8f;
+  --dsw-alias-state-success-secondary: #9ed4ab;
+  --dsw-alias-state-success-tertiary: #7fbf8f24;
+  --dsw-alias-state-warn-primary: #e0a63f;
+  --dsw-alias-state-warn-secondary: #f0c46f;
+  --dsw-alias-state-warn-tertiary: #e0a63f24;
+  --dsw-alias-state-warn-label: #e0a63f;
+  --dsw-alias-state-error-primary: #d9604f;
+  --dsw-alias-state-error-secondary: #e8806f;
+
+  /* markdown surfaces */
+  --dsw-alias-markdown-code-block: #060504e0;
+  --dsw-alias-markdown-code-block-banner: #12100cf0;
+  --dsw-alias-markdown-inline-code: #211c15e6;
+  --dsw-alias-markdown-tag: #211c15e6;
+  --dsw-alias-markdown-citation: #211c15e6;
+
+  /* scrollbars */
+  --dsw-alias-scrollbar-bg-l1: #c9ab6e40;
+  --dsw-alias-scrollbar-bg-l2: #c9ab6e40;
+  --dsw-alias-scrollbar-hover-l1: #c9ab6e73;
+  --dsw-alias-scrollbar-hover-l2: #c9ab6e73;
+
+  /* overlays */
+  --dsw-alias-tooltip-bg: #211c15;
+  --dsw-alias-tooltip-fg: #f2e9d4;
+
+  /* shell anchors */
+  --dsw-specific-sidebar-fill: #0c0a0780;
+  --dsw-specific-sidebar-nav-item-hover: #c9ab6e38;
+  --dsw-specific-sidebar-nav-item-active: #c9ab6e38;
+  --dsw-specific-sidebar-nav-item-active-accent: #c9ab6e66;
+  --dsw-specific-bubble: #241d13db;
+  --dsw-specific-bubble-highlight: #3a3323;
+  --dsw-specific-input-major: #16120dcc;
+  --dsw-specific-selector: #241d13;
+  --dsw-specific-tip: #211c15e6;
+}
+/* ── 纯暗色补偿：官方"永不派生"的几组 token ──────────────────────────────
+   皮肤中心只对部分 token 做自动派生；按钮 / 状态 / 遮罩 / 阴影 / 反色标签 / 字体
+   这几组明确不派生。它们一旦没被皮肤重映射，浅色模式下就会退回**官方浅色值**——
+   「回到底部」按钮就是这样变成白色圆钮的（它读 button-floating-fill）。
+   这里补齐缺失的 14 项，值取主题自己的暖黑与香槟金，而不是官方中性灰。 */
+
+html,
+body {
+  --dsw-alias-bg-mask-1: rgba(0, 0, 0, 0.5);
+  --dsw-alias-bg-mask-2: rgba(0, 0, 0, 0.2);
+  --dsw-alias-bg-mask-3: rgba(0, 0, 0, 0.48);
+  --dsw-alias-bg-mask-photo: rgba(0, 0, 0, 0.88);
+  --dsw-alias-bg-mask-drop: rgba(14, 11, 8, 0.72);
+  --dsw-alias-button-elevated-fill: rgba(30, 26, 20, 0.96);
+  --dsw-alias-button-floating-fill: rgba(26, 22, 18, 0.94);
+  --dsw-alias-button-floating-hover: rgba(40, 33, 26, 0.96);
+  --dsw-alias-button-ghost-active-fill: rgba(201, 171, 110, 0.16);
+  --dsw-alias-button-ghost-active-hover: rgba(201, 171, 110, 0.24);
+  --dsw-alias-button-ghost-active-border: rgba(201, 171, 110, 0.45);
+  --dsw-alias-button-tool-bar-fill: rgba(28, 24, 20, 0.60);
+  --dsw-alias-button-tool-bar-hover: rgba(38, 32, 26, 0.72);
+  --dsw-alias-button-tool-bar-fill-invisible: rgba(20, 16, 12, 0.40);
+}

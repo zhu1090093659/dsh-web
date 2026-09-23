@@ -2,6 +2,8 @@
 
 Status: implemented
 
+现状（2026-09-17）：本修复的公告/气泡部分已随宠物解耦移除（见[解耦笔记](../simplification/2026-09-17-usage-pet-decoupling-collapsed-summary.md)）；适配器身份与折叠时刻计价两项决策仍然有效。
+
 ## Problem
 
 用户开启 `bubbleMode: always` 后一并反馈的两个缺陷与一个缺失面：
@@ -28,3 +30,4 @@ Status: implemented
 - 消费估算仅覆盖 DeepSeek 官方路由；中转的 deepseek 流量（ZenMux、SiliconFlow）不计价，未识别的 DeepSeek 模型 id 按 flash 档估算（README 已写明）。
 - 高于新上限契约的旧版公告（升级前的 dsh-pet 配升级后的 dsh-usage）会收敛到 60 秒——两半随本仓库一起发版，混版本窗口只会缩短气泡，不会破坏功能。
 - 本变更之前的历史日期 `cost: 0`；今日消费从更新后第一次折叠起计。
+- 价目表本身是随版本发布的快照：[V4.1-Flash 价目表刷新](2026-09-10-deepseek-v41-flash-price-book.zh.md) 记录其当前取值与 `deepseek-v4-pro` 路由栅栏。

@@ -100,6 +100,22 @@ export interface PlanView {
 /** How the credential backing one provider route was resolved. */
 export type CredentialKind = 'api-key' | 'env' | 'oauth' | 'none'
 
+/** One aggregated usage window (the 30-day trend, or the whole retained ledger). */
+export interface UsageWindowSummary {
+  from: string
+  to: string
+  totals: UsageTokenTotals
+  providers: UsageProviderSummary[]
+}
+
+/** Real spend observed from an official balance series rather than priced locally. */
+export interface ObservedSpendView {
+  /** Accrued spend in the account currency (CNY for the DeepSeek official watch). */
+  cny: number
+  /** Epoch ms of the first balance observation the accrual starts at. */
+  since: number
+}
+
 /** One provider row of the overview snapshot. */
 export interface ProviderSnapshotView {
   /** Provider route key (`deepseek`, `kimi-coding`, custom routes, ...). */
@@ -124,12 +140,25 @@ export interface ProviderSnapshotView {
 export interface UsageOverviewView {
   updatedAt: number
   providers: ProviderSnapshotView[]
-  /** The provider the pet bubble and the header highlight; `source` says how it was picked. */
+  /** The provider the collapsed sidebar strip and the header highlight; `source` says how it was picked. */
   current: {
     provider?: string
     model?: string
     /** `live` — last request seen this boot; `default` — the agent default model. */
     source: 'live' | 'default'
+    /**
+     * Resolved display name (snapshot first, route-derived otherwise), so the
+     * strip needs no name-resolution of its own. Optional so an older host
+     * document still renders.
+     */
+    displayName?: string
+    /**
+     * Today's ledger totals for the provider's adapter family (the route
+     * itself when adapter-less), carrying tokens, calls, and the priced cost.
+     * Absent on a day without usage; optional for the same older-host
+     * tolerance as displayName.
+     */
+    today?: UsageTokenTotals
   }
   usage: {
     today: { date: string; totals: UsageTokenTotals; providers: UsageProviderSummary[] }
@@ -139,12 +168,20 @@ export interface UsageOverviewView {
      * The same window aggregated per provider and model — the trend card's
      * bar-chart data. Optional so an older host document still renders.
      */
-    range?: {
-      from: string
-      to: string
-      totals: UsageTokenTotals
-      providers: UsageProviderSummary[]
-    }
+    range?: UsageWindowSummary
+    /**
+     * The whole retained ledger (up to `retainDays`, today included)
+     * aggregated per provider — the voucher's minted total. Optional for the
+     * same older-host tolerance as `range`.
+     */
+    all?: UsageWindowSummary
+    /**
+     * Real CNY spend of the official DeepSeek family, accrued from observed
+     * decreases of the official balance (top-ups never count). Present once
+     * a decrease has been observed; until then the section falls back to the
+     * fold-time estimate.
+     */
+    observedSpend?: ObservedSpendView
   }
 }
 

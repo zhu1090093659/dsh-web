@@ -108,10 +108,29 @@ describe('ssh_list', () => {
     stub.hosts = [host]
     const tool = sshListTool(engine(stub))
     const result = await run(tool, {})
-    expect((result.hosts as SshHostSummary[])).toEqual([host])
+    // The model-facing row never carries the ProxyCommand string itself, only
+    // whether one is configured (it may embed bastion credentials).
+    expect(result.hosts).toEqual([{ ...host, proxyCommandConfigured: false }])
     const text = render(tool, result)
     expect(text).toContain('web-01')
     expect(text).toContain('10.0.0.1')
+    expect(text).toContain('| - |')
+  })
+
+  it('marks a ProxyCommand host and a jump chain in the table', async () => {
+    const stub = new StubEngine()
+    stub.hosts = [
+      { ...host, proxyCommand: 'corp proxy %h %p' },
+      { ...host, alias: 'jump-host', proxyJump: ['bastion'] },
+    ]
+    const tool = sshListTool(engine(stub))
+    const result = await run(tool, {})
+    const rows = result.hosts as Array<Record<string, unknown>>
+    expect(rows[0]?.['proxyCommandConfigured']).toBe(true)
+    expect('proxyCommand' in (rows[0] ?? {})).toBe(false)
+    const text = render(tool, result)
+    expect(text).toContain('proxy-command')
+    expect(text).toContain('jump:bastion')
   })
 })
 
@@ -210,3 +229,32 @@ describe('path-scope guidance for agents (issue #760)', () => {
     expect(name).toContain('local bash tool')
   })
 })
+
+describe('ssh_cluster', () => {
+  it('enforces selector requirement in execute', async () => {
+    const stub = new StubEngine()
+    const tool = sshClusterTool(engine(stub))
+    await expect(run(tool, { command: 'uptime' })).rejects.toThrow(/ssh_cluster requires aliases, environment, or tags/)
+    await expect(run(tool, { command: 'uptime', aliases: [] })).rejects.toThrow(/ssh_cluster requires aliases, environment, or tags/)
+    await expect(run(tool, { command: 'uptime', aliases: [' '], environment: '', tags: [] })).rejects.toThrow(/ssh_cluster requires aliases, environment, or tags/)
+
+    const valid = await run(tool, { command: 'uptime', aliases: ['srv-1'] })
+    expect(valid).toEqual({ results: [] })
+
+    const validEnv = await run(tool, { command: 'uptime', environment: 'production' })
+    expect(validEnv).toEqual({ results: [] })
+
+    const validTags = await run(tool, { command: 'uptime', tags: ['api'] })
+    expect(validTags).toEqual({ results: [] })
+  })
+
+  it('documents selector requirement in tool and parameter descriptions', () => {
+    const tool = sshClusterTool(engine(new StubEngine()))
+    expect(tool.description).toContain('at least one aliases, environment, or tags filter is required')
+    const params = tool.parameters as unknown as { properties: Record<string, { description: string }> }
+    expect(params.properties.aliases.description).toContain('at least one')
+    expect(params.properties.environment.description).toContain('at least one')
+    expect(params.properties.tags.description).toContain('at least one')
+  })
+})
+

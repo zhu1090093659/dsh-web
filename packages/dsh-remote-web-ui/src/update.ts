@@ -12,6 +12,7 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { spawn } from 'node:child_process'
+import { createOutputCapture } from './console-output.ts'
 
 /** npm registry base used for version probes. */
 export const NPM_REGISTRY = 'https://registry.npmjs.org'
@@ -557,17 +558,42 @@ export interface UpdateRunDeps {
   timeoutMs?: number
   /** Platform override (defaults to process.platform; test seam). */
   platform?: NodeJS.Platform
+  /** Process-group kill seam (defaults to process.kill; test seam). */
+  killImpl?: KillImpl
 }
 
 /** Cap on captured pnpm output (keeps error payloads bounded). */
 const OUTPUT_CAP = 16 * 1024
 
 /**
- * Windows cmd command-not-found stderr. With shell:true a missing shim
- * exits with code 1 (cmd cannot report ENOENT), so the fallback chain
- * detects this message instead of the spawn error event.
+ * Characters a package name may contain before it is handed to the update
+ * command line. Deliberately looser than the strict family shape (the tests
+ * and future callers use short names) but it admits no whitespace, quotes,
+ * shell metacharacters, or path separators beyond the scope slash.
  */
-const WIN_CMD_MISSING_RE = /not recognized as an internal or external command/i
+const SHELL_SAFE_PACKAGE_RE = /^@?[A-Za-z0-9][A-Za-z0-9._/-]*$/
+
+/** Seam for the process-group kill (tests inject a recorder). */
+export type KillImpl = (pid: number, signal: NodeJS.Signals) => void
+
+/**
+ * Windows cmd command-not-found stderr. With shell:true a missing shim
+ * exits with code 1 or 9009 (cmd cannot report ENOENT), so the fallback chain
+ * detects this message instead of the spawn error event. Supports both English
+ * and localized (e.g. Chinese) cmd error messages.
+ */
+const WIN_CMD_MISSING_RE = /not recognized as an internal or external command|不是内部或外部命令/i
+
+/**
+ * Fold one decoded candidate output into the running total under the display
+ * cap (the tail carries the failure reason).
+ * @param output - the accumulated text.
+ * @param text - the candidate's decoded text.
+ */
+function capOutput(output: string, text: string): string {
+  const combined = output + text
+  return combined.length > OUTPUT_CAP ? combined.slice(combined.length - OUTPUT_CAP) : combined
+}
 
 /**
  * Bypass for pnpm 11's supply-chain gate: `minimumReleaseAge` (default 24 h)
@@ -590,16 +616,24 @@ const MIN_RELEASE_AGE_OVERRIDE = '--config.minimumReleaseAge=0'
 export function runUpdate(deps: UpdateRunDeps): Promise<UpdateRunResult> {
   return new Promise((resolve) => {
     const spawnImpl = deps.spawnImpl ?? spawn
-    const packages = deps.packages
     const platform = deps.platform ?? process.platform
+    // The names come from the profile/anchor manifests and the win32 candidate
+    // runs through a shell, so anything outside the npm name shape is dropped
+    // instead of being concatenated into a command line (a dependency key
+    // containing shell metacharacters would otherwise run as a second command).
+    const packages = deps.packages.filter(name => SHELL_SAFE_PACKAGE_RE.test(name))
     // Windows ships pnpm/corepack/npx as .cmd shims; Node's spawn cannot
     // start .cmd files directly (ENOENT even when installed), so route
     // them through cmd.exe there. POSIX spawns stay shell-free.
+    // POSIX: the child leads its own process group (detached) so the timeout
+    // can signal pnpm's whole tree — pnpm spawns lifecycle-script children that
+    // a direct SIGTERM to the wrapper leaves running against the profile.
     const spawnOptions: Record<string, unknown> = {
       cwd: deps.profileDir,
       stdio: ['ignore', 'pipe', 'pipe'],
-      ...(platform === 'win32' ? { shell: true } : {}),
+      ...(platform === 'win32' ? { shell: true } : { detached: true }),
     }
+    const killImpl: KillImpl = deps.killImpl ?? process.kill
     // Ordered fallback chain: each is tried only when the previous one is
     // missing on PATH (ENOENT on the spawn error event, never on close).
     // `--latest` is required: dsh plugin writes exact-version specs (e.g.
@@ -620,13 +654,21 @@ export function runUpdate(deps: UpdateRunDeps): Promise<UpdateRunResult> {
     // (its tail is subject to OUTPUT_CAP). The win32 missing-command test must
     // run against `currentOutput` so a previous candidate's 'not recognized'
     // stderr cannot misclassify a real failure in the next one.
+    // Each candidate accumulates raw bytes and is decoded exactly once
+    // (console-output.ts): decoding per `data` event splits a multi-byte
+    // character that straddles two reads into replacement characters, which is
+    // what the panel then shows as garbled pnpm diagnostics.
     let output = ''
-    let currentOutput = ''
-    const append = (chunk: Buffer): void => {
-      output += chunk.toString('utf8')
-      if (output.length > OUTPUT_CAP) output = output.slice(output.length - OUTPUT_CAP)
-      currentOutput += chunk.toString('utf8')
-      if (currentOutput.length > OUTPUT_CAP) currentOutput = currentOutput.slice(currentOutput.length - OUTPUT_CAP)
+    let capture = createOutputCapture(OUTPUT_CAP)
+    let candidateFolded = false
+    const append = (chunk: Buffer): void => { capture.push(chunk) }
+    /** This candidate's decoded text (idempotent). */
+    const candidateText = (): string => capture.read()
+    /** Fold this candidate's text into the running output exactly once. */
+    const foldCandidate = (): void => {
+      if (candidateFolded) return
+      candidateFolded = true
+      output = capOutput(output, capture.read())
     }
     let currentChild: ReturnType<typeof spawnImpl> | undefined
     // Terminal guard: once a result is produced the promise is settled and no
@@ -647,14 +689,31 @@ export function runUpdate(deps: UpdateRunDeps): Promise<UpdateRunResult> {
         const pid = (currentChild as { pid?: number } | undefined)?.pid
         if (pid !== undefined && pid > 0) {
           try {
-            spawnImpl('taskkill', ['/pid', String(pid), '/t', '/f'], { stdio: 'ignore' })
+            // A spawn failure arrives as an asynchronous 'error' event, which
+            // the try/catch cannot see; an emitter with no error listener throws
+            // and would take the host process down on this path.
+            const killer = spawnImpl('taskkill', ['/pid', String(pid), '/t', '/f'], { stdio: 'ignore' })
+            killer.on?.('error', () => {})
           } catch {
             // Best-effort kill; fall through to the timeout result.
           }
         }
       } else {
-        currentChild?.kill('SIGTERM')
+        // Detached child: its process-group id is its pid, so the negative pid
+        // reaches pnpm's grandchildren too. A group kill throws when the child
+        // already exited; fall back to the direct kill.
+        const pid = (currentChild as { pid?: number } | undefined)?.pid
+        if (pid !== undefined && pid > 0) {
+          try {
+            killImpl(-pid, 'SIGTERM')
+          } catch {
+            try { currentChild?.kill('SIGTERM') } catch { /* already gone */ }
+          }
+        } else {
+          currentChild?.kill('SIGTERM')
+        }
       }
+      foldCandidate()
       finish({ ok: false, exitCode: null, output, error: 'update timed out; install process killed', errorCode: 'timeout' })
     }, deps.timeoutMs ?? 10 * 60_000)
     const runCandidate = (index: number): void => {
@@ -670,7 +729,8 @@ export function runUpdate(deps: UpdateRunDeps): Promise<UpdateRunResult> {
         return
       }
       const candidate = candidates[index]
-      currentOutput = ''
+      capture = createOutputCapture(OUTPUT_CAP)
+      candidateFolded = false
       const child = spawnImpl(candidate.command, candidate.args, spawnOptions)
       currentChild = child
       let settled = false
@@ -683,6 +743,7 @@ export function runUpdate(deps: UpdateRunDeps): Promise<UpdateRunResult> {
       child.stderr?.on('data', append)
       child.on('error', (error: Error) => {
         once(() => {
+          foldCandidate()
           if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
             // Command missing: try the next candidate in the chain.
             runCandidate(index + 1)
@@ -693,20 +754,22 @@ export function runUpdate(deps: UpdateRunDeps): Promise<UpdateRunResult> {
       })
       child.on('close', (code: number | null) => {
         if (settled || finished) return
-        // Windows + shell: a missing command reports exit 1 with
-        // 'not recognized' instead of ENOENT — keep the chain going. Checked
-        // against this candidate's own output so a prior fallback's stderr
-        // cannot misclassify a real failure here.
-        if (platform === 'win32' && code !== 0 && WIN_CMD_MISSING_RE.test(currentOutput)) {
+        // Windows + shell: a missing command reports exit 1 or 9009 with
+        // 'not recognized' or localized message instead of ENOENT — keep the
+        // chain going. Checked against this candidate's own output so a prior
+        // fallback's stderr cannot misclassify a real failure here.
+        if (platform === 'win32' && (code === 9009 || (code !== 0 && WIN_CMD_MISSING_RE.test(candidateText())))) {
+          foldCandidate()
           runCandidate(index + 1)
           return
         }
         settled = true
+        foldCandidate()
         finish({
           ok: code === 0,
           exitCode: code,
           output,
-          error: code === 0 ? undefined : 'pnpm exited with code ' + String(code),
+          error: code === 0 ? undefined : `${candidate.command} exited with code ` + String(code),
           ...(code === 0 ? {} : { errorCode: 'pnpm-failed' as const }),
         })
       })

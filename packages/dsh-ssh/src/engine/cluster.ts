@@ -1,6 +1,6 @@
 /**
- * Cluster execution: run one command concurrently across many hosts (all, or
- * filtered by explicit aliases / environment / tags with ALL semantics).
+ * Cluster execution: run one command concurrently across selected hosts; the
+ * caller must provide at least one non-empty aliases / environment / tags filter.
  */
 
 import type { ClusterResult } from '../protocol.ts'
@@ -17,6 +17,13 @@ interface ClusterOptions {
 
 /** Run one command against many hosts concurrently. */
 export async function cluster(engine: PoolEngine, options: ClusterOptions): Promise<ClusterResult[]> {
+  const hasAliases = Array.isArray(options.aliases) && options.aliases.some(alias => typeof alias === 'string' && alias.trim() !== '')
+  const hasEnvironment = typeof options.environment === 'string' && options.environment.trim() !== ''
+  const hasTags = Array.isArray(options.tags) && options.tags.some(tag => typeof tag === 'string' && tag.trim() !== '')
+  if (!hasAliases && !hasEnvironment && !hasTags) {
+    throw new Error('ssh_cluster requires aliases, environment, or tags to limit the target set')
+  }
+
   let targets = engine.store.list()
   if (options.aliases !== undefined && options.aliases.length > 0) {
     targets = targets.filter(entry => options.aliases!.includes(entry.alias))

@@ -39,6 +39,7 @@ export const REMOTE_UPGRADE_PATHS = [
   REMOTE_API_PATHS.mux,
   `${REMOTE_PREFIX}/sidebar/ws/terminal`,
   `${REMOTE_PREFIX}/sidebar/ws/agent-terminals`,
+  `${REMOTE_PREFIX}/sidebar/ws/agent-opens`,
   `${REMOTE_API_PREFIX}/dsh-ssh/terminal`,
 ] as const
 

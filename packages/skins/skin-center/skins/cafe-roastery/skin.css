@@ -1,0 +1,288 @@
+/**
+ * Cafe Roastery — L1 token layer.
+ *
+ * Light values (拿铁 Latte) on :root, dark values (浓缩 Espresso) under
+ * body[data-ds-dark-theme]. Only official --dsw-alias-* / --dsw-specific-*
+ * semantic tokens are remapped here; the atmosphere (rosetta, steam, cup
+ * sleeve, roastery wall) lives in patches.css, and the skin has no hooks.
+ */
+
+:root {
+  color: #3a2a18;
+  background-color: #f2e7d0;
+
+  /* surfaces —steamed-milk foam: warm cream panels, zero pure white.
+     bg-base carries alpha so the backdrop art shows through the columns;
+     the opaque canvas colour is the :root background cloned to body. */
+  --dsw-alias-bg-base: #f2e7d08c;
+  --dsw-alias-bg-layer-1: #fbf4e4;
+  --dsw-alias-bg-layer-2: #f3e9d2;
+  --dsw-alias-bg-layer-3: #e9dbbc;
+  --dsw-alias-bg-mask-1: #fbf4e4cc;
+  --dsw-alias-bg-mask-2: #fbf4e499;
+  --dsw-alias-bg-mask-3: #fbf4e466;
+  --dsw-alias-bg-mask-drop: #f2e7d080;
+  --dsw-alias-bg-mask-photo: #f2e7d0a6;
+  --dsw-alias-bg-module-platform: #f3e9d2;
+  --dsw-alias-bg-multi-select: #8f4d0b26;
+  --dsw-alias-bg-overlay: #fbf4e4e0;
+  --dsw-alias-bg-skeleton: #77613f12;
+
+  /* borders —warm cocoa hairlines */
+  --dsw-alias-border-inverted: #fbf4e4;
+  --dsw-alias-border-inverted2: #f3e9d2;
+  --dsw-alias-border-l1: #7d68481a;
+  --dsw-alias-border-l2: #7d68482b;
+  --dsw-alias-border-l2-darkmode-thin: #7d68481a;
+  --dsw-alias-border-l3: #7d68483d;
+  --dsw-alias-border-l4: #7d684852;
+
+  /* labels —warm espresso ink ramp, all tiers keep >= 4.5:1 on layer-1 */
+  --dsw-alias-label-primary: #3a2a18;
+  --dsw-alias-label-primary-bluish: #7c4a10;
+  --dsw-alias-label-primary-dimmed: #6f5a3c;
+  --dsw-alias-label-primary-foreground: #fbf4e4;
+  --dsw-alias-label-primary-inverted: #fbf4e4;
+  --dsw-alias-label-secondary: #54422a;
+  --dsw-alias-label-tertiary: #6f5a3c;
+  --dsw-alias-label-dimmed: #77613f;
+  --dsw-alias-label-caption: #77613f;
+
+  /* brand + interactive —caramel on foam */
+  --dsw-alias-brand-primary: #8f4d0b;
+  --dsw-alias-brand-primary-invert: #fbf4e4;
+  --dsw-alias-brand-text: #7c4a10;
+  --dsw-alias-interactive-bg-hover: #8f4d0b1a;
+  --dsw-alias-interactive-bg-hover-accent: #8f4d0b2b;
+  --dsw-alias-interactive-bg-hover-danger: #a63a2a1f;
+  --dsw-alias-interactive-bg-hover-solid: #e9dbbc;
+  --dsw-alias-interactive-bg-active: #8f4d0b2b;
+
+  /* buttons —roast fill, foam text */
+  --dsw-alias-button-primary-fill: #6b4526;
+  --dsw-alias-button-primary-hover: #7c5330;
+  --dsw-alias-button-primary-dimmed: #f3e9d2;
+  --dsw-alias-button-contrast-fill: #3a2a18;
+  --dsw-alias-button-elevated-fill: #fbf4e4;
+  --dsw-alias-button-floating-fill: #fbf4e4;
+  --dsw-alias-button-floating-hover: #f3e9d2;
+  --dsw-alias-button-ghost-active-border: #8f4d0b4d;
+  --dsw-alias-button-ghost-active-fill: #8f4d0b1f;
+  --dsw-alias-button-ghost-active-hover: #8f4d0b2b;
+  --dsw-alias-button-info-fill: #6b4526;
+  --dsw-alias-button-info-hover: #7c5330;
+  --dsw-alias-button-tool-bar-fill: #fbf4e4;
+  --dsw-alias-button-tool-bar-fill-invisible: #fbf4e400;
+  --dsw-alias-button-tool-bar-hover: #f3e9d2;
+
+  /* markdown */
+  --dsw-alias-markdown-citation: #8f4d0b;
+  --dsw-alias-markdown-code-block: #e9dbbc;
+  --dsw-alias-markdown-code-block-banner: #e3d3ae;
+  --dsw-alias-markdown-code-segment-selected: #8f4d0b33;
+  --dsw-alias-markdown-code-segment-unselected: #e9dbbc;
+  --dsw-alias-markdown-inline-code: #e9dbbc;
+  --dsw-alias-markdown-placeholder: #77613f;
+  --dsw-alias-markdown-tag: #e9dbbc;
+
+  /* state */
+  --dsw-alias-state-business-primary: #8f4d0b;
+  --dsw-alias-state-business-tertiary: #eadbc0;
+  --dsw-alias-state-error-primary: #a63a2a;
+  --dsw-alias-state-error-secondary: #b45a48;
+  --dsw-alias-state-danger-primary: #a63a2a;
+  --dsw-alias-state-danger-tertiary: #a63a2a1f;
+  --dsw-alias-state-success-primary: #3f6a35;
+  --dsw-alias-state-success-secondary: #5d9053;
+  --dsw-alias-state-success-tertiary: #e3ecd9;
+  --dsw-alias-state-warn-label: #8a5a08;
+  --dsw-alias-state-warn-primary: #8a5a08;
+  --dsw-alias-state-warn-secondary: #a8782c;
+  --dsw-alias-state-warn-tertiary: #f3e4c2;
+
+  /* overlays */
+  --dsw-alias-toast-bg: #3a2a18;
+  --dsw-alias-tooltip-bg: #3a2a18;
+  --dsw-alias-tooltip-fg: #fbf4e4;
+
+  /* shell anchors */
+  --dsw-specific-bubble: #fbf4e4;
+  --dsw-specific-bubble-highlight: #f3e9d2;
+  --dsw-specific-input-major: #fbf4e4;
+  --dsw-specific-login-input: #f3e9d2;
+  --dsw-specific-menu: #fbf4e4;
+  --dsw-specific-selector: #f3e9d2;
+  --dsw-specific-sidebar-fill: #ecdfc2;
+  --dsw-specific-sidebar-nav-item-active: #8f4d0b2b;
+  --dsw-specific-sidebar-nav-item-active-accent: #8f4d0b;
+  --dsw-specific-sidebar-nav-item-hover: #8f4d0b1a;
+  /* elevated surface (goal bar / todo panel / queue dock / composer accessory) */
+  --dsw-specific-tip: #f3e9d2;
+
+  /* scrollbars */
+  --dsw-alias-scrollbar-bg-l1: #7d68481a;
+  --dsw-alias-scrollbar-bg-l2: #7d684826;
+  --dsw-alias-scrollbar-hover-l1: #7d684832;
+  --dsw-alias-scrollbar-hover-l2: #7d68483d;
+
+  /* elevation —warm brown shadows */
+  --dsw-shadow-lv1: 0 1px 2px #5a40261f;
+  --dsw-shadow-lv2: 0 4px 12px #5a40262b;
+  --dsw-shadow-lv3: 0 12px 32px #5a402638;
+
+  /* skin-local palette (consumed by patches.css) */
+  --cr-foam: #fbf4e4;
+  --cr-latte: #f3e9d2;
+  --cr-cortado: #e9dbbc;
+  --cr-canvas: #f2e7d0;
+  --cr-espresso-ink: #3a2a18;
+  --cr-cocoa: #7d6848;
+  --cr-caramel: #8f4d0b;
+  --cr-caramel-soft: #c08a3e;
+  --cr-roast: #6b4526;
+  --cr-roast-deep: #4c2f18;
+  --cr-cream: #fff8ea;
+  --cr-steam: rgba(255, 248, 234, 0.9);
+  --cr-ring: rgba(150, 84, 15, 0.16);
+}
+
+body[data-ds-dark-theme] {
+  color: #f7ecd8;
+  background-color: #4a331b;
+
+  /* surfaces - deep toasted gold: darker than the #c9a06b art backdrop but
+     clearly golden, so cream text keeps >=4.5:1 while matching the figure */
+  --dsw-alias-bg-base: #4a331b73;
+  --dsw-alias-bg-layer-1: #4a331b;
+  --dsw-alias-bg-layer-2: #5c4122;
+  --dsw-alias-bg-layer-3: #6b4a24;
+  --dsw-alias-bg-mask-1: #4a331bcc;
+  --dsw-alias-bg-mask-2: #4a331b99;
+  --dsw-alias-bg-mask-3: #4a331b66;
+  --dsw-alias-bg-mask-drop: #4a331b80;
+  --dsw-alias-bg-mask-photo: #4a331ba6;
+  --dsw-alias-bg-module-platform: #5c4122;
+  --dsw-alias-bg-multi-select: #f2c98a2e;
+  --dsw-alias-bg-overlay: #4a331be0;
+  --dsw-alias-bg-skeleton: #f2c98a12;
+
+  /* borders - gold hairline */
+  --dsw-alias-border-inverted: #4a331b;
+  --dsw-alias-border-inverted2: #5c4122;
+  --dsw-alias-border-l1: #f2c98a1f;
+  --dsw-alias-border-l2: #f2c98a2e;
+  --dsw-alias-border-l2-darkmode-thin: #f2c98a1f;
+  --dsw-alias-border-l3: #f2c98a42;
+  --dsw-alias-border-l4: #f2c98a52;
+
+  /* labels - cream on toasted gold */
+  --dsw-alias-label-primary: #f7ecd8;
+  --dsw-alias-label-primary-bluish: #f2c98a;
+  --dsw-alias-label-primary-dimmed: #e0cba9;
+  --dsw-alias-label-primary-foreground: #3a2a18;
+  --dsw-alias-label-primary-inverted: #3a2a18;
+  --dsw-alias-label-secondary: #e0cba9;
+  --dsw-alias-label-tertiary: #cbb493;
+  --dsw-alias-label-dimmed: #bfa77f;
+  --dsw-alias-label-caption: #b8976e;
+
+  /* brand + interactive - bright gold */
+  --dsw-alias-brand-primary: #f2c98a;
+  --dsw-alias-brand-primary-invert: #3a2a18;
+  --dsw-alias-brand-text: #fae7c4;
+  --dsw-alias-interactive-bg-hover: #f2c98a1f;
+  --dsw-alias-interactive-bg-hover-accent: #f2c98a2e;
+  --dsw-alias-interactive-bg-hover-danger: #ff8f7626;
+  --dsw-alias-interactive-bg-hover-solid: #6b4a24;
+  --dsw-alias-interactive-bg-active: #f2c98a33;
+
+  /* buttons - gold fill, espresso text */
+  --dsw-alias-button-primary-fill: #eec079;
+  --dsw-alias-button-primary-hover: #f6d598;
+  --dsw-alias-button-primary-dimmed: #5c4122;
+  --dsw-alias-button-contrast-fill: #f7ecd8;
+  --dsw-alias-button-elevated-fill: #5c4122;
+  --dsw-alias-button-floating-fill: #4a331b;
+  --dsw-alias-button-floating-hover: #6b4a24;
+  --dsw-alias-button-ghost-active-border: #f2c98a59;
+  --dsw-alias-button-ghost-active-fill: #f2c98a1f;
+  --dsw-alias-button-ghost-active-hover: #f2c98a2e;
+  --dsw-alias-button-info-fill: #eec079;
+  --dsw-alias-button-info-hover: #f6d598;
+  --dsw-alias-button-tool-bar-fill: #5c4122;
+  --dsw-alias-button-tool-bar-fill-invisible: #4a331b00;
+  --dsw-alias-button-tool-bar-hover: #6b4a24;
+
+  /* markdown */
+  --dsw-alias-markdown-citation: #f2c98a;
+  --dsw-alias-markdown-code-block: #3a2a18;
+  --dsw-alias-markdown-code-block-banner: #5c4122;
+  --dsw-alias-markdown-code-segment-selected: #f2c98a38;
+  --dsw-alias-markdown-code-segment-unselected: #3a2a18;
+  --dsw-alias-markdown-inline-code: #6b4a24;
+  --dsw-alias-markdown-placeholder: #c2a77f;
+  --dsw-alias-markdown-tag: #5c4122;
+
+  /* state - firelight reds, moss greens, amber warns on toasted gold */
+  --dsw-alias-state-business-primary: #eec079;
+  --dsw-alias-state-business-tertiary: #5c4122;
+  --dsw-alias-state-error-primary: #ff8f76;
+  --dsw-alias-state-error-secondary: #ffa28a;
+  --dsw-alias-state-danger-primary: #ff8f76;
+  --dsw-alias-state-danger-tertiary: #ff8f7626;
+  --dsw-alias-state-success-primary: #9fd47f;
+  --dsw-alias-state-success-secondary: #aede8f;
+  --dsw-alias-state-success-tertiary: #3a5c2e;
+  --dsw-alias-state-warn-label: #ffcf6e;
+  --dsw-alias-state-warn-primary: #ffcf6e;
+  --dsw-alias-state-warn-secondary: #ffe2a0;
+  --dsw-alias-state-warn-tertiary: #5c4122;
+
+  /* overlays - cream toast/tooltip with espresso text */
+  --dsw-alias-toast-bg: #f7ecd8;
+  --dsw-alias-toast-fg: #3a2a18;
+  --dsw-alias-tooltip-bg: #f7ecd8;
+  --dsw-alias-tooltip-fg: #3a2a18;
+
+  /* shell anchors */
+  --dsw-specific-bubble: #4a331b;
+  --dsw-specific-bubble-highlight: #6b4a24;
+  --dsw-specific-input-major: #4a331b;
+  --dsw-specific-login-input: #5c4122;
+  --dsw-specific-menu: #4a331b;
+  --dsw-specific-selector: #5c4122;
+  --dsw-specific-sidebar-fill: #3f2c19;
+  --dsw-specific-sidebar-nav-item-active: #f2c98a33;
+  --dsw-specific-sidebar-nav-item-active-accent: #f2c98a;
+  --dsw-specific-sidebar-nav-item-hover: #f2c98a1f;
+  --dsw-specific-tip: #5c4122;
+
+  /* scrollbars */
+  --dsw-alias-scrollbar-bg-l1: #f2c98a1f;
+  --dsw-alias-scrollbar-bg-l2: #f2c98a2b;
+  --dsw-alias-scrollbar-hover-l1: #f2c98a36;
+  --dsw-alias-scrollbar-hover-l2: #f2c98a45;
+
+  /* elevation */
+  --dsw-shadow-lv1: 0 1px 2px #241a1144;
+  --dsw-shadow-lv2: 0 4px 12px #241a1155;
+  --dsw-shadow-lv3: 0 12px 32px #241a1166;
+
+  /* skin-local palette - toasted gold shift */
+  --cr-foam: #f7ecd8;
+  --cr-latte: #5c4122;
+  --cr-cortado: #6b4a24;
+  --cr-canvas: #4a331b;
+  --cr-espresso-ink: #3a2a18;
+  --cr-cocoa: #f2c98a;
+  --cr-caramel: #f2c98a;
+  --cr-caramel-soft: #fae7c4;
+  --cr-roast: #eec079;
+  --cr-roast-deep: #d9a44c;
+  --cr-cream: #f7ecd8;
+  --cr-steam: rgba(247, 236, 216, 0.85);
+  --cr-ring: rgba(242, 201, 138, 0.18);
+}
+
+
+

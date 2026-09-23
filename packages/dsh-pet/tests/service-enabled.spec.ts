@@ -3,6 +3,8 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
+import type { Agent, AssistantStreamFrame } from '@deepseek-ai/dsh-agent'
+import type { LlmAttemptId } from '@deepseek-ai/dsh-llm'
 import { SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent, TurnEndReason } from '@deepseek-ai/dsh-session'
 import { loadPetPersist } from '../src/persist.ts'
@@ -50,7 +52,7 @@ declare module '@deepseek-ai/dsh-session' {
   }
 }
 
-type AssistantChunk = SessionEvent<'assistant/chunk'>['data']['chunk']
+type AssistantChunk = Extract<AssistantStreamFrame, { type: 'chunk' }>['chunk']
 type AssistantMessage = SessionEvent<'assistant/message'>['data']['message']
 type ToolCallId = SessionEvent<'tool/call'>['data']['callId']
 type ToolResultMessage = SessionEvent<'tool/result'>['data']['message']
@@ -91,13 +93,36 @@ function stepStart(turn: number, step: number, seq: number): SessionEvent<'step/
   return { type: 'step/start', seq: SessionSeq(seq), time: seq, data: { turn, step } }
 }
 
+function attemptId(value: string): LlmAttemptId {
+  return value as LlmAttemptId
+}
+
+/** The `agent/assistant-stream` payload routing frames to one session. */
+interface AssistantStreamPayload {
+  agent: Agent
+  frame: AssistantStreamFrame
+}
+
 function assistantChunk(
+  session: Session,
   turn: number,
   step: number,
   chunk: AssistantChunk,
   seq: number,
-): SessionEvent<'assistant/chunk'> {
-  return { type: 'assistant/chunk', seq: SessionSeq(seq), time: seq, data: { turn, step, chunk } }
+): AssistantStreamPayload {
+  void turn
+  void step
+  return {
+    agent: { session } as Agent,
+    frame: {
+      type: 'chunk',
+      attemptId: attemptId(`attempt-${seq}`),
+      revision: 1,
+      index: seq,
+      time: seq,
+      chunk,
+    },
+  }
 }
 
 function assistantMessage(
@@ -112,7 +137,13 @@ function assistantMessage(
     source: { kind: 'model', provider: 'mock', model: 'mock' },
     content: [{ type: 'text', text }],
   }
-  return { type: 'assistant/message', seq: SessionSeq(seq), time: seq, data: { turn, step, message } }
+  return {
+    type: 'assistant/message',
+    seq: SessionSeq(seq),
+    time: seq,
+    surfaceOp: 'append',
+    data: { turn, step, message, stream: [] },
+  }
 }
 
 function toolCall(
@@ -144,19 +175,17 @@ function toolResult(
     type: 'tool/result',
     seq: SessionSeq(seq),
     time: seq,
+    surfaceOp: 'append',
     data: {
       turn,
       step,
       message: {
         id: messageId(`message-${seq}`),
-        role: 'user',
+        role: 'tool',
         source: { kind: 'tool', callId: correlatedId },
-        content: [{
-          type: 'tool-result',
-          toolCallId: correlatedId,
-          content: [{ type: 'text', text: isError ? 'failed' : 'ok' }],
-          isError,
-        }],
+        toolCallId: correlatedId,
+        isError,
+        content: [{ type: 'text', text: isError ? 'failed' : 'ok' }],
       },
       ...(error === undefined ? {} : { error }),
     },
@@ -253,7 +282,7 @@ describe('PetService (rc.6 session events)', () => {
       ctx.emit('session/event', session, stepStart(1, 1, 2))
       expect(await service.state()).toMatchObject({ animation: 'waiting', bubble: '等待模型响应' })
 
-      ctx.emit('session/event', session, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(session, 1, 1, {
         type: 'reasoning-delta', index: 0, text: '分析',
       }, 3))
       expect(await service.state()).toMatchObject({ animation: 'running', bubble: '正在思考' })
@@ -261,7 +290,7 @@ describe('PetService (rc.6 session events)', () => {
       ctx.emit('session/event', session, assistantMessage(1, 1, '完整回复', 4))
       expect(await service.state()).toMatchObject({ animation: 'review', bubble: '整理回复中' })
 
-      ctx.emit('session/event', session, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(session, 1, 1, {
         type: 'text-delta', index: 0, text: '回答',
       }, 5))
       expect(await service.state()).toMatchObject({ animation: 'review', bubble: '整理回复中' })
@@ -290,7 +319,7 @@ describe('PetService (rc.6 session events)', () => {
       const service = new PetService(ctx, { persistDir: dir })
       // The SITUATION wakes the whisper, not the words: a reasoning chunk
       // speaks the thinking category while the status bubble reports as usual.
-      ctx.emit('session/event', session, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(session, 1, 1, {
         type: 'reasoning-delta', index: 0, text: '这里有个错误要修',
       }, 1))
       const view = await service.state()
@@ -299,7 +328,7 @@ describe('PetService (rc.6 session events)', () => {
 
       // The cooldown keeps the next chunk quiet right after; the same
       // whisper keeps riding the session's bubble.
-      ctx.emit('session/event', session, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(session, 1, 1, {
         type: 'reasoning-delta', index: 0, text: '又一个错误',
       }, 2))
       expect((await service.state()).sessions?.[0]?.whisper).toBe(WHISPER_CATEGORY_POOLS.thinking[0])
@@ -322,14 +351,14 @@ describe('PetService (rc.6 session events)', () => {
     const session = makeSession('s1')
     try {
       const service = new PetService(ctx, { persistDir: dir })
-      ctx.emit('session/event', session, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(session, 1, 1, {
         type: 'text-delta', index: 0, text: '在整理回复',
       }, 1))
       const view = await service.state()
       expect(view.bubble).toBe('整理回复中')
       expect(view.sessions?.[0]?.whisper).toBe(WHISPER_CATEGORY_POOLS.writing[0])
       // An empty chunk stays quiet and does not disturb the bubble.
-      ctx.emit('session/event', session, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(session, 1, 1, {
         type: 'text-delta', index: 0, text: '',
       }, 2))
       expect((await service.state()).sessions?.[0]?.whisper).toBe(WHISPER_CATEGORY_POOLS.writing[0])
@@ -353,6 +382,9 @@ describe('PetService (rc.6 session events)', () => {
         bubble: '还有 1 个工具运行中',
       })
 
+      // Session format V4 reports the outcome on the tool message root, and
+      // this result carries no `error` detail: the root flag alone must fail
+      // the step instead of rendering the result as a success.
       ctx.emit('session/event', session, toolResult(1, 1, 'call-2', 4, true))
       expect(await service.state()).toMatchObject({
         animation: 'failed',
@@ -384,7 +416,7 @@ describe('PetService (rc.6 session events)', () => {
     try {
       const service = new PetService(ctx, { persistDir: dir })
 
-      ctx.emit('session/event', sessionA, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(sessionA, 1, 1, {
         type: 'reasoning-delta', index: 0, text: 'A',
       }, 1))
       expect(await service.state()).toMatchObject({ animation: 'running', bubble: '正在思考' })
@@ -395,7 +427,7 @@ describe('PetService (rc.6 session events)', () => {
         bubble: '正在使用 search',
       })
 
-      ctx.emit('session/event', sessionA, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(sessionA, 1, 1, {
         type: 'text-delta', index: 0, text: 'A',
       }, 2))
       expect(await service.state()).toMatchObject({ animation: 'review', bubble: '整理回复中' })
@@ -404,7 +436,7 @@ describe('PetService (rc.6 session events)', () => {
       expect(await service.state()).toMatchObject({ animation: 'jumping', bubble: '完成啦' })
       expect((await service.state()).affinity.turns).toBe(1)
 
-      ctx.emit('session/event', sessionA, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(sessionA, 1, 1, {
         type: 'text-delta', index: 0, text: 'A2',
       }, 3))
       ctx.emit('session/disposed', sessionB)
@@ -431,7 +463,7 @@ describe('PetService (rc.6 session events)', () => {
     try {
       const service = new PetService(ctx, { persistDir: dir })
 
-      ctx.emit('session/event', sessionA, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(sessionA, 1, 1, {
         type: 'reasoning-delta', index: 0, text: 'A',
       }, 1))
       ctx.emit('session/event', sessionB, toolCall(1, 1, 'call-b', 'search', 1))
@@ -450,7 +482,7 @@ describe('PetService (rc.6 session events)', () => {
       ])
 
       // A new event on A moves A to the top of the stack.
-      ctx.emit('session/event', sessionA, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(sessionA, 1, 1, {
         type: 'text-delta', index: 0, text: 'A',
       }, 2))
       view = await service.state()
@@ -484,10 +516,10 @@ describe('PetService (rc.6 session events)', () => {
     try {
       const service = new PetService(ctx, { persistDir: dir })
 
-      ctx.emit('session/event', sessionA, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(sessionA, 1, 1, {
         type: 'reasoning-delta', index: 0, text: 'A',
       }, 1))
-      ctx.emit('session/event', sessionB, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(sessionB, 1, 1, {
         type: 'reasoning-delta', index: 0, text: 'B',
       }, 2))
 
@@ -512,7 +544,7 @@ describe('PetService (rc.6 session events)', () => {
       const service = new PetService(ctx, { persistDir: dir })
 
       ctx.emit('session/event', sessionA, toolCall(1, 1, 'call-a', 'search', 1))
-      ctx.emit('session/event', sessionB, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(sessionB, 1, 1, {
         type: 'reasoning-delta', index: 0, text: 'B',
       }, 2))
 
@@ -556,7 +588,9 @@ describe('PetService (rc.6 session events)', () => {
       const service = new PetService(ctx, { persistDir: dir })
       ctx.emit('session/event', session, toolCall(1, 1, 'call-f', 'bash', 1, '{"command":"node server.js"}'))
       vi.setSystemTime(10_000)
-      ctx.emit('session/event', session, toolResult(1, 1, 'call-f', 2, true, { name: 'boom', code: 'E1' }))
+      // No `error` detail accompanies this result: the failure identity lives
+      // on the tool message root alone.
+      ctx.emit('session/event', session, toolResult(1, 1, 'call-f', 2, true))
       const view = await service.state()
       expect(view.sessions?.[0]?.whisper).toBe(WHISPER_RESULT_POOLS.fail[0])
     } finally {
@@ -596,7 +630,7 @@ describe('PetService (rc.6 session events)', () => {
     try {
       const service = new PetService(ctx, { persistDir: dir })
 
-      ctx.emit('session/event', sessionA, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(sessionA, 1, 1, {
         type: 'reasoning-delta', index: 0, text: 'A',
       }, 1))
       ctx.emit('session/event', sessionB, toolCall(1, 1, 'call-b', 'search', 1))
@@ -647,7 +681,7 @@ describe('PetService (rc.6 session events)', () => {
     const sessionB = makeSession('s-b')
     try {
       const service = new PetService(ctx, { persistDir: dir })
-      ctx.emit('session/event', sessionA, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(sessionA, 1, 1, {
         type: 'reasoning-delta', index: 0, text: 'A',
       }, 1))
       ctx.emit('session/event', sessionB, toolCall(1, 1, 'call-b', 'search', 1))
@@ -1231,7 +1265,7 @@ describe('voice packs in PetService (pet-center M4, issue #677)', () => {
           whispers: { categories: { thinking: ['自定义思考'] } },
         }),
       })
-      ctx.emit('session/event', session, assistantChunk(1, 1, {
+      ctx.emit('agent/assistant-stream', assistantChunk(session, 1, 1, {
         type: 'reasoning-delta', index: 0, text: '想想怎么改',
       }, 1))
       expect((await service.state()).sessions?.[0]?.whisper).toBe('自定义思考')

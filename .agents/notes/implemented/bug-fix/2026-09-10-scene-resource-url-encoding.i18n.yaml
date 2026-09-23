@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-09-10-scene-resource-url-encoding.md: 269bf07153fdf02fc1810f1699360b925c995a11
+2026-09-10-scene-resource-url-encoding.zh.md: c56615bd7bbf2ad99bb63a7f9400f345f51457e5

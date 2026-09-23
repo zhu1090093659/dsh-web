@@ -151,20 +151,17 @@ describe('remote desktop event-stream upgrades', () => {
     }
   })
 
-  it('proxies an unpaired upgrade when the pairing policy is off', async () => {
+  it('refuses an unpaired upgrade even when the LAN pairing policy is off (issue #1665)', async () => {
+    // Same amplifier rule as the HTTP leg: the upgrade forwards with the
+    // process's own browser credential, so it is never authorized by policy.
     const service = makeService()
     const upstream = await startUpstream()
-    const [route] = makeRemoteApiUpgradeRoutes({ service, port: upstream.port, requirePairingForLan: false })
+    const [route] = makeRemoteApiUpgradeRoutes({ service, port: upstream.port })
     const driven = await driveUpgrade(route.handler, { 'sec-websocket-key': 'k', 'sec-websocket-version': '13' })
-    const waiter = readAll(driven.client)
-    await waitFor101(driven.client)
-    driven.client.write('ping-from-client')
-    const received = await waiter
+    const received = await readAll(driven.client)
     try {
-      expect(upstream.seen.length).toBe(1)
-      expect(upstream.seen[0].path).toBe('/api/remote.mux')
-      expect(received).toContain('101 Switching Protocols')
-      expect(received).toContain('echo:ping-from-client')
+      expect(received).toContain('403 Forbidden')
+      expect(upstream.seen.length).toBe(0)
     } finally {
       await driven.close()
       await upstream.close()

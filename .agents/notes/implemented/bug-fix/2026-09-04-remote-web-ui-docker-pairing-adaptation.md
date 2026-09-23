@@ -15,7 +15,7 @@ This caused a complete pairing deadlock:
 
 Enable seamless pairing across container-bridged networks, reverse proxies, and custom local domains while preserving strong security boundaries:
 
-- Direct token acceptance with host authorization: Pairing endpoints (POST /api/pair/accept and GET /pair-accept) permit requests with private or local hostnames (RFC 1918 IPv4, IPv6 ULA, .local, .lan, .internal, .home.arpa, loopback) and non-cross-site markers (sec-fetch-site != 'cross-site' and matching Origin if present) to reach token verification. Once the cryptographic one-time token is verified, the client's authority (Host:Port) is dynamically granted and recorded in dynamicTrustedHosts.
+- Direct token acceptance with host authorization: Pairing endpoints (POST /api/pair/accept and GET /pair-accept) permit requests with private or local hostnames (RFC 1918 IPv4, IPv6 ULA, .local, .lan, .internal, .home.arpa, loopback) and non-cross-site markers (sec-fetch-site != 'cross-site' and matching Origin if present) to reach token verification. (Amended 2026-09-09: the `GET /pair-accept` and `GET /pair-app` pages are top-level navigations and now accept the marker-less case too — see [the pairing entry navigation fence](2026-09-09-pairing-entry-navigation-fence.md); the POST API path keeps the marker requirement.) Once the cryptographic one-time token is verified, the client's authority (Host:Port) is dynamically granted and recorded in dynamicTrustedHosts.
 - Paired session re-authorization: When a request arrives from a private LAN host carrying a valid paired-device cookie issued by this service instance, its authority is automatically trusted and added to dynamicTrustedHosts, surviving client reconnects and service rebinds.
 - Explicit host configuration and environment variables: Added trustedHosts configuration and supported DSH_REMOTE_TRUSTED_HOSTS (comma-separated authorities) and DSH_REMOTE_PUBLIC_BASE_URL environment variables for static network pre-configuration.
 - Pairing panel UI enhancements: Exposed the raw pairing token with a dedicated copy button and contextual guidance for Docker/reverse-proxy topologies alongside the existing QR code and link copy actions.
@@ -25,7 +25,7 @@ Enable seamless pairing across container-bridged networks, reverse proxies, and 
 - Unit tests in packages/dsh-remote-web-ui/tests/docker-pairing.spec.ts verify:
   - Acceptance of tokens directly from external host IP (192.168.1.100:3080) when internal interface is 172.22.0.5:3080, and dynamic authorization of subsequent calls.
   - Verification of GET /pair-accept from external host with 303 redirection to app landing.
-  - Rejection of cross-site requests (sec-fetch-site: cross-site) and origin mismatches.
+  - Rejection of cross-site requests (sec-fetch-site: cross-site) and origin mismatches on the API path; since the [navigation fence fix](2026-09-09-pairing-entry-navigation-fence.md) the entry pages accept a top-level document navigation with those markers.
   - Rejection of non-private external hosts when not pre-configured in whitelist.
   - Verification of explicit trustedHosts configuration.
 - Full package test suite (31 files, 338 tests) passing cleanly.
@@ -40,4 +40,4 @@ Enable seamless pairing across container-bridged networks, reverse proxies, and 
 
 ## Consequences
 
-Users running DSH in Docker, Kubernetes, or behind custom reverse proxies can now pair mobile and remote devices directly using the pairing token or custom host link without configuring complex host network workarounds. DNS rebinding and cross-site request forgery protections remain fully enforced.
+Users running DSH in Docker, Kubernetes, or behind custom reverse proxies can now pair mobile and remote devices directly using the pairing token or custom host link without configuring complex host network workarounds. DNS rebinding and cross-site request forgery protections remain enforced on every API and subresource request; the pairing entry pages accept a top-level navigation from any initiator, which is what a QR link requires (see [the navigation fence fix](2026-09-09-pairing-entry-navigation-fence.md)).

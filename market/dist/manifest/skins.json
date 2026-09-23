@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-06",
+  "generated": "2026-09-23",
   "items": [
     {
       "id": "whale-song",
@@ -197,6 +197,61 @@
       }
     },
     {
+      "id": "blueprint",
+      "name": "工程蓝图",
+      "nameEn": "Blueprint",
+      "author": "stushansusu",
+      "rank": 5,
+      "tagline": "图纸母题 · 两套材质：夜图青线 / 暖纸墨线 · 图签栏与标尺刻度",
+      "description": "以工程图纸为视觉母题，明暗两套主题各自成篇。暗色是「夜图」：深靛蓝纸底、蓝图青线稿、荧光扫描线与四角衰减；亮色是「暖纸」：米黄纸底、墨褐线稿、纸张纤维纹理与边缘烧色，界面零纯白、零冷色，长时间阅读不刺眼。两层 HUD 做成图纸的标题栏与状态栏，含图号、比例、修订号、网格规格、实时坐标读数与标尺刻度，另有一枚主题化 favicon。背景人物为线稿：轮廓加重、内部以状态栏同款 24px 方格线填充。交互控件保留官方几何，只在配色、描边与标注层上做文章。",
+      "tags": [
+        "blueprint",
+        "technical",
+        "grid",
+        "monospace",
+        "drafting",
+        "paper",
+        "sepia",
+        "dual-theme"
+      ],
+      "version": "1.0.0",
+      "accent": "#4fd1ff",
+      "preview": {
+        "light": "assets/skins/blueprint/preview/light.jpg",
+        "dark": "assets/skins/blueprint/preview/dark.jpg"
+      },
+      "files": [
+        "assets/whale-fill.png",
+        "assets/whale-line.png",
+        "hooks.mjs",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/blueprint",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css"
+      },
+      "requires": {
+        "contracts": [
+          {
+            "apiVersion": "x-org.linxin666.skin-center/v1alpha1",
+            "kind": "SkinHooks",
+            "optional": true
+          }
+        ]
+      },
+      "facets": {
+        "client": {
+          "entry": "hooks.mjs",
+          "apiVersion": "x-org.linxin666.skin-center/v1alpha1"
+        }
+      }
+    },
+    {
       "id": "xp",
       "name": "Windows XP (Luna)",
       "nameEn": "Windows XP Luna",
@@ -312,6 +367,57 @@
       }
     },
     {
+      "id": "cafe-roastery",
+      "name": "咖啡工坊",
+      "nameEn": "Cafe Roastery",
+      "author": "stushansusu",
+      "rank": 8,
+      "tagline": "拿铁奶油 / 浓缩焦糖 · 两套暖色材质 · 蒸汽与咖啡杯",
+      "description": "以烘焙咖啡馆为视觉母题，明暗两套主题各自成篇。暗色是「浓缩」：深烘焙咖啡豆色面板、焦糖/奶油黄的高亮与描边，像深夜还在营业的烘焙间；亮色是「拿铁」：奶泡米白面板、暖咖啡墨水文字、焦糖色交互，界面零纯白、零冷色。空会话首屏有一圈咖啡杯口的「奶泡罗塞塔」与上升的蒸汽，输入卡片做成熟纸杯套的样式，侧栏是烘焙工作台墙面。纯 CSS 实现，无 hooks，无图片资产。",
+      "tags": [
+        "cafe",
+        "coffee",
+        "roastery",
+        "latte",
+        "espresso",
+        "caramel",
+        "warm",
+        "cream",
+        "css-only",
+        "dual-theme"
+      ],
+      "version": "1.0.0",
+      "accent": "#e2a84e",
+      "preview": {
+        "light": "assets/skins/cafe-roastery/preview/light.png",
+        "dark": "assets/skins/cafe-roastery/preview/dark.png"
+      },
+      "files": [
+        "assets/bg-final-espresso.png",
+        "assets/bg-final-latte.png",
+        "patches.css",
+        "preview/dark.png",
+        "preview/light.png",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/cafe-roastery",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/cafe-roastery/assets/bg-final-latte.png"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/cafe-roastery/assets/bg-final-espresso.png"
+          }
+        }
+      }
+    },
+    {
       "id": "minecraft",
       "name": "Minecraft 方块世界",
       "nameEn": "Minecraft Voxel",
@@ -419,8 +525,8 @@
       "nameEn": "Hatsune Miku",
       "author": "涂山苏苏",
       "rank": 10,
-      "tagline": "蓝紫双马尾 · 01 编号 · 音符波形 · 电子歌姬主题",
-      "description": "以世界第一的虚拟歌姬初音未来为灵感的主题皮肤：蓝紫洋红渐变贯穿全局，音符与声波曲线点缀在半透明面板之间，标题栏与状态栏带有 01 编号徽标与音乐波形，半透明毛玻璃面板透出背景图——沉浸式电子歌姬氛围。",
+      "tagline": "初音青绿机甲方格 · 明暗双主题独立配色 · 会话栏全透明露出壁纸",
+      "description": "初音未来主题的整体重做：明亮档是青空舞台（冷调青白平涂 + 墨蓝描边 + 硬投影），暗色档是夜海霓虹（深蓝平涂 + 青绿冷光边 + 品红高光），两套配色各自独立；会话栏完全透明让壁纸直通，面板改用机甲斜切角、拉丝金属与青蓝品红渐变描边，输入区做成座舱凹槽并配主题色光标，左上角字标为代号铭牌加渐变名号；界面字体换成 Bahnschrift 几何无衬线，顶栏与底栏收起，正文与设置面板按明暗两套分别校验可读性。",
       "tags": [
         "miku",
         "vocaloid",
@@ -429,8 +535,8 @@
         "idol",
         "waveform"
       ],
-      "version": "0.2.0",
-      "accent": "#2e9bff",
+      "version": "0.3.0",
+      "accent": "#39c5bb",
       "preview": {
         "light": "assets/skins/miku/preview/light.jpg",
         "dark": "assets/skins/miku/preview/dark.jpg"
@@ -609,7 +715,7 @@
         "ornate",
         "glass"
       ],
-      "version": "0.3.1",
+      "version": "0.3.2",
       "accent": "#c5a468",
       "preview": {
         "light": "assets/skins/maid-atelier/preview/light.jpg",
@@ -813,6 +919,119 @@
       }
     },
     {
+      "id": "island-life",
+      "name": "无人岛生活",
+      "nameEn": "Island Life",
+      "author": "wertyq111",
+      "rank": 20,
+      "tagline": "海岛白昼 / 星空夜景插画 · 奶油木纹面板 · 薄荷胶囊按钮",
+      "description": "致敬「动森」氛围的原创海岛皮肤：浅色模式是阳光海滩，深色模式是同构图的星空夜景；奶油米白面板、暖棕文字、薄荷青绿主色，按钮与输入卡带游戏按键式立体底影。纯 CSS，无 hooks。",
+      "tags": [
+        "island",
+        "cozy",
+        "cartoon",
+        "mint",
+        "art",
+        "translucent"
+      ],
+      "version": "0.1.0",
+      "accent": "#19c8b9",
+      "preview": {
+        "light": "assets/skins/island-life/preview/light.jpg",
+        "dark": "assets/skins/island-life/preview/dark.jpg"
+      },
+      "files": [
+        "LICENSE",
+        "README.md",
+        "README.zh.md",
+        "assets/island-day.webp",
+        "assets/island-night.webp",
+        "assets/select-cursor.png",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/island-life",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/island-life/assets/island-day.webp",
+            "scrim": "linear-gradient(rgba(248, 248, 240, 0.18) 0%, rgba(248, 246, 236, 0.34) 55%, rgba(247, 243, 223, 0.46) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/island-life/assets/island-night.webp",
+            "scrim": "linear-gradient(rgba(14, 18, 38, 0.22) 0%, rgba(16, 20, 40, 0.34) 60%, rgba(18, 20, 36, 0.46) 100%)"
+          }
+        }
+      }
+    },
+    {
+      "id": "observatory",
+      "name": "天文台",
+      "nameEn": "Observatory",
+      "author": "stushansusu",
+      "rank": 27,
+      "tagline": "午夜靛 · 老黄铜 · 穹顶肋缝 · 时辰刻度",
+      "description": "山顶天文台的观测室：黄铜仪器、午夜靛的天。不是「工程蓝图」那套制图——那是青线网格；这套是圆、弧、刻度、铆钉，全是线，没有一处面积填充。中性层是午夜靛，只带色温不带彩度；老黄铜是全场唯一有彩度的东西，只走线、走字、走点睛。母题是观测室本身：穹顶的纬度环与扇形肋缝、底部的十二时辰刻度带、一排黄铜铆钉，加上首屏的观测环（方位刻度／赤经赤纬读数／十字丝）、星等标尺与水准泡。红只留给需要你看一眼的信号灯。",
+      "tags": [
+        "observatory",
+        "brass",
+        "midnight",
+        "dome",
+        "reticle",
+        "instrument",
+        "scale",
+        "precise",
+        "css-only",
+        "dark-only"
+      ],
+      "version": "1.0.0",
+      "accent": "#c2a55a",
+      "preview": {
+        "light": "assets/skins/observatory/preview/light.jpg",
+        "dark": "assets/skins/observatory/preview/dark.jpg"
+      },
+      "files": [
+        "README.md",
+        "README.zh.md",
+        "assets/dome-plate-dark.svg",
+        "assets/dome-plate-light.svg",
+        "assets/hero-reticle-dark.svg",
+        "assets/hero-reticle-light.svg",
+        "assets/observatory-bg.webp",
+        "assets/ws-sleeve-dark.svg",
+        "assets/ws-sleeve-light.svg",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/observatory",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/observatory/assets/observatory-bg.webp",
+            "scrim": "linear-gradient(180deg, rgba(8,10,16,0.40) 0%, rgba(8,10,16,0.48) 45%, rgba(8,10,16,0.64) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/observatory/assets/observatory-bg.webp",
+            "scrim": "linear-gradient(180deg, rgba(8,10,16,0.40) 0%, rgba(8,10,16,0.48) 45%, rgba(8,10,16,0.64) 100%)"
+          }
+        }
+      }
+    },
+    {
       "id": "stellar-diva",
       "name": "星海歌姬",
       "nameEn": "Stellar Diva",
@@ -877,6 +1096,62 @@
       }
     },
     {
+      "id": "hive-maw",
+      "name": "虫巢",
+      "nameEn": "Hive Maw",
+      "author": "lingfeng.zhang",
+      "rank": 31,
+      "tagline": "几丁质壁 · 卵囊光点 · 隧道肋弧 · 垂棘刻度",
+      "description": "巢穴隧道内壁：几丁质的双缝接缝、成簇的卵囊光点、向深处收束的隧道肋弧。生物荧光绿是全场唯一有彩度的线，只走缝、走点、走刻度；红只留给深处那对眼睛——也就是审批与危险。中性层是带绿调的夜黑，只带色温不带彩度。母题是巢穴本身：壁面接缝、卵室柜格、垂棘横梁，加上首屏的隧道环与卵囊簇。",
+      "tags": [
+        "hive",
+        "chitin",
+        "bioluminescent",
+        "tunnel",
+        "eggs",
+        "organic",
+        "css-only",
+        "dark-only"
+      ],
+      "version": "1.0.0",
+      "accent": "#8fe3a6",
+      "preview": {
+        "light": "assets/skins/hive-maw/preview/light.jpg",
+        "dark": "assets/skins/hive-maw/preview/dark.jpg"
+      },
+      "files": [
+        "LICENSE",
+        "README.md",
+        "README.zh.md",
+        "assets/hive-bg.jpg",
+        "assets/hive-hero-dark.svg",
+        "assets/hive-plate-dark.svg",
+        "assets/hive-sleeve-dark.svg",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/hive-maw",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/hive-maw/assets/hive-bg.jpg",
+            "scrim": "linear-gradient(180deg, rgba(4,8,5,0.34) 0%, rgba(4,8,5,0.46) 45%, rgba(4,8,5,0.66) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/hive-maw/assets/hive-bg.jpg",
+            "scrim": "linear-gradient(180deg, rgba(4,8,5,0.34) 0%, rgba(4,8,5,0.46) 45%, rgba(4,8,5,0.66) 100%)"
+          }
+        }
+      }
+    },
+    {
       "id": "starry-nocturne",
       "name": "星夜夜曲",
       "nameEn": "Starry Nocturne",
@@ -937,6 +1212,63 @@
         "client": {
           "entry": "hooks.mjs",
           "apiVersion": "x-org.linxin666.skin-center/v1alpha1"
+        }
+      }
+    },
+    {
+      "id": "ember-fall",
+      "name": "余烬",
+      "nameEn": "Ember Fall",
+      "author": "lingfeng.zhang",
+      "rank": 32,
+      "tagline": "枪铁灰 · 焊疤接缝 · 危标斜纹 · 灰烬烟幕",
+      "description": "坠机现场回收站：枪铁灰的壁面、焊珠虚线的接缝、45° 危标斜纹的审批区。余烬橙是全场唯一暖色，只走焊缝、走铆点、走地平线那道火光；紫火花是点睛，一颗一颗散在烟里。中性层是冷灰，压住背景里 burning 的天幕。母题是残骸回收：焊板输入壳、弹药柜格、烟幕横梁，加上首屏的坠毁剪影与地平火光。",
+      "tags": [
+        "ember",
+        "wreckage",
+        "mech",
+        "weld",
+        "hazard",
+        "ash",
+        "industrial",
+        "css-only",
+        "dark-only"
+      ],
+      "version": "1.0.0",
+      "accent": "#e8a860",
+      "preview": {
+        "light": "assets/skins/ember-fall/preview/light.jpg",
+        "dark": "assets/skins/ember-fall/preview/dark.jpg"
+      },
+      "files": [
+        "LICENSE",
+        "README.md",
+        "README.zh.md",
+        "assets/ember-bg.jpg",
+        "assets/ember-hero-dark.svg",
+        "assets/ember-plate-dark.svg",
+        "assets/ember-sleeve-dark.svg",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/ember-fall",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/ember-fall/assets/ember-bg.jpg",
+            "scrim": "linear-gradient(180deg, rgba(8,10,13,0.44) 0%, rgba(8,10,13,0.54) 45%, rgba(8,10,13,0.72) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/ember-fall/assets/ember-bg.jpg",
+            "scrim": "linear-gradient(180deg, rgba(8,10,13,0.44) 0%, rgba(8,10,13,0.54) 45%, rgba(8,10,13,0.72) 100%)"
+          }
         }
       }
     },
@@ -1069,6 +1401,248 @@
       }
     },
     {
+      "id": "astral-choir",
+      "name": "星辉教团",
+      "nameEn": "Astral Choir",
+      "author": "lingfeng.zhang",
+      "rank": 33,
+      "tagline": "夜紫 · 极光光带 · 尖塔光环 · 信众眼光",
+      "description": "朝圣之夜：垂直的极光光带掠过壁面，尖塔顶端的球体散开光环，信众的眼睛在暗处一点一点亮。夜紫是结构色，走框、走缝、走柜格；极光青是信号色，只走光带、走眼光点、走球体。中性层是带紫调的夜黑。母题是仪式本身：光环输入壳、圣龛柜格、光环横梁，加上首屏的尖塔与极光弧。",
+      "tags": [
+        "astral",
+        "aurora",
+        "cult",
+        "spire",
+        "halo",
+        "vigil",
+        "violet",
+        "css-only",
+        "dark-only"
+      ],
+      "version": "1.0.0",
+      "accent": "#9fe4f0",
+      "preview": {
+        "light": "assets/skins/astral-choir/preview/light.jpg",
+        "dark": "assets/skins/astral-choir/preview/dark.jpg"
+      },
+      "files": [
+        "LICENSE",
+        "README.md",
+        "README.zh.md",
+        "assets/astral-bg.jpg",
+        "assets/astral-hero-dark.svg",
+        "assets/astral-plate-dark.svg",
+        "assets/astral-sleeve-dark.svg",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/astral-choir",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/astral-choir/assets/astral-bg.jpg",
+            "scrim": "linear-gradient(180deg, rgba(8,6,16,0.36) 0%, rgba(8,6,16,0.48) 45%, rgba(8,6,16,0.68) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/astral-choir/assets/astral-bg.jpg",
+            "scrim": "linear-gradient(180deg, rgba(8,6,16,0.36) 0%, rgba(8,6,16,0.48) 45%, rgba(8,6,16,0.68) 100%)"
+          }
+        }
+      }
+    },
+    {
+      "id": "pixel-anime",
+      "name": "二次元像素",
+      "nameEn": "Anime Pixel",
+      "author": "stushansusu",
+      "rank": 35,
+      "tagline": "椰影沙滩 · 银河星海 · 棋盘抖动 · 精灵描边",
+      "description": "同一个海岸的两段时间。明亮是白昼的沙滩椰林：暖沙地、湿沙的水痕、断断续续的浪线、近岸泛青的海，椰子树用二十格高的点阵剪影立在沙上，天上挂着一颗带八条光芒的阶梯太阳和四朵点阵云；暗色是深夜的星空银河：夜空蓝黑、二百三十颗点阵星加一条由淡点堆出来的银河拱、右上角一枚下弦月，海平线往上是月亮照亮的暖褐滩涂，水里压着几道月光与星光。两套都不靠渐变——明暗是 8px 一格的棋盘抖动堆出来的，像素画里没有平滑 ramp。所有圆角归零（像素画只有直角和 45 度），每张卡片一圈 2px 精灵描边加 4px 实心投影。整片海岸画在画布层（沙 286px、海 134px，锚在底边），而画布与机壳之间不留任何中间层：bg-base 全透明，会话背景与主页背景是同一幅画。侧栏的文件夹行是沙台、选中行下缘压一道碎浪，输入卡下缘也是碎浪、发送键是落日橙（夜里银河紫），工具行与用户气泡共用同一个实心底色。",
+      "tags": [
+        "anime",
+        "pixel",
+        "16bit",
+        "dither",
+        "retro",
+        "beach",
+        "palm",
+        "milky-way",
+        "starfield",
+        "css-only",
+        "dual-theme"
+      ],
+      "version": "1.0.0",
+      "accent": "#0F7182",
+      "preview": {
+        "light": "assets/skins/pixel-anime/preview/light.jpg",
+        "dark": "assets/skins/pixel-anime/preview/dark.jpg"
+      },
+      "files": [
+        "LICENSE",
+        "README.md",
+        "README.zh.md",
+        "assets/pixel-cloud.svg",
+        "assets/pixel-grass-dark.svg",
+        "assets/pixel-grass.svg",
+        "assets/pixel-gull.svg",
+        "assets/pixel-moon-dark.svg",
+        "assets/pixel-palm-dark.svg",
+        "assets/pixel-palm.svg",
+        "assets/pixel-print-dark.svg",
+        "assets/pixel-print.svg",
+        "assets/pixel-shell-dark.svg",
+        "assets/pixel-shell.svg",
+        "assets/pixel-starfish-dark.svg",
+        "assets/pixel-starfish.svg",
+        "assets/pixel-stars-dark.svg",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/pixel-anime",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css"
+      }
+    },
+    {
+      "id": "black-gold",
+      "name": "暗夜鎏金",
+      "nameEn": "Black Gold Gilded",
+      "author": "stushansusu",
+      "rank": 41,
+      "tagline": "纯暗色 · 黑漆底 · 描金线 · 缠枝角花 · 鎏金立绘",
+      "description": "暗色专用皮肤：无论系统设为浅色还是深色，呈现的都是同一套黑漆鎏金，所以两个主题的预览图完全一致。暖黑漆底、淡香槟金正文、金属渐变主按钮；深色值同时写在 :root 与 body[data-ds-dark-theme] 上，装饰规则不再分支，并用 html { color-scheme: dark !important } 压住跟随系统的原生控件配色。另补齐了官方「永不派生」的 14 个按钮/遮罩类 token——否则它们在浅色模式下会退回官方浅色值（「回到底部」按钮就会变成白色圆钮）。装饰层：四角缠枝角花、顶部回纹带、双线描金边、金箔碎屑与金属拉丝、菜单栏描金双线边与鎏金鲸鱼印、回合云纹分隔线、输入卡开光、工作区描金匾额、字标徽章，以及右侧羽化的鎏金立绘（blur 1.7px，整层羽化并外扩 48px 以免视口边缘虚化）。审批面板另有朱批钤印。纯 CSS，无 hooks。",
+      "tags": [
+        "black",
+        "gold",
+        "gilded",
+        "ornament",
+        "filigree",
+        "dark-only",
+        "css-only",
+        "character-art"
+      ],
+      "version": "1.0.0",
+      "accent": "#c9ab6e",
+      "preview": {
+        "light": "assets/skins/black-gold/preview/light.jpg",
+        "dark": "assets/skins/black-gold/preview/dark.jpg"
+      },
+      "files": [
+        "README.md",
+        "README.zh.md",
+        "assets/gilded-corner-bl.svg",
+        "assets/gilded-corner-br.svg",
+        "assets/gilded-corner-tl.svg",
+        "assets/gilded-corner-tr.svg",
+        "assets/gilded-divider.svg",
+        "assets/gilded-flourish.svg",
+        "assets/gilded-meander.svg",
+        "assets/gilded-seal.svg",
+        "assets/gilded-tick-bl.svg",
+        "assets/gilded-tick-br.svg",
+        "assets/gilded-tick-tl.svg",
+        "assets/gilded-tick-tr.svg",
+        "assets/liujin-bg.png",
+        "assets/vermilion-seal.svg",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/black-gold",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css"
+      }
+    },
+    {
+      "id": "ice-princess",
+      "name": "冰晶公主",
+      "nameEn": "Ice Crystal Princess",
+      "author": "stushansusu",
+      "rank": 42,
+      "tagline": "纯暗色 · 霜棱画框 · 冰晶切面 · 六出雪花 · 风雪视差 · 配套桌宠立绘",
+      "description": "暗色专用皮肤：无论系统设为浅色还是深色，呈现的都是同一套冰殿，所以两个主题的预览图一致（实测两态逐像素差 0%）。配色直接取自桌面宠物「冰晶公主」的立绘设定——主深蓝 #1A4B94 是外袍与蝴蝶结，中宝蓝 #3277D8 是衣饰与宝石，浅天蓝 #63B8F0 是发梢高光与裙摆渐变，亮白 #FFFFFF 是衣身与长袜，银灰 #D6E4F5 走腰带与镶边，瞳色 #589CE6 是那双眼睛；整套唯一的暖色是肤色 #F9DDD0，只留在首屏霜环正中心。装饰层走「冰殿」引擎：四角霜棱角花（同一母题镜像四次）、六棱冰印、开光角线、霜纹分隔线、切面冰宝石主按钮；首屏是六出雪花霜环，工作区面板是冰壁。背景为角色立绘，人物缩放 0.85、水平中心 65%，四周用无结构色场铺底并做椭圆羽化；其上叠两层雪片贴图做从左向右的风雪，两层贴图宽度不同（1400/900px）故产生视差，并尊重 prefers-reduced-motion。",
+      "tags": [
+        "ice",
+        "crystal",
+        "princess",
+        "snowflake",
+        "frost",
+        "snow",
+        "wind",
+        "aurora",
+        "sapphire",
+        "silver",
+        "companion",
+        "dark-only",
+        "css-only",
+        "character-art"
+      ],
+      "version": "1.0.0",
+      "accent": "#3277D8",
+      "preview": {
+        "light": "assets/skins/ice-princess/preview/light.jpg",
+        "dark": "assets/skins/ice-princess/preview/dark.jpg"
+      },
+      "files": [
+        "README.md",
+        "README.zh.md",
+        "assets/bingjing-bg.webp",
+        "assets/crystal-corner-bl.svg",
+        "assets/crystal-corner-br.svg",
+        "assets/crystal-corner-tl.svg",
+        "assets/crystal-corner-tr.svg",
+        "assets/crystal-crest.svg",
+        "assets/crystal-divider.svg",
+        "assets/crystal-lace-drop-flip.svg",
+        "assets/crystal-lace-drop.svg",
+        "assets/crystal-seal-bad.svg",
+        "assets/crystal-seal.svg",
+        "assets/crystal-tick-bl.svg",
+        "assets/crystal-tick-br.svg",
+        "assets/crystal-tick-tl.svg",
+        "assets/crystal-tick-tr.svg",
+        "assets/crystal-wind-far.svg",
+        "assets/crystal-wind-near.svg",
+        "assets/sparkle-dark.svg",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/ice-princess",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/ice-princess/assets/bingjing-bg.webp",
+            "scrim": "linear-gradient(180deg, rgba(7,14,30,0.42) 0%, rgba(7,14,30,0.5) 45%, rgba(7,14,30,0.68) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/ice-princess/assets/bingjing-bg.webp",
+            "scrim": "linear-gradient(180deg, rgba(7,14,30,0.42) 0%, rgba(7,14,30,0.5) 45%, rgba(7,14,30,0.68) 100%)"
+          }
+        }
+      }
+    },
+    {
       "id": "furina",
       "name": "芙宁娜",
       "nameEn": "Furina",
@@ -1164,6 +1738,60 @@
       "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/mint",
       "contributes": {
         "stylesheet": "skin.css"
+      }
+    },
+    {
+      "id": "remiel-starlit",
+      "name": "蕾米埃尔·星翎",
+      "nameEn": "Remiel Starlit",
+      "author": "oh-wang",
+      "rank": 99,
+      "tagline": "粉樱冰翎，明暗皆星光",
+      "description": "以蕾米埃尔的樱粉发色、冰蓝羽翼与夜靛礼装构成半透明玻璃质感。浅色如晨雾羽光，深色以紫红与靛黑承接更沉浸的场景背景。",
+      "tags": [
+        "anime",
+        "pink",
+        "ice-blue",
+        "glass",
+        "dark"
+      ],
+      "version": "0.1.0",
+      "accent": "#d75b8d",
+      "preview": {
+        "light": "assets/skins/remiel-starlit/preview/light.jpg",
+        "dark": "assets/skins/remiel-starlit/preview/dark.jpg"
+      },
+      "files": [
+        "LICENSE",
+        "NOTICE",
+        "README.md",
+        "README.zh.md",
+        "assets/remiel-calm.jpg",
+        "assets/remiel-nocturne.jpg",
+        "assets/remiel-settings-dark.jpg",
+        "assets/remiel-settings-light.jpg",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/remiel-starlit",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/remiel-starlit/assets/remiel-calm.jpg",
+            "scrim": "linear-gradient(rgba(255, 247, 252, 0.08) 0%, rgba(255, 247, 252, 0.08) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/remiel-starlit/assets/remiel-nocturne.jpg",
+            "scrim": "linear-gradient(rgba(18, 10, 25, 0.32) 0%, rgba(18, 10, 25, 0.32) 100%)"
+          }
+        }
       }
     },
     {
@@ -1398,7 +2026,7 @@
         "glass",
         "translucent"
       ],
-      "version": "0.2.0",
+      "version": "0.2.2",
       "accent": "#0d1627",
       "preview": {
         "light": "assets/skins/wallpaper-exclusive/preview/light.jpg",
@@ -1660,6 +2288,8 @@
         "README.md",
         "README.zh.md",
         "assets/blue-throated-bee-eater.jpg",
+        "assets/selected-flower.svg",
+        "assets/selected-grass.svg",
         "preview/dark.jpg",
         "preview/light.jpg",
         "skin.css",
@@ -1678,6 +2308,188 @@
             "type": "image",
             "src": "assets/skins/blue-throated-bee-eater/assets/blue-throated-bee-eater.jpg",
             "scrim": "linear-gradient(rgba(6, 30, 45, 0.30) 0%, rgba(6, 30, 45, 0.22) 45%, rgba(6, 30, 45, 0.36) 100%)"
+          }
+        }
+      }
+    },
+    {
+      "id": "whalechan-harness",
+      "name": "Whale-chan 鲸鱼娘",
+      "nameEn": "Whale-chan Harness",
+      "author": "Whale-chan Theme contributors",
+      "rank": 1050,
+      "tagline": "鲸鱼娘骑鲸品牌 · 海洋蓝界面 · Harness 工具同人图标",
+      "description": "面向 DeepSeek Harness Web GUI 的非官方 Whale-chan 社区同人皮肤。包含骑鲸品牌标志、工作区与文件图标、工具调用与控制图标、权限护盾、会话及子代理状态视觉。此 Skin Center 版本为纯声明式皮肤，不执行客户端 Hooks。",
+      "tags": [
+        "whalechan",
+        "whale",
+        "ocean",
+        "blue",
+        "anime",
+        "tool-icons"
+      ],
+      "version": "1.0.0",
+      "accent": "#248bda",
+      "preview": {
+        "light": "assets/skins/whalechan-harness/preview/light.jpg",
+        "dark": "assets/skins/whalechan-harness/preview/dark.jpg"
+      },
+      "files": [
+        "LICENSE",
+        "NOTICE",
+        "README.i18n.yaml",
+        "README.md",
+        "README.zh.md",
+        "assets/background-dark.jpg",
+        "assets/background-light.jpg",
+        "assets/control-fanart/command-permission-shield-64.png",
+        "assets/control-fanart/context-injection-card-64.png",
+        "assets/control-fanart/control-add-session-64.png",
+        "assets/control-fanart/control-branch-64.png",
+        "assets/control-fanart/control-close-panel-64.png",
+        "assets/control-fanart/control-command-add-64.png",
+        "assets/control-fanart/control-copy-64.png",
+        "assets/control-fanart/control-dislike-64.png",
+        "assets/control-fanart/control-files-nav-64.png",
+        "assets/control-fanart/control-goal-clear-64.png",
+        "assets/control-fanart/control-goal-edit-64.png",
+        "assets/control-fanart/control-goal-pause-64.png",
+        "assets/control-fanart/control-like-64.png",
+        "assets/control-fanart/control-more-options-64.png",
+        "assets/control-fanart/control-new-session-64.png",
+        "assets/control-fanart/control-queue-64.png",
+        "assets/control-fanart/control-search-64.png",
+        "assets/control-fanart/control-send-64.png",
+        "assets/control-fanart/control-session-log-64.png",
+        "assets/control-fanart/control-settings-64.png",
+        "assets/control-fanart/control-sidebar-close-64.png",
+        "assets/control-fanart/control-sidebar-open-64.png",
+        "assets/control-fanart/control-stop-64.png",
+        "assets/control-fanart/control-subagents-64.png",
+        "assets/control-fanart/control-todo-64.png",
+        "assets/control-fanart/control-view-options-64.png",
+        "assets/control-fanart/control-workspace-add-64.png",
+        "assets/control-fanart/hero-agent-mode-64.png",
+        "assets/control-fanart/perm-shield-full-64.png",
+        "assets/control-fanart/perm-shield-readonly-64.png",
+        "assets/control-fanart/perm-shield-write-64.png",
+        "assets/control-fanart/session-active-beacon-64.png",
+        "assets/control-fanart/workspace-folder-closed-64.png",
+        "assets/status/05-context-feeding.png",
+        "assets/status/07-subagent-outsourcing.png",
+        "assets/status/08-rice-before-reasoning.png",
+        "assets/status-icons/error-splash.svg",
+        "assets/status-icons/success-spark.svg",
+        "assets/tool-fanart/ask-64.png",
+        "assets/tool-fanart/edit-64.png",
+        "assets/tool-fanart/glob-64.png",
+        "assets/tool-fanart/grep-64.png",
+        "assets/tool-fanart/image-64.png",
+        "assets/tool-fanart/pwsh-64.png",
+        "assets/tool-fanart/read-64.png",
+        "assets/tool-fanart/subagent-64.png",
+        "assets/tool-fanart/thinking-64.png",
+        "assets/tool-fanart/todo-64.png",
+        "assets/tool-fanart/toolcall-64.png",
+        "assets/tool-fanart/web-64.png",
+        "assets/tool-fanart/workflow-64.png",
+        "assets/tool-fanart/write-64.png",
+        "assets/ui-fanart/compact-memory-20.png",
+        "assets/ui-fanart/file-document-18.png",
+        "assets/ui-fanart/file-folder-add-18.png",
+        "assets/ui-fanart/file-folder-closed-18.png",
+        "assets/ui-fanart/file-folder-open-16.png",
+        "assets/ui-fanart/file-folder-open-18.png",
+        "assets/ui-fanart/workspace-folder-closed-16.png",
+        "assets/ui-fanart/workspace-folder-open-16.png",
+        "assets/whalechan-riding-whale-64.png",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/online111111/whalechan-dsh-theme",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/whalechan-harness/assets/background-light.jpg",
+            "scrim": "linear-gradient(rgba(247, 252, 255, 0.1), rgba(233, 247, 252, 0.2))"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/whalechan-harness/assets/background-dark.jpg",
+            "scrim": "linear-gradient(rgba(5, 18, 32, 0.18), rgba(8, 25, 43, 0.32))"
+          }
+        }
+      }
+    },
+    {
+      "id": "whale-maid",
+      "name": "鲸鱼娘·望海",
+      "nameEn": "Whale Girl · Sea Gaze",
+      "author": "stushansusu",
+      "rank": 1051,
+      "tagline": "白昼海岸 · 蓝发女仆抱鲸 · 蕾丝白纱 · 深海夜",
+      "description": "两套光共用一张画：白昼是原图的海岸午后（蓝天、白浪、灯塔、抱着鲸鱼玩偶的蓝发女仆），夜里把同一张画重新打光成月下的深海，人物与构图一个像素都不移动。界面走赛璐璐的画法——墨线、硬投影、平涂——但面全部换成「白纱」：有颜色、有玻璃、有蕾丝网眼，看得见后面的人。海的纹样只有三种：蕾丝网眼（两组错开半个周期的点阵）、青海波鳞纹（两层错开的半圆浪线），以及从海底升上来的两层视差气泡。",
+      "tags": [
+        "anime",
+        "whale",
+        "maid",
+        "lace",
+        "seaside",
+        "ocean",
+        "cel",
+        "illustration-background",
+        "bubbles",
+        "dual-theme"
+      ],
+      "version": "1.0.0",
+      "accent": "#2E6FD0",
+      "preview": {
+        "light": "assets/skins/whale-maid/preview/light.jpg",
+        "dark": "assets/skins/whale-maid/preview/dark.jpg"
+      },
+      "files": [
+        "LICENSE",
+        "README.md",
+        "README.zh.md",
+        "assets/bubble-dark.svg",
+        "assets/bubble.svg",
+        "assets/sparkle-dark.svg",
+        "assets/sparkle.svg",
+        "assets/whale-bubbles-far-dark.svg",
+        "assets/whale-bubbles-far.svg",
+        "assets/whale-bubbles-near-dark.svg",
+        "assets/whale-bubbles-near.svg",
+        "assets/whale-day.webp",
+        "assets/whale-mark-dark.svg",
+        "assets/whale-mark.svg",
+        "assets/whale-night.webp",
+        "assets/whale.svg",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-web/tree/dev/packages/skins/skin-center/skins/whale-maid",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/whale-maid/assets/whale-day.webp",
+            "scrim": "linear-gradient(106deg, rgba(234,244,253,0.4) 0%, rgba(234,244,253,0.2) 34%, rgba(234,244,253,0.04) 64%, rgba(234,244,253,0) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/whale-maid/assets/whale-night.webp",
+            "scrim": "linear-gradient(106deg, rgba(5,14,32,0.52) 0%, rgba(5,14,32,0.26) 34%, rgba(5,14,32,0.06) 64%, rgba(5,14,32,0) 100%)"
           }
         }
       }

@@ -1,0 +1,461 @@
+/* Models-page extension area: per-model capability declarations.
+ * Aligned with the family settings-card CSS: same semantic tokens, radius and
+ * typography so the area reads as part of the official provider card. */
+
+.panel {
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-2);
+  border-radius: 10px;
+  padding: 0 12px;
+  margin: 0 16px 12px;
+}
+
+.header {
+  appearance: none;
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 2px;
+  display: flex;
+}
+
+.header:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: -2px;
+}
+
+.title {
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.pending {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+
+.chevron {
+  color: var(--dsw-alias-label-dimmed);
+  transition: transform 0.16s;
+  flex-shrink: 0;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.body {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  padding: 8px 2px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hint {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.status {
+  margin: 0;
+  color: var(--dsw-alias-label-dimmed);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.readOnly {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+
+.failed {
+  margin: 0;
+  color: var(--dsw-alias-status-danger, #d0342c);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.notice {
+  margin: 0;
+  color: var(--dsw-alias-state-warn-label);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.statusRow {
+  align-items: center;
+  gap: 10px;
+  display: flex;
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row {
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-3);
+}
+
+.rowHeader {
+  appearance: none;
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  display: flex;
+}
+
+.rowHeader:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: -2px;
+}
+
+.modelId {
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.modelName {
+  color: var(--dsw-alias-label-dimmed);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.chip {
+  color: var(--dsw-alias-label-secondary);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.rowBody {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldLabel {
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.checkLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.checkLabel:has(input:disabled) {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.modeGroup {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.modeOption {
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modeOption:has(input:disabled) {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.modeOptionActive {
+  border-color: var(--dsw-alias-brand-primary);
+  color: var(--dsw-alias-label-primary);
+}
+
+.levels {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+}
+
+.levelChips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.levelChip {
+  appearance: none;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  padding: 2px 10px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.levelChip:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.levelChipActive {
+  border-color: var(--dsw-alias-brand-primary);
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-brand-primary-softer, transparent);
+}
+
+.wireRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wireLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 130px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+
+.wireLabel code {
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+}
+
+.wireInput {
+  appearance: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-layer-2);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  padding: 4px 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.wireInput:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: -1px;
+}
+
+.wireInput::placeholder {
+  color: var(--dsw-alias-label-dimmed);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.ghost {
+  appearance: none;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  padding: 4px 12px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+}
+
+.ghost:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ghost:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+/* Fill primary button: the mandated alias trio (never --dsw-alias-brand-primary
+   as a fill — it aliases the foreground under the official theme). */
+.primary {
+  appearance: none;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 4px 14px;
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+}
+
+.primary:hover:enabled {
+  background: var(--dsw-alias-button-primary-hover);
+}
+
+.primary:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.primary:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+/* Disabled-provider toggle states. */
+
+.offBadge {
+  color: var(--dsw-alias-label-secondary);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.disabledBox {
+  border: 1px dashed var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.disabledBox p {
+  flex: 1;
+}
+
+.danger {
+  appearance: none;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+  border: 1px solid var(--dsw-alias-status-danger, #d0342c);
+  border-radius: 8px;
+  padding: 4px 12px;
+  background: transparent;
+  color: var(--dsw-alias-status-danger, #d0342c);
+}
+
+.danger:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.danger:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+/* Disabled-provider archive footer (the Models page footer seat). */
+
+.archive {
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.archiveTitle {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.archiveRows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.archiveRow {
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-3);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  display: flex;
+}

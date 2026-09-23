@@ -4,9 +4,11 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs'
+import type { Duplex } from 'node:stream'
 import { Client, type ConnectConfig } from 'ssh2'
 import type { ExecResult, SshHostEntry } from '../protocol.ts'
 import { expandHome, normalizeAgentPath, type HostStore } from '../store.ts'
+import { startProxyCommand, type ProxyTarget } from './proxy-command.ts'
 
 /** Default engine knobs. */
 export interface EngineOptions {
@@ -121,6 +123,13 @@ export function connectClient(config: ConnectConfig, onKeyboardInteractive?: Key
     const fail = (error: unknown): void => {
       if (settled) return
       settled = true
+      // A caller-supplied transport (a jump forwardOut stream or a
+      // ProxyCommand) must not outlive the client that failed to use it, or
+      // its child process leaks.
+      const sock = config.sock
+      if (sock !== undefined && typeof (sock as { destroy?: unknown }).destroy === 'function') {
+        try { (sock as { destroy: () => void }).destroy() } catch { /* already closed */ }
+      }
       try { client.destroy() } catch { /* already closed */ }
       reject(error instanceof Error ? error : new Error(String(error)))
     }
@@ -169,10 +178,86 @@ export function appendOutput(target: { text: string; truncated: boolean }, chunk
   target.text += chunk.toString('utf8')
 }
 
+/** The ProxyCommand token source for one entry. */
+function proxyTargetOf(entry: SshHostEntry): ProxyTarget {
+  return { host: entry.host, port: entry.port, user: entry.user, alias: entry.alias }
+}
+
+/**
+ * Parse an OpenSSH jump hop written as an address: `[user@]host[:port]`
+ * (an IPv6 literal must be bracketed). Returns undefined when the value is not
+ * an address at all.
+ */
+export function parseJumpSpec(spec: string): { host: string; port?: number; user?: string } | undefined {
+  const trimmed = spec.trim()
+  if (trimmed === '') return undefined
+  const at = trimmed.lastIndexOf('@')
+  const user = at >= 0 ? trimmed.slice(0, at) : undefined
+  const rest = at >= 0 ? trimmed.slice(at + 1) : trimmed
+  if (rest === '') return undefined
+  let host = rest
+  let portText: string | undefined
+  if (rest.startsWith('[')) {
+    const end = rest.indexOf(']')
+    if (end < 0) return undefined
+    host = rest.slice(1, end)
+    const tail = rest.slice(end + 1)
+    if (tail.startsWith(':')) portText = tail.slice(1)
+    else if (tail !== '') return undefined
+  } else {
+    const colon = rest.indexOf(':')
+    if (colon >= 0) {
+      host = rest.slice(0, colon)
+      portText = rest.slice(colon + 1)
+    }
+  }
+  if (host === '') return undefined
+  let port: number | undefined
+  if (portText !== undefined) {
+    port = Number(portText)
+    if (!Number.isInteger(port) || port < 1 || port > 65535) return undefined
+  }
+  return {
+    host,
+    ...(port !== undefined ? { port } : {}),
+    ...(user !== undefined && user !== '' ? { user } : {}),
+  }
+}
+
+/**
+ * Resolve one ProxyJump spec: an alias configured in this plugin wins, and any
+ * other value is read as an OpenSSH address whose credentials come from the
+ * target entry (an ad-hoc hop has no stored auth of its own).
+ */
+export function resolveHop(engine: PoolEngine, entry: SshHostEntry, spec: string): SshHostEntry {
+  const configured = engine.store.find(spec)
+  if (configured !== undefined) return configured
+  const parsed = parseJumpSpec(spec)
+  if (parsed === undefined) {
+    throw new Error('proxyJump \'' + spec + '\' is neither a configured alias nor a [user@]host[:port] address')
+  }
+  const now = Date.now()
+  return {
+    alias: spec,
+    host: parsed.host,
+    port: parsed.port ?? 22,
+    user: parsed.user ?? process.env.USER ?? entry.user,
+    auth: entry.auth,
+    proxyJump: [],
+    tags: [],
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
 /**
  * Build one full jump chain for an entry: hop clients connected through in
  * order, each forwarding a stream to the next destination, ending with the
  * target client. Shared by the pool and standalone shell sessions.
+ *
+ * A ProxyCommand is the transport that reaches its own host, so the entry's
+ * own command seeds the chain when there is no jump chain, and the first hop's
+ * command is used when the hop carries one.
  */
 export async function connectChain(
   engine: PoolEngine,
@@ -180,24 +265,45 @@ export async function connectChain(
   onKeyboardInteractive?: KeyboardInteractiveHandler,
 ): Promise<{ client: Client; hops: Client[] }> {
   const hops: Client[] = []
-  let sock: ConnectConfig['sock']
   const chain = entry.proxyJump
+  // The store rejects both transports on one entry; a hand-edited store file
+  // can still carry both, and silently picking one would hide the mistake.
+  if (chain.length > 0 && entry.proxyCommand !== undefined) {
+    throw new Error('entry \'' + entry.alias + '\' declares both proxyCommand and proxyJump — pick one transport per host')
+  }
+  /** Transports this call started; destroyed on every failure path. */
+  const transports: Duplex[] = []
+  const startTransport = (owner: SshHostEntry): ConnectConfig['sock'] => {
+    const { stream } = startProxyCommand(owner.proxyCommand as string, proxyTargetOf(owner))
+    transports.push(stream)
+    return stream
+  }
+  let sock: ConnectConfig['sock'] = entry.proxyCommand !== undefined ? startTransport(entry) : undefined
   try {
     for (let index = 0; index < chain.length; index += 1) {
-      const hopAlias = chain[index]
-      const hop = engine.store.find(hopAlias)
-      if (hop === undefined) {
-        throw new Error('proxyJump alias \'' + hopAlias + '\' not found — create it first')
+      const spec = chain[index]
+      const hop = resolveHop(engine, entry, spec)
+      if (index > 0 && hop.proxyCommand !== undefined) {
+        throw new Error('proxyJump hop \'' + spec + '\' declares a proxyCommand, which is only supported on the first hop')
       }
-      const hopClient = await connectClient(buildConnectConfig(hop, sock, engine.opts), onKeyboardInteractive)
+      const hopSock = index === 0 && hop.proxyCommand !== undefined ? startTransport(hop) : sock
+      let hopClient: Client
+      try {
+        hopClient = await connectClient(buildConnectConfig(hop, hopSock, engine.opts), onKeyboardInteractive)
+      } catch (error) {
+        // Name the hop: an address hop (or a typo'd alias) must stay
+        // diagnosable from the error alone.
+        throw new Error('proxyJump hop \'' + spec + '\' (' + hop.user + '@' + hop.host + ':' + hop.port + '): '
+          + (error instanceof Error ? error.message : String(error)))
+      }
       hops.push(hopClient)
-      const next = index + 1 < chain.length ? engine.store.find(chain[index + 1]) : undefined
+      const next = index + 1 < chain.length ? resolveHop(engine, entry, chain[index + 1]) : undefined
       const nextHost = next !== undefined ? next.host : entry.host
       const nextPort = next !== undefined ? next.port : entry.port
       sock = await new Promise<ConnectConfig['sock']>((resolve, reject) => {
         hopClient.forwardOut('127.0.0.1', 0, nextHost, nextPort, (error, stream) => {
           if (error !== undefined) {
-            reject(error)
+            reject(new Error('proxyJump hop \'' + spec + '\' could not forward to ' + nextHost + ':' + nextPort + ': ' + error.message))
           } else {
             resolve(stream)
           }
@@ -206,9 +312,12 @@ export async function connectChain(
     }
   } catch (error) {
     // A missing alias, a failed hop connect, or a failed forwardOut must all
-    // close the hops already connected, so a failed ProxyJump never leaks a
-    // middle-hop connection.
+    // close the hops already connected — and the proxy commands behind them —
+    // so a failed ProxyJump never leaks either.
     for (const client of hops) client.end()
+    for (const stream of transports) {
+      try { stream.destroy() } catch { /* already closed */ }
+    }
     throw error
   }
   let target: Client | undefined
@@ -217,6 +326,9 @@ export async function connectChain(
     return { client: target, hops }
   } catch (error) {
     for (const client of hops) client.end()
+    for (const stream of transports) {
+      try { stream.destroy() } catch { /* already closed */ }
+    }
     // connectClient already destroys the failed target on its own failure
     // path; destroy defensively only when a reference leaked through, and
     // guard it so a second destroy is never an issue.

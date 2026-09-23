@@ -1,6 +1,6 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path/posix'
+import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { writeJsonAtomic } from '../src/core/store.ts'
 
@@ -34,5 +34,11 @@ describe('writeJsonAtomic concurrent safety', () => {
     // The staging name is removed by the successful rename; no .tmp-* residue.
     const { readdir } = await import('node:fs/promises')
     expect((await readdir(dir)).filter((entry) => entry.includes('.tmp-'))).toEqual([])
+  })
+
+  it('creates parent directories recursively even for nested paths (#1431)', async () => {
+    const nested = join(dir, 'deep', 'nested', 'state', 'policy.json')
+    await writeJsonAtomic(nested, { nested: true })
+    expect(JSON.parse(await readFile(nested, 'utf8'))).toEqual({ nested: true })
   })
 })

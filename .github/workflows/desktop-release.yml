@@ -81,6 +81,26 @@ jobs:
         with:
           node-version: 22
 
+      # The packaged profile must pair with the release the tag publishes:
+      # resolve the seed to the tagged aggregate before staging, so an
+      # installer never ships plugins older than its own release. When the
+      # npm publish lane is disabled the tagged version is not on the
+      # registry — keep the committed seed and say so instead of failing.
+      - name: Seed the profile payload with the tagged aggregate
+        working-directory: desktop/runtime/profile-web
+        env:
+          TAG: ${{ steps.resolve.outputs.tag }}
+        shell: bash
+        run: |
+          set -eu
+          version="${TAG#v}"
+          if npm view "@linxin666/dsh-web-all@${version}" version >/dev/null 2>&1; then
+            npm pkg set "dependencies.@linxin666/dsh-web-all=${version}"
+            echo "profile seed resolved to the tagged aggregate ${version}"
+          else
+            echo "the tagged aggregate ${version} is not on npm (publish lane disabled); keeping the committed seed"
+          fi
+
       - name: Stage the bundled runtime payload
         working-directory: desktop
         run: npm run prepare-runtime
@@ -183,6 +203,23 @@ jobs:
       - name: Install desktop dependencies
         working-directory: desktop
         run: npm ci
+
+      # Same seed pairing as the windows-smoke job: the installers must carry
+      # the aggregate the tag publishes, not whatever the committed seed was.
+      - name: Seed the profile payload with the tagged aggregate
+        working-directory: desktop/runtime/profile-web
+        env:
+          TAG: ${{ steps.resolve.outputs.tag }}
+        shell: bash
+        run: |
+          set -eu
+          version="${TAG#v}"
+          if npm view "@linxin666/dsh-web-all@${version}" version >/dev/null 2>&1; then
+            npm pkg set "dependencies.@linxin666/dsh-web-all=${version}"
+            echo "profile seed resolved to the tagged aggregate ${version}"
+          else
+            echo "the tagged aggregate ${version} is not on npm (publish lane disabled); keeping the committed seed"
+          fi
 
       - name: Stage the bundled runtime payload
         working-directory: desktop

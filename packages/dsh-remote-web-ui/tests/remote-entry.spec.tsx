@@ -129,6 +129,9 @@ describe('RemoteEntry', () => {
     mount({ ok: false, code: 'lan-required' })
     fireEvent.click(screen.getByRole('button', { name: 'Remote access' }))
     await waitFor(() => expect(screen.getByText('This feature needs a LAN bind or a public address')).toBeTruthy())
+    // The hint must name the surface the toggle actually lives on: the panel
+    // itself carries no settings card (#1517).
+    expect(screen.getByText(/Settings → Web Plugins → Remote access/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull()
     expect(document.querySelector('[data-testid="remote-qr"]')).toBeNull()
     // The status stream stays open on the lan-required banner: the
@@ -285,6 +288,41 @@ describe('RemoteEntry', () => {
     await waitFor(() => expect(screen.getByText('Paired devices offline')).toBeTruthy())
   })
 
+  it('operator keeps the device row when the server refuses the unpair', async () => {
+    // Given an open panel showing one paired device.
+    mount()
+    const trigger = screen.getByRole('button', { name: 'Remote access' })
+    fireEvent.click(trigger)
+    await waitFor(() => expect(trigger.getAttribute('aria-expanded')).toBe('true'))
+    FakeEventSource.instances[0]?.emit({
+      type: 'state',
+      phase: 'connected',
+      lanAvailable: true,
+      tokenId: 'tok-1',
+      tokenExpiresAt: Date.now() + 60_000,
+      deviceCount: 1,
+      onlineCount: 1,
+      devices: [{
+        id: 'dev-live',
+        createdAt: Date.now() - 10_000,
+        lastSeenAt: Date.now(),
+        online: true,
+        userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/151.0.0.0 Mobile Safari/537.36',
+      }],
+    })
+    const unpair = await screen.findByRole('button', { name: 'Unpair this device' })
+    // When the operator unpairs it and the server refuses the request.
+    const refused = vi.fn(async () => new Response(JSON.stringify({ ok: false, code: 'forbidden' }), { status: 403, headers: { 'content-type': 'application/json' } }))
+    vi.stubGlobal('fetch', refused)
+    fireEvent.click(unpair)
+    await waitFor(() => expect(refused).toHaveBeenCalledWith('/api/pair/revoke', expect.objectContaining({ method: 'POST' })))
+    // Then the row stays: the session is still live server-side, so the panel
+    // must not claim a revocation that did not happen.
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Unpair this device' }).length).toBe(1))
+    // The roster still holds exactly the one live row.
+    expect(screen.getAllByRole('listitem').length).toBe(1)
+  })
+
   it('stop posts the revocation; refresh mints a new QR; the link copies once', async () => {
     const { fetch } = mount()
     fireEvent.click(screen.getByRole('button', { name: 'Remote access' }))
@@ -306,20 +344,28 @@ describe('apply registration', () => {
   it('registers the sidebar entry and the plugin settings card', async () => {
     const { apply } = await import('../src/client/index.ts')
     const injected: string[] = []
+    const requested: string[] = []
     const ctx = {
       effect: (fn: () => unknown) => fn(),
       locale: { register: () => () => {}, bind: () => (key: string) => key },
       slots: {
         inject: (key: string) => { injected.push(key); return () => {} },
         register: () => () => {},
+        spec: () => undefined,
       },
-      settingsScope: {
-        bind: () => ({
-          getSnapshot: () => ({ status: 'unavailable' as const, writable: false }),
-          subscribe: () => () => {},
-          set: async () => {},
-          unset: async () => {},
-        }),
+      // No webUiSettings face: the official per-entry form service carries the
+      // card, addressed by the profile entry id this plugin's namespace is.
+      configForms: {
+        get: (entryId: string) => {
+          requested.push(entryId)
+          return {
+            getSnapshot: () => ({ status: 'unavailable' as const, writable: false }),
+            subscribe: () => () => {},
+            set: async () => true,
+            unset: async () => true,
+            mutate: async () => true,
+          }
+        },
       },
       get: (name: string) => {
         if (name === 'connection') return { isLoopback: true }
@@ -327,7 +373,11 @@ describe('apply registration', () => {
       },
     }
     apply(ctx as never)
-    expect(injected).toEqual(['sidebar.footer.action', 'web-ui.plugin.item'])
+    // The card registers straight into the seat it resolved (the official
+    // keyed seat here, because this double provides no webUiSettings face);
+    // only the sidebar entry rides a declaration-lifetime injection.
+    expect(injected).toEqual(['sidebar.footer.action'])
+    expect(requested).toEqual(['remote-web-ui'])
   })
 
   it('waits for the settings snapshot before mounting the sidebar entry and runtime', async () => {
@@ -350,13 +400,15 @@ describe('apply registration', () => {
           registered.push(entry.name)
           return () => {}
         },
+        spec: () => undefined,
       },
-      settingsScope: {
-        bind: () => ({
+      configForms: {
+        get: () => ({
           getSnapshot: () => snapshot,
           subscribe: (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn) } },
-          set: async () => {},
-          unset: async () => {},
+          set: async () => true,
+          unset: async () => true,
+          mutate: async () => true,
         }),
       },
       get: (name: string) => {
@@ -365,14 +417,58 @@ describe('apply registration', () => {
       },
     }
     apply(ctx as never)
-    expect(registered).toEqual(['web-ui.plugin.item'])
+    expect(registered).toEqual(['plugins.bundle.config'])
 
     snapshot = { status: 'ready' as const, writable: true, value: { enabled: false } }
     notify()
-    expect(registered).toEqual(['web-ui.plugin.item'])
+    expect(registered).toEqual(['plugins.bundle.config'])
 
     snapshot = { status: 'ready' as const, writable: true, value: { enabled: true } }
     notify()
-    expect(registered).toEqual(['web-ui.plugin.item', 'sidebar.footer.action'])
+    expect(registered).toEqual(['plugins.bundle.config', 'sidebar.footer.action'])
+  })
+
+  it('registers the card into the family list seat when the settings group is loaded', async () => {
+    const { apply } = await import('../src/client/index.ts')
+    const registered: Array<{ name: string; id?: string; key?: string }> = []
+    const boundNamespaces: string[] = []
+    const ctx = {
+      effect: (fn: () => unknown) => fn(),
+      locale: { register: () => () => {}, bind: () => (key: string) => key },
+      slots: {
+        inject: (_key: string, factory?: () => unknown) => { factory?.(); return () => {} },
+        register: (entry: { name: string; id?: string; key?: string }) => {
+          registered.push(entry)
+          return () => {}
+        },
+        spec: () => ({ kind: 'keyed' }),
+      },
+      get: (name: string) => {
+        if (name === 'connection') return { isLoopback: true }
+        // The family group's binder: it takes the family settings namespace
+        // and hands back the owning entry's shared form.
+        if (name === 'webUiSettings') {
+          return {
+            bind: (spec: { namespace: string }) => {
+              boundNamespaces.push(spec.namespace)
+              return {
+                getSnapshot: () => ({ status: 'ready' as const, writable: true, value: { enabled: false } }),
+                subscribe: () => () => {},
+                set: async () => true,
+                unset: async () => true,
+                mutate: async () => true,
+              }
+            },
+          }
+        }
+        return undefined
+      },
+    }
+    apply(ctx as never)
+    // The group declares the family seat, so the card belongs there even
+    // though the harness host declares the official keyed seat too.
+    expect(registered).toContainEqual(expect.objectContaining({ name: 'web-ui.plugin.item', id: 'remote-web-ui' }))
+    expect(registered.some(entry => entry.name === 'plugins.bundle.config')).toBe(false)
+    expect(boundNamespaces).toEqual(['remote-web-ui'])
   })
 })

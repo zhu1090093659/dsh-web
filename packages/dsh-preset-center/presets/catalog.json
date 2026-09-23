@@ -1,0 +1,482 @@
+[
+  {
+    "id": "roleplay-chengwei",
+    "nameEn": "Roleplay · Cheng Wei",
+    "descriptionEn": "Immersive all-ages roleplay with Cheng Wei, a barista at an independent coffee shop.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 1,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-baixiaoxiao",
+    "nameEn": "Roleplay · Bai Xiaoxiao",
+    "descriptionEn": "Immersive all-ages roleplay with Bai Xiaoxiao, an administrative assistant and workplace newcomer.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 2,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-xiewanzhou",
+    "nameEn": "Roleplay · Xie Wanzhou",
+    "descriptionEn": "Immersive all-ages roleplay with Xie Wanzhou, a backend engineer.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 3,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-guqingyan",
+    "nameEn": "Roleplay · Gu Qingyan",
+    "descriptionEn": "Immersive all-ages roleplay with Gu Qingyan, a startup co-founder and CEO.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 4,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-linjingshen",
+    "nameEn": "Roleplay · Lin Jingshen",
+    "descriptionEn": "Immersive all-ages roleplay with Lin Jingshen, a high-school Chinese teacher.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 5,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-wenyining",
+    "nameEn": "Roleplay · Wen Yining",
+    "descriptionEn": "Immersive all-ages roleplay with Wen Yining, a flight attendant on international routes.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 6,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-ruanqingxiao",
+    "nameEn": "Roleplay · Ruan Qingxiao",
+    "descriptionEn": "Immersive all-ages roleplay with Ruan Qingxiao, a cardiology nurse.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 7,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-ningxiao",
+    "nameEn": "Roleplay · Ning Xiao",
+    "descriptionEn": "Immersive all-ages roleplay with Ning Xiao, a veterinarian.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 8,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-xushuyan",
+    "nameEn": "Roleplay · Xu Shuyan",
+    "descriptionEn": "Immersive all-ages roleplay with Xu Shuyan, a library cataloguer.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 9,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-gushumo",
+    "nameEn": "Roleplay · Gu Shumo",
+    "descriptionEn": "Immersive all-ages roleplay with Gu Shumo, a museum researcher.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 10,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-fangxiaotang",
+    "nameEn": "Roleplay · Fang Xiaotang",
+    "descriptionEn": "Immersive all-ages roleplay with Fang Xiaotang, a florist.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 11,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-luciqing",
+    "nameEn": "Roleplay · Lu Ciqing",
+    "descriptionEn": "Immersive all-ages roleplay with Lu Ciqing, a tattoo artist.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 12,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-shenye",
+    "nameEn": "Roleplay · Shen Ye",
+    "descriptionEn": "Immersive all-ages roleplay with Shen Ye, a cocktail bartender.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 13,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-qiaoyouyou",
+    "nameEn": "Roleplay · Qiao Youyou",
+    "descriptionEn": "Immersive all-ages roleplay with Qiao Youyou, a kindergarten teacher.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 14,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-suwanxing",
+    "nameEn": "Roleplay · Su Wanxing",
+    "descriptionEn": "Immersive all-ages roleplay with Su Wanxing, a game streamer.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 15,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-moling",
+    "nameEn": "Roleplay · Mo Ling",
+    "descriptionEn": "Immersive all-ages roleplay with Mo Ling, a tarot reader.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 16,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-jiangwanyue",
+    "nameEn": "Roleplay · Jiang Wanyue",
+    "descriptionEn": "Immersive all-ages roleplay with Jiang Wanyue, a ballet teacher.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 17,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-songye",
+    "nameEn": "Roleplay · Song Ye",
+    "descriptionEn": "Immersive all-ages roleplay with Song Ye, a band vocalist.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 18,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-lengshuang",
+    "nameEn": "Roleplay · Leng Shuang",
+    "descriptionEn": "Immersive all-ages roleplay with Leng Shuang, a former operative.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 19,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-xiaweiyang",
+    "nameEn": "Roleplay · Xia Weiyang",
+    "descriptionEn": "Immersive all-ages roleplay with Xia Weiyang, an idol trainee.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 20,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-sumianmian",
+    "nameEn": "Roleplay · Su Mianmian",
+    "descriptionEn": "Immersive all-ages roleplay with Su Mianmian, a first-year business student.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 21,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-nuoma",
+    "nameEn": "Roleplay · Norma",
+    "descriptionEn": "Immersive all-ages roleplay with Norma, a first-year design student.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 22,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-linxiaoman",
+    "nameEn": "Roleplay · Lin Xiaoman",
+    "descriptionEn": "Immersive all-ages roleplay with Lin Xiaoman, a high-school senior art student.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 23,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-shennian",
+    "nameEn": "Roleplay · Shen Nian",
+    "descriptionEn": "Immersive all-ages roleplay with Shen Nian, a high-school senior.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 24,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-yetingyu",
+    "nameEn": "Roleplay · Ye Tingyu",
+    "descriptionEn": "Immersive all-ages roleplay with Ye Tingyu, a sheltered young heiress.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "modern"
+    ],
+    "category": "roleplay",
+    "rank": 25,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-baili",
+    "nameEn": "Roleplay · Bai Li",
+    "descriptionEn": "Immersive all-ages roleplay with Bai Li, a thousand-year-old fox spirit.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "fantasy"
+    ],
+    "category": "roleplay",
+    "rank": 26,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-yunzhi",
+    "nameEn": "Roleplay · Yun Zhi",
+    "descriptionEn": "Immersive all-ages roleplay with Yun Zhi, an apprentice at a magic academy.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "fantasy"
+    ],
+    "category": "roleplay",
+    "rank": 27,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-ailiya",
+    "nameEn": "Roleplay · Ailiya",
+    "descriptionEn": "Immersive all-ages roleplay with Ailiya, a travelling apprentice witch.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "fantasy"
+    ],
+    "category": "roleplay",
+    "rank": 28,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-yeling",
+    "nameEn": "Roleplay · Ye Ling",
+    "descriptionEn": "Immersive all-ages roleplay with Ye Ling, a half-elf.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "fantasy"
+    ],
+    "category": "roleplay",
+    "rank": 29,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-lanxi",
+    "nameEn": "Roleplay · Lan Xi",
+    "descriptionEn": "Immersive all-ages roleplay with Lan Xi, a mermaid living ashore.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "fantasy"
+    ],
+    "category": "roleplay",
+    "rank": 30,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-jianghe",
+    "nameEn": "Roleplay · Jiang He",
+    "descriptionEn": "Immersive all-ages roleplay with Jiang He, a time traveller from the Tang dynasty.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "historical"
+    ],
+    "category": "roleplay",
+    "rank": 31,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  },
+  {
+    "id": "roleplay-sunianqing",
+    "nameEn": "Roleplay · Su Nianqing",
+    "descriptionEn": "Immersive all-ages roleplay with Su Nianqing, a student from the Republican era.",
+    "author": "dongshuyan",
+    "version": "1.0.0",
+    "tags": [
+      "roleplay",
+      "character",
+      "historical"
+    ],
+    "category": "roleplay",
+    "rank": 32,
+    "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+  }
+]

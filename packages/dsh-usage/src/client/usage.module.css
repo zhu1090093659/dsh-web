@@ -259,6 +259,19 @@
   opacity: 0.6;
 }
 
+/* Token 银行：票面 canvas 按容器宽度缩放；按钮行沿用 ghost 按钮样式。 */
+.voucherPreview canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.buttonRow {
+  display: flex;
+  gap: 8px;
+}
+
 .errorLine {
   font-size: 12px;
   opacity: 0.75;

@@ -19,7 +19,7 @@ Six bug reports were identified and verified across the ecosystem:
 3. In `packages/skins/skin-center/src/client/wallpaper.ts`, track media loading failures to gracefully degrade `data-dsh-wallpaper-active` and bind `suppressBackgroundMedia` to `wallpaper.isDisplaying()`.
 4. In `packages/dsh-tool-describe-image/src/native-images.ts`, dynamically resolve model provider settings namespaces and retry on revision conflict.
 5. In `packages/dsh-chat-recovery/src/client/TurnActionsView.tsx`, disable retry button and display status when `hostRetryPending` is active, and add supervisor diagnostic logs.
-6. In `packages/dsh-liangshen/presets/liangshen/tool-bootstrap.mjs`, append clear PTC transition instructions when promoted to `code` presentation mode.
+6. In `packages/dsh-liangshen/presets/liangshen/tool-bootstrap.mjs`, append clear PTC transition instructions when promoted to `code` presentation mode. The presentation mode itself is retired ([LiangShen mode as a minimal persona plus an injected standard tool catalog](../feature/2026-09-11-liangshen-minimal-prompt-tool-catalog.md)), so this decision no longer has a subject in the shipped preset.
 
 ## Consequences
 

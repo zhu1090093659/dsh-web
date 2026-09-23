@@ -1,0 +1,234 @@
+/**
+ * Cafe Roastery — L2/L3 atmosphere layer.
+ *
+ * Pure CSS, no hooks: the café lives in gradients. The loader scopes every
+ * selector under html[data-dsh-skin="cafe-roastery"].
+ *
+ *  - Sidebar      = the roastery wall: warm grain over a toasting gradient.
+ *  - Conversation = café window light + a faint counter glow at the bottom.
+ *  - Hero (no session yet) = latte rosetta rings with rising steam, painted
+ *    on [data-phase="hero"]'s own background (no extra DOM, no z-index games).
+ *  - Composer card = a takeaway cup sleeve: crema lip, foam fill, caramel rim.
+ */
+
+/* --- chrome palette (mirrors the --cr-* block in skin.css) -------------- */
+
+body {
+  --cr-pane-light: radial-gradient(120% 90% at 50% -10%, rgba(255, 243, 214, 0.55) 0%, transparent 55%);
+  --cr-sidebar-grain: repeating-linear-gradient(90deg, rgba(124, 104, 72, 0.05) 0 1px, transparent 1px 4px);
+  --cr-sidebar-fade: linear-gradient(180deg, rgba(255, 244, 218, 0.5) 0%, transparent 42%);
+  --cr-composer-fill: linear-gradient(180deg, #fff8ea 0%, #f3e9d2 100%);
+  --cr-composer-lip: linear-gradient(180deg, #c08a3e 0%, rgba(192, 138, 62, 0) 100%);
+  --cr-composer-ring: 0 0 0 3px rgba(150, 84, 15, 0.14);
+  --cr-details-fill: linear-gradient(180deg, rgba(243, 233, 210, 0.85) 0%, rgba(233, 219, 188, 0.9) 100%);
+}
+
+body[data-ds-dark-theme] {
+  --cr-pane-light: radial-gradient(120% 90% at 50% -10%, rgba(242, 201, 138, 0.12) 0%, transparent 55%);
+  --cr-sidebar-grain: repeating-linear-gradient(90deg, rgba(242, 201, 138, 0.05) 0 1px, transparent 1px 4px);
+  --cr-sidebar-fade: linear-gradient(180deg, rgba(242, 201, 138, 0.14) 0%, transparent 42%);
+  --cr-composer-fill: linear-gradient(180deg, #6b4a24 0%, #4a331b 100%);
+  --cr-composer-lip: linear-gradient(180deg, #f2c98a 0%, rgba(242, 201, 138, 0) 100%);
+  --cr-composer-ring: 0 0 0 3px rgba(242, 201, 138, 0.20);
+  --cr-details-fill: linear-gradient(180deg, rgba(92, 65, 34, 0.92) 0%, rgba(63, 44, 25, 0.97) 100%);
+}
+
+/* --- sidebar: roastery wall -------------------------------------------- */
+
+[data-pane="sidebar"] {
+  background-color: #ecdfc2 !important;
+  background-image: var(--cr-sidebar-grain), var(--cr-sidebar-fade);
+  box-shadow: inset -1px 0 0 #7d68482b;
+}
+
+body[data-ds-dark-theme] [data-pane="sidebar"] {
+  background-color: #3f2c19 !important;
+  background-image: var(--cr-sidebar-grain), var(--cr-sidebar-fade);
+  box-shadow: inset -1px 0 0 #f2c98a2e;
+}
+
+/* The sidebar-cards plugin's right panel: same warm sheet, not the app's
+   layer-1 fill, so both columns read as one roastery wall. */
+[data-dsh-panel="true"]:not([data-dsh-bottom-panel]) {
+  background-color: #f3e9d2d9 !important;
+}
+
+body[data-ds-dark-theme] [data-dsh-panel="true"]:not([data-dsh-bottom-panel]) {
+  background-color: #4a331bd9 !important;
+}
+
+/* --- conversation: café window light ------------------------------------- */
+
+[data-pane="conversation"] {
+  background-image: var(--cr-pane-light);
+}
+
+/* --- hero: latte rosetta + rising steam --------------------------------- */
+
+/**
+ * The empty conversation (new session) paints its rosetta and steam straight
+ * into [data-phase="hero"]'s background. Rings are thin caramel circles with
+ * transparent gaps (latte art), the steam columns drift upward slowly and only
+ * in the hero phase, so an active chat is perfectly still.
+ */
+[data-phase="hero"] {
+  background-image:
+    /* steam, two columns rising from behind the rosetta */
+    radial-gradient(34px 120px at 46% 30%, var(--cr-steam) 0%, rgba(255, 248, 234, 0) 72%),
+    radial-gradient(30px 110px at 54% 31%, var(--cr-steam) 0%, rgba(255, 248, 234, 0) 72%),
+    /* rosetta rings */
+    radial-gradient(circle at 50% 44%, var(--cr-ring) 0 10px, transparent 11px 30px, var(--cr-ring) 31px 35px, transparent 36px 64px, var(--cr-ring) 65px 69px, transparent 70px 102px),
+    var(--cr-pane-light);
+  background-repeat: no-repeat;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-position: 0 0, 0 0, 0 0, 0 0;
+  animation: cafe-roastery-hero-steam 14s ease-in-out infinite alternate;
+}
+
+body[data-ds-dark-theme] [data-phase="hero"] {
+  --cr-steam: rgba(247, 236, 216, 0.55);
+  --cr-ring: rgba(226, 168, 78, 0.20);
+}
+
+@keyframes cafe-roastery-hero-steam {
+  0% {
+    background-position: 0 4px, 0 2px, 0 0, 0 0;
+  }
+  100% {
+    background-position: 0 -26px, 0 -18px, 0 0, 0 0;
+  }
+}
+
+/* --- composer: takeaway cup sleeve --------------------------------------- */
+
+/**
+ * The composer card is the cup: a foam fill with a caramel crema lip along the
+ * top edge, a hairline rim, and a soft caramel ring when focused. Keeps the
+ * official geometry; only colour, lip, ring and shadow change.
+ */
+[data-composer-card="true"] {
+  background: var(--cr-composer-fill) !important;
+  border: 1px solid #c08a3e59 !important;
+  border-radius: 14px !important;
+  box-shadow:
+    inset 0 2px 0 var(--cr-composer-lip),
+    0 1px 2px rgba(90, 64, 38, 0.16),
+    0 8px 24px rgba(90, 64, 38, 0.14) !important;
+  transition: box-shadow 160ms ease, border-color 160ms ease;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"] {
+  border-color: #e2a84e59 !important;
+  box-shadow:
+    inset 0 2px 0 var(--cr-composer-lip),
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-composer-card="true"]:focus-within {
+  border-color: #8f4d0b !important;
+  box-shadow:
+    inset 0 2px 0 var(--cr-composer-lip),
+    var(--cr-composer-ring),
+    0 8px 24px rgba(150, 84, 15, 0.22) !important;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"]:focus-within {
+  border-color: #e2a84e !important;
+  box-shadow:
+    inset 0 2px 0 var(--cr-composer-lip),
+    var(--cr-composer-ring),
+    0 8px 24px rgba(226, 168, 78, 0.24) !important;
+}
+
+[data-composer-card="true"] textarea[data-dsh-part="composer-input"],
+[data-composer-input] {
+  caret-color: #8f4d0b;
+}
+
+body[data-ds-dark-theme] [data-composer-card="true"] textarea[data-dsh-part="composer-input"],
+body[data-ds-dark-theme] [data-composer-input] {
+  caret-color: #f2c98a;
+}
+
+/* --- session header: café chalkboard underline --------------------------- */
+
+[data-dsh-surface="session-header"] {
+  box-shadow: inset 0 -1px 0 #7d68481a;
+}
+
+body[data-ds-dark-theme] [data-dsh-surface="session-header"] {
+  box-shadow: inset 0 -1px 0 #f2c98a2e;
+}
+
+/* --- pet summon button: roast pill with a caramel dashed rim --------------
+   The pet plugin paints its own hard-coded blue; the button opts into the
+   L2 semantic attribute (data-dsh-part="summon-button") so a skin can restyle
+   it without touching hashed classes. */
+
+[data-dsh-part="summon-button"] {
+  border-color: #8f4d0b99 !important;
+  background: #fbf4e4e8 !important;
+  color: #7c4a10 !important;
+  box-shadow: 0 1px 2px rgba(90, 64, 38, 0.2) !important;
+}
+
+[data-dsh-part="summon-button"]:hover {
+  border-color: #8f4d0b !important;
+  background: #fbf4e4 !important;
+  color: #6b4526 !important;
+  box-shadow: 0 2px 8px rgba(150, 84, 15, 0.25) !important;
+}
+
+[data-dsh-part="summon-button"]:active {
+  border-color: #8f4d0b !important;
+  color: #8f4d0b !important;
+}
+
+[data-dsh-part="summon-button"]:focus-visible {
+  box-shadow: 0 0 0 2px rgba(150, 84, 15, 0.55) !important;
+}
+
+body[data-ds-dark-theme] [data-dsh-part="summon-button"] {
+  border-color: #f2c98a99 !important;
+  background: #4a331be8 !important;
+  color: #fae7c4 !important;
+}
+
+body[data-ds-dark-theme] [data-dsh-part="summon-button"]:hover {
+  border-color: #f2c98a !important;
+  background: #5c4122 !important;
+  color: #f7ecd8 !important;
+}
+
+body[data-ds-dark-theme] [data-dsh-part="summon-button"]:active {
+  border-color: #f2c98a !important;
+  color: #f2c98a !important;
+}
+
+body[data-ds-dark-theme] [data-dsh-part="summon-button"]:focus-visible {
+  box-shadow: 0 0 0 2px rgba(242, 201, 138, 0.55) !important;
+}
+
+/* --- pane hairlines ------------------------------------------------------ */
+
+[data-pane="details"] {
+  background-image: var(--cr-details-fill);
+  box-shadow: inset 1px 0 0 #7d68482b;
+}
+
+body[data-ds-dark-theme] [data-pane="details"] {
+  box-shadow: inset 1px 0 0 #f2c98a2e;
+}
+
+/* --- reduced motion ------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-phase="hero"] {
+    animation: none;
+  }
+
+  [data-composer-card="true"] {
+    transition: none;
+  }
+}

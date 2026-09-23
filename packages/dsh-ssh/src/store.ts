@@ -11,7 +11,8 @@ import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSyn
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { dshHome } from './dsh-home.ts'
-import type { HostPayload, ImportResult, SshHostEntry, SshHostSummary } from './protocol.ts'
+import type { HostPayload, ImportResult, ImportSkipBlock, ImportSkipReason, SshHostEntry, SshHostSummary } from './protocol.ts'
+import { readSshConfigBlocks } from './ssh-config.ts'
 
 /** File format version. */
 const FORMAT_VERSION = 1
@@ -56,6 +57,17 @@ export function validateHostPayload(payload: unknown): string | undefined {
   }
   if (p.proxyJump !== undefined && (!Array.isArray(p.proxyJump) || p.proxyJump.some(x => typeof x !== 'string' || x === ''))) {
     return 'proxyJump must be an array of alias strings'
+  }
+  if (p.proxyCommand !== undefined && typeof p.proxyCommand !== 'string') {
+    return 'proxyCommand must be a string when provided'
+  }
+  // OpenSSH resolves ProxyCommand and ProxyJump by "whichever appears first in
+  // the config"; a stored entry has no order, so the combination is rejected
+  // instead of silently picking one transport.
+  const proxyCommand = typeof p.proxyCommand === 'string' ? normalizeProxyCommand(p.proxyCommand) : undefined
+  const proxyJump = Array.isArray(p.proxyJump) ? p.proxyJump as string[] : []
+  if (proxyCommand !== undefined && proxyJump.length > 0) {
+    return 'proxyCommand and proxyJump cannot be combined — pick one transport per host'
   }
   if (p.tags !== undefined && (!Array.isArray(p.tags) || p.tags.some(x => typeof x !== 'string'))) {
     return 'tags must be an array of strings'
@@ -117,6 +129,7 @@ export class HostStore {
       auth: entry.auth.kind,
       keyReady,
       proxyJump: [...entry.proxyJump],
+      ...(entry.proxyCommand !== undefined ? { proxyCommand: entry.proxyCommand } : {}),
       // Optional fields are spread conditionally: the tool bridge rejects
       // undefined-valued properties as non-lossless JSON.
       ...(entry.description !== undefined ? { description: entry.description } : {}),
@@ -153,6 +166,7 @@ export class HostStore {
         agentPath: payload.auth.kind === 'agent' ? normalizeAgentPath(payload.auth.agentPath) : undefined,
       },
       proxyJump: [...(payload.proxyJump ?? [])],
+      proxyCommand: normalizeProxyCommand(payload.proxyCommand),
       description: payload.description?.trim() || undefined,
       environment: payload.environment?.trim() || undefined,
       tags: [...(payload.tags ?? [])].map(tag => tag.trim()).filter(tag => tag !== ''),
@@ -183,6 +197,17 @@ export class HostStore {
     }
     if (patch.proxyJump !== undefined && (!Array.isArray(patch.proxyJump) || patch.proxyJump.some(x => typeof x !== 'string' || x === ''))) {
       throw new Error('proxyJump must be an array of alias strings')
+    }
+    if (patch.proxyCommand !== undefined && typeof patch.proxyCommand !== 'string') {
+      throw new Error('proxyCommand must be a string when provided')
+    }
+    // The mutual exclusion is checked on the MERGED view: a patch that only
+    // adds one transport must not slip past a stored value of the other.
+    const mergedProxyCommand = patch.proxyCommand !== undefined
+      ? normalizeProxyCommand(patch.proxyCommand)
+      : entry.proxyCommand
+    if (mergedProxyCommand !== undefined && (patch.proxyJump ?? entry.proxyJump).length > 0) {
+      throw new Error('proxyCommand and proxyJump cannot be combined — pick one transport per host')
     }
     if (patch.tags !== undefined && (!Array.isArray(patch.tags) || patch.tags.some(x => typeof x !== 'string'))) {
       throw new Error('tags must be an array of strings')
@@ -220,6 +245,7 @@ export class HostStore {
       }
     }
     if (patch.proxyJump !== undefined) entry.proxyJump = [...patch.proxyJump]
+    if (patch.proxyCommand !== undefined) entry.proxyCommand = mergedProxyCommand
     if (patch.description !== undefined) entry.description = patch.description.trim() || undefined
     if (patch.environment !== undefined) entry.environment = patch.environment.trim() || undefined
     if (patch.tags !== undefined) entry.tags = [...patch.tags].map(tag => tag.trim()).filter(tag => tag !== '')
@@ -240,55 +266,41 @@ export class HostStore {
 
   /**
    * Import hosts from `~/.ssh/config`: Host blocks with a single non-wildcard
-   * pattern and a HostName become entries (key auth via IdentityFile, jump
-   * hosts via ProxyJump). Existing aliases are skipped.
+   * pattern become entries (a missing HostName falls back to the pattern
+   * itself; key auth via IdentityFile; jump hosts via ProxyJump; ProxyCommand
+   * kept verbatim). `Include` files are expanded, and `Match` blocks,
+   * wildcard patterns, and aliases that already exist are skipped with a
+   * reason instead of silently disappearing.
    * @returns import statistics.
    */
   importFromSshConfig(): ImportResult {
     // Per-run statistics: a later import must not report earlier runs' skips.
-    this.skippedNames = new Set<string>()
+    this.skippedBlocks = []
     const configPath = this.sshConfigOverride ?? sshConfigPath()
-    if (!existsSync(configPath)) return { parsed: 0, added: 0, skipped: 0, skippedNames: [] }
-    const lines = readFileSync(configPath, 'utf8').split(/\r?\n/)
-    const blocks: { pattern: string; props: Record<string, string> }[] = []
-    let current: { pattern: string; props: Record<string, string> } | undefined
-    const skip = (name: string, seen: Set<string>): void => {
-      if (name !== '' && !seen.has(name)) {
-        seen.add(name)
-        this.skippedNames.add(name)
-      }
-    }
-    for (const raw of lines) {
-      const line = raw.trim()
-      if (line === '' || line.startsWith('#')) continue
-      const match = /^([A-Za-z0-9_\-]+)\s+(.+)$/.exec(line)
-      if (match === null) continue
-      const key = match[1].toLowerCase()
-      const value = match[2].trim()
-      if (key === 'host') {
-        current = { pattern: value, props: {} }
-        blocks.push(current)
-      } else if (current !== undefined) {
-        current.props[key] = value
-      }
+    if (!existsSync(configPath)) return { parsed: 0, added: 0, skipped: 0, skippedBlocks: [] }
+    const { blocks, skipped } = readSshConfigBlocks(configPath)
+    this.skippedBlocks = [...skipped]
+    const skip = (name: string, reason: ImportSkipReason): void => {
+      if (name === '') return
+      if (this.skippedBlocks.some(block => block.name === name)) return
+      this.skippedBlocks.push({ name, reason })
     }
     let added = 0
     for (const block of blocks) {
       const pattern = block.pattern.split(/\s+/)[0]
       if (pattern.includes('*') || pattern.includes('?')) {
-        skip(pattern, this.skippedNames)
+        skip(pattern, 'wildcard')
         continue
       }
-      const hostName = block.props.hostname
-      if (hostName === undefined || hostName === '') {
-        skip(pattern, this.skippedNames)
+      if (this.list().some(entry => entry.alias === pattern)) {
+        skip(pattern, 'existing')
         continue
       }
-      const existing = this.list().some(entry => entry.alias === pattern)
-      if (existing) {
-        skip(pattern, this.skippedNames)
-        continue
-      }
+      // A block without HostName is a usable OpenSSH entry: the Host pattern
+      // itself is the hostname.
+      const hostName = block.props.hostname !== undefined && block.props.hostname !== ''
+        ? block.props.hostname
+        : pattern
       const payload: HostPayload = {
         alias: pattern,
         host: hostName,
@@ -309,6 +321,7 @@ export class HostStore {
         proxyJump: block.props.proxyjump !== undefined
           ? block.props.proxyjump.split(',').map(hop => hop.trim()).filter(hop => hop !== '')
           : [],
+        proxyCommand: block.props.proxycommand,
         description: block.props.description,
         environment: block.props.environment,
         tags: (block.props.tags ?? '').split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
@@ -318,14 +331,14 @@ export class HostStore {
         this.create(payload)
         added += 1
       } catch {
-        // Unusable entry (bad alias grammar etc.) — count as skipped.
-        skip(pattern, this.skippedNames)
+        // Unusable entry (bad alias grammar, conflicting transports, ...).
+        skip(pattern, 'invalid')
       }
     }
-    return { parsed: blocks.length, added, skipped: this.skippedNames.size, skippedNames: [...this.skippedNames] }
+    return { parsed: blocks.length, added, skipped: this.skippedBlocks.length, skippedBlocks: [...this.skippedBlocks] }
   }
 
-  private skippedNames = new Set<string>()
+  private skippedBlocks: ImportSkipBlock[] = []
 
   /**
    * Last parsed store keyed by file identity. list/find ride every acquire
@@ -385,6 +398,17 @@ export function normalizeAgentPath(agentPath: string | undefined): string | unde
     return sock !== undefined && sock !== '' ? sock : undefined
   }
   return expandHome(trimmed)
+}
+
+/**
+ * Normalize a ProxyCommand for storage: trim, and treat an empty value or
+ * OpenSSH's `none` keyword as "no proxy command" (an explicit clear).
+ */
+export function normalizeProxyCommand(raw: string | undefined): string | undefined {
+  const trimmed = raw?.trim()
+  if (trimmed === undefined || trimmed === '') return undefined
+  if (trimmed.toLowerCase() === 'none') return undefined
+  return trimmed
 }
 
 /** Expand a leading `~` in a filesystem path. */

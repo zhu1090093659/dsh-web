@@ -7,15 +7,14 @@
  */
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-import type { SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-// Type-only: pulls the settings-surface Context merge (ctx.settingsScope).
+// Type-only: pulls the shared-forms Context merge (ctx.configForms).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the ctx.slots merge (the renderer owns the slot registry since 0.1.2).
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import { createElement } from 'react'
 import { createUsageStore, type UsageStoreInstance } from './usage-store.ts'
 import { UsageSectionCard, type UsageSectionFace, type UsageSettings } from './UsageSectionCard.tsx'
 import { NS, en, zh } from './locales.ts'
@@ -44,27 +43,39 @@ const usageApi: UsageHttpApi = {
   refresh: () => usageFetch('/api/dsh-usage/refresh', 'POST'),
 }
 
-/** Settings namespace the section edits (the host plugin registers it). */
+/** Settings namespace the section edits (dsh-web-settings maps it onto this row's profile entry id). */
 const USAGE_SETTINGS_NS = 'dsh-usage'
 
 /** First-level nav position: directly below the Workshop section (order 150). */
 const SECTION_ORDER = 151
 
 /** Required services. */
-export const inject = ['slots', 'locale', 'connection', 'settingsScope', 'remote']
+export const inject = ['slots', 'locale', 'connection', 'configForms', 'remote']
 
 export type { UsageSectionProps, UsageSectionFace } from './UsageSectionCard.tsx'
 export type { UsageUiState } from './usage-store.ts'
 export type { UsageSettings }
 
+/**
+ * One settings namespace a family card binds. The 0.1.7 client exports no spec
+ * type (the form controller takes it privately), so the binder's input shape is
+ * restated here.
+ */
+export interface UsageSettingsBindSpec<T> {
+  /** Settings namespace registered by the owning host plugin. */
+  namespace: string
+  /** Narrow one wire section; undefined keeps the last accepted value. */
+  decode?: (section: unknown) => T | undefined
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
     /**
-     * Optional rc.6 compatibility binder provided by dsh-web-settings;
-     * absent when that group plugin is not installed, so callers fall back to
-     * the official settings scope.
+     * Optional family settings binder provided by dsh-web-settings; absent when
+     * that group plugin is not installed, so callers fall back to the native
+     * per-entry forms (`ctx.configForms`).
      */
-    webUiSettings?: { bind<S>(spec: SettingsScopeSpec<S>): SettingsScope<S> }
+    webUiSettings?: { bind<S>(spec: UsageSettingsBindSpec<S>): ConfigForm<S> }
   }
 }
 
@@ -83,8 +94,16 @@ export function apply(ctx: ClientContext): void {
     }
   }, 'dsh-usage: dictionaries')
 
-  const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
-  const settingsScope = binder.bind<UsageSettings>({ namespace: USAGE_SETTINGS_NS })
+  // The family binder is what maps this namespace onto the row's profile entry
+  // id and hands back the native form. Without the group plugin the client can
+  // only address an entry id it already knows: the namespace itself is one when
+  // the profile keeps the family spelling. Any other entry id leaves the form
+  // unavailable, which renders the row's controls disabled — the Host's own
+  // generated page for the row still edits the same Config.
+  const binder = ctx.get('webUiSettings')
+  const settingsForm = binder !== undefined
+    ? binder.bind<UsageSettings>({ namespace: USAGE_SETTINGS_NS })
+    : ctx.configForms.get<UsageSettings>(USAGE_SETTINGS_NS)
 
   // One store instance per apply body; the section mounts and unmounts with
   // the settings page, and the store survives between visits so the last
@@ -98,9 +117,12 @@ export function apply(ctx: ClientContext): void {
     usageApi.overview().then((snapshot) => {
       if (seq !== pollSeq) return
       store.actions.setSnapshot(snapshot)
-    }, () => {
+    }, (error: unknown) => {
       if (seq !== pollSeq) return
-      store.actions.setState('error', 'usage.overview transport error')
+      // Surface the transport's own message: a 404 here means the host has no
+      // /api/dsh-usage/overview route (plugin disabled), which the panel must be
+      // able to tell apart from a genuine failure.
+      store.actions.setState('error', error instanceof Error ? error.message : String(error))
     })
   }
   // The refresh response is authoritative: it reflects the completed probe
@@ -112,13 +134,13 @@ export function apply(ctx: ClientContext): void {
     usageApi.refresh().then((snapshot) => {
       pollSeq = seq
       store.actions.setSnapshot(snapshot)
-    }, () => {
+    }, (error: unknown) => {
       if (seq !== pollSeq) return
-      store.actions.setState('error', 'usage.refresh transport error')
+      store.actions.setState('error', error instanceof Error ? error.message : String(error))
     })
   }
 
-  const face = (): UsageSectionFace => ({ store, poll, refresh, settings: settingsScope })
+  const face = (): UsageSectionFace => ({ store, poll, refresh, settings: settingsForm })
 
   ctx.slots.inject('settings.section', () => {
     try {

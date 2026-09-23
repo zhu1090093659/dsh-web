@@ -7,15 +7,43 @@
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { SshEngine } from './engine.ts'
-import type { ClusterResult, ExecResult, SshHostSummary, TunnelInfo } from './protocol.ts'
+import type { ClusterResult, ExecResult, SshAuthKind, SshHostSummary, TunnelInfo } from './protocol.ts'
 
 /** One text content block (the only render shape these tools emit). */
 function text(value: string): ContentBlock[] {
   return [{ type: 'text', text: value }]
 }
 
+/**
+ * One host row for the agent surface. The ProxyCommand STRING is deliberately
+ * projected to a boolean: the command may embed credentials for a bastion
+ * client, and the model only needs to know that the host goes through one.
+ */
+export interface AgentHostRow {
+  alias: string
+  host: string
+  port: number
+  user: string
+  auth: SshAuthKind
+  keyReady: boolean
+  proxyJump: string[]
+  proxyCommandConfigured: boolean
+  description?: string
+  environment?: string
+  tags: string[]
+  location?: string
+  createdAt: number
+  updatedAt: number
+}
+
+/** Project one summary onto the agent-facing row shape. */
+export function toAgentHostRow(host: SshHostSummary): AgentHostRow {
+  const { proxyCommand, ...rest } = host
+  return { ...rest, proxyCommandConfigured: proxyCommand !== undefined }
+}
+
 /** Host table render shared by list surfaces. */
-function renderHosts(hosts: SshHostSummary[]): string {
+function renderHosts(hosts: AgentHostRow[]): string {
   if (hosts.length === 0) return 'no hosts configured'
   const rows = hosts.map(host => [
     host.alias,
@@ -23,11 +51,12 @@ function renderHosts(hosts: SshHostSummary[]): string {
     String(host.port),
     host.user,
     host.auth,
+    host.proxyJump.length > 0 ? 'jump:' + host.proxyJump.join(',') : host.proxyCommandConfigured ? 'proxy-command' : '-',
     host.environment ?? '-',
     (host.tags.length > 0 ? host.tags.join(',') : '-'),
     host.description ?? '',
   ].join(' | '))
-  return ['alias | host | port | user | auth | environment | tags | description', '--- | --- | --- | --- | --- | --- | --- | ---', ...rows].join('\n')
+  return ['alias | host | port | user | auth | proxy | environment | tags | description', '--- | --- | --- | --- | --- | --- | --- | --- | ---', ...rows].join('\n')
 }
 
 /** Render one exec result (mirrors the bash-tool exit-code convention). */
@@ -86,6 +115,7 @@ export function sshListTool(engine: SshEngine) {
                 auth: { type: 'string', enum: ['key', 'password', 'agent'], required: true },
                 keyReady: { type: 'boolean', required: true },
                 proxyJump: { type: 'array', items: { type: 'string' }, required: true },
+                proxyCommandConfigured: { type: 'boolean', required: true },
                 description: { type: 'string' },
                 environment: { type: 'string' },
                 tags: { type: 'array', items: { type: 'string' }, required: true },
@@ -97,10 +127,10 @@ export function sshListTool(engine: SshEngine) {
           },
         },
       },
-      render: (_args, value: { hosts?: SshHostSummary[] }) => text(renderHosts(value.hosts ?? [])),
+      render: (_args, value: { hosts?: AgentHostRow[] }) => text(renderHosts(value.hosts ?? [])),
     },
     async execute(args) {
-      return { hosts: engine.list(args.query) }
+      return { hosts: engine.list(args.query).map(toAgentHostRow) }
     },
   })
 }
@@ -327,13 +357,13 @@ export function sshTunnelTool(engine: SshEngine) {
 export function sshClusterTool(engine: SshEngine) {
   return defineTool({
     name: 'ssh_cluster',
-    description: 'Run one command concurrently across many SSH hosts (all hosts, or filtered by aliases / environment / tags). ' +
-      'Triggers: run on all servers, batch operation, production servers, cluster command.',
+    description: 'Run one command concurrently across selected SSH hosts; at least one aliases, environment, or tags filter is required. ' +
+      'Triggers: run on selected servers, batch operation, production servers, cluster command.',
     parameters: {
       command: { type: 'string', required: true, description: 'The shell command to run on every matched host.' },
-      aliases: { type: 'array', items: { type: 'string' }, description: 'Explicit alias list; when absent every configured host matches.' },
-      environment: { type: 'string', description: 'Only hosts with this environment label.' },
-      tags: { type: 'array', items: { type: 'string' }, description: 'Only hosts carrying ALL these tags.' },
+      aliases: { type: 'array', items: { type: 'string' }, description: 'Optional alias filter; at least one of aliases, environment, or tags is required.' },
+      environment: { type: 'string', description: 'Optional environment filter; at least one selector is required.' },
+      tags: { type: 'array', items: { type: 'string' }, description: 'Optional ALL-tags filter; at least one selector is required.' },
       timeoutMs: { type: 'integer', description: 'Per-host timeout in milliseconds.' },
       maxWorkers: { type: 'integer', description: 'Concurrency cap (default 8).' },
     },
@@ -365,6 +395,10 @@ export function sshClusterTool(engine: SshEngine) {
       render: (_args, value: { results?: ClusterResult[] }) => text(renderCluster(value.results ?? [])),
     },
     async execute(args) {
+      const hasSelector = (Array.isArray(args.aliases) && args.aliases.some((alias) => typeof alias === 'string' && alias.trim() !== '')) ||
+        (typeof args.environment === 'string' && args.environment.trim() !== '') ||
+        (Array.isArray(args.tags) && args.tags.some((tag) => typeof tag === 'string' && tag.trim() !== ''))
+      if (!hasSelector) throw new Error('ssh_cluster requires aliases, environment, or tags to limit the target set')
       return { results: await engine.cluster(args) }
     },
   })

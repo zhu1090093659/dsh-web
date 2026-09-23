@@ -537,10 +537,15 @@
 .fencePairButton {
   flex-shrink: 0;
   padding: 10px 18px;
-  border: 1px solid var(--dsw-alias-brand-primary);
+  /* The matched primary-action set (contracts/primary-action-tokens-v1.md):
+     brand-primary is an accent/foreground token, not a button fill — with a
+     hardcoded #fff label it rendered white-on-white in the dark theme, so the
+     pairing CTA was invisible on a phone unless a skin declared a saturated
+     brand (the "only one skin works" report). */
+  border: 1px solid var(--dsw-alias-button-primary-fill);
   border-radius: 10px;
-  background: var(--dsw-alias-brand-primary);
-  color: #fff;
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
   font: inherit;
   font-size: 13px;
   font-weight: 500;
@@ -549,7 +554,8 @@
 }
 
 .fencePairButton:hover:not(:disabled) {
-  filter: brightness(0.96);
+  background: var(--dsw-alias-button-primary-hover, var(--dsw-alias-button-primary-fill));
+  border-color: var(--dsw-alias-button-primary-hover, var(--dsw-alias-button-primary-fill));
 }
 
 .fencePairButton:disabled {

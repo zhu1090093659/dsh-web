@@ -2004,6 +2004,13 @@ function buildSceneManifestVia(access: SceneAccess, token: string, projectOverri
   const width = typeof projW === 'number' && Number.isFinite(projW) && projW > 0 ? Math.floor(projW) : 3840
   const height = typeof projH === 'number' && Number.isFinite(projH) && projH > 0 ? Math.floor(projH) : 2160
   const resourceBase = '/api/skin-center/we/scene-resource/' + token + '/'
+  // Every pkg-internal path becomes one URL path segment, so reserved
+  // characters are escaped per segment: a literal '#' would otherwise be read
+  // as the URL fragment separator, truncating the request at the last '/'
+  // (#1458), and a literal '%' makes the route's decodeURIComponent answer
+  // 400. encodeURI() is not enough: it leaves '#' unescaped.
+  const resourceUrl = (pkgPath: string): string =>
+    resourceBase + pkgPath.split('/').map(encodeURIComponent).join('/')
 
   const manifest: SceneManifest = {
     width,
@@ -2241,7 +2248,7 @@ function buildSceneManifestVia(access: SceneAccess, token: string, projectOverri
           uv2B64: m.uv2 ? Buffer.from(m.uv2.buffer, m.uv2.byteOffset, m.uv2.byteLength).toString('base64') : undefined,
           indicesB64: Buffer.from(m.indices.buffer, m.indices.byteOffset, m.indices.byteLength).toString('base64'),
           idx32: m.indices instanceof Uint32Array || undefined,
-          texUrl: subTex ? resourceBase + subTex : undefined,
+          texUrl: subTex ? resourceUrl(subTex) : undefined,
           repeatBase: m.uv.some((value) => value < 0 || value > 1) || undefined,
           materialPath: m.materialPath,
           shader,
@@ -2250,8 +2257,8 @@ function buildSceneManifestVia(access: SceneAccess, token: string, projectOverri
           noDepthWrite,
           tint,
           tint2,
-          texUrl2: texPath2 ? resourceBase + texPath2 : undefined,
-          lightmapUrl: lightmapPath ? resourceBase + lightmapPath : undefined,
+          texUrl2: texPath2 ? resourceUrl(texPath2) : undefined,
+          lightmapUrl: lightmapPath ? resourceUrl(lightmapPath) : undefined,
           translucent,
           gradFade,
           userColors,
@@ -2309,7 +2316,7 @@ function buildSceneManifestVia(access: SceneAccess, token: string, projectOverri
             manifest.bgLayers.push({
               name: typeof obj.name === 'string' ? obj.name : 'fullscreen',
               shader: typeof pass0.shader === 'string' ? pass0.shader : undefined,
-              texUrl: texPath ? resourceBase + texPath : undefined,
+              texUrl: texPath ? resourceUrl(texPath) : undefined,
               userColors: Object.keys(userColors).length > 0 ? userColors : undefined,
               userNums: Object.keys(userNums).length > 0 ? userNums : undefined,
             })
@@ -2334,7 +2341,7 @@ function buildSceneManifestVia(access: SceneAccess, token: string, projectOverri
         manifest.sprites = manifest.sprites ?? []
         manifest.sprites.push({
           name: typeof obj.name === 'string' ? obj.name : 'sprite',
-          texUrl: texPath ? resourceBase + texPath : undefined,
+          texUrl: texPath ? resourceUrl(texPath) : undefined,
           origin: parseVec3(obj.origin, [0, 0, 0]),
           scale: parseVec3(obj.scale, [1, 1, 1]),
         })
@@ -2368,7 +2375,7 @@ function buildSceneManifestVia(access: SceneAccess, token: string, projectOverri
         manifest.particles3d = manifest.particles3d ?? []
         manifest.particles3d.push({
           name: typeof obj.name === 'string' ? obj.name : 'particles',
-          texUrl: texPath ? resourceBase + texPath : undefined,
+          texUrl: texPath ? resourceUrl(texPath) : undefined,
           origin: [
             objOrigin[0] + emitterOrigin[0],
             objOrigin[1] + emitterOrigin[1],
@@ -2405,9 +2412,9 @@ function buildSceneManifestVia(access: SceneAccess, token: string, projectOverri
   }
 
   const meteorTexPath = allTex.find((p) => p.toLowerCase().includes('shootingstar') || p.toLowerCase().includes('meteor'))
-  if (meteorTexPath) manifest.meteorTex = resourceBase + meteorTexPath
+  if (meteorTexPath) manifest.meteorTex = resourceUrl(meteorTexPath)
   const sparkleTexPath = allTex.find((p) => p.toLowerCase().includes('sparkle') || p.toLowerCase().includes('halo') || p.toLowerCase().includes('star'))
-  if (sparkleTexPath) manifest.sparkleTex = resourceBase + sparkleTexPath
+  if (sparkleTexPath) manifest.sparkleTex = resourceUrl(sparkleTexPath)
 
   const sceneObjects = scene.objects as Array<Record<string, unknown>>
 
@@ -2464,7 +2471,7 @@ function buildSceneManifestVia(access: SceneAccess, token: string, projectOverri
           manifest.layers.push({
             name: 'Reflection',
             isReflection: true,
-            texUrl: resourceBase + reflTex,
+            texUrl: resourceUrl(reflTex),
             x: width / 2,
             y: height / 2,
             w: width,
@@ -2617,7 +2624,7 @@ function buildSceneManifestVia(access: SceneAccess, token: string, projectOverri
       : 1
     let videoUrl: string | undefined
     try {
-      if (parseTexInternal(file.bytes).isVideoMp4) videoUrl = resourceBase + texPath
+      if (parseTexInternal(file.bytes).isVideoMp4) videoUrl = resourceUrl(texPath)
     } catch {
       // Not a parseable TEX: the existing image/resource fallback decides it.
     }
@@ -2660,7 +2667,7 @@ function buildSceneManifestVia(access: SceneAccess, token: string, projectOverri
         manifest.layers.push({
           name: 'Reflection',
           isReflection: true,
-          texUrl: resourceBase + reflTex,
+          texUrl: resourceUrl(reflTex),
           x: layerX,
           y: layerY,
           w: lw,
@@ -2672,7 +2679,7 @@ function buildSceneManifestVia(access: SceneAccess, token: string, projectOverri
 
     manifest.layers.push({
       name: typeof obj.name === 'string' ? obj.name : 'layer',
-      texUrl: resourceBase + texPath,
+      texUrl: resourceUrl(texPath),
       // cropoffset (ox/oy) only crops the sampled UV rect; it must not move
       // the quad in world space.
       x: layerX,
@@ -2684,7 +2691,7 @@ function buildSceneManifestVia(access: SceneAccess, token: string, projectOverri
       uvCrop,
       shader: layerShader,
       texUrls: texPaths.length > 1
-        ? texPaths.map((p) => resourceBase + p)
+        ? texPaths.map((p) => resourceUrl(p))
         : undefined,
       userColors: layerUserColors,
       nums: Object.keys(nums).length > 0 ? nums : undefined,

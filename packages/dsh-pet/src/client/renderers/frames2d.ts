@@ -12,10 +12,11 @@
  * Frame presentation has two modes picked once at mount by capability
  * probing:
  * - Canvas bitmap buffer (default where createImageBitmap/fetch/2D context
- *   exist): every frame is decoded exactly once into an ImageBitmap during
- *   the warm pass and drawn onto one <canvas> - steady-state playback issues
- *   zero DOM mutations and zero re-decodes (measured hotspot: swapping
- *   <img>.src per frame drove image decode + invalidation every tick).
+ *   exist): frames are decoded once into an ImageBitmap on demand, with a
+ *   bounded look-ahead window over the playing track, and drawn onto one
+ *   <canvas> - steady-state playback issues zero DOM mutations and zero
+ *   re-decodes (measured hotspot: swapping <img>.src per frame drove image
+ *   decode + invalidation every tick).
  * - Classic <img> fallback (jsdom/tests or missing APIs): identical to the
  *   historical behavior - cache-warm Image elements plus guarded src swaps,
  *   so environments without modern decoding keep working unchanged.
@@ -38,11 +39,38 @@ export interface Frames2dTrackConfig {
 export interface PetFrames2dConfig {
   tracks: Record<string, Frames2dTrackConfig>
   phases: Partial<Record<ActivityPhase, string>> & { idle: string }
+  /** Selectable skins; each swaps the base idle target while selected. */
+  skins?: Frames2dSkinConfig[]
+}
+
+/** One selectable skins entry as served inside the pet definition. */
+export interface Frames2dSkinConfig {
+  id: string
+  label: string
+  /** A declared looping track that becomes the base idle while selected. */
+  idleTrack: string
+  /** Click actions exclusive to this skin (roll by probability; miss → touch zones). */
+  clickActions?: Frames2dSkinClickActionConfig[]
+  /** Gameplay-state overrides (state -> track) swapped in while selected. */
+  gameplayTracks?: Record<string, string>
+}
+
+/** One probability-rolled tap action a skin may declare. */
+export interface Frames2dSkinClickActionConfig {
+  track: string
+  probability: number
+  phrases?: string[]
 }
 
 export interface Frames2dRendererHandle extends PetRendererHandle {
   /** Force a track id (gameplay override); undefined returns to phase mapping. */
   setState(track: string | undefined): void
+  /**
+   * Swap the base idle target (idle phase, unmapped phases and every
+   * fallback back to idle) to a declared looping track — a skin. undefined
+   * restores the manifest idle track.
+   */
+  setIdleTrack(track: string | undefined): void
   /** The track currently playing (diagnostics and tests). */
   currentTrack(): string
 }
@@ -78,7 +106,52 @@ function validateFrames2dConfig(config: unknown): PetFrames2dConfig {
   if (typeof phases.idle !== 'string' || tracks[phases.idle] === undefined) {
     throw new Error('frames2d phases.idle must name an existing track')
   }
-  return { tracks, phases: phases as PetFrames2dConfig['phases'] }
+  // Skins: keep entries whose idleTrack survives validation and loops —
+  // a non-looping base idle would settle into itself forever. Click actions
+  // with an unresolvable track are dropped from that skin.
+  let skins: Frames2dSkinConfig[] | undefined
+  if (Array.isArray(config.skins)) {
+    const resolved: Frames2dSkinConfig[] = []
+    for (const skin of config.skins as unknown[]) {
+      if (!isRecord(skin) || typeof skin.id !== 'string' || typeof skin.label !== 'string'
+        || typeof skin.idleTrack !== 'string' || skin.idleTrack === '') continue
+      const target = tracks[skin.idleTrack]
+      if (target === undefined || !target.loop) continue
+      let clickActions: Frames2dSkinClickActionConfig[] | undefined
+      if (Array.isArray(skin.clickActions)) {
+        const kept: Frames2dSkinClickActionConfig[] = []
+        for (const action of skin.clickActions as unknown[]) {
+          if (!isRecord(action) || typeof action.track !== 'string' || action.track === ''
+            || typeof action.probability !== 'number' || !(action.probability > 0) || action.probability > 1) continue
+          if (tracks[action.track] === undefined) continue
+          kept.push({
+            track: action.track,
+            probability: action.probability,
+            ...(Array.isArray(action.phrases) ? { phrases: action.phrases as string[] } : {}),
+          })
+        }
+        if (kept.length > 0) clickActions = kept
+      }
+      let gameplayTracks: Record<string, string> | undefined
+      if (isRecord(skin.gameplayTracks)) {
+        const kept: Record<string, string> = {}
+        for (const [state, trackName] of Object.entries(skin.gameplayTracks)) {
+          if (typeof trackName !== 'string' || trackName === '' || tracks[trackName] === undefined) continue
+          kept[state] = trackName
+        }
+        if (Object.keys(kept).length > 0) gameplayTracks = kept
+      }
+      resolved.push({
+        id: skin.id,
+        label: skin.label,
+        idleTrack: skin.idleTrack,
+        ...(clickActions === undefined ? {} : { clickActions }),
+        ...(gameplayTracks === undefined ? {} : { gameplayTracks }),
+      })
+    }
+    if (resolved.length > 0) skins = resolved
+  }
+  return { tracks, phases: phases as PetFrames2dConfig['phases'], ...(skins === undefined ? {} : { skins }) }
 }
 
 interface DecodedFrame {
@@ -141,34 +214,95 @@ export const frames2dRenderer: PetRenderer<PetFrames2dConfig> = {
     // the last painted frame instead of breaking playback).
     const decoding = new Map<string, Promise<DecodedFrame | undefined>>()
     const decodedAll: Promise<void>[] = []
-    const loadFrame = (url: string): Promise<DecodedFrame | undefined> => {
+    // All frame fetches funnel through a small pool. Full-library warm passes
+    // on large pets fire 1100+ requests at once, which trips the browser's
+    // in-flight request limit (net::ERR_INSUFFICIENT_RESOURCES) and fails
+    // whole batches of frames while starving the rest of the page. Playback
+    // demand jumps ahead of the warm backlog.
+    const FRAME_POOL_LIMIT = 8
+    const frameQueue: Array<{ url: string; release: () => void }> = []
+    let activeFrames = 0
+
+    const decodeFrame = async (url: string): Promise<DecodedFrame | undefined> => {
+      try {
+        const response = await fetch(url)
+        if (!response.ok) throw new Error('http ' + response.status)
+        const bitmap = await createImageBitmap(await response.blob())
+        return { source: bitmap, width: bitmap.width, height: bitmap.height }
+      } catch {
+        // Fail-open: classic Image decode keeps non-modern runtimes alive.
+        return await new Promise<DecodedFrame | undefined>((resolve) => {
+          try {
+            const pre = new Image()
+            pre.onload = (): void => {
+              resolve(pre.naturalWidth > 0 ? { source: pre, width: pre.naturalWidth, height: pre.naturalHeight } : undefined)
+            }
+            pre.onerror = (): void => resolve(undefined)
+            pre.src = url
+          } catch {
+            resolve(undefined)
+          }
+        })
+      }
+    }
+
+    const pumpFrames = (): void => {
+      while (activeFrames < FRAME_POOL_LIMIT && frameQueue.length > 0) {
+        const queued = frameQueue.shift()!
+        activeFrames += 1
+        queued.release()
+      }
+    }
+
+    const loadFrame = (url: string, jump = false): Promise<DecodedFrame | undefined> => {
+      // Jump first: warm-enqueued frames already carry their memo, so a
+      // playback demand must reorder the unstarted entry before the cache
+      // lookup short-circuits.
+      if (jump) {
+        const index = frameQueue.findIndex((queued) => queued.url === url)
+        if (index > 0) frameQueue.unshift(frameQueue.splice(index, 1)[0]!)
+      }
       const cached = decoding.get(url)
       if (cached !== undefined) return cached
-      const job: Promise<DecodedFrame | undefined> = (async () => {
-        try {
-          const response = await fetch(url)
-          if (!response.ok) throw new Error('http ' + response.status)
-          const bitmap = await createImageBitmap(await response.blob())
-          return { source: bitmap, width: bitmap.width, height: bitmap.height }
-        } catch {
-          // Fail-open: classic Image decode keeps non-modern runtimes alive.
-          return await new Promise<DecodedFrame | undefined>((resolve) => {
-            try {
-              const pre = new Image()
-              pre.onload = (): void => {
-                resolve(pre.naturalWidth > 0 ? { source: pre, width: pre.naturalWidth, height: pre.naturalHeight } : undefined)
-              }
-              pre.onerror = (): void => resolve(undefined)
-              pre.src = url
-            } catch {
-              resolve(undefined)
-            }
-          })
-        }
-      })()
+      let release!: () => void
+      const gate = new Promise<void>((resolve) => { release = resolve })
+      const job: Promise<DecodedFrame | undefined> = gate.then(() => (disposed ? undefined : decodeFrame(url)))
+      job.then(
+        (frame) => { if (frame === undefined) decoding.delete(url) },
+        () => decoding.delete(url),
+      )
+      void job.finally(() => {
+        activeFrames -= 1
+        pumpFrames()
+      })
       decoding.set(url, job)
       decodedAll.push(job.then(() => undefined, () => undefined))
+      const entry = { url, release }
+      if (jump) frameQueue.unshift(entry)
+      else frameQueue.push(entry)
+      pumpFrames()
       return job
+    }
+
+    /**
+     * Bounded look-ahead window: decode only the frames playback is about to
+     * need. The historical warm pass decoded every frame of every track up
+     * front - a shipped pet carries ~1.1k 512x683 frames, so that pass pulls
+     * tens of megabytes and retains every decoded bitmap for the life of the
+     * page. Prefetching the playing track's next frames keeps loops and phase
+     * switches warm while unplayed tracks (and every unselected skin's
+     * frames) stay on demand, where playback jumps the queue anyway.
+     */
+    const PREFETCH_AHEAD = 12
+
+    const prefetchAhead = (trackId: string, index: number): void => {
+      const def = config.tracks[trackId]
+      if (def === undefined) return
+      const end = Math.min(def.frames.length, index + 1 + PREFETCH_AHEAD)
+      for (let ahead = index + 1; ahead < end; ahead += 1) {
+        const url = def.frames[ahead]
+        if (url !== undefined) void loadFrame(url)
+      }
     }
 
     let disposed = false
@@ -178,19 +312,25 @@ export const frames2dRenderer: PetRenderer<PetFrames2dConfig> = {
     let frameIndex = 0
     let lastAdvance = Date.now()
     let override: string | undefined
+    // Skin base idle: every "back to idle" target resolves through this
+    // (idle phase, unmapped phases and fallbacks), so a selected skin swaps
+    // the pet's resting look without touching gameplay tracks.
+    let baseIdle: string = config.phases.idle
     let drawToken = 0
     let lastDrawnUrl: string | undefined
 
     const trackForPhase = (phase: ActivityPhase): string => {
       const mapped = config.phases[phase]
-      return mapped !== undefined && config.tracks[mapped] !== undefined ? mapped : config.phases.idle
+      if (mapped === undefined) return baseIdle
+      const target = mapped === config.phases.idle ? baseIdle : mapped
+      return config.tracks[target] !== undefined ? target : baseIdle
     }
 
     /** Canvas path: paints the newest requested frame; stale draws drop out. */
     const paintCanvas = (url: string): void => {
       if (context2d === null || canvas === null) return
       const myToken = ++drawToken
-      void loadFrame(url).then((frame) => {
+      void loadFrame(url, true).then((frame) => {
         if (disposed || frame === undefined || myToken !== drawToken) return
         if (lastDrawnUrl === url) return
         lastDrawnUrl = url
@@ -209,6 +349,7 @@ export const frames2dRenderer: PetRenderer<PetFrames2dConfig> = {
       const def = config.tracks[trackId]
       const url = def?.frames[index]
       if (url === undefined) return
+      prefetchAhead(trackId, index)
       if (img !== null) {
         if (img.getAttribute('src') !== url) img.src = url
         return
@@ -239,18 +380,21 @@ export const frames2dRenderer: PetRenderer<PetFrames2dConfig> = {
         schedule(def.durations[frameIndex] ?? 200)
         return
       }
-      // Non-loop completion: settle into the fallback; when the fallback is
-      // what the phase map would play anyway, release the gameplay override.
+      // Non-loop completion: settle into the fallback — an explicit fallback to
+      // a real track wins, except when it points back at the manifest idle
+      // (that resolves through the skin base idle); anything else lands on
+      // the skin base idle. When the settle target is what the phase map
+      // plays anyway, release the gameplay override.
       const target = def.fallback !== undefined && config.tracks[def.fallback] !== undefined
-        ? def.fallback
-        : config.phases.idle
+        ? (def.fallback === config.phases.idle ? baseIdle : def.fallback)
+        : baseIdle
       if (target === trackForPhase(ctx.phase.get())) override = undefined
       play(target)
     }
 
     function play(trackId: string): void {
       if (disposed) return
-      if (config.tracks[trackId] === undefined) trackId = config.phases.idle
+      if (config.tracks[trackId] === undefined) trackId = baseIdle
       if (timer !== undefined) clearTimeout(timer)
       track = trackId
       frameIndex = 0
@@ -279,13 +423,6 @@ export const frames2dRenderer: PetRenderer<PetFrames2dConfig> = {
       }, WATCHDOG_MS)
     }
 
-    // Warm pass: decode every frame up front (tiny same-origin webp files)
-    // so loops and phase switches never wait on a first decode - same intent
-    // as the historical Image-cache warm loop, now feeding the decode cache.
-    for (const warmTrack of Object.values(config.tracks)) {
-      for (const warmUrl of warmTrack.frames) void loadFrame(warmUrl)
-    }
-
     play(track)
 
     let disposedOnce = false
@@ -297,7 +434,9 @@ export const frames2dRenderer: PetRenderer<PetFrames2dConfig> = {
       if (timer !== undefined) clearTimeout(timer)
       if (watchdog !== undefined) clearInterval(watchdog)
       // Release decoded bitmaps after pending decodes settle; close() is
-      // browser-only, so guard it for exotic hosts.
+      // browser-only, so guard it for exotic hosts. Queued-but-unstarted
+      // frames release immediately as no-ops so the settle barrier drains.
+      for (const queued of frameQueue.splice(0)) queued.release()
       void Promise.allSettled(decodedAll).then(() => {
         for (const job of decoding.values()) {
           void job.then((frame) => {
@@ -327,6 +466,18 @@ export const frames2dRenderer: PetRenderer<PetFrames2dConfig> = {
         if (config.tracks[next] === undefined) return
         override = next
         if (next !== track) play(next)
+      },
+      setIdleTrack(next: string | undefined): void {
+        if (disposed) return
+        if (next === undefined || (config.tracks[next] !== undefined && config.tracks[next]!.loop)) {
+          baseIdle = next ?? config.phases.idle
+        }
+        // A skin only owns the resting look: re-resolve only when no
+        // gameplay override is active (active overrides end into baseIdle).
+        if (override === undefined) {
+          const target = trackForPhase(ctx.phase.get())
+          if (target !== track) play(target)
+        }
       },
       currentTrack(): string {
         return track

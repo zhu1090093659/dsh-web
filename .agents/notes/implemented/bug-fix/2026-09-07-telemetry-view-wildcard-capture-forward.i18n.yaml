@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-09-07-telemetry-view-wildcard-capture-forward.md: d8418b397dd199ead57e980b669677083c245973
+2026-09-07-telemetry-view-wildcard-capture-forward.zh.md: c9ae85175bf23603d53c3fef7115de305a1b6138

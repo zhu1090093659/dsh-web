@@ -6,7 +6,7 @@
   "assets": {
     "directory": "../dist",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/.well-known/*", "/", "/index.html"]
+    "run_worker_first": ["/api/*", "/.well-known/*", "/", "/index.html", "/app.js"]
   },
   "d1_databases": [
     {
@@ -14,6 +14,13 @@
       "database_name": "dsh-market",
       "database_id": "95f4e8ae-444a-46d0-98be-c367a9dbe6e8"
     }
+  ],
+  // tv.dsh-market.com rides the wildcard routes below too, so the fetch entry
+  // forwards that whole hostname to the telemetry-view dashboard worker via
+  // the service binding here (/app.js is in run_worker_first for the same
+  // reason: the dashboard's same-origin script must reach its worker).
+  "services": [
+    { "binding": "TELEMETRY_VIEW", "service": "dsh-market-telemetry-view" }
   ],
   // The wildcard ZONE ROUTE must carry the "/*" path part: a pattern without
   // a path component matches ONLY the root path, so every non-root request on

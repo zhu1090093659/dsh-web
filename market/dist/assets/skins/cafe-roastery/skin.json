@@ -1,0 +1,43 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "cafe-roastery",
+  "name": "咖啡工坊",
+  "nameEn": "Cafe Roastery",
+  "version": "1.0.0",
+  "author": "stushansusu",
+  "tagline": "拿铁奶油 / 浓缩焦糖 · 两套暖色材质 · 蒸汽与咖啡杯",
+  "description": "以烘焙咖啡馆为视觉母题，明暗两套主题各自成篇。暗色是「浓缩」：深烘焙咖啡豆色面板、焦糖/奶油黄的高亮与描边，像深夜还在营业的烘焙间；亮色是「拿铁」：奶泡米白面板、暖咖啡墨水文字、焦糖色交互，界面零纯白、零冷色。空会话首屏有一圈咖啡杯口的「奶泡罗塞塔」与上升的蒸汽，输入卡片做成熟纸杯套的样式，侧栏是烘焙工作台墙面。纯 CSS 实现，无 hooks，无图片资产。",
+  "tags": [
+    "cafe",
+    "coffee",
+    "roastery",
+    "latte",
+    "espresso",
+    "caramel",
+    "warm",
+    "cream",
+    "css-only",
+    "dual-theme"
+  ],
+  "accent": "#e2a84e",
+  "order": 8,
+  "preview": {
+    "light": "preview/light.png",
+    "dark": "preview/dark.png"
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css",
+    "backgroundMedia": {
+      "light": {
+        "type": "image",
+        "src": "assets/bg-final-latte.png"
+      },
+      "dark": {
+        "type": "image",
+        "src": "assets/bg-final-espresso.png"
+      }
+    }
+  }
+}

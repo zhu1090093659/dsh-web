@@ -1,0 +1,503 @@
+/**
+ * Blueprint — L3 texture + HUD skin.
+ *
+ * Everything here is decorative and non-interactive: the drafting grid, corner
+ * registration marks, pane hairlines, and the styling of the two HUD bars that
+ * hooks.mjs injects into <body>.
+ *
+ * The loader scopes every selector under html[data-dsh-skin="blueprint"].
+ */
+
+/* --- reserve chrome space for the fixed HUD bars ------------------------- */
+
+html[data-dsh-skin="blueprint"] body {
+  --dsh-bp-bar-top: 30px;
+  --dsh-bp-bar-bottom: 26px;
+  /* Backdrop line colour: archival sepia ink on warm paper, the blueprint
+     cyan on the night sheet. Kept separate from the brand accent so the
+     decorative line work can harmonise with the theme without repainting
+     every interactive surface. */
+  --dsh-bp-art-line: #6b5340;
+
+  /* Chrome palette. Declared on body so the bars, the ruler ticks and the
+     title block all read from one source. Light sheet: sepia throughout.
+     Night sheet: cyan on navy. */
+  --bp-line: #7a6242;
+  --bp-fg: #6b6154;
+  --bp-fg-strong: #2b2723;
+  --bp-fg-accent: #7a6242;
+  --bp-bg: #f1e9da;
+  --bp-grid: #6b5a3e14;
+}
+
+html[data-dsh-skin="blueprint"] body[data-ds-dark-theme] {
+  --dsh-bp-art-line: #4fd1ff;
+  --bp-line: #4fd1ff;
+  --bp-fg: #7f9db8;
+  --bp-fg-strong: #dceaf7;
+  --bp-fg-accent: #4fd1ff;
+  --bp-bg: #08243d;
+  --bp-grid: #9fd8ff14;
+}
+
+html[data-dsh-skin="blueprint"] [id="root"] {
+  padding-top: var(--dsh-bp-bar-top);
+  padding-bottom: var(--dsh-bp-bar-bottom);
+  background: none;
+}
+
+/**
+ * The official app frame is sized `100vh`, so the #root padding above would
+ * push its bottom — and the composer, which is `position: sticky; bottom: 0`
+ * inside it — past the viewport, where `body { overflow: hidden }` clips it
+ * behind the status bar. Shrink the frame by exactly the space the bars take
+ * instead, so the frame lands flush between them.
+ */
+html[data-dsh-skin="blueprint"] [data-dsh-frame] {
+  height: calc(100vh - var(--dsh-bp-bar-top) - var(--dsh-bp-bar-bottom)) !important;
+}
+
+/* --- sidebar brand mark (redrawn by hooks.mjs) --------------------------- */
+
+/**
+ * The whale is drawn as a line work: hairline stroke over a faint fill, in the
+ * theme accent so the mark reads as part of the drafting sheet.
+ */
+html[data-dsh-skin="blueprint"] .dsh-bp-brand-mark {
+  color: var(--dsw-alias-brand-primary);
+  display: block;
+  overflow: visible;
+}
+
+/* --- full-window backdrop (layers injected by hooks.mjs) ----------------- */
+
+/**
+ * Two stacked masks over the same illustration: `.dsh-bp-bg-fill` paints the
+ * 24px drafting grid through the character silhouette, `.dsh-bp-bg-line`
+ * paints the accent line work (outer contour weighted heavier) on top.
+ * Both sit at z-index -1 so they stay behind every surface, and both are
+ * non-interactive.
+ */
+html[data-dsh-skin="blueprint"] .dsh-bp-bg-base,
+html[data-dsh-skin="blueprint"] .dsh-bp-bg-fill,
+html[data-dsh-skin="blueprint"] .dsh-bp-bg-line {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  /**
+   * The source is cropped to the character's own right margin (1310x787), so
+   * `cover` now scales it width-limited to 1665x1000 and `right center` pins
+   * the character flush to the right edge. The extra 30px lets the outermost
+   * hair tips bleed off the edge instead of leaving a gap. The mask must use
+   * the same size/position as the background or the grid fill and the line
+   * work would drift apart.
+   */
+  background-position: calc(100% + 30px) center;
+  background-size: cover;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: calc(100% + 30px) center;
+  mask-position: calc(100% + 30px) center;
+  -webkit-mask-size: cover;
+  mask-size: cover;
+}
+
+/* base colour, now that body itself is transparent */
+html[data-dsh-skin="blueprint"] .dsh-bp-bg-base {
+  z-index: -3;
+  background-color: #ece3d2;
+}
+
+html[data-dsh-skin="blueprint"] body[data-ds-dark-theme] .dsh-bp-bg-base {
+  background-color: #08243d;
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-bg-fill {
+  z-index: -2;
+  background-image:
+    repeating-linear-gradient(to right, #6b5a3e2e 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(to bottom, #6b5a3e2e 0 1px, transparent 1px 24px);
+  -webkit-mask-image: var(--dsh-bp-fill-url);
+  mask-image: var(--dsh-bp-fill-url);
+  opacity: 0.9;
+}
+
+html[data-dsh-skin="blueprint"] body[data-ds-dark-theme] .dsh-bp-bg-fill {
+  background-image:
+    repeating-linear-gradient(to right, #9fd8ff33 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(to bottom, #9fd8ff33 0 1px, transparent 1px 24px);
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-bg-line {
+  z-index: -1;
+  background-color: var(--dsh-bp-art-line);
+  -webkit-mask-image: var(--dsh-bp-line-url);
+  mask-image: var(--dsh-bp-line-url);
+  opacity: 0.55;
+}
+
+/* sepia ink on warm paper needs more presence than cyan on navy */
+html[data-dsh-skin="blueprint"] body:not([data-ds-dark-theme]) .dsh-bp-bg-line {
+  opacity: 0.78;
+}
+
+/**
+ * The app frame paints `--dsw-alias-bg-base`, which this skin already carries
+ * with alpha (skin.css), so it lets the backdrop through on its own. The
+ * sidebar column uses its own token and needs the same treatment here.
+ */
+html[data-dsh-skin="blueprint"] [data-pane="sidebar"] {
+  background-color: #e0d3b8d9 !important;
+}
+
+html[data-dsh-skin="blueprint"] body[data-ds-dark-theme] [data-pane="sidebar"] {
+  background-color: #0a2c49d9 !important;
+}
+
+/* --- sidebar build identity (attributes stamped by hooks.mjs) ------------ */
+
+/**
+ * The shell renders the build title as plain 12px text and the version as a
+ * 6px inverted chip (background `label-primary`, text `label-primary-inverted`).
+ * Blueprint turns them into drafting-sheet annotations: monospace, tracked
+ * out, with the version as an outlined drawing-number tag instead of a solid
+ * inverted pill.
+ */
+html[data-dsh-skin="blueprint"] [data-dsh-bp="build-title"] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Cascadia Mono", monospace;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 13px;
+  letter-spacing: 0.12em;
+  color: var(--dsw-alias-label-primary);
+}
+
+html[data-dsh-skin="blueprint"] [data-dsh-bp="build-version"] {
+  border: 1px solid var(--dsw-alias-brand-primary);
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--dsw-alias-brand-primary) !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Cascadia Mono", monospace;
+  font-size: 8px;
+  line-height: 10px;
+  letter-spacing: 0.06em;
+  padding: 0 4px;
+}
+
+/**
+ * The right-hand panel of the sidebar-cards plugin paints an opaque
+ * `bg-layer-1` fill. It exposes stable semantic attributes of its own
+ * (`data-dsh-panel` / `data-dsh-bottom-panel`), so no hashed class is needed.
+ * Matched to the left column's alpha so both columns read as one sheet.
+ */
+html[data-dsh-skin="blueprint"] [data-dsh-panel="true"]:not([data-dsh-bottom-panel]) {
+  background-color: #f8f3e8d9 !important;
+}
+
+html[data-dsh-skin="blueprint"] body[data-ds-dark-theme] [data-dsh-panel="true"]:not([data-dsh-bottom-panel]) {
+  background-color: #0d3152d9 !important;
+}
+
+/**
+ * The sidebar-cards plugin parks its two toggle buttons in an absolutely
+ * positioned cluster at `top: 14px`, inside a host whose z-index (25) sits
+ * below the HUD bar (40) — so the bar covered their upper half. The plugin
+ * exposes a stable `data-dsh-toggle-cluster` attribute, so nudge the cluster
+ * below the bar instead of touching its hashed class.
+ */
+html[data-dsh-skin="blueprint"] [data-dsh-toggle-cluster] {
+  top: calc(var(--dsh-bp-bar-top) + 14px) !important;
+}
+
+/* --- drafting grid ------------------------------------------------------- */
+
+html[data-dsh-skin="blueprint"] body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(to right, #6b5a3e0f 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(to bottom, #6b5a3e0f 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(to right, #6b5a3e1f 0 1px, transparent 1px 120px),
+    repeating-linear-gradient(to bottom, #6b5a3e1f 0 1px, transparent 1px 120px);
+}
+
+html[data-dsh-skin="blueprint"] body[data-ds-dark-theme]::before {
+  background-image:
+    repeating-linear-gradient(to right, #9fd8ff0f 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(to bottom, #9fd8ff0f 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(to right, #9fd8ff1f 0 1px, transparent 1px 120px),
+    repeating-linear-gradient(to bottom, #9fd8ff1f 0 1px, transparent 1px 120px);
+}
+
+/* --- corner registration marks ------------------------------------------- */
+
+html[data-dsh-skin="blueprint"] body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 41;
+  pointer-events: none;
+  opacity: 0.75;
+  background-image:
+    linear-gradient(#7a6242, #7a6242), linear-gradient(#7a6242, #7a6242),
+    linear-gradient(#7a6242, #7a6242), linear-gradient(#7a6242, #7a6242),
+    linear-gradient(#7a6242, #7a6242), linear-gradient(#7a6242, #7a6242),
+    linear-gradient(#7a6242, #7a6242), linear-gradient(#7a6242, #7a6242);
+  background-repeat: no-repeat;
+  background-size: 16px 1px, 1px 16px, 16px 1px, 1px 16px, 16px 1px, 1px 16px, 16px 1px, 1px 16px;
+  background-position:
+    left 10px top 38px, left 10px top 38px,
+    right 10px top 38px, right 10px top 38px,
+    left 10px bottom 34px, left 10px bottom 34px,
+    right 10px bottom 34px, right 10px bottom 34px;
+}
+
+html[data-dsh-skin="blueprint"] body[data-ds-dark-theme]::after {
+  background-image:
+    linear-gradient(#4fd1ff, #4fd1ff), linear-gradient(#4fd1ff, #4fd1ff),
+    linear-gradient(#4fd1ff, #4fd1ff), linear-gradient(#4fd1ff, #4fd1ff),
+    linear-gradient(#4fd1ff, #4fd1ff), linear-gradient(#4fd1ff, #4fd1ff),
+    linear-gradient(#4fd1ff, #4fd1ff), linear-gradient(#4fd1ff, #4fd1ff);
+}
+
+/* --- pane hairlines ------------------------------------------------------ */
+
+html[data-dsh-skin="blueprint"] [data-pane="sidebar"] {
+  box-shadow: inset -1px 0 0 #6b5a3e24;
+}
+
+html[data-dsh-skin="blueprint"] body[data-ds-dark-theme] [data-pane="sidebar"] {
+  box-shadow: inset -1px 0 0 #9fd8ff24;
+}
+
+/* --- HUD bars (injected by hooks.mjs) ------------------------------------ */
+
+html[data-dsh-skin="blueprint"] .dsh-bp-titlebar,
+html[data-dsh-skin="blueprint"] .dsh-bp-statusbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  pointer-events: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Cascadia Mono", monospace;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--bp-fg);
+  /* Fully opaque: at 95% + backdrop-filter the line work behind the bar
+     smeared through as a ghost (measured ~14/255 lighter under a stroke). */
+  background-color: var(--bp-bg);
+  background-image:
+    repeating-linear-gradient(to right, var(--bp-grid) 0 1px, transparent 1px 24px);
+}
+
+html[data-dsh-skin="blueprint"] body[data-ds-dark-theme] .dsh-bp-titlebar,
+html[data-dsh-skin="blueprint"] body[data-ds-dark-theme] .dsh-bp-statusbar {
+  --bp-line: #4fd1ff;
+  --bp-fg: #7f9db8;
+  --bp-fg-strong: #dceaf7;
+  --bp-fg-accent: #4fd1ff;
+  --bp-bg: #08243d;
+  --bp-grid: #9fd8ff14;
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-titlebar {
+  top: 0;
+  height: var(--dsh-bp-bar-top);
+  border-bottom: 1px solid var(--bp-line);
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-statusbar {
+  bottom: 0;
+  height: var(--dsh-bp-bar-bottom);
+  border-top: 1px solid var(--bp-line);
+}
+
+/* corner ticks on each bar */
+html[data-dsh-skin="blueprint"] .dsh-bp-titlebar::before,
+html[data-dsh-skin="blueprint"] .dsh-bp-titlebar::after,
+html[data-dsh-skin="blueprint"] .dsh-bp-statusbar::before,
+html[data-dsh-skin="blueprint"] .dsh-bp-statusbar::after {
+  content: '';
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-color: var(--bp-fg-accent);
+  border-style: solid;
+  border-width: 0;
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-titlebar::before { left: 4px; top: 4px; border-left-width: 1px; border-top-width: 1px; }
+html[data-dsh-skin="blueprint"] .dsh-bp-titlebar::after { right: 4px; top: 4px; border-right-width: 1px; border-top-width: 1px; }
+html[data-dsh-skin="blueprint"] .dsh-bp-statusbar::before { left: 4px; bottom: 4px; border-left-width: 1px; border-bottom-width: 1px; }
+html[data-dsh-skin="blueprint"] .dsh-bp-statusbar::after { right: 4px; bottom: 4px; border-right-width: 1px; border-bottom-width: 1px; }
+
+/* --- HUD internals ------------------------------------------------------- */
+
+html[data-dsh-skin="blueprint"] .dsh-bp-mark {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: var(--bp-fg-accent);
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-id {
+  flex: none;
+  font-weight: 700;
+  color: var(--bp-fg-strong);
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-badge {
+  flex: none;
+  padding: 2px 6px;
+  border: 1px solid var(--bp-fg-accent);
+  color: var(--bp-fg-accent);
+  letter-spacing: 0.14em;
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: center;
+  color: var(--bp-fg-strong);
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-cell {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-cell > b {
+  font-weight: 700;
+  color: var(--bp-fg-strong);
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-sep {
+  flex: none;
+  width: 1px;
+  height: 11px;
+  background: var(--bp-line);
+  opacity: 0.5;
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2f9e6e;
+  box-shadow: 0 0 6px #2f9e6e;
+  animation: blueprint-pulse 2.4s ease-in-out infinite;
+}
+
+html[data-dsh-skin="blueprint"] body[data-ds-dark-theme] .dsh-bp-dot {
+  background: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
+}
+
+@keyframes blueprint-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* --- measuring ticks along the bars (added by hooks.mjs) ----------------- */
+
+/**
+ * A scale strip pinned to the inner edge of each bar: a short tick every 24px
+ * (the drafting grid pitch) and a taller one every 120px, so the chrome reads
+ * as a ruler against the sheet rather than a plain panel.
+ */
+html[data-dsh-skin="blueprint"] .dsh-bp-ruler {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 5px;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image:
+    repeating-linear-gradient(to right, var(--bp-line) 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(to right, var(--bp-line) 0 1px, transparent 1px 120px);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 5px;
+  background-position: left bottom, left bottom;
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-titlebar .dsh-bp-ruler {
+  bottom: 0;
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-statusbar .dsh-bp-ruler {
+  top: 0;
+  background-position: left top, left top;
+}
+
+html[data-dsh-skin="blueprint"] .dsh-bp-axis {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--bp-fg-accent);
+}
+
+/* --- sheet material: grain and vignette (layer added by hooks.mjs) ------- */
+
+html[data-dsh-skin="blueprint"] .dsh-bp-grain {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* aged paper: crossed fibre grain plus a soft edge burn */
+  background-image:
+    repeating-linear-gradient(115deg, #6b5a3e08 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(25deg, #6b5a3e05 0 1px, transparent 1px 4px),
+    radial-gradient(ellipse at center, transparent 52%, #6b5a3e1f 100%);
+}
+
+/* night sheet: corner falloff plus a faint phosphor line, no paper grain */
+html[data-dsh-skin="blueprint"] body[data-ds-dark-theme] .dsh-bp-grain {
+  background-image:
+    repeating-linear-gradient(to bottom, #9fd8ff05 0 1px, transparent 1px 4px),
+    radial-gradient(ellipse at center, transparent 42%, #01080f8c 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-dsh-skin="blueprint"] .dsh-bp-dot {
+    animation: none;
+  }
+}
+
+html[data-dsh-skin="blueprint"] [id="root"] { background: transparent; }
+
+html[data-dsh-skin="blueprint"] body { --shiki-background: var(--dsw-alias-markdown-code-block); }

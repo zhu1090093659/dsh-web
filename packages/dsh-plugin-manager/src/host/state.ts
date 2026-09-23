@@ -9,10 +9,25 @@
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { InstalledPluginItem } from '../core/protocol.ts'
+import type { InstalledPluginChild, InstalledPluginItem } from '../core/protocol.ts'
 import type { LayerSnapshot } from '../core/patch-diff.ts'
-import { bareRowEnabled, bareRowId, claimedIdsOf, insertRowsOf, parsePatch } from './rows.ts'
+import { bareRowEnabled, bareRowId, claimedIdsOf, insertRowsOf, parsePatch, rowDefaultEnabledOf } from './rows.ts'
 import { readProfileManifest, stripBom, type ProfileFacts } from './profile.ts'
+
+/**
+ * Entry rows that must never carry a disabled override: the manager tab
+ * itself (the UI performing the write), the family settings surface the tab
+ * injects into, and the aggregate compat face (disabling it unmounts the
+ * whole folded client bundle while host rows keep running — a half-dead
+ * page). Covers both the standalone and the aggregate row ids.
+ */
+export const LOCKED_ENTRY_IDS: ReadonlySet<string> = new Set([
+  'ui-plugin-manager',
+  'web-ui-plugin-manager',
+  'ui-web-ui-settings',
+  'web-ui-settings',
+  'web-ui-compat',
+])
 
 /** The listing result: plugin rows plus the raw layer snapshot for diffs. */
 export interface GatewaySnapshot {
@@ -57,20 +72,27 @@ export async function claimedEntryIdsOf(facts: ProfileFacts, name: string): Prom
  * write side needs the entry's own name: the include patch semantics skip a
  * bare override row whose name mismatches the inserted entry's name.
  * @param facts - resolved profile locations.
+ * `baseEnabled` carries the bundle layer's own enablement for the row: a
+ * package that ships a row disabled cannot be switched on by deleting the user
+ * override, so the caller needs it to write an explicit `disabled: false`.
+ * @param facts - resolved profile locations.
  * @param name - dependency name (possibly scoped).
  * @returns the claimed rows, never empty.
  */
-export async function claimedEntryRowsOf(facts: ProfileFacts, name: string): Promise<Array<{ id: string; name: string }>> {
+export async function claimedEntryRowsOf(facts: ProfileFacts, name: string): Promise<Array<{ id: string; name: string; baseEnabled: boolean }>> {
   const patchPath = join(modulePathOf(facts.profileDir, name), 'cordis.patch.yml')
   try {
     const text = stripBom(await readFile(patchPath, 'utf8'))
     const rows = insertRowsOf(text)
+    const defaults = rowDefaultEnabledOf(text)
     const claimed = rows.filter((row): row is { id: string; name?: string } => row.id !== undefined)
-    if (claimed.length > 0) return claimed.map(row => ({ id: row.id, name: row.name ?? name }))
+    if (claimed.length > 0) {
+      return claimed.map(row => ({ id: row.id, name: row.name ?? name, baseEnabled: defaults.get(row.id) ?? true }))
+    }
   } catch {
     // Missing bundle patch: a plain plugin claims its own name.
   }
-  return [{ id: name, name }]
+  return [{ id: name, name, baseEnabled: true }]
 }
 
 /**
@@ -108,9 +130,26 @@ export async function buildPluginRow(
       bundlePatch = '[]'
     }
   }
-  const claimed = claimedIdsOf(bundlePatch)
-  const entryIds = claimed.length > 0 ? claimed : [name]
-  const enabled = entryIds.every(id => rowEnabled.get(id) ?? true)
+  const insertRows = insertRowsOf(bundlePatch)
+    .filter((row): row is { id: string; name?: string; plugin?: string } => row.id !== undefined)
+  const entryIds = insertRows.length > 0 ? insertRows.map(row => row.id) : [name]
+  // Effective next-start enablement, the same value the loader composes: the
+  // user layer wins where it has an opinion, then the bundle's own inactive-by-
+  // default rows, then enabled (issue #1453).
+  const bundleDefaults = rowDefaultEnabledOf(bundlePatch)
+  const enabled = entryIds.every(id => rowEnabled.get(id) ?? bundleDefaults.get(id) ?? true)
+  // Aggregate packages claim one row per family plugin: expose them as
+  // individually switchable children (uninstall stays whole-package — the
+  // code ships in this one npm package). The display name prefers the real
+  // plugin package (shell config.plugin) over the per-family subpath name.
+  const children: InstalledPluginChild[] | undefined = insertRows.length > 1
+    ? insertRows.map(row => ({
+      id: row.id,
+      name: row.plugin ?? row.name ?? row.id,
+      enabled: rowEnabled.get(row.id) ?? bundleDefaults.get(row.id) ?? true,
+      ...LOCKED_ENTRY_IDS.has(row.id) ? { locked: true } : {},
+    }))
+    : undefined
 
   return {
     id: name,
@@ -119,7 +158,30 @@ export async function buildPluginRow(
     source: { kind: sourceKindOf(spec), spec },
     installedAt: '',
     enabled,
+    ...children !== undefined ? { children } : {},
   }
+}
+
+/**
+ * Find the dependency whose bundle patch claims one entry id (row-level
+ * set-enabled target). Reads every dependency's bundle patch; profiles carry
+ * a handful of dependencies, so the scan is cheap and needs no index.
+ * @param facts - resolved profile locations.
+ * @param dependencies - profile dependency names.
+ * @param entryId - the claimed entry id to locate.
+ * @returns the owning dependency name and the claimed row, or undefined.
+ */
+export async function findRowOwner(
+  facts: ProfileFacts,
+  dependencies: readonly string[],
+  entryId: string,
+): Promise<{ packageName: string; row: { id: string; name: string; baseEnabled: boolean } } | undefined> {
+  for (const name of dependencies) {
+    const rows = await claimedEntryRowsOf(facts, name)
+    const row = rows.find(candidate => candidate.id === entryId)
+    if (row !== undefined) return { packageName: name, row }
+  }
+  return undefined
 }
 
 /**

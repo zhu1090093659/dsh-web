@@ -1,6 +1,6 @@
 > 提 PR 前请阅读 [CONTRIBUTING.md](../CONTRIBUTING.md) 与 [AGENTS.md](../AGENTS.md)；
 > 提交信息用 Conventional Commits（`type(scope): subject`），禁止 emoji。
-> 本仓库只接受三类内容贡献：插件申请（社区插件索引登记）、皮肤增加（新皮肤收录）、宠物增加（新宠物收录）。新皮肤收录进本仓库部署的 dsh-market.com 服务器（Workshop），按需安装，默认安装不带；无背景图、仅简单改色且样式存在问题的低质皮肤 PR 不予接受。其余改动（修复 / 增强 / 全新功能 / 文档 / 测试 / 维护）不接受直接 PR，请先提 Issue 讨论；仓库所有者、机器人与拥有写权限的协作者（维护者）不受此限制，可直接提交任意改动。
+> 本仓库只接受四类内容贡献：插件申请（社区插件索引登记）、皮肤增加（新皮肤收录）、宠物增加（新宠物收录）、预设增加（agent 预设收录）。新皮肤与新 agent 预设收录进本仓库部署的 dsh-market.com 服务器（Workshop），按需安装，默认安装不带；无背景图、仅简单改色且样式存在问题的低质皮肤 PR 不予接受。其余改动（修复 / 增强 / 全新功能 / 文档 / 测试 / 维护）不接受直接 PR，请先提 Issue 讨论；仓库所有者、机器人与拥有写权限的协作者（维护者）不受此限制，可直接提交任意改动。
 > 仅文档类 PR（标题以 `docs:` 开头或勾选「仅文档」）不接受，会被自动关闭；文档改动请先提 Issue 讨论（仓库所有者、机器人与拥有写权限的协作者不受此限制）。
 ## 摘要（Summary）
 
@@ -16,17 +16,18 @@
 - [ ] 远程 Web UI `packages/dsh-remote-web-ui`
 - [ ] SSH 远程运维 `packages/dsh-ssh`
 - [ ] 宠物 `packages/dsh-pet`
+- [ ] 预设中心 `packages/dsh-preset-center`
 - [ ] 皮肤 / 皮肤中心 `packages/dsh-skins` / `packages/skins`
 - [ ] 聚合包 / 设置 `packages/dsh-web-all` / `packages/dsh-web-settings`
 - [ ] 其他（请说明）
 
 ## PR 类别（PR Category）
 
-<!-- 必填。勾选本 PR 最贴近的类别（可多选），用于机器人按类别自动分派给协作者。注意：本仓库只接受三类内容贡献——新皮肤收录勾「皮肤 / 皮肤中心」、插件申请勾「社区插件索引」、新宠物收录勾「插件功能」类别（该类别括号内含宠物项），并在下方 PR 类型中勾选对应内容类型。只勾选「壁纸 / 渲染器」类别的 PR 不接受，会被自动关闭（Wallpaper Engine / WebGL / 渲染器相关问题请提 Issue）；其余类别（插件功能中的功能改动、维护 / 其他）不在接受范围，会被自动关闭，请改提 Issue；仓库所有者与拥有写权限的协作者（维护者）不受此限制。 -->
+<!-- 必填。勾选本 PR 最贴近的类别（可多选），用于机器人按类别自动分派给协作者。注意：本仓库只接受四类内容贡献——新皮肤收录勾「皮肤 / 皮肤中心」、插件申请勾「社区插件索引」、新宠物收录与新预设收录勾「插件功能」类别（该类别括号内含宠物与预设中心项），并在下方 PR 类型中勾选对应内容类型。只勾选「壁纸 / 渲染器」类别的 PR 不接受，会被自动关闭（Wallpaper Engine / WebGL / 渲染器相关问题请提 Issue）；其余类别（插件功能中的功能改动、维护 / 其他）不在接受范围，会被自动关闭，请改提 Issue；仓库所有者与拥有写权限的协作者（维护者）不受此限制。 -->
 
 - [ ] 壁纸 / 渲染器（Wallpaper Engine / WebGL / 背景场景）
 - [ ] 皮肤 / 皮肤中心（新皮肤收录、皮肤样式）
-- [ ] 插件功能（任务看板 / Git 图谱 / 右侧面板 / 远程 Web UI / SSH / 宠物 / 设置 / 聚合包）
+- [ ] 插件功能（任务看板 / Git 图谱 / 右侧面板 / 远程 Web UI / SSH / 宠物 / 预设中心 / 设置 / 聚合包）
 - [ ] 社区插件索引
 - [ ] 维护 / 其他
 
@@ -40,6 +41,7 @@
 - [ ] 增强 / 优化（现有功能的改进、性能 / 体验优化）
 - [ ] 新皮肤收录（内容贡献，欢迎直接提交，无需先提 issue）
 - [ ] 新宠物收录（内容贡献，欢迎直接提交，无需先提 issue）
+- [ ] 新预设收录（内容贡献，欢迎直接提交，无需先提 issue）
 - [ ] 维护 / 重构
 
 <!-- 仅文档类 PR 不接受，会被自动关闭；文档改动请先提 Issue 讨论。 -->
@@ -118,6 +120,17 @@
 - [ ] 在 `packages/dsh-pet/src/registry.test.ts` 增加该 manifest 的归一化断言；`pnpm --filter @linxin666/dsh-pet build` / `test` 与 `pnpm typecheck` 通过；提交重建的 `lib/`。
 - [ ] 同步维护 dsh-pet README 中英三件套（`README.md` / `README.zh.md` / `README.i18n.yaml`）并重录配对（`pnpm docs:write-pair dsh-pet`）。
 - [ ] README 动画预览与「许可证 / 版权」说明齐全；PR 描述附宠物实测截图（设置页「宠物」选择器出现新宠物、切换后动画正常）。
+
+## 新预设收录（New Agent Preset）
+
+<!-- 仅当本 PR 新增 agent 预设时必填；其余改动可跳过本节。新预设属于内容贡献，欢迎直接提交（无需先提 issue）。预设是代码而不是资产：composition 可以挂载 npm 插件、加载预设目录内的文件、执行 !!js 表达式，启用后运行在 DSH 宿主进程内，评审重点审核 composition 实际加载了什么、为什么。发布格式见 packages/dsh-preset-center/presets/README.md。 -->
+
+- [ ] 按 packages/dsh-preset-center/presets/README.md 复制 `_template/` 为 `packages/dsh-preset-center/presets/<id>/`：目录名即预设 id，匹配 `^[a-z0-9][a-z0-9-]*$`，不与官方内置 id（minimal / ptc / standard / cordis）冲突。
+- [ ] `preset.yml` 展示文案齐全且均为单行标量（name / description 必填，order 可选），与 catalog.json 条目表达同一预设。
+- [ ] `agent.cordis.yml` composition 合规：service 行位于带 isolate realm 的 group 内；不挂载与预设用途无关的插件；使用的 `!!js` 表达式与本地文件加载已在 PR 描述中逐项说明用途。
+- [ ] `presets/catalog.json` 追加该预设条目（id / author / version 必填，可选 nameEn / descriptionEn / tags / rank / repo），version 用于 Workshop 更新提醒。
+- [ ] 已运行 `node scripts/market-build` 并提交重新生成的 `market/dist`；`pnpm market:check` 通过。
+- [ ] 已在本地实测：经 Workshop 安装进 `$DSH_HOME/agent-presets/<id>/`，启用确认后新会话能使用该预设；PR 描述附预设生效的证据（截图 / 会话输出）。
 
 ## 社区插件索引登记（Community Plugin Index）
 

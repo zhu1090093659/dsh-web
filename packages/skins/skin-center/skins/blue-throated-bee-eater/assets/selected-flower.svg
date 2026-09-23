@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 28" fill="none" aria-hidden="true">
+  <!--
+    Blue-throated Bee-eater skin - selected-row corner scene (26x28).
+    Flower-and-bird (huaniaohua) ink-wash rendering: a single white
+    five-petal blossom with a warm chestnut heart grows from a meadow tuft,
+    a 青绿 leaf and a small side bud keep the composition alive. No bee.
+    Original artwork by dsh-web, Apache-2.0.
+  -->
+  <defs>
+    <linearGradient id="grassWash" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fbfa5"/>
+      <stop offset="1" stop-color="#4f8468"/>
+    </linearGradient>
+    <linearGradient id="grassInk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7b938c" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#55706b" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="leafWash" x1="0" y1="0" x2="0.2" y2="1">
+      <stop offset="0" stop-color="#86b79a"/>
+      <stop offset="1" stop-color="#6a9f82"/>
+    </linearGradient>
+    <radialGradient id="petalWash" cx="0.5" cy="0.3" r="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.75" stop-color="#f2f8fa"/>
+      <stop offset="1" stop-color="#dfeef4"/>
+    </radialGradient>
+    <radialGradient id="heartWash" cx="0.5" cy="0.45" r="0.8">
+      <stop offset="0" stop-color="#d9af6e"/>
+      <stop offset="1" stop-color="#b2764a"/>
+    </radialGradient>
+  </defs>
+
+  <!-- meadow tuft: soft blade washes rising from the lower edge -->
+  <path d="M0.6 28 C 0.4 25.2, 1 22.6, 3 21 C 2 24, 1.8 26.2, 2.2 28 Z" fill="url(#grassWash)" opacity="0.85"/>
+  <path d="M4.4 28 C 4.4 24.8, 5.4 22.2, 7.8 20.8 C 6.6 24, 6.4 26.4, 6.6 28 Z" fill="url(#grassInk)" opacity="0.7"/>
+  <path d="M10.2 28 C 10.4 25.8, 11.5 23.6, 13.8 22.2 C 12.5 25, 12.3 26.8, 12.5 28 Z" fill="url(#grassWash)" opacity="0.8"/>
+  <path d="M16 28 C 16.2 26.2, 17.3 24.4, 19.6 23.2 C 18.3 25.6, 18.5 27, 18.8 28 Z" fill="url(#grassWash)" opacity="0.65"/>
+  <path d="M20.6 28 C 21 25.8, 22.1 23.6, 24.5 22.2 C 23.1 25, 22.9 26.8, 23.1 28 Z" fill="url(#grassInk)" opacity="0.55"/>
+  <path d="M24.4 28 C 24.7 26.2, 25.7 24.4, 26 23.4 L 26 28 Z" fill="url(#grassWash)" opacity="0.75"/>
+
+  <!-- stem: double ink-green stroke for a brushy feel -->
+  <path d="M13 26.2 C 12.7 22.6, 12.6 19.2, 12.9 15.9" stroke="#5f7d6d" stroke-width="1.1" stroke-linecap="round" opacity="0.9"/>
+  <path d="M13.3 25.9 C 13.1 22.8, 13 19.7, 13.25 16.4" stroke="#5f7d6d" stroke-width="0.55" stroke-linecap="round" opacity="0.45"/>
+
+  <!-- leaf and side bud: boneless washes -->
+  <path d="M13.1 21.8 C 15.5 21, 17.5 19.5, 18.8 17.6 C 17.7 20.1, 15.6 21.7, 13.5 22.3 Z" fill="url(#leafWash)"/>
+  <path d="M13.4 21.9 C 15.2 21.1, 16.8 19.8, 18.1 18" stroke="#5f8a72" stroke-width="0.45" stroke-linecap="round" opacity="0.75"/>
+  <path d="M12.8 18.4 C 11.3 17.9, 10 17, 9.2 15.6 C 10.2 17.4, 11.4 18.4, 12.9 18.9 Z" fill="url(#leafWash)" opacity="0.85"/>
+  <path d="M9.2 15.6 C 8.7 14.6, 8.6 13.4, 8.9 12.2 C 9.4 13.4, 9.5 14.6, 9.2 15.6 Z" fill="#d9b78a" opacity="0.9"/>
+  <path d="M8.9 13.2 L9.1 12" stroke="#5f7d6d" stroke-width="0.55" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- blossom: five washed petals, pale azure rim, warm heart and ink dot -->
+  <g transform="translate(13 10.4)">
+    <g fill="url(#petalWash)" stroke="#a9cbda" stroke-width="0.55" stroke-opacity="0.85">
+      <ellipse rx="2.4" ry="3.4" transform="rotate(0) translate(0 -3.4)"/>
+      <ellipse rx="2.4" ry="3.4" transform="rotate(72) translate(0 -3.4)"/>
+      <ellipse rx="2.4" ry="3.4" transform="rotate(144) translate(0 -3.4)"/>
+      <ellipse rx="2.4" ry="3.4" transform="rotate(216) translate(0 -3.4)"/>
+      <ellipse rx="2.4" ry="3.4" transform="rotate(288) translate(0 -3.4)"/>
+    </g>
+    <circle r="1.8" fill="url(#heartWash)"/>
+    <circle r="0.55" fill="#6b4a2c" opacity="0.9"/>
+  </g>
+</svg>

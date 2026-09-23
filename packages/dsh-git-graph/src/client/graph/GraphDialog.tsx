@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { IconCloseOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconCloseOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import { computeLanes, type LaneGlyph } from '../../core/types.ts'
 import type { GraphView } from '../../core/types.ts'
@@ -126,7 +126,7 @@ export function GraphDialog({ graph, onClose, t }: GraphDialogProps) {
             onClick={onClose}
             aria-label={t('graph.close')}
           >
-            <IconCloseOutline16 size={16} />
+            <IconCloseOutlineRegular size={16} />
           </button>
         </div>
         <div className={css.graphBody}>

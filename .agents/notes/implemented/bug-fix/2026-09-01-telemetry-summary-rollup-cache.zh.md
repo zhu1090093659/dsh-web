@@ -55,5 +55,7 @@ returned 503」。仪表盘 worker 只渲染市场 worker `GET /api/telemetry/su
   翻页器点击任意偏移的首击在每个 TTL 窗口内可能等待约 34 秒。
 - 90/365 天窗口随 400 天保留期增长；当其单语句扫描最终超出 D1 限制时，这些
   窗口会冻结在最近一次成功滚存而不是报错。下一步结构演进是按条目的事实表。
+  2026-09-14 起这已波及 30 天窗口；[后续笔记](2026-09-16-telemetry-aux-degradation-and-rollup-freshness.zh.md)
+  让核心聚合在辅助扫描溢出时仍可计算。
 - 迁移与 worker 部署之间的几分钟里，`telemetry_visitors` 缺了一批访客；补跑
   一次回填 INSERT 已闭合缺口，任何残余也会在一天内被每次心跳的 upsert 自愈。

@@ -65,6 +65,36 @@ const FAVICON_SVG = [
 /** The sidebar footer strip the Start button lives in (ui-sidebar footArea). */
 const SIDEBAR_FOOT_SELECTOR = "[data-pane='sidebar'] > div > :last-child"
 
+/** Find the sidebar footer strip and the settings trigger button inside it. */
+function findSidebarFoot() {
+  const sidebar = document.querySelector(':is([data-pane="sidebar"], [data-slot="sidebar"], [data-dsh-surface="sidebar"], [class*="sidebarCol"])')
+  if (!sidebar) return null
+
+  // 1. Locate the settings trigger by semantic dialog popup, aria label, text or icon
+  const buttons = Array.from(sidebar.querySelectorAll('button'))
+  const settingsBtn = buttons.find(btn =>
+    btn.getAttribute('aria-haspopup') === 'dialog' ||
+    btn.getAttribute('aria-label')?.includes('设置') ||
+    btn.getAttribute('aria-label')?.toLowerCase().includes('setting') ||
+    btn.textContent?.includes('设置') ||
+    btn.textContent?.toLowerCase().includes('settings') ||
+    btn.querySelector('svg[class*="setting"], [class*="setting"]') !== null
+  )
+
+  if (settingsBtn && settingsBtn.parentElement) {
+    return { foot: settingsBtn.parentElement, settingsBtn }
+  }
+
+  // 2. Fallback to structural last-child inside sidebar
+  const fallback = sidebar.querySelector(':scope > div > :last-child') || document.querySelector(SIDEBAR_FOOT_SELECTOR)
+  if (fallback) {
+    const btn = fallback.querySelector('button')
+    return { foot: fallback, settingsBtn: btn }
+  }
+
+  return null
+}
+
 /** Compiled css-modules class names (see patches.css). */
 const CLS = {
   xpTitlebar: 'Ce-zfq_xpTitlebar',
@@ -126,10 +156,9 @@ export default function defineSkinHooks() {
       // dispose.
       const mountStart = () => {
         const install = () => {
-          const foot = document.querySelector(SIDEBAR_FOOT_SELECTOR)
-          // The real footer strip carries the settings trigger; the dialog
-          // portal (also a possible :last-child) never does.
-          if (!foot?.querySelector('button[aria-haspopup="dialog"]')) return
+          const match = findSidebarFoot()
+          if (!match || !match.foot) return
+          const { foot, settingsBtn } = match
           if (!foot.querySelector('[class*="xpStart"]')) {
             const start = document.createElement('button')
             start.type = 'button'
@@ -138,8 +167,7 @@ export default function defineSkinHooks() {
             startIcon.className = CLS.xpStartIcon
             startIcon.innerHTML = FLAG_SVG
             start.append(startIcon, document.createTextNode('开始'))
-            const settings = foot.querySelector('button[aria-haspopup="dialog"]')
-            start.addEventListener('click', () => settings?.click())
+            start.addEventListener('click', () => settingsBtn?.click())
             foot.insertBefore(start, foot.firstChild)
           }
           // Anchor the taskbar styling on the real footer strip: a :last-child
@@ -152,9 +180,13 @@ export default function defineSkinHooks() {
         install()
         return () => {
           observer.disconnect()
-          const start = document.querySelector("[data-pane='sidebar'] [class*='xpStart']")
-          start?.parentElement?.classList.remove(CLS.xpTaskbar)
-          start?.remove()
+          const starts = document.querySelectorAll('[class*="xpStart"]')
+          for (const start of starts) {
+            start.parentElement?.classList.remove(CLS.xpTaskbar)
+            start.remove()
+          }
+          const taskbars = document.querySelectorAll(`.${CLS.xpTaskbar}`)
+          for (const bar of taskbars) bar.classList.remove(CLS.xpTaskbar)
         }
       }
 

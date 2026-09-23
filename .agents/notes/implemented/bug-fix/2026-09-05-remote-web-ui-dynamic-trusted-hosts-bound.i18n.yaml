@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-09-05-remote-web-ui-dynamic-trusted-hosts-bound.md: 9147f7202824310acd222922a82f3e1bd41a5e21
-2026-09-05-remote-web-ui-dynamic-trusted-hosts-bound.zh.md: 21cbd2bb41df7792ac66196a04180dd9361d07a2
+2026-09-05-remote-web-ui-dynamic-trusted-hosts-bound.md: 8cda74c3481218689c77696f5365b7ed6d5e16b3
+2026-09-05-remote-web-ui-dynamic-trusted-hosts-bound.zh.md: ed4ebf91b48e3163970f378b71140f9d5f593edf

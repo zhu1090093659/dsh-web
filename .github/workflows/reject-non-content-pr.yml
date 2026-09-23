@@ -43,13 +43,15 @@ jobs:
             const prCategory = readSection('PR 类别（PR Category）');
             const prType = readSection('PR 类型（PR Type）');
             
-            // 三类内容贡献：皮肤增加（皮肤 / 皮肤中心 类别或新皮肤收录类型）、
-            // 插件申请（社区插件索引 类别）、宠物增加（新宠物收录 类型）。
+            // 四类内容贡献：皮肤增加（皮肤 / 皮肤中心 类别或新皮肤收录类型）、
+            // 插件申请（社区插件索引 类别）、宠物增加（新宠物收录 类型）、
+            // 预设增加（新预设收录 类型）。
             const isSkinPR = hasCheckedLine(prCategory, '皮肤 / 皮肤中心（新皮肤收录、皮肤样式）')
               || hasCheckedLine(prType, '新皮肤收录（内容贡献，欢迎直接提交，无需先提 issue）');
             const isPluginApplicationPR = hasCheckedLine(prCategory, '社区插件索引');
             const isNewPetPR = hasCheckedLine(prType, '新宠物收录（内容贡献，欢迎直接提交，无需先提 issue）');
-            if (isSkinPR || isPluginApplicationPR || isNewPetPR) {
+            const isNewPresetPR = hasCheckedLine(prType, '新预设收录（内容贡献，欢迎直接提交，无需先提 issue）');
+            if (isSkinPR || isPluginApplicationPR || isNewPetPR || isNewPresetPR) {
               console.log('PR #' + pr.number + ': declared accepted content type, keeping open.');
               return;
             }
@@ -88,9 +90,9 @@ jobs:
             }
             
             const comment = [
-              '本仓库只接受三类内容贡献（插件申请 / 皮肤增加 / 宠物增加），本 PR 不在接受范围内，已被自动关闭。',
+              '本仓库只接受四类内容贡献（插件申请 / 皮肤增加 / 宠物增加 / 预设增加），本 PR 不在接受范围内，已被自动关闭。',
               '',
-              '请在 PR 描述中勾选对应类别或类型后重新打开：新皮肤收录 → 类别「皮肤 / 皮肤中心」；插件申请 → 类别「社区插件索引」；新宠物收录 → 类型「新宠物收录」。',
+              '请在 PR 描述中勾选对应类别或类型后重新打开：新皮肤收录 → 类别「皮肤 / 皮肤中心」；插件申请 → 类别「社区插件索引」；新宠物收录 → 类型「新宠物收录」；新预设收录 → 类型「新预设收录」。',
               '其余改动（bug 修复、功能增强、全新功能、文档、测试、维护等）请先到 [Issues](https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/issues) 提 issue 讨论，确认后由维护者处理。',
             ].join('\n');
             

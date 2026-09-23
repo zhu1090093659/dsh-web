@@ -35,6 +35,13 @@ export interface SshHostEntry {
   }
   /** Jump chain: local aliases connected through in order (ProxyJump). */
   proxyJump: string[]
+  /**
+   * OpenSSH-compatible ProxyCommand: a shell command whose stdio becomes the
+   * connection transport. Tokens %h (host) / %p (port) / %r (user) / %n (alias)
+   * expand before exec and %% is a literal percent; an empty value or 'none'
+   * means "no proxy command". Mutually exclusive with a non-empty proxyJump.
+   */
+  proxyCommand?: string
   /** Free-form note. */
   description?: string
   /** Deployment environment label (development / production / ...). */
@@ -57,6 +64,8 @@ export interface SshHostSummary {
   /** Whether the key path exists on the host machine (key auth only). */
   keyReady: boolean
   proxyJump: string[]
+  /** Configured ProxyCommand, echoed to the browser so the form can edit it. */
+  proxyCommand?: string
   description?: string
   environment?: string
   tags: string[]
@@ -142,10 +151,25 @@ export interface HostPayload {
    */
   auth?: SshHostEntry['auth']
   proxyJump?: string[]
+  /**
+   * ProxyCommand to store. An empty string or 'none' clears a stored value;
+   * omitting the key leaves it untouched (PATCH semantics).
+   */
+  proxyCommand?: string
   description?: string
   environment?: string
   tags?: string[]
   location?: string
+}
+
+/** Why one ssh_config Host block was not imported. */
+export type ImportSkipReason = 'wildcard' | 'existing' | 'match' | 'invalid'
+
+/** One skipped ssh_config block and the reason it could not be imported. */
+export interface ImportSkipBlock {
+  /** Host pattern (or '`Match …`' label) that was skipped. */
+  name: string
+  reason: ImportSkipReason
 }
 
 /** Import outcome from ~/.ssh/config. */
@@ -153,8 +177,8 @@ export interface ImportResult {
   parsed: number
   added: number
   skipped: number
-  /** Aliases that failed to map (wildcard patterns, missing HostName, ...). */
-  skippedNames: string[]
+  /** Every skipped block with its reason, in scan order and deduplicated by name. */
+  skippedBlocks: ImportSkipBlock[]
 }
 
 /** JSON error body used by every route. */

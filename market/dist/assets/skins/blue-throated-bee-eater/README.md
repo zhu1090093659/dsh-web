@@ -12,9 +12,19 @@ photograph fills the backdrop behind frosted panels.
 ## What it is
 
 - **Pure assets**: `skin.json` (v2 manifest) + `skin.css` (token remap) +
-  `assets/blue-throated-bee-eater.jpg` (background photo) + bilingual README
-  and NOTICE. No package.json, no build step; the skin-center package is the
-  only loader.
+  `assets/blue-throated-bee-eater.jpg` (background photo) +
+  `assets/selected-grass.svg` (selected-row grass border) +
+  `assets/selected-flower.svg` (meadow flower corner scene) + bilingual
+  README and NOTICE. No package.json, no build step; the skin-center package
+  is the only loader.
+- **Selected-element meadow**: the active sidebar row and selected tabs carry
+  a low grass border along their bottom edge, and by the left border of the
+  selected row a single white blossom grows from the meadow, washed in
+  flower-and-bird (huaniaohua) style with a leaf and side bud - the meadow
+  where the bee-eater hunts. The scene lives in the empty
+  marker slot area beside the title, on the shell's stable `data-pane` /
+  `treeitem` / `aria-selected` hooks, so it never covers text; a soft azure
+  gradient stands in where skin-dir assets are not served.
 - **Token-first**: light values on `:root`, dark values under
   `body[data-ds-dark-theme]`; the loader scopes every selector under
   `html[data-dsh-skin="blue-throated-bee-eater"]`.

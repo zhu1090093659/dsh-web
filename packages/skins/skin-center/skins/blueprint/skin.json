@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "blueprint",
+  "name": "工程蓝图",
+  "nameEn": "Blueprint",
+  "version": "1.0.0",
+  "author": "stushansusu",
+  "tagline": "图纸母题 · 两套材质：夜图青线 / 暖纸墨线 · 图签栏与标尺刻度",
+  "description": "以工程图纸为视觉母题，明暗两套主题各自成篇。暗色是「夜图」：深靛蓝纸底、蓝图青线稿、荧光扫描线与四角衰减；亮色是「暖纸」：米黄纸底、墨褐线稿、纸张纤维纹理与边缘烧色，界面零纯白、零冷色，长时间阅读不刺眼。两层 HUD 做成图纸的标题栏与状态栏，含图号、比例、修订号、网格规格、实时坐标读数与标尺刻度，另有一枚主题化 favicon。背景人物为线稿：轮廓加重、内部以状态栏同款 24px 方格线填充。交互控件保留官方几何，只在配色、描边与标注层上做文章。",
+  "tags": [
+    "blueprint",
+    "technical",
+    "grid",
+    "monospace",
+    "drafting",
+    "paper",
+    "sepia",
+    "dual-theme"
+  ],
+  "accent": "#4fd1ff",
+  "order": 5,
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "requires": {
+    "contracts": [
+      {
+        "apiVersion": "x-org.linxin666.skin-center/v1alpha1",
+        "kind": "SkinHooks",
+        "optional": true
+      }
+    ]
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css"
+  },
+  "facets": {
+    "client": {
+      "entry": "hooks.mjs",
+      "apiVersion": "x-org.linxin666.skin-center/v1alpha1"
+    }
+  }
+}

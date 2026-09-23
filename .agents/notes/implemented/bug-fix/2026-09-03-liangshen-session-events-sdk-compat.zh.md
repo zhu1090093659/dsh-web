@@ -14,7 +14,7 @@ TypeError: Cannot read properties of undefined (reading 'length')
 
 ## Decision
 
-修改 `packages/dsh-liangshen/presets/liangshen/tool-bootstrap.mjs`，采用兼容方式提取事件序列：
+修改 `packages/dsh-liangshen/presets/liangshen/tool-catalog.mjs`（当时为 `tool-bootstrap.mjs`），采用兼容方式提取事件序列：
 ```javascript
 const events = Array.isArray(session?.events)
   ? session.events
@@ -26,7 +26,7 @@ const events = Array.isArray(session?.events)
 
 ## Testing
 
-- 在 `packages/dsh-liangshen/tests/tool-bootstrap.test.ts` 中新增单元测试，验证当缺少 `session.events` 时正确调用 `session.snapshotEvents()` 并遍历其返回的事件列表。
+- 在 `packages/dsh-liangshen/tests/tool-catalog.test.ts`（当时为 `tests/tool-bootstrap.test.ts`）中新增单元测试，验证当缺少 `session.events` 时正确调用 `session.snapshotEvents()` 并遍历其返回的事件列表。
 - 运行 `pnpm --filter @linxin666/dsh-liangshen test`（8 个测试文件、102 个测试用例全部通过）。
 
 ## Alternatives considered

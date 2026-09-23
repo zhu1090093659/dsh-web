@@ -58,6 +58,8 @@ html[data-dsh-skin="blue-throated-bee-eater"] {
   --dsw-alias-button-primary-hover: #3f97e2;
   --dsw-alias-label-primary-foreground: #06283a;
   --dsw-alias-button-contrast-fill: #14323e;
+  --dsw-alias-button-info-fill: #0c3556;
+  --dsw-alias-button-info-hover: #123f68;
   --dsw-alias-button-elevated-fill: #14323e;
   --dsw-alias-button-floating-fill: #1b3340;
   --dsw-alias-button-floating-hover: #24414f;
@@ -111,6 +113,8 @@ html[data-dsh-skin="blue-throated-bee-eater"] {
   --dsw-alias-button-primary-hover: initial;
   --dsw-alias-label-primary-foreground: initial;
   --dsw-alias-button-contrast-fill: initial;
+  --dsw-alias-button-info-fill: initial;
+  --dsw-alias-button-info-hover: initial;
   --dsw-alias-button-elevated-fill: initial;
   --dsw-alias-button-floating-fill: initial;
   --dsw-alias-button-floating-hover: initial;
@@ -156,6 +160,8 @@ html[data-dsh-skin="blue-throated-bee-eater"] body {
   --dsw-alias-button-primary-hover: #3f97e2;
   --dsw-alias-label-primary-foreground: #06283a;
   --dsw-alias-button-contrast-fill: #14323e;
+  --dsw-alias-button-info-fill: #0c3556;
+  --dsw-alias-button-info-hover: #123f68;
   --dsw-alias-button-elevated-fill: #14323e;
   --dsw-alias-button-floating-fill: #1b3340;
   --dsw-alias-button-floating-hover: #24414f;
@@ -216,6 +222,8 @@ html[data-dsh-skin="blue-throated-bee-eater"] body[data-ds-dark-theme] {
   --dsw-alias-button-primary-hover: #41a3e8;
   --dsw-alias-label-primary-foreground: #06283a;
   --dsw-alias-button-contrast-fill: #0a2430;
+  --dsw-alias-button-info-fill: #082c4a;
+  --dsw-alias-button-info-hover: #0b3a5e;
   --dsw-alias-button-elevated-fill: #1b3340;
   --dsw-alias-button-floating-fill: #163541;
   --dsw-alias-button-floating-hover: #1b3f4c;
@@ -231,8 +239,8 @@ html[data-dsh-skin="blue-throated-bee-eater"] body[data-ds-dark-theme] {
   --dsw-specific-selector: #163541;
 
   /* overlays + elevation */
-  --dsw-alias-tooltip-bg: #e2f1f5;
-  --dsw-alias-tooltip-fg: #0c2029;
+  --dsw-alias-tooltip-bg: #163541;
+  --dsw-alias-tooltip-fg: #e2f1f5;
   --dsw-shadow-lv1: 0 1px 2px #00000066;
   --dsw-shadow-lv2: 0 4px 12px #00000080;
   --dsw-shadow-lv3: 0 12px 32px #00000099;
@@ -260,6 +268,68 @@ html[data-dsh-skin="blue-throated-bee-eater"] body[data-ds-dark-theme]:is([data-
   --dsw-alias-bg-layer-2: #163541b8;
   --dsw-alias-bg-layer-3: #1b3f4cb0;
   --dsw-specific-sidebar-fill: #122b36c2;
+}
+
+/* Selected-element meadow: a low grass border runs along the bottom edge of
+ * the active sidebar row and the selected tab (assets/selected-grass.svg,
+ * repeat-x tile), and by the left border grows a single white-petaled,
+ * chestnut-hearted flower with a leaf and a side bud
+ * (assets/selected-flower.svg) - the bee-eater's own larder, drawn in the
+ * empty marker slot area next to the title so it never covers text.
+ * Original artwork, Apache-2.0. The gradient layers beneath the url() keep
+ * the ornament visible where skin-dir assets are not served (the static
+ * market preview embeds stylesheets inline). Stable shell hooks only -
+ * data-pane / treeitem / aria-selected - no hashed class names. */
+html[data-dsh-skin="blue-throated-bee-eater"] [data-pane="sidebar"] [role="treeitem"][aria-selected="true"],
+html[data-dsh-skin="blue-throated-bee-eater"] [role="tab"][aria-selected="true"] {
+  position: relative;
+}
+
+/* Grass border strip: 7px tall, below the text band by construction. */
+html[data-dsh-skin="blue-throated-bee-eater"] [data-pane="sidebar"] [role="treeitem"][aria-selected="true"]::after,
+html[data-dsh-skin="blue-throated-bee-eater"] [role="tab"][aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 1px;
+  height: 7px;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    url("assets/selected-grass.svg"),
+    linear-gradient(90deg, rgba(43, 135, 216, 0) 0%, rgba(43, 135, 216, 0.4) 22%, rgba(63, 151, 226, 0.6) 50%, rgba(43, 135, 216, 0.4) 78%, rgba(43, 135, 216, 0) 100%);
+  background-repeat: repeat-x, no-repeat;
+  background-size: 220px 7px, 100% 2px;
+  background-position: left bottom, center bottom;
+  filter: drop-shadow(0 1px 2px rgba(43, 135, 216, 0.25));
+}
+
+/* Flower-and-bird corner scene, pinned to the left border and raised above
+ * the grass strip; the title starts 4px to its right and stays clear. */
+html[data-dsh-skin="blue-throated-bee-eater"] [data-pane="sidebar"] [role="treeitem"][aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  bottom: 1px;
+  width: 26px;
+  height: 28px;
+  z-index: 1;
+  pointer-events: none;
+  background-image: url("assets/selected-flower.svg");
+  background-repeat: no-repeat;
+  background-size: 26px 28px;
+  background-position: center;
+  filter: drop-shadow(0 1px 2px rgba(43, 135, 216, 0.25));
+}
+
+html[data-dsh-skin="blue-throated-bee-eater"] body[data-ds-dark-theme] [data-pane="sidebar"] [role="treeitem"][aria-selected="true"]::after,
+html[data-dsh-skin="blue-throated-bee-eater"] body[data-ds-dark-theme] [role="tab"][aria-selected="true"]::after {
+  filter: drop-shadow(0 1px 3px rgba(65, 163, 232, 0.4));
+}
+
+html[data-dsh-skin="blue-throated-bee-eater"] body[data-ds-dark-theme] [data-pane="sidebar"] [role="treeitem"][aria-selected="true"]::before {
+  filter: drop-shadow(0 1px 3px rgba(65, 163, 232, 0.45));
 }
 
 /* Frosted-glass surfaces while a backdrop is visible: soft blur with a

@@ -1,7 +1,7 @@
 /**
  * Wallpaper layer controller for the skin center: renders the applied
  * Wallpaper Engine wallpaper behind the GUI and persists the selection
- * through the 'skin-wallpaper' settings namespace.
+ * through the 'skin-wallpaper' section of this plugin's own configuration.
  *
  * Layers (fixed children of document.body, painted only while a wallpaper
  * is active):
@@ -22,10 +22,10 @@
  * 'pauseOnHidden' is set the video pauses while the window is hidden.
  * @module @linxin666/dsh-client-ui-skin-center/wallpaper
  */
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { setSceneBackdropActive } from './runtime/backdrop-scene.ts'
 
-/** The namespace string the Host registers (mirrors src/index.ts). */
+/** The section key the Host schema declares (mirrors src/index.ts). */
 export const SKIN_WALLPAPER_NS = 'skin-wallpaper'
 
 /** One wallpaper's render contract, as delivered by the inventory route. */
@@ -50,7 +50,7 @@ export interface WallpaperDescriptor {
 }
 
 /** The persisted wallpaper section shape. */
-interface WallpaperSection {
+export interface WallpaperSection {
   enabled?: boolean
   selection?: string
   mode?: 'live' | 'frame'
@@ -102,6 +102,12 @@ export interface WallpaperHandle {
   activeId(): string | null
   /** True while a try-on mount is up. */
   trying(): boolean
+  /**
+   * Rejection message of the last settings write that did not land, or null.
+   * The Host answers `false` for a refused or skipped write and a broken
+   * transport rejects; both are a failed save, never a silent one.
+   */
+  writeError(): string | null
   subscribe(listener: () => void): () => void
   setEnabled(value: boolean): void
   setMode(mode: 'live' | 'frame'): void
@@ -259,8 +265,9 @@ export interface WallpaperControllerOptions {
 }
 
 /**
- * Own the skin-wallpaper scope: keep the mounted layers in sync with the
- * persisted selection and the card-driven descriptor resolution.
+ * Own the skin-wallpaper configuration section: keep the mounted layers in
+ * sync with the persisted selection and the card-driven descriptor
+ * resolution.
  */
 export class WallpaperController implements WallpaperHandle {
   private enabledValue = true
@@ -275,10 +282,12 @@ export class WallpaperController implements WallpaperHandle {
   private opacityValue = 100
   private dirsValue: string[] = []
   private readonly listeners = new Set<() => void>()
-  private readonly scope: SettingsScope<WallpaperSection>
+  private readonly scope: ConfigForm<WallpaperSection>
   private readonly unsubscribe: () => void
   private readonly options: WallpaperControllerOptions
   private readonly doc: Document
+  /** Rejection message of the last settings write that did not land, if any. */
+  private writeErrorValue: string | null = null
 
   /** The descriptor of the applied selection, resolved by the card. */
   private applied: WallpaperDescriptor | null = null
@@ -303,11 +312,11 @@ export class WallpaperController implements WallpaperHandle {
   /** Detached frame-capture video; released on error/abort/loadeddata and on
    *  teardown so it never keeps buffering the source file. */
   private captureVideo: HTMLVideoElement | null = null
-  /** Guard flag: suppresses readAll during applyThemeDefaults scope writes
+  /** Guard flag: suppresses readAll during applyThemeDefaults settings writes
    *  to prevent mid-write listener cascades from resetting values. */
   private seeding = false
 
-  constructor(scope: SettingsScope<WallpaperSection>, options: WallpaperControllerOptions = {}) {
+  constructor(scope: ConfigForm<WallpaperSection>, options: WallpaperControllerOptions = {}) {
     this.scope = scope
     this.options = options
     this.doc = options.doc ?? document
@@ -344,7 +353,7 @@ export class WallpaperController implements WallpaperHandle {
       })
       this.mountObserver.observe(this.doc.body, { childList: true })
     }
-    // Theme-aware defaults (#1051): when the scope has no explicit dim or
+    // Theme-aware defaults (#1051): when the section has no explicit dim or
     // opacity (both sit at schema defaults), seed values tuned for the
     // current light/dark theme so text is readable out of the box.
     this.applyThemeDefaults()
@@ -531,7 +540,7 @@ export class WallpaperController implements WallpaperHandle {
     if (trimmed === '' || this.dirsValue.includes(trimmed)) return
     this.dirsValue = [...this.dirsValue, trimmed]
     this.publish()
-    void this.scope.set('weLibraryDirs', this.dirsValue)
+    this.persist('weLibraryDirs', this.dirsValue)
   }
 
   removeDir(dir: string): void {
@@ -539,7 +548,7 @@ export class WallpaperController implements WallpaperHandle {
     if (next.length === this.dirsValue.length) return
     this.dirsValue = next
     this.publish()
-    void this.scope.set('weLibraryDirs', this.dirsValue)
+    this.persist('weLibraryDirs', this.dirsValue)
   }
 
   private failedIds = new Set<string>()
@@ -554,72 +563,96 @@ export class WallpaperController implements WallpaperHandle {
     return this.mediaLayer !== null && current !== null ? current.id : null
   }
   trying = (): boolean => this.previewing !== null
+  writeError = (): string | null => this.writeErrorValue
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
   }
 
+  /**
+   * Queue one preference write and judge its answer.
+   *
+   * The form contract answers `false` for a write the Host refused or
+   * skipped and rejects on a broken transport; neither is a saved setting, so
+   * both clear the previous error or raise a new one instead of being
+   * dropped. The rendered value stays as the user set it either way — the
+   * card is the only place that can tell them it did not persist.
+   */
+  private persist(field: string, value: unknown): void {
+    void this.scope.set(field, value).then(
+      accepted => { this.reportWrite(accepted ? null : 'the Host did not accept the wallpaper setting') },
+      (error: unknown) => { this.reportWrite(error instanceof Error ? error.message : String(error)) },
+    )
+  }
+
+  /** Publish one write verdict (null = the last write landed). */
+  private reportWrite(error: string | null): void {
+    if (this.writeErrorValue === error) return
+    this.writeErrorValue = error
+    this.publish()
+  }
+
   setEnabled(value: boolean): void {
     this.enabledValue = value
     this.render()
     this.publish()
-    void this.scope.set('enabled', value)
+    this.persist('enabled', value)
   }
 
   setMode(mode: 'live' | 'frame'): void {
     this.modeValue = mode
     this.render()
     this.publish()
-    void this.scope.set('mode', mode)
+    this.persist('mode', mode)
   }
 
   setFit(fit: 'cover' | 'contain' | 'fill'): void {
     this.fitValue = fit
     this.render()
     this.publish()
-    void this.scope.set('fit', fit)
+    this.persist('fit', fit)
   }
 
   setDim(value: number): void {
     this.dimValue = clamp(value, 0, 90)
     this.render()
     this.publish()
-    void this.scope.set('dim', this.dimValue)
+    this.persist('dim', this.dimValue)
   }
 
   setBlur(value: number): void {
     this.blurValue = clamp(value, 0, 60)
     this.render()
     this.publish()
-    void this.scope.set('wallpaperBlur', this.blurValue)
+    this.persist('wallpaperBlur', this.blurValue)
   }
 
   setOpacity(value: number): void {
     this.opacityValue = clamp(value, 0, 100)
     this.render()
     this.publish()
-    void this.scope.set('wallpaperOpacity', this.opacityValue)
+    this.persist('wallpaperOpacity', this.opacityValue)
   }
 
   setPauseOnHidden(value: boolean): void {
     this.pauseOnHiddenValue = value
     this.publish()
-    void this.scope.set('pauseOnHidden', value)
+    this.persist('pauseOnHidden', value)
   }
 
   setSound(value: boolean): void {
     this.soundValue = value
     this.applySound()
     this.publish()
-    void this.scope.set('sound', value)
+    this.persist('sound', value)
   }
 
   setVolume(value: number): void {
     this.volumeValue = clamp(value, 0, 100)
     this.applySound()
     this.publish()
-    void this.scope.set('volume', this.volumeValue)
+    this.persist('volume', this.volumeValue)
   }
 
   applySelection(descriptor: WallpaperDescriptor): void {
@@ -629,7 +662,7 @@ export class WallpaperController implements WallpaperHandle {
     this.selectionValue = descriptor.id
     this.render()
     this.publish()
-    void this.scope.set('selection', descriptor.id)
+    this.persist('selection', descriptor.id)
     this.probeSceneCapabilitiesIfNeeded(descriptor)
   }
 
@@ -639,7 +672,7 @@ export class WallpaperController implements WallpaperHandle {
     this.selectionValue = ''
     this.render()
     this.publish()
-    void this.scope.set('selection', '')
+    this.persist('selection', '')
   }
 
   sync(descriptor: WallpaperDescriptor | null): void {
@@ -717,12 +750,12 @@ export class WallpaperController implements WallpaperHandle {
   private applyThemeDefaults(): void {
     const snapshot = this.scope.getSnapshot()
     const value = snapshot.value ?? {}
-    // Detect whether dim and opacity have never been written to the scope.
+    // Detect whether dim and opacity have never been written to the section.
     // A value of undefined means the field was never persisted; any number
     // (even the schema default 25 for dim) means the user or a prior seed
     // already set it, so we must not overwrite.
     if (value.dim !== undefined || value.wallpaperOpacity !== undefined) return
-    // The scope may not yet be writable during early initialization.
+    // The form may not yet be writable during early initialization.
     if (snapshot.writable === false) return
     const theme = this.options.themeGet !== undefined
       ? this.options.themeGet()
@@ -736,14 +769,17 @@ export class WallpaperController implements WallpaperHandle {
     }
     this.seeding = true
     try {
-      void this.scope.set('dim', this.dimValue)
-      void this.scope.set('wallpaperOpacity', this.opacityValue)
-    } catch { /* scope not ready — values stay local until next readAll */ }
+      // A refused seed is not a user save: the theme-tuned values stay local
+      // (readAll keeps reading them from the controller) and the user's next
+      // write persists them, so this deliberately ignores the answer.
+      void this.scope.set('dim', this.dimValue).catch(() => {})
+      void this.scope.set('wallpaperOpacity', this.opacityValue).catch(() => {})
+    } catch { /* form not ready — values stay local until next readAll */ }
     this.seeding = false
   }
 
   private readAll(): void {
-    const snapshot: SettingsScopeSnapshot<WallpaperSection> = this.scope.getSnapshot()
+    const snapshot: ConfigFormSnapshot<WallpaperSection> = this.scope.getSnapshot()
     const value = snapshot.value ?? {}
     this.enabledValue = typeof value.enabled === 'boolean' ? value.enabled : true
     this.selectionValue = typeof value.selection === 'string' ? value.selection : ''

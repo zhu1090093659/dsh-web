@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { autoArchiveCandidates, autoDeleteSeedCandidates, DAY_MS } from '../src/core/auto-rules.ts'
-import { DEFAULT_AUTO_CONFIG, resolveAutoConfig, validateDays } from '../src/core/config.ts'
+import { DEFAULT_AUTO_CONFIG, readArchiveConfig, resolveAutoConfig, validateDays } from '../src/core/config.ts'
 import type { ArchiveSessionRow } from '../src/core/types.ts'
 
 function row(overrides: Partial<ArchiveSessionRow> & { id: string }): ArchiveSessionRow {
@@ -101,5 +101,27 @@ describe('config', () => {
     expect(resolveAutoConfig({ autoArchiveDays: 7.4 }).autoArchiveDays).toBe(7)
     expect(validateDays(3650, 1, 3650)).toBe(3650)
     expect(validateDays('30', 1, 3650)).toBeUndefined()
+  })
+
+  it('admin reads a committed volatile field at call time', () => {
+    // Given an activation whose day threshold arrived as a volatile reference
+    let committed = 30
+    const field = { get: () => committed }
+    const first = readArchiveConfig({ autoArchiveDays: field }).autoArchiveDays
+
+    // When the Host commits a settings write into that reference
+    committed = 45
+
+    // Then the next read sees the committed value, not the activation-time one
+    expect(first).toBe(30)
+    expect(readArchiveConfig({ autoArchiveDays: field }).autoArchiveDays).toBe(45)
+  })
+
+  it('admin whose row carries plain values reads them unchanged', () => {
+    // Given a profile patch that passed this plugin plain config values
+    // When the activation config is read
+    // Then every plain value flows through for the resolver to validate
+    expect(readArchiveConfig({ enabled: false, autoArchiveDays: 30, checkIntervalMin: 120 }))
+      .toEqual({ enabled: false, autoArchiveDays: 30, checkIntervalMin: 120 })
   })
 })

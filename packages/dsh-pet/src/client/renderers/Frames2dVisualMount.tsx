@@ -67,7 +67,15 @@ export function Frames2dVisualMount(props: {
     if (props.bus !== undefined) {
       const gameplayBus = props.bus
       gameplayBus.setTrack = (track) => { handleRef.current?.setState(track) }
-      cleanups.push(() => { gameplayBus.setTrack = undefined })
+      gameplayBus.setIdleTrack = (track) => { handleRef.current?.setIdleTrack(track) }
+      // The HUD latches the wanted base idle (skin selection, restored from the
+      // host snapshot): apply it on activation, so a late or repeated mount
+      // never repaints the pet with the default look.
+      if (gameplayBus.idleTrack !== undefined) handle.setIdleTrack(gameplayBus.idleTrack)
+      cleanups.push(() => {
+        gameplayBus.setTrack = undefined
+        gameplayBus.setIdleTrack = undefined
+      })
     }
     // The drag gesture drives the conventional 'drag' track when declared.
     // On release, a declared gameplay.dragEndState (miku: standup) plays

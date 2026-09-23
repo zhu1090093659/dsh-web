@@ -418,7 +418,7 @@ describe('CliGateway mutation queue (B7)', () => {
     expect(addCalls).toEqual(['conc-a', 'conc-b'])
   })
 })
-/** The family aggregate's rows section: dsh-better-sidebar mounts through a row, not the bundles layer. */
+/** An aggregate that mounts an external plugin through a patch row, not the bundles layer. */
 const AGGREGATE_PATCH = [
   '- insert:',
   '    - id: web-ui-task-board',
@@ -431,7 +431,7 @@ const AGGREGATE_PATCH = [
 
 describe('CliGateway duplicate-mount safeguard (B9)', () => {
   it('strips a reconciliation-added bundles entry for an already row-mounted package', async () => {
-    // The aggregate mounts dsh-better-sidebar via a patch row while the
+    // The aggregate mounts the external plugin via a patch row while the
     // package also sits in dependencies (not in bundles); any CLI mutation
     // re-adds it to bundles and the next boot double-mounts.
     const { facts, dir } = makeProfile({

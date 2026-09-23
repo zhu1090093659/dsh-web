@@ -22,6 +22,7 @@ The plugin is a pure browser bundle (the host half intentionally has no behavior
 | `dsh-web-ui-market` | dsh-market |
 | `pet` | dsh-pet |
 | `settings.pluginManager` | dsh-plugin-manager |
+| `dsh-web-ui-preset-center` | dsh-preset-center |
 | `remote` | dsh-remote-web-ui |
 | `session-id` | dsh-session-id |
 | `dsh-skill-explorer` | dsh-skill-explorer |

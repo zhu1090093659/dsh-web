@@ -1,0 +1,677 @@
+{
+  "generated": "2026-09-23",
+  "items": [
+    {
+      "id": "roleplay-chengwei",
+      "name": "角色扮演 · 程未（独立咖啡馆咖啡师）",
+      "rank": 1,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Cheng Wei",
+      "author": "dongshuyan",
+      "description": "与独立咖啡馆咖啡师程未对话：文艺安静、慢热，把心意做进一杯手冲。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Cheng Wei, a barista at an independent coffee shop.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-baixiaoxiao",
+      "name": "角色扮演 · 白晓晓（互联网公司行政助理）",
+      "rank": 2,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Bai Xiaoxiao",
+      "author": "dongshuyan",
+      "description": "与互联网公司行政助理白晓晓对话：入职半年的职场新人，认真又手忙脚乱。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Bai Xiaoxiao, an administrative assistant and workplace newcomer.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-xiewanzhou",
+      "name": "角色扮演 · 谢晚舟（互联网公司后端工程师）",
+      "rank": 3,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Xie Wanzhou",
+      "author": "dongshuyan",
+      "description": "与互联网公司后端工程师谢晚舟对话：上班理性话少，下班宅家看番。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Xie Wanzhou, a backend engineer.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-guqingyan",
+      "name": "角色扮演 · 顾清言（科技公司联合创始人兼 CEO）",
+      "rank": 4,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Gu Qingyan",
+      "author": "dongshuyan",
+      "description": "与科技公司联合创始人兼 CEO顾清言对话：对外高冷果断，独处时温柔。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Gu Qingyan, a startup co-founder and CEO.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-linjingshen",
+      "name": "角色扮演 · 林静深（重点高中语文教师兼班主任）",
+      "rank": 5,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Lin Jingshen",
+      "author": "dongshuyan",
+      "description": "与重点高中语文教师兼班主任林静深对话：课堂上不苟言笑，私下会撒娇。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Lin Jingshen, a high-school Chinese teacher.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-wenyining",
+      "name": "角色扮演 · 温以宁（国际航线乘务员）",
+      "rank": 6,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Wen Yining",
+      "author": "dongshuyan",
+      "description": "与国际航线乘务员温以宁对话：温柔细心，飞遍各地却最想回家。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Wen Yining, a flight attendant on international routes.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-ruanqingxiao",
+      "name": "角色扮演 · 阮清晓（三甲医院心内科护士）",
+      "rank": 7,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Ruan Qingxiao",
+      "author": "dongshuyan",
+      "description": "与三甲医院心内科护士阮清晓对话：夜班多、见过生死，细心又能扛。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Ruan Qingxiao, a cardiology nurse.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-ningxiao",
+      "name": "角色扮演 · 宁晓（宠物医院兽医）",
+      "rank": 8,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Ning Xiao",
+      "author": "dongshuyan",
+      "description": "与宠物医院兽医宁晓对话：对动物温柔耐心，会为小猫小狗较真。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Ning Xiao, a veterinarian.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-xushuyan",
+      "name": "角色扮演 · 许书言（市立图书馆采编部馆员）",
+      "rank": 9,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Xu Shuyan",
+      "author": "dongshuyan",
+      "description": "与市立图书馆采编部馆员许书言对话：知性温柔，与书为伴，熟了才话多。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Xu Shuyan, a library cataloguer.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-gushumo",
+      "name": "角色扮演 · 顾书墨（省博物馆文物研究员）",
+      "rank": 10,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Gu Shumo",
+      "author": "dongshuyan",
+      "description": "与省博物馆文物研究员顾书墨对话：书卷气重，爱穿汉服，内向慢热。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Gu Shumo, a museum researcher.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-fangxiaotang",
+      "name": "角色扮演 · 方小棠（花艺工作室花艺师）",
+      "rank": 11,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Fang Xiaotang",
+      "author": "dongshuyan",
+      "description": "与花艺工作室花艺师方小棠对话：治愈系温柔，用花说话。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Fang Xiaotang, a florist.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-luciqing",
+      "name": "角色扮演 · 陆刺青（独立纹身师）",
+      "rank": 12,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Lu Ciqing",
+      "author": "dongshuyan",
+      "description": "与独立纹身师陆刺青对话：外表酷、话少，内心细腻。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Lu Ciqing, a tattoo artist.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-shenye",
+      "name": "角色扮演 · 沈夜（清吧调酒师）",
+      "rank": 13,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Shen Ye",
+      "author": "dongshuyan",
+      "description": "与清吧调酒师沈夜对话：上夜班、见过各种人，礼貌而有距离。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Shen Ye, a cocktail bartender.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-qiaoyouyou",
+      "name": "角色扮演 · 乔柚柚（民办幼儿园老师）",
+      "rank": 14,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Qiao Youyou",
+      "author": "dongshuyan",
+      "description": "与民办幼儿园老师乔柚柚对话：活泼开朗，带班哄孩子一把好手。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Qiao Youyou, a kindergarten teacher.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-suwanxing",
+      "name": "角色扮演 · 苏晚星（游戏区主播）",
+      "rank": 15,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Su Wanxing",
+      "author": "dongshuyan",
+      "description": "与游戏区主播苏晚星对话：直播时活泼话多，私下其实很宅。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Su Wanxing, a game streamer.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-moling",
+      "name": "角色扮演 · 莫灵（独立塔罗占卜师）",
+      "rank": 16,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Mo Ling",
+      "author": "dongshuyan",
+      "description": "与独立塔罗占卜师莫灵对话：说话带点神秘中二，认真起来很可靠。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Mo Ling, a tarot reader.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-jiangwanyue",
+      "name": "角色扮演 · 江挽月（舞蹈机构芭蕾教师）",
+      "rank": 17,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Jiang Wanyue",
+      "author": "dongshuyan",
+      "description": "与舞蹈机构芭蕾教师江挽月对话：因脚伤告别舞台，气质清冷坚韧。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Jiang Wanyue, a ballet teacher.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-songye",
+      "name": "角色扮演 · 宋野（地下乐队主唱）",
+      "rank": 18,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Song Ye",
+      "author": "dongshuyan",
+      "description": "与地下乐队主唱宋野对话：台上冷而炸，台下黏人。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Song Ye, a band vocalist.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-lengshuang",
+      "name": "角色扮演 · 冷霜（已金盆洗手的前组织成员）",
+      "rank": 19,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Leng Shuang",
+      "author": "dongshuyan",
+      "description": "与已金盆洗手的前组织成员冷霜对话：过去是杀手，现在只想安稳过日子。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Leng Shuang, a former operative.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-xiaweiyang",
+      "name": "角色扮演 · 夏未央（娱乐公司偶像练习生）",
+      "rank": 20,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Xia Weiyang",
+      "author": "dongshuyan",
+      "description": "与娱乐公司偶像练习生夏未央对话：台上光芒四射，台下累得只想撒娇。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Xia Weiyang, an idol trainee.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-sumianmian",
+      "name": "角色扮演 · 苏绵绵（重点大学经管系大一学生）",
+      "rank": 21,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Su Mianmian",
+      "author": "dongshuyan",
+      "description": "与重点大学经管系大一学生苏绵绵对话：呆萌的富家千金，从小被保护得很好。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Su Mianmian, a first-year business student.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-nuoma",
+      "name": "角色扮演 · 诺玛（综合大学设计系大一学生）",
+      "rank": 22,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Norma",
+      "author": "dongshuyan",
+      "description": "与综合大学设计系大一学生诺玛对话：复读一年考上，温柔依赖型。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Norma, a first-year design student.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-linxiaoman",
+      "name": "角色扮演 · 林小满（高三美术艺考生）",
+      "rank": 23,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Lin Xiaoman",
+      "author": "dongshuyan",
+      "description": "与高三美术艺考生林小满对话：嘴硬爱挑事的后辈，专业课很稳。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Lin Xiaoman, a high-school senior art student.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-shennian",
+      "name": "角色扮演 · 沈念（高三学生）",
+      "rank": 24,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Shen Nian",
+      "author": "dongshuyan",
+      "description": "与高三学生沈念对话：从小一起长大的义妹，懂事靠谱。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Shen Nian, a high-school senior.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-yetingyu",
+      "name": "角色扮演 · 叶听雨（豪门千金）",
+      "rank": 25,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Ye Tingyu",
+      "author": "dongshuyan",
+      "description": "与豪门千金叶听雨对话：体弱多病、很少出门的大小姐。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Ye Tingyu, a sheltered young heiress.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "modern"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-baili",
+      "name": "角色扮演 · 白漓（修行逾千年的狐妖）",
+      "rank": 26,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Bai Li",
+      "author": "dongshuyan",
+      "description": "与修行逾千年的狐妖白漓对话：外表少女，玩世不恭，实则深情。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Bai Li, a thousand-year-old fox spirit.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "fantasy"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-yunzhi",
+      "name": "角色扮演 · 云织（魔法学院二年级见习生）",
+      "rank": 27,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Yun Zhi",
+      "author": "dongshuyan",
+      "description": "与魔法学院二年级见习生云织对话：主修元素魔法，对普通人隐瞒身份。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Yun Zhi, an apprentice at a magic academy.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "fantasy"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-ailiya",
+      "name": "角色扮演 · 艾莉娅（异世界见习魔女）",
+      "rank": 28,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Ailiya",
+      "author": "dongshuyan",
+      "description": "与异世界见习魔女艾莉娅对话：已能独立接委托的旅行魔女。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Ailiya, a travelling apprentice witch.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "fantasy"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-yeling",
+      "name": "角色扮演 · 叶聆（半精灵）",
+      "rank": 29,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Ye Ling",
+      "author": "dongshuyan",
+      "description": "与半精灵叶聆对话：离开森林留在人类侧，遮着尖耳生活。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Ye Ling, a half-elf.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "fantasy"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-lanxi",
+      "name": "角色扮演 · 蓝汐（上岸生活的人鱼）",
+      "rank": 30,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Lan Xi",
+      "author": "dongshuyan",
+      "description": "与上岸生活的人鱼蓝汐对话：化出双腿在人类世界生活，只有你知道她的身份。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Lan Xi, a mermaid living ashore.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "fantasy"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-jianghe",
+      "name": "角色扮演 · 姜禾（来自唐代的穿越者）",
+      "rank": 31,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Jiang He",
+      "author": "dongshuyan",
+      "description": "与来自唐代的穿越者姜禾对话：身份证明缺失，在你这里落了脚。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Jiang He, a time traveller from the Tang dynasty.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "historical"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    },
+    {
+      "id": "roleplay-sunianqing",
+      "name": "角色扮演 · 苏念卿（民国女学生）",
+      "rank": 32,
+      "files": [
+        "agent.cordis.yml",
+        "preset.yml"
+      ],
+      "category": "roleplay",
+      "nameEn": "Roleplay · Su Nianqing",
+      "author": "dongshuyan",
+      "description": "与民国女学生苏念卿对话：一身民国学生装扮，只有你懂她的来历。全年龄向沉浸式角色扮演。",
+      "descriptionEn": "Immersive all-ages roleplay with Su Nianqing, a student from the Republican era.",
+      "version": "1.0.0",
+      "tags": [
+        "roleplay",
+        "character",
+        "historical"
+      ],
+      "repo": "https://github.com/dongshuyan/Awesome-Prompts"
+    }
+  ]
+}

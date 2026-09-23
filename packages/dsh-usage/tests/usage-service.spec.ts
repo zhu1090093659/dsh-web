@@ -2,10 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { parseAnnouncement } from '../../dsh-pet/src/announce.ts'
 import { createLedgerDocument, foldUsage, localDateKey } from '../src/core/ledger.ts'
 import { emptyTotals } from '../src/core/types.ts'
-import { buildAnnouncement, buildLedgerAnnouncement, formatTokens, USAGE_ANNOUNCE_SOURCE, UsageService, type UsageServiceOptions } from '../src/host/usage-service.ts'
+import { UsageService, type UsageServiceOptions } from '../src/host/usage-service.ts'
 
 /**
  * Host-service behavior tests. The cordis Context is replaced by a minimal
@@ -15,7 +14,7 @@ import { buildAnnouncement, buildLedgerAnnouncement, formatTokens, USAGE_ANNOUNC
  * fetch, and DSH_HOME points at a temp dir per test.
  */
 
-const OPTIONS: UsageServiceOptions = { pollIntervalSec: 3600, bubbleMode: 'always', retainDays: 180 }
+const OPTIONS: UsageServiceOptions = { pollIntervalSec: 3600, retainDays: 180 }
 
 const BALANCE_BODY = { balance_infos: [{ currency: 'CNY', total_balance: '110.00' }] }
 
@@ -82,11 +81,6 @@ const usageEvent = (inputTokens: number, outputTokens: number) => ({
   data: { usage: { inputTokens, outputTokens, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 } },
 })
 
-function makeRecorderPet() {
-  const announced: Array<Record<string, unknown>> = []
-  return { announced, announce: (input: Record<string, unknown>) => void announced.push(input) }
-}
-
 let home: string
 
 beforeEach(() => {
@@ -119,7 +113,9 @@ describe('session fold → overview', () => {
     fireSessionEvent(session, usageEvent(10, 5))
 
     const overview = service.overview()
-    expect(overview.current).toEqual({ provider: 'deepseek', model: 'deepseek-v4-pro', source: 'live' })
+    expect(overview.current).toMatchObject({ provider: 'deepseek', model: 'deepseek-v4-pro', source: 'live', displayName: 'DeepSeek' })
+    expect(overview.current.today?.inputTokens).toBe(110)
+    expect(overview.current.today?.calls).toBe(2)
     expect(overview.usage.today.totals).toMatchObject({ inputTokens: 110, outputTokens: 55, calls: 2 })
     expect(overview.usage.today.providers[0]?.provider).toBe('deepseek')
     expect(overview.usage.days.at(-1)?.totals.calls).toBe(2)
@@ -133,6 +129,42 @@ describe('session fold → overview', () => {
     fireSessionEvent({}, usageEvent(100, 50))
     expect(service.overview().usage.today.totals.calls).toBe(0)
     service.stop()
+  })
+
+  it('serves the whole-ledger aggregate beyond the 30-day trend window', async () => {
+    const dayAt = (daysAgo: number): Date => {
+      const date = new Date()
+      date.setDate(date.getDate() - daysAgo)
+      date.setHours(12, 0, 0, 0)
+      return date
+    }
+    // 34 pre-today days (inside the trend window) plus one day older than
+    // the 30-entry trend cap: only the whole-ledger aggregate sees it.
+    const doc = createLedgerDocument()
+    foldUsage(doc, dayAt(40).getTime(), 'deepseek', 'm', { ...emptyTotals(), inputTokens: 500, calls: 1 })
+    for (let offset = 1; offset <= 34; offset += 1) {
+      foldUsage(doc, dayAt(offset).getTime(), 'deepseek', 'm', { ...emptyTotals(), inputTokens: 10, calls: 1 })
+    }
+    writeLedgerFile(JSON.parse(JSON.stringify(doc)).days)
+
+    const { ctx, fireSessionEvent } = makeCtx()
+    const service = new UsageService(ctx, OPTIONS)
+    service.start()
+    const session = {}
+    fireSessionEvent(session, requestHeaderEvent('deepseek', 'm'))
+    fireSessionEvent(session, usageEvent(50, 0))
+    await sleep(30)
+
+    const usage = service.overview().usage
+    // The trend window caps at the last 30 recorded days; the whole-ledger
+    // aggregate reaches back to the oldest retained day (the voucher's
+    // minted total).
+    expect(usage.all?.from).toBe(localDateKey(dayAt(40).getTime()))
+    expect(usage.all?.to).toBe(localDateKey(Date.now()))
+    expect(usage.all?.totals.inputTokens).toBe(890)
+    expect(usage.range?.totals.inputTokens).toBe(340)
+    expect(usage.all?.providers.map((row) => row.provider)).toEqual(['deepseek'])
+    await service.stop()
   })
 })
 
@@ -204,237 +236,79 @@ describe('probes and per-fact errors', () => {
   })
 })
 
-describe('pet announce linkage', () => {
-  it('announces the balance and the payload passes the pet validator round-trip', async () => {
-    stubFetch(() => jsonResponse(BALANCE_BODY))
-    const pet = makeRecorderPet()
-    const { ctx, fireSessionEvent } = makeCtx({ llm: LLM_DEEPSEEK, credentials: CREDENTIALS_ENV, pet })
-    const service = new UsageService(ctx, OPTIONS)
-    service.start()
-    fireSessionEvent({}, requestHeaderEvent('deepseek', 'deepseek-v4-pro'))
-    await service.refresh()
-
-    expect(pet.announced).toHaveLength(1)
-    expect(pet.announced[0]).toMatchObject({ source: USAGE_ANNOUNCE_SOURCE, kind: 'balance', title: 'DeepSeek', amount: '¥110.00', tone: 'ok' })
-    expect(parseAnnouncement(pet.announced[0], Date.now())).toBeDefined()
-    service.stop()
-  })
-
-  it('announces the live deepseek-official route as a cost bubble with the peak period and a poll-cadence ttl', async () => {
-    stubFetch(() => jsonResponse(BALANCE_BODY))
-    const pet = makeRecorderPet()
-    const { ctx, fireSessionEvent } = makeCtx({ llm: LLM_DEEPSEEK_OFFICIAL, credentials: CREDENTIALS_ENV, pet })
-    const service = new UsageService(ctx, OPTIONS)
-    service.start()
-    const session = {}
-    fireSessionEvent(session, requestHeaderEvent('deepseek-official', 'deepseek-v4-flash-vision-exp'))
-    fireSessionEvent(session, usageEvent(1_000_000, 100_000))
-    await service.refresh()
-
-    // The session route folds with a fold-time spend estimate, and the
-    // announce resolves the deepseek-official snapshot (adapter alias + env
-    // fallback) instead of dying on the id mismatch.
-    expect(service.overview().usage.today.totals.cost).toBeGreaterThan(0)
-    expect(pet.announced).toHaveLength(1)
-    const payload = pet.announced[0] as Record<string, unknown>
-    expect(payload).toMatchObject({ source: USAGE_ANNOUNCE_SOURCE, kind: 'cost', title: 'DeepSeek', tone: expect.stringMatching(/ok|warn/) })
-    expect(String(payload.amount)).toMatch(/^今日 ¥\d/)
-    expect(String(payload.note)).toMatch(/高峰时段|空闲时段/)
-    expect(payload.ttlMs).toBe(7_200_000)
-    expect(parseAnnouncement(payload, Date.now())).toBeDefined()
-    service.stop()
-  })
-
-  it('falls back to the adapter-family snapshot when the current route id has none of its own', async () => {
-    stubFetch((url) => url.includes('api.deepseek.com') ? jsonResponse(BALANCE_BODY) : jsonResponse({}, 404))
-    const pet = makeRecorderPet()
-    // Only the catalog alias `deepseek` is enumerated, but the session runs
-    // under the live `deepseek-official` route id.
-    const { ctx, fireSessionEvent } = makeCtx({ llm: {
-      listProviders: () => [],
+describe('alias route folding', () => {
+  it('user sees one DeepSeek row when the catalog alias shadows the live route', async () => {
+    // Given the runtime serves deepseek-official while the catalog still lists deepseek
+    const probes: string[] = []
+    stubFetch((url) => {
+      probes.push(url)
+      return url.includes('api.deepseek.com') ? jsonResponse(BALANCE_BODY) : jsonResponse({}, 404)
+    })
+    const llm = {
+      listProviders: LLM_DEEPSEEK_OFFICIAL.listProviders,
       listConfigurableProviders: () => [{ provider: 'deepseek', displayName: 'deepseek' }],
-    }, credentials: CREDENTIALS_ENV, pet })
+    }
+    const { ctx } = makeCtx({ llm, credentials: CREDENTIALS_ENV })
     const service = new UsageService(ctx, OPTIONS)
-    service.start()
-    fireSessionEvent({}, requestHeaderEvent('deepseek-official', 'deepseek-v4-flash-vision-exp'))
-    await service.refresh()
-    // The deepseek-official snapshot is absent, but the family fallback finds
-    // the catalog alias's balance and announces it for the live route.
-    expect(pet.announced).toHaveLength(1)
-    expect(pet.announced[0]).toMatchObject({ kind: 'balance', title: 'deepseek', amount: '¥110.00' })
-    service.stop()
-  })
 
-  it('never announces a plan whose windows all lack a percent', async () => {
-    stubFetch(() => jsonResponse({ limits: [{ window: { duration: 300, timeUnit: 'TIME_UNIT_MINUTE' }, detail: { name: '5h limit' } }] }))
-    const pet = makeRecorderPet()
-    const { ctx, fireSessionEvent } = makeCtx({ llm: LLM_KIMI, credentials: CREDENTIALS_KIMI_KEY, pet })
-    const service = new UsageService(ctx, OPTIONS)
-    service.start()
-    fireSessionEvent({}, requestHeaderEvent('kimi-coding', 'kimi-latest'))
+    // When the poll cycle probes the configured providers
     await service.refresh()
 
-    // The plan snapshot itself is served to the UI, but the pet contract
-    // rejects percent-less plan payloads, so nothing announces.
-    expect(service.overview().providers[0]?.plan?.windows).toHaveLength(1)
-    expect(pet.announced).toHaveLength(0)
-    service.stop()
-  })
-
-  it('announces the highest-percent plan window and passes the pet validator round-trip', async () => {
-    stubFetch(() => jsonResponse({
-      usage: { limit: '100', used: '85', resetTime: '2026-08-31T00:00:00Z' },
-      limits: [{ window: { duration: 300, timeUnit: 'TIME_UNIT_MINUTE' }, detail: { name: '5h limit', limit: '100', used: '20' } }],
-    }))
-    const pet = makeRecorderPet()
-    const { ctx, fireSessionEvent } = makeCtx({ llm: LLM_KIMI, credentials: CREDENTIALS_KIMI_KEY, pet })
-    const service = new UsageService(ctx, OPTIONS)
-    service.start()
-    fireSessionEvent({}, requestHeaderEvent('kimi-coding', 'kimi-latest'))
-    await service.refresh()
-
-    expect(pet.announced).toHaveLength(1)
-    expect(pet.announced[0]).toMatchObject({ kind: 'plan', title: 'Kimi For Coding', percent: 85, tone: 'warn' })
-    expect(parseAnnouncement(pet.announced[0], Date.now())).toBeDefined()
-    service.stop()
-  })
-
-  it('re-announces in change mode only when the value changes', async () => {
-    const fetchMock = stubFetch(() => jsonResponse(BALANCE_BODY))
-    const pet = makeRecorderPet()
-    const { ctx, fireSessionEvent } = makeCtx({ llm: LLM_DEEPSEEK, credentials: CREDENTIALS_ENV, pet })
-    const service = new UsageService(ctx, { ...OPTIONS, bubbleMode: 'change' })
-    service.start()
-    fireSessionEvent({}, requestHeaderEvent('deepseek', 'deepseek-v4-pro'))
-    await service.refresh()
-    await service.refresh()
-    expect(pet.announced).toHaveLength(1)
-
-    fetchMock.mockImplementation(async () => jsonResponse({ balance_infos: [{ currency: 'CNY', total_balance: '99.00' }] }))
-    await service.refresh()
-    expect(pet.announced).toHaveLength(2)
-    expect(pet.announced[1]).toMatchObject({ amount: '¥99.00' })
-    service.stop()
-  })
-
-  it('falls back to the ledger usage bubble for a provider without any adapter', async () => {
-    const fetchMock = stubFetch(() => { throw new Error('no adapter route is ever probed') })
-    const pet = makeRecorderPet()
-    // jiyuan is a bare pi-ai relay route: no balance/plan adapter exists for it,
-    // so the probe cycle skips it entirely — yet its sessions still run.
-    const { ctx, fireSessionEvent } = makeCtx({ llm: {
-      listProviders: () => [{ id: 'jiyuan', name: 'jiyuan' }],
-      listConfigurableProviders: () => [],
-    }, credentials: CREDENTIALS_ENV, pet })
-    const service = new UsageService(ctx, OPTIONS)
-    service.start()
-    const session = {}
-    fireSessionEvent(session, requestHeaderEvent('jiyuan', 'glm-5.3-flash'))
-    fireSessionEvent(session, usageEvent(900_000, 66_000))
-    await service.refresh()
-
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(pet.announced).toHaveLength(1)
-    const payload = pet.announced[0] as Record<string, unknown>
-    expect(payload).toMatchObject({ source: USAGE_ANNOUNCE_SOURCE, kind: 'cost', title: 'jiyuan', tone: 'ok' })
-    expect(payload.amount).toBe('今日 96.6万 tokens')
-    expect(payload.note).toBe('1 次调用')
-    expect(parseAnnouncement(payload, Date.now())).toBeDefined()
-    service.stop()
-  })
-
-  it('falls back to the ledger usage when the probed snapshot has no announceable fact', async () => {
-    // Kimi probes a percent-less plan (no balance adapter) — previously the
-    // pet went silent even while kimi sessions consumed tokens.
-    stubFetch(() => jsonResponse({ limits: [{ window: { duration: 300, timeUnit: 'TIME_UNIT_MINUTE' }, detail: { name: '5h limit' } }] }))
-    const pet = makeRecorderPet()
-    const { ctx, fireSessionEvent } = makeCtx({ llm: LLM_KIMI, credentials: CREDENTIALS_KIMI_KEY, pet })
-    const service = new UsageService(ctx, OPTIONS)
-    service.start()
-    const session = {}
-    fireSessionEvent(session, requestHeaderEvent('kimi-coding', 'kimi-latest'))
-    fireSessionEvent(session, usageEvent(10_000, 2_000))
-    await service.refresh()
-
-    expect(service.overview().providers[0]?.plan?.windows).toHaveLength(1)
-    expect(pet.announced).toHaveLength(1)
-    expect(pet.announced[0]).toMatchObject({ kind: 'cost', title: 'Kimi For Coding', amount: '今日 1.2万 tokens', note: '1 次调用' })
-    service.stop()
-  })
-
-  it('stays silent when the provider has neither probe facts nor usage today', async () => {
-    const pet = makeRecorderPet()
-    const { ctx, fireSessionEvent } = makeCtx({ llm: {
-      listProviders: () => [{ id: 'ollama', name: 'ollama' }],
-      listConfigurableProviders: () => [],
-    }, credentials: CREDENTIALS_ENV, pet })
-    const service = new UsageService(ctx, OPTIONS)
-    service.start()
-    fireSessionEvent({}, requestHeaderEvent('ollama', 'glm-5.3-flash:cloud'))
-    await service.refresh()
-
-    expect(pet.announced).toHaveLength(0)
-    service.stop()
-  })
-
-  it('re-announces the usage fallback in change mode as usage grows', async () => {
-    const pet = makeRecorderPet()
-    const { ctx, fireSessionEvent } = makeCtx({ llm: {
-      listProviders: () => [{ id: 'jiyuan', name: 'jiyuan' }],
-      listConfigurableProviders: () => [],
-    }, credentials: CREDENTIALS_ENV, pet })
-    const service = new UsageService(ctx, { ...OPTIONS, bubbleMode: 'change' })
-    service.start()
-    const session = {}
-    fireSessionEvent(session, requestHeaderEvent('jiyuan', 'glm-5.3-flash'))
-    fireSessionEvent(session, usageEvent(10_000, 0))
-    await service.refresh()
-    expect(pet.announced).toHaveLength(1)
-
-    fireSessionEvent(session, usageEvent(20_000, 0))
-    await service.refresh()
-    expect(pet.announced).toHaveLength(2)
-    expect((pet.announced[1] as Record<string, unknown>).amount).toBe('今日 3万 tokens')
+    // Then the account renders once under the live route's name and is probed once
+    const providers = service.overview().providers
+    expect(providers.map((row) => row.provider)).toEqual(['deepseek-official'])
+    expect(providers[0]).toMatchObject({
+      displayName: 'DeepSeek',
+      credential: 'env',
+      balance: { currency: 'CNY', totalBalance: '110.00' },
+    })
+    expect(probes).toEqual(['https://api.deepseek.com/user/balance'])
     service.stop()
   })
 })
 
-describe('lifecycle fences', () => {
-  it('does not probe or announce after stop', async () => {
+describe('DeepSeek real-spend watch', () => {
+  it('accrues observed balance decreases, skips top-ups, and survives a restart', async () => {
     const fetchMock = stubFetch(() => jsonResponse(BALANCE_BODY))
-    const pet = makeRecorderPet()
-    const { ctx, fireSessionEvent } = makeCtx({ llm: LLM_DEEPSEEK, credentials: CREDENTIALS_ENV, pet })
+    const { ctx } = makeCtx({ llm: LLM_DEEPSEEK, credentials: CREDENTIALS_ENV })
     const service = new UsageService(ctx, OPTIONS)
     service.start()
-    fireSessionEvent({}, requestHeaderEvent('deepseek', 'deepseek-v4-pro'))
+    await sleep(30)
+    await service.refresh()
+    // The first observation only anchors the series; nothing accrued yet.
+    expect(service.overview().usage.observedSpend).toBeUndefined()
+
+    fetchMock.mockImplementation(async () => jsonResponse({ balance_infos: [{ currency: 'CNY', total_balance: '108.50' }] }))
+    await service.refresh()
+    const observed = service.overview().usage.observedSpend
+    expect(observed?.cny).toBeCloseTo(1.5)
+    expect(observed?.since).toBeGreaterThan(0)
+
+    // A balance rise is a top-up: it neither accrues nor resets the figure.
+    fetchMock.mockImplementation(async () => jsonResponse({ balance_infos: [{ currency: 'CNY', total_balance: '200.00' }] }))
+    await service.refresh()
+    expect(service.overview().usage.observedSpend?.cny).toBeCloseTo(1.5)
     await service.stop()
 
-    await service.refresh()
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(pet.announced).toHaveLength(0)
+    // The accrual persists with the provider snapshots and revives on load.
+    const revived = new UsageService(ctx, OPTIONS)
+    revived.start()
+    await sleep(30)
+    expect(revived.overview().usage.observedSpend?.cny).toBeCloseTo(1.5)
+    await revived.stop()
   })
 
-  it('abandons the post-probe work when the service is disposed mid-cycle', async () => {
-    let release!: () => void
-    const gate = new Promise<void>((resolve) => { release = resolve })
-    const fetchMock = stubFetch(async () => {
-      await gate
-      return jsonResponse(BALANCE_BODY)
-    })
-    const pet = makeRecorderPet()
-    const { ctx, fireSessionEvent } = makeCtx({ llm: LLM_DEEPSEEK, credentials: CREDENTIALS_ENV, pet })
+  it('keeps no observed spend for families without an official CNY balance', async () => {
+    stubFetch(() => jsonResponse({ error: 'no balance endpoint here' }, 404))
+    const { ctx } = makeCtx({ llm: LLM_KIMI, credentials: CREDENTIALS_KIMI_KEY })
     const service = new UsageService(ctx, OPTIONS)
-    service.start()
-    fireSessionEvent({}, requestHeaderEvent('deepseek', 'deepseek-v4-pro'))
-    const cycle = service.refresh()
-    const stopped = service.stop()
-    release()
-    await Promise.all([cycle, stopped])
-
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(pet.announced).toHaveLength(0)
+    await service.refresh()
+    expect(service.overview().usage.observedSpend).toBeUndefined()
+    service.stop()
   })
+})
 
+describe('poll cycle', () => {
   it('joins the running cycle instead of no-oping, so refresh waits for real probes', async () => {
     let release!: () => void
     const gate = new Promise<void>((resolve) => { release = resolve })
@@ -457,6 +331,101 @@ describe('lifecycle fences', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(service.overview().providers[0]?.balance).toBeDefined()
     service.stop()
+  })
+})
+
+describe('current view in the overview document', () => {
+  it('user sees the current provider name and today totals strip-ready', async () => {
+    // Given a service whose deepseek route carries one usage event today
+    stubFetch(() => jsonResponse(BALANCE_BODY))
+    const { ctx, fireSessionEvent } = makeCtx({ llm: LLM_DEEPSEEK, credentials: CREDENTIALS_ENV })
+    const service = new UsageService(ctx, OPTIONS)
+    service.start()
+    const session = {}
+    fireSessionEvent(session, requestHeaderEvent('deepseek', 'deepseek-v4-pro'))
+    fireSessionEvent(session, usageEvent(1000, 500))
+
+    // When the poll cycle completes
+    await service.refresh()
+
+    // Then the overview carries the strip-ready current view with the priced cost
+    const current = service.overview().current
+    expect(current.provider).toBe('deepseek')
+    expect(current.displayName).toBe('DeepSeek')
+    expect(current.today?.inputTokens).toBe(1000)
+    expect(current.today?.outputTokens).toBe(500)
+    expect(current.today?.calls).toBe(1)
+    expect(current.today?.cost).toBeGreaterThan(0)
+    await service.stop()
+  })
+
+  it('user sees aliased family routes folded into one today figure', async () => {
+    // Given the deepseek catalog alias and its runtime route each carrying usage today
+    stubFetch(() => jsonResponse(BALANCE_BODY))
+    const llm = {
+      listProviders: () => [
+        { id: 'deepseek', name: 'DeepSeek' },
+        { id: 'deepseek-official', name: 'DeepSeek' },
+      ],
+      listConfigurableProviders: () => [],
+    }
+    const { ctx, fireSessionEvent } = makeCtx({ llm, credentials: CREDENTIALS_ENV })
+    const service = new UsageService(ctx, OPTIONS)
+    service.start()
+    const sessionA = {}
+    const sessionB = {}
+    fireSessionEvent(sessionA, requestHeaderEvent('deepseek', 'deepseek-v4-pro'))
+    fireSessionEvent(sessionA, usageEvent(100, 50))
+    fireSessionEvent(sessionB, requestHeaderEvent('deepseek-official', 'deepseek-v4-flash'))
+    fireSessionEvent(sessionB, usageEvent(200, 100))
+
+    // When the poll cycle completes with the runtime route as the current one
+    await service.refresh()
+
+    // Then today's view merges the whole adapter family
+    const current = service.overview().current
+    expect(current.provider).toBe('deepseek-official')
+    expect(current.displayName).toBe('DeepSeek')
+    expect(current.today?.inputTokens).toBe(300)
+    expect(current.today?.outputTokens).toBe(150)
+    expect(current.today?.calls).toBe(2)
+    await service.stop()
+  })
+
+  it('user without usage today sees the name but no today figure', async () => {
+    // Given a service whose session named a provider but recorded no usage
+    stubFetch(() => jsonResponse(BALANCE_BODY))
+    const { ctx, fireSessionEvent } = makeCtx({ llm: LLM_DEEPSEEK, credentials: CREDENTIALS_ENV })
+    const service = new UsageService(ctx, OPTIONS)
+    service.start()
+    fireSessionEvent({}, requestHeaderEvent('deepseek', 'deepseek-v4-pro'))
+
+    // When the poll cycle completes
+    await service.refresh()
+
+    // Then the strip fields resolve the name and leave the today figure absent
+    const current = service.overview().current
+    expect(current.displayName).toBe('DeepSeek')
+    expect(current.today).toBeUndefined()
+    await service.stop()
+  })
+
+  it('user without any session sees no strip fields', async () => {
+    // Given a service that has not seen a session this boot
+    stubFetch(() => jsonResponse(BALANCE_BODY))
+    const { ctx } = makeCtx({ llm: LLM_DEEPSEEK, credentials: CREDENTIALS_ENV })
+    const service = new UsageService(ctx, OPTIONS)
+    service.start()
+
+    // When the poll cycle completes
+    await service.refresh()
+
+    // Then the current view stays bare
+    const current = service.overview().current
+    expect(current.provider).toBeUndefined()
+    expect(current.displayName).toBeUndefined()
+    expect(current.today).toBeUndefined()
+    await service.stop()
   })
 })
 
@@ -521,69 +490,5 @@ describe('persistence', () => {
     service.applyOptions({ ...OPTIONS, retainDays: 7 })
     expect(service.overview().usage.days.map((day) => day.date)).toEqual([localDateKey(Date.now())])
     await service.stop()
-  })
-})
-
-describe('buildAnnouncement contract', () => {
-  it('produces parseAnnouncement-valid payloads for every shape it can return', () => {
-    const balance = buildAnnouncement({ displayName: 'DeepSeek', balance: { currency: 'CNY', totalBalance: '110.00', updatedAt: 1 } })
-    expect(balance).toMatchObject({ kind: 'balance', title: 'DeepSeek', amount: '¥110.00', tone: 'ok' })
-    expect(parseAnnouncement({ source: USAGE_ANNOUNCE_SOURCE, ttlMs: undefined, ...balance! }, 1)).toBeDefined()
-
-    const plan = buildAnnouncement({ displayName: 'Kimi', plan: { windows: [{ key: 'week', percent: 85 }, { key: '5h', percent: 20 }], updatedAt: 1 } })
-    expect(plan).toMatchObject({ kind: 'plan', title: 'Kimi', percent: 85, tone: 'warn' })
-    expect(parseAnnouncement({ source: USAGE_ANNOUNCE_SOURCE, ...plan! }, 1)).toBeDefined()
-
-    const planWithNote = buildAnnouncement({ displayName: 'Kimi', plan: { planName: 'Pro', windows: [{ key: 'week', percent: 95, resetsAt: '2026-08-31T00:00:00.000Z' }], updatedAt: 1 } })
-    expect(planWithNote).toMatchObject({ percent: 95, tone: 'low', note: 'Pro', resetAt: '2026-08-31T00:00:00.000Z' })
-    expect(parseAnnouncement({ source: USAGE_ANNOUNCE_SOURCE, ...planWithNote! }, 1)).toBeDefined()
-  })
-
-  it('announces today spend first for a priced family, with the peak period and the balance in the note', () => {
-    const snapshot = { displayName: 'DeepSeek', balance: { currency: 'CNY', totalBalance: '1109.95', updatedAt: 1 } }
-    const cost = buildAnnouncement(snapshot, { todayCost: 12.3456, peak: true })
-    expect(cost).toMatchObject({ kind: 'cost', title: 'DeepSeek', amount: '今日 ¥12.35', tone: 'warn', note: '高峰时段 计价×2 · 余额 ¥1109.95' })
-    expect(parseAnnouncement({ source: USAGE_ANNOUNCE_SOURCE, ...cost! }, 1)).toBeDefined()
-
-    const offPeak = buildAnnouncement(snapshot, { todayCost: 0.5, peak: false })
-    expect(offPeak).toMatchObject({ kind: 'cost', amount: '今日 ¥0.50', tone: 'ok', note: '空闲时段 计价减半 · 余额 ¥1109.95' })
-
-    // No readable balance: the note carries the period alone.
-    const noBalance = buildAnnouncement({ displayName: 'DeepSeek' }, { todayCost: 1, peak: false })
-    expect(noBalance).toMatchObject({ kind: 'cost', note: '空闲时段 计价减半' })
-    expect(parseAnnouncement({ source: USAGE_ANNOUNCE_SOURCE, ...noBalance! }, 1)).toBeDefined()
-  })
-
-  it('falls back to the balance bubble when the family has no spend today', () => {
-    const balance = buildAnnouncement({ displayName: 'DeepSeek', balance: { currency: 'CNY', totalBalance: '110.00', updatedAt: 1 } }, { todayCost: 0, peak: true })
-    expect(balance).toMatchObject({ kind: 'balance', amount: '¥110.00' })
-  })
-
-  it('returns undefined when nothing satisfies the pet contract', () => {
-    // Percent-less plan windows never announce.
-    expect(buildAnnouncement({ displayName: 'K', plan: { windows: [{ key: '5h' }, { key: 'week', resetsAt: 'x' }], updatedAt: 1 } })).toBeUndefined()
-    expect(buildAnnouncement({ displayName: 'D' })).toBeUndefined()
-  })
-})
-
-describe('buildLedgerAnnouncement contract', () => {
-  it('builds a validator-valid usage bubble for providers without probeable facts', () => {
-    const totals = { ...emptyTotals(), inputTokens: 900_000, outputTokens: 66_000, calls: 42 }
-    const payload = buildLedgerAnnouncement({ displayName: 'jiyuan', totals })
-    expect(payload).toMatchObject({ kind: 'cost', title: 'jiyuan', amount: '今日 96.6万 tokens', note: '42 次调用', tone: 'ok' })
-    expect(parseAnnouncement({ source: USAGE_ANNOUNCE_SOURCE, ttlMs: 150_000, ...payload! }, 1)).toBeDefined()
-  })
-
-  it('stays undefined without usage today (calls and tokens both zero)', () => {
-    expect(buildLedgerAnnouncement({ displayName: 'x', totals: emptyTotals() })).toBeUndefined()
-    expect(buildLedgerAnnouncement({ displayName: 'x', totals: { ...emptyTotals(), inputTokens: 5, calls: 0 } })).toBeUndefined()
-    expect(buildLedgerAnnouncement({ displayName: 'x', totals: { ...emptyTotals(), inputTokens: 0, calls: 3 } })).toBeUndefined()
-  })
-
-  it('formats token magnitudes compactly on the zh convention', () => {
-    expect(formatTokens(9805)).toBe('9805')
-    expect(formatTokens(96_600)).toBe('9.7万')
-    expect(formatTokens(10_000)).toBe('1万')
-    expect(formatTokens(120_000_000)).toBe('1.2亿')
   })
 })

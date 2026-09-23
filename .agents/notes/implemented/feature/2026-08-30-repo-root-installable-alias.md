@@ -10,7 +10,7 @@ External hubs and `dsh plugin add` classify a Git repository by its root `packag
 
 The repository root is a thin bundle alias over the published aggregate:
 
-- root `package.json` declares `"dsh": { "bundle": { "patch": "./packages/dsh-web-all/cordis.patch.yml" } }`, `dependencies: { "@linxin666/dsh-web-all": "^0.3.6" }`, and a two-entry `files` whitelist so a packed git install ships the manifest and nothing else;
+- root `package.json` declares `"dsh": { "bundle": { "patch": "./packages/dsh-web-all/cordis.patch.yml" } }`, `dependencies: { "@linxin666/dsh-web-all": "0.3.20" }` (the exact released aggregate matching the shipped patch — see the [exact aggregate pin](../../bug-fix/2026-09-10-root-alias-exact-aggregate-pin.md)), and a two-entry `files` whitelist so a packed git install ships the manifest and nothing else;
 - checkout `pnpm-workspace.yaml` sets `linkWorkspacePackages: true`, so inside the repository the root dependency links the workspace project (same source, no npm copy), while a profile install resolves it from the npm registry.
 
 `dsh plugin --profile web add github:zhu1090093659/dsh-web` mounts the whole family: the root joins the `dsh.profile.bundles` layer stack, its patch is the aggregate's own generated `web-ui-*` manifest, and the npm aggregate dependency (resolved at install time) supplies every module the rows reference.
@@ -25,7 +25,7 @@ The repository root is a thin bundle alias over the published aggregate:
 
 - The npm lane's lag bounds what git installs get: the patch comes from the repo commit while member code comes from the newest published aggregate, so a source patch row referencing an unpublished member only resolves after that release publishes. The release flow needs no change, but members should be published promptly after the patch gains their rows.
 - The alias and the npm aggregate are mutually exclusive in one profile: both produce identical `web-ui-*` rows, and installing both collides on duplicate ids (documented in the root README).
-- The root dependency range `^0.3.6` must be raised when the family moves past the 0.3 major.
+- The root dependency is repinned to the exact released aggregate version on every family release, and `scripts/verify-version.mjs` fails the publish when it drifts from the tag ([exact aggregate pin](../../bug-fix/2026-09-10-root-alias-exact-aggregate-pin.md)).
 - `linkWorkspacePackages: true` is checkout-wide; no other workspace package declares a range spec matching a workspace project name, so only the root dependency is affected.
 
 ## Testing

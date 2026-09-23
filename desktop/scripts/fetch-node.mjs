@@ -13,9 +13,9 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { extractArchive } from './tar-extract.mjs';
 
 const require = createRequire(import.meta.url);
 const { parseShasums } = require('../src/runtime.cjs');
@@ -47,9 +47,9 @@ function sha256(buffer) {
 }
 
 function extract(archive, destDir) {
-  fs.mkdirSync(destDir, { recursive: true });
-  // bsdtar (macOS) and GNU tar both handle tar.gz; bsdtar also unpacks zip.
-  execFileSync('tar', ['-xf', archive, '-C', destDir], { stdio: 'inherit' });
+  // tar-extract prefers the System32 bsdtar on Windows: Git-bash GNU tar
+  // rejects drive-letter paths and cannot read the win-x64 zip at all.
+  extractArchive(archive, destDir);
 }
 
 /**

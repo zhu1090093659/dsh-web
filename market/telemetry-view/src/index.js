@@ -117,12 +117,19 @@ const SETUP_HTML = [
 
 /**
  * Fetch the summary aggregate upstream. query carries the caller's
- * days/paths/items window verbatim; the market worker clamps it.
+ * days/paths/items window verbatim; the market worker clamps it. The
+ * MARKET service binding is the production path: this worker runs inside
+ * the market worker's invocation chain (forwarded for tv.dsh-market.com),
+ * and a public fetch back to dsh-market.com would re-enter that worker in
+ * the same chain, trip Cloudflare's loop protection, and fail as a 522
+ * from the custom-domain placeholder origin. Bindings bypass zone routing
+ * entirely.
  */
 async function fetchSummary(env, query) {
-  const res = await fetch(SUMMARY_BASE + '?' + query, {
+  const request = new Request(SUMMARY_BASE + '?' + query, {
     headers: { 'x-telemetry-key': env.TELEMETRY_READ_KEY || '' },
   })
+  const res = env.MARKET ? await env.MARKET.fetch(request) : await fetch(request)
   if (!res.ok) return { ok: false, status: res.status }
   return { ok: true, data: await res.json() }
 }

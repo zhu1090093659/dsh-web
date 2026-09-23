@@ -1,13 +1,15 @@
 /**
- * Workspace-domain mutations for dsh-session-archive. The alpha.2 SDK has a
- * public archive verb (`workspaceRegistry.archiveSession`) but no unarchive,
- * so unarchive and workspace-row cleanup go through the registry's durable
- * domain handles (`requireState`/`setState` for the global archive set,
- * entity `mutate` for workspace rows). Both writes flow through the domain
- * storage, so the workspace feed publishes follow frames and every connected
- * browser sees the change without a reload. The seams are feature-detected
- * and pinned to the SDK cohort; when absent, operations fail with
- * `missing-seam` instead of guessing at files.
+ * Workspace-domain mutations for dsh-session-archive. Archive and unarchive
+ * both go through public registry verbs: `archiveSession` existed at
+ * 0.1.5-rc.1, and 0.1.6-alpha.1 added `unarchiveSession`, which retired the
+ * earlier workaround that reached into the registry's private
+ * `requireState`/`setState` domain handles to edit the archive set itself.
+ * Workspace-row cleanup (physical delete only) still uses the entity
+ * `mutate` path, which has no public equivalent. Every write flows through
+ * the domain storage, so the workspace feed publishes follow frames and every
+ * connected browser sees the change without a reload. The seams are
+ * feature-detected and pinned to the SDK cohort; when absent, operations fail
+ * with `missing-seam` instead of guessing at files.
  * @module @linxin666/dsh-session-archive/host/workspace-store
  */
 
@@ -18,8 +20,7 @@ import { canonicalSessionId } from './session-files.ts'
 
 /** Minimal runtime shape the registry must expose for durable archive-set writes. */
 interface RegistrySeam {
-  requireState?(): unknown
-  setState?(state: unknown): Promise<void>
+  unarchiveSession?(sessionId: string): Promise<void>
   archivedSessionIds: readonly string[]
   list(): WorkspaceEntityLike[]
 }
@@ -40,34 +41,25 @@ export interface WorkspaceRecordLike {
   updatedAt: string
 }
 
-/** Whether the unarchive seam is present on this registry instance. */
+/** Whether the public unarchive verb is present on this registry instance. */
 export function unarchiveSeamAvailable(registry: unknown): boolean {
   const seam = registry as RegistrySeam
-  return typeof seam?.requireState === 'function' && typeof seam?.setState === 'function'
+  return typeof seam?.unarchiveSession === 'function'
 }
 
 /**
- * Remove ids from the registry-global archive set durably. Idempotent: ids
- * not in the set are ignored. Emits the domain `put` change so the workspace
- * feed publishes `{ type: 'archived' }` follow frames.
+ * Remove ids from the registry-global archive set through the public
+ * `workspaceRegistry.unarchiveSession` verb. Idempotent for ids that are not
+ * archived (the verb resolves without writing). Callers pass the harness's
+ * native id spelling, because the stored set mixes spellings.
  */
 export async function unarchiveSessions(registry: unknown, ids: readonly string[]): Promise<void> {
   if (ids.length === 0) return
   const seam = registry as RegistrySeam
   if (!unarchiveSeamAvailable(seam)) {
-    throw new Error('workspace registry does not expose the durable state seam')
+    throw new Error('workspace registry does not expose unarchiveSession')
   }
-  const state = seam.requireState?.() as { archivedSessionIds?: string[] } | undefined
-  if (state === undefined || typeof state !== 'object') {
-    throw new Error('workspace registry state unavailable')
-  }
-  const current = Array.isArray(state.archivedSessionIds) ? state.archivedSessionIds : []
-  // The stored set mixes id spellings (bare uuids beside `session-<uuid>`);
-  // compare canonically and preserve every non-matching entry verbatim.
-  const drop = new Set(ids.map(canonicalSessionId))
-  const next = current.filter((id) => !drop.has(canonicalSessionId(id)))
-  if (next.length === current.length) return
-  await seam.setState?.({ ...state, archivedSessionIds: next })
+  for (const id of ids) await seam.unarchiveSession?.(id)
 }
 
 /**

@@ -120,6 +120,57 @@ describe('HostExecutionRunner', () => {
     expect(promptPayloads).toEqual([{ sessionId: 'session-a', requestId: expect.any(String), mode: 'queue', content: [{ type: 'text', text: 'do work' }] }])
   })
 
+  it('continues in the reused session without creating or renaming one (#1419)', async () => {
+    const order: string[] = []
+    const promptPayloads: unknown[] = []
+    const commands = {
+      execute: vi.fn(async (_sessionId: string, line: string) => {
+        order.push('permission')
+        expect(line).toBe('/permission workspace-write')
+        return { kind: 'success' as const }
+      }),
+    }
+    const gateway = {
+      stream: fakeStream(async () => ({ async *[Symbol.asyncIterator]() { yield snapshot([], 0, false) } })),
+      invoke: fakeInvoke(async (request: GatewayRequest) => {
+        if (request.namespace === 'agentPresets') {
+          order.push('preset')
+          return { presets: [{ id: 'preset-a', isDefault: false }] }
+        }
+        const payload = request.args.request as Record<string, unknown>
+        if (request.method === 'prompt') {
+          order.push('prompt')
+          promptPayloads.push(payload)
+          return { accepted: true }
+        }
+        throw new Error('reuse must not call session/' + request.method)
+      }),
+    }
+    await expect(
+      new HostExecutionRunner(gateway, commands, workspaceRegistry()).launch(configuredTask(), { reuseSessionId: 'session-existing' }),
+    ).resolves.toBe('session-existing')
+    // The pinned permission is re-asserted on the existing session; no
+    // create/rename reaches the gateway at all.
+    expect(order).toEqual(['preset', 'permission', 'prompt'])
+    expect(promptPayloads).toEqual([{ sessionId: 'session-existing', requestId: expect.any(String), mode: 'queue', content: [{ type: 'text', text: 'do work' }] }])
+  })
+
+  it('reports the reused session when the reuse prompt fails (#1419)', async () => {
+    const gateway = {
+      stream: fakeStream(async () => ({ async *[Symbol.asyncIterator]() { yield snapshot([], 0, false) } })),
+      invoke: fakeInvoke(async (request: GatewayRequest) => {
+        if (request.namespace === 'agentPresets') return { presets: [{ id: 'preset-a', isDefault: false }] }
+        if (request.method === 'prompt') throw new Error('prompt rejected')
+        throw new Error('reuse must not call session/' + request.method)
+      }),
+    }
+    const failure = await new HostExecutionRunner(gateway, undefined, workspaceRegistry())
+      .launch(configuredTask(), { reuseSessionId: 'session-existing' })
+      .catch((error: unknown) => error)
+    expect(failure).toBeInstanceOf(SessionLaunchError)
+    expect((failure as SessionLaunchError).sessionId).toBe('session-existing')
+  })
+
   it('selects the pinned model on the session before dispatching prompt', async () => {
     const order: string[] = []
     const gateway = {

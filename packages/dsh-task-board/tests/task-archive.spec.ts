@@ -1,7 +1,7 @@
 /**
- * Archive/restore use-case transitions: only settled (done/failed) tasks can
- * be archived, the marker keeps status/executions intact, restore clears it,
- * and unknown ids are no-ops.
+ * Archive/restore use-case transitions: only running tasks are refused, the
+ * marker keeps status/executions intact, restore clears it, and unknown ids
+ * are no-ops.
  */
 import { describe, expect, it } from 'vitest'
 import { createTask, type TaskRecord } from '../src/core/tasks.ts'
@@ -35,12 +35,32 @@ describe('applyArchiveTask', () => {
     expect(tasks[0].archivedAt).toBe(NOW + 1)
   })
 
-  it('refuses to archive running or unsettled tasks', () => {
-    for (const status of ['backlog', 'todo', 'running'] as const) {
-      const { tasks, archived } = applyArchiveTask([task('x', status)], 'x', NOW + 1)
-      expect(archived).toBe(false)
-      expect(tasks[0].archivedAt).toBeUndefined()
+  it('refuses only running tasks', () => {
+    const { tasks, archived } = applyArchiveTask([task('x', 'running')], 'x', NOW + 1)
+    expect(archived).toBe(false)
+    expect(tasks[0].archivedAt).toBeUndefined()
+  })
+
+  it('archives backlog and todo tasks', () => {
+    for (const status of ['backlog', 'todo'] as const) {
+      const { tasks, archived } = applyArchiveTask([task('y', status)], 'y', NOW + 1)
+      expect(archived).toBe(true)
+      expect(tasks[0].archivedAt).toBe(NOW + 1)
     }
+  })
+
+  it('archives a scheduled todo task and disarms its cron (issue #1447)', () => {
+    const t = {
+      ...task('t6', 'todo'),
+      executions: [{ id: 'e1', sessionId: 's1', startedAt: 1, endedAt: 2, result: 'succeeded' as const, error: undefined }],
+      schedule: { enabled: true, cron: '0 9 * * *', nextRunAt: NOW + 60_000, lastTriggeredAt: NOW - 60_000 },
+    }
+    const { tasks, archived } = applyArchiveTask([t], 't6', NOW + 5)
+    expect(archived).toBe(true)
+    expect(tasks[0]).toMatchObject({ id: 't6', status: 'todo', archivedAt: NOW + 5 })
+    expect(tasks[0].schedule).toEqual({
+      enabled: false, cron: '0 9 * * *', nextRunAt: undefined, lastTriggeredAt: NOW - 60_000,
+    })
   })
 
   it('is a no-op for unknown ids and already-archived tasks', () => {

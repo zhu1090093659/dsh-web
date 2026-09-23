@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "black-gold",
+  "name": "暗夜鎏金",
+  "nameEn": "Black Gold Gilded",
+  "version": "1.0.0",
+  "author": "stushansusu",
+  "tagline": "纯暗色 · 黑漆底 · 描金线 · 缠枝角花 · 鎏金立绘",
+  "description": "暗色专用皮肤：无论系统设为浅色还是深色，呈现的都是同一套黑漆鎏金，所以两个主题的预览图完全一致。暖黑漆底、淡香槟金正文、金属渐变主按钮；深色值同时写在 :root 与 body[data-ds-dark-theme] 上，装饰规则不再分支，并用 html { color-scheme: dark !important } 压住跟随系统的原生控件配色。另补齐了官方「永不派生」的 14 个按钮/遮罩类 token——否则它们在浅色模式下会退回官方浅色值（「回到底部」按钮就会变成白色圆钮）。装饰层：四角缠枝角花、顶部回纹带、双线描金边、金箔碎屑与金属拉丝、菜单栏描金双线边与鎏金鲸鱼印、回合云纹分隔线、输入卡开光、工作区描金匾额、字标徽章，以及右侧羽化的鎏金立绘（blur 1.7px，整层羽化并外扩 48px 以免视口边缘虚化）。审批面板另有朱批钤印。纯 CSS，无 hooks。",
+  "tags": [
+    "black",
+    "gold",
+    "gilded",
+    "ornament",
+    "filigree",
+    "dark-only",
+    "css-only",
+    "character-art"
+  ],
+  "accent": "#c9ab6e",
+  "order": 41,
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css"
+  }
+}

@@ -31,4 +31,13 @@ describe('Doctor DSH process spawning', () => {
   it('rejects shell metacharacters before building a cmd command line', () => {
     expect(() => windowsCmdShimArgs('C:\\npm\\dsh.cmd', ['plugin', 'add', 'bad&name'])).toThrow('unsafe Windows command argument')
   })
+
+  it('executes a bare dsh command on Windows through cmd.exe (#1431)', () => {
+    const spec = dshSpawnSpec('dsh', ['--version'], 'win32')
+    expect(spec.command).toBe('cmd.exe')
+    expect(spec.windowsVerbatimArguments).toBe(true)
+    expect(spec.args.slice(0, 3)).toEqual(['/d', '/s', '/c'])
+    expect(spec.args[3]).toContain('"dsh"')
+    expect(spec.args[3]).toContain('"--version"')
+  })
 })

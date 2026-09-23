@@ -21,7 +21,7 @@ test('market/dist 核心文件齐全', () => {
   for (const f of ['index.html', 'app.js', 'preview.html', 'styles.js', 'manifest.js', '_headers', 'official-facade.js']) {
     assert.ok(exists(f), f + ' missing')
   }
-  for (const f of ['skins.json', 'pets.json', 'plugins.json']) {
+  for (const f of ['skins.json', 'pets.json', 'plugins.json', 'presets.json', 'editor-picks.json']) {
     assert.ok(exists('manifest/' + f), 'manifest/' + f + ' missing')
   }
 })
@@ -92,6 +92,43 @@ test('plugins.json 契约', () => {
   }
 })
 
+test('presets.json 契约', () => {
+  const m = readJson('manifest/presets.json')
+  assert.ok(Array.isArray(m.items), 'presets items array')
+  const ids = new Set()
+  for (const item of m.items) {
+    assert.ok(item.id && /^[a-z0-9][a-z0-9-]*$/.test(item.id), 'preset id rule: ' + item.id)
+    assert.ok(item.name, 'preset name from preset.yml: ' + item.id)
+    assert.equal(typeof item.rank, 'number', 'preset rank: ' + item.id)
+    assert.ok(Array.isArray(item.files) && item.files.length > 0, 'preset files: ' + item.id)
+    assert.ok(item.files.includes('agent.cordis.yml'), 'preset composition must ship: ' + item.id)
+    // Category drives the workshop/site filter pills; omitted entries land in 'other'.
+    assert.ok(typeof item.category === 'string' && item.category, 'preset category: ' + item.id)
+    assert.ok(!ids.has(item.id), 'duplicate preset id: ' + item.id)
+    ids.add(item.id)
+    if (item.repo) assert.ok(/^https:\/\//.test(item.repo), 'preset repo must be https: ' + item.id)
+    for (const rel of item.files) assert.ok(exists('assets/presets/' + item.id + '/' + rel), 'preset asset missing: ' + item.id + '/' + rel)
+  }
+})
+
+test('预设分区由市场站渲染', () => {
+  const app = fs.readFileSync(path.join(DIST, 'app.js'), 'utf8')
+  const html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8')
+  assert.ok(html.includes('data-kind="preset"'), 'preset tab missing from the site markup')
+  assert.ok(app.includes("preset: '预设'"), 'preset kind label missing')
+  assert.ok(app.includes("fetchJson('manifest/presets.json')"), 'preset manifest fetch missing')
+  assert.ok(app.includes("roleplay: '角色扮演'"), 'preset category label missing')
+})
+
+test('编辑推荐分区由市场站渲染固定清单', () => {
+  const app = fs.readFileSync(path.join(DIST, 'app.js'), 'utf8')
+  const html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8')
+  assert.ok(html.includes('data-kind="picks"'), 'editor-picks tab missing from the site markup')
+  assert.ok(app.includes("picks: '编辑推荐'"), 'editor-picks kind label missing')
+  assert.ok(app.includes("fetchJson('manifest/editor-picks.json')"), 'editor-picks manifest fetch missing')
+  assert.ok(app.includes('function pickEntries()'), 'editor-picks resolver missing')
+})
+
 test('皮肤与插件卡片名称以源码仓库链接渲染', () => {
   const app = fs.readFileSync(path.join(DIST, 'app.js'), 'utf8')
   assert.ok(app.includes("el('a', 'mk-card-name'"), 'card name must be an anchor for repo-backed items')
@@ -103,6 +140,30 @@ test('宠物卡片预览完整居中且不裁切', () => {
   const html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8')
   assert.ok(app.includes("media.classList.add('mk-card-media-pet')"), 'pet media class missing')
   assert.ok(html.includes('max-height: calc(100% - 16px);'), 'pet contain rule missing')
+})
+
+test('editor-picks.json 固定清单只引用真实存在的皮肤 / 宠物 / 插件', () => {
+  const picks = readJson('manifest/editor-picks.json')
+  assert.ok(Array.isArray(picks.items) && picks.items.length > 0, 'editor picks empty')
+  const catalogs = {
+    skin: new Set(readJson('manifest/skins.json').items.map((i) => i.id)),
+    pet: new Set(readJson('manifest/pets.json').items.map((i) => i.id)),
+    plugin: new Set(readJson('manifest/plugins.json').items.map((i) => i.id)),
+  }
+  const seen = new Set()
+  for (const pick of picks.items) {
+    assert.ok(catalogs[pick.kind], 'editor pick kind must be skin / pet / plugin: ' + pick.kind)
+    assert.ok(catalogs[pick.kind].has(pick.id), 'editor pick target missing: ' + pick.kind + ':' + pick.id)
+    const key = pick.kind + ':' + pick.id
+    assert.ok(!seen.has(key), 'duplicate editor pick: ' + key)
+    seen.add(key)
+  }
+})
+
+test('editor-picks.json 与手写清单顺序一致', () => {
+  const source = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'market', 'editor-picks.json'), 'utf8'))
+  const emitted = readJson('manifest/editor-picks.json')
+  assert.deepEqual(emitted.items, source.items.map(({ kind, id }) => ({ kind, id })))
 })
 
 test('styles.js 为全部皮肤生成 SKIN_STYLES', () => {

@@ -7,6 +7,9 @@ import { emptyTotals, type UsageOverviewView } from '../src/core/types.ts'
 import type { UsageService } from '../src/host/usage-service.ts'
 import { makeUsageOverviewRoute, makeUsageRefreshRoute, USAGE_API_PREFIX } from '../src/host/routes.ts'
 
+/** Host context double: no remote-web-ui pairing service, so the fence is loopback-only. */
+const HOST_CTX = { get: () => undefined } as never
+
 /**
  * Route-surface tests: the loopback fence, the POST-only refresh method
  * gate, and the JSON response contract. The service is a stub — the
@@ -31,8 +34,8 @@ let refreshes = 0
 beforeAll(async () => {
   refreshes = 0
   const routes: WebRoute[] = [
-    makeUsageOverviewRoute(stubService()),
-    makeUsageRefreshRoute(stubService({ refresh: async () => { refreshes += 1 } })),
+    makeUsageOverviewRoute(HOST_CTX, stubService()),
+    makeUsageRefreshRoute(HOST_CTX, stubService({ refresh: async () => { refreshes += 1 } })),
   ]
   server = createServer((req, res) => {
     const pathname = (req.url ?? '').split('?')[0]!
@@ -78,7 +81,7 @@ describe('usage routes', () => {
   })
 
   it('answers 500 when the refresh cycle fails', async () => {
-    const routes = [makeUsageRefreshRoute(stubService({ refresh: async () => { throw new Error('probe boom') } }))]
+    const routes = [makeUsageRefreshRoute(HOST_CTX, stubService({ refresh: async () => { throw new Error('probe boom') } }))]
     const state = { status: 0, body: '' }
     const res = {
       writeHead: (status: number) => { state.status = status },
@@ -103,13 +106,36 @@ describe('usage routes', () => {
     const lanRequest = { method: 'GET', socket: { remoteAddress: '192.168.1.9' }, headers: { host: '192.168.1.9:3080' } }
 
     const overview = probe()
-    void makeUsageOverviewRoute(stubService()).handler(lanRequest as never, overview.res as never)
+    void makeUsageOverviewRoute(HOST_CTX, stubService()).handler(lanRequest as never, overview.res as never)
     expect(overview.state.status).toBe(403)
     expect(overview.state.body).toContain('loopback-only')
 
     const refresh = probe()
-    void makeUsageRefreshRoute(stubService()).handler({ ...lanRequest, method: 'POST' } as never, refresh.res as never)
+    void makeUsageRefreshRoute(HOST_CTX, stubService()).handler({ ...lanRequest, method: 'POST' } as never, refresh.res as never)
     expect(refresh.state.status).toBe(403)
+  })
+
+  it('admits a paired LAN device through the family pairing fence (issue #1592)', () => {
+    const state = { status: 0, body: '' }
+    const res = {
+      writeHead: (code: number) => { state.status = code },
+      end: (chunk?: string) => { state.body = chunk ?? '' },
+    }
+    // remote-web-ui exposes ctx.remoteWebUiPairing; a paired cookie passes the
+    // shared fence, an unpaired LAN request is still refused.
+    const paired = { get: (name: string, strict?: boolean) => (name === 'remoteWebUiPairing' ? { isPairedDevice: () => true } : undefined) } as never
+    const request = { method: 'GET', socket: { remoteAddress: '192.168.1.9' }, headers: { host: '192.168.1.9:3080' } }
+    void makeUsageOverviewRoute(paired, stubService()).handler(request as never, res as never)
+    expect(state.status).toBe(200)
+
+    const unpaired = { get: (name: string) => (name === 'remoteWebUiPairing' ? { isPairedDevice: () => false } : undefined) } as never
+    const refused = { status: 0, body: '' }
+    void makeUsageOverviewRoute(unpaired, stubService()).handler(request as never, {
+      writeHead: (code: number) => { refused.status = code },
+      end: (chunk?: string) => { refused.body = chunk ?? '' },
+    } as never)
+    expect(refused.status).toBe(403)
+    expect(refused.body).toContain('loopback-only')
   })
 
   it('fences cross-site browser requests even from a loopback socket', () => {
@@ -123,7 +149,7 @@ describe('usage routes', () => {
       socket: { remoteAddress: '127.0.0.1' },
       headers: { host: '127.0.0.1:3080', 'sec-fetch-site': 'cross-site' },
     }
-    void makeUsageOverviewRoute(stubService()).handler(request as never, res as never)
+    void makeUsageOverviewRoute(HOST_CTX, stubService()).handler(request as never, res as never)
     expect(state.status).toBe(403)
   })
 })

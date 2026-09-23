@@ -93,6 +93,45 @@ export function bareRowEnabled(item: unknown): boolean {
 }
 
 /**
+ * The enablement a bundle patch itself declares for the ids it mentions: an
+ * insert entry's own `disabled` key, then later top-level bare
+ * `{ id, disabled }` rows applied in file order (the loader's later-wins
+ * semantics). Ids the patch never mentions stay absent, which means "this
+ * layer has no opinion" — not "enabled". The aggregate package ships its
+ * inactive-by-default family rows exactly this way.
+ * @param patchText - the package's own bundle patch text (`[]` for none).
+ * @returns declared enablement by entry id, absent when undeclared.
+ */
+export function rowDefaultEnabledOf(patchText: string): Map<string, boolean> {
+  const defaults = new Map<string, boolean>()
+  if (patchText.trim() === '' || patchText.trim() === '[]') return defaults
+  try {
+    const { root } = parsePatch(patchText, 'bundle patch')
+    for (const item of root.items) {
+      if (!isMap(item)) continue
+      const insert = item.get('insert', true)
+      if (isSeq(insert)) {
+        for (const entry of insert.items) {
+          if (!isMap(entry)) continue
+          const id = entry.get('id', true)
+          if (!(isScalar(id) && typeof id.value === 'string')) continue
+          const disabled = entry.get('disabled', true)
+          if (isScalar(disabled) && typeof disabled.value === 'boolean') defaults.set(id.value, disabled.value !== true)
+        }
+        continue
+      }
+      const id = bareRowId(item)
+      if (id === undefined) continue
+      const disabled = item.get('disabled', true)
+      if (isScalar(disabled) && typeof disabled.value === 'boolean') defaults.set(id, disabled.value !== true)
+    }
+    return defaults
+  } catch {
+    return defaults
+  }
+}
+
+/**
  * Find the bare override row for one id.
  * @param root - the top-level sequence.
  * @param id - the entry id to match.
@@ -124,6 +163,12 @@ export function claimedIdsOf(patchText: string): string[] {
 export interface InsertRow {
   id?: string
   name?: string
+  /**
+   * The real plugin package the row mounts, read from the aggregate shell
+   * row's config.plugin. Present on shell-wrapped family rows; the display
+   * name of a child row prefers it over the per-family subpath name.
+   */
+  plugin?: string
 }
 
 /**
@@ -148,9 +193,12 @@ export function insertRowsOf(patchText: string): InsertRow[] {
         if (!isMap(entry)) continue
         const id = entry.get('id', true)
         const name = entry.get('name', true)
+        const config = entry.get('config', true)
+        const plugin = isMap(config) ? config.get('plugin', true) : undefined
         rows.push({
           id: isScalar(id) && typeof id.value === 'string' ? id.value : undefined,
           name: isScalar(name) && typeof name.value === 'string' ? name.value : undefined,
+          plugin: isScalar(plugin) && typeof plugin.value === 'string' ? plugin.value : undefined,
         })
       }
     }
@@ -183,8 +231,9 @@ export function findInsertRow(root: YAMLSeq, id: string): YAMLMap | undefined {
 
 /**
  * Persist the next-start enablement of one entry. Bare override rows are this
- * package's own shape: enabling removes the override, disabling creates or
- * updates `{ id, name, disabled: true }`. When a newer desktop tool already
+ * package's own shape: enabling removes the override (or writes
+ * `disabled: false` when the bundle itself ships the row disabled), disabling
+ * creates or updates `{ id, name, disabled: true }`. When a newer desktop tool already
  * manages the entry as an insert-format row, the inner row's `disabled` flag
  * is edited instead (the official writer's shape). The returned text
  * preserves every other row and comment.
@@ -193,19 +242,40 @@ export function findInsertRow(root: YAMLSeq, id: string): YAMLMap | undefined {
  * @param id - the entry id to override.
  * @param name - the display name recorded on the row.
  * @param enabled - desired next-start enablement.
+ * @param baseEnabled - whether the bundle layer leaves the id enabled; a bundle
+ *   that ships the row disabled needs an explicit `disabled: false` override,
+ *   because removing the user row only restores "no user opinion".
  * @returns the new file text.
  */
-export function setRowEnabled(text: string, filename: string, id: string, name: string, enabled: boolean): string {
+export function setRowEnabled(text: string, filename: string, id: string, name: string, enabled: boolean, baseEnabled = true): string {
   const { document, root } = parsePatch(text, filename)
   const insertRow = findInsertRow(root, id)
   if (insertRow !== undefined) {
     insertRow.set('disabled', document.createNode(!enabled))
     return document.toString({ lineWidth: 0 }) + '\n'
   }
-  const found = findBareRow(root, id)
+  let found = findBareRow(root, id)
+  let effBase = baseEnabled
+  if (found === undefined && name !== undefined) {
+    const byName: { row: YAMLMap; index: number }[] = []
+    root.items.forEach((item, index) => {
+      if (!isBareRow(item) || bareRowName(item) !== name || bareRowId(item) === undefined) return
+      if (isMap(item)) byName.push({ row: item, index })
+    })
+    if (byName.length === 1) {
+      found = byName[0]
+      effBase = false
+    }
+  }
   if (enabled) {
-    if (found === undefined) return text
-    root.items.splice(found.index, 1)
+    if (found === undefined) {
+      if (effBase) return text
+      root.items.push(document.createNode({ id, name, disabled: false }))
+    } else if (effBase) {
+      root.items.splice(found.index, 1)
+    } else {
+      found.row.set('disabled', document.createNode(false))
+    }
   } else {
     if (found !== undefined) {
       found.row.set('disabled', document.createNode(true))

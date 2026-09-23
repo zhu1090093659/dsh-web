@@ -1345,6 +1345,38 @@ describe('extractSceneMainImageFromDir', () => {
     }
   })
 
+  it('percent-encodes URL-reserved characters in scene-resource paths (issue #1458)', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-enc-test-'))
+    try {
+      mkdirSync(join(tmp, 'models'), { recursive: true })
+      mkdirSync(join(tmp, 'materials'), { recursive: true })
+      // A WE community author's grouping prefix: the browser would read the
+      // literal '#' as the URL fragment separator and request only
+      // '.../materials/', so every texture 404s and the scene renders black.
+      writeFileSync(join(tmp, 'materials', '# background 100%.tex'), buildTex({
+        width: 128, height: 128,
+        mipmaps: [{ width: 128, height: 128, data: new Uint8Array(128 * 128 * 4) }],
+      }))
+      writeFileSync(join(tmp, 'models', 'photo.json'), JSON.stringify({ material: 'materials/photo.json', width: 128, height: 128 }))
+      writeFileSync(join(tmp, 'materials', 'photo.json'), JSON.stringify({ passes: [{ shader: 'genericimage', textures: ['# background 100%'] }] }))
+      writeFileSync(join(tmp, 'scene.json'), JSON.stringify({
+        general: { orthogonalprojection: { width: 1000, height: 800 } },
+        objects: [{ name: 'photo', image: 'models/photo.json', origin: '500 400 0' }],
+      }), 'utf8')
+
+      const manifest = buildSceneManifestFromDir(tmp, 'tok_enc')
+      const layer = manifest?.layers[0]
+      expect(layer?.texUrl).toBe('/api/skin-center/we/scene-resource/tok_enc/materials/%23%20background%20100%25.tex')
+      // No URL in the manifest may keep a raw '#' or space: the first is read as
+      // a fragment separator, the second makes the request target invalid.
+      const urls = JSON.stringify(manifest).match(/"\/api\/skin-center\/we\/scene-resource\/[^"]*"/g) ?? []
+      expect(urls.length).toBeGreaterThan(0)
+      for (const url of urls) expect(url).not.toMatch(/[# ]/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
   it('retains author time-period video layers and schedule defaults', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'dsh-time-scene-'))
     try {

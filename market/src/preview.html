@@ -318,14 +318,25 @@
 
   /** 静态应用皮肤：注入 skin.css（+ 可选 patches.css）并在 <html> 上标记
       data-dsh-skin（与真实加载器的作用域属性一致，也供截图脚本等待）。
-      皮肤 JS（hooks.mjs）在模拟器中不执行。 */
+      皮肤 JS（hooks.mjs）在模拟器中不执行。相对 url() 一律改写到本皮肤的
+      市场资产目录（assets/skins/<id>/...），使皮肤自带的小图（选中标记、
+      装饰边框等）在静态预览里与运行时一致。 */
+  function rebaseSkinUrls(css, id) {
+    var base = 'assets/skins/' + id + '/'
+    return css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, function (all, quote, path) {
+      if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|\/|#)/i.test(path)) return all
+      return 'url(' + quote + base + path + quote + ')'
+    })
+  }
+
   function loadSkin(id) {
     var entry = window.SKIN_STYLES && window.SKIN_STYLES[id]
     if (!entry || !entry.stylesheet) throw new Error('样式缺失（先运行 scripts/market-build）: ' + id)
     document.documentElement.dataset.dshSkin = id
+    var css = cloneRootTokensToBody(entry.stylesheet) + entry.stylesheet + (entry.patches ? '\n' + entry.patches : '')
     var style = document.createElement('style')
     style.id = 'skin-css'
-    style.textContent = cloneRootTokensToBody(entry.stylesheet) + entry.stylesheet + (entry.patches ? '\n' + entry.patches : '')
+    style.textContent = rebaseSkinUrls(css, id)
     document.head.appendChild(style)
   }
 

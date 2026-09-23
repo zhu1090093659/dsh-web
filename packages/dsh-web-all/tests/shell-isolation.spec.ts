@@ -54,6 +54,10 @@ function runBootScenario(rows: unknown[]): { ok: boolean; output: string; error?
     join(dir, 'good.mjs'),
     'export function apply(ctx) { ctx.provide("goodSvc", { ok: true }); globalThis.__GOOD = 1 }\n',
   )
+  writeFileSync(
+    join(dir, 'late-web.mjs'),
+    'export function apply(ctx) { const regs = []; ctx.provide("webServer", { register: (r) => { regs.push(r.path); globalThis.__REGS = regs; return () => {} } }) }\n',
+  )
   writeFileSync(join(dir, 'cordis.yml'), '[]\n')
   const script = [
     `const { boot } = await import(${JSON.stringify(HOST_BOOT)})`,
@@ -65,7 +69,8 @@ function runBootScenario(rows: unknown[]): { ok: boolean; output: string; error?
     `  const loader = ctx.get('loader')`,
     `  const include = [...loader.entries()][0]`,
     `  const entries = [...include.subtree.entries()].map(e => ({ id: e.options.id, state: e.fiber ? e.fiber.state : null }))`,
-    `  console.log(JSON.stringify({ ok: true, entries, goodSvc: ctx.get('goodSvc') ?? null }))`,
+    `  await new Promise(r => setTimeout(r, 100))`,
+    `  console.log(JSON.stringify({ ok: true, entries, goodSvc: ctx.get('goodSvc') ?? null, regs: globalThis.__REGS ?? null }))`,
     `} catch (error) {`,
     `  console.log(JSON.stringify({ ok: false, error: String(error.message).slice(0, 160) }))`,
     `}`,
@@ -183,6 +188,23 @@ describe('dsh-web-all fault-isolation shell (real boot)', () => {
     expect(facts.error).toContain('failed to apply loader entry include')
   })
 
+  dshIt('a late-provided webServer still gets both health routes (boot ordering)', () => {
+    // Real web boots: the shell applies with inject=[] BEFORE the web app
+    // provides webServer, so the routes must register through the nested
+    // inject fiber once the service appears — never stay absent. A sibling
+    // entry providing webServer after the shell row reproduces that ordering.
+    const result = runBootScenario([
+      { insert: [{ id: 'shell-late-web', name: '__PKG__/index.js', config: { plugin: '__DIR__/good.mjs' } }] },
+      { insert: [{ id: 'late-web-provider', name: '__DIR__/late-web.mjs' }] },
+    ])
+    expect(result.error).toBeUndefined()
+    const facts = JSON.parse(result.output) as { ok: boolean; entries: Array<{ id: string; state: number }>; regs: string[] | null }
+    expect(facts.ok).toBe(true)
+    expect(facts.entries.find(e => e.id === 'shell-late-web')?.state).toBe(2)
+    expect(facts.regs).toContain('/api/dsh-web-all/degraded')
+    expect(facts.regs).toContain('/api/dsh-web-all/rows')
+  })
+
   dshIt('shell without webServer still boots (optional degraded route skips)', () => {
     // No webServer service in this scenario tree: the shell must not fail
     // — the route is best-effort.
@@ -214,9 +236,12 @@ describe('dsh-web-all fault-isolation shell (real boot)', () => {
       }
 
       const effects: Array<() => void> = []
+      const pendingInject: Array<(scoped: unknown) => void> = []
       const createMockCtx = () => ({
-        reflect: {
-          get: (name: string) => (name === 'webServer' ? mockWebServer : undefined),
+        // The shell applies before webServer exists in the real boot;
+        // registration rides this nested inject fiber.
+        inject: (_deps: readonly string[], cb: (scoped: unknown) => void) => {
+          pendingInject.push(cb)
         },
         effect: (fn: () => () => void) => {
           effects.push(fn())
@@ -228,22 +253,37 @@ describe('dsh-web-all fault-isolation shell (real boot)', () => {
       for (let i = 0; i < 17; i++) {
         await apply(createMockCtx() as any, { plugin: 'node:events' })
       }
+      // webServer arrives only now (real boot ordering: it did not exist yet).
+      expect(mockWebServer.register).not.toHaveBeenCalled()
+      const scoped = {
+        webServer: mockWebServer,
+        effect: (fn: () => () => void) => {
+          effects.push(fn())
+        },
+      }
+      for (const cb of pendingInject.splice(0)) cb(scoped)
 
-      // Route was registered exactly once
-      expect(mockWebServer.register).toHaveBeenCalledTimes(1)
+      // Both health routes were registered exactly once
+      expect(mockWebServer.register).toHaveBeenCalledTimes(2)
       expect(routes.has('/api/dsh-web-all/degraded')).toBe(true)
+      expect(routes.has('/api/dsh-web-all/rows')).toBe(true)
 
-      // Tear down 16 of the 17 entries: route must remain active
+      // Each entry contributes two effects: the active-row ledger removal at
+      // apply time (indexes 0-16) and the shared route hold when webServer
+      // arrived (indexes 17-33). Release 16 of the 17 route holds: both
+      // routes must remain active.
       for (let i = 0; i < 16; i++) {
-        effects[i]?.()
+        effects[17 + i]?.()
       }
       expect(routes.has('/api/dsh-web-all/degraded')).toBe(true)
+      expect(routes.has('/api/dsh-web-all/rows')).toBe(true)
       expect(unregisters).toBe(0)
 
-      // Final entry teardown: route is disposed
-      effects[16]?.()
+      // Final route-hold release: both routes are disposed
+      effects[33]?.()
       expect(routes.has('/api/dsh-web-all/degraded')).toBe(false)
-      expect(unregisters).toBe(1)
+      expect(routes.has('/api/dsh-web-all/rows')).toBe(false)
+      expect(unregisters).toBe(2)
     } finally {
       _resetDegradedRouteForTest()
     }

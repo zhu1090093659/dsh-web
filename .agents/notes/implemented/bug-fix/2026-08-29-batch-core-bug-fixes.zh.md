@@ -5,7 +5,7 @@ Status: implemented
 ## Problem
 
 集中解决了仓库中 7 项核心缺陷与 Bug 类 Issues：
-1. **#1275**：scripts/build-cohort-tarballs.mjs 在 Windows 下直接 spawn('pnpm') 报 ENOENT、GNU tar 误判盘符为远程主机、跨盘 enameSync 抛出 EXDEV。
+1. **#1275**：scripts/build-cohort-tarballs.mjs 在 Windows 下直接 spawn('pnpm') 报 ENOENT、GNU tar 误判盘符为远程主机、跨盘 \renameSync 抛出 EXDEV。
 2. **#1272**：cordis.patch.yml 中的 !!js dshHomePath(...) 触发 TAG_RESOLVE_FAILED 告警。
 3. **#1269**：dsh-perf 的 content-visibility: auto 裁剪 markdown 宽表格（.md-table-wide）横向溢出内容。
 4. **#1267**：@linxin666/dsh-doctor 在 Windows 计划任务直接运行 cmd 导致登录弹出并常驻空白控制台窗口。
@@ -18,13 +18,13 @@ o-repeat 模式下到达终点突变跳断。
 ## Decision
 
 1. **Windows 脚本跨平台适配（#1275, #1257）**：
-   - 在 uild-cohort-tarballs.mjs 中对 pnpm 增加 Windows .cmd/shell 封装，	ar 优先使用 System32 下的 bsdtar，collectTarballs 在 EXDEV 时自动回退 copyFileSync + mSync；
-   - 在 dsh-perf/src/bsm/service.ts 中改用 ileURLToPath(moduleUrl)，彻底杜绝 Windows 重复盘符。
+   - 在 \build-cohort-tarballs.mjs 中对 pnpm 增加 Windows .cmd/shell 封装，	ar 优先使用 System32 下的 bsdtar，collectTarballs 在 EXDEV 时自动回退 copyFileSync + \rmSync；
+   - 在 dsh-perf/src/bsm/service.ts 中改用 \fileURLToPath(moduleUrl)，彻底杜绝 Windows 重复盘符。
 2. **消除 YAML Tag 告警（#1272）**：
-   - 移除 dsh-perf/cordis.patch.yml 中冗余的 oot: !!js，在 scripts/aggregate.mjs 中将 !!js dshHomePath(...) 自动转换为规范的相对路径，并重新生成了聚合包 cordis.patch.yml。
+   - 移除 dsh-perf/cordis.patch.yml 中冗余的 \root: !!js，在 scripts/aggregate.mjs 中将 !!js dshHomePath(...) 自动转换为规范的相对路径，并重新生成了聚合包 cordis.patch.yml。
 3. **保护宽表渲染与联动降载设置（#1269）**：
    - 升级 P0 降载 CSS 规则为 :not(:has(.md-table-wide))，对含宽表的行重置 content-visibility: visible !important; contain: none !important;；
-   - 将 P0 降载样式注入真正关联到 enderDegrade 设置开关。
+   - 将 P0 降载样式注入真正关联到 \renderDegrade 设置开关。
 4. **Windows 计划任务后台无窗静默运行（#1267）**：
    - 生成 supervisor.vbs 静默包装脚本，由 wscript.exe 原生无窗拉起 supervisor.cmd，消除登录黑框。
 5. **皮肤留白与动画修复（#1265, #1258）**：

@@ -9,3 +9,6 @@ trim_trailing_whitespace = true
 [*.{md,yml,yaml,json,ts,tsx,js,mjs,cjs,css,module.css,html,sh}]
 indent_style = space
 indent_size = 2
+
+[*.{bat,cmd}]
+end_of_line = crlf

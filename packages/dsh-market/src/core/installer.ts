@@ -1,7 +1,12 @@
 /**
  * Market asset installer core: builds the download plan from the public
  * dsh-market.com manifest and writes it into the DSH home asset
- * directories ($DSH_HOME/skins/<id>, $DSH_HOME/pets/<id>).
+ * directories ($DSH_HOME/skins/<id>, $DSH_HOME/pets/<id>,
+ * $DSH_HOME/agent-presets/<id>).
+ *
+ * A `preset` install lands in the preset LIBRARY ($DSH_HOME/agent-presets/<id>):
+ * a downloaded composition stays inert on disk until the preset center
+ * declares it to the agent-preset registry, because a preset is code.
  *
  * Security model (host half):
  *  - the manifest is fetched from MARKET_ORIGIN only;
@@ -10,7 +15,7 @@
  *  - the download URL is rebuilt from the validated rel, never taken from
  *    the client (the client only sends the asset id);
  *  - the manifest and every downloaded file are size-capped (1 MiB manifest,
- *    200 files per asset, 200 MiB per file) and every fetch has a 30 s
+ *    2000 files per asset, 200 MiB per file) and every fetch has a 30 s
  *    timeout, so a hostile manifest cannot exhaust host memory or disk;
  *  - writes are staged in a temp dir next to the destination and renamed
  *    into place only after every file downloaded successfully, so a failed
@@ -44,14 +49,22 @@ export interface InstallProvenance {
   kind: MarketKind
   id: string
   installedAt: string
+  /** Market manifest version at install time, when the manifest carried one. */
+  assetVersion?: string
   files: Record<string, string>
 }
 
 /** Manifest response size cap (bytes). */
 export const MANIFEST_MAX_BYTES = 1024 * 1024
 
-/** Max files one asset may declare. */
-export const MAX_FILES_PER_ASSET = 200
+/**
+ * Max files one asset may declare. Frame-sequence (frames2d) pets are
+ * per-frame image sets that legitimately run past a thousand files (issue
+ * #1578), so the cap must clear the largest published asset; installer.test.ts
+ * pins the exact value and scripts/market-build rejects any catalog entry that
+ * crosses it, so content and installer policy cannot drift apart.
+ */
+export const MAX_FILES_PER_ASSET = 2000
 
 /** Per-file download size cap (bytes). */
 export const FILE_MAX_BYTES = 200 * 1024 * 1024
@@ -59,7 +72,28 @@ export const FILE_MAX_BYTES = 200 * 1024 * 1024
 /** Per-request timeout (ms). */
 export const FETCH_TIMEOUT_MS = 30_000
 
-export type MarketKind = 'skin' | 'pet'
+export type MarketKind = 'skin' | 'pet' | 'preset'
+
+/** DSH home directory per asset kind (presets land in the inert library). */
+const KIND_DIR: Record<MarketKind, string> = {
+  skin: 'skins',
+  pet: 'pets',
+  preset: 'agent-presets',
+}
+
+/** Manifest basename per asset kind (dsh-market.com/manifest/<name>.json). */
+const KIND_MANIFEST: Record<MarketKind, string> = {
+  skin: 'skins',
+  pet: 'pets',
+  preset: 'presets',
+}
+
+/** Asset id rule per kind: presets must match the official preset directory rule. */
+const KIND_ID_RE: Record<MarketKind, RegExp> = {
+  skin: /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,
+  pet: /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,
+  preset: /^[a-z0-9][a-z0-9-]*$/,
+}
 
 export interface MarketManifestItem {
   id: string
@@ -88,14 +122,14 @@ export function isSafeRel(rel: string): boolean {
   return true
 }
 
-/** The market asset base URL for one kind/id (skins/<id>/ or pets/<id>/). */
+/** The market asset base URL for one kind/id (skins/<id>/, pets/<id>/, presets/<id>/). */
 export function assetBase(kind: MarketKind, id: string): string {
-  return `${MARKET_ORIGIN}/assets/${kind === 'skin' ? 'skins' : 'pets'}/${encodeURIComponent(id)}/`
+  return `${MARKET_ORIGIN}/assets/${KIND_MANIFEST[kind]}/${encodeURIComponent(id)}/`
 }
 
 /** Build the validated download plan from a manifest file list. */
 export function planDownload(kind: MarketKind, id: string, files: readonly string[]): DownloadPlanEntry[] {
-  if (!id || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(id)) {
+  if (!id || !KIND_ID_RE[kind].test(id)) {
     throw new Error(`invalid asset id: ${id}`)
   }
   if (!Array.isArray(files) || files.length === 0) {
@@ -116,9 +150,9 @@ export function planDownload(kind: MarketKind, id: string, files: readonly strin
   return plan
 }
 
-/** The destination directory for one asset (dsh home + skins|pets + id). */
+/** The destination directory for one asset (dsh home + kind directory + id). */
 export function targetDir(dshHome: string, kind: MarketKind, id: string): string {
-  return join(dshHome, kind === 'skin' ? 'skins' : 'pets', id)
+  return join(dshHome, KIND_DIR[kind], id)
 }
 
 export interface InstallOptions {
@@ -228,7 +262,7 @@ async function fetchManifest(
   maxBytes: number,
   timeoutMs: number,
 ): Promise<MarketManifest> {
-  const url = `${MARKET_ORIGIN}/manifest/${kind === 'skin' ? 'skins' : 'pets'}.json`
+  const url = `${MARKET_ORIGIN}/manifest/${KIND_MANIFEST[kind]}.json`
   const res = await fetchWithTimeout(url, fetchImpl, 'manifest', timeoutMs)
   if (!res.ok) throw new MarketInstallError('manifest', `manifest fetch failed: ${res.status}`)
   const text = await readBodyLimited(res, maxBytes, 'manifest', `manifest ${url}`, timeoutMs)
@@ -288,6 +322,7 @@ export async function installAsset(
       kind,
       id,
       installedAt: new Date().toISOString(),
+      ...(typeof item.version === 'string' && item.version !== '' ? { assetVersion: item.version } : {}),
       files: hashes,
     }
     writeFileSync(join(tmp, PROVENANCE_FILENAME), JSON.stringify(provenance, null, 2) + '\n')

@@ -36,6 +36,32 @@ describe('parsePluginList', () => {
   })
 })
 
+  it('parses aggregate children rows with locked flags', () => {
+    const row = {
+      ...pluginRow,
+      children: [
+        { id: 'web-ui-pet', name: '@linxin666/dsh-pet', enabled: false },
+        { id: 'web-ui-plugin-manager', name: '@linxin666/dsh-client-ui-plugin-manager', enabled: true, locked: true },
+      ],
+    }
+    const [item] = parsePluginList({ plugins: [row] })
+    expect(item.children).toEqual([
+      { id: 'web-ui-pet', name: '@linxin666/dsh-pet', enabled: false },
+      { id: 'web-ui-plugin-manager', name: '@linxin666/dsh-client-ui-plugin-manager', enabled: true, locked: true },
+    ])
+  })
+
+  it('rejects malformed children with row and child indexes', () => {
+    expect(() => parsePluginList({ plugins: [{ ...pluginRow, children: 'no' }] })).toThrow(/children/)
+    expect(() => parsePluginList({ plugins: [{ ...pluginRow, children: [{ id: 42 }] }] })).toThrow(/row 0 child 0/)
+  })
+
+  it('parses a row without children exactly as before', () => {
+    const [item] = parsePluginList({ plugins: [pluginRow] })
+    expect(item.children).toBeUndefined()
+  })
+
+
 describe('parseInstalledPlugin', () => {
   it('parses a valid plugin wrapper', () => {
     expect(parseInstalledPlugin({ plugin: pluginRow })).toEqual(pluginRow)

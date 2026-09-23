@@ -1,9 +1,10 @@
 /**
  * Market host HTTP routes — the loopback-only install gateway the browser
- * half calls to install skins/pets from dsh-market.com into the DSH home
- * asset directories. Endpoints (all under /api/market):
+ * half calls to install skins/pets/presets from dsh-market.com into the DSH
+ * home asset directories. Endpoints (all under /api/market):
  *  - POST /api/market/install-skin { id, force? }
  *  - POST /api/market/install-pet { id, force? }
+ *  - POST /api/market/install-preset { id, force? }  (writes the preset library)
  * The host fetches the manifest itself, validates every path, and never
  * accepts a URL or a file list from the client (see core/installer).
  * @module @linxin666/dsh-client-ui-market/routes
@@ -99,11 +100,13 @@ export function makeMarketRoutes(deps: MakeMarketRoutesDeps = {}): WebRoute[] {
     writeJson(res, 200, {
       skins: listDirs(path.join(home, 'skins')),
       pets: listDirs(path.join(home, 'pets')),
+      presets: listDirs(path.join(home, 'agent-presets')),
     }, { 'cache-control': 'no-store' })
   }
 
   const installSkin = handleInstall('skin')
   const installPet = handleInstall('pet')
+  const installPreset = handleInstall('preset')
 
   return [
     {
@@ -120,6 +123,11 @@ export function makeMarketRoutes(deps: MakeMarketRoutesDeps = {}): WebRoute[] {
       kind: 'exact',
       path: `${MARKET_API_PREFIX}/install-pet`,
       handler: installPet,
+    },
+    {
+      kind: 'exact',
+      path: `${MARKET_API_PREFIX}/install-preset`,
+      handler: installPreset,
     },
   ]
 }

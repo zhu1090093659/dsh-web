@@ -314,18 +314,33 @@ describe('loadPetRegistry', () => {
       dshPetsDir: '',
     })
 
-    // The repo checkout also resolves miku (frames2d gameplay pet) and
-    // starry-doll (community sprite2d pet) from assets/; the npm files
-    // whitelist excludes them (Workshop delivery), so npm installs see the
-    // three atlas pets until a Workshop install lands them under
-    // $DSH_HOME/pets.
+    // The repo checkout also resolves doro and miku (frames2d gameplay pets),
+    // jyn (frames2d gameplay pet) and starry-doll (community sprite2d pet) from
+    // assets/; the npm files whitelist excludes them (Workshop delivery), so
+    // npm installs see the atlas pets until a Workshop install lands them
+    // under $DSH_HOME/pets. blue-throated-bee-eater ships bundled alongside
+    // the other atlas pets.
     expect(registry.entries.map(entry => entry.id)).toEqual([
+      'blue-throated-bee-eater',
+      'doro',
+      'jyn',
       'miku',
       'ouo-neko',
       'starry-doll',
       'whale-girl',
       'whale-girl-refined',
     ])
+    expect(registry.byId('blue-throated-bee-eater')).toMatchObject({
+      displayName: '蓝喉蜂虎',
+      atlasRows: 9,
+      columns: 8,
+      rows: [6, 8, 8, 4, 5, 8, 6, 6, 6],
+    })
+    expect(existsSync(petAtlasFile(registry.byId('blue-throated-bee-eater')!))).toBe(true)
+    expect(registry.byId('jyn')).toMatchObject({
+      displayName: '女仆鲸鱼娘',
+      renderer: 'frames2d',
+    })
     expect(registry.byId('ouo-neko')).toMatchObject({
       displayName: 'OUO Neko',
       atlasRows: 11,

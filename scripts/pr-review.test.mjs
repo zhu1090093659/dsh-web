@@ -197,7 +197,7 @@ function makeBody(overrides = {}) {
     `## 涉及包（Affected Packages）`,
     `- [x] 任务看板 packages/dsh-task-board`,
     `## PR 类别（PR Category）`,
-    `- [x] 插件功能（任务看板 / Git 图谱 / 右侧面板 / 远程 Web UI / SSH / 宠物 / 设置 / 聚合包）`,
+    `- [x] 插件功能（任务看板 / Git 图谱 / 右侧面板 / 远程 Web UI / SSH / 宠物 / 预设中心 / 设置 / 聚合包）`,
     `## PR 类型（PR Type）`,
     `- [x] 面向用户的功能或行为变更`,
     ...(overrides.visual ? [`- [x] 视觉修复（UI / 视觉类问题的修复）`] : []),

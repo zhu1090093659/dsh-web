@@ -6,7 +6,7 @@
  * described by /openapi.json and documented at /api-docs.html.
  */
 
-import { handleTelemetryPost, handleTelemetrySummary, handleTelemetryUsersBadge, pruneOldEvents, refreshBadgeCache, refreshSummaryCache } from './telemetry.js'
+import { handleTelemetryPost, handleTelemetrySummary, handleTelemetryUsersBadge, pruneOldEvents, refreshBadgeCache, refreshDailyRollups, refreshSummaryCache } from './telemetry.js'
 import { readJsonCapped } from './body.js'
 import { isKnownAsset } from './asset-allowlist.js'
 import { handleNpmBadge, handleNpmDownloads } from './npm-badge.js'
@@ -15,7 +15,7 @@ import API_CATALOG from './api-catalog.js'
 import OPENAPI_SPEC from './openapi.js'
 import API_DOCS_HTML from './api-doc.js'
 
-const KINDS = new Set(['skin', 'pet', 'plugin'])
+const KINDS = new Set(['skin', 'pet', 'plugin', 'preset'])
 const INSTALL_ACTIONS = new Set(['market-like', 'market-install'])
 const HOMEPAGE_PATHS = new Set(['/', '/index.html'])
 const HOME_LINK = '</.well-known/api-catalog>; rel="api-catalog", </openapi.json>; rel="service-desc", </api-docs.html>; rel="service-doc", </api-docs.html>; rel="describedby"'
@@ -156,7 +156,7 @@ async function sha256(text) {
 
 async function readStats(env) {
   const { results } = await env.DB.prepare('SELECT kind, asset_id, votes FROM counts').all()
-  const out = { skin: {}, pet: {}, plugin: {} }
+  const out = { skin: {}, pet: {}, plugin: {}, preset: {} }
   for (const row of results || []) {
     if (!(row.kind in out)) continue
     out[row.kind][row.asset_id] = row.votes
@@ -234,7 +234,7 @@ async function mutateInstall(env, kind, assetId, hash, installId) {
 async function readInstalls(env) {
   try {
     const { results } = await env.DB.prepare('SELECT kind, asset_id, installs FROM install_counts').all()
-    const out = { skin: {}, pet: {}, plugin: {} }
+    const out = { skin: {}, pet: {}, plugin: {}, preset: {} }
     for (const row of results || []) {
       if (!(row.kind in out)) continue
       out[row.kind][row.asset_id] = row.installs
@@ -262,13 +262,19 @@ async function mutateLike(env, kind, assetId, hash, unlike) {
 }
 
 export default {
-  /** Cron trigger: recompute the public badge counts, refresh the summary
-   * rollup cache the dashboard reads, and prune expired telemetry events
+  /** Cron trigger: recompute the public badge counts, roll the finished UTC
+   * days up (and backfill the days a fresh deployment still owes), refresh the
+   * summary cache the dashboard reads, and prune expired telemetry
    * (wrangler.jsonc triggers.crons). */
   async scheduled(controller, env) {
     try {
       await refreshBadgeCache(env)
     } catch { /* best-effort; the badge serves the last computed row */ }
+    // Before the pre-warm: the summary reads only the rollup tables, and a
+    // tick that spends its budget backfilling simply keeps the previous cache.
+    try {
+      await refreshDailyRollups(env)
+    } catch { /* best-effort; the rollup cursor makes the next tick resume */ }
     try {
       await refreshSummaryCache(env)
     } catch { /* best-effort; stale rows keep serving until the next tick */ }
@@ -281,6 +287,14 @@ export default {
   },
 
   async fetch(request, env) {
+    // tv.dsh-market.com rides the same wildcard routes as relay hosts (see
+    // wrangler.jsonc) but is the telemetry-view dashboard: forward the whole
+    // hostname to the dedicated worker via the service binding. The Access
+    // JWT header rides along; telemetry-view keeps verifying it itself.
+    if (new URL(request.url).hostname === 'tv.dsh-market.com') {
+      return env.TELEMETRY_VIEW.fetch(request)
+    }
+
     // Relay traffic rides wildcard subdomains (<id>.dsh-market.com) and
     // must dispatch before any dsh-market.com-path logic.
     const relayed = await handleRelay(request, env)
@@ -291,6 +305,12 @@ export default {
 
     if (path === '/api/relay/register' && request.method === 'PUT') return handleRelayRegister(request, env)
     if (path === '/api/relay/unregister' && request.method === 'POST') return handleRelayUnregister(request, env)
+
+    // /app.js is listed in run_worker_first only so the tv.dsh-market.com
+    // dashboard's same-origin script reaches its worker; every other hostname
+    // must keep serving the store asset, which assets-first hides behind this
+    // now-captured path.
+    if (path === '/app.js') return env.ASSETS.fetch(request)
 
     if (request.method === 'OPTIONS' && (path === '/api/like' || path === '/api/install' || path === '/api/stats' || path === '/api/telemetry/event')) return preflight(request)
     if (path === '/api/health') return json({ ok: true })

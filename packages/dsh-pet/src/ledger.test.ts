@@ -143,6 +143,25 @@ describe('PetLedger', () => {
     expect(ledger.takeDirty()).toBe(true)
   })
 
+  it('stores and clears the per-pet skin selection', () => {
+    const ledger = new PetLedger(emptyPersist())
+    expect(ledger.petSkin('jyn')).toBeUndefined()
+    ledger.setPetSkin('jyn', 'bingjing-gongzhu')
+    expect(ledger.petSkin('jyn')).toBe('bingjing-gongzhu')
+    expect(ledger.snapshot.skins).toEqual({ jyn: 'bingjing-gongzhu' })
+    expect(ledger.takeDirty()).toBe(true)
+    // Same value again: nothing changed, so no extra persist.
+    ledger.setPetSkin('jyn', 'bingjing-gongzhu')
+    expect(ledger.takeDirty()).toBe(false)
+    // undefined clears the entry back to the pet's default look.
+    ledger.setPetSkin('jyn', undefined)
+    expect(ledger.petSkin('jyn')).toBeUndefined()
+    expect(ledger.snapshot.skins).toEqual({})
+    expect(ledger.takeDirty()).toBe(true)
+    ledger.setPetSkin('jyn', undefined)
+    expect(ledger.takeDirty()).toBe(false)
+  })
+
   it('exposes the treat stock cap and display/pet/name setters', () => {
     const ledger = new PetLedger(emptyPersist())
     expect(ledger.treatMax).toBe(defaultTreatConfig.maxTreats)

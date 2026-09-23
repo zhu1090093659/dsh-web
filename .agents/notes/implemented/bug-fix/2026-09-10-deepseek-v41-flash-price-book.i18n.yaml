@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-09-10-deepseek-v41-flash-price-book.md: ee7208032e91a48ab1524ddc919cd9f0c64ddc28
+2026-09-10-deepseek-v41-flash-price-book.zh.md: 3908579b15250f88ca49ef75ae8ce298bdc317a9

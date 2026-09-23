@@ -16,6 +16,7 @@ const MANIFEST_BY_KIND = {
   skin: '/manifest/skins.json',
   pet: '/manifest/pets.json',
   plugin: '/manifest/plugins.json',
+  preset: '/manifest/presets.json',
 }
 
 const TTL_MS = 5 * 60 * 1000

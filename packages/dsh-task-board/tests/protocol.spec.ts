@@ -70,6 +70,31 @@ describe('task-board action protocol', () => {
     })).toBeUndefined()
   })
 
+  it('accepts the session-reuse opt-in in create input and update patch (#1419)', () => {
+    expect(parseActionEnvelope({
+      requestId: 'create-reuse',
+      action: { kind: 'create', id: 'task-reuse', input: { title: 'R', description: '', prompt: 'p', reuseSession: true } },
+    })?.action.kind).toBe('create')
+
+    // false (and null) clear the opt-in; anything else is rejected outright.
+    expect(parseActionEnvelope({
+      requestId: 'update-reuse-off',
+      action: { kind: 'update', taskId: 'task-reuse', patch: { reuseSession: false } },
+    })?.action.kind).toBe('update')
+    expect(parseActionEnvelope({
+      requestId: 'update-reuse-null',
+      action: { kind: 'update', taskId: 'task-reuse', patch: { reuseSession: null } },
+    })?.action.kind).toBe('update')
+    expect(parseActionEnvelope({
+      requestId: 'update-reuse-bad',
+      action: { kind: 'update', taskId: 'task-reuse', patch: { reuseSession: 'yes' } },
+    })).toBeUndefined()
+    expect(parseActionEnvelope({
+      requestId: 'create-reuse-bad',
+      action: { kind: 'create', id: 'task-reuse', input: { title: 'R', description: '', prompt: 'p', reuseSession: 1 } },
+    })).toBeUndefined()
+  })
+
   it('accepts benign future import fields but rejects executable command fields', () => {
     const valid = createTask({ title: 'A', description: '', prompt: '' }, 1, 'task-a')
     expect(parseActionEnvelope({ requestId: 'ok', action: { kind: 'import', sourceId: 'browser', tasks: [valid] } })).toBeDefined()

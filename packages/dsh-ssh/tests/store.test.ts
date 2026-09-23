@@ -2,7 +2,7 @@
  * HostStore unit tests: CRUD, validation, ssh-config import. No network.
  */
 
-import { mkdtempSync, writeFileSync, rmSync, statSync, readdirSync, readFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync, statSync, readdirSync, readFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -11,15 +11,18 @@ import type { HostPayload } from '../src/protocol.ts'
 
 const dirs: string[] = []
 
-function makeStore(sshConfig?: string): HostStore {
+function makeStoreIn(sshConfig?: string): { store: HostStore; dir: string; configPath: string } {
   const dir = mkdtempSync(join(tmpdir(), 'dsh-ssh-store-'))
   dirs.push(dir)
-  const storePath = join(dir, 'hosts.json')
   // Always pin the config path into the sandbox so the real ~/.ssh/config is
   // never touched, even when no fixture is provided (missing-file case).
   const configPath = join(dir, 'config')
   if (sshConfig !== undefined) writeFileSync(configPath, sshConfig, 'utf8')
-  return new HostStore(storePath, configPath)
+  return { store: new HostStore(join(dir, 'hosts.json'), configPath), dir, configPath }
+}
+
+function makeStore(sshConfig?: string): HostStore {
+  return makeStoreIn(sshConfig).store
 }
 
 afterEach(() => {
@@ -63,6 +66,15 @@ describe('validation', () => {
     expect(validateHostPayload({ host: 'h', user: 'u', auth: { kind: 'agent', agentPath: 123 } })).toContain('agentPath')
     expect(validateHostPayload({ host: 'h', user: 'u', auth: { kind: 'agent' } })).toBeUndefined()
     expect(validateHostPayload({ host: 'h', user: 'u', auth: { kind: 'bogus' } })).toContain('kind')
+  })
+
+  it('rejects a payload carrying both transports but accepts none as a clear', () => {
+    const base = { host: 'h', user: 'u', auth: { kind: 'password', password: 'p' } }
+    expect(validateHostPayload({ ...base, proxyCommand: 42 })).toContain('proxyCommand')
+    expect(validateHostPayload({ ...base, proxyCommand: 'nc %h %p', proxyJump: ['bastion'] }))
+      .toContain('cannot be combined')
+    expect(validateHostPayload({ ...base, proxyCommand: 'none', proxyJump: ['bastion'] })).toBeUndefined()
+    expect(validateHostPayload({ ...base, proxyCommand: 'nc %h %p' })).toBeUndefined()
   })
 })
 
@@ -179,33 +191,120 @@ describe('import from ssh config', () => {
     '',
   ].join('\n')
 
-  it('imports usable blocks and skips wildcards/missing HostName', () => {
+  it('imports usable blocks, falls back to the pattern as host, and skips wildcards with a reason', () => {
     const store = makeStore(config)
     const result = store.importFromSshConfig()
     expect(result.parsed).toBe(4)
-    expect(result.added).toBe(2)
-    expect(result.skipped).toBe(2)
+    expect(result.added).toBe(3)
+    expect(result.skipped).toBe(1)
+    expect(result.skippedBlocks).toEqual([{ name: '*.cluster', reason: 'wildcard' }])
     expect(store.find('prod-web-01')?.host).toBe('10.0.0.1')
     expect(store.find('prod-web-01')?.user).toBe('deploy')
     expect(store.find('prod-web-01')?.port).toBe(2222)
     expect(store.find('prod-web-01')?.auth.kind).toBe('key')
     expect(store.find('prod-web-01')?.proxyJump).toEqual(['bastion'])
     expect(store.find('dev-db')?.auth.kind).toBe('key')
+    // No HostName: OpenSSH uses the Host pattern itself as the hostname.
+    expect(store.find('nohost')?.host).toBe('nohost')
+    expect(store.find('nohost')?.user).toBe('root')
   })
 
-  it('skips existing aliases on re-import', () => {
+  it('skips existing aliases on re-import and reports why', () => {
     const store = makeStore(config)
     store.importFromSshConfig()
     const again = store.importFromSshConfig()
     expect(again.added).toBe(0)
-    // 2 unimportable blocks + 2 existing aliases, all counted as skipped.
+    // 1 wildcard block + 3 aliases that already exist.
     expect(again.skipped).toBe(4)
-    expect(again.skippedNames).toContain('prod-web-01')
+    expect(again.skippedBlocks).toContainEqual({ name: 'prod-web-01', reason: 'existing' })
+    expect(again.skippedBlocks).toContainEqual({ name: '*.cluster', reason: 'wildcard' })
   })
 
   it('handles a missing config file', () => {
     const store = makeStore()
-    expect(store.importFromSshConfig()).toEqual({ parsed: 0, added: 0, skipped: 0, skippedNames: [] })
+    expect(store.importFromSshConfig()).toEqual({ parsed: 0, added: 0, skipped: 0, skippedBlocks: [] })
+  })
+
+  it('keeps ProxyCommand verbatim and drops the OpenSSH none keyword', () => {
+    const store = makeStore([
+      'Host bastion-host',
+      '    HostName target.internal',
+      '    User deploy',
+      '    ProxyCommand corp-vpn proxy %h %p %r',
+      '',
+      'Host direct-host',
+      '    HostName 10.1.1.1',
+      '    User root',
+      '    ProxyCommand none',
+    ].join('\n'))
+    const result = store.importFromSshConfig()
+    expect(result.added).toBe(2)
+    expect(store.find('bastion-host')?.proxyCommand).toBe('corp-vpn proxy %h %p %r')
+    expect(store.find('direct-host')?.proxyCommand).toBeUndefined()
+  })
+
+  it('keeps an address-form ProxyJump spec verbatim', () => {
+    const store = makeStore([
+      'Host through-address',
+      '    HostName 10.2.2.2',
+      '    User root',
+      '    ProxyJump ops@bastion.example.com:2222',
+    ].join('\n'))
+    expect(store.importFromSshConfig().added).toBe(1)
+    expect(store.find('through-address')?.proxyJump).toEqual(['ops@bastion.example.com:2222'])
+  })
+
+  it('expands Include files (glob, nested, relative to the config directory) and ignores missing paths', () => {
+    const { store, dir } = makeStoreIn([
+      'Include config.d/*.conf',
+      'Include missing/*.conf',
+      '',
+      'Host from-main',
+      '    HostName 10.3.3.3',
+      '    User root',
+      '    Include nested.conf',
+    ].join('\n'))
+    mkdirSync(join(dir, 'config.d'), { recursive: true })
+    writeFileSync(join(dir, 'config.d', '10-work.conf'), [
+      'Host from-include',
+      '    HostName 10.4.4.4',
+      '    User deploy',
+    ].join('\n'), 'utf8')
+    // A relative nested Include resolves against the imported config's
+    // directory (OpenSSH: ~/.ssh); the trailing Include back into the top file
+    // is the cycle case and must stay a no-op.
+    writeFileSync(join(dir, 'nested.conf'), [
+      'Host from-nested',
+      '    HostName 10.5.5.5',
+      '    User nested',
+      'Include config',
+    ].join('\n'), 'utf8')
+    const result = store.importFromSshConfig()
+    expect(result.added).toBe(3)
+    expect(store.find('from-include')?.host).toBe('10.4.4.4')
+    expect(store.find('from-include')?.user).toBe('deploy')
+    expect(store.find('from-nested')?.host).toBe('10.5.5.5')
+    expect(store.find('from-main')?.host).toBe('10.3.3.3')
+  })
+
+  it('never attributes a Match block to the Host block above it', () => {
+    const store = makeStore([
+      'Host conditional',
+      '    HostName 10.6.6.6',
+      '    User root',
+      'Match host *.internal',
+      '    ProxyCommand corp-vpn proxy %h %p',
+      '    User ops',
+      '',
+      'Host plain',
+      '    HostName 10.6.6.7',
+      '    User root',
+    ].join('\n'))
+    const result = store.importFromSshConfig()
+    expect(result.added).toBe(2)
+    expect(store.find('conditional')?.user).toBe('root')
+    expect(store.find('conditional')?.proxyCommand).toBeUndefined()
+    expect(result.skippedBlocks.some(block => block.reason === 'match')).toBe(true)
   })
 
   it('imports a lowercase `Hostname` keyword (case-insensitive ssh_config)', () => {
@@ -275,6 +374,23 @@ describe('partial updates', () => {
     expect(updated.tags).toEqual(['web', 'nginx', 'new'])
     expect(updated.host).toBe('192.168.1.10')
     expect(updated.auth.password).toBe('pw')
+  })
+
+  it('stores a ProxyCommand, clears it explicitly, and keeps the transports mutually exclusive', () => {
+    const store = makeStore()
+    store.create({ ...basePayload, alias: 'proxy-host', proxyCommand: '  corp-vpn proxy %h %p  ' })
+    expect(store.find('proxy-host')?.proxyCommand).toBe('corp-vpn proxy %h %p')
+    expect(store.summarize(store.find('proxy-host')!).proxyCommand).toBe('corp-vpn proxy %h %p')
+    // An empty value (and OpenSSH's `none`) is an explicit clear.
+    expect(store.update('proxy-host', { proxyCommand: '' }).proxyCommand).toBeUndefined()
+    store.update('proxy-host', { proxyCommand: 'nc %h %p' })
+    // Adding the other transport later must fail on the merged view, not slip in.
+    expect(() => store.update('proxy-host', { proxyJump: ['bastion'] })).toThrow(/cannot be combined/)
+    expect(store.find('proxy-host')?.proxyCommand).toBe('nc %h %p')
+    expect(store.find('proxy-host')?.proxyJump).toEqual([])
+    expect(store.update('proxy-host', { proxyCommand: 'none' }).proxyCommand).toBeUndefined()
+    store.update('proxy-host', { proxyJump: ['bastion'] })
+    expect(() => store.update('proxy-host', { proxyCommand: 'nc %h %p' })).toThrow(/cannot be combined/)
   })
 
   it('rejects an empty host on update but accepts other fields', () => {

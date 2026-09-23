@@ -27,6 +27,7 @@ Status: implemented
 - 根 README 仍由中英文手工配对维护，不属于 packages/docs 三件套门禁，因此提交前必须人工核对两侧的标题、表格、链接与图片。
 - 皮肤图片资源与现有生成器保持不变，避免把文档简化误解为删除皮肤或市场资产。
 - 被 [根 README SEO 优化与特色功能章节](../../archived/process/2026-08-25-root-readme-seo-feature-sections.zh.md) 部分取代：梁神模式已回归根 README（功能章节、安装命令、npm 清单行与许可证行）；皮肤与宠物的目录精简仍然有效。
+- 进一步被 [根 README 的功能收敛与 DSH Desktop 章节](../process/2026-09-10-root-readme-feature-focus-and-desktop.zh.md) 部分取代：重新组装的梁神模式展示已随救助模式与外部归档管理章节一并移除；皮肤与宠物的目录精简仍然有效。
 
 ## Testing
 

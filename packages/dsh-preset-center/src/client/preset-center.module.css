@@ -1,0 +1,83 @@
+/* Presets panel: catalog rows plus the install/enable state machine's
+ * controls. Colors come from the official alias tokens so skins remap them. */
+.panel { display: flex; flex-direction: column; gap: 10px; }
+.search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-layer-1);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+}
+.search:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 1px; }
+.empty { margin: 0; padding: 14px 0; font-size: 13px; color: var(--dsw-alias-label-tertiary); }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+.cardHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; min-width: 0; }
+.cardName { font-weight: 600; color: var(--dsw-alias-label-primary); }
+.cardName a { color: inherit; text-decoration: none; }
+.cardName a:hover { text-decoration: underline; }
+.version { margin-left: 6px; font-size: 11px; color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
+.cardMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 11px; color: var(--dsw-alias-label-tertiary); }
+.cardDesc { margin: 0; font-size: 13px; line-height: 1.45; color: var(--dsw-alias-label-secondary); }
+.badgeMuted, .badgeOn, .badgeOff, .badgeWarn, .badgeCode {
+  flex: none;
+  font-size: 11px;
+  line-height: 1.6;
+  border-radius: 999px;
+  padding: 0 8px;
+  white-space: nowrap;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-label-secondary);
+}
+.badgeOn { color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-2); border-color: var(--dsw-alias-label-dimmed); }
+.badgeWarn { color: var(--dsw-alias-label-error, #c53030); }
+.badgeCode { color: var(--dsw-alias-label-primary); }
+.profile { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
+.profileText { font-size: 11px; line-height: 1.5; color: var(--dsw-alias-label-tertiary); }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.actions > button { font-size: 12px; }
+/* Filled primary uses the shell's CTA token set (packages/AGENTS.md): the
+ * brand-primary pair resolves to the same value on both sides in the current
+ * official theme and renders an unreadable label. */
+.primary {
+  color: var(--dsw-alias-label-primary-foreground);
+  background: var(--dsw-alias-button-primary-fill);
+  border-color: var(--dsw-alias-button-primary-fill);
+}
+.primary:hover:enabled {
+  background: var(--dsw-alias-button-primary-hover);
+  border-color: var(--dsw-alias-button-primary-hover);
+}
+.primary:disabled { opacity: 0.55; cursor: default; }
+.secondary { color: var(--dsw-alias-label-primary); }
+.danger { color: var(--dsw-alias-label-error, #c53030); }
+.note { margin: 0; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
+.inlineButton { margin-left: 8px; font-size: 12px; }
+.viewer {
+  max-height: 46vh;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-layer-2);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+}
+.modalActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }

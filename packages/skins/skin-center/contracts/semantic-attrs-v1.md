@@ -45,7 +45,7 @@
 | `data-dsh-wallpaper-active` | html + body（body/html 级，另行管理） | WE 壁纸挂载期间置 `true`，卸载 / 禁用清除；供皮肤 CSS 与壁纸中和规则锚定（#734） |
 | `data-dsh-wallpaper-surface` | 官方 shell 全视口背景元素 + 侧栏工作区淡化条（元素级） | `WallpaperController.markWallpaperSurfaces()` 在 WE 壁纸挂载期间打标（全视口 bg-base 背景 + `data-slot="sidebar.workspaces"` 内渐变淡化条），命中 `html[data-dsh-wallpaper-active] [data-dsh-wallpaper-surface]` 中和；卸载清除，不含哈希类依赖（#734） |
 
-## part 组（49 行，含各 owner 行）
+## part 组（79 行，含各 owner 行）
 
 shell 区域（owner: shell）：
 
@@ -70,6 +70,12 @@ family / 插件区域：
 | `column` | task-board | 状态列；`section[data-status]` |
 | `card` | task-board | 任务卡；列内 `[data-status]` 条目 |
 | `detail` | task-board | 任务详情面板 |
+| `tag-filter` | task-board | 标签筛选条；`[data-dsh-taskboard-board] [data-dsh-part="tag-filter"]` |
+| `tag-chip` | task-board | 筛选条内的标签胶囊；`[data-dsh-part="tag-chip"]`，`data-tag-tone` 为 0-5 调色板槽 |
+| `tag-badge` | task-board | 卡片上的标签徽章；`[data-dsh-part="tag-badge"]`，`data-tag-tone` 同上 |
+| `project-filter` | task-board | 项目分区下拉；`[data-dsh-part="project-filter"]`，筛选项为工作区 id，空值为「全部项目」 |
+| `project-dialog` | task-board | 看板内新建项目表单；`[data-dsh-part="project-dialog"]`，含一个绝对路径输入与创建/取消按钮 |
+| `ai-parse` | task-board | 新建任务弹窗内的「粘贴内容 → AI 解析」区块；`[data-dsh-part="ai-parse"]`，含文本框、模型下拉与解析按钮 |
 | `tab-bar` / `tab` | ssh | 页签条/页签；`[role="tablist"]` / `[role="tab"]` |
 | `host-table` / `host-row` | ssh | 主机表/行；`[data-dsh-ssh-view]` 内 table/tr |
 | `terminal` | ssh | xterm 终端；面板内 termContainer（.xterm 辅锚） |
@@ -84,11 +90,13 @@ family / 插件区域：
 | `announcement` | pet | 插件公告气泡（dsh-usage 联动）；`[data-dsh-pet-announcement]`，值来源插件标签 |
 | `panel` | pet | 交互面板；`[data-placement]` |
 | `summon-button` | pet | 召唤钮；`[data-testid="pet-summon"]` |
+| `preset-panel` | preset-center | 创意工坊「预设」标签页面板根；`[data-dsh-plugin="preset-center"] [data-dsh-part="preset-panel"]` |
 | `plugin-item` | web-ui-settings | 家族插件设置卡；`[data-slot="web-ui.plugin.item"]` 内 entry |
 | `head` | skill-explorer | 技能中心模态卡头部；`[data-dsh-plugin="skill-explorer"] [data-dsh-part="card"] > header` |
 | `card` | skill-explorer | 技能中心模态卡；`[data-dsh-plugin="skill-explorer"] [data-dsh-part="card"]` |
 | `tab-bar` / `tab` | skill-explorer | 技能中心页签条/页签；`[data-dsh-plugin="skill-explorer"] [data-dsh-part="tab-bar"]` / `[data-dsh-plugin="skill-explorer"] [data-dsh-part="tab"]` |
 | `skill-row` | skill-explorer | 技能卡行；`[data-dsh-plugin="skill-explorer"] [data-dsh-part="skill-row"]` |
+| `filter-bar` | skill-explorer | 技能列表筛选条（搜索框 + 工作区选择）；`[data-dsh-plugin="skill-explorer"] [data-dsh-part="filter-bar"]` |
 | `header` | doctor | 救助控制台头部；`[data-dsh-plugin="doctor"] [data-dsh-part="header"]` |
 | `enable` | doctor | 救助模式启用行 |
 | `status` | doctor | 系统状态卡 |
@@ -111,15 +119,30 @@ family / 插件区域：
 | `bubble` | miku-pet | 对话气泡；`[data-dsh-part="bubble"]` |
 | `float` | miku-pet | 互动飘字；`[data-dsh-part="float"]` |
 | `header` | usage | 使用统计分区头部（当前提供方 + 刷新钮）；`[data-dsh-plugin="usage"] [data-dsh-part="header"]` |
-| `tabs` / `tab` | usage | 用量/个人套餐页签；`[role="tablist"]` / `[role="tab"]` |
+| `tabs` / `tab` | usage | 用量/个人套餐/Token 银行页签；`[role="tablist"]` / `[role="tab"]` |
 | `today-card` | usage | 今日用量统计卡；`[data-dsh-part="today-card"]` |
 | `provider-list` / `provider-row` | usage | 今日分 provider 用量列表 / 余额行；卡片内行容器 |
 | `balance-card` | usage | 各 provider 余额卡；`[data-dsh-part="balance-card"]` |
 | `trend-card` / `usage-chart` | usage | 近 30 天卡 / 其中的提供方-模型条形图；`[data-dsh-part="trend-card"]` 内 `[data-dsh-part="usage-chart"]` |
 | `settings-row` | usage | 插件设置行；`[data-dsh-part="settings-row"]` |
 | `plan-card` / `plan-window` | usage | 套餐卡 / 套餐窗口行（个人套餐页签）；`[data-dsh-part="plan-card"]` 内窗口行 |
+| `bank-card` | usage | Token 银行卡（鲸元券，无官方用量时为空状态）；`[data-dsh-part="bank-card"]` |
+| `voucher-preview` | usage | 票面 canvas 容器；bank-card 内 `[data-dsh-part="voucher-preview"]` |
+| `panel` | model-capabilities | 提供方卡片能力扩展区根；`[data-dsh-plugin="model-capabilities"][data-dsh-part="panel"]` |
+| `toggle` | model-capabilities | 扩展区折叠头按钮；panel 内 `button[data-dsh-part="toggle"]` |
+| `model-row` / `model-toggle` | model-capabilities | 逐模型能力行与其展开按钮；panel 内 `li[data-dsh-part="model-row"]` 及其中 `button[data-dsh-part="model-toggle"]` |
+| `image-input` / `efforts-mode` | model-capabilities | 图片输入勾选组 / 推理档位三态组；展开行内字段容器 `[data-dsh-part="image-input"]`、`[data-dsh-part="efforts-mode"]` |
+| `wire-input` | model-capabilities | 档位发送值输入行；`[data-dsh-part="wire-input"]` 内含 `input[type="text"]` |
+| `save` / `reset` / `disable` / `enable` / `reload` | model-capabilities | 扩展区动作按钮（保存 / 重置 / 禁用此提供方 / 启用 / 重新读取）；panel 内裸值按钮 |
+| `disabled-state` | model-capabilities | 已禁用提供方的卡片提示区（含启用按钮）；panel 内 `[data-dsh-part="disabled-state"]` |
+| `disabled-footer` / `disabled-row` | model-capabilities | Models 页底部存档区与其行；`settings.models.footer` 槽内 `section[data-dsh-part="disabled-footer"]` 与其中 `li[data-dsh-part="disabled-row"]` |
+| `lever` | liangshen | 首页输入框内的梁神模式拨杆根（模型选择器左侧）；`[data-dsh-plugin="liangshen"][data-dsh-part="lever"]`，状态由 `data-state`（`on` / `off` / `locked` / `missing`）锚定 |
+| `lever-track` | liangshen | 拨杆底座槽（臂的转动轨道）；lever 内 `[data-dsh-part="lever-track"]` |
+| `lever-arm` | liangshen | 拨杆臂（拉杆 + 球头，随状态转动）；lever 内 `[data-dsh-part="lever-arm"]` |
+| `lever-burst` | liangshen | 拨下命中后的中奖特效浮层（闪光 / 冲击环 / 火花 / 横幅）；`[data-dsh-part="lever-burst"]`，`prefers-reduced-motion` 下退化为淡出 |
+| `lever-banner` | liangshen | 特效中的梁神横幅（模式名 + 文言文/二进制/摩斯三行）；burst 内 `[data-dsh-part="lever-banner"]` |
 
-## plugin 组（14 个，含停更 aionui-panel）
+## plugin 组（15 个）
 
 | data-dsh-plugin | owner | 锚定方式 |
 | --- | --- | --- |
@@ -131,12 +154,13 @@ family / 插件区域：
 | `web-ui-settings` | dsh-web-settings | settings.section id `web-ui-plugins` |
 | `skill-explorer` | dsh-skill-explorer | `[data-dsh-skill-explorer-view]` / `[data-dsh-skill-explorer-entry]` |
 | `doctor` | dsh-doctor | web-ui.plugin.item 槽 entry id `doctor`（设置 → Web 插件 → Doctor 卡片）；卡片内 `[data-dsh-plugin="doctor"]` |
-| `aionui-panel` | dsh-aionui-panel（停更） | dock entry id `aionui-*` |
 | `dsh-web-ui-market` | dsh-market | 创意工坊商店一级页（settings.section id `dsh-web-ui-market`），商店卡与目录条目容器 |
 | `skin-center` | skins/skin-center | 一级设置分区 settings.section id `skin-center`（列已安装皮肤，属内置源时显式标记） |
 | `session-id` | dsh-session-id | footer action slot entry id `session-id`；`[data-dsh-plugin="session-id"]`（面板 overlay 根 + 入口触发器） |
-| `miku-pet` | dsh-miku-pet | 宠物浮层根 `[data-dsh-plugin="miku-pet"]`；host 路由前缀 `/miku-pet/*`；设置页 settings.section id `miku-pet-config` |
-| `usage` | dsh-usage | 一级设置分区 settings.section id `dsh-usage`（创意工坊下方）；`[data-dsh-plugin="usage"]` |
+| `usage` | dsh-usage | 一级设置分区 settings.section id `dsh-usage`（创意工坊下方）；`[data-dsh-plugin="usage"]`；侧栏入口 `[data-dsh-usage-entry]` 与面板根 `[data-dsh-usage-view]` |
+| `model-capabilities` | dsh-model-capabilities | Models 页 `settings.models.provider-card` keyed 槽 key `llm-pi-ai`（提供方卡片扩展区）+ `settings.models.footer` 槽 entry id `ui-model-capabilities`（存档区）；`[data-dsh-plugin="model-capabilities"]` |
+| `preset-center` | dsh-preset-center | 创意工坊卡片的「预设」标签页面板（`dsh-workshop.panel` keyed 槽 key `preset`）；`[data-dsh-plugin="preset-center"]` |
+| `liangshen` | dsh-liangshen | 首页输入框内的梁神模式拨杆；`[data-dsh-plugin="liangshen"][data-dsh-part="lever"]`，slot entry id `liangshen-lever` |
 
 ## 已知脆弱点（上游主题缝 PR 诉求）
 

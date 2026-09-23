@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { chmodSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { dshHome } from './dsh-home.ts'
 import { isValidCron, nextRunAtMs } from './core/schedule.ts'
@@ -134,6 +134,11 @@ export function processIsAlive(pid: number): boolean {
 }
 
 const PROCESS_PROBE_TIMEOUT_MS = 3000
+/**
+ * The CIM fallback pays a WMI cold start, so it gets a wider budget than the
+ * direct `Get-Process` read it backs up.
+ */
+const CIM_PROBE_TIMEOUT_MS = 8000
 
 let ownStartTime: number | undefined
 let ownStartTimeResolved = false
@@ -161,6 +166,59 @@ function linuxStartTimeMs(pid: number): number | undefined {
   }
 }
 
+/** Runs one PowerShell script and returns its trimmed stdout. */
+export type PowerShellProbe = (script: string, timeoutMs: number) => string | undefined
+
+/** Default probe: one hidden, profile-free PowerShell process per script. */
+const runPowerShellProbe: PowerShellProbe = (script, timeoutMs) => {
+  const probe = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    timeout: timeoutMs,
+    windowsHide: true,
+  })
+  if (probe.status !== 0 || probe.stdout.length === 0) return undefined
+  return probe.stdout.toString('utf8').trim()
+}
+
+/** The epoch-millisecond reading a probe printed, or undefined when unusable. */
+function parseProbeEpochMs(raw: string | undefined): number | undefined {
+  if (raw === undefined || raw.trim() === '') return undefined
+  const started = Number(raw.trim())
+  return Number.isFinite(started) ? started : undefined
+}
+
+/** Start time through Get-Process: precise, but empty for protected processes. */
+function getProcessStartScript(pid: number): string {
+  return '[DateTimeOffset]::FromFileTime((Get-Process -Id ' + String(pid)
+    + ' -ErrorAction SilentlyContinue).StartTime.ToUniversalTime().ToFileTime()).ToUnixTimeMilliseconds()'
+}
+
+/** Start time through Win32_Process: readable for System/svchost too. */
+function cimStartScript(pid: number): string {
+  return '$p=Get-CimInstance Win32_Process -Filter "ProcessId=' + String(pid)
+    + '" -ErrorAction SilentlyContinue;if($p -ne $null){[DateTimeOffset]::FromFileTime($p.CreationDate.ToUniversalTime().ToFileTime()).ToUnixTimeMilliseconds()}'
+}
+
+/**
+ * Windows start time (Unix epoch ms) of a live process.
+ *
+ * `Get-Process` is the precise first choice, but an unprivileged caller cannot
+ * read `.StartTime` for a protected process (System, svchost): the property is
+ * empty, so the probe returns nothing. Without a fallback, a crash leftover
+ * lock whose PID was reused by such a process could never be proven stale and
+ * blocked every startup until the lock was deleted by hand (issue #1629).
+ * Win32_Process through CIM reports the same CreationDate for those processes
+ * at the same millisecond precision, so it is the second identity source. The
+ * probe is injectable so the fallback chain is testable off Windows.
+ */
+export function win32StartTimeMs(pid: number, probe: PowerShellProbe = runPowerShellProbe): number | undefined {
+  // The pid is interpolated into a PowerShell script, so it must be a plain
+  // positive integer before any probe runs.
+  if (!Number.isSafeInteger(pid) || pid <= 0) return undefined
+  const direct = parseProbeEpochMs(probe(getProcessStartScript(pid), PROCESS_PROBE_TIMEOUT_MS))
+  if (direct !== undefined) return direct
+  return parseProbeEpochMs(probe(cimStartScript(pid), CIM_PROBE_TIMEOUT_MS))
+}
+
 /**
  * Best-effort start time (Unix epoch ms) of a live process. Used to prove
  * whether the ledger lock really belongs to the PID recorded in it, so a
@@ -170,17 +228,7 @@ function linuxStartTimeMs(pid: number): number | undefined {
  */
 function processStartTimeMs(pid: number): number | undefined {
   if (process.platform === 'linux') return linuxStartTimeMs(pid)
-  if (process.platform === 'win32') {
-    const probe = spawnSync(
-      'powershell',
-      ['-NoProfile', '-NonInteractive', '-Command',
-        '[DateTimeOffset]::FromFileTime((Get-Process -Id ' + String(pid) + ' -ErrorAction SilentlyContinue).StartTime.ToUniversalTime().ToFileTime()).ToUnixTimeMilliseconds()'],
-      { timeout: PROCESS_PROBE_TIMEOUT_MS, windowsHide: true },
-    )
-    if (probe.status !== 0 || probe.stdout.length === 0) return undefined
-    const started = Number(probe.stdout.toString('utf8').trim())
-    return Number.isFinite(started) ? started : undefined
-  }
+  if (process.platform === 'win32') return win32StartTimeMs(pid)
   // Other POSIX (macOS...): ps lstart with a forced English locale, falling
   // back to the elapsed-seconds column when lstart cannot be parsed.
   const env = { ...process.env, LC_ALL: 'C' }
@@ -215,6 +263,16 @@ function ownProcessStartTimeMs(): number | undefined {
  * falls back to this bounded tolerance.
  */
 const LEGACY_START_TOLERANCE_MS = 2000
+
+/**
+ * How long an unreadable lock must sit untouched before it may be reclaimed.
+ * The owner writes and fsyncs its record immediately after creating the file
+ * with O_EXCL, so a lock that cannot be parsed may still be mid-write by a
+ * live owner; only one that has been unreadable for longer than any write can
+ * take is treated as an unclean-shutdown leftover (issue #1528: a 0-byte lock
+ * kept the Host half from mounting until it was deleted by hand).
+ */
+const UNREADABLE_LOCK_GRACE_MS = 60_000
 
 /** Whether the recorded start time proves the recorded PID is another process. */
 function startTimeMismatch(recorded: number, actual: number, exact: boolean): boolean {
@@ -286,6 +344,7 @@ export class HostTaskLedger {
     this.file = join(dir, 'ledger-v2.json')
     this.lockFile = join(dir, 'ledger-v2.lock')
     this.schedulerFile = join(dir, 'scheduler-v2.json')
+    this.cleanStaleTemporaryFiles(dir)
     this.lockFd = this.acquireLock()
     try {
       this.document = this.load(dir)
@@ -300,6 +359,24 @@ export class HostTaskLedger {
     } catch (error) {
       this.dispose()
       throw error
+    }
+  }
+
+  /** Remove leftover *.tmp-* files from previous crashes or interrupted writes. */
+  private cleanStaleTemporaryFiles(dir: string): void {
+    try {
+      const entries = readdirSync(dir)
+      for (const entry of entries) {
+        if (entry.includes('.tmp-')) {
+          try {
+            unlinkSync(join(dir, entry))
+          } catch {
+            // Best-effort cleanup
+          }
+        }
+      }
+    } catch {
+      // Directory may not exist yet or cannot be read
     }
   }
 
@@ -443,7 +520,16 @@ export class HostTaskLedger {
     // tiny sidecar instead; any other patch still goes through the full
     // atomic commit.
     if (patch.lastTickAt !== undefined && Object.keys(patch).every(key => key === 'lastTickAt')) {
-      this.writeSchedulerSidecar()
+      try {
+        this.writeSchedulerSidecar()
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException)?.code === 'ENOSPC') {
+          // Disk is full; sidecar persistence fails, but in-memory heartbeat
+          // remains updated. Swallow to prevent unhandled log cascade crashes.
+          return
+        }
+        throw error
+      }
       return
     }
     this.commit(false)
@@ -814,9 +900,21 @@ export class HostTaskLedger {
           if (typeof owner.startedAt === 'number') ownerStartedAt = owner.startedAt
           ownerExact = owner.probe === 'exact'
         } catch {
-          // A power-loss mid-write can leave a truncated lock; the same event
-          // killed the writer, so fail closed but explain the recovery.
-          throw new Error(`task-board ledger lock is unreadable: ${this.lockFile}; if this is a leftover from an unclean shutdown and no other DSH host is running, remove it manually and retry`)
+          // A power-loss mid-write can leave an empty or truncated lock. Such a
+          // lock still fails closed while it is fresh (a live owner may be
+          // mid-write); once it is older than the grace window nothing can be
+          // writing it, so the leftover is reclaimed instead of blocking every
+          // later start until someone deletes it by hand (issue #1528).
+          const age = (() => {
+            try { return this.now() - statSync(this.lockFile).mtimeMs } catch { return Number.POSITIVE_INFINITY }
+          })()
+          if (age < UNREADABLE_LOCK_GRACE_MS) {
+            throw new Error(`task-board ledger lock is unreadable: ${this.lockFile}; if this is a leftover from an unclean shutdown and no other DSH host is running, remove it manually and retry`)
+          }
+          try { unlinkSync(this.lockFile) } catch (unlinkError) {
+            if ((unlinkError as NodeJS.ErrnoException).code !== 'ENOENT') throw unlinkError
+          }
+          continue
         }
         if (pid !== undefined && processIsAlive(pid)) {
           const actualStartedAt = pid === process.pid ? ownProcessStartTimeMs() : processStartTimeMs(pid)

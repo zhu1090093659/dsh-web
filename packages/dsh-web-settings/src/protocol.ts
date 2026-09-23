@@ -2,15 +2,17 @@
  * Settings-bridge protocol shared by the host and client halves of
  * dsh-web-settings.
  *
- * DSH 0.1.0-rc.6 host-apiproxy serves only its hard-coded settings allowlist
- * (WEB_SETTINGS_NAMESPACES plus product namespaces), so every third-party
- * namespace answers "settings-not-exposed" and the family plugin cards can
- * only explain the gap. This bridge re-serves the dsh-web family
- * namespaces through the host settings seam over a same-origin, loopback-only
- * HTTP pair, gated by the user's web_settings_namespaces allowlist from
- * settings.yaml with a built-in family fallback list. On hosts whose
- * apiproxy already exposes the namespaces, the official settings scope stays
- * the primary transport and this bridge never activates.
+ * The Host settings surface (`ctx.settings`, the new SettingsForms service)
+ * describes ONE form per active profile entry id and writes by that id; the
+ * settings namespace a family plugin used to register no longer exists as a
+ * separate key. The bridge keeps serving the family plugins their own view of
+ * that surface over a same-origin, loopback-only HTTP pair, gated by the
+ * user's web_settings_namespaces allowlist from settings.yaml with a built-in
+ * family fallback list: each view now carries the profile entry id
+ * ({@link BridgeNamespaceView.entryId}) that owns the namespace, and the
+ * client half uses it to bind the native `ctx.configForms` form. The bridge
+ * HTTP transport stays the fallback for pages whose entry id cannot be
+ * resolved.
  */
 
 /** Bridge route prefix (same-origin, loopback-only). */
@@ -30,6 +32,14 @@ export interface BridgeSettingsOp {
 export interface BridgeNamespaceView {
   /** The settings namespace name. */
   ns: string
+  /**
+   * Profile entry id that owns this namespace on the new settings surface,
+   * when the Host resolved one. The settings namespace IS the entry id there,
+   * so a client holding this id reads and writes the entry natively through
+   * ctx.configForms instead of the bridge; absent when the namespace was
+   * served without a profile-entry identity (the pre-0.1.7 layout).
+   */
+  entryId?: string
   /** Serialized schemastery schema (schema.toJSON()). */
   schema: unknown
   /** Current resolved value (secrets redacted). */

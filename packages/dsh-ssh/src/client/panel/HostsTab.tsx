@@ -5,7 +5,8 @@
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { SshApi } from '../api.ts'
-import type { SshHostSummary, TestResult } from '../../protocol.ts'
+import type { ImportSkipBlock, ImportSkipReason, SshHostSummary, TestResult } from '../../protocol.ts'
+import type { SshKey } from '../locales.ts'
 import { errorMessage, tt } from './helpers.ts'
 import { HostFormDialog } from './HostFormDialog.tsx'
 import css from './panel.module.css'
@@ -19,6 +20,17 @@ export interface HostsTabProps {
 
 /** The host-form dialog invocation. */
 type DialogState = { mode: 'create' } | { mode: 'edit'; host: SshHostSummary }
+
+/** Skipped-block rows rendered before the "and N more" summary. */
+const IMPORT_SKIP_LIMIT = 8
+
+/** Locale key per import skip reason (no dynamic key concatenation). */
+const IMPORT_REASON_KEY: Record<ImportSkipReason, SshKey> = {
+  wildcard: 'import.reason.wildcard',
+  existing: 'import.reason.existing',
+  match: 'import.reason.match',
+  invalid: 'import.reason.invalid',
+}
 
 /** Host list grouping modes (#379). */
 export type HostGroupBy = 'none' | 'environment' | 'tags'
@@ -67,6 +79,8 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({})
   const [importing, setImporting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  /** Blocks the last import skipped, with the reason each one was left out. */
+  const [importSkips, setImportSkips] = useState<ImportSkipBlock[]>([])
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const [groupBy, setGroupBy] = useState<HostGroupBy>('none')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
@@ -153,6 +167,7 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
       const result = await api.importSshConfig()
       if (!mountedRef.current) return
       setNotice(tt('hosts.imported', { parsed: result.parsed, added: result.added, skipped: result.skipped }))
+      setImportSkips(result.skippedBlocks)
       void load()
     } catch (cause) {
       if (!mountedRef.current) return
@@ -167,7 +182,12 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
     return (
       <tr key={host.alias}>
         <td className={css.mono}>{host.alias}</td>
-        <td className={css.mono}>{host.host}:{host.port}</td>
+        <td className={css.mono}>
+          {host.host}:{host.port}
+          {host.proxyCommand !== undefined && (
+            <span className={css.badge} data-kind="proxy" title={host.proxyCommand}>{tt('hosts.proxyBadge')}</span>
+          )}
+        </td>
         <td>{host.user}</td>
         <td><span className={css.badge} data-kind={host.auth}>{host.auth === 'key' ? tt('form.auth.key') : host.auth === 'password' ? tt('form.auth.password') : tt('form.auth.agent')}</span></td>
         <td className={css.cellMuted}>{host.environment ?? ''}</td>
@@ -234,6 +254,21 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
         <button type="button" className={css.ghostButton} disabled={importing} onClick={() => { void importConfig() }}>{importing ? tt('common.loading') : tt('hosts.import')}</button>
       </div>
       {notice !== null && <div className={css.banner} data-kind="ok">{notice}</div>}
+      {notice !== null && importSkips.length > 0 && (
+        <ul className={css.importSkips}>
+          {importSkips.slice(0, IMPORT_SKIP_LIMIT).map(block => (
+            <li key={block.name} className={css.importSkipRow}>
+              <span className={css.mono}>{block.name}</span>
+              <span className={css.cellMuted}>{tt(IMPORT_REASON_KEY[block.reason])}</span>
+            </li>
+          ))}
+          {importSkips.length > IMPORT_SKIP_LIMIT && (
+            <li className={css.importSkipRow}>
+              <span className={css.cellMuted}>{tt('import.more', { count: importSkips.length - IMPORT_SKIP_LIMIT })}</span>
+            </li>
+          )}
+        </ul>
+      )}
       {error !== null && <div className={css.banner} data-kind="error">{tt('common.error', { error })}</div>}
       {hosts === null && error === null && <div className={css.loading}>{tt('common.loading')}</div>}
       {hosts !== null && hosts.length === 0 && <div className={css.empty}>{tt('hosts.empty')}</div>}

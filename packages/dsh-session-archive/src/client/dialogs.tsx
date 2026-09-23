@@ -50,11 +50,15 @@ export function Modal({ title, onClose, children, danger, wide }: ModalProps): R
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
     ref.current?.focus()
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') {
+        event.stopPropagation()
+        event.stopImmediatePropagation?.()
+        onClose()
+      }
     }
-    document.addEventListener('keydown', onKey)
+    document.addEventListener('keydown', onKey, { capture: true })
     return () => {
-      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('keydown', onKey, { capture: true })
       previous?.focus()
     }
   }, [onClose])

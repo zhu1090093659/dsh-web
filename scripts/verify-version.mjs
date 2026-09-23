@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { walkFamilyPackages } from './lib/family-packages.mjs'
+import { rootAggregatePinMismatch } from './lib/root-alias-pin.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '..')
@@ -53,5 +54,21 @@ for (const file of files) {
   }
 }
 
+// The root alias bundle is part of the released contract: its aggregate
+// dependency must be the exact tag version, or an install keeping an older
+// lockfile entry mounts patch rows the installed aggregate cannot export
+// (issue #1442).
+try {
+  const rootManifest = JSON.parse(readFileSync(resolve(REPO_ROOT, 'package.json'), 'utf8'))
+  const pinMismatch = rootAggregatePinMismatch(rootManifest, version)
+  if (pinMismatch !== undefined) {
+    console.error(`::error file=package.json::${pinMismatch}`)
+    mismatch = 1
+  }
+} catch (error) {
+  console.error(`::error file=package.json::unreadable root package.json (${error instanceof Error ? error.message : String(error)})`)
+  mismatch = 1
+}
+
 if (mismatch) process.exit(1)
-console.log(`[verify-version] all ${files.length} packages match v${version}`)
+console.log(`[verify-version] all ${files.length} packages and the root aggregate pin match v${version}`)

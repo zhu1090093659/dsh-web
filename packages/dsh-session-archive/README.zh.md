@@ -26,7 +26,9 @@ pnpm add @linxin666/dsh-session-archive
 dsh plugin --profile web add link:/path/to/dsh-web/packages/dsh-session-archive
 ```
 
-重启 `dsh web` 后，Web 设置中会出现一级入口"会话归档管理"（Workshop 之下）。
+重启 `dsh web` 后，插件**接管官方的「已归档会话」设置入口**，不再新增并行的一级入口：注册的 `settings.section` id（`archived-sessions`）与导航 order（25）都与 `@deepseek-ai/dsh-client-ui-settings-unarchive-sessions` 一致，聚合包会关闭官方那一行，因此设置里只有一条归档入口，同时承载官方恢复行为（打开即已归档视图）与本插件的管理面。
+
+使用聚合包时该合并自动生效。若单独安装且官方页面同时存在，会出现两个入口，请在「插件」里停用其中之一，只保留一条归档入口。
 
 ## 配置
 

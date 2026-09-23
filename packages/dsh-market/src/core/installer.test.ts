@@ -94,14 +94,23 @@ describe('installAsset', () => {
         },
       ],
     },
+    presets: {
+      items: [
+        {
+          id: 'demo-preset',
+          version: '1.2.0',
+          files: ['agent.cordis.yml', 'preset.yml', 'hook.mjs'],
+        },
+      ],
+    },
   }
 
   function mockFetch(overrides: Record<string, number> = {}): typeof fetch {
     return (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
-      const m = url.match(/\/manifest\/(skins|pets)\.json$/)
+      const m = url.match(/\/manifest\/(skins|pets|presets)\.json$/)
       if (m) {
-        return new Response(JSON.stringify(manifest[m[1] as 'skins' | 'pets']), { status: 200 })
+        return new Response(JSON.stringify(manifest[m[1] as 'skins' | 'pets' | 'presets']), { status: 200 })
       }
       const file = url.split('/').pop() ?? ''
       if (overrides[file] !== undefined) {
@@ -146,6 +155,25 @@ describe('installAsset', () => {
     const second = JSON.parse(readFileSync(join(home, 'skins', 'whale-song', PROVENANCE_FILENAME), 'utf8'))
     expect(second.files['skin.json']).toBe(first.files['skin.json'])
     expect(second.id).toBe('whale-song')
+  })
+
+  it('installs a preset into the inert library and records the manifest version', async () => {
+    const home = tmpHome()
+    const result = await installAsset('preset', 'demo-preset', { dshHome: home, fetchImpl: mockFetch() })
+    expect(result.dest).toBe(targetDir(home, 'preset', 'demo-preset'))
+    expect(readFileSync(join(home, 'agent-presets', 'demo-preset', 'agent.cordis.yml'), 'utf8')).toBe('data-agent.cordis.yml')
+    // The discovery root the roster scans must stay untouched: a downloaded
+    // preset is inert until the user enables it.
+    expect(existsSync(join(home, '.agent-presets'))).toBe(false)
+    const provenance = JSON.parse(readFileSync(join(home, 'agent-presets', 'demo-preset', PROVENANCE_FILENAME), 'utf8'))
+    expect(provenance).toMatchObject({ kind: 'preset', id: 'demo-preset', assetVersion: '1.2.0' })
+  })
+
+  it('rejects a preset id outside the official directory rule', async () => {
+    const home = tmpHome()
+    expect(() => planDownload('preset', 'Demo_Preset', ['agent.cordis.yml'])).toThrow(/invalid asset id/)
+    await expect(installAsset('preset', 'Demo_Preset', { dshHome: home, fetchImpl: mockFetch() }))
+      .rejects.toMatchObject({ code: 'manifest' })
   })
 
   it('refuses to overwrite without force and replaces with force', async () => {
@@ -206,6 +234,13 @@ describe('installAsset limits', () => {
     const fetchImpl = (async () => new Response(big, { status: 200 })) as typeof fetch
     await expect(installAsset('skin', 'whale-song', { dshHome: home, fetchImpl, manifestMaxBytes: 1024 }))
       .rejects.toMatchObject({ code: 'manifest', message: expect.stringMatching(/exceeds/) })
+  })
+
+  it('pins an installer cap that clears the largest published pet asset', () => {
+    // jyn ships 1565 per-frame images; a cap at or below that makes an
+    // official market asset uninstallable for every user (issue #1578).
+    // scripts/market-build-cap.test.mjs holds the pipeline side of the gate.
+    expect(MAX_FILES_PER_ASSET).toBe(2000)
   })
 
   it('rejects an asset declaring more files than the cap', async () => {

@@ -214,17 +214,20 @@ window.__ModuleLoader__.load({
 					})
 				]
 			});
-			if (!state.exposed) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
-				className: cardClass,
-				children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: settings_card_module_css_default.body,
-					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: settings_card_module_css_default.notExposed,
-						role: "status",
-						children: props.t("settings.notExposed")
-					})
-				}) : null]
-			});
+			if (!state.exposed && props.renderChildrenWhenNotExposed !== true) {
+				const showNotice = props.hideNotExposedNotice !== true;
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
+					className: cardClass,
+					children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: settings_card_module_css_default.body,
+						children: showNotice ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+							className: settings_card_module_css_default.notExposed,
+							role: "status",
+							children: props.t("settings.notExposed")
+						}) : null
+					}) : null]
+				});
+			}
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 				className: cardClass,
 				children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -533,31 +536,31 @@ window.__ModuleLoader__.load({
 			specs;
 			staged = /* @__PURE__ */ new Map();
 			listeners = /* @__PURE__ */ new Set();
-			/** The scope subscription installed in the constructor; released by dispose(). */
-			disposeScope;
+			/** The form subscription installed in the constructor; released by dispose(). */
+			disposeForm;
 			disposed = false;
 			saving = false;
 			failed = false;
 			failedReason;
-			/** @param scope - the bound settings scope for this card's namespace. */
+			/** @param scope - the bound configuration form for this card's namespace. */
 			constructor(scope, specs) {
 				this.scope = scope;
 				this.specs = new Map(specs.map((spec) => [spec.field, spec]));
-				this.disposeScope = scope.subscribe(() => {
+				this.disposeForm = scope.subscribe(() => {
 					this.publish();
 				});
 			}
 			/**
-			* Release the scope subscription and every bound store listener. The card
+			* Release the form subscription and every bound store listener. The card
 			* must call this on teardown; later calls are no-ops.
 			*/
 			dispose() {
 				if (this.disposed) return;
 				this.disposed = true;
-				this.disposeScope();
+				this.disposeForm();
 				this.listeners.clear();
 			}
-			/** Publish a projection of this form, rebuilt whenever the scope or a draft changes. */
+			/** Publish a projection of this form, rebuilt whenever the form or a draft changes. */
 			bind(project) {
 				const store = createSnapshotStore(project());
 				this.listeners.add(() => {
@@ -624,19 +627,19 @@ window.__ModuleLoader__.load({
 				};
 			}
 			/**
-			* Write every staged edit in one atomic scope mutation, then re-seed from
+			* Write every staged edit in one atomic form mutation, then re-seed from
 			* what the Host accepted.
 			*
 			* The whole batch rides one mutate, so cross-field validate hooks
 			* (baseURL+model) judge it as a unit: the Host either applies every write
-			* or refuses the batch. The 0.1.2 scope contract never rejects a refused
-			* mutation — the scope recovers with a fresh Host view and resolves — so
-			* resolution alone proves nothing: the outcome is judged by reading the
-			* settled snapshot back, one planned write at a time, and one missed write
-			* fails the whole save. A scope that still rejects on refusal (the dsh-web
-			* bridge scope) reports through the same failure path with its rejection
-			* message. A save that did not land keeps its drafts, so the user can
-			* correct them instead of retyping.
+			* or refuses the batch. The form contract answers a refusal or a skipped
+			* write with `false` (it recovers with a fresh Host view instead of
+			* throwing), so the outcome is judged twice: the answer itself, and then the
+			* settled snapshot read back one planned write at a time. One missed write
+			* fails the whole save. A transport that rejects instead (the dsh-web bridge
+			* controller on a dead connection) reports through the same failure path
+			* with its rejection message. A save that did not land keeps its drafts, so
+			* the user can correct them instead of retyping.
 			* @returns settlement after the mutation and the read-back.
 			*/
 			async save() {
@@ -658,12 +661,13 @@ window.__ModuleLoader__.load({
 					path: [item.field]
 				});
 				let failedReason;
+				let accepted = false;
 				try {
-					await this.scope.mutate(ops);
+					accepted = await this.scope.mutate(ops);
 				} catch (error) {
 					failedReason = error instanceof Error ? error.message : String(error);
 				}
-				const landed = failedReason === void 0 && valid.every((item) => item.judge());
+				const landed = accepted && failedReason === void 0 && valid.every((item) => item.judge());
 				for (const [field, before] of pending) if (landed && this.staged.get(field) === before) this.staged.delete(field);
 				this.saving = false;
 				this.failed = !landed;
@@ -900,6 +904,16 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/filter.ts
+		/** Keep items whose category matches; 'all' keeps everything. */
+		function byCategory(items, cat) {
+			if (cat === "all") return [...items];
+			return items.filter((it) => (it.category ?? "other") === cat);
+		}
+		/** Keep items whose subcategory matches; 'all' keeps everything. */
+		function bySubcategory(items, subcat) {
+			if (subcat === "all") return [...items];
+			return items.filter((it) => it.subcategory === subcat);
+		}
 		/** Present categories with counts (missing category counts as 'other'). */
 		function categoryCounts(items) {
 			const counts = /* @__PURE__ */ new Map();
@@ -970,6 +984,13 @@ window.__ModuleLoader__.load({
 				"notify",
 				"net"
 			]
+		};
+		/** Preset category → second-level ids; a category with no list renders one row. */
+		const PRESET_SUBCATEGORY_IDS = { roleplay: [] };
+		/** Locale-key lookup for preset category ids (shares the plugin category keys). */
+		const PRESET_CATEGORY_LABEL_KEY = {
+			roleplay: "category.roleplay",
+			other: "category.other"
 		};
 		/** Locale-key lookup for category ids (including the manifest default 'other'). */
 		const CATEGORY_LABEL_KEY = {
@@ -1067,11 +1088,11 @@ window.__ModuleLoader__.load({
 		* optional pluginManager service (with the copy-command degradation).
 		*/
 		const MARKET_ORIGIN = "https://dsh-market.com";
-		/** Bridges the market scope onto the card's staged form. */
+		/** Bridges the market config form onto the card's staged form. */
 		var MarketCardController = class {
 			form;
 			store;
-			/** @param scope - the bound settings scope for the dsh-web-ui-market namespace. */
+			/** @param scope - the bound configuration form of the market card's settings entry. */
 			constructor(scope) {
 				this.form = new CardForm(scope, [booleanField("enabled")]);
 				this.store = this.form.bind(() => this.projection());
@@ -1082,14 +1103,18 @@ window.__ModuleLoader__.load({
 					enabled: this.form.field("enabled")
 				};
 			}
-			/** Build the face the card's slot registration injects. */
-			inject() {
+			/**
+			* Build the face the card's slot registration injects.
+			* @param openExternal - the shell-bound external-link opener.
+			*/
+			inject(openExternal) {
 				return {
 					hooks: { marketCard: this.store },
+					openExternal,
 					...this.form.actions()
 				};
 			}
-			/** Release the scope subscription; the slot disposer calls this on teardown. */
+			/** Release the form subscription; the slot disposer calls this on teardown. */
 			dispose() {
 				this.form.dispose();
 			}
@@ -1097,7 +1122,20 @@ window.__ModuleLoader__.load({
 		const KIND_LABEL = {
 			skin: "tab.skin",
 			pet: "tab.pet",
-			plugin: "tab.plugin"
+			plugin: "tab.plugin",
+			preset: "tab.preset"
+		};
+		/** Tab order: the curated picks category leads the catalog kinds. */
+		const TAB_ORDER = [
+			"picks",
+			"skin",
+			"pet",
+			"plugin",
+			"preset"
+		];
+		const TAB_LABEL = {
+			picks: "tab.picks",
+			...KIND_LABEL
 		};
 		function deviceFp() {
 			const key = "dsh-market-web-fp";
@@ -1137,7 +1175,7 @@ window.__ModuleLoader__.load({
 		* Render the market card.
 		*/
 		function MarketCard(props) {
-			const { t } = props;
+			const { t, renderSlot } = props;
 			const state = props.useMarketCard((snapshot) => snapshot);
 			const disabled = !state.writable;
 			const cardVisible = state.enabled.text !== "false";
@@ -1157,7 +1195,8 @@ window.__ModuleLoader__.load({
 			const [loadAttempt, setLoadAttempt] = (0, react.useState)(0);
 			const [installed, setInstalled] = (0, react.useState)({
 				skins: [],
-				pets: []
+				pets: [],
+				presets: []
 			});
 			const [installing, setInstalling] = (0, react.useState)(null);
 			const [conflict, setConflict] = (0, react.useState)(null);
@@ -1182,27 +1221,33 @@ window.__ModuleLoader__.load({
 					fetchJson("https://dsh-market.com/manifest/skins.json"),
 					fetchJson("https://dsh-market.com/manifest/pets.json"),
 					fetchJson("https://dsh-market.com/manifest/plugins.json"),
+					fetchJson("https://dsh-market.com/manifest/presets.json").catch(() => ({ items: [] })),
 					fetchJson("https://dsh-market.com/api/stats"),
+					fetchJsonOptional("https://dsh-market.com/manifest/editor-picks.json"),
 					downloadsLoader()
-				]).then(([skins, pets, plugins, stats, downloads]) => {
+				]).then(([skins, pets, plugins, presets, stats, picks, downloads]) => {
 					if (!alive) return;
 					const s = stats ?? {
 						skin: {},
 						pet: {},
-						plugin: {}
+						plugin: {},
+						preset: {}
 					};
 					setData({
 						items: {
 							skin: skins.items ?? [],
 							pet: pets.items ?? [],
-							plugin: plugins.items ?? []
+							plugin: plugins.items ?? [],
+							preset: presets.items ?? []
 						},
 						stats: {
 							skin: s.skin ?? {},
 							pet: s.pet ?? {},
 							plugin: s.plugin ?? {},
+							preset: s.preset ?? {},
 							installs: s.installs ?? void 0
-						}
+						},
+						picks: picks?.items ?? []
 					});
 					if (downloads && typeof downloads === "object" && downloads.downloads) {
 						const list = downloads.downloads;
@@ -1235,7 +1280,7 @@ window.__ModuleLoader__.load({
 				let alive = true;
 				const gatewayClient = {
 					async install(kind, id, force) {
-						const res = await fetch("/api/market/install-" + (kind === "skin" ? "skin" : "pet"), {
+						const res = await fetch("/api/market/install-" + kind, {
 							method: "POST",
 							headers: { "content-type": "application/json" },
 							body: JSON.stringify({
@@ -1257,7 +1302,8 @@ window.__ModuleLoader__.load({
 						const r = await fetchJson("/api/market/installed");
 						return {
 							skins: r.skins ?? [],
-							pets: r.pets ?? []
+							pets: r.pets ?? [],
+							presets: r.presets ?? []
 						};
 					}
 				};
@@ -1298,14 +1344,16 @@ window.__ModuleLoader__.load({
 				return (data?.stats ?? {
 					skin: {},
 					pet: {},
-					plugin: {}
+					plugin: {},
+					preset: {}
 				})[kind][id] ?? 0;
 			};
 			const installsOf = (kind, id) => {
 				return (data?.stats?.installs ?? {
 					skin: {},
 					pet: {},
-					plugin: {}
+					plugin: {},
+					preset: {}
 				})[kind][id] ?? 0;
 			};
 			const sorted = (kind) => {
@@ -1318,7 +1366,17 @@ window.__ModuleLoader__.load({
 				});
 				return items;
 			};
-			const categoryLabel = (id) => CATEGORY_LABEL_KEY[id] ? t(CATEGORY_LABEL_KEY[id]) : id;
+			const facetKind = tab === "plugin" || tab === "preset" ? tab : null;
+			const facetItems = facetKind === null ? [] : data?.items[facetKind] ?? [];
+			const facetVocab = facetKind === "preset" ? {
+				labelKey: PRESET_CATEGORY_LABEL_KEY,
+				subIds: PRESET_SUBCATEGORY_IDS
+			} : {
+				labelKey: CATEGORY_LABEL_KEY,
+				subIds: SUBCATEGORY_IDS
+			};
+			const facetSubs = cat === "all" ? [] : subcategoryCounts(facetItems, cat, facetVocab.subIds[cat]);
+			const categoryLabel = (id) => facetVocab.labelKey[id] ? t(facetVocab.labelKey[id]) : id;
 			const subcategoryLabel = (id) => SUBCATEGORY_LABEL_KEY[id] ? t(SUBCATEGORY_LABEL_KEY[id]) : id;
 			const matches = (item) => {
 				if (tab === "plugin") {
@@ -1393,7 +1451,8 @@ window.__ModuleLoader__.load({
 									...prev.stats.installs ?? {
 										skin: {},
 										pet: {},
-										plugin: {}
+										plugin: {},
+										preset: {}
 									},
 									[kind]: {
 										...prev.stats.installs?.[kind] ?? {},
@@ -1450,7 +1509,8 @@ window.__ModuleLoader__.load({
 									...prev.stats.installs ?? {
 										skin: {},
 										pet: {},
-										plugin: {}
+										plugin: {},
+										preset: {}
 									},
 									plugin: {
 										...prev.stats.installs?.plugin ?? {},
@@ -1543,15 +1603,41 @@ window.__ModuleLoader__.load({
 				if (!res.ok) throw new Error("HTTP " + res.status);
 				return (await res.json()).installs ?? 0;
 			});
-			const pluginItems = data?.items.plugin ?? [];
 			const chipClass = (isOn, isSub) => {
 				const cls = [market_module_css_default.filterChip];
 				if (isSub) cls.push(market_module_css_default.filterChipSub);
 				if (isOn) cls.push(market_module_css_default.filterChipOn);
 				return cls.join(" ");
 			};
-			const visible = sorted(tab).filter(matches);
-			const total = (data?.items[tab] ?? []).length;
+			/**
+			* Resolve the fixed 编辑推荐 references against the loaded catalogs,
+			* preserving the editorial order and dropping any reference this
+			* deployment cannot resolve.
+			*/
+			const pickEntries = () => {
+				const out = [];
+				const seen = /* @__PURE__ */ new Set();
+				for (const pick of data?.picks ?? []) {
+					const kind = pick.kind;
+					if (kind !== "skin" && kind !== "pet" && kind !== "plugin") continue;
+					const id = pick.id;
+					if (!id || seen.has(kind + ":" + id)) continue;
+					const item = (data?.items[kind] ?? []).find((candidate) => candidate.id === id);
+					if (!item) continue;
+					seen.add(kind + ":" + id);
+					out.push({
+						kind,
+						item
+					});
+				}
+				return out;
+			};
+			const picks = pickEntries();
+			const entries = tab === "picks" ? picks : sorted(tab).filter(matches).map((item) => ({
+				kind: tab,
+				item
+			}));
+			const total = tab === "picks" ? picks.length : (data?.items[tab] ?? []).length;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(PluginSettingsCard, {
 				t,
 				titleKey: "settings.title",
@@ -1563,16 +1649,22 @@ window.__ModuleLoader__.load({
 						href: MARKET_ORIGIN,
 						target: "_blank",
 						rel: "noreferrer",
+						onClick: (event) => {
+							event.preventDefault();
+							props.openExternal(MARKET_ORIGIN);
+						},
 						children: t("badge.market")
 					}),
 					t("settings.descriptionSuffix")
 				] }),
 				state,
 				alwaysOpen: true,
+				renderChildrenWhenNotExposed: true,
+				hideNotExposedNotice: true,
 				onSave: props.save,
 				onDiscard: props.discard,
 				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField, {
+					state.exposed ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField, {
 						id: "settings-market-enabled",
 						label: t("settings.enable"),
 						hint: t("settings.enableHint"),
@@ -1587,7 +1679,7 @@ window.__ModuleLoader__.load({
 						onReset: () => {
 							props.resetField("enabled");
 						}
-					}),
+					}) : null,
 					cardVisible ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: market_module_css_default.market,
 						children: [
@@ -1595,27 +1687,23 @@ window.__ModuleLoader__.load({
 								className: market_module_css_default.tabs,
 								role: "tablist",
 								"aria-label": t("settings.title"),
-								children: [
-									"skin",
-									"pet",
-									"plugin"
-								].map((kind) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+								children: TAB_ORDER.map((entry) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 									type: "button",
 									role: "tab",
-									"aria-selected": tab === kind,
-									className: tab === kind ? market_module_css_default.tab + " " + market_module_css_default.tabActive : market_module_css_default.tab,
+									"aria-selected": tab === entry,
+									className: tab === entry ? market_module_css_default.tab + " " + market_module_css_default.tabActive : market_module_css_default.tab,
 									onClick: () => {
-										setTab(kind);
+										setTab(entry);
 										setCat("all");
 										setSubcat("all");
 									},
-									children: [t(KIND_LABEL[kind]), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									children: [t(TAB_LABEL[entry]), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 										className: market_module_css_default.tabCount,
-										children: (data?.items[kind] ?? []).length
+										children: entry === "picks" ? picks.length : (data?.items[entry] ?? []).length
 									})]
-								}, kind))
+								}, entry))
 							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+							tab === "preset" || tab === "picks" ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
 								className: market_module_css_default.search,
 								type: "search",
 								"aria-label": t("search.label"),
@@ -1625,7 +1713,7 @@ window.__ModuleLoader__.load({
 									setQuery(event.target.value);
 								}
 							}),
-							tab === "plugin" ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							facetKind !== null ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: market_module_css_default.filterRows,
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: market_module_css_default.filterRow,
@@ -1643,10 +1731,10 @@ window.__ModuleLoader__.load({
 											" ",
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 												className: market_module_css_default.filterCount,
-												children: pluginItems.length
+												children: facetItems.length
 											})
 										]
-									}), categoryCounts(pluginItems).map(({ id, count }) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+									}), categoryCounts(facetItems).map(({ id, count }) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 										type: "button",
 										className: chipClass(cat === id, false),
 										onClick: () => {
@@ -1662,7 +1750,7 @@ window.__ModuleLoader__.load({
 											})
 										]
 									}, id))]
-								}), cat !== "all" ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								}), cat !== "all" && facetSubs.length > 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: market_module_css_default.filterRow,
 									role: "group",
 									"aria-label": t("filter.subcategory"),
@@ -1677,10 +1765,10 @@ window.__ModuleLoader__.load({
 											" ",
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 												className: market_module_css_default.filterCount,
-												children: subcategoryCounts(pluginItems, cat, SUBCATEGORY_IDS[cat]).reduce((sum, entry) => sum + entry.count, 0)
+												children: facetSubs.reduce((sum, entry) => sum + entry.count, 0)
 											})
 										]
-									}), subcategoryCounts(pluginItems, cat, SUBCATEGORY_IDS[cat]).map(({ id, count }) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+									}), facetSubs.map(({ id, count }) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 										type: "button",
 										className: chipClass(subcat === id, true),
 										onClick: () => {
@@ -1697,7 +1785,21 @@ window.__ModuleLoader__.load({
 									}, id))]
 								}) : null]
 							}) : null,
-							failed ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+							tab === "preset" ? renderSlot("dsh-workshop.panel", {
+								items: bySubcategory(byCategory(data?.items.preset ?? [], cat), subcat),
+								catalogState: failed ? "error" : loading ? "loading" : "ready",
+								gateway: gateway !== null,
+								installs: data?.stats.installs?.preset ?? {},
+								install: gateway === null ? void 0 : (id, force) => gateway.install("preset", id, force),
+								reportInstall: (id) => reportInstall("preset", id)
+							}, {
+								entryKey: "preset",
+								fallback: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+									className: market_module_css_default.empty,
+									role: "status",
+									children: t("presetPanel.missing")
+								})
+							}) : failed ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
 								className: market_module_css_default.empty,
 								role: "status",
 								children: [t("empty"), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
@@ -1711,19 +1813,19 @@ window.__ModuleLoader__.load({
 								className: market_module_css_default.empty,
 								role: "status",
 								children: t("loading")
-							}) : visible.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+							}) : entries.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 								className: market_module_css_default.empty,
 								role: "status",
-								children: total === 0 ? t("empty") : t("noMatch")
+								children: tab === "picks" ? t("picks.empty") : total === 0 ? t("empty") : t("noMatch")
 							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
 								className: market_module_css_default.grid,
-								children: visible.map((item) => {
+								children: entries.map(({ kind, item }) => {
 									const name = item.name ?? item.displayName ?? item.id;
 									const id = item.id;
-									const installedHere = tab === "skin" ? installed.skins.includes(id) : tab === "pet" ? installed.pets.includes(id) : entryInstalled(item, pluginList ?? []) !== null;
-									const isInstalling = installing === tab + ":" + id || installing === "plugin:" + id;
-									const command = tab === "plugin" ? installCommand(item) : "";
-									const thumb = tab === "skin" ? item.preview?.light : tab === "pet" ? item.previews?.[0] ?? item.spritesheet : "";
+									const installedHere = kind === "skin" ? installed.skins.includes(id) : kind === "pet" ? installed.pets.includes(id) : entryInstalled(item, pluginList ?? []) !== null;
+									const isInstalling = installing === kind + ":" + id || installing === "plugin:" + id;
+									const command = kind === "plugin" ? installCommand(item) : "";
+									const thumb = kind === "skin" ? item.preview?.light : kind === "pet" ? item.previews?.[0] ?? item.spritesheet : "";
 									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 										className: market_module_css_default.card,
 										children: [thumb ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("img", {
@@ -1740,6 +1842,10 @@ window.__ModuleLoader__.load({
 													target: "_blank",
 													rel: "noreferrer",
 													title: name,
+													onClick: (event) => {
+														event.preventDefault();
+														props.openExternal(item.repo ?? MARKET_ORIGIN);
+													},
 													children: [name, item.version ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 														className: market_module_css_default.cardVersion,
 														children: ["v", item.version]
@@ -1776,7 +1882,7 @@ window.__ModuleLoader__.load({
 												}) : null,
 												/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 													className: market_module_css_default.metrics,
-													children: [installsOf(tab, id) > 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("installs", { count: formatCount(installsOf(tab, id)) }) }) : null, item.npm && npmDownloads[item.npm] !== void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("npmDownloads", { count: formatCount(npmDownloads[item.npm] ?? 0) }) }) : null]
+													children: [installsOf(kind, id) > 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("installs", { count: formatCount(installsOf(kind, id)) }) }) : null, item.npm && npmDownloads[item.npm] !== void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("npmDownloads", { count: formatCount(npmDownloads[item.npm] ?? 0) }) }) : null]
 												}),
 												/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 													className: market_module_css_default.cardFooter,
@@ -1787,34 +1893,38 @@ window.__ModuleLoader__.load({
 																type: "button",
 																className: market_module_css_default.like,
 																onClick: () => {
-																	onLike(tab, id);
+																	onLike(kind, id);
 																},
 																children: [
 																	t("like"),
 																	" ",
-																	votesOf(tab, id)
+																	votesOf(kind, id)
 																]
 															}),
 															/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 																type: "button",
 																className: market_module_css_default.previewLink,
 																onClick: () => {
-																	window.open(tab === "skin" ? "https://dsh-market.com/preview.html?skin=" + encodeURIComponent(id) + "&theme=light&chrome=0" : "https://dsh-market.com/", "_blank", "noopener");
+																	props.openExternal(kind === "skin" ? "https://dsh-market.com/preview.html?skin=" + encodeURIComponent(id) + "&theme=light&chrome=0" : "https://dsh-market.com/");
 																},
 																children: t("preview")
 															}),
-															(tab === "plugin" || tab === "skin") && item.repo ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("a", {
+															(kind === "plugin" || kind === "skin") && item.repo ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("a", {
 																className: market_module_css_default.previewLink,
 																href: item.repo,
 																target: "_blank",
 																rel: "noreferrer",
+																onClick: (event) => {
+																	event.preventDefault();
+																	props.openExternal(item.repo ?? MARKET_ORIGIN);
+																},
 																children: t("repository")
 															}) : null
 														]
-													}), tab === "plugin" || gateway !== null ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+													}), kind === "plugin" || gateway !== null ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 														className: market_module_css_default.actionRowPrimary,
 														children: [
-															tab === "plugin" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+															kind === "plugin" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 																type: "button",
 																className: market_module_css_default.install,
 																title: command,
@@ -1823,7 +1933,7 @@ window.__ModuleLoader__.load({
 																},
 																children: copiedId === id ? t("copied") : t("copyCommand")
 															}) : null,
-															tab === "plugin" && faceLoopback && !installedHere ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+															kind === "plugin" && faceLoopback && !installedHere ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 																type: "button",
 																className: market_module_css_default.install + " " + market_module_css_default.installPrimary,
 																disabled: installing !== null,
@@ -1832,12 +1942,12 @@ window.__ModuleLoader__.load({
 																},
 																children: isInstalling ? t("installing") : t("installNow")
 															}) : null,
-															(tab === "skin" || tab === "pet") && gateway !== null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+															(kind === "skin" || kind === "pet") && gateway !== null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 																type: "button",
 																className: market_module_css_default.install + " " + market_module_css_default.installPrimary,
 																disabled: installing !== null || installedHere,
 																onClick: () => {
-																	onInstallAsset(tab, id);
+																	onInstallAsset(kind, id);
 																},
 																children: isInstalling ? t("installing") : installedHere ? t("installed") : t("installNow")
 															}) : null
@@ -1854,7 +1964,7 @@ window.__ModuleLoader__.load({
 												}) : null
 											]
 										})]
-									}, id);
+									}, kind + ":" + id);
 								})
 							}),
 							gateway === null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
@@ -1894,6 +2004,54 @@ window.__ModuleLoader__.load({
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(MarketCard, { ...props });
 		}
 		//#endregion
+		//#region src/client/external-link.ts
+		/**
+		* External-link opener for the Workshop card, with the official right-sidebar
+		* browser as the first seat.
+		*
+		* alpha.2 registers a `browser` tab type in the right sidebar and the official
+		* chat routes an external link there through `sidebarRight.openTab`, falling
+		* back to a new browser tab when the type is absent. The store card's market,
+		* preview and repository links use the same probe, read through the structural
+		* slices below so this package needs no sidebar SDK dependency (the browser
+		* half may only type-import official packages).
+		*
+		* @module @linxin666/dsh-client-ui-market/client/external-link
+		*/
+		/** The tab kind the official sidebar browser registers. */
+		const BROWSER_TAB_KIND = "browser";
+		/** Open one URL in a new browser tab: the fallback when no sidebar browser exists. */
+		function openInNewTab(url) {
+			window.open(url, "_blank", "noopener,noreferrer");
+		}
+		/**
+		* Build the card's external-link opener.
+		* @param ctx - client context (its services decide the seat).
+		* @param fallback - what to do when the sidebar browser is unavailable; tests inject a recorder.
+		* @returns an opener that never throws.
+		*/
+		function createExternalLinkOpener(ctx, fallback = openInNewTab) {
+			return (url) => {
+				let registry;
+				try {
+					registry = ctx.get?.call(ctx, "sidebarRightTabs");
+				} catch {
+					registry = void 0;
+				}
+				let declared = false;
+				try {
+					declared = typeof registry?.get === "function" && registry.get("browser") !== void 0;
+				} catch {
+					declared = false;
+				}
+				if (declared && ctx.sidebarRight !== void 0) {
+					ctx.sidebarRight.openTab(BROWSER_TAB_KIND, { params: { url } });
+					return;
+				}
+				fallback(url);
+			};
+		}
+		//#endregion
 		//#region src/client/locales.ts
 		/**
 		* Market card dictionaries. zh is the key source; en mirrors every key.
@@ -1920,9 +2078,13 @@ window.__ModuleLoader__.load({
 			"settings.descriptionSuffix": " 的皮肤、宠物与社区插件，一键安装到本机 dsh。",
 			"settings.enable": "启用创意工坊卡片",
 			"settings.enableHint": "关闭后隐藏创意工坊内容，仅保留开关本身。",
+			"tab.picks": "编辑推荐",
 			"tab.skin": "皮肤",
 			"tab.pet": "宠物",
 			"tab.plugin": "插件",
+			"tab.preset": "预设",
+			"picks.empty": "暂无编辑推荐条目。",
+			"presetPanel.missing": "未安装预设中心插件（@linxin666/dsh-client-ui-preset-center），无法管理社区预设。",
 			"search.label": "搜索名称、作者或描述…",
 			"filter.all": "全部",
 			"filter.category": "分类筛选",
@@ -1934,6 +2096,7 @@ window.__ModuleLoader__.load({
 			"category.integration": "集成",
 			"category.security": "安全",
 			"category.utility": "实用",
+			"category.roleplay": "角色扮演",
 			"category.other": "其他",
 			"subcategory.terminal": "终端界面",
 			"subcategory.chat": "对话增强",
@@ -2014,9 +2177,13 @@ window.__ModuleLoader__.load({
 			"settings.descriptionSuffix": " and install them locally with one click.",
 			"settings.enable": "Enable the Workshop card",
 			"settings.enableHint": "Hides the Workshop content and keeps the switch only.",
+			"tab.picks": "Editor's Picks",
 			"tab.skin": "Skins",
 			"tab.pet": "Pets",
 			"tab.plugin": "Plugins",
+			"tab.preset": "Presets",
+			"picks.empty": "No editor picks available yet.",
+			"presetPanel.missing": "The preset center plugin (@linxin666/dsh-client-ui-preset-center) is not installed, so community presets cannot be managed.",
 			"search.label": "Search name, author or description…",
 			"filter.all": "All",
 			"filter.category": "Category filter",
@@ -2028,6 +2195,7 @@ window.__ModuleLoader__.load({
 			"category.integration": "Integration",
 			"category.security": "Security",
 			"category.utility": "Utility",
+			"category.roleplay": "Roleplay",
 			"category.other": "Other",
 			"subcategory.terminal": "Terminal UI",
 			"subcategory.chat": "Chat enhancements",
@@ -2094,7 +2262,7 @@ window.__ModuleLoader__.load({
 		/** The building package's version, when the bundle carries it. */
 		function bakedVersion() {
 			try {
-				return "0.3.16";
+				return "0.3.24";
 			} catch {
 				return;
 			}
@@ -2164,7 +2332,7 @@ window.__ModuleLoader__.load({
 			"slots",
 			"locale",
 			"connection",
-			"settingsScope",
+			"configForms",
 			"remote"
 		];
 		/** Register the market section and the plugin-manager bridge. */
@@ -2181,7 +2349,8 @@ window.__ModuleLoader__.load({
 				}
 			}, "dsh-web-ui-market: dictionaries");
 			bridgePluginManager(ctx);
-			const controller = new MarketCardController((ctx.get("webUiSettings") ?? ctx.settingsScope).bind({ namespace: MARKET_NS }));
+			const binder = ctx.get("webUiSettings");
+			const controller = new MarketCardController(binder !== void 0 ? binder.bind({ namespace: MARKET_NS }) : ctx.configForms.get(MARKET_NS));
 			ctx.slots.inject("settings.section", () => {
 				try {
 					const unregister = ctx.slots.register({
@@ -2190,7 +2359,11 @@ window.__ModuleLoader__.load({
 						order: 150,
 						label: () => ctx.locale.bind(MARKET_NS)("settings.title"),
 						locale: MARKET_NS,
-						inject: () => controller.inject()
+						children: { "dsh-workshop.panel": {
+							kind: "keyed",
+							scope: "root"
+						} },
+						inject: () => controller.inject(createExternalLinkOpener(ctx))
 					}, MarketSection);
 					return () => {
 						unregister();

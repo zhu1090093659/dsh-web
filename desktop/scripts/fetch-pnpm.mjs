@@ -17,8 +17,8 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { extractArchive } from './tar-extract.mjs';
 
 const DEFAULT_PNPM_VERSION = '11.24.0';
 
@@ -137,7 +137,7 @@ async function main() {
 
   const unpackDir = path.join(tmp, 'unpacked');
   fs.mkdirSync(unpackDir, { recursive: true });
-  execFileSync('tar', ['-xzf', archive, '-C', unpackDir], { stdio: 'inherit' });
+  extractArchive(archive, unpackDir);
   const packageDir = path.join(unpackDir, 'package');
   if (!fs.existsSync(path.join(packageDir, 'package.json'))) {
     throw new Error('unexpected pnpm tarball layout: no package/package.json');

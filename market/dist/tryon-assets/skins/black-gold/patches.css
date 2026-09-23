@@ -1,0 +1,530 @@
+/**
+ * Black Gold Gilded — L3 patches: the ornament layer.
+ *
+ * Everything the token layer cannot express:
+ *   · 金箔碎屑 + 金属拉丝   gold-leaf flecks and brushed-metal hairlines, drawn
+ *                          behind the translucent surfaces (z-index -1)
+ *   · 鎏金画框             four 缠枝角花 + 上下回纹描金带 + 描金双线边, drawn
+ *                          over the shell as a pointer-transparent frame
+ *   · 金属渐变              the one filled CTA and the markdown headings
+ *   · 方角                 small radii; reaches component class names because
+ *                          the official token set has no radius axis (L3)
+ *
+ * The ornament is served from assets/ as relative SVG files — no data: URIs,
+ * which the whitelist warns about.
+ */
+
+/* ── 金箔碎屑与拉丝 (behind the surfaces) ───────────────────────────────── */
+
+html[data-dsh-skin="black-gold"] body::after {
+  content: '';
+  position: fixed;
+  /* 外扩 48px 再模糊：羽化立绘剪影的硬边，但让模糊的软边落在视口之外——
+     若保持 inset:0，视口四周会被模糊成透明，露出画布的浅色底边。 */
+  inset: -48px;
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(1.7px);
+  /* 这一层自己提供画布底色：它画在 body 背景之上、内容之下 */
+  background-color: #f8f3e6;
+  background-image:
+    radial-gradient(1.5px 1.5px at 18% 24%, #ae955080, transparent 100%),
+    radial-gradient(1.2px 1.2px at 42% 62%, #cbbb8a73, transparent 100%),
+    radial-gradient(1.7px 1.7px at 67% 31%, #ae955073, transparent 100%),
+    radial-gradient(1.1px 1.1px at 84% 74%, #cbbb8a5c, transparent 100%),
+    radial-gradient(1.4px 1.4px at 29% 88%, #ae95506b, transparent 100%),
+    radial-gradient(1.1px 1.1px at 55% 12%, #cbbb8a66, transparent 100%),
+    linear-gradient(118deg, #ae95500d 0 1px, transparent 1px 7px),
+    radial-gradient(900px 700px at 50% 45%, #c9ab6e1f, transparent 62%),
+    linear-gradient(90deg, rgba(248, 243, 230, 0.58) 0%, rgba(248, 243, 230, 0.44) 46%, rgba(248, 243, 230, 0.12) 74%, rgba(248, 243, 230, 0) 100%),
+    url(assets/liujin-bg.png);
+  background-size: 420px 420px, 420px 420px, 420px 420px, 420px 420px, 420px 420px, 420px 420px, 9px 9px, auto, 100% 100%, auto 88%;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, right 48px bottom 48px;
+  background-repeat: repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat, no-repeat, no-repeat;
+}
+
+html[data-dsh-skin="black-gold"] body::after {
+  content: '';
+  position: fixed;
+  /* 外扩 48px 再模糊：羽化立绘剪影的硬边，但让模糊的软边落在视口之外——
+     若保持 inset:0，视口四周会被模糊成透明，露出画布的浅色底边。 */
+  inset: -48px;
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(1.7px);
+  background-color: #0a0806;
+  background-image:
+    radial-gradient(1.6px 1.6px at 18% 24%, #c9ab6eb3, transparent 100%),
+    radial-gradient(1.3px 1.3px at 42% 62%, #e4d2a699, transparent 100%),
+    radial-gradient(1.8px 1.8px at 67% 31%, #c9ab6ea6, transparent 100%),
+    radial-gradient(1.2px 1.2px at 84% 74%, #e4d2a680, transparent 100%),
+    radial-gradient(1.5px 1.5px at 29% 88%, #c9ab6e99, transparent 100%),
+    radial-gradient(1.2px 1.2px at 55% 12%, #e4d2a68c, transparent 100%),
+    linear-gradient(118deg, #ffffff08 0 1px, transparent 1px 7px),
+    radial-gradient(900px 700px at 50% 45%, #c9ab6e1f, transparent 62%),
+    linear-gradient(90deg, rgba(10, 8, 6, 0.50) 0%, rgba(10, 8, 6, 0.38) 46%, rgba(10, 8, 6, 0.10) 74%, rgba(10, 8, 6, 0) 100%),
+    url(assets/liujin-bg.png);
+  background-size: 420px 420px, 420px 420px, 420px 420px, 420px 420px, 420px 420px, 420px 420px, 9px 9px, auto, 100% 100%, auto 88%;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, right 48px bottom 48px;
+  background-repeat: repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat, no-repeat, no-repeat;
+}
+
+/* ── 鎏金画框 (over the shell, pointer-transparent) ─────────────────────── */
+
+html[data-dsh-skin="black-gold"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147482000;
+  pointer-events: none;
+  background-image:
+    url(assets/gilded-corner-tl.svg),
+    url(assets/gilded-corner-tr.svg),
+    url(assets/gilded-corner-bl.svg),
+    url(assets/gilded-corner-br.svg),
+    url(assets/gilded-meander.svg);
+  background-position:
+    left 2px top 2px,
+    right 2px top 2px,
+    left 2px bottom 2px,
+    right 2px bottom 2px,
+    left top;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat-x;
+  background-size: 76px 76px, 76px 76px, 76px 76px, 76px 76px, 15px 13px;
+  border: 1px solid #c9ab6e38;
+  outline: 1px solid #c9ab6e1a;
+  outline-offset: -6px;
+  opacity: 0.22;
+}
+
+html[data-dsh-skin="black-gold"] body::before {
+  border-color: #c9ab6e5c;
+  outline-color: #c9ab6e2e;
+  opacity: 0.44;
+}
+
+/* ── 菜单栏描金 (sidebar gilding) ──────────────────────────────────────── */
+
+/* 纵向缠枝藤纹沿右缘下行（一个 140px 正弦周期，repeat-y 无缝） */
+html[data-dsh-skin="black-gold"] [data-dsh-surface='sidebar'],
+html[data-dsh-skin="black-gold"] [class*='_sidebarCol'] {
+  background-image: none;
+}
+
+html[data-dsh-skin="black-gold"] [data-dsh-surface='sidebar']::before,
+html[data-dsh-skin="black-gold"] [class*='_sidebarCol']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(#c9ab6e66, #c9ab6e66),
+    linear-gradient(#c9ab6e38, #c9ab6e38);
+  background-position: right 0 top 0, right 5px top 0;
+  background-repeat: no-repeat, no-repeat;
+  background-size: 1px 100%, 1px 100%;
+}
+
+html[data-dsh-skin="black-gold"] [data-dsh-surface='sidebar']::before,
+html[data-dsh-skin="black-gold"] [class*='_sidebarCol']::before {
+  background-image:
+    linear-gradient(#c9ab6e73, #c9ab6e73),
+    linear-gradient(#c9ab6e2e, #c9ab6e2e);
+}
+
+/* 如意云纹收尾：压在侧栏底部的空白区（Settings 之上），避开品牌行与
+   主按钮 —— 顶部 60px 内是 logo 行和 New Session，任何固定偏移都会撞上。 */
+html[data-dsh-skin="black-gold"] [data-dsh-surface='sidebar'],
+html[data-dsh-skin="black-gold"] [class*='_sidebarCol'] {
+  position: relative;
+}
+
+html[data-dsh-skin="black-gold"] [data-dsh-surface='sidebar']::after,
+html[data-dsh-skin="black-gold"] [class*='_sidebarCol']::after {
+  content: '';
+  position: absolute;
+  bottom: 46px;
+  left: 50%;
+  width: 168px;
+  height: 34px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  /* 印压在描金横线上：印是上层，线从它身后穿过 */
+  background-image:
+    url(assets/gilded-seal.svg),
+    linear-gradient(#c9ab6e5c, #c9ab6e5c);
+  background-repeat: no-repeat, no-repeat;
+  background-position: center bottom, center bottom 16px;
+  background-size: 30px 30px, 168px 1px;
+  opacity: 0.6;
+}
+
+html[data-dsh-skin="black-gold"] [data-dsh-surface='sidebar']::after,
+html[data-dsh-skin="black-gold"] [class*='_sidebarCol']::after {
+  opacity: 0.78;
+}
+
+/* ── 描金标题 ──────────────────────────────────────────────────────────── */
+
+html[data-dsh-skin="black-gold"] h1,
+html[data-dsh-skin="black-gold"] h2,
+html[data-dsh-skin="black-gold"] h3 {
+  color: #8a7440;
+  border-bottom: 1px solid #ae95503d;
+  padding-bottom: 4px;
+}
+
+html[data-dsh-skin="black-gold"] h1,
+html[data-dsh-skin="black-gold"] h2,
+html[data-dsh-skin="black-gold"] h3 {
+  /* Progressive enhancement: engines without text-fill-color keep the solid
+     gold colour; engines with it paint the metal gradient through the glyphs. */
+  color: #c9ab6e;
+  background-image: linear-gradient(100deg, #f5e9cf, #c9ab6e 44%, #9c8045 62%, #e4d2a6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  border-bottom: 1px solid #c9ab6e2e;
+  padding-bottom: 4px;
+}
+
+/* ── 金属渐变的唯一主按钮 ───────────────────────────────────────────────── */
+
+html[data-dsh-skin="black-gold"] [data-dsh-part='new-session'] {
+  background-image: linear-gradient(160deg, #f5e9cf, #e0cfa4 45%, #ab9158);
+  color: #3a3322;
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 #ffffff59, 0 1px 3px #3a332247;
+}
+
+html[data-dsh-skin="black-gold"] [data-dsh-part='new-session'] {
+  background-image: linear-gradient(160deg, #f5e9cf, #c9ab6e 38%, #9c8045 62%, #e4d2a6);
+  color: #1a1509;
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 #ffffff66, 0 0 18px #c9ab6e59;
+}
+
+/* ── 方角（L3：官方 token 集没有半径轴） ───────────────────────────────── */
+
+/* ── 工作区文件夹：描金匾额 (gilded plate for the workspace row) ───────────
+   工作区是这一栏里层级最高的对象，给它一张"邀请函"式的匾：1px 描金细框 +
+   四角开光角线 + 漆面渐变 + 顶部受光边。会话行保持素面，层级自然拉开。
+   行高只有 34px，所以角线与字号同量级（12px），不抢图标和文字。 */
+
+html[data-dsh-skin="black-gold"] [class*='_projectRow'] {
+  border-radius: 4px;
+  background-image:
+    url(assets/gilded-tick-tl.svg),
+    url(assets/gilded-tick-tr.svg),
+    url(assets/gilded-tick-bl.svg),
+    url(assets/gilded-tick-br.svg),
+    linear-gradient(180deg, rgba(201, 171, 110, 0.11), rgba(201, 171, 110, 0.03));
+  background-position: left 3px top 3px, right 3px top 3px, left 3px bottom 3px, right 3px bottom 3px, 0 0;
+  background-repeat: no-repeat;
+  background-size: 12px 12px, 12px 12px, 12px 12px, 12px 12px, 100% 100%;
+  box-shadow:
+    inset 0 0 0 1px rgba(201, 171, 110, 0.28),
+    inset 0 0 0 4px rgba(201, 171, 110, 0.05),
+    inset 0 1px 0 rgba(201, 171, 110, 0.14);
+}
+
+html[data-dsh-skin="black-gold"] [class*='_projectRow']:hover {
+  box-shadow:
+    inset 0 0 0 1px rgba(201, 171, 110, 0.46),
+    inset 0 0 0 4px rgba(201, 171, 110, 0.08),
+    inset 0 1px 0 rgba(201, 171, 110, 0.22);
+}
+
+html[data-dsh-skin="black-gold"] [class*='_projectRow'] {
+  background-image:
+    url(assets/gilded-tick-tl.svg),
+    url(assets/gilded-tick-tr.svg),
+    url(assets/gilded-tick-bl.svg),
+    url(assets/gilded-tick-br.svg),
+    linear-gradient(180deg, rgba(168, 144, 88, 0.13), rgba(168, 144, 88, 0.04));
+  box-shadow:
+    inset 0 0 0 1px rgba(168, 144, 88, 0.36),
+    inset 0 0 0 4px rgba(168, 144, 88, 0.06),
+    inset 0 1px 0 rgba(168, 144, 88, 0.18);
+}
+
+html[data-dsh-skin="black-gold"] [class*='_projectRow']:hover {
+  box-shadow:
+    inset 0 0 0 1px rgba(168, 144, 88, 0.54),
+    inset 0 0 0 4px rgba(168, 144, 88, 0.10),
+    inset 0 1px 0 rgba(168, 144, 88, 0.26);
+}
+
+html[data-dsh-skin="black-gold"] [class*='_projectRow'] {
+  background-image:
+    url(assets/gilded-tick-tl.svg),
+    url(assets/gilded-tick-tr.svg),
+    url(assets/gilded-tick-bl.svg),
+    url(assets/gilded-tick-br.svg),
+    linear-gradient(180deg, rgba(201, 171, 110, 0.11), rgba(201, 171, 110, 0.03));
+}
+
+html[data-dsh-skin="black-gold"] [class*='_projectRow']:hover {
+  box-shadow:
+    inset 0 0 0 1px rgba(201, 171, 110, 0.52),
+    inset 0 0 0 4px rgba(201, 171, 110, 0.09),
+    inset 0 1px 0 rgba(201, 171, 110, 0.24);
+}
+
+html[data-dsh-skin="black-gold"] [class*='_bubble'] {
+  border-radius: 3px;
+}
+
+html[data-dsh-skin="black-gold"] [class*='_card']:has([data-composer-input]) {
+  border-radius: 4px;
+  outline: 1px solid #c9ab6e33;
+  outline-offset: -1px;
+  /* 金属受光边 + 漆面投影 */
+  box-shadow: inset 0 1px 0 #c9ab6e38, 0 8px 26px #00000059;
+}
+
+/* 四角开光角线：卡片自身已是 position: relative，无需改动布局 */
+html[data-dsh-skin="black-gold"] [class*='_card']:has([data-composer-input])::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  pointer-events: none;
+  background-image:
+    url(assets/gilded-tick-tl.svg),
+    url(assets/gilded-tick-tr.svg),
+    url(assets/gilded-tick-bl.svg),
+    url(assets/gilded-tick-br.svg);
+  background-position: left top, right top, left bottom, right bottom;
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
+  opacity: 0.6;
+}
+
+/* 聚焦：描金线提亮并亮起一圈金光 */
+html[data-dsh-skin="black-gold"] [class*='_card']:has([data-composer-input]):focus-within {
+  outline-color: #c9ab6e99;
+  box-shadow: inset 0 1px 0 #c9ab6e40, 0 8px 30px #00000073, 0 0 26px #c9ab6e38;
+}
+
+html[data-dsh-skin="black-gold"] [class*='_card']:has([data-composer-input]):focus-within {
+  outline-color: #e4d2a6b3;
+  box-shadow: inset 0 1px 0 #e4d2a659, 0 8px 30px #000000a6, 0 0 30px #c9ab6e47;
+}
+
+/* 发送键：由圆球改成与主按钮同一套金属渐变 + 内高光 */
+html[data-dsh-skin="black-gold"] [class*='_trailing'] [class*='_primary'] {
+  background-image: linear-gradient(160deg, #f5e9cf, #e0cfa4 45%, #ab9158);
+  color: #3a3322;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 #ffffff8c, 0 1px 3px #3a332247;
+}
+
+html[data-dsh-skin="black-gold"] [class*='_trailing'] [class*='_primary'] {
+  background-image: linear-gradient(160deg, #f5e9cf, #c9ab6e 38%, #9c8045 62%, #e4d2a6);
+  color: #1a1509;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 #ffffff66, 0 0 16px #c9ab6e47;
+}
+
+html[data-dsh-skin="black-gold"] [class*='_trailing'] [class*='_primary']:disabled {
+  background-image: none;
+  background-color: #c9ab6e2b;
+  color: #c9ab6e66;
+  box-shadow: none;
+}
+
+/* 工具行控件统一方角：+ 与回形针原是圆形底，改成小方角与发送键同语言。
+   模型 / 权限 chip 在本版里不带 _select 类（由各自的插件 slot 渲染），
+   它们本来就没有圆底，不需要补丁。 */
+html[data-dsh-skin="black-gold"] [class*='_card']:has([data-composer-input]) [class*='_add'] {
+  border-radius: 3px;
+}
+
+html[data-dsh-skin="black-gold"] [class*='_markdown-code-block'],
+html[data-dsh-skin="black-gold"] [class*='_codeBlock'] {
+  border-radius: 2px;
+}
+
+html[data-dsh-skin="black-gold"] ::selection {
+  background-color: #c9ab6e47;
+}
+/* ── 侧栏字标：鎏金徽章 + 描金字标 (brand lockup) ─────────────────────────
+   鲸鱼保留，改的是它的"装裱"：一枚描金徽章托住鲸鱼，右侧是两段式字标。
+   名称文本由侧栏自己的本地化串渲染（t('brand.localBuild')），皮肤无法改写
+   它，只能用 font-size:0 收起原字、再由伪元素注入新字。brandIdentity 带
+   aria-hidden="true"，是纯装饰位，所以这条注入不涉及可访问性。 */
+
+html[data-dsh-skin="black-gold"] [class*='_brandMark'] {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  corner-shape: round;
+  background-image: radial-gradient(circle at 50% 38%, rgba(201, 171, 110, 0.20), rgba(201, 171, 110, 0.05) 68%, rgba(201, 171, 110, 0));
+  box-shadow:
+    inset 0 0 0 1px rgba(201, 171, 110, 0.40),
+    inset 0 1px 0 rgba(201, 171, 110, 0.20),
+    0 0 0 1px rgba(201, 171, 110, 0.16);
+}
+
+/* 鲸鱼换成金属金，并给一层极淡的外发光 */
+html[data-dsh-skin="black-gold"] [class*='_brandMark'] svg {
+  color: #e4d2a6;
+  filter: drop-shadow(0 0 5px rgba(201, 171, 110, 0.45));
+}
+
+html[data-dsh-skin="black-gold"] [class*='_brandMark'] {
+  background-image: radial-gradient(circle at 50% 38%, rgba(168, 144, 88, 0.22), rgba(168, 144, 88, 0.06) 68%, rgba(168, 144, 88, 0));
+  box-shadow:
+    inset 0 0 0 1px rgba(168, 144, 88, 0.42),
+    inset 0 1px 0 rgba(168, 144, 88, 0.22);
+}
+
+html[data-dsh-skin="black-gold"] [class*='_brandMark'] svg {
+  color: #a89058;
+  filter: none;
+}
+
+/* brandIdentity 与 brandName 都写死了 24px，而 .brand 又是 overflow:hidden，
+   所以底线的 4px 会被直接裁掉 —— 必须先把这两个高度放开。 */
+html[data-dsh-skin="black-gold"] [class*='_brandIdentity'] {
+  height: auto;
+}
+
+/* 字标坐落在一条描金细线上——主题里"托"的做法（输入卡、工作区匾额同源）。
+   高度放开，让底线贴着文字；alignment 交给父级的 align-items: center。 */
+html[data-dsh-skin="black-gold"] [class*='_brandName'] {
+  height: auto;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(201, 171, 110, 0.42);
+}
+
+html[data-dsh-skin="black-gold"] [class*='_brandName'] {
+  border-bottom-color: rgba(168, 144, 88, 0.52);
+}
+
+/* 收起原字，但保留元素（宽度塌成 0，伪元素接着排版） */
+html[data-dsh-skin="black-gold"] [class*='_fallbackBrandName'],
+html[data-dsh-skin="black-gold"] [class*='_localBuildTitle'] {
+  font-size: 0;
+  letter-spacing: 0;
+}
+
+/* 第一段：代号，小号、宽字距、退到次级墨色 */
+html[data-dsh-skin="black-gold"] [class*='_fallbackBrandName']::before,
+html[data-dsh-skin="black-gold"] [class*='_localBuildTitle']::before {
+  content: 'DSH';
+  margin-right: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.20em;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* 第二段：名号，衬线、描金 */
+html[data-dsh-skin="black-gold"] [class*='_fallbackBrandName']::after,
+html[data-dsh-skin="black-gold"] [class*='_localBuildTitle']::after {
+  content: '◆\2002暗夜鎏金';
+  font-family: 'Songti SC', 'SimSun', Georgia, serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #c9ab6e;
+  background-image: linear-gradient(118deg, #f5e9cf, #c9ab6e 44%, #9c8045 64%, #e4d2a6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 象牙底上渐变描金会发白，浅色模式改用实色深金 */
+html[data-dsh-skin="black-gold"] [class*='_fallbackBrandName']::after,
+html[data-dsh-skin="black-gold"] [class*='_localBuildTitle']::after {
+  color: #ae9550;
+  background-image: none;
+  -webkit-text-fill-color: currentColor;
+}
+
+/* ── 回合分隔：云纹描金线 (turn divider) ──────────────────────────────────
+   会话流此前完全靠留白分行，滚动时分不清一个回合从哪里开始。
+   [data-turn-tail] 每个回合恰好一个，是稳定锚点；装饰画在 padding 里，
+   不占内容位。 */
+
+html[data-dsh-skin="black-gold"] [data-turn-tail] {
+  padding-bottom: 28px;
+  background-image: url(assets/gilded-divider.svg);
+  background-repeat: no-repeat;
+  background-position: center bottom 3px;
+  background-size: 268px 17px;
+  border-bottom: 1px solid rgba(201, 171, 110, 0.10);
+}
+
+html[data-dsh-skin="black-gold"] [data-turn-tail] {
+  border-bottom-color: rgba(168, 144, 88, 0.18);
+}
+
+/* ── 审批：朱批 (vermilion approval slip) ────────────────────────────────
+   这套皮肤此前除了错误态没有任何红色。Agent 请求执行敏感操作、等你拍板，
+   是全界面最该被一眼看到的瞬间，所以给它一个朱红的钤印。
+   data-approval-key 是官方稳定属性，不必够哈希类名。 */
+
+html[data-dsh-skin="black-gold"] [data-approval-key] [class*='_card'] {
+  border-radius: 4px;
+  outline: 1px solid rgba(201, 64, 47, 0.42);
+  outline-offset: -1px;
+  background-image:
+    url(assets/vermilion-seal.svg),
+    linear-gradient(180deg, rgba(201, 64, 47, 0.10), rgba(201, 64, 47, 0.03));
+  background-repeat: no-repeat, no-repeat;
+  background-position: right 10px top 10px, 0 0;
+  background-size: 30px 30px, 100% 100%;
+  box-shadow:
+    inset 0 0 0 1px rgba(201, 64, 47, 0.18),
+    inset 0 1px 0 rgba(201, 64, 47, 0.12);
+}
+
+html[data-dsh-skin="black-gold"] [data-approval-key] [class*='_strip'] {
+  color: #d9604f;
+  letter-spacing: 0.06em;
+}
+
+html[data-dsh-skin="black-gold"] [data-approval-key] [class*='_dot'] {
+  background-color: #c9402f;
+  box-shadow: 0 0 8px rgba(201, 64, 47, 0.85);
+}
+
+html[data-dsh-skin="black-gold"] [data-approval-key] [class*='_headline'] {
+  color: #e0806b;
+}
+
+html[data-dsh-skin="black-gold"] [data-approval-key] [class*='_command'] {
+  border-left: 2px solid rgba(201, 64, 47, 0.5);
+  padding-left: 10px;
+}
+
+html[data-dsh-skin="black-gold"] [data-approval-key] [class*='_reject'] {
+  border-color: rgba(201, 64, 47, 0.55);
+  color: #d9604f;
+}
+
+html[data-dsh-skin="black-gold"] [data-approval-key] [class*='_strip'],
+html[data-dsh-skin="black-gold"] [data-approval-key] [class*='_headline'],
+html[data-dsh-skin="black-gold"] [data-approval-key] [class*='_reject'] {
+  color: #a8302a;
+}
+
+/* 浅色底上把鎏金印压深一档，否则在象牙底上几乎看不见 */
+html[data-dsh-skin="black-gold"] [class*='_sidebarCol']::after,
+html[data-dsh-skin="black-gold"] [data-dsh-surface='sidebar']::after {
+  filter: brightness(0.72) saturate(1.15);
+}
+
+/* ── 暗色专用：钉死原生配色方案 ──────────────────────────────────────────
+   presenter 会把 color-scheme 写成 html 的行内样式（随系统浅/深切换），
+   而滚动条与表单控件跟随它渲染——浅色模式下发送键就会变成白色圆钮。
+   行内样式只能用 !important 覆盖。 */
+html[data-dsh-skin="black-gold"] {
+  color-scheme: dark !important;
+}
+
+html[data-dsh-skin="black-gold"] [id="root"] { background: transparent; }
+
+html[data-dsh-skin="black-gold"] body { --shiki-background: var(--dsw-alias-markdown-code-block); }

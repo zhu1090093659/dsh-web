@@ -12,16 +12,20 @@ import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { ClientRemote, SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { IWorkspaces } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigForms } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale) and its
 // LocaleNamespaceMap merge table.
 import type {} from '@deepseek-ai/dsh-client-locale/client'
-// Type-only: pulls the settings-surface Context merge (ctx.settingsScope).
+// Type-only: pulls the shared-forms Context merge (ctx.configForms).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+// Type-only: pulls the workspace plugin's Context merge (ctx.uiWorkspace), the
+// multi-instance navigation face that replaced ISessions.open().
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { BoardController } from '../core/controller.ts'
+import { mainViewSessionId } from './main-session.ts'
 import { LocalStorageTaskStore } from '../core/store.ts'
 import { claimTaskboardApply, releaseTaskboardApply } from './apply-guard.ts'
 import { mountBoard } from './board-mount.tsx'
@@ -30,12 +34,52 @@ import { TaskBoardSettingsCard, TaskBoardSettingsCardController, type TaskBoardS
 import { en, zh, setRuntimeTranslate, type TaskBoardKey } from './locales.ts'
 import { HttpTaskBoardHostTransport } from './host-api.ts'
 import { reportDailyHeartbeat } from './telemetry.ts'
+import { installPluginCard } from './plugin-card-seat.ts'
 
 /** Locale namespace this plugin owns. */
 const NS = 'task-board'
 
-/** Settings namespace the settings card edits (the Host plugin registers it). */
+/** Settings namespace this card edits (the family identity of the plugin's own settings form). */
 const TASK_BOARD_NS = 'task-board'
+
+/**
+ * Profile entry id the family aggregate's generated row carries — the
+ * deployment shape nearly every user runs. Under 0.1.7 a settings form is
+ * addressed by profile entry id, so the shared-forms fallback below has to
+ * name it; the family binder resolves the family namespace instead.
+ */
+const AGGREGATE_ENTRY_ID = 'web-ui-task-board'
+
+/**
+ * Profile entry ids this package's two patch rows carry: the aggregate's
+ * generated row and the standalone bundle patch's row (`ui-task-board`), plus
+ * the bare namespace as the last resort for a Host whose descriptor is keyed
+ * by the family namespace itself.
+ */
+const TASK_BOARD_ENTRY_IDS: readonly string[] = [AGGREGATE_ENTRY_ID, 'ui-task-board', TASK_BOARD_NS]
+
+/** Domain-owned description of one settings namespace a family card binds. */
+export interface SettingsFormSpec<T> {
+  /** Settings namespace the card edits. */
+  namespace: string
+  /**
+   * Narrow one wire section; undefined keeps the last accepted value. The
+   * shared form already resolves the namespace's own serialized wire schema,
+   * so a decoder exists only to narrow beyond that schema.
+   */
+  decode?: (section: unknown) => T | undefined
+}
+
+/**
+ * The family settings binder published by dsh-web-settings. Its `bind` resolves
+ * a family namespace to the profile entry id that owns it and hands back the
+ * shared configuration form, so it is the only seat that can reach this card's
+ * form on a Host whose row id is not the namespace.
+ */
+export interface SettingsFormBinder {
+  /** Bind one family settings namespace. */
+  bind<T>(spec: SettingsFormSpec<T>): ConfigForm<T>
+}
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -46,9 +90,9 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     /**
      * The child slot the Web UI plugin group declares; this card registers
-     * into the group instead of the top-level `settings.plugin.item` list.
-     * Spelled here with the same shape so this package can register without
-     * depending on the sibling UI package.
+     * into the group's list seat rather than the official
+     * bundle-configuration seat. Spelled here with the same shape so this
+     * package can register without depending on the sibling UI package.
      */
     'web-ui.plugin.item': { kind: 'list'; scope: 'root'; owner: SettingsPluginItemOwnerProps }
   }
@@ -63,11 +107,11 @@ export interface SettingsPluginItemOwnerProps {
 declare module '@deepseek-ai/cordis' {
   interface Context {
     /**
-     * Optional rc.6 compatibility binder provided by dsh-web-settings;
-     * absent when that group plugin is not installed, so callers fall back to
-     * the official settings scope.
+     * Optional family settings binder provided by dsh-web-settings; absent
+     * when that group plugin is not installed, so callers fall back to the
+     * shared configuration forms service.
      */
-    webUiSettings?: { bind<S>(spec: SettingsScopeSpec<S>): SettingsScope<S> }
+    webUiSettings?: SettingsFormBinder
   }
 }
 
@@ -80,7 +124,7 @@ declare module '@deepseek-ai/cordis' {
  * on hosts below that cohort, which serve the same roster through the
  * connection RPC face.
  */
-export const inject = ['slots', 'sessions', 'workspaces', 'connection', 'settingsScope', 'locale', 'remote']
+export const inject = ['slots', 'sessions', 'workspaces', 'connection', 'configForms', 'locale', 'remote', 'remote.session', 'uiWorkspace']
 
 /** One agent-preset row the mode picker consumes (either face's wire shape). */
 interface PresetRosterRow {
@@ -164,31 +208,23 @@ export function apply(ctx: ClientContext): void {
   try { setRuntimeTranslate(ctx.locale.bind(NS)) } catch { /* locale missing: document-language fallback stays */ }
 
   // Plugin configuration card: one staged form over the `task-board` settings
-  // namespace, contributed to the Web UI plugin group.
-  const binder = ctx.get('webUiSettings') ?? ctx.settingsScope
-  const settingsScope = binder.bind<TaskBoardSettings>({ namespace: TASK_BOARD_NS })
-  const settingsCard = new TaskBoardSettingsCardController(settingsScope)
-  ctx.slots.inject('web-ui.plugin.item', () => {
-    try {
-      const unregister = ctx.slots.register({
-        name: 'web-ui.plugin.item',
-        id: 'task-board',
-        order: 110,
-        locale: NS,
-        inject: () => settingsCard.inject(),
-      }, TaskBoardSettingsCard)
-      return () => {
-        settingsCard.dispose()
-        unregister()
-      }
-    } catch {
-      return () => {}
-    }
+  // namespace, contributed to whichever plugin-card seat this host declares
+  // (the family group's list seat, or the official bundle-configuration seat).
+  const settingsForm = bindSettingsForm(ctx)
+  const settingsCard = new TaskBoardSettingsCardController(settingsForm)
+  installPluginCard(ctx, {
+    bundle: '@linxin666/dsh-client-ui-task-board',
+    id: 'task-board',
+    order: 110,
+    locale: NS,
+    inject: () => settingsCard.inject(),
+    component: TaskBoardSettingsCard,
   })
+  ctx.effect(() => () => { settingsCard.dispose() }, 'task-board: settings card')
 
-  // The sidebar entry and board view mount once the settings scope settles;
-  // while the scope is still loading, the composition default is unknown, so
-  // nothing mounts yet. Only an unavailable scope (no settings surface served)
+  // The sidebar entry and board view mount once the settings form settles;
+  // while the form is still loading, the composition default is unknown, so
+  // nothing mounts yet. Only an unavailable form (no settings surface served)
   // falls back to the composition default (enabled).
   let uiDisposer: (() => void) | undefined
   const mountUi = (): void => {
@@ -206,8 +242,12 @@ export function apply(ctx: ClientContext): void {
       store,
       transport: new HttpTaskBoardHostTransport(),
       sessions: {
-        list: sessions.list,
-        open: id => sessions.open(id as never),
+        // The main-view Session comes from the catalog's per-source ownership
+        // counts; navigation belongs to the workspace UI since the
+        // multi-instance Client Session model.
+        current: () => mainViewSessionId(sessions.list.getSnapshot().byId),
+        open: id => ctx.uiWorkspace.openSession(id as never),
+        subscribe: fn => sessions.list.subscribe(fn),
       },
     })
     controller.start()
@@ -230,6 +270,13 @@ export function apply(ctx: ClientContext): void {
     }
     pushWorkspaceOptions()
     disposers.push(workspaces.list.subscribe(pushWorkspaceOptions))
+    // "New project" on the board is the GUI's own add-project call (#1536);
+    // the runtime emits the created Workspace through workspaces.list, which
+    // refreshes the filter above without a local re-read.
+    controller.setWorkspaceCreator(async path => {
+      const created = await workspaces.create({ path })
+      return { workspaceId: created.workspaceId }
+    })
     const pushPresetOptions = async (): Promise<void> => {
       try {
         const roster = await readPresetRoster(ctx, remote)
@@ -251,31 +298,63 @@ export function apply(ctx: ClientContext): void {
     }
     const pushModelOptions = async (): Promise<void> => {
       try {
-        const conn = ctx.get('connection') as { api?: { llm?: { discoverModels?: () => Promise<unknown> }; sessions?: { modelCatalog?: () => Promise<unknown> } } } | undefined
-        if (conn?.api) {
-          let models: Array<{ id: string; name?: string; provider?: string }> = []
-          if (typeof conn.api.llm?.discoverModels === 'function') {
-            const res = await conn.api.llm.discoverModels() as { result?: { value?: { models?: Array<{ id: string; name?: string }> } } }
-            const list = res?.result?.value?.models
-            if (Array.isArray(list)) {
-              models = list.map(m => ({ id: m.id, name: m.name }))
+        let models: Array<{ id: string; name?: string; provider?: string }> = []
+        let sessionRemote: ClientRemote['session'] | undefined
+        try {
+          sessionRemote = (remote as Partial<ClientRemote>).session
+        } catch {
+          sessionRemote = undefined
+        }
+        if (typeof sessionRemote?.modelCatalog === 'function') {
+          const res = await sessionRemote.modelCatalog()
+          if (res.ok && Array.isArray(res.value?.groups)) {
+            for (const g of res.value.groups) {
+              const provider = (g as { id?: string; provider?: string }).id ?? (g as { id?: string; provider?: string }).provider
+              for (const m of g.models ?? []) {
+                const qualifiedId = provider ? `${provider}/${m.id}` : m.id
+                models.push({ id: qualifiedId, name: m.name ?? m.id, provider })
+              }
             }
           }
-          if (models.length === 0 && typeof conn.api.sessions?.modelCatalog === 'function') {
-            const res = await conn.api.sessions.modelCatalog() as { result?: { value?: { groups?: Array<{ provider?: string; models?: Array<{ id: string; name?: string }> }> } } }
-            const groups = res?.result?.value?.groups
-            if (Array.isArray(groups)) {
-              for (const g of groups) {
-                for (const m of g.models ?? []) {
-                  const qualifiedId = g.provider ? `${g.provider}/${m.id}` : m.id
-                  models.push({ id: qualifiedId, name: m.name ?? m.id, provider: g.provider })
+        }
+        if (models.length === 0) {
+          const conn = ctx.get('connection') as {
+            api?: {
+              llm?: { discoverModels?: () => Promise<unknown> }
+              sessions?: { modelCatalog?: () => Promise<unknown> }
+              session?: { modelCatalog?: () => Promise<unknown> }
+            }
+          } | undefined
+          if (conn?.api) {
+            if (typeof conn.api.llm?.discoverModels === 'function') {
+              const res = await conn.api.llm.discoverModels() as { result?: { value?: { models?: Array<{ id: string; name?: string }> } } }
+              const list = res?.result?.value?.models
+              if (Array.isArray(list)) {
+                models = list.map(m => ({ id: m.id, name: m.name }))
+              }
+            }
+            const catalogFn = typeof conn.api.session?.modelCatalog === 'function'
+              ? conn.api.session.modelCatalog
+              : typeof conn.api.sessions?.modelCatalog === 'function'
+                ? conn.api.sessions.modelCatalog
+                : undefined
+            if (models.length === 0 && catalogFn !== undefined) {
+              const res = await catalogFn() as { result?: { value?: { groups?: Array<{ id?: string; provider?: string; models?: Array<{ id: string; name?: string }> }> } } }
+              const groups = res?.result?.value?.groups
+              if (Array.isArray(groups)) {
+                for (const g of groups) {
+                  const provider = g.id ?? g.provider
+                  for (const m of g.models ?? []) {
+                    const qualifiedId = provider ? `${provider}/${m.id}` : m.id
+                    models.push({ id: qualifiedId, name: m.name ?? m.id, provider })
+                  }
                 }
               }
             }
           }
-          if (models.length > 0) {
-            controller.setExecutionOptions({ models })
-          }
+        }
+        if (models.length > 0) {
+          controller.setExecutionOptions({ models })
         }
       } catch (error) {
         console.error('[dsh-task-board] model options read failed', error)
@@ -298,13 +377,56 @@ export function apply(ctx: ClientContext): void {
     }
   }
   const syncEnabled = (): void => {
-    const snapshot = settingsScope.getSnapshot()
+    const snapshot = settingsForm.getSnapshot()
     const enabled = snapshot.status === 'ready'
       ? snapshot.value?.enabled ?? true
       : snapshot.status === 'unavailable'
     if (enabled) mountUi()
     else uiDisposer?.()
   }
-  settingsScope.subscribe(syncEnabled)
+  settingsForm.subscribe(syncEnabled)
   syncEnabled()
+}
+
+/**
+ * Bind the settings form this card stages over.
+ *
+ * The family binder (`ctx.get('webUiSettings')`, published by dsh-web-settings)
+ * comes first: it is what traces this package's family namespace onto the
+ * profile entry id the Host serves the form under, and it keeps the loopback
+ * bridge as its own fallback. A page without that group falls back to the
+ * shared configuration forms service bound directly at one of this package's
+ * own profile entry ids.
+ * @param ctx - client root context.
+ * @returns the form the settings card reads and writes.
+ */
+export function bindSettingsForm(ctx: ClientContext): ConfigForm<TaskBoardSettings> {
+  const binder = ctx.get('webUiSettings')
+  if (binder !== undefined && typeof binder.bind === 'function') {
+    return binder.bind<TaskBoardSettings>({ namespace: TASK_BOARD_NS })
+  }
+  return ctx.configForms.get<TaskBoardSettings>(servedEntryId(ctx.configForms))
+}
+
+/**
+ * The profile entry id this package's own row carries.
+ *
+ * The shared describe mirror is the only local evidence of which row id this
+ * profile actually serves, but it answers asynchronously: at plugin
+ * activation it usually holds nothing yet. An unanswered mirror therefore
+ * binds the aggregate row id rather than guessing among the candidates —
+ * the form is bound once for the session, so a wrong guess would leave the
+ * card reporting an unserved namespace even after the mirror settles.
+ * @param forms - the shared configuration forms service.
+ * @returns the entry id to bind.
+ */
+function servedEntryId(forms: ConfigForms): string {
+  let served: readonly string[] | undefined
+  try {
+    served = forms.describe().getSnapshot().view?.namespaces.map(view => view.ns)
+  } catch {
+    served = undefined
+  }
+  if (served === undefined) return AGGREGATE_ENTRY_ID
+  return TASK_BOARD_ENTRY_IDS.find(id => served.includes(id)) ?? TASK_BOARD_NS
 }

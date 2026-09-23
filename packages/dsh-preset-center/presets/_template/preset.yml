@@ -1,0 +1,4 @@
+# Display text the DSH roster shows. Keep each value on one line.
+name: 示例预设
+description: 说明这个预设面向什么场景，一句话。
+order: 50

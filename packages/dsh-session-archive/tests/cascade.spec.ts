@@ -74,6 +74,26 @@ describe('planDelete', () => {
     const plan = planDelete(family(), ['session-p', 'session-c1', 'session-g'], new Map())
     expect([...plan.targets].sort()).toEqual(['session-c1', 'session-c2', 'session-g', 'session-p'])
   })
+
+  it('records each skipped member once when a protected child is also selected', () => {
+    const plan = planDelete(family(), ['session-p', 'session-g'], new Map([['session-g', 'running']]))
+    expect(plan.targets).toEqual([])
+    expect(plan.skipped.map((entry) => entry.id).sort()).toEqual(['session-c1', 'session-c2', 'session-g', 'session-p'])
+    // The directly selected protected child keeps its own reason; the family
+    // entry from the parent must not shadow it.
+    const grandchild = plan.skipped.filter((entry) => entry.id === 'session-g')
+    expect(grandchild).toHaveLength(1)
+    expect(grandchild[0]).toMatchObject({ status: 'skipped', reason: 'running' })
+  })
+
+  it('keeps the family reason for a protected member that is not directly selected', () => {
+    const plan = planDelete(family(), ['session-p', 'session-c2'], new Map([['session-g', 'running']]))
+    expect(plan.targets).toEqual([])
+    expect(plan.skipped.map((entry) => entry.id).sort()).toEqual(['session-c1', 'session-c2', 'session-g', 'session-p'])
+    const grandchild = plan.skipped.filter((entry) => entry.id === 'session-g')
+    expect(grandchild).toHaveLength(1)
+    expect(grandchild[0]).toMatchObject({ reason: 'family-protected', detail: 'session-g:running' })
+  })
 })
 
 describe('clientProtectedReason', () => {

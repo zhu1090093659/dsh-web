@@ -19,11 +19,16 @@ function fixture() {
   const pairs = [
     [join(ROOT, 'scripts', 'market-build'), join(dir, 'scripts', 'market-build')],
     [join(ROOT, 'market', 'src'), join(dir, 'market', 'src')],
+    [join(ROOT, 'market', 'editor-picks.json'), join(dir, 'market', 'editor-picks.json')],
     [join(ROOT, 'market', 'dist'), join(dir, 'market', 'dist')],
     [join(ROOT, 'packages', 'skins', 'skin-center', 'skins'), join(dir, 'packages', 'skins', 'skin-center', 'skins')],
     [join(ROOT, 'packages', 'skins', 'skin-center', 'lib', 'index.js'), join(dir, 'packages', 'skins', 'skin-center', 'lib', 'index.js')],
     [join(ROOT, 'packages', 'dsh-pet', 'assets'), join(dir, 'packages', 'dsh-pet', 'assets')],
+    [join(ROOT, 'packages', 'dsh-preset-center', 'presets'), join(dir, 'packages', 'dsh-preset-center', 'presets')],
     [join(ROOT, 'packages', 'dsh-community-plugins', 'community.json'), join(dir, 'packages', 'dsh-community-plugins', 'community.json')],
+    // The installer source carries MAX_FILES_PER_ASSET; market-build reads the
+    // cap from it to reject catalog assets the installer could not install.
+    [join(ROOT, 'packages', 'dsh-market', 'src', 'core', 'installer.ts'), join(dir, 'packages', 'dsh-market', 'src', 'core', 'installer.ts')],
   ]
   for (const [from, to] of pairs) {
     mkdirSync(join(to, '..'), { recursive: true })
@@ -57,6 +62,32 @@ test('check refuses tampered tryon-assets output', () => {
     const result = runCheck(dir)
     assert.equal(result.status, 1)
     assert.match(result.stderr, /tryon-assets\/skins\/blue-fantasy\/skin\.css/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('check rejects an editor pick that names a missing catalog asset', () => {
+  const dir = fixture()
+  try {
+    writeFileSync(join(dir, 'market', 'editor-picks.json'),
+      JSON.stringify({ items: [{ kind: 'skin', id: 'no-such-skin' }] }))
+    const result = runCheck(dir)
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /editor picks #0: skin:no-such-skin is not in the skin catalog/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('check rejects an editor pick outside the skin / pet / plugin kinds', () => {
+  const dir = fixture()
+  try {
+    writeFileSync(join(dir, 'market', 'editor-picks.json'),
+      JSON.stringify({ items: [{ kind: 'preset', id: 'demo' }] }))
+    const result = runCheck(dir)
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /editor picks #0: kind must be one of skin \/ pet \/ plugin/)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

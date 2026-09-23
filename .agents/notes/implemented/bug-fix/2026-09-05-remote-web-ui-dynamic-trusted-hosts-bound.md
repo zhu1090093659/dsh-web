@@ -6,7 +6,7 @@ Status: implemented
 
 The docker/reverse-proxy pairing work ([docker pairing adaptation](2026-09-04-remote-web-ui-docker-pairing-adaptation.md)) introduced `dynamicTrustedHosts` in `makeRoutes` as a process-lifetime `Set<string>` with three insertion sites and no eviction or cap. The table is fed by caller-controlled `Host` headers: any request that satisfies `isPrivateOrLocalHostname` (every RFC 1918 IPv4 literal, IPv6 ULA/link-local prefixes, `*.local`/`*.lan`/`*.internal`/`*.home.arpa` names) plus a live device credential (`isPairedDeviceRequest`/`hasDevice`, or a one-time token on the accept paths) permanently adds that authority. A caller holding any live device id can therefore send a stream of requests with distinct private Host headers and grow the set without bound.
 
-Two costs follow. Memory: an unbounded structure in a long-lived daemon. CPU on the phone-facing hot path: every `lanFence` call spreads the whole set into a fresh array and `isTrustedApiRequest` runs one `new URL()` parse per entry per request, so each extra entry taxes every subsequent gated request.
+Two costs follow. Memory: an unbounded structure in a long-lived daemon. CPU on the phone-facing hot path: every `lanFence` call spreads the whole set into a fresh array and the host check inside `isTrustedApiRequest`/`isTrustedHost` runs one `new URL()` parse per entry per request, so each extra entry taxes every subsequent gated request.
 
 ## Decision
 
@@ -22,7 +22,7 @@ Behavior is preserved for legitimate flows. A capped-out table only drops stale 
 ## Alternatives considered
 
 - Expiring entries by time (mirroring the `acceptAttempts` window prune): rejected — a time-based table needs a sweep and a tuning knob for a cache whose entries are self-healing; FIFO at a cap achieves the bound with no timer and no policy to get wrong.
-- Dropping the dynamic table and re-deriving trust per request from the cookie alone: rejected — the cookieless mobile flow (`?device=` on `/pair-app`) and reverse-proxy topologies rely on the remembered authority to pass `lanFence` after `/pair-accept`; removing the table would break the flow the [docker pairing adaptation](2026-09-04-remote-web-ui-docker-pairing-adaptation.md) shipped.
+- Dropping the dynamic table and re-deriving trust per request from the cookie alone: rejected — the cookieless mobile flow (the one-time `?grant=` landing on `/pair-app`, `?device=` when this note was written — see [the one-time landing grant](../../architecture/2026-09-21-remote-one-time-landing-grant.md)) and reverse-proxy topologies rely on the remembered authority to pass `lanFence` after `/pair-accept`; removing the table would break the flow the [docker pairing adaptation](2026-09-04-remote-web-ui-docker-pairing-adaptation.md) shipped.
 - Validating dynamic entries against configured `trustedHosts` only: rejected — the table exists precisely for authorities no configuration knows about (container bridge IPs, rotating proxy hosts).
 
 ## Consequences

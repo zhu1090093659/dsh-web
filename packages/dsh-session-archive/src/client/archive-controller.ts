@@ -17,9 +17,14 @@ const CHUNK_SIZE = 200
 export interface ArchiveControllerDeps {
   api?: ArchiveApi
   store?: ArchiveStoreInstance
-  /** The client sessions face, for the current-selection id and feed refresh. */
+  /**
+   * The client sessions face: the main-view Session resolver and the feed
+   * refresh. The Client Session Controller carries no global selection since
+   * 0.1.6-alpha.2, so the wiring resolves the main-view Session and this port
+   * takes the resolved id rather than the catalog shape.
+   */
   sessions?: {
-    list: { getSnapshot(): { current?: string } }
+    current?: () => string | undefined
     refresh?: () => Promise<void>
   }
 }
@@ -80,10 +85,10 @@ export class ArchiveController {
     this.sessions = deps.sessions
   }
 
-  /** The persisted current-selection id from the sessions feed, when available. */
+  /** The main-view Session id from the sessions face, when available. */
   getCurrentSessionId(): string | undefined {
     try {
-      return this.sessions?.list.getSnapshot().current
+      return this.sessions?.current?.()
     } catch {
       return undefined
     }

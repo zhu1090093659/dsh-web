@@ -3,10 +3,10 @@
  * WallpaperController tests (jsdom): layer mounting and z-order, dim/blur
  * application, mode switching, try-on/exit restoration, selection
  * persistence, pause-on-hidden, and full dispose — driven by a fake
- * SettingsScope so no real settings surface is touched.
+ * ConfigForm so no real settings surface is touched.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import {
   WallpaperController,
   defaultWallpaperSurface,
@@ -30,15 +30,15 @@ interface Section {
   weLibraryDirs?: string[]
 }
 
-/** A fake SettingsScope recording every set() call. */
-function fakeScope(initial: Partial<Section> = {}): {
-  scope: SettingsScope<Section>
+/** A fake ConfigForm recording every set() call; writes are accepted unless the test refuses them. */
+function fakeScope(initial: Partial<Section> = {}, acceptWrites: boolean | ((field: string, value: unknown) => boolean) = true): {
+  scope: ConfigForm<Section>
   calls: Array<{ field: string; value: unknown }>
 } {
   let value = { ...initial } as Section
   const calls: Array<{ field: string; value: unknown }> = []
   const listeners = new Set<() => void>()
-  const snapshot: SettingsScopeSnapshot<Section> = {
+  const snapshot: ConfigFormSnapshot<Section> = {
     status: 'ready',
     value,
     base: undefined,
@@ -47,22 +47,28 @@ function fakeScope(initial: Partial<Section> = {}): {
     writable: true,
     mode: 'host',
   }
-  const scope: SettingsScope<Section> = {
+  const accepted = (field: string, val: unknown): boolean =>
+    typeof acceptWrites === 'function' ? acceptWrites(field, val) : acceptWrites
+  const scope: ConfigForm<Section> = {
     getSnapshot: () => ({ ...snapshot, value }),
     subscribe: (listener: () => void) => {
       listeners.add(listener)
       return () => { listeners.delete(listener) }
     },
     set: async (field, val) => {
+      if (!accepted(field, val)) return false
       calls.push({ field, value: val })
       value = { ...value, [field]: val as never }
       for (const listener of listeners) listener()
+      return true
     },
     unset: async field => {
       value = { ...value }
       delete value[field as keyof Section]
       for (const listener of listeners) listener()
+      return true
     },
+    mutate: async ops => ops.every(op => accepted(op.path.join('.'), 'value' in op ? op.value : undefined)),
   }
   return { scope, calls }
 }
@@ -699,10 +705,55 @@ describe('WallpaperController', () => {
     controller.dispose()
   })
 
-  it('reads initial manual folders from the scope', () => {
+  it('reads initial manual folders from the settings form', () => {
     const { scope } = fakeScope({ weLibraryDirs: ['/a', '', '  ', '/b'] })
     const controller = new WallpaperController(scope)
     expect(controller.dirs()).toEqual(['/a', '/b'])
+    controller.dispose()
+  })
+
+  it('user sees a Host-refused wallpaper write as a failed save', async () => {
+    // Given a wallpaper card whose writes the Host refuses (0.1.7 answers a
+    // refusal or a skipped write with `false` instead of rejecting it)
+    const { scope } = fakeScope({}, false)
+    const controller = new WallpaperController(scope)
+
+    // When the user switches the wallpaper feature off
+    controller.setEnabled(false)
+
+    // Then the card reports a failed save instead of a saved setting
+    await vi.waitFor(() => { expect(controller.writeError()).toContain('did not accept') })
+    controller.dispose()
+  })
+
+  it('user sees a broken settings transport as a failed save', async () => {
+    // Given a settings transport that rejects the write outright
+    const { scope } = fakeScope()
+    scope.set = async () => { throw new Error('settings bridge unreachable') }
+    const controller = new WallpaperController(scope)
+
+    // When the user switches the render mode
+    controller.setMode('frame')
+
+    // Then the card reports the transport's own message
+    await vi.waitFor(() => { expect(controller.writeError()).toBe('settings bridge unreachable') })
+    controller.dispose()
+  })
+
+  it('user sees the failed-save notice clear once a later write lands', async () => {
+    // Given a card whose first write is refused
+    let accept = false
+    const { scope } = fakeScope({}, () => accept)
+    const controller = new WallpaperController(scope)
+    controller.setMode('frame')
+    await vi.waitFor(() => { expect(controller.writeError()).toContain('did not accept') })
+
+    // When a later write is accepted
+    accept = true
+    controller.setMode('live')
+
+    // Then the notice is gone, so the card stops claiming a failure
+    await vi.waitFor(() => { expect(controller.writeError()).toBeNull() })
     controller.dispose()
   })
 
@@ -1207,6 +1258,7 @@ function fakeHandle(selection: string): {
     addDir: () => {},
     removeDir: () => {},
     activeId: () => null,
+    writeError: () => null,
     trying: () => false,
     subscribe: listener => {
       listeners.add(listener)

@@ -9,8 +9,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ComponentProps, type ReactNode } from 'react'
 import { marketTurnstileToken, TURNSTILE_ACTION_INSTALL } from './turnstile.ts'
 import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { InjectFace, PropsLocale, PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { PluginSettingsCard, BooleanField } from './PluginSettingsCard.tsx'
 import { CardForm, booleanField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
@@ -22,13 +22,19 @@ import {
 } from './plugin-manager-bridge.ts'
 import { entryInstalled, installCommand, installSpec, isInstallSpecValid } from './install-source.ts'
 import { byCategory, bySubcategory, categoryCounts, subcategoryCounts } from './filter.ts'
-import { CATEGORY_LABEL_KEY, SUBCATEGORY_IDS, SUBCATEGORY_LABEL_KEY } from './categories.ts'
+import {
+  CATEGORY_LABEL_KEY,
+  PRESET_CATEGORY_LABEL_KEY,
+  PRESET_SUBCATEGORY_IDS,
+  SUBCATEGORY_IDS,
+  SUBCATEGORY_LABEL_KEY,
+} from './categories.ts'
 import type { MarketKey } from './locales.ts'
 import css from './market.module.css'
 
 const MARKET_ORIGIN = 'https://dsh-market.com'
 
-/** The settings fields this card edits (the namespace's full schema). */
+/** The configuration fields this card edits (the settings entry's own schema). */
 export interface MarketSettings {
   /** Master switch for the market card. */
   enabled?: boolean
@@ -44,15 +50,20 @@ export interface MarketCardFace extends CardActions {
   hooks: {
     marketCard: SnapshotStore<MarketCardState>
   }
+  /**
+   * Open one external URL in the official sidebar browser, or in a new browser
+   * tab when this shell declares no browser tab type.
+   */
+  openExternal: (url: string) => void
 }
 
-/** Bridges the market scope onto the card's staged form. */
+/** Bridges the market config form onto the card's staged form. */
 export class MarketCardController {
   private readonly form: CardForm<MarketSettings>
   private readonly store: SnapshotStore<MarketCardState>
 
-  /** @param scope - the bound settings scope for the dsh-web-ui-market namespace. */
-  constructor(scope: SettingsScope<MarketSettings>) {
+  /** @param scope - the bound configuration form of the market card's settings entry. */
+  constructor(scope: ConfigForm<MarketSettings>) {
     this.form = new CardForm(scope, [
       booleanField('enabled'),
     ])
@@ -66,18 +77,70 @@ export class MarketCardController {
     }
   }
 
-  /** Build the face the card's slot registration injects. */
-  inject(): MarketCardFace {
-    return { hooks: { marketCard: this.store }, ...this.form.actions() }
+  /**
+   * Build the face the card's slot registration injects.
+   * @param openExternal - the shell-bound external-link opener.
+   */
+  inject(openExternal: (url: string) => void): MarketCardFace {
+    return { hooks: { marketCard: this.store }, openExternal, ...this.form.actions() }
   }
 
-  /** Release the scope subscription; the slot disposer calls this on teardown. */
+  /** Release the form subscription; the slot disposer calls this on teardown. */
   dispose(): void {
     this.form.dispose()
   }
 }
 
-type Kind = 'skin' | 'pet' | 'plugin'
+type Kind = 'skin' | 'pet' | 'plugin' | 'preset'
+
+/**
+ * Catalog kind the curated 编辑推荐 category may reference. Presets are out
+ * of scope: the category curates skins, pets and community plugins only.
+ */
+type PickKind = 'skin' | 'pet' | 'plugin'
+
+/** Store-card categories: the curated picks tab plus one tab per catalog kind. */
+type Tab = 'picks' | Kind
+
+/** One catalog record the store card hands to the Presets panel. */
+export interface WorkshopPresetRecord {
+  id: string
+  name?: string
+  nameEn?: string
+  author?: string
+  description?: string
+  descriptionEn?: string
+  version?: string
+  tags?: string[]
+  repo?: string
+  rank?: number
+}
+
+/** Marker key props of the Presets panel cell. */
+export interface WorkshopPanelKeyProps {
+  /** Marker field: key props are intentionally empty. */
+  children?: never
+}
+
+/**
+ * Owner share the store card passes to a contributed asset panel. The card
+ * owns the catalog fetch and the download gateway; the panel owns the
+ * kind-specific state machine behind them.
+ */
+export interface WorkshopPanelOwnerProps {
+  /** Catalog records for the panel's kind. */
+  items?: readonly WorkshopPresetRecord[]
+  /** Catalog fetch state. */
+  catalogState?: 'loading' | 'ready' | 'error'
+  /** Whether the loopback asset gateway answered. */
+  gateway?: boolean
+  /** Install-event counts by asset id. */
+  installs?: Record<string, number>
+  /** Download one asset into its DSH home directory. */
+  install?: (id: string, force: boolean) => Promise<{ dest: string }>
+  /** Record a successful install with the market. */
+  reportInstall?: (id: string) => Promise<number>
+}
 
 interface MarketRecord {
   id: string
@@ -103,19 +166,33 @@ interface MarketStats {
   skin: Record<string, number>
   pet: Record<string, number>
   plugin: Record<string, number>
+  preset: Record<string, number>
   installs?: Record<Kind, Record<string, number>>
+}
+
+/** One fixed 编辑推荐 reference, resolved against the loaded catalogs. */
+interface EditorPickRecord {
+  kind?: string
+  id?: string
 }
 
 interface MarketData {
   items: Record<Kind, MarketRecord[]>
   stats: MarketStats
+  /** Curated picks, in the fixed editorial order published by the workshop. */
+  picks?: EditorPickRecord[]
 }
 
 const KIND_LABEL: Record<Kind, MarketKey> = {
   skin: 'tab.skin',
   pet: 'tab.pet',
   plugin: 'tab.plugin',
+  preset: 'tab.preset',
 }
+
+/** Tab order: the curated picks category leads the catalog kinds. */
+const TAB_ORDER: readonly Tab[] = ['picks', 'skin', 'pet', 'plugin', 'preset']
+const TAB_LABEL: Record<Tab, MarketKey> = { picks: 'tab.picks', ...KIND_LABEL }
 
 function deviceFp(): string {
   const key = 'dsh-market-web-fp'
@@ -160,13 +237,14 @@ function formatCount(count: number): string {
 export type MarketCardProps =
   PropsLocale<'dsh-web-ui-market'>
   & InjectFace<MarketCardFace>
+  & PropsRenderSlots<'dsh-workshop.panel'>
   & {
     /** Remote data override (injected for tests). */
     remote?: MarketData | null
     /** Host gateway override; null forces the degraded copy-only UI (injected for tests). */
     gateway?: {
       install(kind: Kind, id: string, force: boolean): Promise<{ dest: string }>
-      list(): Promise<{ skins: string[]; pets: string[] }>
+      list(): Promise<{ skins: string[]; pets: string[]; presets: string[] }>
     } | null
     /** Plugin-manager face override; undefined reads the bridged cordis service. */
     pluginManager?: PluginManagerService | null
@@ -184,7 +262,7 @@ export type MarketCardProps =
  * Render the market card.
  */
 export function MarketCard(props: MarketCardProps): ReactNode {
-  const { t } = props
+  const { t, renderSlot } = props
   const state = props.useMarketCard((snapshot) => snapshot)
   const disabled = !state.writable
   const cardVisible = state.enabled.text !== 'false'
@@ -195,7 +273,7 @@ export function MarketCard(props: MarketCardProps): ReactNode {
     disabled,
   }
 
-  const [tab, setTab] = useState<Kind>('skin')
+  const [tab, setTab] = useState<Tab>('skin')
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState('all')
   const [subcat, setSubcat] = useState('all')
@@ -203,7 +281,7 @@ export function MarketCard(props: MarketCardProps): ReactNode {
   const [failed, setFailed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadAttempt, setLoadAttempt] = useState(0)
-  const [installed, setInstalled] = useState<{ skins: string[]; pets: string[] }>({ skins: [], pets: [] })
+  const [installed, setInstalled] = useState<{ skins: string[]; pets: string[]; presets: string[] }>({ skins: [], pets: [], presets: [] })
   const [installing, setInstalling] = useState<string | null>(null)
   const [conflict, setConflict] = useState<{ kind: Kind; id: string; dest: string } | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -233,19 +311,25 @@ export function MarketCard(props: MarketCardProps): ReactNode {
       fetchJson(MARKET_ORIGIN + '/manifest/skins.json'),
       fetchJson(MARKET_ORIGIN + '/manifest/pets.json'),
       fetchJson(MARKET_ORIGIN + '/manifest/plugins.json'),
+      fetchJson(MARKET_ORIGIN + '/manifest/presets.json').catch(() => ({ items: [] })),
       fetchJson(MARKET_ORIGIN + '/api/stats'),
+      // The curated picks list is optional: an older deployment without the
+      // manifest leaves the picks tab empty instead of failing the catalog.
+      fetchJsonOptional(MARKET_ORIGIN + '/manifest/editor-picks.json'),
       downloadsLoader(),
-    ]).then(([skins, pets, plugins, stats, downloads]) => {
+    ]).then(([skins, pets, plugins, presets, stats, picks, downloads]) => {
       if (!alive) return
-      const s = (stats ?? { skin: {}, pet: {}, plugin: {} }) as MarketStats
+      const s = (stats ?? { skin: {}, pet: {}, plugin: {}, preset: {} }) as MarketStats
       setData({
         items: {
           skin: ((skins as { items: MarketRecord[] }).items) ?? [],
           pet: ((pets as { items: MarketRecord[] }).items) ?? [],
           plugin: ((plugins as { items: MarketRecord[] }).items) ?? [],
+          preset: ((presets as { items?: MarketRecord[] }).items) ?? [],
         },
-        stats: { skin: s.skin ?? {}, pet: s.pet ?? {}, plugin: s.plugin ?? {},
+        stats: { skin: s.skin ?? {}, pet: s.pet ?? {}, plugin: s.plugin ?? {}, preset: s.preset ?? {},
           installs: s.installs ?? undefined } as MarketStats,
+        picks: ((picks as { items?: EditorPickRecord[] } | null)?.items) ?? [],
       })
       if (downloads && typeof downloads === 'object' && (downloads as Record<string, unknown>).downloads) {
         const list = (downloads as { downloads: Record<string, number> }).downloads
@@ -268,7 +352,7 @@ export function MarketCard(props: MarketCardProps): ReactNode {
   // otherwise the card degrades to copy-only with the market-site link.
   interface AssetGateway {
     install(kind: Kind, id: string, force: boolean): Promise<{ dest: string }>
-    list(): Promise<{ skins: string[]; pets: string[] }>
+    list(): Promise<{ skins: string[]; pets: string[]; presets: string[] }>
   }
   const [liveGateway, setLiveGateway] = useState<AssetGateway | null | undefined>(undefined)
   useEffect(() => {
@@ -276,7 +360,7 @@ export function MarketCard(props: MarketCardProps): ReactNode {
     let alive = true
     const gatewayClient: AssetGateway = {
       async install(kind, id, force) {
-        const res = await fetch('/api/market/install-' + (kind === 'skin' ? 'skin' : 'pet'), {
+        const res = await fetch('/api/market/install-' + kind, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ id, force }),
@@ -293,8 +377,8 @@ export function MarketCard(props: MarketCardProps): ReactNode {
       },
       async list() {
         const raw = await fetchJson('/api/market/installed')
-        const r = raw as { skins: string[]; pets: string[] }
-        return { skins: r.skins ?? [], pets: r.pets ?? [] }
+        const r = raw as { skins?: string[]; pets?: string[]; presets?: string[] }
+        return { skins: r.skins ?? [], pets: r.pets ?? [], presets: r.presets ?? [] }
       },
     }
     void gatewayClient.list().then((list) => {
@@ -325,12 +409,12 @@ export function MarketCard(props: MarketCardProps): ReactNode {
   }, [face, faceLoopback])
 
   const votesOf = (kind: Kind, id: string): number => {
-    const bucket = data?.stats ?? { skin: {}, pet: {}, plugin: {} }
+    const bucket = data?.stats ?? { skin: {}, pet: {}, plugin: {}, preset: {} }
     return (bucket[kind] as Record<string, number>)[id] ?? 0
   }
 
   const installsOf = (kind: Kind, id: string): number => {
-    const bucket = data?.stats?.installs ?? { skin: {}, pet: {}, plugin: {} }
+    const bucket = data?.stats?.installs ?? { skin: {}, pet: {}, plugin: {}, preset: {} }
     return (bucket[kind] as Record<string, number>)[id] ?? 0
   }
 
@@ -345,7 +429,15 @@ export function MarketCard(props: MarketCardProps): ReactNode {
     return items
   }
 
-  const categoryLabel = (id: string): string => CATEGORY_LABEL_KEY[id] ? t(CATEGORY_LABEL_KEY[id]) : id
+  // Plugins and presets each carry their own category vocabulary; the filter
+  // rows and the labels below are shared, the vocabularies are picked per tab.
+  const facetKind: Kind | null = tab === 'plugin' || tab === 'preset' ? tab : null
+  const facetItems: MarketRecord[] = (facetKind === null ? [] : data?.items[facetKind] ?? [])
+  const facetVocab = facetKind === 'preset'
+    ? { labelKey: PRESET_CATEGORY_LABEL_KEY, subIds: PRESET_SUBCATEGORY_IDS }
+    : { labelKey: CATEGORY_LABEL_KEY, subIds: SUBCATEGORY_IDS }
+  const facetSubs = cat === 'all' ? [] : subcategoryCounts(facetItems, cat, facetVocab.subIds[cat])
+  const categoryLabel = (id: string): string => facetVocab.labelKey[id] ? t(facetVocab.labelKey[id]) : id
   const subcategoryLabel = (id: string): string => SUBCATEGORY_LABEL_KEY[id] ? t(SUBCATEGORY_LABEL_KEY[id]) : id
 
   const matches = (item: MarketRecord): boolean => {
@@ -415,7 +507,7 @@ export function MarketCard(props: MarketCardProps): ReactNode {
           ...prev,
           stats: {
             ...prev.stats,
-            installs: { ...(prev.stats.installs ?? { skin: {}, pet: {}, plugin: {} }), [kind]: { ...(prev.stats.installs?.[kind] ?? {}), [id]: count } },
+            installs: { ...(prev.stats.installs ?? { skin: {}, pet: {}, plugin: {}, preset: {} }), [kind]: { ...(prev.stats.installs?.[kind] ?? {}), [id]: count } },
           },
         } : prev)
       }).catch(() => { /* non-fatal */ })
@@ -465,7 +557,7 @@ export function MarketCard(props: MarketCardProps): ReactNode {
           ...prev,
           stats: {
             ...prev.stats,
-            installs: { ...(prev.stats.installs ?? { skin: {}, pet: {}, plugin: {} }), plugin: { ...(prev.stats.installs?.plugin ?? {}), [id]: count } },
+            installs: { ...(prev.stats.installs ?? { skin: {}, pet: {}, plugin: {}, preset: {} }), plugin: { ...(prev.stats.installs?.plugin ?? {}), [id]: count } },
           },
         } : prev)
       }).catch(() => { /* non-fatal */ })
@@ -521,15 +613,37 @@ export function MarketCard(props: MarketCardProps): ReactNode {
     return out.installs ?? 0
   })
 
-  const pluginItems = data?.items.plugin ?? []
   const chipClass = (isOn: boolean, isSub: boolean): string => {
     const cls = [css.filterChip]
     if (isSub) cls.push(css.filterChipSub)
     if (isOn) cls.push(css.filterChipOn)
     return cls.join(' ')
   }
-  const visible = sorted(tab).filter(matches)
-  const total = (data?.items[tab] ?? []).length
+  /**
+   * Resolve the fixed 编辑推荐 references against the loaded catalogs,
+   * preserving the editorial order and dropping any reference this
+   * deployment cannot resolve.
+   */
+  const pickEntries = (): { kind: PickKind; item: MarketRecord }[] => {
+    const out: { kind: PickKind; item: MarketRecord }[] = []
+    const seen = new Set<string>()
+    for (const pick of data?.picks ?? []) {
+      const kind = pick.kind
+      if (kind !== 'skin' && kind !== 'pet' && kind !== 'plugin') continue
+      const id = pick.id
+      if (!id || seen.has(kind + ':' + id)) continue
+      const item = (data?.items[kind] ?? []).find((candidate) => candidate.id === id)
+      if (!item) continue
+      seen.add(kind + ':' + id)
+      out.push({ kind, item })
+    }
+    return out
+  }
+  const picks = pickEntries()
+  const entries: { kind: Kind; item: MarketRecord }[] = tab === 'picks'
+    ? picks
+    : sorted(tab).filter(matches).map((item) => ({ kind: tab, item }))
+  const total = tab === 'picks' ? picks.length : (data?.items[tab] ?? []).length
 
   return (
     <PluginSettingsCard
@@ -539,70 +653,84 @@ export function MarketCard(props: MarketCardProps): ReactNode {
       descriptionNode={(
         <>
           {t('settings.descriptionPrefix')}
-          <a className={css.previewLink} href={MARKET_ORIGIN} target="_blank" rel="noreferrer">{t('badge.market')}</a>
+          <a
+            className={css.previewLink}
+            href={MARKET_ORIGIN}
+            target="_blank"
+            rel="noreferrer"
+            onClick={event => { event.preventDefault(); props.openExternal(MARKET_ORIGIN) }}
+          >
+            {t('badge.market')}
+          </a>
           {t('settings.descriptionSuffix')}
         </>
       )}
       state={state}
       alwaysOpen
+      renderChildrenWhenNotExposed
+      hideNotExposedNotice
       onSave={props.save}
       onDiscard={props.discard}
     >
-      <BooleanField
-        id="settings-market-enabled"
-        label={t('settings.enable')}
-        hint={t('settings.enableHint')}
-        inheritLabel={t('settings.inherit')}
-        onLabel={t('settings.on')}
-        offLabel={t('settings.off')}
-        {...fieldProps}
-        {...state.enabled}
-        onEdit={(value) => { props.edit('enabled', value) }}
-        onReset={() => { props.resetField('enabled') }}
-      />
+      {state.exposed ? (
+        <BooleanField
+          id="settings-market-enabled"
+          label={t('settings.enable')}
+          hint={t('settings.enableHint')}
+          inheritLabel={t('settings.inherit')}
+          onLabel={t('settings.on')}
+          offLabel={t('settings.off')}
+          {...fieldProps}
+          {...state.enabled}
+          onEdit={(value) => { props.edit('enabled', value) }}
+          onReset={() => { props.resetField('enabled') }}
+        />
+      ) : null}
       {cardVisible ? (
         <div className={css.market}>
           <div className={css.tabs} role="tablist" aria-label={t('settings.title')}>
-            {(['skin', 'pet', 'plugin'] as Kind[]).map((kind) => (
+            {TAB_ORDER.map((entry) => (
               <button
-                key={kind}
+                key={entry}
                 type="button"
                 role="tab"
-                aria-selected={tab === kind}
-                className={tab === kind ? css.tab + ' ' + css.tabActive : css.tab}
-                onClick={() => { setTab(kind); setCat('all'); setSubcat('all') }}
+                aria-selected={tab === entry}
+                className={tab === entry ? css.tab + ' ' + css.tabActive : css.tab}
+                onClick={() => { setTab(entry); setCat('all'); setSubcat('all') }}
               >
-                {t(KIND_LABEL[kind])}
-                <span className={css.tabCount}>{(data?.items[kind] ?? []).length}</span>
+                {t(TAB_LABEL[entry])}
+                <span className={css.tabCount}>{entry === 'picks' ? picks.length : (data?.items[entry] ?? []).length}</span>
               </button>
             ))}
           </div>
-          <input
-            className={css.search}
-            type="search"
-            aria-label={t('search.label')}
-            placeholder={t('search.label')}
-            value={query}
-            onChange={(event) => { setQuery(event.target.value) }}
-          />
-          {tab === 'plugin' ? (
+          {tab === 'preset' || tab === 'picks' ? null : (
+            <input
+              className={css.search}
+              type="search"
+              aria-label={t('search.label')}
+              placeholder={t('search.label')}
+              value={query}
+              onChange={(event) => { setQuery(event.target.value) }}
+            />
+          )}
+          {facetKind !== null ? (
             <div className={css.filterRows}>
               <div className={css.filterRow} role="group" aria-label={t('filter.category')}>
                 <button type="button" className={chipClass(cat === 'all', false)} onClick={() => { setCat('all'); setSubcat('all') }}>
-                  {t('filter.all')} <span className={css.filterCount}>{pluginItems.length}</span>
+                  {t('filter.all')} <span className={css.filterCount}>{facetItems.length}</span>
                 </button>
-                {categoryCounts(pluginItems).map(({ id, count }) => (
+                {categoryCounts(facetItems).map(({ id, count }) => (
                   <button key={id} type="button" className={chipClass(cat === id, false)} onClick={() => { setCat(id); setSubcat('all') }}>
                     {categoryLabel(id)} <span className={css.filterCount}>{count}</span>
                   </button>
                 ))}
               </div>
-              {cat !== 'all' ? (
+              {cat !== 'all' && facetSubs.length > 0 ? (
                 <div className={css.filterRow} role="group" aria-label={t('filter.subcategory')}>
                   <button type="button" className={chipClass(subcat === 'all', true)} onClick={() => { setSubcat('all') }}>
-                    {t('filter.all')} <span className={css.filterCount}>{subcategoryCounts(pluginItems, cat, SUBCATEGORY_IDS[cat]).reduce((sum, entry) => sum + entry.count, 0)}</span>
+                    {t('filter.all')} <span className={css.filterCount}>{facetSubs.reduce((sum, entry) => sum + entry.count, 0)}</span>
                   </button>
-                  {subcategoryCounts(pluginItems, cat, SUBCATEGORY_IDS[cat]).map(({ id, count }) => (
+                  {facetSubs.map(({ id, count }) => (
                     <button key={id} type="button" className={chipClass(subcat === id, true)} onClick={() => { setSubcat(id) }}>
                       {subcategoryLabel(id)} <span className={css.filterCount}>{count}</span>
                     </button>
@@ -611,35 +739,56 @@ export function MarketCard(props: MarketCardProps): ReactNode {
               ) : null}
             </div>
           ) : null}
-          {failed ? (
+          {tab === 'preset' ? (
+            renderSlot('dsh-workshop.panel', {
+              items: bySubcategory(byCategory(data?.items.preset ?? [], cat), subcat),
+              catalogState: failed ? 'error' : loading ? 'loading' : 'ready',
+              gateway: gateway !== null,
+              installs: data?.stats.installs?.preset ?? {},
+              install: gateway === null ? undefined : (id: string, force: boolean) => gateway.install('preset', id, force),
+              reportInstall: (id: string) => reportInstall('preset', id),
+            }, {
+              entryKey: 'preset',
+              fallback: <p className={css.empty} role="status">{t('presetPanel.missing')}</p>,
+            })
+          ) : failed ? (
             <p className={css.empty} role="status">
               {t('empty')}
               <Button className={css.retry} onClick={() => { setLoadAttempt((value) => value + 1) }}>{t('retry')}</Button>
             </p>
           ) : loading ? (
             <p className={css.empty} role="status">{t('loading')}</p>
-          ) : visible.length === 0 ? (
-            <p className={css.empty} role="status">{total === 0 ? t('empty') : t('noMatch')}</p>
+          ) : entries.length === 0 ? (
+            <p className={css.empty} role="status">
+              {tab === 'picks' ? t('picks.empty') : total === 0 ? t('empty') : t('noMatch')}
+            </p>
           ) : (
             <ul className={css.grid}>
-              {visible.map((item) => {
+              {entries.map(({ kind, item }) => {
                 const name = item.name ?? item.displayName ?? item.id
                 const id = item.id
-                const installedHere = tab === 'skin' ? installed.skins.includes(id)
-                  : tab === 'pet' ? installed.pets.includes(id)
+                const installedHere = kind === 'skin' ? installed.skins.includes(id)
+                  : kind === 'pet' ? installed.pets.includes(id)
                   : entryInstalled(item, pluginList ?? []) !== null
-                const isInstalling = installing === tab + ':' + id || installing === 'plugin:' + id
-                const command = tab === 'plugin' ? installCommand(item) : ''
-                const thumb = tab === 'skin' ? item.preview?.light
-                  : tab === 'pet' ? (item.previews?.[0] ?? item.spritesheet)
+                const isInstalling = installing === kind + ':' + id || installing === 'plugin:' + id
+                const command = kind === 'plugin' ? installCommand(item) : ''
+                const thumb = kind === 'skin' ? item.preview?.light
+                  : kind === 'pet' ? (item.previews?.[0] ?? item.spritesheet)
                   : ''
                 return (
-                  <li key={id} className={css.card}>
+                  <li key={kind + ':' + id} className={css.card}>
                     {/* Community plugins carry no artwork; only skins and pets render a thumbnail. */}
                     {thumb ? <img className={css.thumb} src={MARKET_ORIGIN + '/' + thumb} alt="" loading="lazy" /> : null}
                     <span className={css.cardBody}>
                       {item.repo ? (
-                        <a className={css.cardName} href={item.repo} target="_blank" rel="noreferrer" title={name}>
+                        <a
+                          className={css.cardName}
+                          href={item.repo}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={name}
+                          onClick={event => { event.preventDefault(); props.openExternal(item.repo ?? MARKET_ORIGIN) }}
+                        >
                           {name}
                           {item.version ? <span className={css.cardVersion}>v{item.version}</span> : null}
                         </a>
@@ -659,36 +808,42 @@ export function MarketCard(props: MarketCardProps): ReactNode {
                         <span className={css.cardDesc}>{(item.description ?? item.descriptionEn ?? '').slice(0, 140)}</span>
                       ) : null}
                       <span className={css.metrics}>
-                        {installsOf(tab, id) > 0 ? <span>{t('installs', { count: formatCount(installsOf(tab, id)) })}</span> : null}
+                        {installsOf(kind, id) > 0 ? <span>{t('installs', { count: formatCount(installsOf(kind, id)) })}</span> : null}
                         {item.npm && npmDownloads[item.npm] !== undefined ? <span>{t('npmDownloads', { count: formatCount(npmDownloads[item.npm] ?? 0) })}</span> : null}
                       </span>
                       <span className={css.cardFooter}>
                         <span className={css.actionRow}>
-                          <button type="button" className={css.like} onClick={() => { void onLike(tab, id) }}>
-                            {t('like')} {votesOf(tab, id)}
+                          <button type="button" className={css.like} onClick={() => { void onLike(kind, id) }}>
+                            {t('like')} {votesOf(kind, id)}
                           </button>
                           <button
                             type="button"
                             className={css.previewLink}
                             onClick={() => {
-                              window.open(
-                                tab === 'skin'
+                              props.openExternal(
+                                kind === 'skin'
                                   ? MARKET_ORIGIN + '/preview.html?skin=' + encodeURIComponent(id) + '&theme=light&chrome=0'
                                   : MARKET_ORIGIN + '/',
-                                '_blank',
-                                'noopener',
                               )
                             }}
                           >
                             {t('preview')}
                           </button>
-                          {(tab === 'plugin' || tab === 'skin') && item.repo ? (
-                            <a className={css.previewLink} href={item.repo} target="_blank" rel="noreferrer">{t('repository')}</a>
+                          {(kind === 'plugin' || kind === 'skin') && item.repo ? (
+                            <a
+                              className={css.previewLink}
+                              href={item.repo}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={event => { event.preventDefault(); props.openExternal(item.repo ?? MARKET_ORIGIN) }}
+                            >
+                              {t('repository')}
+                            </a>
                           ) : null}
                         </span>
-                        {tab === 'plugin' || gateway !== null ? (
+                        {kind === 'plugin' || gateway !== null ? (
                           <span className={css.actionRowPrimary}>
-                            {tab === 'plugin' ? (
+                            {kind === 'plugin' ? (
                               <button
                                 type="button"
                                 className={css.install}
@@ -698,7 +853,7 @@ export function MarketCard(props: MarketCardProps): ReactNode {
                                 {copiedId === id ? t('copied') : t('copyCommand')}
                               </button>
                             ) : null}
-                            {tab === 'plugin' && faceLoopback && !installedHere ? (
+                            {kind === 'plugin' && faceLoopback && !installedHere ? (
                               <button
                                 type="button"
                                 className={css.install + ' ' + css.installPrimary}
@@ -708,12 +863,12 @@ export function MarketCard(props: MarketCardProps): ReactNode {
                                 {isInstalling ? t('installing') : t('installNow')}
                               </button>
                             ) : null}
-                            {(tab === 'skin' || tab === 'pet') && gateway !== null ? (
+                            {(kind === 'skin' || kind === 'pet') && gateway !== null ? (
                               <button
                                 type="button"
                                 className={css.install + ' ' + css.installPrimary}
                                 disabled={installing !== null || installedHere}
-                                onClick={() => { onInstallAsset(tab, id) }}
+                                onClick={() => { onInstallAsset(kind, id) }}
                               >
                                 {isInstalling ? t('installing') : installedHere ? t('installed') : t('installNow')}
                               </button>

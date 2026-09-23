@@ -18,9 +18,9 @@
 - `main` 是稳定分支：只接收从 `dev` 合入且测试通过的代码。
 - 提 PR 一律以 `dev` 为 base，不要以 `main` 为 base。
 
-## PR 范围：只接受三类内容贡献
+## PR 范围：只接受四类内容贡献
 
-本仓库对外部贡献者**只接受**以下三类 PR：
+本仓库对外部贡献者**只接受**以下四类 PR：
 
 - **插件申请（社区插件索引登记）**：第三方插件由作者在自己的仓库按官方
   cordis bundle 标准实现，向本仓库申请登记进社区插件索引——在
@@ -36,11 +36,18 @@
 - **宠物增加（新宠物收录）**：按宠物契约新增
   `packages/dsh-pet/assets/<id>/`（`pet.json` manifest + 图集，可选
   语音包 / 预览 / 装饰），随 PR 收录为内置宠物。
+- **预设增加（agent 预设收录）**：按
+  [presets README](packages/dsh-preset-center/presets/README.md) 的发布格式新增
+  `packages/dsh-preset-center/presets/<id>/`（`preset.yml` + `agent.cordis.yml`）
+  并登记 `catalog.json`，收录到我们部署的 dsh-market.com 服务器（Workshop）供
+  用户按需安装——**默认安装不带**。预设是代码：composition 可挂载 npm 插件、
+  加载预设目录内文件、执行 `!!js` 表达式，启用后运行在 DSH 宿主进程内，评审
+  重点审核 composition 实际加载内容与用途。
 
-除上述三类外的所有改动（bug 修复、功能增强、全新功能、文档、测试、
+除上述四类外的所有改动（bug 修复、功能增强、全新功能、文档、测试、
 维护等）**不接受直接 PR**，请先在
 [Issues](https://github.com/zhu1090093659/dsh-web/issues) 提 issue
-讨论，确认后由维护者处理。非三类范围的 PR 会被
+讨论，确认后由维护者处理。非四类范围的 PR 会被
 `.github/workflows/reject-non-content-pr.yml` 自动关闭（仅文档类 PR 由
 `reject-docs-pr.yml` 处理）；仓库所有者、机器人与拥有写权限的协作者
 （维护者）的 PR 不受此限制。
@@ -97,7 +104,7 @@ pnpm docs:write-pair <包目录名>   # 如 dsh-ssh 或 xp
    的视觉类 PR 不予接受。缺少上述证据的 PR 不予接受。
 6. **AI 编码披露**：使用 AI 编码时在 PR 模板中如实披露模型与工具。
 
-## 三类内容贡献怎么做
+## 四类内容贡献怎么做
 
 ### 插件申请（社区插件索引登记）
 
@@ -130,6 +137,18 @@ README 中英三件套（`pnpm docs:write-pair dsh-pet`），
 `pnpm --filter @linxin666/dsh-pet build`、`pnpm --filter @linxin666/dsh-pet test`
 与 `pnpm typecheck` 通过后随 PR 提交，PR 类别勾选「插件功能」（该类别括号内含宠物项），PR 类型勾选「新宠物收录」。
 
+### 预设增加（agent 预设收录）
+
+按 [presets README](packages/dsh-preset-center/presets/README.md) 把
+`packages/dsh-preset-center/presets/_template/` 复制为 `<id>/`（目录名即预设 id，
+匹配 `^[a-z0-9][a-z0-9-]*$`，官方内置 id 保留），编辑 `preset.yml`（展示文案，
+单行标量）与 `agent.cordis.yml`（composition，service 行置于带 isolate realm 的
+group 内），在 `catalog.json` 登记条目（id / author / version 必填），
+`node scripts/market-build` 重新生成并提交 `market/dist`，`pnpm market:check`
+通过后随 PR 提交。PR 类别勾选「插件功能」（该类别括号内含预设中心项），PR
+类型勾选「新预设收录」。预设启用后运行在 DSH 宿主进程内，PR 描述需说明
+composition 挂载了什么、为什么。
+
 ### 范围边界
 
 新增内置插件包 / 全新功能不属于内容贡献：仅接受 Issue，确认后由维护者
@@ -147,6 +166,8 @@ README 中英三件套（`pnpm docs:write-pair dsh-pet`），
 | [packages/AGENTS.md](packages/AGENTS.md) | 包级规则：SDK 约束、bundle 形态、测试纪律 | 改 packages/ 前 |
 | [docs/AGENTS.md](docs/AGENTS.md) | 文档标准：结构分层、写作规则、i18n 配对、预算 | 写文档前 |
 | 各包 `AGENTS.md` | 该包特有规则（如 dsh-ssh 安全模型） | 改对应包前 |
+| [docs/architecture.md](docs/architecture.md) | 架构总览与运行时全景 | 了解整体架构时 |
+| [docs/plugins.md](docs/plugins.md) | 新插件入桶规范与脚手架 | 新增或改造插件时 |
 | [docs/development.md](docs/development.md) | 日常开发与发布流程 | 需要细节时 |
 | [docs/i18n.md](docs/i18n.md) | 双语文档配对契约 | 改 README 时 |
 

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 8" fill="none" aria-hidden="true">
+  <!--
+    Blue-throated Bee-eater skin - grass border strip (repeat-x tile).
+    Flower-and-bird wash style: soft 没骨 blades in 青绿 washes over an ink
+    tint, gentle height rhythm; the left and right edges carry blades so the
+    220px tile repeats seamlessly. Original artwork by dsh-web, Apache-2.0.
+  -->
+  <defs>
+    <linearGradient id="bladeA" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7fae93"/>
+      <stop offset="1" stop-color="#3d7560"/>
+    </linearGradient>
+    <linearGradient id="bladeB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#74bd97"/>
+      <stop offset="1" stop-color="#487b60"/>
+    </linearGradient>
+    <linearGradient id="bladeInk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7b938c" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#55706b" stop-opacity="0.9"/>
+    </linearGradient>
+  </defs>
+  <path d="M2 8 C 1.8 6.2, 2.6 4.2, 4.6 2.6 C 3.4 5, 3.2 6.6, 3.6 8 Z" fill="url(#bladeA)"/>
+  <path d="M6.5 8 C 6.6 6, 7.6 3.9, 9.8 2.2 C 8.4 4.8, 8 6.5, 8.2 8 Z" fill="url(#bladeB)"/>
+  <path d="M11.5 8 C 11.7 6.6, 12.5 4.9, 14.4 3.6 C 13.4 5.4, 13.1 6.8, 13.3 8 Z" fill="url(#bladeA)"/>
+  <path d="M18 8 C 18.1 5.8, 19.2 3.6, 21.6 1.8 C 20.2 4.6, 19.8 6.4, 20.1 8 Z" fill="url(#bladeInk)"/>
+  <path d="M25.5 8 C 25.7 6.4, 26.6 4.7, 28.5 3.4 C 27.4 5.3, 27 6.8, 27.2 8 Z" fill="url(#bladeB)"/>
+  <path d="M30.5 8 C 30.7 6.2, 31.6 4.3, 33.8 2.9 C 32.5 5.2, 32.1 6.7, 32.3 8 Z" fill="url(#bladeA)"/>
+  <path d="M36 8 C 36.2 6.5, 37 5, 38.8 3.9 C 37.8 5.6, 37.5 6.9, 37.7 8 Z" fill="url(#bladeB)"/>
+  <path d="M44 8 C 44.1 5.8, 45.2 3.8, 47.8 2.2 C 46.3 4.9, 45.9 6.5, 46.2 8 Z" fill="url(#bladeA)"/>
+  <path d="M52.5 8 C 52.7 6.4, 53.6 4.9, 55.4 3.8 C 54.4 5.5, 54 6.9, 54.2 8 Z" fill="url(#bladeB)"/>
+  <path d="M57.5 8 C 57.7 6, 58.7 4, 61 2.4 C 59.6 5, 59.2 6.6, 59.4 8 Z" fill="url(#bladeInk)"/>
+  <path d="M64.5 8 C 64.7 6.4, 65.6 4.7, 67.5 3.4 C 66.4 5.2, 66 6.8, 66.2 8 Z" fill="url(#bladeA)"/>
+  <path d="M70.5 8 C 70.6 6, 71.6 3.9, 73.8 2.2 C 72.5 4.9, 72.1 6.5, 72.3 8 Z" fill="url(#bladeB)"/>
+  <path d="M77.5 8 C 77.7 6.4, 78.6 4.9, 80.4 3.8 C 79.3 5.4, 79 6.9, 79.2 8 Z" fill="url(#bladeA)"/>
+  <path d="M85 8 C 85.1 5.8, 86.2 3.8, 88.8 2.2 C 87.3 4.9, 86.9 6.5, 87.2 8 Z" fill="url(#bladeB)"/>
+  <path d="M93.5 8 C 93.7 6.4, 94.6 4.7, 96.5 3.4 C 95.4 5.3, 95 6.8, 95.2 8 Z" fill="url(#bladeA)"/>
+  <path d="M99.5 8 C 99.7 6.1, 100.6 4.1, 102.8 2.5 C 101.5 5, 101.1 6.6, 101.3 8 Z" fill="url(#bladeInk)"/>
+  <path d="M106.5 8 C 106.7 6.3, 107.6 4.6, 109.6 3.2 C 108.5 5.2, 108 6.8, 108.2 8 Z" fill="url(#bladeB)"/>
+  <path d="M113 8 C 113.1 5.9, 114.2 3.9, 116.8 2.3 C 115.3 5, 114.9 6.5, 115.2 8 Z" fill="url(#bladeA)"/>
+  <path d="M120.5 8 C 120.7 6.4, 121.6 4.7, 123.5 3.4 C 122.4 5.3, 122 6.8, 122.2 8 Z" fill="url(#bladeB)"/>
+  <path d="M128 8 C 128.1 5.8, 129.2 3.8, 131.8 2.2 C 130.3 4.9, 129.9 6.5, 130.2 8 Z" fill="url(#bladeA)"/>
+  <path d="M136.5 8 C 136.7 6.3, 137.6 4.6, 139.5 3.3 C 138.5 5.2, 138.1 6.7, 138.3 8 Z" fill="url(#bladeB)"/>
+  <path d="M141.5 8 C 141.7 6, 142.7 4, 145 2.4 C 143.6 5, 143.2 6.6, 143.4 8 Z" fill="url(#bladeInk)"/>
+  <path d="M148.5 8 C 148.7 6.4, 149.6 4.7, 151.5 3.4 C 150.4 5.2, 150 6.8, 150.2 8 Z" fill="url(#bladeA)"/>
+  <path d="M154.5 8 C 154.7 6.2, 155.6 4.5, 157.6 3.1 C 156.5 5.1, 156.1 6.6, 156.3 8 Z" fill="url(#bladeB)"/>
+  <path d="M161.5 8 C 161.7 6.3, 162.6 4.6, 164.5 3.3 C 163.5 5.2, 163.1 6.7, 163.3 8 Z" fill="url(#bladeA)"/>
+  <path d="M169 8 C 169.1 5.8, 170.2 3.8, 172.8 2.2 C 171.3 4.9, 170.9 6.5, 171.2 8 Z" fill="url(#bladeB)"/>
+  <path d="M177.5 8 C 177.7 6.4, 178.6 4.7, 180.5 3.4 C 179.4 5.3, 179 6.8, 179.2 8 Z" fill="url(#bladeA)"/>
+  <path d="M183.5 8 C 183.7 6.1, 184.6 4.1, 186.8 2.5 C 185.5 5, 185.1 6.6, 185.3 8 Z" fill="url(#bladeB)"/>
+  <path d="M190.5 8 C 190.7 6.3, 191.6 4.6, 193.5 3.3 C 192.5 5.2, 192.1 6.7, 192.3 8 Z" fill="url(#bladeA)"/>
+  <path d="M197 8 C 197.1 5.8, 198.2 3.8, 200.8 2.2 C 199.3 4.9, 198.9 6.5, 199.2 8 Z" fill="url(#bladeB)"/>
+  <path d="M205.5 8 C 205.7 6.3, 206.6 4.6, 208.5 3.3 C 207.4 5.2, 207 6.7, 207.2 8 Z" fill="url(#bladeInk)"/>
+  <path d="M212.5 8 C 212.7 6.5, 213.5 4.9, 215.4 3.7 C 214.3 5.4, 214 6.9, 214.2 8 Z" fill="url(#bladeA)"/>
+  <path d="M218 8 C 218.2 6.5, 219 5, 220 4 L 220 8 Z" fill="url(#bladeB)"/>
+</svg>

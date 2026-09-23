@@ -1,17 +1,24 @@
+/* Same geometry as the shell's own panel rows (SidebarRoot .panelRow): 2px
+   inset with a 12px radius, 8px content padding, 36px row, 14/22 type, and the
+   primary ink — so an injected row and an official row line up column for
+   column instead of each carrying its own box. */
 .entry {
   box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
-  height: 36px;
-  padding: 0 10px;
+  min-height: 36px;
+  padding: 7px 8px;
+  margin: 0 2px;
   background: transparent;
   border: none;
-  border-radius: 8px;
-  color: var(--dsw-alias-label-secondary);
+  border-radius: 12px;
+  color: var(--dsw-alias-label-primary);
   cursor: pointer;
-  font-size: 13px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: left;
   white-space: nowrap;
 }
 
@@ -20,19 +27,21 @@
   color: var(--dsw-alias-label-primary);
 }
 
+/* Icon box matches the shell's panel glyph exactly (16px), so the glyph column
+   and the label column land on the official rows' x positions. */
 .entryIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 16px;
+  height: 16px;
   flex: none;
 }
 
 .entryIcon svg {
   display: block;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .entryLabel {
@@ -40,7 +49,9 @@
   text-overflow: ellipsis;
 }
 
-/* Collapsed rail: icon-only, centered, matching the shell's 56px rail. */
+/* Collapsed rail: icon-only, centered, matching the shell's 56px rail. The
+   shell asks its own panel rows for an 18px glyph on the rail, so the icon box
+   and the svg step up together with the 12px rail radius. */
 :global([data-dsh-frame][data-sidebar-collapsed]) .entry,
 :global([data-sidebar-collapsed]) .entry {
   justify-content: center;
@@ -48,7 +59,15 @@
   height: 36px;
   padding: 0;
   margin: 0 auto 12px;
-  border-radius: 50%;
+  border-radius: 12px;
+}
+
+:global([data-dsh-frame][data-sidebar-collapsed]) .entryIcon,
+:global([data-sidebar-collapsed]) .entryIcon,
+:global([data-dsh-frame][data-sidebar-collapsed]) .entryIcon svg,
+:global([data-sidebar-collapsed]) .entryIcon svg {
+  width: 18px;
+  height: 18px;
 }
 
 :global([data-dsh-frame][data-sidebar-collapsed]) .entryLabel,
@@ -209,6 +228,92 @@
   border-color: var(--dsw-alias-state-success-tertiary, #b7e1cd);
 }
 
+.badgeWorkspace {
+  background: var(--dsw-alias-bg-layer-2, #ebeef5);
+  color: var(--dsw-alias-label-secondary, #4b5563);
+  border-color: var(--dsw-alias-border-l1, #d1d5db);
+}
+
+.badgeIsolated {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.35);
+  cursor: help;
+}
+
+.skillIsolated {
+  opacity: 0.76;
+}
+
+.skillIsolated:hover {
+  opacity: 0.98;
+}
+
+.filterBar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: var(--dsw-alias-bg-layer-1, #f7f8fa);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterLabel {
+  color: var(--dsw-alias-label-secondary, #6b7280);
+  font-weight: 500;
+  flex: none;
+}
+
+.filterInput,
+.filterSelect {
+  flex: 1;
+  max-width: 280px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 4px;
+  border: 1px solid var(--dsw-alias-border-l1, #d7dae0);
+  background: var(--dsw-alias-bg-base, #fff);
+  color: var(--dsw-alias-label-primary, #1c1e26);
+  font-size: 12px;
+  outline: none;
+}
+
+.filterInput:focus,
+.filterSelect:focus {
+  border-color: var(--dsw-alias-border-l2, #d1d5db);
+}
+
+.filterClear {
+  flex: none;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 4px;
+  border: 1px solid var(--dsw-alias-border-l1, #d7dae0);
+  background: none;
+  color: var(--dsw-alias-label-secondary, #6b7280);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.filterClear:hover {
+  color: var(--dsw-alias-label-primary, #1c1e26);
+}
+
+.filterEmpty {
+  padding: 18px 0;
+  color: var(--dsw-alias-label-secondary, #6b7280);
+  font-size: 13px;
+  text-align: center;
+}
+
 .switch {
   display: inline-flex;
   align-items: center;
@@ -248,6 +353,20 @@
 
 .switch[aria-checked='true'] .switchThumb {
   left: 16px;
+}
+
+.editButton {
+  border: none;
+  background: #f2f3f5;
+  color: var(--dsw-alias-label-primary, #3a3f4b);
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.editButton:hover {
+  background: #e7e8ea;
 }
 
 .deleteButton {
@@ -333,6 +452,35 @@ select.formInput {
   min-height: 120px;
   resize: vertical;
   font-family: ui-monospace, monospace;
+}
+
+.formActionsRow {
+  display: flex;
+  gap: 8px;
+}
+
+.formButtonGhost {
+  border: none;
+  background: #f2f3f5;
+  color: var(--dsw-alias-label-primary, #3a3f4b);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.formButtonGhost:hover {
+  background: #e7e8ea;
+}
+
+body[data-ds-dark-theme] .formButtonGhost {
+  background: #2a2a2c;
+  color: #e5e5ea;
+}
+
+body[data-ds-dark-theme] .formButtonGhost:hover {
+  background: #3a3a3c;
 }
 
 .formButton {
@@ -426,4 +574,36 @@ body[data-ds-dark-theme]:not([data-dsh-skin]) .deleteButton {
 }
 body[data-ds-dark-theme]:not([data-dsh-skin]) .deleteButton:hover {
   background: rgba(255, 59, 48, 0.26);
+}
+
+body[data-ds-dark-theme]:not([data-dsh-skin]) .filterBar {
+  background: #1e1e1e;
+}
+
+body[data-ds-dark-theme]:not([data-dsh-skin]) .filterInput,
+body[data-ds-dark-theme]:not([data-dsh-skin]) .filterSelect {
+  background: #2c2c2e;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+body[data-ds-dark-theme]:not([data-dsh-skin]) .filterClear {
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+body[data-ds-dark-theme]:not([data-dsh-skin]) .filterEmpty {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+body[data-ds-dark-theme]:not([data-dsh-skin]) .badgeWorkspace {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+body[data-ds-dark-theme]:not([data-dsh-skin]) .badgeIsolated {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.4);
 }

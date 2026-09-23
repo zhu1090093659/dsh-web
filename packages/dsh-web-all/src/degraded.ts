@@ -15,21 +15,21 @@ export interface DegradedRecord {
   at: string
 }
 
-const degraded = new Map<string, DegradedRecord>()
+import { shellState } from './state.ts'
 
 /** Record (or refresh) one plugin's degraded state. Errors are logged here once. */
 export function recordDegraded(plugin: string, stage: DegradedRecord['stage'], error: unknown): void {
   const message = error instanceof Error ? error.stack ?? error.message : String(error)
   console.error(`[dsh-web-all] plugin degraded (${stage}): ${plugin}\n${message}`)
-  degraded.set(plugin, { plugin, stage, message, at: new Date().toISOString() })
+  shellState().degraded.set(plugin, { plugin, stage, message, at: new Date().toISOString() })
 }
 
 /** Clear one plugin's degraded record (successful start after a retry/HMR reload). */
 export function clearDegraded(plugin: string): void {
-  degraded.delete(plugin)
+  shellState().degraded.delete(plugin)
 }
 
 /** Snapshot of all currently degraded plugins. */
 export function listDegraded(): DegradedRecord[] {
-  return [...degraded.values()]
+  return [...shellState().degraded.values()]
 }

@@ -195,6 +195,20 @@ describe('parseLedger', () => {
     expect(repaired[0].mode).toBeUndefined()
     expect(repaired[0].permission).toBeUndefined()
   })
+
+  it('keeps the session-reuse opt-in and normalizes a bare false (#1419)', () => {
+    const optedIn = createTask({ title: 'reuse', description: '', prompt: '', reuseSession: true }, 1, 't-reuse')
+    expect(parseLedger(JSON.stringify([optedIn]))[0].reuseSession).toBe(true)
+
+    // A persisted false is not an opt-in: it normalizes back to absent so the
+    // ledger only ever carries the canonical "opted in" marker.
+    const normalized = parseLedger(JSON.stringify([{ ...optedIn, reuseSession: false }]))
+    expect(normalized[0].reuseSession).toBeUndefined()
+
+    // A non-boolean is an invalid row (strict shape), like any other field.
+    expect(parseLedger(JSON.stringify([{ ...optedIn, reuseSession: 'yes' }]))).toEqual([])
+    expect(isTaskRecord({ ...optedIn, reuseSession: 3 })).toBe(false)
+  })
 })
 
 describe('isTaskRecord', () => {

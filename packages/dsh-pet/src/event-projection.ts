@@ -11,9 +11,16 @@
  * tool/result and turn/end — so the pet's inner voice always roughly knows
  * what is going on and never mis-fires on output text. The wall clock is
  * injected by the caller, keeping every projection reproducible.
+ *
+ * Since the 0.1.5-alpha.2 cohort the stream itself is no longer durable
+ * vocabulary: per-chunk phase input arrives through the process-local
+ * `agent/assistant-stream` publication ({@link projectAssistantStreamFrame}),
+ * while the durable log settles one `assistant/message` (or `assistant/attempt`)
+ * per attempt.
  * @module @linxin666/dsh-pet/event-projection
  */
 
+import type { AssistantStreamFrame } from '@deepseek-ai/dsh-agent'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { PetStateInput } from './state.ts'
 import {
@@ -102,24 +109,6 @@ export function projectOfficialEvent(
       runtime.activeTools.clear()
       runtime.stepHadFailure = false
       return { input: { phase: 'waiting', line: runtime.voice.scene('waiting', nowMs) } }
-    case 'assistant/chunk': {
-      const { chunk } = event.data
-      if (chunk.type === 'reasoning-delta' && chunk.text.length > 0) {
-        const whisper = runtime.whispers.feed('thinking', nowMs)
-        return {
-          input: { phase: 'thinking', line: runtime.voice.scene('thinking', nowMs) },
-          ...(whisper === undefined ? {} : { whisper }),
-        }
-      }
-      if (chunk.type === 'text-delta' && chunk.text.length > 0) {
-        const whisper = runtime.whispers.feed('writing', nowMs)
-        return {
-          input: { phase: 'review', line: runtime.voice.scene('review', nowMs) },
-          ...(whisper === undefined ? {} : { whisper }),
-        }
-      }
-      return undefined
-    }
     case 'assistant/message':
       return { input: { phase: 'review', line: runtime.voice.scene('review', nowMs) } }
     case 'tool/call': {
@@ -143,9 +132,11 @@ export function projectOfficialEvent(
       }
     }
     case 'tool/result': {
-      const block = event.data.message.content[0]
-      const callId = String(event.data.message.source.callId)
-      const failed = event.data.error !== undefined || block.isError === true
+      // Session format V4 moved the call identity and the outcome onto the
+      // tool-role message root; the content blocks no longer carry either.
+      const { message } = event.data
+      const callId = String(message.toolCallId)
+      const failed = event.data.error !== undefined || message.isError === true
       const wasTest = runtime.testCalls.delete(callId)
       runtime.activeTools.delete(callId)
       runtime.stepHadFailure ||= failed
@@ -206,4 +197,34 @@ export function projectOfficialEvent(
     default:
       return undefined
   }
+}
+
+/**
+ * Project one live `agent/assistant-stream` publication into the pet's visual
+ * phases. Chunk frames are the alpha.2 replacement for the retired durable
+ * `assistant/chunk` event: a reasoning delta keeps the pet thinking, a text
+ * delta moves it to review; start, end, and non-delta chunks change nothing.
+ */
+export function projectAssistantStreamFrame(
+  frame: AssistantStreamFrame,
+  runtime: ProjectionRuntime,
+  nowMs: number = Date.now(),
+): PetActivityTransition | undefined {
+  if (frame.type !== 'chunk') return undefined
+  const { chunk } = frame
+  if (chunk.type === 'reasoning-delta' && chunk.text.length > 0) {
+    const whisper = runtime.whispers.feed('thinking', nowMs)
+    return {
+      input: { phase: 'thinking', line: runtime.voice.scene('thinking', nowMs) },
+      ...(whisper === undefined ? {} : { whisper }),
+    }
+  }
+  if (chunk.type === 'text-delta' && chunk.text.length > 0) {
+    const whisper = runtime.whispers.feed('writing', nowMs)
+    return {
+      input: { phase: 'review', line: runtime.voice.scene('review', nowMs) },
+      ...(whisper === undefined ? {} : { whisper }),
+    }
+  }
+  return undefined
 }

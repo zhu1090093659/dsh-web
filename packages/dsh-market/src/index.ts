@@ -1,16 +1,17 @@
 /**
- * Host half of the dsh-market card: registers the market settings namespace
- * (the card's enable switch) and mounts the loopback install gateway. The
- * catalog data itself is served by dsh-market.com and ingested by the
- * browser half — this half only owns the durable setting and the asset
- * writer.
+ * Host half of the dsh-market card: mounts the loopback install gateway. The
+ * card's enable switch is this plugin's own `Config` (the Host auto-generates
+ * the settings page for the profile entry from that schema), so this half
+ * owns no settings registration: the browser half reads the effective switch
+ * off the entry's configuration form. The catalog data itself is served by
+ * dsh-market.com and ingested by the browser half — this half only owns the
+ * asset writer.
  * @module @linxin666/dsh-client-ui-market
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
-import z from 'schemastery'
+import z from '@deepseek-ai/schemastery'
 import { mountOnce } from './mount-once.ts'
 import { makeMarketRoutes } from './routes.ts'
 
@@ -20,37 +21,20 @@ export const name = 'ui-market'
 /** Services the routes need; the gateway requires the host webserver. */
 export const inject = ['webServer']
 
-/** Settings namespace of the card's enable switch. */
-export const MARKET_SETTINGS_NAMESPACE = 'dsh-web-ui-market' as SettingsNamespace
-
 /** Plugin config, validated by the same-named schemastery schema. */
 export interface Config {
   /** Master switch for the market card. */
   enabled?: boolean
 }
 
-export const Config: z<Config> = z.object({
-  enabled: z.boolean().default(true),
+export const Config = z.object({
+  enabled: z.boolean().default(true).volatile(),
 })
 
-/** Register the namespace and mount the install gateway (once). */
+/** Mount the install gateway (once). */
 export const apply = mountOnce('@linxin666/dsh-client-ui-market', applyImpl)
 
 function applyImpl(ctx: Context): void {
-  ctx.inject(['settings'], (settingsCtx) => {
-    try {
-      if (typeof settingsCtx.settings?.installSection === 'function') {
-        settingsCtx.settings.installSection(ctx, MARKET_SETTINGS_NAMESPACE, Config, {}, {
-          setSource: () => { /* application is browser-side; value is read from the scope */ },
-          onChange: () => { /* browser half re-reads on scope publish */ },
-        })
-      } else if (typeof settingsCtx.settings?.register === 'function') {
-        settingsCtx.settings.register(MARKET_SETTINGS_NAMESPACE, Config, { base: {} })
-      }
-    } catch {
-      // Defensive fallback against settings registration differences
-    }
-  })
   const routes = makeMarketRoutes()
   for (const route of routes) {
     try {
@@ -59,7 +43,7 @@ function applyImpl(ctx: Context): void {
         return () => { dispose() }
       }, 'dsh-web-ui-market: routes')
     } catch {
-      /* settings-only install: keep the card usable without the gateway */
+      /* keep the browser card mounted without the gateway */
     }
   }
 }

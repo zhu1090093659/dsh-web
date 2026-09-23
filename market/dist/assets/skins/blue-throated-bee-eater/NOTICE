@@ -17,4 +17,6 @@ Background photograph
 - Changes made: downscaled to 1920 px wide and re-compressed for web distribution.
 
 Skin code, stylesheet and manifest are original work of dsh-web and licensed
-under the Apache-2.0 license in the LICENSE file of this directory.
+under the Apache-2.0 license in the LICENSE file of this directory. The
+decorative assets selected-grass.svg and selected-flower.svg are original
+vector artwork by dsh-web, also Apache-2.0.

@@ -19,6 +19,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the client runtime Context merge (ctx.workspaces, ctx.sessions).
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+// Type-only: pulls the workspace plugin's Context merge (ctx.uiWorkspace), the
+// multi-instance navigation face that replaced ISessions.open().
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
@@ -68,7 +71,7 @@ const JOB_POLL_MS = 500
 const JOB_WAIT_MS = 7 * 60_000
 
 /** Services required by the slot registration and both channels. */
-export const inject = ['slots', 'locale', 'connection', 'workspaces', 'sessions']
+export const inject = ['slots', 'locale', 'connection', 'workspaces', 'sessions', 'uiWorkspace']
 
 /** The gateway job wire shape served by /status. */
 interface GatewayJobWire {
@@ -281,7 +284,7 @@ export function createPluginManagerFace(ctx: ClientContext): PluginManagerFace {
     if (binding === undefined) throw new Error(`plugin-manager: repair session ${sessionId} is unavailable`)
     const result = await binding.session.prompt([{ type: 'text', text: message }], 'queue')
     if (!result.ok) throw new Error(`plugin-manager: repair prompt failed: ${result.error.code}: ${result.error.message}`)
-    ctx.sessions.open(sessionId)
+    ctx.uiWorkspace.openSession(sessionId)
   }
 
   // ── change notification ───────────────────────────────────────────────────

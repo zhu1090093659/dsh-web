@@ -14,7 +14,7 @@ This regression occurred because SDK cohort `0.1.2-alpha.4` replaced the mutable
 
 ## Decision
 
-Update `packages/dsh-liangshen/presets/liangshen/tool-bootstrap.mjs` to extract events compatibly:
+Update `packages/dsh-liangshen/presets/liangshen/tool-catalog.mjs` (then `tool-bootstrap.mjs`) to extract events compatibly:
 ```javascript
 const events = Array.isArray(session?.events)
   ? session.events
@@ -26,7 +26,7 @@ This safely retrieves events whether running under legacy SDKs with `session.eve
 
 ## Testing
 
-- Added unit test in `packages/dsh-liangshen/tests/tool-bootstrap.test.ts` verifying that `session.snapshotEvents()` is queried and its returned events are correctly traversed when `session.events` is absent.
+- Added unit test in `packages/dsh-liangshen/tests/tool-catalog.test.ts` (then `tests/tool-bootstrap.test.ts`) verifying that `session.snapshotEvents()` is queried and its returned events are correctly traversed when `session.events` is absent.
 - Ran `pnpm --filter @linxin666/dsh-liangshen test` (8 test files, 102 tests passed).
 
 ## Alternatives considered

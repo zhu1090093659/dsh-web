@@ -14,6 +14,36 @@ afterEach(() => {
 })
 
 describe('aggregate responsive compat contract', () => {
+  it('stamps new content in the shared frame without queueing a second frame', async () => {
+    const frames = new Map<number, FrameRequestCallback>()
+    let id = 0
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.set(++id, callback); return id })
+    vi.stubGlobal('cancelAnimationFrame', (frame: number) => { frames.delete(frame) })
+    document.body.innerHTML = '<main><aside class="sidebarCol"></aside><section class="centerCol"></section></main>'
+    let cleanup: (() => void) | undefined
+    apply({ effect: (effect: () => (() => void) | void) => { cleanup = effect() ?? undefined } } as never)
+    try {
+      const code = document.createElement('pre')
+      document.querySelector('.centerCol')!.appendChild(code)
+      await Promise.resolve()
+      expect(frames.size).toBe(1)
+      const callbacks = [...frames.values()]
+      frames.clear()
+      callbacks.forEach(callback => callback(0))
+      expect(code.getAttribute('data-dsh-responsive-part')).toBe('code')
+      expect(frames.size).toBe(0)
+
+      document.querySelector('.centerCol')!.appendChild(document.createElement('pre'))
+      await Promise.resolve()
+      expect(frames.size).toBe(1)
+      cleanup?.()
+      cleanup = undefined
+      expect(frames.size).toBe(0)
+    } finally {
+      cleanup?.()
+    }
+  })
+
   it('uses stable semantic hooks and a bounded mobile breakpoint', () => {
     expect(RESPONSIVE_CSS).toContain('[data-dsh-frame]')
     expect(RESPONSIVE_CSS).toContain('[data-pane="sidebar"]')
@@ -24,6 +54,16 @@ describe('aggregate responsive compat contract', () => {
     expect(RESPONSIVE_CSS).toContain('100dvh')
     expect(RESPONSIVE_CSS).toContain('env(safe-area-inset-bottom)')
     expect(RESPONSIVE_CSS).not.toMatch(/class\*=/)
+  })
+
+  it('keeps an open settings dialog reachable in the collapsed narrow rail (#1510)', () => {
+    // The official settings panel renders inside the sidebar foot, which the
+    // collapse rule hides and the collapsed pane freezes with pointer-events:
+    // none; the shell must restore exactly the subtree carrying a dialog.
+    expect(RESPONSIVE_CSS).toContain(':has([role="dialog"], [aria-modal="true"])')
+    const rule = RESPONSIVE_CSS.match(/:has\(\[role="dialog"\], \[aria-modal="true"\]\)\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(rule).toContain('display: flex !important')
+    expect(rule).toContain('pointer-events: auto')
   })
 
   it('stamps the session header from its stable slot wrapper', () => {

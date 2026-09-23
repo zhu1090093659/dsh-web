@@ -62,6 +62,44 @@ const MODEL_BTN_ID = 'dshRemoteModelPick'
 const EFFORT_BTN_ID = 'dshRemoteEffortPick'
 /** Body class while the compact picker buttons are wired. */
 const COMPACT_CLASS = 'dsh-remote-compact-picker'
+/** Body class while the header actions are seated in the tabs row. */
+const HEADER_SEATED_CLASS = 'dsh-remote-header-seated'
+/**
+ * Width the seated header actions paint over the tabs row, as a CSS variable
+ * on <html>. The row caps its own width with it (see the v80 rules) instead of
+ * reserving the space with padding.
+ */
+const HEADER_RESERVE_VAR = '--dsh-remote-header-actions-reserve'
+/** The two composer picker entries the compact buttons drill into. */
+type PickerKind = 'model' | 'effort'
+/** Locale-dependent fast path for the official picker cells (zh/en). */
+const PICKER_CELL_PATTERN: Record<PickerKind, RegExp> = {
+  model: /模型|Model/, // i18n-allow: matches official picker cell text, not plugin copy
+  effort: /推理等级|Reasoning|Effort/i, // i18n-allow: matches official picker cell text, not plugin copy
+}
+/** Position of each drill cell among the sheet's chevron cells. */
+const DRILL_INDEX: Record<PickerKind, number> = { model: 0, effort: 1 }
+/**
+ * The official application frame. The layout column classes are the anchor:
+ * `_frame` is shared by unrelated official components (the chat turn rail,
+ * message-image thumbnails, the subagent pill, PlanReviewPanel), so a bare
+ * suffix match would restyle and hit-block those. `data-dsh-frame` is the
+ * aggregate compat stamp, kept as the fast path.
+ */
+const APP_FRAME_SELECTOR = '[data-dsh-frame], [class*="_frame"]:has([class*="_centerCol"])'
+
+/**
+ * The official composer surface. `_composerSeat` is the plugin's historical
+ * anchor; the official `data-dsh-surface="composer"` part attribute is the
+ * stable alternative if the class ever gains a modifier.
+ */
+const COMPOSER_SELECTOR = '[class$="_composerSeat"], [data-dsh-surface="composer"]'
+
+/** Resolve the official application frame (never a nested `_frame` surface). */
+function appFrame(): HTMLElement | null {
+  const frame = document.querySelector(APP_FRAME_SELECTOR)
+  return frame instanceof HTMLElement ? frame : null
+}
 
 /**
  * Whether the current viewport is a portrait touch device small enough to
@@ -84,7 +122,10 @@ function isMobilePortrait(): boolean {
 const ADAPT_CSS: readonly string[] = [
   'html,body{height:100%}',
   // The app frame fills the dynamic viewport (browser chrome collapse).
-  '[class$="_frame"]{width:100%;height:100dvh}',
+  // Scoped to the application frame: a bare [class$="_frame"] also matches the
+  // chat turn rail, message thumbnails, the subagent pill and PlanReviewPanel,
+  // stretching each to a full-width 100dvh pointer-events:auto block.
+  '[class*="_frame"]:has([class*="_centerCol"]){width:100%;height:100dvh}',
   // Collapsed rail: bigger touch targets.
   '[class$="_railFish"] button,[class$="_panelIcon"],[class$="_newSession"]{min-width:44px;min-height:44px}',
   // Message list padding on narrow screens.
@@ -96,8 +137,8 @@ const ADAPT_CSS: readonly string[] = [
   '[class$="_scrollBody"] [class$="_root"]{font-size:14.5px}',
   '[class$="_scrollBody"] [class$="_bubble"]{font-size:14.5px}',
   '[class$="_titleRow"] *{font-size:13px}',
-  '[class$="_sidebarCol"] [class$="_root"],[class$="_sidebarCol"] [class$="_newSession"],[class$="_sidebarCol"] [class$="_trigger"],[class$="_sidebarCol"] [class$="_title"]{font-size:13px}',
-  '[class$="_sidebarCol"] [class$="_meta"],[class$="_sidebarCol"] [class$="_time"]{font-size:11.5px}',
+  '[class*="_sidebarCol"] [class$="_root"],[class*="_sidebarCol"] [class$="_newSession"],[class*="_sidebarCol"] [class$="_trigger"],[class*="_sidebarCol"] [class$="_title"]{font-size:13px}',
+  '[class*="_sidebarCol"] [class$="_meta"],[class*="_sidebarCol"] [class$="_time"]{font-size:11.5px}',
   // v50: collapsed rail hidden; the whale button is the entry. The frame's
   // grid is inline-styled (56px rail track when collapsed); pin the first
   // track to 0 so content uses the full width. On portrait phones the
@@ -111,7 +152,7 @@ const ADAPT_CSS: readonly string[] = [
   // host overlay mounts). Pin every column to an explicit track so the
   // center always lands on the 1fr track regardless of the sidebar's
   // computed position.
-  '[class$="_frame"][data-sidebar-collapsed] [class$="_sidebarCol"]{grid-column:1/2}',
+  '[class$="_frame"][data-sidebar-collapsed] [class*="_sidebarCol"]{grid-column:1/2}',
   '[class$="_frame"][data-sidebar-collapsed] [class$="_centerCol"]{grid-column:2/3}',
   '[class$="_frame"][data-sidebar-collapsed] [class$="_detailsCol"]{grid-column:3/4}',
   // Keep the chat header title clear of the floating whale.
@@ -125,13 +166,13 @@ const ADAPT_CSS: readonly string[] = [
   // carries two classes, so match by containment); v47's panelIcon touch
   // rule forces a 44px min on the icon itself — zero it out so the 13px
   // glyph fits the 18px button.
-  '[class$="_sidebarCol"] [class$="_logoRow"] [class*="_iconButton"]{width:18px;height:18px}',
-  '[class$="_sidebarCol"] [class$="_logoRow"] [class*="_iconButton"] svg{width:13px;height:13px;min-width:0;min-height:0}',
+  '[class*="_sidebarCol"] [class$="_logoRow"] [class*="_iconButton"]{width:18px;height:18px}',
+  '[class*="_sidebarCol"] [class$="_logoRow"] [class*="_iconButton"] svg{width:13px;height:13px;min-width:0;min-height:0}',
   // v77: workspace rows' right-side actions (menu + new session) are
   // hover-only on desktop; always show them on mobile touch.
-  '[class$="_sidebarCol"] [class$="_projectRow"] [class$="_rowActions"]{display:inline-flex}',
+  '[class*="_sidebarCol"] [class*="_projectRow"] [class*="_rowActions"]{display:inline-flex}',
   // v78: mobile long-press on a row must not start native drag.
-  '[class$="_sidebarCol"] [class$="_sessionRow"],[class$="_sidebarCol"] [class$="_projectRow"]{-webkit-user-drag:none;user-select:none}',
+  '[class*="_sidebarCol"] [class*="_sessionRow"],[class*="_sidebarCol"] [class*="_projectRow"]{-webkit-user-drag:none;user-select:none}',
   // Hide the header Session-log download button (no space on phones).
   '[class$="_headerUtilities"]{display:none}',
   // v52 composer: the two lines (permission / model) stay stacked with zero
@@ -211,17 +252,28 @@ const ADAPT_CSS: readonly string[] = [
   // v67: header actions (agent-preset mode label + background-task badge)
   // are re-seated from the title row into the tabs row; hidden in the
   // original spot so React re-renders do not flicker them back.
-  '[class$="_header"] [class$="_titleCluster"] [class$="_headerActions"]{display:none}',
-  // The official header keeps a 78px right padding on phones; stretch the
-  // tabs row so the seated actions sit flush against the right edge
-  // (verified 360/390/480 on the reference).
-  '[class$="_header"] [class$="_tabs"]{margin-right:-58px}',
+  // Only while the layer has taken the actions over: out of flow (so the
+  // title row keeps its own layout and React keeps owning the node) and
+  // painted over the tabs row by the transform alignActionsText computes.
+  `body.${HEADER_SEATED_CLASS} [class$="_header"] [class$="_titleCluster"] [class$="_headerActions"]{position:absolute;left:0;top:0;margin:0;display:flex;align-items:center;gap:6px;flex:none;z-index:2}`,
   // v70: match the tab text size with the seated mode label (12px); NB
   // [class$="_tab"] misses the active tab (its class ends in "_tabActive")
   // — containment so BOTH tabs match.
   '[class$="_header"] [class$="_tabs"] [class*="_tab"]{font-size:12px;white-space:nowrap}',
-  // Text-bottom alignment is dynamic (alignActionsText below); flex seat.
-  '[class$="_header"] [class$="_tabs"] [class$="_headerActions"]{margin-left:auto;display:flex;align-items:center;gap:6px;flex:none}',
+  // v80: the tabs row must give the painted actions their width up on its own.
+  // The v67 padding reservation could not do it: the row is a nowrap flex
+  // container, and once the tab labels plus their gaps overflow the reduced
+  // content box the flex items spill over the padding box, so the trailing
+  // tabs render underneath the actions (reported on a phone: a long agent
+  // preset label covered the last tabs). Cap the row against the reserve and
+  // let the labels scroll instead. The value rides a CSS variable on <html>
+  // because the update lands before React re-creates the row node, and an
+  // inline reservation on that node is dropped until the next sync tick.
+  // The 2px bottom padding keeps the active-tab underline inside the clipping
+  // box; the matching negative margin keeps the header height official.
+  `body.${HEADER_SEATED_CLASS} [class$="_header"] [class$="_tabs"]{max-width:max(0px,calc(100% - var(${HEADER_RESERVE_VAR},0px)));overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px;margin-bottom:-2px}`,
+  `body.${HEADER_SEATED_CLASS} [class$="_header"] [class$="_tabs"]::-webkit-scrollbar{display:none}`,
+  `body.${HEADER_SEATED_CLASS} [class$="_header"] [class$="_tabs"] > [class*="_tab"]{flex:0 0 auto}`,
   // Mobile scope: hide the plugin surfaces that do not fit a phone — the
   // right-hand details column and every desktop-oriented tool surface. The
   // list keys on the L2 semantic roots (data-dsh-plugin, ownership stays
@@ -292,11 +344,16 @@ export function startMobileAdapt(): void {
   let savedViewportContent: string | null = null
   let whaleEl: HTMLButtonElement | null = null
   let whaleObserver: MutationObserver | null = null
+  /** Header subtree observer: marks the geometry measurement dirty on re-render. */
+  let headerObserver: MutationObserver | null = null
+  let observedHeader: Element | null = null
+  /** Whether the seated-actions geometry needs re-measuring (see alignActionsText). */
+  let headerGeometryDirty = true
   let whaleTimer: number | null = null
   let whaleSuppressClick = false
   let whaleShown = false
   let drag: { x: number; y: number; left: number; top: number; moved: boolean } | null = null
-  let swipeTouch: { x: number; y: number; id: number } | null = null
+  let swipeTouch: { x: number; y: number; id: number; el: Element | null } | null = null
   let lastComposerTap = 0
   // Plugin master switch: the module-scope layer installs before any config
   // is readable, so the plugin apply() flips this through setEnabled() once
@@ -311,7 +368,7 @@ export function startMobileAdapt(): void {
    * rail compaction) while the body class stays.
    */
   function ensureAdaptStyle(): void {
-    if (document.querySelector(`style[data-plugin-css="${ADAPT_CSS_ID}"]`) !== null) return
+    if (nodeOf(`style[data-plugin-css="${ADAPT_CSS_ID}"]`) !== null) return
     const tag = document.createElement('style')
     tag.dataset.plugin = 'remote-web-ui'
     tag.dataset.pluginCss = ADAPT_CSS_ID
@@ -352,6 +409,7 @@ export function startMobileAdapt(): void {
     if (!active) return
     active = false
     unseatHeaderActions()
+    restoreRowDrag()
     removeCompactPicker()
     document.body.classList.remove(ACTIVE_CLASS)
     document.body.classList.remove(RAIL_HIDDEN_CLASS)
@@ -363,7 +421,14 @@ export function startMobileAdapt(): void {
       savedViewportContent = null
     }
     if (whaleEl !== null) whaleEl.style.display = 'none'
+    // The next apply() is a hidden-to-shown transition again: without this the
+    // whale would keep its pre-revert position state and skip the clamp.
+    whaleShown = false
     setWhaleTimer(false)
+    if (whaleObserver !== null) {
+      whaleObserver.disconnect()
+      whaleObserver = null
+    }
   }
 
   /** Start/stop the 600ms sync tick; a no-op when already in the asked state. */
@@ -391,7 +456,7 @@ export function startMobileAdapt(): void {
     document.getElementById(EFFORT_BTN_ID)?.remove()
   }
 
-  function drillIntoPicker(cellPattern: RegExp): void {
+  function drillIntoPicker(kind: PickerKind): void {
     const trigger = document.querySelector('[class$="_composerSeat"] [class$="_trailing"] [class$="_trigger"]:has([class$="_triggerEffort"])') as HTMLElement | null
     if (trigger === null) return
     trigger.click()
@@ -400,8 +465,13 @@ export function startMobileAdapt(): void {
     let tries = 0
     const tapCell = (): void => {
       tries += 1
-      const cell = Array.from(document.querySelectorAll('[class$="_composerSeat"] [class$="_menu"] [class$="_cell"]'))
-        .find((c) => cellPattern.test(c.textContent ?? ''))
+      const cells = Array.from(document.querySelectorAll('[class$="_composerSeat"] [class$="_menu"] [class$="_cell"]'))
+      // The official cell copy is localized (zh/en/ru), so the label match is
+      // only the fast path; the sheet's drill cells (label + value + chevron)
+      // are the structural anchor: model first, effort second, on every locale.
+      const byLabel = cells.find((c) => PICKER_CELL_PATTERN[kind].test(c.textContent ?? ''))
+      const drillable = cells.filter((c) => c.querySelector('[class*="_cellChevron"], [class*="_chevron"]'))
+      const cell = byLabel ?? drillable[DRILL_INDEX[kind]]
       if (cell !== undefined) {
         ;(cell as HTMLElement).click()
         return
@@ -411,7 +481,7 @@ export function startMobileAdapt(): void {
     window.setTimeout(tapCell, 150)
   }
 
-  function makeCompactButton(id: string, title: string, icon: string, cellPattern: RegExp): HTMLButtonElement {
+  function makeCompactButton(id: string, title: string, icon: string, kind: PickerKind): HTMLButtonElement {
     const btn = document.createElement('button')
     btn.id = id
     btn.type = 'button'
@@ -419,13 +489,13 @@ export function startMobileAdapt(): void {
     btn.title = title
     btn.setAttribute('aria-label', title)
     btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon}</svg>`
-    btn.addEventListener('click', () => { drillIntoPicker(cellPattern) })
+    btn.addEventListener('click', () => { drillIntoPicker(kind) })
     return btn
   }
 
   function syncCompactPicker(): void {
     if (!active) return
-    const tools = document.querySelector('[class$="_composerSeat"] [class$="_tools"]')
+    const tools = nodeOf('[class$="_composerSeat"] [class$="_tools"]')
     const trigger = tools?.parentElement?.querySelector('[class$="_triggerEffort"]')?.parentElement
     if (tools === null || trigger === null) {
       removeCompactPicker()
@@ -434,10 +504,10 @@ export function startMobileAdapt(): void {
     if (document.getElementById(MODEL_BTN_ID) === null) {
       // The cell pattern matches the OFFICIAL picker cell text (the official
       // client's own zh/en copy), not plugin-owned text.
-      tools.appendChild(makeCompactButton(MODEL_BTN_ID, surfaceText('mobile.composer.pickModel', 'Pick model'), CUBE_ICON, /模型|Model/)) // i18n-allow: matches official picker cell text, not plugin copy
+      tools.appendChild(makeCompactButton(MODEL_BTN_ID, surfaceText('mobile.composer.pickModel', 'Pick model'), CUBE_ICON, 'model'))
     }
     if (document.getElementById(EFFORT_BTN_ID) === null) {
-      tools.appendChild(makeCompactButton(EFFORT_BTN_ID, surfaceText('mobile.composer.pickEffort', 'Pick reasoning effort'), LEVELS_ICON, /推理等级|Reasoning|Effort/i)) // i18n-allow: matches official picker cell text, not plugin copy
+      tools.appendChild(makeCompactButton(EFFORT_BTN_ID, surfaceText('mobile.composer.pickEffort', 'Pick reasoning effort'), LEVELS_ICON, 'effort'))
     }
     // Titles re-read every tick so a locale switch (or the translate seat
     // arriving after this layer installed) is picked up without a reload.
@@ -454,26 +524,65 @@ export function startMobileAdapt(): void {
     document.body.classList.add(COMPACT_CLASS)
   }
   /**
-   * Toggle the sidebar through the wired layout face, then verify the flip:
-   * the official LayoutController can be mounted yet inert (its bound store
-   * actions race the root entry on this cohort — observed on the running
-   * local build, where the face call silently did nothing and the whale
-   * was dead). When the frame state did not change shortly after the call,
-   * drive the official rail/logo toggle instead: that button owns its own
-   * store actions and flips the same state on every cohort we support.
+   * The official sidebar toggle in the logo row. The row's own `_toggle` class
+   * is the precise anchor; the row's last button is the fallback for cohorts
+   * that only expose the generic icon-button class (the first button is the
+   * brand, which navigates home — never click that one). `_railFish` is kept
+   * for older compositions that carried a rail fish button.
+   */
+  function officialSidebarToggle(): HTMLElement | null {
+    const rail = document.querySelector('[class$="_railFish"] button')
+    if (rail instanceof HTMLElement) return rail
+    const row = document.querySelector('[class$="_logoRow"]')
+    if (row === null) return null
+    const toggles = row.querySelectorAll('button[class*="_toggle"]')
+    const last = toggles.length > 0 ? toggles[toggles.length - 1] : row.querySelectorAll('button')[row.querySelectorAll('button').length - 1]
+    return last instanceof HTMLElement ? last : null
+  }
+  /**
+   * Toggle the sidebar through the official rail/logo toggle first, then
+   * verify the flip and fall back to the wired layout face.
+   *
+   * The order is evidence-driven: the official toggle owns its own store
+   * actions and flips the state on every cohort we support, while the wired
+   * LayoutController is mounted yet inert on the installed cohort — calling it
+   * left `data-sidebar-collapsed` untouched for the whole 800ms observation
+   * window, so face-first made every whale tap wait out the verification
+   * delay before anything moved. The face stays the fallback for compositions
+   * that render no logo-row toggle, and it is only called after the toggle
+   * demonstrably failed, so the two can never cancel each other out.
    */
   function toggleSidebarVerified(): void {
-    const frame = document.querySelector('[class$="_frame"]')
-    const collapsedBefore = frame instanceof HTMLElement ? frame.hasAttribute('data-sidebar-collapsed') : null
-    w.__dshRemoteAdapt?.toggleSidebar?.()
-    if (collapsedBefore === null) return
-    window.setTimeout(() => {
+    const frame = appFrame()
+    const collapsedBefore = frame !== null ? frame.hasAttribute('data-sidebar-collapsed') : null
+    const face = w.__dshRemoteAdapt?.toggleSidebar
+    const callFace = (): void => {
+      if (typeof face !== 'function') return
+      try { face() } catch {}
+    }
+    const toggle = officialSidebarToggle()
+    if (collapsedBefore === null || toggle === null) {
+      // No frame to verify against, or no official toggle: the face is the
+      // only available control.
+      if (toggle !== null) toggle.click()
+      else callFace()
+      return
+    }
+    toggle.click()
+    let tries = 0
+    const verify = (): void => {
       if (!active) return
-      const frameNow = document.querySelector('[class$="_frame"]')
-      if (!(frameNow instanceof HTMLElement)) return
+      const frameNow = appFrame()
+      if (frameNow === null) return
       if (frameNow.hasAttribute('data-sidebar-collapsed') !== collapsedBefore) return
-      ;(document.querySelector('[class$="_railFish"] button, [class$="_logoRow"] [class*="_iconButton"]') as HTMLElement | null)?.click()
-    }, 150)
+      tries += 1
+      if (tries < 2) {
+        window.setTimeout(verify, 120)
+        return
+      }
+      callFace()
+    }
+    window.setTimeout(verify, 120)
   }
   function ensureWhale(): void {
     if (whaleEl !== null || !document.body) return
@@ -503,12 +612,12 @@ export function startMobileAdapt(): void {
       // the keyboard (iOS) or keeps it open. Blur at pointerdown (before the
       // tap completes; click is too late for iOS) and block pending
       // programmatic refocus.
-      if (active) {
-        const ta = document.querySelector('[class$="_composerSeat"] textarea, [class$="_composerSeat"] input')
-        if (ta !== null && document.activeElement === ta) {
-          (ta as HTMLElement).blur()
-          lastComposerTap = 0
-        }
+      if (active && isComposerField(document.activeElement)) {
+        // The composer field is a contenteditable div (the official client
+        // renders no textarea), so the old textarea/input lookup never matched
+        // it while a bare `input` branch could blur an unrelated field.
+        document.activeElement.blur()
+        lastComposerTap = 0
       }
       drag = { x: e.clientX, y: e.clientY, left: whale.offsetLeft, top: whale.offsetTop, moved: false }
       try { whale.setPointerCapture(e.pointerId) } catch {}
@@ -535,9 +644,36 @@ export function startMobileAdapt(): void {
       } catch {}
     }
     whale.addEventListener('pointerup', endWhaleDrag)
-    whale.addEventListener('pointercancel', endWhaleDrag)
+    // A cancelled pointer (system gesture, incoming call) is not a drag end:
+    // keep the click un-suppressed so the next real tap still toggles.
+    whale.addEventListener('pointercancel', () => {
+      drag = null
+      whaleSuppressClick = false
+    })
     whaleEl = whale
     document.body.appendChild(whale)
+  }
+
+  /**
+   * Write one row's recorded official draggable state back onto it.
+   * @param row - the tracked row element.
+   * @param original - the recorded attribute value, or null when it was absent.
+   */
+  function restoreRowDragState(row: Element, original: string | null): void {
+    if (original === null) row.removeAttribute('draggable')
+    else row.setAttribute('draggable', original)
+  }
+
+  /**
+   * Restore the official draggable state this layer overrode while active.
+   * Rows are React-owned and may have been re-created meanwhile, so only the
+   * tracked elements are touched; a detached element is written back too
+   * (harmless, and it keeps the entry prunable at every tick).
+   */
+  function restoreRowDrag(): void {
+    if (dragOverridden.size === 0) return
+    for (const [row, original] of dragOverridden) restoreRowDragState(row, original)
+    dragOverridden.clear()
   }
 
   /** Restore a dragged position when the whale becomes visible again. */
@@ -562,12 +698,52 @@ export function startMobileAdapt(): void {
   // reordering; a long-press would start native drag instead of our action
   // menu. Force them non-draggable while the adapt is active (React may
   // re-create rows, so re-apply on the sync tick).
+  /** Rows whose official draggable state this layer overrode (restored on revert). */
+  const dragOverridden = new Map<Element, string | null>()
   function disableRowDrag(): void {
     if (!active) return
-    const rows = document.querySelectorAll('[class$="_sidebarCol"] [class$="_sessionRow"], [class$="_sidebarCol"] [class$="_projectRow"]')
+    const rows = document.querySelectorAll('[class*="_sidebarCol"] [class*="_sessionRow"], [class*="_sidebarCol"] [class*="_projectRow"]')
     for (const row of rows) {
-      if (row.getAttribute('draggable') !== 'false') row.setAttribute('draggable', 'false')
+      if (row.getAttribute('draggable') !== 'false') {
+        if (!dragOverridden.has(row)) dragOverridden.set(row, row.getAttribute('draggable'))
+        row.setAttribute('draggable', 'false')
+      }
     }
+    // React replaces rows as the session list re-renders; a detached row can
+    // never be restored by a later revert, so keeping it here would retain the
+    // whole detached subtree (and its children) for the page lifetime. Its
+    // official state goes back on the node itself and the entry is dropped:
+    // a node React re-attaches is recorded again on the next tick.
+    if (dragOverridden.size === 0) return
+    for (const [row, original] of dragOverridden) {
+      if (row.isConnected) continue
+      restoreRowDragState(row, original)
+      dragOverridden.delete(row)
+    }
+  }
+
+  /**
+   * Official nodes resolved through the document and cached while they stay
+   * connected. The sync tick runs every 600ms for the page lifetime, and these
+   * selectors (suffix class matches, :has()) cannot use Blink's fast paths, so
+   * every miss walks the whole mounted DOM — the official chat keeps the whole
+   * conversation mounted, i.e. tens of thousands of elements. React replaces a
+   * node on a major re-render, which the isConnected guard detects.
+   */
+  const nodeCache = new Map<string, Element>()
+  function nodeOf(selector: string): Element | null {
+    const cached = nodeCache.get(selector)
+    if (cached !== undefined && cached.isConnected) return cached
+    const found = document.querySelector(selector)
+    if (found === null) nodeCache.delete(selector)
+    else nodeCache.set(selector, found)
+    return found
+  }
+
+  /** The official application frame, through the same cached lookup. */
+  function frameEl(): HTMLElement | null {
+    const frame = nodeOf(APP_FRAME_SELECTOR)
+    return frame instanceof HTMLElement ? frame : null
   }
 
   function syncWhale(): void {
@@ -579,8 +755,8 @@ export function startMobileAdapt(): void {
       whaleEl.style.display = 'none'
       return
     }
-    const collapsed = document.querySelector('[class$="_frame"][data-sidebar-collapsed]') !== null
-    const overlayUp = document.querySelector('[class$="_overlay"]') !== null
+    const collapsed = frameEl()?.hasAttribute('data-sidebar-collapsed') === true
+    const overlayUp = nodeOf('[class$="_overlay"]') !== null
     const show = collapsed && !overlayUp
     // Restore on every hidden-to-shown transition — including the very
     // first show on a fresh page load, where the inline display is still
@@ -602,32 +778,41 @@ export function startMobileAdapt(): void {
   // v67: on mobile the header actions (agent-preset mode label + background
   // task badge) move from the title row into the tabs row. React re-creates
   // the node in its original spot on re-render, so the interval re-seats it;
-  // stale seated copies are removed first.
+  // stale seated copies are removed first. The original spot is only hidden
+  // while a seat actually exists: the tabs row renders only for multi-tab
+  // sessions, and hiding the actions without a seat target made them vanish.
   function seatHeaderActions(): void {
     if (!active) return
-    const tabs = document.querySelector('[class$="_header"] [class$="_tabs"]')
-    const fresh = document.querySelector('[class$="_titleCluster"] [class$="_headerActions"]')
-    const seated = tabs !== null ? tabs.querySelector(':scope > [class$="_headerActions"]') : null
-    // fresh === null means the node is either not rendered yet or already
-    // seated — the seated copy IS the moved node, so never remove it.
-    if (fresh !== null && tabs !== null) {
-      seated?.remove()
-      tabs.appendChild(fresh)
-    }
+    const header = nodeOf('[class$="_header"]')
+    const tabs = header !== null ? header.querySelector('[class$="_tabs"]') : null
+    const actions = header !== null ? header.querySelector('[class$="_titleCluster"] [class$="_headerActions"]') : null
+    // The actions node is NOT moved: it is a React-owned host node whose badge
+    // button carries live handlers, and re-parenting it makes React's later
+    // insertBefore/removeChild anchors point at a node that is no longer a
+    // child of the recorded parent (a NotFoundError in the commit phase). The
+    // injected CSS takes it out of flow and the transform below paints it over
+    // the tabs row instead.
+    const seated = header !== null && tabs !== null && actions !== null
+    document.body.classList.toggle(HEADER_SEATED_CLASS, seated)
+    ensureHeaderObserver(seated ? header : null)
   }
 
-  // Align the mode/badge text bottom edge with the tab text. The tabs row
-  // height is not stable (a background task badge grows it), so a static
-  // transform would be wrong half the time — measure the real text boxes
-  // each tick and compensate (converges; the previous transform is
-  // subtracted from the measurement).
+  // Paint the mode/badge over the tabs row: the actions keep their DOM slot in
+  // the title cluster (out of flow via CSS) and are moved with a transform, so
+  // the tabs row reserves room with padding instead of the node being moved.
+  // The tabs row height is not stable (a background task badge grows it) and
+  // the official right padding differs per cohort, so both axes are measured
+  // and converged each time the header geometry is dirty.
   function alignActionsText(): void {
     if (!active) return
-    const tabs = document.querySelector('[class$="_header"] [class$="_tabs"]')
-    if (tabs === null) return
-    const actions = tabs.querySelector(':scope > [class$="_headerActions"]')
+    const header = nodeOf('[class$="_header"]')
+    if (header === null) return
+    const tabs = header.querySelector('[class$="_tabs"]')
+    const actions = header.querySelector('[class$="_titleCluster"] [class$="_headerActions"]')
+    if (tabs === null || actions === null || !(tabs instanceof HTMLElement) || !(actions instanceof HTMLElement)) return
+    if (!headerGeometryDirty) return
+    headerGeometryDirty = false
     const tabBtn = tabs.querySelector(':scope > [class*="_tab"]')
-    if (actions === null || tabBtn === null) return
     const textBottom = (el: Element | null): number | null => {
       if (el === null) return null
       const text = Array.from(el.childNodes).find((n) => n.nodeType === 3 && n.textContent !== null && n.textContent.trim() !== '')
@@ -640,31 +825,59 @@ export function startMobileAdapt(): void {
         return null
       }
     }
+    const translate = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(actions.style.transform ?? '')
+    let dx = translate !== null ? parseFloat(translate[1] ?? '0') : 0
+    let dy = translate !== null ? parseFloat(translate[2] ?? '0') : 0
+    const actionsRect = actions.getBoundingClientRect()
+    // Horizontal: the actions' right edge lands on the header's content edge,
+    // NOT on the tabs row's right edge. The row caps its own width against the
+    // reserve below (v80), so anchoring to the row would let the pair walk
+    // leftwards on every measurement.
+    const headerRect = header.getBoundingClientRect()
+    const headerStyle = getComputedStyle(header)
+    const contentRight = headerRect.right - (parseFloat(headerStyle.paddingRight) || 0) - (parseFloat(headerStyle.borderRightWidth) || 0)
+    const rightDiff = contentRight - actionsRect.right
+    if (Math.abs(rightDiff) >= 0.5) dx = Math.round((dx + rightDiff) * 10) / 10
+    // Vertical: the actions' text bottom lands on the tab text bottom.
     const tabBottom = textBottom(tabBtn)
-    if (tabBottom === null) return
-    const curMatch = /translateY\((-?[\d.]+)px\)/.exec((actions as HTMLElement).style.transform ?? '')
-    const cur = curMatch !== null ? parseFloat(curMatch[1] ?? '0') : 0
-    let maxBottom: number | null = null
-    for (const sel of ['[class$="_label"]', '[class$="_count"]']) {
-      const b = textBottom(actions.querySelector(sel))
-      if (b !== null && (maxBottom === null || b - cur > maxBottom)) maxBottom = b - cur
+    if (tabBottom !== null) {
+      let maxBottom: number | null = null
+      for (const sel of ['[class$="_label"]', '[class$="_count"]']) {
+        const b = textBottom(actions.querySelector(sel))
+        if (b !== null && (maxBottom === null || b > maxBottom)) maxBottom = b
+      }
+      if (maxBottom !== null) {
+        const bottomDiff = tabBottom - maxBottom
+        if (Math.abs(bottomDiff) >= 0.5) dy = Math.round((dy + bottomDiff) * 10) / 10
+      }
     }
-    if (maxBottom === null) return
-    const delta = Math.round((tabBottom - maxBottom) * 10) / 10
-    if (Math.abs(delta) < 0.5) {
-      if ((actions as HTMLElement).style.transform !== '') (actions as HTMLElement).style.transform = ''
-      return
-    }
-    ;(actions as HTMLElement).style.transform = `translateY(${delta}px)`
+    const next = `translate(${dx}px, ${dy}px)`
+    if (actions.style.transform !== next) actions.style.transform = next
+    // Reserve the painted width on the row itself, so the tab labels never
+    // slide under it. The value rides a CSS variable on <html>: React
+    // recreates the row node on re-render, which would drop an inline
+    // reservation until the next sync tick, and until then the labels render
+    // underneath the painted actions.
+    const reserve = `${Math.ceil(actionsRect.width) + 8}px`
+    const rootStyle = document.documentElement.style
+    if (rootStyle.getPropertyValue(HEADER_RESERVE_VAR) !== reserve) rootStyle.setProperty(HEADER_RESERVE_VAR, reserve)
   }
 
   function unseatHeaderActions(): void {
-    const tabs = document.querySelector('[class$="_header"] [class$="_tabs"]')
-    const seated = tabs !== null ? tabs.querySelector(':scope > [class$="_headerActions"]') : null
-    const wrap = document.querySelector('[class$="_titleCluster"] > div')
-    if (seated !== null) {
-      if (wrap !== null) wrap.appendChild(seated)
-      else seated.remove()
+    document.body.classList.remove(HEADER_SEATED_CLASS)
+    document.documentElement.style.removeProperty(HEADER_RESERVE_VAR)
+    const header = document.querySelector('[class$="_header"]')
+    const tabs = header !== null ? header.querySelector('[class$="_tabs"]') : null
+    const actions = header !== null ? header.querySelector('[class$="_titleCluster"] [class$="_headerActions"]') : null
+    if (actions instanceof HTMLElement) actions.style.transform = ''
+    // The v67 padding reservation is gone with the v80 cap; clearing it keeps a
+    // profile that hot-updated from an older build from keeping a stale inline
+    // width on the row.
+    if (tabs instanceof HTMLElement) tabs.style.paddingRight = ''
+    if (headerObserver !== null) {
+      headerObserver.disconnect()
+      headerObserver = null
+      observedHeader = null
     }
   }
 
@@ -674,7 +887,29 @@ export function startMobileAdapt(): void {
     whaleObserver.observe(document.body, { attributes: true, attributeFilter: ['data-sidebar-collapsed'], subtree: true })
   }
 
+  /**
+   * Observe the conversation header subtree and mark its geometry dirty on any
+   * re-render (label text, badge count, node replacement). The per-tick
+   * alignment then reads layout only when the header actually changed instead
+   * of on every tick while a message streams. The observer is swapped when the
+   * header node is replaced and disconnected with the layer.
+   */
+  function ensureHeaderObserver(header: Element | null): void {
+    if (typeof MutationObserver === 'undefined') return
+    if (observedHeader === header && headerObserver !== null) return
+    headerObserver?.disconnect()
+    headerObserver = null
+    observedHeader = null
+    if (header === null) return
+    headerObserver = new MutationObserver(() => { headerGeometryDirty = true })
+    headerObserver.observe(header, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class'] })
+    observedHeader = header
+    headerGeometryDirty = true
+  }
+
   function evaluate(): void {
+    // A viewport change invalidates every measured position.
+    headerGeometryDirty = true
     if (!adaptEnabled) {
       revert()
       return
@@ -682,6 +917,11 @@ export function startMobileAdapt(): void {
     if (isMobilePortrait()) {
       apply()
       ensureWhaleObserver()
+      // A viewport shrink (split-screen, foldable, rotation) can leave the
+      // whale — the only portrait sidebar entry — parked beyond the new right
+      // edge while it stays visible; re-clamp it here. Skipped mid-drag so a
+      // resize cannot yank the button away from the finger.
+      if (active && drag === null) applyWhalePos()
     } else {
       revert()
     }
@@ -695,13 +935,16 @@ export function startMobileAdapt(): void {
 
   // v51: Enter only inserts a newline on mobile (send goes through the send
   // button). Captured at document level so the official Enter-to-send
-  // handler never sees the event.
+  // handler never sees the event. The rewrite is scoped to the composer:
+  // `_input` is also the class of the settings, plugin and agent-preset text
+  // fields, where swallowing Enter and inserting a newline into a single-line
+  // input left the key dead.
   function onKeydownCapture(e: KeyboardEvent): void {
     if (!active) return
     if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return
     const t = e.target
     if (!(t instanceof HTMLElement)) return
-    if (t.closest('[class$="_input"]') === null) return
+    if (composerFieldOf(t) === null) return
     // keyCode 229 is the classic IME-confirm signal (Safari fires
     // compositionend before the Enter keydown) — never treat it as a
     // plain newline.
@@ -721,11 +964,11 @@ export function startMobileAdapt(): void {
   // the whale excluded).
   function onClickCapture(e: MouseEvent): void {
     if (!active) return
-    const frame = document.querySelector('[class$="_frame"]')
+    const frame = appFrame()
     if (frame === null || frame.hasAttribute('data-sidebar-collapsed')) return
     const t = e.target
     if (!(t instanceof Element)) return
-    if (t.closest('[class$="_sidebarCol"]') !== null) {
+    if (t.closest('[class*="_sidebarCol"]') !== null) {
       // v68: opening settings also folds the sidebar so the modal closes
       // back into a clean conversation view. Clicks on the session
       // row-actions ellipsis (or its opened menu anchor) must NOT collapse
@@ -734,15 +977,15 @@ export function startMobileAdapt(): void {
       // button also folds.
       const topNewSessionClicked = t.closest('[class$="_newSession"], [class$="_brand"]') !== null
       let projectNewSessionClicked = false
-      const projectActions = t.closest('[class$="_projectRow"] [class$="_rowActions"]')
+      const projectActions = t.closest('[class*="_projectRow"] [class*="_rowActions"]')
       if (projectActions !== null) {
         const btn = t.closest('button')
         const btns = projectActions.querySelectorAll('button')
         projectNewSessionClicked = btn !== null && btns.length > 0 && btn === btns[btns.length - 1]
       }
       let shouldCollapse = false
-      if (t.closest('[class$="_sessionRow"]') !== null) {
-        shouldCollapse = t.closest('[class$="_rowActions"]') === null
+      if (t.closest('[class*="_sessionRow"]') !== null) {
+        shouldCollapse = t.closest('[class*="_rowActions"]') === null
       } else if (t.closest('[class$="_settingsArea"]') !== null || topNewSessionClicked || projectNewSessionClicked) {
         shouldCollapse = true
       }
@@ -769,27 +1012,45 @@ export function startMobileAdapt(): void {
   }
   document.addEventListener('touchstart', (e) => {
     if (!active) return
+    // Multi-finger touches are never a swipe: a pinch that happens to end with
+    // >60px of horizontal finger travel would otherwise toggle the sidebar.
+    if (e.touches.length > 1) {
+      swipeTouch = null
+      return
+    }
     const t = e.target
-    if (t instanceof Element && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.closest(`#${WHALE_ID}`) !== null || insideHScrollable(t) || t.closest('table, [class$="_table"], [class$="_tablePane"]') !== null)) {
+    const editable = t instanceof HTMLElement && t.isContentEditable
+    if (t instanceof Element && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || editable || t.closest(`#${WHALE_ID}`) !== null || t.closest('table, [class$="_table"], [class$="_tablePane"]') !== null)) {
       swipeTouch = null
       return
     }
     const ct = e.changedTouches[0]
     if (ct === undefined) return
-    swipeTouch = { x: ct.clientX, y: ct.clientY, id: ct.identifier }
+    // The horizontally-scrollable veto is judged at release (see touchend):
+    // evaluating it here forced a style recalc plus a synchronous layout on
+    // every tap and scroll-start while the page was dirty, for a gesture that
+    // mostly never becomes a swipe.
+    swipeTouch = { x: ct.clientX, y: ct.clientY, id: ct.identifier, el: t instanceof Element ? t : null }
   }, { capture: true, passive: true })
   document.addEventListener('touchend', (e) => {
     if (swipeTouch === null) return
+    // Still more than one finger down: a pinch is in progress, not a swipe.
+    if (e.touches.length > 0) return
     const ct = e.changedTouches[0]
     if (ct === undefined || ct.identifier !== swipeTouch.id) return
     const dx = ct.clientX - swipeTouch.x
     const dy = ct.clientY - swipeTouch.y
+    const start = swipeTouch
     swipeTouch = null
     if (!active) return
     if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return
-    const frame = document.querySelector('[class$="_frame"]')
+    // A gesture that started inside a horizontally scrollable container belongs
+    // to that container, not to the sidebar. Judged now, only for a gesture
+    // that already qualified as a swipe.
+    if (start.el !== null && insideHScrollable(start.el)) return
+    const frame = frameEl()
     if (frame === null) return
-    if (document.querySelector('[class$="_overlay"], [class$="_dialog"], [class$="_menu"], [class*="_portal"]') !== null) return
+    if (nodeOf('[class$="_overlay"], [class$="_dialog"], [class$="_menu"], [class*="_portal"]') !== null) return
     const collapsed = frame.hasAttribute('data-sidebar-collapsed')
     if (dx < 0 && !collapsed) collapseSidebar()
     else if (dx > 0 && collapsed) toggleSidebarVerified()
@@ -816,7 +1077,7 @@ export function startMobileAdapt(): void {
   }
 
   function openSessionMenu(row: Element): void {
-    const actions = row.querySelector('[class$="_rowActions"]')
+    const actions = row.querySelector('[class*="_rowActions"]')
     const btn = actions?.querySelector('button')
     if (actions === null || btn === null) return
     // The official row hides actions until hover/menuOpen; force the anchor
@@ -836,8 +1097,8 @@ export function startMobileAdapt(): void {
       clearLongPress()
       return
     }
-    const row = t.closest('[class$="_sessionRow"]')
-    if (row === null || t.closest('[class$="_rowActions"]') !== null) {
+    const row = t.closest('[class*="_sessionRow"]')
+    if (row === null || t.closest('[class*="_rowActions"]') !== null) {
       clearLongPress()
       return
     }
@@ -895,7 +1156,7 @@ export function startMobileAdapt(): void {
     if (!active) return
     const t = e.target
     if (!(t instanceof Element)) return
-    if (t.closest('[class$="_sessionRow"]') !== null && ((longPress !== null && longPress.triggered) || Date.now() <= suppressSessionClickUntil)) {
+    if (t.closest('[class*="_sessionRow"]') !== null && ((longPress !== null && longPress.triggered) || Date.now() <= suppressSessionClickUntil)) {
       e.preventDefault()
     }
   }, true)
@@ -904,26 +1165,52 @@ export function startMobileAdapt(): void {
   document.addEventListener('pointerleave', (e) => {
     if (!active || Date.now() > longPressMenuGuardUntil) return
     const t = e.target
-    if (t instanceof Element && (t.closest('[class$="_rowActions"]') !== null || t.closest('[class$="_sessionRow"]') !== null || t.closest('[class$="_projectRow"]') !== null)) {
+    if (t instanceof Element && (t.closest('[class*="_rowActions"]') !== null || t.closest('[class*="_sessionRow"]') !== null || t.closest('[class*="_projectRow"]') !== null)) {
       e.stopPropagation()
     }
   }, true)
 
-  // Intercept programmatic .focus() on the composer input: the official
-  // conversation component focuses it on mount and on session changes;
-  // user taps focus it through the browser's own pipeline. Only allow
-  // composer focus that follows a real tap on the input itself.
+  // Intercept programmatic .focus() on the composer field: the official
+  // conversation component focuses it on mount and on session changes; user
+  // taps focus it through the browser's own pipeline. Only allow composer
+  // focus that follows a real tap on the field itself. The composer field is
+  // the official contenteditable input root (`data-composer-input`) on this
+  // cohort — matching only textarea/input missed it entirely, so every session
+  // open popped the phone keyboard. The queue-row editor input is deliberately
+  // NOT a composer field: its autoFocus must keep working.
+  const isComposerField = (el: Element | null): el is HTMLElement => {
+    if (!(el instanceof HTMLElement)) return false
+    if (el.closest(COMPOSER_SELECTOR) === null) return false
+    if (el.matches('[data-composer-input]')) return true
+    if (el.tagName === 'TEXTAREA') return true
+    return el.tagName === 'INPUT' && el.matches('[class*="_input"]')
+  }
+  /** The composer field that owns an event target, if any. */
+  const composerFieldOf = (target: EventTarget | null): HTMLElement | null => {
+    const el = target instanceof Element ? target.closest('[data-composer-input], [class*="_input"], textarea') : null
+    return isComposerField(el) ? el : null
+  }
   const lanOrigFocus = HTMLElement.prototype.focus
-  HTMLElement.prototype.focus = function (this: HTMLElement, options?: FocusOptions): void {
-    if (active && (this.tagName === 'TEXTAREA' || this.tagName === 'INPUT') && this.closest('[class$="_composerSeat"]') !== null && Date.now() - lastComposerTap >= 800) {
-      return
-    }
+  const patchedFocus = function (this: HTMLElement, options?: FocusOptions): void {
+    if (active && isComposerField(this) && Date.now() - lastComposerTap >= 800) return
     lanOrigFocus.call(this, options)
   }
+  /** (Re-)install the composer-focus guard (see setEnabled). */
+  const installFocusPatch = (): void => {
+    HTMLElement.prototype.focus = patchedFocus
+  }
+  /**
+   * Remove the guard when the layer is disabled. A patch another plugin
+   * installed after ours is left alone (identity check), so disabling this
+   * layer never removes someone else's behavior.
+   */
+  const restoreFocusPatch = (): void => {
+    if (HTMLElement.prototype.focus === patchedFocus) HTMLElement.prototype.focus = lanOrigFocus
+  }
+  installFocusPatch()
   document.addEventListener('pointerdown', (e) => {
     if (!active) return
-    const t = e.target
-    if (t instanceof Element && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT') && t.closest('[class$="_composerSeat"]') !== null) lastComposerTap = Date.now()
+    if (composerFieldOf(e.target) !== null) lastComposerTap = Date.now()
   }, true)
 
   // The plugin apply() wires toggleSidebar/closeDetails to ctx.layout once
@@ -936,8 +1223,13 @@ export function startMobileAdapt(): void {
     translate: null,
     setEnabled(on: boolean): void {
       adaptEnabled = on
-      if (on) evaluate()
-      else revert()
+      if (on) {
+        installFocusPatch()
+        evaluate()
+      } else {
+        revert()
+        restoreFocusPatch()
+      }
     },
     flushCloseDetails(): void {
       // The first apply() ran before any wiring existed, so its

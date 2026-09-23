@@ -19,6 +19,11 @@ export const REVIEWED_SKIN_HOOKS: Readonly<Record<string, ReviewedSkinHooksIdent
     manifestSha256: "b22cc82145e1f90f4257af1411724e34a99513761290980fb5f8d25727809808",
     hooksSha256: "21ac2ad4d4423acf31e3391bfba18ce2d9eec7b192f7a0ba47e8a0c843ff15a5",
   },
+  "blueprint": {
+    entry: "hooks.mjs",
+    manifestSha256: "e36d9d53aae73c4693e36fc2e130bca2996cda6dcd8f80917627897774232a3e",
+    hooksSha256: "4f6c7db598e72469920d1dbafd5c20cec39f435f225220ffc860636523ed70bb",
+  },
   "cyber-night": {
     entry: "hooks.mjs",
     manifestSha256: "38de22962a80602c22910324e7c5fec171342363760972b7421debeb628d8508",
@@ -46,8 +51,8 @@ export const REVIEWED_SKIN_HOOKS: Readonly<Record<string, ReviewedSkinHooksIdent
   },
   "maid-atelier": {
     entry: "hooks.mjs",
-    manifestSha256: "f36e854f52f24939dfe6318ed6b1ff6fe33d0564e63255a22aaca459af1a84d9",
-    hooksSha256: "8a50922c970337ab07b0843e61b9a771f3a57baf54d18a24e906f13dbb39b4ff",
+    manifestSha256: "7596a704bce65006381d27417d4c12bb09d7e5ede038a6f486cfa58e62314aa5",
+    hooksSha256: "c4668f9cee8192fe3c25e6a01b779bc9ec9ab1980061106e749551a7bafa4153",
   },
   "matrix": {
     entry: "hooks.mjs",
@@ -56,7 +61,7 @@ export const REVIEWED_SKIN_HOOKS: Readonly<Record<string, ReviewedSkinHooksIdent
   },
   "miku": {
     entry: "hooks.mjs",
-    manifestSha256: "9022628fd39e8ee48aef3b311c12f8411b4cc99d62764e84aa65fb4a5a3631ab",
+    manifestSha256: "a1c713e59ed31eaf43f136205e1326d35419d83d613107423099cef2c992c621",
     hooksSha256: "1c4052d328ac6e1ede3115395e8823c4f6acecd3b4508b85615006a88f7cbdd1",
   },
   "minecraft": {
@@ -67,7 +72,7 @@ export const REVIEWED_SKIN_HOOKS: Readonly<Record<string, ReviewedSkinHooksIdent
   "orca-link": {
     entry: "hooks.mjs",
     manifestSha256: "48b9c76b6f8fc4fad1473d987c0ebd8c10f4734e2eff2091bbb9040c9a5ce089",
-    hooksSha256: "0ea2d7e3f7547d9a37884b788042557ec7c59b1416be527660329584c4d65254",
+    hooksSha256: "dcf08fb50b419c2515eec6a630e7a0da2ceeb214b5e2a33642dd7dfe649b7d55",
   },
   "phoebe-atelier": {
     entry: "hooks.mjs",
@@ -107,6 +112,6 @@ export const REVIEWED_SKIN_HOOKS: Readonly<Record<string, ReviewedSkinHooksIdent
   "xp": {
     entry: "hooks.mjs",
     manifestSha256: "8bceb95c45b400b67ceb80a7f063b6c2086c0e9f9907a7b72a592d33017623eb",
-    hooksSha256: "823f25fd5f969feb8e51d8ff1577c1cbecbad847b2abac6e5020fc9ef543663f",
+    hooksSha256: "1574d30f271f481a681feddc0608b04b0aec684e323fec0b00481f08450e4eb3",
   },
 }

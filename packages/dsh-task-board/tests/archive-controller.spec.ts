@@ -1,7 +1,7 @@
 /**
- * Controller archive behavior: archive only settles settled tasks, restore
- * brings them back, the archive view toggles, and leaving the view with an
- * archived selection closes the selection.
+ * Controller archive behavior: every non-running task can be archived,
+ * restore brings them back, the archive view toggles, and leaving the view
+ * with an archived selection closes the selection.
  */
 import { describe, expect, it } from 'vitest'
 import { BoardController, type ControllerDeps } from '../src/core/controller.ts'
@@ -13,13 +13,11 @@ let nextId = 0
 const uuid = (): string => { nextId += 1; return 'id-' + nextId }
 
 class FakeSessions {
-  current: string | undefined = undefined
+  opened: string | undefined = undefined
   private listeners = new Set<() => void>()
-  list = {
-    getSnapshot: (): { current: string | undefined } => ({ current: this.current }),
-    subscribe: (fn: () => void): (() => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn) } },
-  }
-  open(id: string): void { this.current = id }
+  current(): string | undefined { return this.opened }
+  subscribe(fn: () => void): () => void { this.listeners.add(fn); return () => { this.listeners.delete(fn) } }
+  open(id: string): void { this.opened = id }
 }
 
 function makeController(seed: TaskRecord[] = []) {
@@ -41,16 +39,21 @@ function task(id: string, status: TaskRecord['status']): TaskRecord {
 }
 
 describe('BoardController archive', () => {
-  it('archives done/failed tasks and refuses running ones', () => {
+  it('archives every non-running task and refuses running ones', () => {
     const done = task('done', 'done')
     const failed = task('failed', 'failed')
+    const todo = task('todo', 'todo')
     const running = task('running', 'running')
-    const { controller, store } = makeController([done, failed, running])
+    const { controller, store } = makeController([done, failed, todo, running])
     expect(controller.archiveTask('done')).toBe(true)
     expect(controller.archiveTask('failed')).toBe(true)
+    // A scheduled task returns to todo after every run, so the duplicate flow
+    // must be able to archive it (issue #1447).
+    expect(controller.archiveTask('todo')).toBe(true)
     expect(controller.archiveTask('running')).toBe(false)
     const persisted = store.load()
     expect(persisted.find(item => item.id === 'done')?.archivedAt).toBe(NOW)
+    expect(persisted.find(item => item.id === 'todo')?.archivedAt).toBe(NOW)
     expect(persisted.find(item => item.id === 'running')?.archivedAt).toBeUndefined()
   })
 

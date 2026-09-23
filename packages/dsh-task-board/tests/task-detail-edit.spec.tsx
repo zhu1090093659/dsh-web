@@ -157,3 +157,29 @@ describe('task content editing before execution (issue #1110)', () => {
     expect(container.querySelector('[role="dialog"][aria-label="编辑任务"]')).not.toBeNull()
   })
 })
+
+describe('session reuse toggle (#1419)', () => {
+  function reuseCheckbox(container: HTMLElement): HTMLInputElement {
+    const label = [...container.querySelectorAll('label')].find(node => node.textContent?.includes('在同一对话继续'))
+    expect(label).toBeDefined()
+    return label!.querySelector('input') as HTMLInputElement
+  }
+
+  it('starts unchecked and opts the task in through the controller', async () => {
+    const updateTask = vi.fn(async () => true)
+    const { container } = await renderDetail(task(), updateTask)
+    const checkbox = reuseCheckbox(container)
+    expect(checkbox.checked).toBe(false)
+    await act(async () => { checkbox.click() })
+    expect(updateTask).toHaveBeenCalledWith('t1', { reuseSession: true })
+  })
+
+  it('shows an opted-in task as checked and clears the opt-in on unclick', async () => {
+    const updateTask = vi.fn(async () => true)
+    const { container } = await renderDetail(task({ reuseSession: true }), updateTask)
+    const checkbox = reuseCheckbox(container)
+    expect(checkbox.checked).toBe(true)
+    await act(async () => { checkbox.click() })
+    expect(updateTask).toHaveBeenCalledWith('t1', { reuseSession: false })
+  })
+})

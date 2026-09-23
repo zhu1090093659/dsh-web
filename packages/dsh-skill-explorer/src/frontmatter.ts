@@ -100,6 +100,16 @@ export function parseFrontmatter(content: string): Frontmatter {
 }
 
 /**
+ * The body after the leading frontmatter block, verbatim.
+ * @param content - raw SKILL.md content.
+ * @returns the content after the closing fence (the whole input when absent).
+ */
+export function stripFrontmatter(content: string): string {
+  const match = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/.exec(content)
+  return match === null ? content : content.slice(match[0].length)
+}
+
+/**
  * Rewrite one boolean frontmatter field (appends when absent), atomically.
  * Preserves every other line and the body verbatim.
  * @param file - absolute SKILL.md path.

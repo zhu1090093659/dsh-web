@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" fill="none" aria-hidden="true">
+  <!-- 余烬首屏：地平线火光弧 + 坠毁机甲剪影 + 烟柱 + 火花 -->
+  <defs>
+    <radialGradient id="em-hero-glow" cx="0.5" cy="1" r="0.8">
+      <stop offset="0" stop-color="#c9793a" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#c9793a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="80" y="240" width="800" height="260" fill="url(#em-hero-glow)"/>
+  <g stroke="#e8a860" stroke-width="1">
+    <path d="M120 470 H840" opacity="0.16"/>
+    <!-- 坠毁机甲：侧卧的躯干与折臂 -->
+    <path d="M300 470 l30 -70 60 -18 40 -46 66 12 34 40 58 16 22 66" opacity="0.20"/>
+    <path d="M430 348 l-52 -34 -40 8" opacity="0.16"/>
+    <path d="M560 360 l58 -40 34 6" opacity="0.16"/>
+    <path d="M380 470 l10 -40 M520 470 l-6 -44" opacity="0.12"/>
+    <!-- 火光刻度：地平线上的短齿 -->
+    <path d="M160 470 v-8 M200 470 v-5 M240 470 v-8 M280 470 v-5 M680 470 v-8 M720 470 v-5 M760 470 v-8 M800 470 v-5" opacity="0.18"/>
+  </g>
+  <g stroke="#9ba1a8" stroke-width="1" opacity="0.08">
+    <path d="M360 400 c-10 -60 14 -100 4 -160"/>
+    <path d="M600 390 c12 -64 -10 -110 2 -170"/>
+  </g>
+  <g fill="#8a63c9">
+    <circle cx="420" cy="300" r="1.6" opacity="0.24"/>
+    <circle cx="540" cy="260" r="1.2" opacity="0.18"/>
+    <circle cx="640" cy="330" r="1.4" opacity="0.20"/>
+    <circle cx="330" cy="250" r="1.2" opacity="0.14"/>
+  </g>
+</svg>

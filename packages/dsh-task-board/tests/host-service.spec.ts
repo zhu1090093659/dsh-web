@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import type { TypertGateway } from '@deepseek-ai/dsh-api-gateway'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HostTaskLedger } from '../src/host-ledger.ts'
-import { TaskBoardHostService } from '../src/host-service.ts'
+import { TaskBoardHostService, installStreamErrorGuards, safeConsoleError } from '../src/host-service.ts'
 import { PowerInhibitor } from '../src/power-inhibitor.ts'
 import { createTask, EXECUTION_HISTORY_LIMIT, startExecution, withSchedule } from '../src/core/tasks.ts'
 
@@ -366,5 +366,23 @@ describe('TaskBoardHostService poll heartbeat', () => {
     expect(snapshotValue.tasks[0].executions.at(-1)?.id).toBe('execution-open')
     expect(state).toHaveBeenCalledOnce()
     service.dispose()
+  })
+
+  it('installs error guards on streams without crashing on emitted error (#1427)', () => {
+    installStreamErrorGuards()
+    expect(() => {
+      process.stderr.emit('error', Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' }))
+      process.stdout.emit('error', Object.assign(new Error('EPIPE: broken pipe'), { code: 'EPIPE' }))
+    }).not.toThrow()
+  })
+
+  it('safeConsoleError suppresses console.error exceptions (#1427)', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+      throw Object.assign(new Error('ENOSPC: write failed'), { code: 'ENOSPC' })
+    })
+    expect(() => {
+      safeConsoleError('test message', new Error('sample'))
+    }).not.toThrow()
+    errorSpy.mockRestore()
   })
 })

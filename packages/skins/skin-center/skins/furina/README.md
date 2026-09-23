@@ -1,31 +1,25 @@
 # @linxin666/dsh-client-ui-skin-furina
 
-English | [中文]((README.zh.md))
+English | [中文](README.zh.md)
 
 A Furina theme for dsh-web.
 
-## Installation (official bundle method)
+## Installation
 
-It is recommended to install the full skin bundle `@linxin666/dsh-skins` for a one‑stop setup; to install only this skin, use the following link command.
+The skin-center plugin is the only loader: install it (or the family aggregate), then install this skin from the [Workshop](https://dsh-market.com) into `$DSH_HOME/skins/furina/` and select it in Settings → Skin Center. One skin is active at a time and the card switches without a restart.
 
 ```sh
-# Install all skins (recommended)
-dsh plugin --profile web add @linxin666/dsh-skins
-# Or install only this skin
-dsh plugin --profile web add @linxin666/dsh-client-ui-skin-furina
-# Enable the skin: dsh-skin use furina
-# Install from repository (for development/debugging): dsh plugin --profile web add link:$(pwd)/packages/skins/furina
+# The loader (either one)
+dsh plugin --profile web add @linxin666/dsh-client-ui-skin-center@latest
+dsh plugin --profile web add @linxin666/dsh-web-all@latest
+# From the repository (development): this skin lives inside the skin-center package
+pnpm install && pnpm -r build
+dsh plugin --profile web add link:$(pwd)/packages/skins/skin-center
 ```
 
 `$(pwd)` refers to the directory where the monorepo has been cloned.
 
-Before installing via local link, you need to build the artifacts inside the monorepo (`lib/` is ignored by git and not committed):
-run `pnpm install && pnpm -r build` before linking.
-When installing via git (`dsh plugin --profile web add github:<org>/dsh-web#<sha>`), the
-`prepare` script automatically builds `lib/` self‑containedly, so no separate build is needed;
-for pnpm ≥10, when installing a git dependency for the first time, you must first add the package key printed by pnpm to the `allowBuilds` list in the corresponding profile’s `pnpm-workspace.yaml`, then retry.
-
-To enable / switch skins, use `dsh-skin use furina` (helper script in `scripts/dsh-skin`); only one skin can be active at a time.
+A local `link:` install needs the monorepo artifacts built first (`lib/` is git-ignored); installing via git (`dsh plugin --profile web add github:<org>/dsh-web#<sha>`) lets the `prepare` script build `lib/` in place, and pnpm ≥10 requires the package key it prints to be added to the profile's `pnpm-workspace.yaml` `allowBuilds` list before retrying. The repository helper `dsh-skin use furina` switches skins from a terminal as well.
 
 ## Background image
 

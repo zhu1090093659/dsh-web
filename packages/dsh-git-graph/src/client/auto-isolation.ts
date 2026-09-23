@@ -17,6 +17,7 @@
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type { GitApi } from './api.ts'
+import { mainViewSessionId } from './main-session.ts'
 
 /** The mutable face the wrapper needs (probed, never assumed). */
 interface WorkspacesPatchTarget {
@@ -29,6 +30,12 @@ interface WorkspacesPatchTarget {
       recentWorkspaceId?: string
     }
   }
+  /**
+   * Registration removal (the official `workspaces.delete` the workspace list
+   * calls). Optional on purpose: an older cohort without it still installs,
+   * and the rollback then keeps to removing the worktree directory.
+   */
+  delete?: (workspaceId: string) => Promise<void>
 }
 
 /** Log line prefix for every auto-isolation diagnostic. */
@@ -73,12 +80,20 @@ export function installAutoIsolation(scope: ClientContext, git: GitApi): () => v
   /** The official target resolution (explicit > current session's workspace > recent). */
   const resolveTarget = (workspaceId?: string): string | undefined => {
     const snapshot = workspaces.list.getSnapshot()
-    const current = scope.sessions.list.getSnapshot().current
+    const current = mainViewSessionId(scope.sessions.list.getSnapshot().byId)
     const currentWorkspaceId = current === undefined
       ? undefined
       : snapshot.items.find(item => item.sessionIds.includes(current))?.workspaceId
     return workspaceId ?? currentWorkspaceId ?? snapshot.recentWorkspaceId
   }
+
+  /**
+   * Targets with a routing flow already in flight. The new-session button
+   * fires `startSession` on every click and nothing upstream debounces it, so
+   * a fast double click would otherwise run two isolation flows and create two
+   * worktrees; the second click is absorbed while the first is routing.
+   */
+  const routing = new Set<string>()
 
   const routed = (workspaceId?: string): void => {
     const target = resolveTarget(workspaceId)
@@ -86,6 +101,8 @@ export function installAutoIsolation(scope: ClientContext, git: GitApi): () => v
       original.call(workspaces)
       return
     }
+    if (routing.has(target)) return
+    routing.add(target)
     void (async () => {
       // The config is re-read per action so the settings toggle applies
       // without a page reload; both failures degrade to official behavior.
@@ -119,11 +136,23 @@ export function installAutoIsolation(scope: ClientContext, git: GitApi): () => v
         original.call(workspaces, target)
         return
       }
+      let registeredId: string | undefined
       try {
         const workspace = await workspaces.create({ path: created.value.path })
+        registeredId = workspace.workspaceId
         original.call(workspaces, workspace.workspaceId)
       } catch (error) {
-        // Roll back the half-created environment rather than leaking it.
+        // Roll back the half-created environment rather than leaking it: drop
+        // the registration just made, then the worktree directory. Without the
+        // registration step the list would keep an entry pointing at a path we
+        // are about to delete.
+        if (registeredId !== undefined && typeof workspaces.delete === 'function') {
+          try {
+            await workspaces.delete(registeredId)
+          } catch (cleanupError) {
+            console.warn(`${TAG} could not drop the failed workspace registration`, cleanupError)
+          }
+        }
         await git.removeWorktree(item.path, created.value.path, { force: true })
         console.warn(`${TAG} workspace registration failed; rolled back the worktree`, error)
         original.call(workspaces, target)
@@ -131,6 +160,8 @@ export function installAutoIsolation(scope: ClientContext, git: GitApi): () => v
     })().catch((error: unknown) => {
       console.warn(`${TAG} routing failed; using the official behavior`, error)
       original.call(workspaces, target)
+    }).finally(() => {
+      routing.delete(target)
     })
   }
 

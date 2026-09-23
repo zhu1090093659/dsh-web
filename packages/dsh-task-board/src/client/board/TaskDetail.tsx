@@ -7,14 +7,15 @@
 import { useEffect, useState } from 'react'
 import type { BoardController } from '../../core/controller.ts'
 import { isValidCron } from '../../core/schedule.ts'
-import { MANUAL_STATUSES, TASK_PERMISSIONS, type ExecutionRecord, type TaskPermission, type TaskRecord } from '../../core/tasks.ts'
+import { MANUAL_STATUSES, TASK_PERMISSIONS, tagTone, type ExecutionRecord, type TaskPermission, type TaskRecord } from '../../core/tasks.ts'
 import { canEditTaskContent } from '../../core/use-cases/task-update.ts'
 import { requiresPermissionConfirmation } from '../../core/handover.ts'
 import { t, type TaskBoardKey } from '../locales.ts'
 import { SCHEDULE_PRESETS } from '../schedule-presets.ts'
 import css from '../board.module.css'
 import { ConfirmDialog } from './ConfirmDialog.tsx'
-import { EditTaskModal } from './EditTaskModal.tsx'
+import { EditTaskModal, EditTagsModal } from './EditTaskModal.tsx'
+import { NewTaskModal } from './NewTaskModal.tsx'
 import { formatHostTimestamp, formatTime } from './TaskCard.tsx'
 import { STATUS_KEY } from './status-key.ts'
 
@@ -143,6 +144,16 @@ function ExecutionSettingsSection({ controller, task, pending }: { controller: B
           ))}
         </select>
       </label>
+      <label className={css.scheduleToggle}>
+        <input
+          type="checkbox"
+          checked={task.reuseSession === true}
+          disabled={pending}
+          onChange={event => { controller.updateTask(task.id, { reuseSession: event.target.checked }) }}
+        />
+        <span>{t('exec.reuseSession')}</span>
+      </label>
+      <p className={css.detailText}>{t('exec.reuseSessionHint')}</p>
     </section>
   )
 }
@@ -258,12 +269,18 @@ function ScheduleSection({ controller, task, pending }: { controller: BoardContr
 export function TaskDetail({ controller, task }: { controller: BoardController; task: TaskRecord }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
+  const [showEditTags, setShowEditTags] = useState(false)
+  const [showDuplicate, setShowDuplicate] = useState(false)
 
   // Keep the overlay in sync if the task record changes underneath.
   const [latest, setLatest] = useState(task)
   useEffect(() => { setLatest(task) }, [task])
   // A re-used overlay instance must not carry an edit session across tasks.
-  useEffect(() => { setShowEdit(false) }, [task.id])
+  useEffect(() => {
+    setShowEdit(false)
+    setShowEditTags(false)
+    setShowDuplicate(false)
+  }, [task.id])
   const current = latest
   const snapshot = controller.getSnapshot()
   const running = current.status === 'running'
@@ -305,6 +322,26 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
             <p className={css.detailText}>{current.description !== '' ? current.description : '—'}</p>
           </section>
 
+          {current.tags !== undefined && current.tags.length > 0 && (
+            <section className={css.detailSection} data-dsh-part="tags">
+              <h4>{t('new.tags')}</h4>
+              <div className={css.cardTags}>
+                {current.tags.map(tag => (
+                  <span
+                    key={tag.name}
+                    className={css.cardTag}
+                    data-tag-tone={tagTone(tag.name)}
+                    data-dsh-part="tag-badge"
+                    data-tag-hint={tag.promptPrefix === undefined ? undefined : tag.promptPrefix}
+                    title={tag.promptPrefix === undefined ? tag.name : tag.promptPrefix}
+                  >
+                    {tag.name}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
           {current.freeze !== undefined && (
             <section className={css.detailSection} data-dsh-part="freeze">
               <h4>{t('detail.freeze')}</h4>
@@ -332,8 +369,10 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
               </p>
               <p className={css.detailText}><strong>{t('detail.handover.references')}</strong></p>
               <ul className={css.executionList}>
-                {current.handover.references.map(reference => (
-                  <li key={reference} className={css.executionRow}><code>{reference}</code></li>
+                {current.handover.references.map((reference, index) => (
+                  // References are free text from the freeze block, so the same
+                  // string can appear twice; the index keeps the key unique (#1492).
+                  <li key={`${reference}-${index}`} className={css.executionRow}><code>{reference}</code></li>
                 ))}
               </ul>
               <p className={css.detailMeta}>{t('detail.handover.bundledAt', { time: formatHostTimestamp(current.handover.bundledAt, timeZone) })}</p>
@@ -414,6 +453,27 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
               {t('detail.edit')}
             </button>
           )}
+          {!archived && !canEditTaskContent(current) && current.status !== 'running' && (
+            <button
+              type="button"
+              className={css.ghostButton}
+              disabled={pending}
+              onClick={() => { setShowEditTags(true) }}
+            >
+              {t('detail.editTags')}
+            </button>
+          )}
+          {!archived && (
+            <button
+              type="button"
+              className={css.ghostButton}
+              disabled={pending}
+              onClick={() => { setShowDuplicate(true) }}
+              title={canEditTaskContent(current) ? t('detail.duplicate') : t('detail.duplicateAndEdit')}
+            >
+              {canEditTaskContent(current) ? t('detail.duplicate') : t('detail.duplicateAndEdit')}
+            </button>
+          )}
           {!archived && (
             <button
               type="button"
@@ -484,6 +544,22 @@ export function TaskDetail({ controller, task }: { controller: BoardController; 
 
       {showEdit && !archived && canEditTaskContent(current) && (
         <EditTaskModal controller={controller} task={current} onClose={() => { setShowEdit(false) }} />
+      )}
+
+      {showEditTags && !archived && current.status !== 'running' && (
+        <EditTagsModal controller={controller} task={current} onClose={() => { setShowEditTags(false) }} />
+      )}
+
+      {showDuplicate && !archived && (
+        <NewTaskModal
+          controller={controller}
+          initialTask={current}
+          onClose={() => { setShowDuplicate(false) }}
+          onDuplicateSuccess={async (sourceId) => {
+            await controller.archiveTask(sourceId)
+            controller.closeTask()
+          }}
+        />
       )}
     </div>
   )

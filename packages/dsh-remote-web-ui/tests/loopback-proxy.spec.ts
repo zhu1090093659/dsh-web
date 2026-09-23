@@ -60,6 +60,21 @@ function call(port: number, opts: { method?: string; chunked?: boolean } = {}): 
 
 const settle = (ms: number): Promise<void> => new Promise(resolve => { setTimeout(resolve, ms) })
 
+/**
+ * Poll a predicate until it holds or the deadline passes, then return its final
+ * value. The proxy propagates an outer abort asynchronously; a loaded runner can
+ * take longer than any fixed sleep, and polling keeps the assertion strict while
+ * removing the load sensitivity (the deadline still fails a real regression).
+ */
+async function waitFor(predicate: () => boolean, timeoutMs = 2000, stepMs = 10): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (predicate()) return true
+    await settle(stepMs)
+  }
+  return predicate()
+}
+
 describe('loopback proxy connection lifecycle', () => {
   it('stops the inner request when the outer client aborts mid-body', async () => {
     let innerCompleted = false
@@ -88,9 +103,9 @@ describe('loopback proxy connection lifecycle', () => {
           resolve()
         }, 30)
       })
-      await settle(80)
+      const aborted = await waitFor(() => innerAborted)
       expect(innerCompleted).toBe(false)
-      expect(innerAborted).toBe(true)
+      expect(aborted).toBe(true)
     } finally {
       await proxy.close()
       await up.close()

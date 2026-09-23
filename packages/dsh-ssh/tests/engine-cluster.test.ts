@@ -52,13 +52,20 @@ describe('cluster', () => {
     expect(byTags.map(r => r.alias)).toEqual(['b'])
   })
 
+  it('rejects cluster execution when no selectors are provided', async () => {
+    const engine = fakeEngine([{ alias: 'x', tags: [] }])
+    await expect(cluster(engine, { command: 'true' })).rejects.toThrow(/ssh_cluster requires aliases, environment, or tags/)
+    await expect(cluster(engine, { command: 'true', aliases: [] })).rejects.toThrow(/ssh_cluster requires aliases, environment, or tags/)
+    await expect(cluster(engine, { command: 'true', aliases: ['  '], environment: '   ', tags: [] })).rejects.toThrow(/ssh_cluster requires aliases, environment, or tags/)
+  })
+
   it('runs once per matched host and rejects invalid maxWorkers', async () => {
     const engine = fakeEngine([{ alias: 'x', tags: [] }])
     const results = await cluster(engine, { command: 'true', aliases: ['x'] })
     expect(results).toHaveLength(1)
     expect(execCommandMock).toHaveBeenCalledTimes(1)
-    await expect(cluster(engine, { command: 'true', maxWorkers: 0 })).rejects.toThrow(/maxWorkers/)
-    await expect(cluster(engine, { command: 'true', maxWorkers: -1 })).rejects.toThrow(/maxWorkers/)
+    await expect(cluster(engine, { command: 'true', aliases: ['x'], maxWorkers: 0 })).rejects.toThrow(/maxWorkers/)
+    await expect(cluster(engine, { command: 'true', aliases: ['x'], maxWorkers: -1 })).rejects.toThrow(/maxWorkers/)
   })
 
   it('captures per-host failures as failed results', async () => {

@@ -12,6 +12,20 @@ export const SUBCATEGORY_IDS: Record<string, readonly string[]> = {
   security: ['access', 'policy'],
   utility: ['cleanup', 'stats', 'notify', 'net'],
 }
+/**
+ * Canonical preset category ids (scripts/market-build mirrors this set). A
+ * preset catalog entry may omit the field; the manifest then says 'other'.
+ */
+export const PRESET_CATEGORY_IDS = ['roleplay'] as const
+/** Preset category → second-level ids; a category with no list renders one row. */
+export const PRESET_SUBCATEGORY_IDS: Record<string, readonly string[]> = {
+  roleplay: [],
+}
+/** Locale-key lookup for preset category ids (shares the plugin category keys). */
+export const PRESET_CATEGORY_LABEL_KEY: Record<string, MarketKey> = {
+  roleplay: 'category.roleplay',
+  other: 'category.other',
+}
 /** Locale-key lookup for category ids (including the manifest default 'other'). */
 export const CATEGORY_LABEL_KEY: Record<string, MarketKey> = {
   ui: 'category.ui',

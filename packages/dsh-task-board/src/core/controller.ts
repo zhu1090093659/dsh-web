@@ -18,7 +18,13 @@ import { applyCreateTask } from './use-cases/task-create.ts'
 import { applyDeleteTask } from './use-cases/task-delete.ts'
 import { applyScheduleNextRun as applyScheduleRollForward, applySetSchedule } from './use-cases/task-schedule.ts'
 import { applyUpdateTask, type TaskUpdatePatch } from './use-cases/task-update.ts'
-import type { TaskBoardAction, TaskBoardEventPayload, TaskBoardSnapshot } from '../protocol.ts'
+import type {
+  TaskBoardAction,
+  TaskBoardEventPayload,
+  TaskBoardParseDraft,
+  TaskBoardParseRequest,
+  TaskBoardSnapshot,
+} from '../protocol.ts'
 
 export interface TaskBoardTransport {
   bootstrap(legacy: readonly TaskRecord[]): Promise<TaskBoardSnapshot>
@@ -29,20 +35,29 @@ export interface TaskBoardTransport {
    */
   action(action: TaskBoardAction, initiator?: string): Promise<TaskBoardSnapshot>
   subscribe(listener: (event?: TaskBoardEventPayload) => void): () => void
+  /**
+   * One-shot model parse of pasted text (issue #1540). Optional: a deployment
+   * that cannot parse simply omits it, and the form hides the section.
+   */
+  parseDraft?(request: TaskBoardParseRequest, signal?: AbortSignal): Promise<TaskBoardParseDraft>
 }
 
-/** The sessions face the controller needs for navigation awareness. */
+/**
+ * The sessions face the controller needs for navigation awareness. The Client
+ * Session Controller carries no global selection since 0.1.6-alpha.2, so the
+ * wiring resolves the main-view Session once and exposes it as current().
+ */
 export interface SessionsControllerFace {
-  list: {
-    getSnapshot(): { current: string | undefined }
-    subscribe(fn: () => void): () => void
-  }
-  /** Select a session as current (navigates the conversation view). */
+  /** The Session the main view currently shows, when any. */
+  current(): string | undefined
+  /** Navigate the main view to a Session. */
   open(id: string): void
+  /** Subscribe to catalog changes; selection ownership rides the same snapshot. */
+  subscribe(fn: () => void): () => void
 }
 
 function currentOf(sessions: SessionsControllerFace | undefined): string | undefined {
-  return sessions?.list.getSnapshot().current
+  return sessions?.current()
 }
 
 /** Controller dependencies (all swappable in tests). */
@@ -56,6 +71,13 @@ export interface ControllerDeps {
   /** Host-authoritative transport; absent keeps the legacy in-memory test path. */
   transport?: TaskBoardTransport
 }
+
+/**
+ * Register one host directory as a DSH project (workspace). Wired by the
+ * browser apply() to the runtime's workspace controller; without it the board
+ * hides its "new project" action instead of offering a dead control (#1536).
+ */
+export type WorkspaceCreator = (path: string) => Promise<{ workspaceId: string }>
 
 /** One workspace option the execution-target pickers offer. */
 export interface ExecutionWorkspaceOption {
@@ -99,6 +121,10 @@ export interface ControllerSnapshot {
   /** Picker option sets (workspace list + agent-preset roster). */
   executionOptions: ExecutionOptionsSnapshot
   pendingTaskIds: readonly string[]
+  /** Whether the board may offer "register a new project" (issue #1536). */
+  canCreateWorkspace?: boolean
+  /** Whether this deployment can parse pasted text into task fields (issue #1540). */
+  canParseTask?: boolean
   transportError?: string
   host?: Pick<TaskBoardSnapshot, 'revision' | 'scheduler' | 'power' | 'sessionDefaultPermission'>
 }
@@ -139,6 +165,7 @@ export class BoardController {
   private archiveView = false
   private selectedTaskId: string | undefined
   private executionOptions: ExecutionOptionsSnapshot = { workspaces: [], presets: [], models: [] }
+  private workspaceCreator: WorkspaceCreator | undefined
   private listeners = new Set<() => void>()
   private disposers: Array<() => void> = []
   private readonly now: () => number
@@ -171,7 +198,7 @@ export class BoardController {
       this.notify()
     }) : undefined
     if (unsubscribeExternal !== undefined) this.disposers.push(unsubscribeExternal)
-    this.disposers.push(this.deps.sessions.list.subscribe(() => {
+    this.disposers.push(this.deps.sessions.subscribe(() => {
       this.onSessionsChanged()
     }))
     this.notify()
@@ -193,6 +220,8 @@ export class BoardController {
       selectedTaskId: this.selectedTaskId,
       executionOptions: this.executionOptions,
       pendingTaskIds: [...this.pendingTaskIds],
+      ...(this.workspaceCreator === undefined ? {} : { canCreateWorkspace: true }),
+      ...(typeof this.deps.transport?.parseDraft === 'function' ? { canParseTask: true } : {}),
       ...(this.transportError === undefined ? {} : { transportError: this.transportError }),
       ...(this.hostState === undefined ? {} : { host: this.hostState }),
     }
@@ -306,6 +335,37 @@ export class BoardController {
     this.notify()
   }
 
+  /** Wire (or clear) the runtime's project registration face (issue #1536). */
+  setWorkspaceCreator(creator: WorkspaceCreator | undefined): void {
+    this.workspaceCreator = creator
+    this.notify()
+  }
+
+  /**
+   * Register an existing host directory as a DSH project, exactly as the GUI's
+   * own "add project" does; the runtime's failure message surfaces unchanged.
+   */
+  async createWorkspace(path: string): Promise<{ workspaceId: string }> {
+    if (this.workspaceCreator === undefined) throw new Error('workspace creation is unavailable')
+    return await this.workspaceCreator(path)
+  }
+
+  /** Whether this deployment can parse pasted text into task fields (issue #1540). */
+  canParseTask(): boolean {
+    return typeof this.deps.transport?.parseDraft === 'function'
+  }
+
+  /**
+   * Parse pasted text into task fields through the Host. The transport already
+   * phrases every failure for the user, so its message surfaces unchanged.
+   */
+  async parseTaskDraft(request: TaskBoardParseRequest, signal?: AbortSignal): Promise<TaskBoardParseDraft> {
+    const transport = this.deps.transport
+    const parse = transport?.parseDraft
+    if (transport === undefined || parse === undefined) throw new Error('task parsing is unavailable')
+    return await parse.call(transport, request, signal)
+  }
+
   moveTask(id: string, status: TaskStatus): void {
     if (this.deps.transport !== undefined) {
       void this.commitRemote({ kind: 'move', taskId: id, status }, id)
@@ -327,9 +387,8 @@ export class BoardController {
   }
 
   /**
-   * Archive a settled task (done/failed). Running or on-board-unsettled
-   * tasks are refused so the runner keeps exclusive ownership of their
-   * lifecycle.
+   * Archive a task from any status but `running`, whose lifecycle the runner
+   * keeps exclusive ownership of until it settles.
    * @returns true when applied.
    */
   archiveTask(id: string): boolean {

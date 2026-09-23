@@ -1,7 +1,7 @@
 import { chmod, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
+import { spawnDsh } from './dsh-process.ts'
 import type { DoctorPaths } from './paths.ts'
 
 export interface CapsuleManifest {
@@ -107,10 +107,10 @@ export async function removeCapsuleCredentialFiles(paths: DoctorPaths): Promise<
 
 async function run(command: string, args: string[], env: NodeJS.ProcessEnv, timeoutMs = 6 * 60_000): Promise<{ code: number; stdout: string; stderr: string }> {
   return await new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, { env, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawnDsh(command, args, { env, stdio: ['ignore', 'pipe', 'pipe'] })
     let stdout = '', stderr = ''
-    child.stdout.on('data', b => { stdout += b })
-    child.stderr.on('data', b => { stderr += b })
+    child.stdout?.on('data', b => { stdout += b })
+    child.stderr?.on('data', b => { stderr += b })
     const timer = setTimeout(() => child.kill(), timeoutMs)
     child.once('error', reject)
     child.once('close', code => { clearTimeout(timer); resolvePromise({ code: code ?? 1, stdout, stderr }) })

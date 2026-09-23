@@ -10,13 +10,13 @@ Status: implemented
 
 ## Decision
 
-1. 在 MessageRow 中增加内容可见性守卫：无思考过程、无可见工具调用（无工具或 showToolCalls: false）、无正文且非失败（!failed）的 assistant 消息整行不渲染（eturn null），彻底消除空白气泡。
+1. 在 MessageRow 中增加内容可见性守卫：无思考过程、无可见工具调用（无工具或 showToolCalls: false）、无正文且非失败（!failed）的 assistant 消息整行不渲染（\return null），彻底消除空白气泡。
 2. 调整 MarkdownText 折叠判定逻辑：将长消息判定改为 !pending && text.length > LONG_TEXT_LIMIT，确保流式生成期间内容完整展示并支持自动滚动跟随。
 3. 将长消息折叠阈值 LONG_TEXT_LIMIT 从 1600 字提升至 6000 字，使常规表格与分析报告无需手动展开即可完整阅读，仅对生成结束后超过 6000 字的超大消息保留显式“展开全文”折叠按钮。
 
 ## Alternatives considered
 
-在 oldEvents / EventFolder 数据层过滤掉仅含工具的消息：未采纳，因为 RenderMessage 数据结构代表底层会话真实状态，保留在数据层可支持用户在设置中实时切换工具调用显示而无需重新拉取历史记录；该过滤应属于视图渲染层（MessageRow）职责。
+在 \foldEvents / EventFolder 数据层过滤掉仅含工具的消息：未采纳，因为 RenderMessage 数据结构代表底层会话真实状态，保留在数据层可支持用户在设置中实时切换工具调用显示而无需重新拉取历史记录；该过滤应属于视图渲染层（MessageRow）职责。
 
 在流式输出期间保持 chat-md-collapsed 结构并通过高度计算动态扩展：未采纳，相比于在流式期间（pending: true）直接不应用折叠样式，动态计算高度不仅引入不必要的 DOM 测量开销与布局抖动，而且逻辑更脆弱。
 

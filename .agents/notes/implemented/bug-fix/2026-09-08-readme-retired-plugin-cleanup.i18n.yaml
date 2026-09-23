@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-09-08-readme-retired-plugin-cleanup.md: be7d9cd58701dae3a536c243ebe91b419f81723f
+2026-09-08-readme-retired-plugin-cleanup.zh.md: 2b6a734179d5451c84117093e6d1ba1b70b1788a

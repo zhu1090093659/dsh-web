@@ -38,16 +38,10 @@ area/skills:
       - any-glob-to-any-file:
           - 'packages/dsh-skill-explorer/**'
 
-area/tools:
-  - changed-files:
-      - any-glob-to-any-file:
-          - 'packages/dsh-tool-describe-image/**'
-
 area/plugin:
   - changed-files:
       - any-glob-to-any-file:
           - 'packages/dsh-community-plugins/**'
-          - 'packages/dsh-doctor/**'
           - 'packages/dsh-git-graph/**'
           - 'packages/dsh-liangshen/**'
           - 'packages/dsh-plugin-manager/**'

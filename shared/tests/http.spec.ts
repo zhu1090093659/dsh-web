@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { asJsonObject, readBoundedJson, readJsonBody, writeJson } from '../host/http.ts'
+import { asJsonObject, readBoundedJson, readJsonBody, withIdentityEncoding, writeJson } from '../host/http.ts'
 
 /**
  * Async-readable IncomingMessage stand-in built from byte chunks; counts
@@ -155,5 +155,26 @@ describe('writeJson', () => {
       'x-trace-id': 't1',
       'content-type': 'application/problem+json',
     })
+  })
+})
+
+describe('withIdentityEncoding', () => {
+  it('forces identity encoding even with no caller init', () => {
+    const init = withIdentityEncoding()
+    expect(new Headers(init.headers).get('accept-encoding')).toBe('identity')
+  })
+
+  it('keeps caller headers, method and signal while overriding a caller accept-encoding', () => {
+    const controller = new AbortController()
+    const init = withIdentityEncoding({
+      method: 'POST',
+      signal: controller.signal,
+      headers: { authorization: 'Bearer token', 'accept-encoding': 'gzip' },
+    })
+    const headers = new Headers(init.headers)
+    expect(headers.get('authorization')).toBe('Bearer token')
+    expect(headers.get('accept-encoding')).toBe('identity')
+    expect(init.method).toBe('POST')
+    expect(init.signal).toBe(controller.signal)
   })
 })

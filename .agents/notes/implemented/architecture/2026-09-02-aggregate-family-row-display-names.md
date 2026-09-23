@@ -21,7 +21,7 @@ Pointing the rows directly at the real plugin packages (bare `usage` titles) was
 
 ## Consequences
 
-The plugin list shows one distinct `web-all/<family>` card per family plugin, and expanding a card is no longer the only way to identify one. Costs: the naming chain now spans three artifacts (row name → exports key → shared re-export + marker), all enforced by the generator gate and tests rather than by a single file; a nested package.json ships inside `lib/` (inert for npm/pnpm, but tooling that treats nested manifests as workspace packages must keep ignoring it); and the family subpath must stay display-only — putting mount semantics into the subpath module would fork the isolation contract the shell owns.
+The plugin list shows one distinct `web-all/<family>` card per family plugin, and expanding a card is no longer the only way to identify one. Costs: the naming chain now spans three artifacts (row name → exports key → shared re-export + marker), all enforced by the generator gate and tests rather than by a single file; a nested package.json ships inside `lib/` (inert for npm/pnpm, but tooling that treats nested manifests as workspace packages must keep ignoring it); and the family subpath must stay display-only — putting mount semantics into the subpath module would fork the isolation contract the shell owns. Every family package's card artwork now rides the upstream display-metadata field ([Family plugin icons through the DSH display-metadata icon field](../feature/2026-09-23-family-plugin-icons.md)): it resolves per specifier, so a package's own card shows its icon while the subpath rows above keep the default artwork and their labels stay the only per-row display field.
 
 ## Testing
 

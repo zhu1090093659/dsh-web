@@ -13,9 +13,12 @@
  *  - never touch the static palette (not in the registry at all);
  *  - never override a token the skin defines;
  *  - never derive when the skin defines no anchor for the group;
- *  - semantic / structural groups (buttons, states, masks, shadows,
+ *  - semantic / structural groups (buttons, state colors, masks, shadows,
  *    inverted/foreground labels, fonts, easing) are skipped: a tint there
- *    would break contrast or layout instead of filling a gap.
+ *    would break contrast or layout instead of filling a gap. State colors
+ *    are matched by role word, not by prefix, because the official surface
+ *    names them inconsistently (--dsw-alias-state-error-primary but also
+ *    --dsw-alias-label-error and --dsw-alias-interactive-bg-hover-danger).
  *
  * The derivation is textual (color-mix with a var() reference), so it
  * resolves against the skin's own remap — including the dark-theme block —
@@ -33,21 +36,24 @@ interface FallbackGroup {
   alpha: number
 }
 
+/**
+ * Roles that must never be tinted: a translucent skin tint would break
+ * contrast, layout, or the meaning of a state instead of filling a gap.
+ * State roles get one word each — the official surface is not uniformly
+ * prefixed (state-error-primary, label-error, interactive-bg-hover-danger),
+ * so matching the role word is the only reliable rule.
+ */
+const EXCLUDED =
+  /(^|-)(mask|shadow|button|state|error|warning|success|danger|info|caution|brand|scrollbar|foreground|inverted|dimmed)(-|$)|-font-|linear-|ease|duration|transition/
+
 /** Matched in order; the first group whose pattern hits wins. */
 const GROUPS: FallbackGroup[] = [
-  {
-    skip: /(^|-)(mask|shadow|button|state|brand|scrollbar|foreground|inverted|dimmed)(-|$)|-font-|linear-|ease|duration|transition/,
-    anchors: [],
-    alpha: 0,
-  },
   { skip: /-bg-/, anchors: ['--dsw-alias-bg-layer-1', '--dsw-alias-bg-base'], alpha: 65 },
   { skip: /-label-/, anchors: ['--dsw-alias-label-primary'], alpha: 70 },
   { skip: /-border-/, anchors: ['--dsw-alias-border-l2', '--dsw-alias-border-l1'], alpha: 55 },
   { skip: /-interactive-/, anchors: ['--dsw-alias-bg-layer-1'], alpha: 50 },
   { skip: /-specific-/, anchors: ['--dsw-alias-bg-layer-1', '--dsw-alias-bg-base'], alpha: 60 },
 ]
-
-const EXCLUDED = /(^|-)(mask|shadow|button|state|brand|scrollbar|foreground|inverted|dimmed)(-|$)|-font-|linear-|ease|duration|transition/
 
 function groupFor(token: string): FallbackGroup | null {
   if (EXCLUDED.test(token)) return null

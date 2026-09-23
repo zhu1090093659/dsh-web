@@ -627,13 +627,13 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:packages/dsh-web-settings/src/client/web-ui-settings.module.css.mjs
-		const css$24 = ".HfjcPG_section{flex-direction:column;display:flex}.HfjcPG_heading{color:var(--dsw-alias-label-primary);margin:0 0 4px;font-size:17px;font-weight:600;line-height:1.4}.HfjcPG_lede{color:var(--dsw-alias-label-tertiary);margin:0 0 12px;font-size:13px;line-height:1.5}.HfjcPG_sectionList{margin:0;padding:0;list-style:none}.HfjcPG_subcards{flex-direction:column;gap:10px;margin:0;padding:0;list-style:none;display:flex}[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(5)>[class*=_navIcon],[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(6)>[class*=_navIcon],[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(7)>[class*=_navIcon],[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(8)>[class*=_navIcon]{display:none}[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(5):before{content:\"\";background:currentColor;flex:none;width:16px;height:16px;-webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z'/%3E%3C/svg%3E\") 50%/contain no-repeat;mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z'/%3E%3C/svg%3E\") 50%/contain no-repeat}[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(6):before{content:\"\";background:currentColor;flex:none;width:16px;height:16px;-webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M8 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12zm0-4a2 2 0 1 0 0-4 2 2 0 0 0 0 4z'/%3E%3C/svg%3E\") 50%/contain no-repeat;mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M8 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12zm0-4a2 2 0 1 0 0-4 2 2 0 0 0 0 4z'/%3E%3C/svg%3E\") 50%/contain no-repeat}[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(7):before{content:\"\";background:currentColor;flex:none;width:16px;height:16px;-webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cellipse cx='8' cy='11' rx='4.2' ry='2.8'/%3E%3Ccircle cx='2.8' cy='6.2' r='1.9'/%3E%3Ccircle cx='8' cy='4.6' r='1.9'/%3E%3Ccircle cx='13.2' cy='6.2' r='1.9'/%3E%3C/svg%3E\") 50%/contain no-repeat;mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cellipse cx='8' cy='11' rx='4.2' ry='2.8'/%3E%3Ccircle cx='2.8' cy='6.2' r='1.9'/%3E%3Ccircle cx='8' cy='4.6' r='1.9'/%3E%3Ccircle cx='13.2' cy='6.2' r='1.9'/%3E%3C/svg%3E\") 50%/contain no-repeat}[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(8):before{content:\"\";background:currentColor;flex:none;width:16px;height:16px;-webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='5.5' cy='5.5' r='3'/%3E%3Ccircle cx='11' cy='5.5' r='3'/%3E%3Cpath d='M2.5 13.5c0-3 2-4.2 3-4.2H11c1.5 0 3 1.2 3 4.2z'/%3E%3C/svg%3E\") 50%/contain no-repeat;mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='5.5' cy='5.5' r='3'/%3E%3Ccircle cx='11' cy='5.5' r='3'/%3E%3Cpath d='M2.5 13.5c0-3 2-4.2 3-4.2H11c1.5 0 3 1.2 3 4.2z'/%3E%3C/svg%3E\") 50%/contain no-repeat}";
-		const tagId$24 = "@linxin666/dsh-web-all/packages/dsh-web-settings/src/client/web-ui-settings.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$24) + "]") === null) {
+		const css$19 = ".HfjcPG_section{flex-direction:column;display:flex}.HfjcPG_heading{color:var(--dsw-alias-label-primary);margin:0 0 4px;font-size:17px;font-weight:600;line-height:1.4}.HfjcPG_lede{color:var(--dsw-alias-label-tertiary);margin:0 0 12px;font-size:13px;line-height:1.5}.HfjcPG_sectionList{margin:0;padding:0;list-style:none}.HfjcPG_subcards{flex-direction:column;gap:10px;margin:0;padding:0;list-style:none;display:flex}[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(5)>[class*=_navIcon],[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(6)>[class*=_navIcon],[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(7)>[class*=_navIcon],[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(8)>[class*=_navIcon]{display:none}[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(5):before{content:\"\";background:currentColor;flex:none;width:16px;height:16px;-webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z'/%3E%3C/svg%3E\") 50%/contain no-repeat;mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z'/%3E%3C/svg%3E\") 50%/contain no-repeat}[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(6):before{content:\"\";background:currentColor;flex:none;width:16px;height:16px;-webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M8 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12zm0-4a2 2 0 1 0 0-4 2 2 0 0 0 0 4z'/%3E%3C/svg%3E\") 50%/contain no-repeat;mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M8 14a6 6 0 1 0 0-12 6 6 0 0 0 0 12zm0-4a2 2 0 1 0 0-4 2 2 0 0 0 0 4z'/%3E%3C/svg%3E\") 50%/contain no-repeat}[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(7):before{content:\"\";background:currentColor;flex:none;width:16px;height:16px;-webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cellipse cx='8' cy='11' rx='4.2' ry='2.8'/%3E%3Ccircle cx='2.8' cy='6.2' r='1.9'/%3E%3Ccircle cx='8' cy='4.6' r='1.9'/%3E%3Ccircle cx='13.2' cy='6.2' r='1.9'/%3E%3C/svg%3E\") 50%/contain no-repeat;mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cellipse cx='8' cy='11' rx='4.2' ry='2.8'/%3E%3Ccircle cx='2.8' cy='6.2' r='1.9'/%3E%3Ccircle cx='8' cy='4.6' r='1.9'/%3E%3Ccircle cx='13.2' cy='6.2' r='1.9'/%3E%3C/svg%3E\") 50%/contain no-repeat}[class*=_navList]:has(>[class*=_navCell]:nth-child(8)):not(:has(>[class*=_navCell]:nth-child(9)))>[class*=_navCell]:nth-child(8):before{content:\"\";background:currentColor;flex:none;width:16px;height:16px;-webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='5.5' cy='5.5' r='3'/%3E%3Ccircle cx='11' cy='5.5' r='3'/%3E%3Cpath d='M2.5 13.5c0-3 2-4.2 3-4.2H11c1.5 0 3 1.2 3 4.2z'/%3E%3C/svg%3E\") 50%/contain no-repeat;mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='5.5' cy='5.5' r='3'/%3E%3Ccircle cx='11' cy='5.5' r='3'/%3E%3Cpath d='M2.5 13.5c0-3 2-4.2 3-4.2H11c1.5 0 3 1.2 3 4.2z'/%3E%3C/svg%3E\") 50%/contain no-repeat}";
+		const tagId$19 = "@linxin666/dsh-web-all/packages/dsh-web-settings/src/client/web-ui-settings.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$19) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$24;
-			tag.textContent = css$24;
+			tag.dataset.pluginCss = tagId$19;
+			tag.textContent = css$19;
 			document.head.appendChild(tag);
 		}
 		var web_ui_settings_module_css_default = {
@@ -674,22 +674,22 @@ window.__ModuleLoader__.load({
 		* The `web-ui-plugins` locale dictionaries for the group card.
 		*/
 		/** Simplified Chinese dictionary (the key-set source of truth). */
-		const zh$15 = {
+		const zh$13 = {
 			"title": "Web 插件",
 			"description": "统一管理 dsh-web 全家桶插件的启用与配置。"
 		};
 		/** English dictionary, checked complete against the zh key set. */
-		const en$15 = {
+		const en$13 = {
 			"title": "Web Plugins",
 			"description": "Enable and configure the dsh-web family plugins from one place."
 		};
 		//#endregion
 		//#region ../dsh-web-settings/src/client/telemetry.ts
-		const VISITOR_KEY$10 = "dsh-web-ui-telemetry-visitor";
-		const DAY_KEY_PREFIX$10 = "dsh-web-ui-telemetry-day:";
-		const ENDPOINT$10 = "https://dsh-market.com/api/telemetry/event";
+		const VISITOR_KEY$8 = "dsh-web-ui-telemetry-visitor";
+		const DAY_KEY_PREFIX$8 = "dsh-web-ui-telemetry-day:";
+		const ENDPOINT$8 = "https://dsh-market.com/api/telemetry/event";
 		/** The building package's version, when the bundle carries it. */
-		function bakedVersion$10() {
+		function bakedVersion$8() {
 			try {
 				return "0.3.24";
 			} catch {
@@ -697,23 +697,23 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/** Read or lazily create the anonymous visitor id; null when storage is unavailable. */
-		function visitorId$10() {
+		function visitorId$8() {
 			try {
-				const existing = localStorage.getItem(VISITOR_KEY$10);
+				const existing = localStorage.getItem(VISITOR_KEY$8);
 				if (existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing)) return existing;
 				const fresh = crypto.randomUUID().replaceAll("-", "");
-				localStorage.setItem(VISITOR_KEY$10, fresh);
+				localStorage.setItem(VISITOR_KEY$8, fresh);
 				return fresh;
 			} catch {
 				return null;
 			}
 		}
 		/** Drop stale per-day dedup keys so localStorage does not grow forever. */
-		function pruneDayKeys$10(today) {
+		function pruneDayKeys$8(today) {
 			try {
 				for (let index = localStorage.length - 1; index >= 0; index -= 1) {
 					const key = localStorage.key(index);
-					if (key !== null && key.startsWith(DAY_KEY_PREFIX$10) && key !== DAY_KEY_PREFIX$10 + today) localStorage.removeItem(key);
+					if (key !== null && key.startsWith(DAY_KEY_PREFIX$8) && key !== DAY_KEY_PREFIX$8 + today) localStorage.removeItem(key);
 				}
 			} catch {}
 		}
@@ -722,18 +722,18 @@ window.__ModuleLoader__.load({
 		* browser. Never throws and never blocks the caller. Items without an explicit
 		* version inherit the bundle's baked build version.
 		*/
-		function reportDailyHeartbeat$10(items) {
+		function reportDailyHeartbeat$8(items) {
 			try {
 				if (items.length === 0) return;
 				const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
 				if (navigator.webdriver) return;
-				if (localStorage.getItem(DAY_KEY_PREFIX$10 + today) !== null) return;
-				const visitor = visitorId$10();
+				if (localStorage.getItem(DAY_KEY_PREFIX$8 + today) !== null) return;
+				const visitor = visitorId$8();
 				if (visitor === null) return;
-				pruneDayKeys$10(today);
+				pruneDayKeys$8(today);
 				const payloadItems = items.map((item) => {
 					const out = { name: item.name };
-					const version = item.version ?? bakedVersion$10();
+					const version = item.version ?? bakedVersion$8();
 					if (version !== void 0) out.version = version;
 					if (item.channel !== void 0) out.channel = item.channel;
 					return out;
@@ -743,24 +743,24 @@ window.__ModuleLoader__.load({
 					visitor,
 					items: payloadItems
 				});
-				fetch(ENDPOINT$10, {
+				fetch(ENDPOINT$8, {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body,
 					keepalive: true
 				}).then((response) => {
-					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$10 + today, "1");
+					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$8 + today, "1");
 				}).catch(() => {});
 			} catch {}
 		}
 		//#endregion
 		//#region ../dsh-web-settings/src/client/index.ts
-		var client_exports$15 = /* @__PURE__ */ __exportAll({
-			apply: () => apply$16,
-			inject: () => inject$16
+		var client_exports$13 = /* @__PURE__ */ __exportAll({
+			apply: () => apply$14,
+			inject: () => inject$14
 		});
 		/** Required services. */
-		const inject$16 = [
+		const inject$14 = [
 			"slots",
 			"locale",
 			"connection",
@@ -772,13 +772,13 @@ window.__ModuleLoader__.load({
 		* nav item hosts the family plugin cards in the section body.
 		* @param ctx - client root context.
 		*/
-		function apply$16(ctx) {
-			reportDailyHeartbeat$10([{ name: "@linxin666/dsh-client-ui-web-ui-settings" }]);
+		function apply$14(ctx) {
+			reportDailyHeartbeat$8([{ name: "@linxin666/dsh-client-ui-web-ui-settings" }]);
 			ctx.effect(() => {
 				try {
 					return ctx.locale.register("web-ui-plugins", {
-						zh: zh$15,
-						en: en$15
+						zh: zh$13,
+						en: en$13
 					});
 				} catch {
 					return () => {};
@@ -919,13 +919,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-plugin-manager/src/client/plugin-manager.module.css.mjs
-		const css$23 = ".ZsMDKq_section{flex-direction:column;gap:12px;display:flex}.ZsMDKq_notice{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:8px;flex-direction:column;gap:8px;padding:16px;display:flex}.ZsMDKq_notice p{color:var(--dsw-alias-label-secondary);margin:0}.ZsMDKq_state{color:var(--dsw-alias-label-secondary);padding:16px 0}.ZsMDKq_hint{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px}.ZsMDKq_progressRow{flex-direction:column;gap:6px;display:flex}.ZsMDKq_progressTrack{background:var(--dsw-alias-bg-layer-2);border-radius:3px;height:6px;overflow:hidden}.ZsMDKq_progressBar{background:var(--dsw-alias-state-business-primary);height:100%;transition:width .2s}.ZsMDKq_progressBar[data-indeterminate=true]{width:40%;animation:1.2s ease-in-out infinite ZsMDKq_pluginManagerIndeterminate}@keyframes ZsMDKq_pluginManagerIndeterminate{0%{transform:translate(-100%)}to{transform:translate(250%)}}.ZsMDKq_progressLabel{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px}@media (prefers-reduced-motion:reduce){.ZsMDKq_progressBar[data-indeterminate=true]{width:40%;animation:none}}.ZsMDKq_errorRow{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-danger);border-radius:8px;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px;display:flex}.ZsMDKq_error{min-width:200px;color:var(--dsw-alias-label-danger);word-break:break-all;flex:1}.ZsMDKq_group{flex-direction:column;gap:8px;display:flex}.ZsMDKq_sectionTitle{color:var(--dsw-alias-label-secondary);margin:0;font-size:13px;font-weight:600}.ZsMDKq_list{flex-direction:column;gap:8px;margin:0;padding:0;list-style:none;display:flex}.ZsMDKq_row{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:8px;justify-content:space-between;align-items:flex-start;gap:12px;padding:10px 12px;display:flex}.ZsMDKq_meta{flex-direction:column;gap:4px;min-width:0;display:flex}.ZsMDKq_name{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-weight:600;overflow:hidden}.ZsMDKq_sub{color:var(--dsw-alias-label-tertiary);flex-wrap:wrap;align-items:center;gap:6px;min-width:0;font-size:12px;display:flex}.ZsMDKq_version{white-space:nowrap}.ZsMDKq_sourceBadge{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);border-radius:4px;padding:0 4px;font-size:11px}.ZsMDKq_specText{text-overflow:ellipsis;white-space:nowrap;max-width:320px;overflow:hidden}.ZsMDKq_latest{color:var(--dsw-alias-state-business-primary);font-size:12px}.ZsMDKq_compatHint{color:var(--dsw-alias-label-tertiary);font-size:12px}.ZsMDKq_compatBlocked{color:var(--dsw-alias-label-danger);font-size:12px}.ZsMDKq_actions{flex-shrink:0;align-items:center;gap:8px;display:flex}.ZsMDKq_empty{color:var(--dsw-alias-label-tertiary);margin:0}.ZsMDKq_link{color:var(--dsw-alias-state-business-primary)}.ZsMDKq_stateLabel{color:var(--dsw-alias-label-secondary);font-size:12px}.ZsMDKq_stateLabel[data-state=enabled]{color:var(--dsw-alias-state-success-primary)}.ZsMDKq_stateLabel[data-state=disabled]{color:var(--dsw-alias-label-tertiary)}.ZsMDKq_stateLabel[data-state=mixed]{color:var(--dsw-alias-state-warning-primary,var(--dsw-alias-label-secondary))}.ZsMDKq_childrenToggle{width:100%;color:var(--dsw-alias-label-secondary);text-align:left;cursor:pointer;background:0 0;border:none;border-radius:6px;align-items:center;gap:6px;margin:6px 0 0;padding:4px 8px;font-size:12px;display:flex}.ZsMDKq_childrenToggle:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}.ZsMDKq_childrenToggle:focus-visible{outline:2px solid var(--dsw-alias-border-l2);outline-offset:1px}.ZsMDKq_chevron{border-top:4px solid #0000;border-bottom:4px solid #0000;border-left:5px solid;flex:none;width:0;height:0;transition:transform .15s}.ZsMDKq_chevron[data-expanded=true]{transform:rotate(90deg)}@media (prefers-reduced-motion:reduce){.ZsMDKq_chevron{transition:none}}.ZsMDKq_childrenSummary{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.ZsMDKq_childList{border-left:2px solid var(--dsw-alias-border-l1);flex-direction:column;gap:4px;margin:6px 0 0;padding:2px 0 2px 16px;list-style:none;display:flex}.ZsMDKq_childRow{justify-content:space-between;align-items:center;gap:12px;padding:4px 8px;display:flex}.ZsMDKq_childName{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:13px;overflow:hidden}.ZsMDKq_lockedHint{color:var(--dsw-alias-label-tertiary);font-size:12px}.ZsMDKq_failure{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-danger);border-radius:6px;flex-direction:column;gap:6px;margin-top:4px;padding:8px;display:flex}.ZsMDKq_badge{background:var(--dsw-alias-label-danger);color:var(--dsw-alias-label-on-danger);border-radius:10px;align-self:flex-start;padding:2px 8px;font-size:11px}.ZsMDKq_failureMessage{color:var(--dsw-alias-label-danger);word-break:break-all;font-size:12px}.ZsMDKq_failureActions{flex-wrap:wrap;gap:8px;display:flex}.ZsMDKq_conflicts{flex-direction:column;gap:8px;display:flex}.ZsMDKq_actionsRow{align-items:center;gap:12px;display:flex}.ZsMDKq_ok{color:var(--dsw-alias-state-success-primary);margin:0;font-size:12px}.ZsMDKq_applying{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px}.ZsMDKq_restartRow{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-brand);border-radius:8px;padding:10px 12px}.ZsMDKq_restartRow p{color:var(--dsw-alias-brand-primary);margin:0}.ZsMDKq_safeModeBanner{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-warning);border-radius:8px;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;display:flex}.ZsMDKq_safeModeBanner p{color:var(--dsw-alias-label-primary);margin:0}";
-		const tagId$23 = "@linxin666/dsh-web-all/packages/dsh-plugin-manager/src/client/plugin-manager.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$23) + "]") === null) {
+		const css$18 = ".ZsMDKq_section{flex-direction:column;gap:12px;display:flex}.ZsMDKq_notice{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:8px;flex-direction:column;gap:8px;padding:16px;display:flex}.ZsMDKq_notice p{color:var(--dsw-alias-label-secondary);margin:0}.ZsMDKq_state{color:var(--dsw-alias-label-secondary);padding:16px 0}.ZsMDKq_hint{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px}.ZsMDKq_progressRow{flex-direction:column;gap:6px;display:flex}.ZsMDKq_progressTrack{background:var(--dsw-alias-bg-layer-2);border-radius:3px;height:6px;overflow:hidden}.ZsMDKq_progressBar{background:var(--dsw-alias-state-business-primary);height:100%;transition:width .2s}.ZsMDKq_progressBar[data-indeterminate=true]{width:40%;animation:1.2s ease-in-out infinite ZsMDKq_pluginManagerIndeterminate}@keyframes ZsMDKq_pluginManagerIndeterminate{0%{transform:translate(-100%)}to{transform:translate(250%)}}.ZsMDKq_progressLabel{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px}@media (prefers-reduced-motion:reduce){.ZsMDKq_progressBar[data-indeterminate=true]{width:40%;animation:none}}.ZsMDKq_errorRow{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-danger);border-radius:8px;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px;display:flex}.ZsMDKq_error{min-width:200px;color:var(--dsw-alias-label-danger);word-break:break-all;flex:1}.ZsMDKq_group{flex-direction:column;gap:8px;display:flex}.ZsMDKq_sectionTitle{color:var(--dsw-alias-label-secondary);margin:0;font-size:13px;font-weight:600}.ZsMDKq_list{flex-direction:column;gap:8px;margin:0;padding:0;list-style:none;display:flex}.ZsMDKq_row{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);border-radius:8px;justify-content:space-between;align-items:flex-start;gap:12px;padding:10px 12px;display:flex}.ZsMDKq_meta{flex-direction:column;gap:4px;min-width:0;display:flex}.ZsMDKq_name{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-weight:600;overflow:hidden}.ZsMDKq_sub{color:var(--dsw-alias-label-tertiary);flex-wrap:wrap;align-items:center;gap:6px;min-width:0;font-size:12px;display:flex}.ZsMDKq_version{white-space:nowrap}.ZsMDKq_sourceBadge{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);border-radius:4px;padding:0 4px;font-size:11px}.ZsMDKq_specText{text-overflow:ellipsis;white-space:nowrap;max-width:320px;overflow:hidden}.ZsMDKq_latest{color:var(--dsw-alias-state-business-primary);font-size:12px}.ZsMDKq_compatHint{color:var(--dsw-alias-label-tertiary);font-size:12px}.ZsMDKq_compatBlocked{color:var(--dsw-alias-label-danger);font-size:12px}.ZsMDKq_actions{flex-shrink:0;align-items:center;gap:8px;display:flex}.ZsMDKq_empty{color:var(--dsw-alias-label-tertiary);margin:0}.ZsMDKq_link{color:var(--dsw-alias-state-business-primary)}.ZsMDKq_stateLabel{color:var(--dsw-alias-label-secondary);font-size:12px}.ZsMDKq_stateLabel[data-state=enabled]{color:var(--dsw-alias-state-success-primary)}.ZsMDKq_stateLabel[data-state=disabled]{color:var(--dsw-alias-label-tertiary)}.ZsMDKq_stateLabel[data-state=mixed]{color:var(--dsw-alias-state-warning-primary,var(--dsw-alias-label-secondary))}.ZsMDKq_childrenToggle{width:100%;color:var(--dsw-alias-label-secondary);text-align:left;cursor:pointer;background:0 0;border:none;border-radius:6px;align-items:center;gap:6px;margin:6px 0 0;padding:4px 8px;font-size:12px;display:flex}.ZsMDKq_childrenToggle:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}.ZsMDKq_childrenToggle:focus-visible{outline:2px solid var(--dsw-alias-border-l2);outline-offset:1px}.ZsMDKq_chevron{border-top:4px solid #0000;border-bottom:4px solid #0000;border-left:5px solid;flex:none;width:0;height:0;transition:transform .15s}.ZsMDKq_chevron[data-expanded=true]{transform:rotate(90deg)}@media (prefers-reduced-motion:reduce){.ZsMDKq_chevron{transition:none}}.ZsMDKq_childrenSummary{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.ZsMDKq_childList{border-left:2px solid var(--dsw-alias-border-l1);flex-direction:column;gap:4px;margin:6px 0 0;padding:2px 0 2px 16px;list-style:none;display:flex}.ZsMDKq_childRow{justify-content:space-between;align-items:center;gap:12px;padding:4px 8px;display:flex}.ZsMDKq_childName{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:13px;overflow:hidden}.ZsMDKq_lockedHint{color:var(--dsw-alias-label-tertiary);font-size:12px}.ZsMDKq_failure{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-danger);border-radius:6px;flex-direction:column;gap:6px;margin-top:4px;padding:8px;display:flex}.ZsMDKq_badge{background:var(--dsw-alias-label-danger);color:var(--dsw-alias-label-on-danger);border-radius:10px;align-self:flex-start;padding:2px 8px;font-size:11px}.ZsMDKq_failureMessage{color:var(--dsw-alias-label-danger);word-break:break-all;font-size:12px}.ZsMDKq_failureActions{flex-wrap:wrap;gap:8px;display:flex}.ZsMDKq_conflicts{flex-direction:column;gap:8px;display:flex}.ZsMDKq_actionsRow{align-items:center;gap:12px;display:flex}.ZsMDKq_ok{color:var(--dsw-alias-state-success-primary);margin:0;font-size:12px}.ZsMDKq_applying{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px}.ZsMDKq_restartRow{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-brand);border-radius:8px;padding:10px 12px}.ZsMDKq_restartRow p{color:var(--dsw-alias-brand-primary);margin:0}.ZsMDKq_safeModeBanner{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-warning);border-radius:8px;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;display:flex}.ZsMDKq_safeModeBanner p{color:var(--dsw-alias-label-primary);margin:0}";
+		const tagId$18 = "@linxin666/dsh-web-all/packages/dsh-plugin-manager/src/client/plugin-manager.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$18) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$23;
-			tag.textContent = css$23;
+			tag.dataset.pluginCss = tagId$18;
+			tag.textContent = css$18;
 			document.head.appendChild(tag);
 		}
 		var plugin_manager_module_css_default = {
@@ -1614,7 +1614,7 @@ window.__ModuleLoader__.load({
 		* @module @linxin666/dsh-client-ui-plugin-manager/client
 		*/
 		/** Simplified Chinese copy (the key-set source of truth). */
-		const STATIC_ZH$1 = {
+		const STATIC_ZH = {
 			tab: "插件管理",
 			manageElsewhere: "安装、卸载与启停已由官方插件管理页负责（侧边栏「插件」）；这里保留更新检查、安装冲突与启动失败修复。",
 			loading: "正在读取插件…",
@@ -1687,7 +1687,7 @@ window.__ModuleLoader__.load({
 			repairStateUninstalled: "已卸载"
 		};
 		/** English copy, checked complete against the zh key set. */
-		const STATIC_EN$1 = {
+		const STATIC_EN = {
 			tab: "Plugin manager",
 			manageElsewhere: "Installing, uninstalling and enabling plugins now live on the official plugin manager page (the Plugins entry in the sidebar); this tab keeps update checks, install conflicts and startup-failure repair.",
 			loading: "Reading plugins…",
@@ -1759,8 +1759,8 @@ window.__ModuleLoader__.load({
 			repairStateDisabled: "Off",
 			repairStateUninstalled: "Uninstalled"
 		};
-		const zh$14 = STATIC_ZH$1;
-		const en$14 = STATIC_EN$1;
+		const zh$12 = STATIC_ZH;
+		const en$12 = STATIC_EN;
 		//#endregion
 		//#region ../dsh-plugin-manager/src/core/protocol.ts
 		/** Whether a decoded value is a non-array object. */
@@ -1910,11 +1910,11 @@ window.__ModuleLoader__.load({
 		const PLUGIN_MANAGER_SERVICE = "pluginManager";
 		//#endregion
 		//#region ../dsh-plugin-manager/src/client/telemetry.ts
-		const VISITOR_KEY$9 = "dsh-web-ui-telemetry-visitor";
-		const DAY_KEY_PREFIX$9 = "dsh-web-ui-telemetry-day:";
-		const ENDPOINT$9 = "https://dsh-market.com/api/telemetry/event";
+		const VISITOR_KEY$7 = "dsh-web-ui-telemetry-visitor";
+		const DAY_KEY_PREFIX$7 = "dsh-web-ui-telemetry-day:";
+		const ENDPOINT$7 = "https://dsh-market.com/api/telemetry/event";
 		/** The building package's version, when the bundle carries it. */
-		function bakedVersion$9() {
+		function bakedVersion$7() {
 			try {
 				return "0.3.24";
 			} catch {
@@ -1922,23 +1922,23 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/** Read or lazily create the anonymous visitor id; null when storage is unavailable. */
-		function visitorId$9() {
+		function visitorId$7() {
 			try {
-				const existing = localStorage.getItem(VISITOR_KEY$9);
+				const existing = localStorage.getItem(VISITOR_KEY$7);
 				if (existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing)) return existing;
 				const fresh = crypto.randomUUID().replaceAll("-", "");
-				localStorage.setItem(VISITOR_KEY$9, fresh);
+				localStorage.setItem(VISITOR_KEY$7, fresh);
 				return fresh;
 			} catch {
 				return null;
 			}
 		}
 		/** Drop stale per-day dedup keys so localStorage does not grow forever. */
-		function pruneDayKeys$9(today) {
+		function pruneDayKeys$7(today) {
 			try {
 				for (let index = localStorage.length - 1; index >= 0; index -= 1) {
 					const key = localStorage.key(index);
-					if (key !== null && key.startsWith(DAY_KEY_PREFIX$9) && key !== DAY_KEY_PREFIX$9 + today) localStorage.removeItem(key);
+					if (key !== null && key.startsWith(DAY_KEY_PREFIX$7) && key !== DAY_KEY_PREFIX$7 + today) localStorage.removeItem(key);
 				}
 			} catch {}
 		}
@@ -1947,18 +1947,18 @@ window.__ModuleLoader__.load({
 		* browser. Never throws and never blocks the caller. Items without an explicit
 		* version inherit the bundle's baked build version.
 		*/
-		function reportDailyHeartbeat$9(items) {
+		function reportDailyHeartbeat$7(items) {
 			try {
 				if (items.length === 0) return;
 				const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
 				if (navigator.webdriver) return;
-				if (localStorage.getItem(DAY_KEY_PREFIX$9 + today) !== null) return;
-				const visitor = visitorId$9();
+				if (localStorage.getItem(DAY_KEY_PREFIX$7 + today) !== null) return;
+				const visitor = visitorId$7();
 				if (visitor === null) return;
-				pruneDayKeys$9(today);
+				pruneDayKeys$7(today);
 				const payloadItems = items.map((item) => {
 					const out = { name: item.name };
-					const version = item.version ?? bakedVersion$9();
+					const version = item.version ?? bakedVersion$7();
 					if (version !== void 0) out.version = version;
 					if (item.channel !== void 0) out.channel = item.channel;
 					return out;
@@ -1968,24 +1968,24 @@ window.__ModuleLoader__.load({
 					visitor,
 					items: payloadItems
 				});
-				fetch(ENDPOINT$9, {
+				fetch(ENDPOINT$7, {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body,
 					keepalive: true
 				}).then((response) => {
-					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$9 + today, "1");
+					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$7 + today, "1");
 				}).catch(() => {});
 			} catch {}
 		}
 		//#endregion
 		//#region ../dsh-plugin-manager/src/client/index.ts
-		var client_exports$14 = /* @__PURE__ */ __exportAll({
-			apply: () => apply$15,
+		var client_exports$12 = /* @__PURE__ */ __exportAll({
+			apply: () => apply$13,
 			createPluginManagerFace: () => createPluginManagerFace,
-			inject: () => inject$15
+			inject: () => inject$13
 		});
-		const NS$12 = "settings.pluginManager";
+		const NS$10 = "settings.pluginManager";
 		const CHANNEL = "/plugin-installer";
 		const CONTROL_CHANNEL = "/plugin-control";
 		const LIST_ENDPOINT = "list";
@@ -2003,7 +2003,7 @@ window.__ModuleLoader__.load({
 		/** Gateway job wait ceiling (the host add deadline is six minutes). */
 		const JOB_WAIT_MS = 7 * 6e4;
 		/** Services required by the slot registration and both channels. */
-		const inject$15 = [
+		const inject$13 = [
 			"slots",
 			"locale",
 			"connection",
@@ -2244,13 +2244,13 @@ window.__ModuleLoader__.load({
 			};
 		}
 		/** Contribute the family plugin-manager tab and provide the shared face. */
-		function apply$15(ctx) {
-			reportDailyHeartbeat$9([{ name: "@linxin666/dsh-client-ui-plugin-manager" }]);
+		function apply$13(ctx) {
+			reportDailyHeartbeat$7([{ name: "@linxin666/dsh-client-ui-plugin-manager" }]);
 			ctx.effect(() => {
 				try {
-					return ctx.locale.register(NS$12, {
-						zh: zh$14,
-						en: en$14
+					return ctx.locale.register(NS$10, {
+						zh: zh$12,
+						en: en$12
 					});
 				} catch {
 					return () => {};
@@ -2266,8 +2266,8 @@ window.__ModuleLoader__.load({
 						name: "settings.plugins.tab",
 						id: "family-plugins",
 						order: 20,
-						label: () => ctx.locale.bind(NS$12)("tab"),
-						locale: NS$12,
+						label: () => ctx.locale.bind(NS$10)("tab"),
+						locale: NS$10,
 						inject: () => face
 					}, PluginManagerTab);
 				} catch {
@@ -2351,16 +2351,16 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-market/src/client/settings-card.module.css.mjs
-		const css$22 = ".RcIGlq_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}.RcIGlq_card:hover{border-color:var(--dsw-alias-label-dimmed)}.RcIGlq_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.RcIGlq_header{appearance:none;box-sizing:border-box;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.RcIGlq_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.RcIGlq_headerStatic{box-sizing:border-box;border-radius:12px;align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}.RcIGlq_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.RcIGlq_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.RcIGlq_description{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.5}.RcIGlq_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.RcIGlq_chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.RcIGlq_chevronOpen{transform:rotate(180deg)}.RcIGlq_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.RcIGlq_readOnly{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:12px;line-height:1.5}.RcIGlq_notExposed{color:var(--dsw-alias-state-warn-primary);margin:12px 0 0;font-size:12px;line-height:1.5}.RcIGlq_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.RcIGlq_failed{min-width:0;color:var(--dsw-alias-state-error-primary,#b42318);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:12px;line-height:1.5;overflow:hidden}.RcIGlq_discard,.RcIGlq_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.RcIGlq_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.RcIGlq_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.RcIGlq_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.RcIGlq_discard:disabled,.RcIGlq_save:disabled{opacity:.4;cursor:default}.RcIGlq_discard:focus-visible,.RcIGlq_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.RcIGlq_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.RcIGlq_field+.RcIGlq_field{border-top:1px solid var(--dsw-alias-border-l2)}.RcIGlq_head{align-items:center;gap:8px;display:flex}.RcIGlq_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.RcIGlq_badges{align-items:center;gap:8px;display:inline-flex}.RcIGlq_badge{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.RcIGlq_reset{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5}.RcIGlq_reset:hover:not(:disabled){color:var(--dsw-alias-label-primary)}.RcIGlq_reset:disabled{cursor:default}.RcIGlq_reset:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}.RcIGlq_input,.RcIGlq_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.RcIGlq_input:focus-visible,.RcIGlq_select:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.RcIGlq_input:disabled,.RcIGlq_select:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.RcIGlq_inputInvalid{border:1px solid var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.RcIGlq_inputInvalid:focus-visible{outline:2px solid var(--dsw-alias-state-error-primary,#b42318);outline-offset:1px;border-color:var(--dsw-alias-state-error-primary,#b42318)}.RcIGlq_selectWrap{position:relative}.RcIGlq_selectButton{appearance:none;text-align:left;cursor:pointer;justify-content:space-between;align-items:center;gap:8px;width:100%;display:flex}.RcIGlq_selectLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.RcIGlq_selectChevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.RcIGlq_selectChevronOpen{transform:rotate(180deg)}.RcIGlq_selectPopup{z-index:40;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-height:240px;box-shadow:0 8px 24px var(--dsw-alias-bg-mask-2);opacity:0;border-radius:8px;flex-direction:column;padding:4px;transition:opacity .1s,transform .1s;display:flex;position:absolute;top:calc(100% + 4px);left:0;right:0;overflow-y:auto;transform:translateY(-4px)}.RcIGlq_selectPopupOpen{opacity:1;transform:none}.RcIGlq_selectPopupClose{opacity:0;pointer-events:none;transform:translateY(-4px)}.RcIGlq_selectOption{color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;text-overflow:ellipsis;border-radius:6px;flex-shrink:0;padding:6px 10px;font-size:13px;line-height:1.5;overflow:hidden}.RcIGlq_selectOption:hover,.RcIGlq_selectOptionActive{background:var(--dsw-alias-interactive-bg-hover)}.RcIGlq_selectOptionSelected{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 10%, transparent);font-weight:500}.RcIGlq_invalid{color:var(--dsw-alias-state-error-primary,#b42318);margin:0;font-size:12px;line-height:1.5}.RcIGlq_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){.RcIGlq_card,.RcIGlq_header,.RcIGlq_chevron,.RcIGlq_chevronOpen,.RcIGlq_discard,.RcIGlq_save,.RcIGlq_selectChevron,.RcIGlq_selectChevronOpen,.RcIGlq_selectPopup{transition:none}}";
-		const tagId$22 = "@linxin666/dsh-web-all/packages/dsh-market/src/client/settings-card.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$22) + "]") === null) {
+		const css$17 = ".RcIGlq_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}.RcIGlq_card:hover{border-color:var(--dsw-alias-label-dimmed)}.RcIGlq_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.RcIGlq_header{appearance:none;box-sizing:border-box;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.RcIGlq_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.RcIGlq_headerStatic{box-sizing:border-box;border-radius:12px;align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}.RcIGlq_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.RcIGlq_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.RcIGlq_description{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.5}.RcIGlq_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.RcIGlq_chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.RcIGlq_chevronOpen{transform:rotate(180deg)}.RcIGlq_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.RcIGlq_readOnly{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:12px;line-height:1.5}.RcIGlq_notExposed{color:var(--dsw-alias-state-warn-primary);margin:12px 0 0;font-size:12px;line-height:1.5}.RcIGlq_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.RcIGlq_failed{min-width:0;color:var(--dsw-alias-state-error-primary,#b42318);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:12px;line-height:1.5;overflow:hidden}.RcIGlq_discard,.RcIGlq_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.RcIGlq_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.RcIGlq_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.RcIGlq_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.RcIGlq_discard:disabled,.RcIGlq_save:disabled{opacity:.4;cursor:default}.RcIGlq_discard:focus-visible,.RcIGlq_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.RcIGlq_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.RcIGlq_field+.RcIGlq_field{border-top:1px solid var(--dsw-alias-border-l2)}.RcIGlq_head{align-items:center;gap:8px;display:flex}.RcIGlq_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.RcIGlq_badges{align-items:center;gap:8px;display:inline-flex}.RcIGlq_badge{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.RcIGlq_reset{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5}.RcIGlq_reset:hover:not(:disabled){color:var(--dsw-alias-label-primary)}.RcIGlq_reset:disabled{cursor:default}.RcIGlq_reset:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}.RcIGlq_input,.RcIGlq_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.RcIGlq_input:focus-visible,.RcIGlq_select:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.RcIGlq_input:disabled,.RcIGlq_select:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.RcIGlq_inputInvalid{border:1px solid var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.RcIGlq_inputInvalid:focus-visible{outline:2px solid var(--dsw-alias-state-error-primary,#b42318);outline-offset:1px;border-color:var(--dsw-alias-state-error-primary,#b42318)}.RcIGlq_selectWrap{position:relative}.RcIGlq_selectButton{appearance:none;text-align:left;cursor:pointer;justify-content:space-between;align-items:center;gap:8px;width:100%;display:flex}.RcIGlq_selectLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.RcIGlq_selectChevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.RcIGlq_selectChevronOpen{transform:rotate(180deg)}.RcIGlq_selectPopup{z-index:40;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-height:240px;box-shadow:0 8px 24px var(--dsw-alias-bg-mask-2);opacity:0;border-radius:8px;flex-direction:column;padding:4px;transition:opacity .1s,transform .1s;display:flex;position:absolute;top:calc(100% + 4px);left:0;right:0;overflow-y:auto;transform:translateY(-4px)}.RcIGlq_selectPopupOpen{opacity:1;transform:none}.RcIGlq_selectPopupClose{opacity:0;pointer-events:none;transform:translateY(-4px)}.RcIGlq_selectOption{color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;text-overflow:ellipsis;border-radius:6px;flex-shrink:0;padding:6px 10px;font-size:13px;line-height:1.5;overflow:hidden}.RcIGlq_selectOption:hover,.RcIGlq_selectOptionActive{background:var(--dsw-alias-interactive-bg-hover)}.RcIGlq_selectOptionSelected{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 10%, transparent);font-weight:500}.RcIGlq_invalid{color:var(--dsw-alias-state-error-primary,#b42318);margin:0;font-size:12px;line-height:1.5}.RcIGlq_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){.RcIGlq_card,.RcIGlq_header,.RcIGlq_chevron,.RcIGlq_chevronOpen,.RcIGlq_discard,.RcIGlq_save,.RcIGlq_selectChevron,.RcIGlq_selectChevronOpen,.RcIGlq_selectPopup{transition:none}}";
+		const tagId$17 = "@linxin666/dsh-web-all/packages/dsh-market/src/client/settings-card.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$17) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$22;
-			tag.textContent = css$22;
+			tag.dataset.pluginCss = tagId$17;
+			tag.textContent = css$17;
 			document.head.appendChild(tag);
 		}
-		var settings_card_module_css_default$6 = {
+		var settings_card_module_css_default$4 = {
 			"badge": "RcIGlq_badge",
 			"badges": "RcIGlq_badges",
 			"body": "RcIGlq_body",
@@ -2416,7 +2416,7 @@ window.__ModuleLoader__.load({
 		* @param props - the plugin's copy keys, its form state, and its controls.
 		* @returns the card, or nothing while the namespace is still loading.
 		*/
-		function PluginSettingsCard$6(props) {
+		function PluginSettingsCard$4(props) {
 			const [open, setOpen] = (0, react.useState)(props.defaultOpen ?? true);
 			const { state, alwaysOpen } = props;
 			if (!state.available) return null;
@@ -2424,28 +2424,28 @@ window.__ModuleLoader__.load({
 			const description = props.t(props.descriptionKey);
 			const blocked = !state.dirty || state.invalid || state.saving;
 			const expanded = alwaysOpen === true || open;
-			const cardClass = expanded ? `${settings_card_module_css_default$6.cardOpen} ${settings_card_module_css_default$6.card}` : settings_card_module_css_default$6.card;
+			const cardClass = expanded ? `${settings_card_module_css_default$4.cardOpen} ${settings_card_module_css_default$4.card}` : settings_card_module_css_default$4.card;
 			const header = alwaysOpen === true ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$6.headerStatic,
+				className: settings_card_module_css_default$4.headerStatic,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-					className: settings_card_module_css_default$6.headText,
+					className: settings_card_module_css_default$4.headText,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$6.name,
+						className: settings_card_module_css_default$4.name,
 						title,
 						children: title
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$6.description,
+						className: settings_card_module_css_default$4.description,
 						title: description,
 						children: props.descriptionNode ?? description
 					})]
 				}), state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-					className: settings_card_module_css_default$6.pending,
+					className: settings_card_module_css_default$4.pending,
 					title: props.t("settings.unsaved"),
 					children: props.t("settings.unsaved")
 				}) : null]
 			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 				type: "button",
-				className: settings_card_module_css_default$6.header,
+				className: settings_card_module_css_default$4.header,
 				"aria-expanded": open,
 				"aria-label": `${props.t(open ? "settings.collapse" : "settings.expand")}: ${title}`,
 				onClick: () => {
@@ -2453,19 +2453,19 @@ window.__ModuleLoader__.load({
 				},
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-						className: settings_card_module_css_default$6.headText,
+						className: settings_card_module_css_default$4.headText,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default$6.name,
+							className: settings_card_module_css_default$4.name,
 							title,
 							children: title
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default$6.description,
+							className: settings_card_module_css_default$4.description,
 							title: description,
 							children: props.descriptionNode ?? description
 						})]
 					}),
 					state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$6.pending,
+						className: settings_card_module_css_default$4.pending,
 						title: props.t("settings.unsaved"),
 						children: props.t("settings.unsaved")
 					}) : null,
@@ -2475,7 +2475,7 @@ window.__ModuleLoader__.load({
 						viewBox: "0 0 14 14",
 						fill: "none",
 						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default$6.chevron} ${settings_card_module_css_default$6.chevronOpen}` : settings_card_module_css_default$6.chevron,
+						className: open ? `${settings_card_module_css_default$4.chevron} ${settings_card_module_css_default$4.chevronOpen}` : settings_card_module_css_default$4.chevron,
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
 							fill: "currentColor"
@@ -2488,9 +2488,9 @@ window.__ModuleLoader__.load({
 				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 					className: cardClass,
 					children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: settings_card_module_css_default$6.body,
+						className: settings_card_module_css_default$4.body,
 						children: showNotice ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default$6.notExposed,
+							className: settings_card_module_css_default$4.notExposed,
 							role: "status",
 							children: props.t("settings.notExposed")
 						}) : null
@@ -2500,32 +2500,32 @@ window.__ModuleLoader__.load({
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 				className: cardClass,
 				children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: settings_card_module_css_default$6.body,
+					className: settings_card_module_css_default$4.body,
 					children: [
 						!state.writable ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default$6.readOnly,
+							className: settings_card_module_css_default$4.readOnly,
 							role: "status",
 							children: props.t("settings.readOnly")
 						}) : null,
 						props.children,
 						props.hideFooter === true ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: settings_card_module_css_default$6.footer,
+							className: settings_card_module_css_default$4.footer,
 							children: [
 								state.failed ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-									className: settings_card_module_css_default$6.failed,
+									className: settings_card_module_css_default$4.failed,
 									role: "status",
 									children: [props.t("settings.saveFailed"), state.failedReason ? " - " + state.failedReason : ""]
 								}) : null,
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
-									className: settings_card_module_css_default$6.discard,
+									className: settings_card_module_css_default$4.discard,
 									disabled: !state.dirty || state.saving,
 									onClick: props.onDiscard,
 									children: props.t("settings.discard")
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
-									className: settings_card_module_css_default$6.save,
+									className: settings_card_module_css_default$4.save,
 									disabled: blocked,
 									onClick: props.onSave,
 									children: props.t(!state.saving ? "settings.save" : "settings.saving")
@@ -2536,11 +2536,11 @@ window.__ModuleLoader__.load({
 				}) : null]
 			});
 		}
-		const NON_SKIN_BODY_MARKERS$6 = /* @__PURE__ */ new Set(["dshSkinCenter", "dshSidebarCollapsed"]);
-		function isSkinActive$6() {
-			return Object.keys(document.body.dataset).some((key) => key.startsWith("dsh") && !NON_SKIN_BODY_MARKERS$6.has(key));
+		const NON_SKIN_BODY_MARKERS$4 = /* @__PURE__ */ new Set(["dshSkinCenter", "dshSidebarCollapsed"]);
+		function isSkinActive$4() {
+			return Object.keys(document.body.dataset).some((key) => key.startsWith("dsh") && !NON_SKIN_BODY_MARKERS$4.has(key));
 		}
-		const SELECT_CLOSE_MS$6 = 100;
+		const SELECT_CLOSE_MS$4 = 100;
 		/**
 		* The shared dual-mode select control. While an appearance skin is active it
 		* renders the legacy native `<select>` untouched, so element-level skin
@@ -2550,7 +2550,7 @@ window.__ModuleLoader__.load({
 		* editors (the side-card prefs) bind it directly through onEdit.
 		* 双模式下拉框：皮肤激活时用原生 select，默认外观用自绘动画弹层。
 		*/
-		function SelectField$6(props) {
+		function SelectField$4(props) {
 			const { id, options, value } = props;
 			const [open, setOpen] = (0, react.useState)(false);
 			const [closing, setClosing] = (0, react.useState)(false);
@@ -2569,7 +2569,7 @@ window.__ModuleLoader__.load({
 				closeTimer.current = setTimeout(() => {
 					setClosing(false);
 					setOpen(false);
-				}, SELECT_CLOSE_MS$6);
+				}, SELECT_CLOSE_MS$4);
 			}, []);
 			const openPopup = () => {
 				if (closeTimer.current !== void 0) clearTimeout(closeTimer.current);
@@ -2643,9 +2643,9 @@ window.__ModuleLoader__.load({
 				open,
 				close
 			]);
-			if (isSkinActive$6()) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
+			if (isSkinActive$4()) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
 				id,
-				className: settings_card_module_css_default$6.select,
+				className: settings_card_module_css_default$4.select,
 				value,
 				disabled: props.disabled,
 				onChange: (event) => {
@@ -2657,14 +2657,14 @@ window.__ModuleLoader__.load({
 				}, option.value))
 			});
 			const label = options.find((option) => option.value === value)?.label ?? "";
-			const popupClass = closing ? `${settings_card_module_css_default$6.selectPopup} ${settings_card_module_css_default$6.selectPopupClose}` : phase === "open" ? `${settings_card_module_css_default$6.selectPopup} ${settings_card_module_css_default$6.selectPopupOpen}` : settings_card_module_css_default$6.selectPopup;
+			const popupClass = closing ? `${settings_card_module_css_default$4.selectPopup} ${settings_card_module_css_default$4.selectPopupClose}` : phase === "open" ? `${settings_card_module_css_default$4.selectPopup} ${settings_card_module_css_default$4.selectPopupOpen}` : settings_card_module_css_default$4.selectPopup;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$6.selectWrap,
+				className: settings_card_module_css_default$4.selectWrap,
 				ref: wrapRef,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 					type: "button",
 					id,
-					className: `${settings_card_module_css_default$6.select} ${settings_card_module_css_default$6.selectButton}`,
+					className: `${settings_card_module_css_default$4.select} ${settings_card_module_css_default$4.selectButton}`,
 					disabled: props.disabled,
 					"aria-haspopup": "listbox",
 					"aria-expanded": open,
@@ -2673,7 +2673,7 @@ window.__ModuleLoader__.load({
 					onClick: onTriggerClick,
 					onKeyDown,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$6.selectLabel,
+						className: settings_card_module_css_default$4.selectLabel,
 						children: label
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
 						width: "14",
@@ -2681,7 +2681,7 @@ window.__ModuleLoader__.load({
 						viewBox: "0 0 14 14",
 						fill: "none",
 						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default$6.selectChevron} ${settings_card_module_css_default$6.selectChevronOpen}` : settings_card_module_css_default$6.selectChevron,
+						className: open ? `${settings_card_module_css_default$4.selectChevron} ${settings_card_module_css_default$4.selectChevronOpen}` : settings_card_module_css_default$4.selectChevron,
 						"aria-hidden": "true",
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
@@ -2696,7 +2696,7 @@ window.__ModuleLoader__.load({
 						id: `${id}-o${index}`,
 						role: "option",
 						"aria-selected": option.value === value,
-						className: `${settings_card_module_css_default$6.selectOption}${option.value === value ? ` ${settings_card_module_css_default$6.selectOptionSelected}` : ""}${index === activeIndex && !closing ? ` ${settings_card_module_css_default$6.selectOptionActive}` : ""}`,
+						className: `${settings_card_module_css_default$4.selectOption}${option.value === value ? ` ${settings_card_module_css_default$4.selectOptionSelected}` : ""}${index === activeIndex && !closing ? ` ${settings_card_module_css_default$4.selectOptionActive}` : ""}`,
 						onClick: () => {
 							commit(index);
 						},
@@ -2706,31 +2706,31 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** A staged boolean field: 继承 / 开 / 关. */
-		function BooleanField$6(props) {
+		function BooleanField$4(props) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$6.field,
+				className: settings_card_module_css_default$4.field,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$6.head,
+						className: settings_card_module_css_default$4.head,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$6.label,
+							className: settings_card_module_css_default$4.label,
 							htmlFor: props.id,
 							children: props.label
 						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default$6.badges,
+							className: settings_card_module_css_default$4.badges,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default$6.badge,
+								className: settings_card_module_css_default$4.badge,
 								children: props.overriddenLabel
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: settings_card_module_css_default$6.reset,
+								className: settings_card_module_css_default$4.reset,
 								disabled: props.disabled,
 								onClick: props.onReset,
 								children: props.resetLabel
 							})]
 						}) : null]
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$6, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$4, {
 						id: props.id,
 						options: [
 							{
@@ -2752,7 +2752,7 @@ window.__ModuleLoader__.load({
 						onEdit: props.onEdit
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: settings_card_module_css_default$6.hint,
+						className: settings_card_module_css_default$4.hint,
 						children: props.hint
 					})
 				]
@@ -2761,7 +2761,7 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region ../dsh-market/src/client/settings-form.ts
 		/** A boolean field, edited through true/false draft text. */
-		function booleanField$6(field) {
+		function booleanField$4(field) {
 			return {
 				field,
 				format: (value) => typeof value === "boolean" ? String(value) : "",
@@ -2787,7 +2787,7 @@ window.__ModuleLoader__.load({
 		* read back from the section rather than predicted here. A save that did not
 		* land keeps its drafts, so the user can correct them instead of retyping.
 		*/
-		var CardForm$6 = class {
+		var CardForm$4 = class {
 			scope;
 			specs;
 			staged = /* @__PURE__ */ new Map();
@@ -3287,13 +3287,13 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:packages/dsh-market/src/client/market.module.css.mjs
-		const css$21 = ".bkhjFa_market{flex-direction:column;gap:10px;display:flex}.bkhjFa_tabs{flex-wrap:wrap;gap:6px;display:flex}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab{font:inherit;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;border-radius:999px;padding:2px 10px;font-size:12px;line-height:1.6}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab:hover:enabled{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab.bkhjFa_tabActive{color:var(--dsw-alias-bg-layer-3);background:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-primary);font-weight:600}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab.bkhjFa_tabActive:hover:enabled{color:var(--dsw-alias-bg-layer-3);border-color:var(--dsw-alias-label-primary)}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab:active:enabled{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2)}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab.bkhjFa_tabActive:active:enabled{color:var(--dsw-alias-bg-layer-3);background:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-label-primary)}.bkhjFa_tabCount{opacity:.72;margin-left:6px;font-size:12px}.bkhjFa_search{width:100%;max-width:460px;font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:6px;padding:6px 10px;font-size:13px;line-height:1.5}.bkhjFa_search::placeholder{color:var(--dsw-alias-label-tertiary)}.bkhjFa_search:focus{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.bkhjFa_grid{grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:10px;margin:4px 0 0;padding:0;list-style:none;display:grid}.bkhjFa_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:8px;gap:10px;min-width:0;padding:12px;display:flex}.bkhjFa_card:hover{border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_thumb{object-fit:cover;background:var(--dsw-alias-bg-layer-2);border-radius:6px;flex:none;place-items:center;width:72px;height:72px;display:grid}.bkhjFa_cardBody{flex-direction:column;flex:1;gap:6px;min-width:0;display:flex}.bkhjFa_cardName{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-weight:600;overflow:hidden}.bkhjFa_cardVersion{color:var(--dsw-alias-label-tertiary);margin-left:6px;font-size:11px;font-weight:400}.bkhjFa_cardMeta{color:var(--dsw-alias-label-tertiary);white-space:nowrap;align-items:center;gap:6px;font-size:12px;line-height:1.4;display:flex;overflow:hidden}.bkhjFa_badge{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-module-platform);border:1px solid var(--dsw-alias-border-l2);white-space:nowrap;border-radius:999px;flex:none;padding:0 8px;font-size:11px;line-height:1.6}.bkhjFa_badgeInstalled{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed);background:var(--dsw-alias-bg-layer-2)}.bkhjFa_metrics{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;flex-wrap:wrap;gap:4px 10px;font-size:11px;line-height:1.5;display:flex}.bkhjFa_cardDesc{color:var(--dsw-alias-label-secondary);-webkit-line-clamp:2;overflow-wrap:anywhere;-webkit-box-orient:vertical;margin:0;font-size:13px;line-height:1.45;display:-webkit-box;overflow:hidden}.bkhjFa_cardFooter{flex-direction:column;gap:8px;margin-top:auto;padding-top:8px;display:flex}.bkhjFa_actionRow{flex-wrap:wrap;align-items:center;gap:6px;display:flex}.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_like,.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_previewLink{font:inherit;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-module-platform);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;border-radius:999px;align-items:center;padding:1px 10px;font-size:12px;line-height:1.5;text-decoration:none;display:inline-flex}.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_like{font-variant-numeric:tabular-nums}.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_like:hover:enabled,.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_previewLink:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_actionRowPrimary{align-items:stretch;gap:8px;display:flex}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_install{min-width:0;font:inherit;color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;background:0 0;border-radius:6px;flex:1 1 0;justify-content:center;align-items:center;min-height:30px;padding:4px 14px;font-size:12px;font-weight:600;line-height:1.5;display:inline-flex}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_install:hover:enabled{border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_installPrimary{color:var(--dsw-alias-label-primary-foreground);background:var(--dsw-alias-button-primary-fill);border-color:var(--dsw-alias-button-primary-fill);flex-grow:2}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_installPrimary:hover:enabled{background:var(--dsw-alias-button-primary-hover);border-color:var(--dsw-alias-button-primary-hover)}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_installPrimary:disabled{opacity:.55;cursor:default}.bkhjFa_error{color:var(--dsw-alias-label-error,#c53030);margin:0;font-size:12px;line-height:1.4}.bkhjFa_callout{color:var(--dsw-alias-state-success-primary);margin:0;font-size:12px;line-height:1.4}.bkhjFa_filterRows{flex-direction:column;gap:6px;display:flex}.bkhjFa_filterRow{flex-wrap:wrap;gap:6px;display:flex}.bkhjFa_market .bkhjFa_filterRow>button.bkhjFa_filterChip{font:inherit;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;border-radius:999px;padding:2px 10px;font-size:12px;line-height:1.6}.bkhjFa_market .bkhjFa_filterRow>button.bkhjFa_filterChip:hover:enabled{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_market .bkhjFa_filterRow>button.bkhjFa_filterChip.bkhjFa_filterChipSub{color:var(--dsw-alias-label-tertiary);border-style:dashed;font-size:11px}.bkhjFa_market .bkhjFa_filterRow>button.bkhjFa_filterChip.bkhjFa_filterChipOn{color:var(--dsw-alias-bg-layer-3);background:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-primary);border-style:solid;font-weight:600}.bkhjFa_market .bkhjFa_filterRow>button.bkhjFa_filterChip.bkhjFa_filterChipOn:hover:enabled{color:var(--dsw-alias-bg-layer-3);border-color:var(--dsw-alias-label-primary)}.bkhjFa_filterCount{opacity:.72;margin-left:6px;font-size:11px}.bkhjFa_empty{color:var(--dsw-alias-label-tertiary);align-items:center;gap:8px;font-size:13px;display:flex}.bkhjFa_retry{padding:3px 10px;font-size:12px}.bkhjFa_remoteNote{color:var(--dsw-alias-label-tertiary);margin:6px 0 0;font-size:12px;line-height:1.4}.bkhjFa_modalActions{justify-content:flex-end;gap:8px;margin-top:10px;display:flex}";
-		const tagId$21 = "@linxin666/dsh-web-all/packages/dsh-market/src/client/market.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$21) + "]") === null) {
+		const css$16 = ".bkhjFa_market{flex-direction:column;gap:10px;display:flex}.bkhjFa_tabs{flex-wrap:wrap;gap:6px;display:flex}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab{font:inherit;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;border-radius:999px;padding:2px 10px;font-size:12px;line-height:1.6}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab:hover:enabled{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab.bkhjFa_tabActive{color:var(--dsw-alias-bg-layer-3);background:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-primary);font-weight:600}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab.bkhjFa_tabActive:hover:enabled{color:var(--dsw-alias-bg-layer-3);border-color:var(--dsw-alias-label-primary)}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab:active:enabled{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2)}.bkhjFa_market .bkhjFa_tabs>button.bkhjFa_tab.bkhjFa_tabActive:active:enabled{color:var(--dsw-alias-bg-layer-3);background:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-label-primary)}.bkhjFa_tabCount{opacity:.72;margin-left:6px;font-size:12px}.bkhjFa_search{width:100%;max-width:460px;font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:6px;padding:6px 10px;font-size:13px;line-height:1.5}.bkhjFa_search::placeholder{color:var(--dsw-alias-label-tertiary)}.bkhjFa_search:focus{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.bkhjFa_grid{grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:10px;margin:4px 0 0;padding:0;list-style:none;display:grid}.bkhjFa_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:8px;gap:10px;min-width:0;padding:12px;display:flex}.bkhjFa_card:hover{border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_thumb{object-fit:cover;background:var(--dsw-alias-bg-layer-2);border-radius:6px;flex:none;place-items:center;width:72px;height:72px;display:grid}.bkhjFa_cardBody{flex-direction:column;flex:1;gap:6px;min-width:0;display:flex}.bkhjFa_cardName{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-weight:600;overflow:hidden}.bkhjFa_cardVersion{color:var(--dsw-alias-label-tertiary);margin-left:6px;font-size:11px;font-weight:400}.bkhjFa_cardMeta{color:var(--dsw-alias-label-tertiary);white-space:nowrap;align-items:center;gap:6px;font-size:12px;line-height:1.4;display:flex;overflow:hidden}.bkhjFa_badge{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-module-platform);border:1px solid var(--dsw-alias-border-l2);white-space:nowrap;border-radius:999px;flex:none;padding:0 8px;font-size:11px;line-height:1.6}.bkhjFa_badgeInstalled{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed);background:var(--dsw-alias-bg-layer-2)}.bkhjFa_metrics{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;flex-wrap:wrap;gap:4px 10px;font-size:11px;line-height:1.5;display:flex}.bkhjFa_cardDesc{color:var(--dsw-alias-label-secondary);-webkit-line-clamp:2;overflow-wrap:anywhere;-webkit-box-orient:vertical;margin:0;font-size:13px;line-height:1.45;display:-webkit-box;overflow:hidden}.bkhjFa_cardFooter{flex-direction:column;gap:8px;margin-top:auto;padding-top:8px;display:flex}.bkhjFa_actionRow{flex-wrap:wrap;align-items:center;gap:6px;display:flex}.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_like,.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_previewLink{font:inherit;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-module-platform);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;border-radius:999px;align-items:center;padding:1px 10px;font-size:12px;line-height:1.5;text-decoration:none;display:inline-flex}.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_like{font-variant-numeric:tabular-nums}.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_like:hover:enabled,.bkhjFa_market .bkhjFa_actionRow>.bkhjFa_previewLink:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_actionRowPrimary{align-items:stretch;gap:8px;display:flex}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_install{min-width:0;font:inherit;color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;background:0 0;border-radius:6px;flex:1 1 0;justify-content:center;align-items:center;min-height:30px;padding:4px 14px;font-size:12px;font-weight:600;line-height:1.5;display:inline-flex}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_install:hover:enabled{border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_installPrimary{color:var(--dsw-alias-label-primary-foreground);background:var(--dsw-alias-button-primary-fill);border-color:var(--dsw-alias-button-primary-fill);flex-grow:2}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_installPrimary:hover:enabled{background:var(--dsw-alias-button-primary-hover);border-color:var(--dsw-alias-button-primary-hover)}.bkhjFa_market .bkhjFa_actionRowPrimary>.bkhjFa_installPrimary:disabled{opacity:.55;cursor:default}.bkhjFa_error{color:var(--dsw-alias-label-error,#c53030);margin:0;font-size:12px;line-height:1.4}.bkhjFa_callout{color:var(--dsw-alias-state-success-primary);margin:0;font-size:12px;line-height:1.4}.bkhjFa_filterRows{flex-direction:column;gap:6px;display:flex}.bkhjFa_filterRow{flex-wrap:wrap;gap:6px;display:flex}.bkhjFa_market .bkhjFa_filterRow>button.bkhjFa_filterChip{font:inherit;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;border-radius:999px;padding:2px 10px;font-size:12px;line-height:1.6}.bkhjFa_market .bkhjFa_filterRow>button.bkhjFa_filterChip:hover:enabled{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bkhjFa_market .bkhjFa_filterRow>button.bkhjFa_filterChip.bkhjFa_filterChipSub{color:var(--dsw-alias-label-tertiary);border-style:dashed;font-size:11px}.bkhjFa_market .bkhjFa_filterRow>button.bkhjFa_filterChip.bkhjFa_filterChipOn{color:var(--dsw-alias-bg-layer-3);background:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-primary);border-style:solid;font-weight:600}.bkhjFa_market .bkhjFa_filterRow>button.bkhjFa_filterChip.bkhjFa_filterChipOn:hover:enabled{color:var(--dsw-alias-bg-layer-3);border-color:var(--dsw-alias-label-primary)}.bkhjFa_filterCount{opacity:.72;margin-left:6px;font-size:11px}.bkhjFa_empty{color:var(--dsw-alias-label-tertiary);align-items:center;gap:8px;font-size:13px;display:flex}.bkhjFa_retry{padding:3px 10px;font-size:12px}.bkhjFa_remoteNote{color:var(--dsw-alias-label-tertiary);margin:6px 0 0;font-size:12px;line-height:1.4}.bkhjFa_modalActions{justify-content:flex-end;gap:8px;margin-top:10px;display:flex}";
+		const tagId$16 = "@linxin666/dsh-web-all/packages/dsh-market/src/client/market.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$16) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$21;
-			tag.textContent = css$21;
+			tag.dataset.pluginCss = tagId$16;
+			tag.textContent = css$16;
 			document.head.appendChild(tag);
 		}
 		var market_module_css_default = {
@@ -3350,7 +3350,7 @@ window.__ModuleLoader__.load({
 			store;
 			/** @param scope - the bound configuration form of the market card's settings entry. */
 			constructor(scope) {
-				this.form = new CardForm$6(scope, [booleanField$6("enabled")]);
+				this.form = new CardForm$4(scope, [booleanField$4("enabled")]);
 				this.store = this.form.bind(() => this.projection());
 			}
 			projection() {
@@ -3894,7 +3894,7 @@ window.__ModuleLoader__.load({
 				item
 			}));
 			const total = tab === "picks" ? picks.length : (data?.items[tab] ?? []).length;
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(PluginSettingsCard$6, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(PluginSettingsCard$4, {
 				t,
 				titleKey: "settings.title",
 				descriptionKey: "settings.description",
@@ -3920,7 +3920,7 @@ window.__ModuleLoader__.load({
 				onSave: props.save,
 				onDiscard: props.discard,
 				children: [
-					state.exposed ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$6, {
+					state.exposed ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$4, {
 						id: "settings-market-enabled",
 						label: t("settings.enable"),
 						hint: t("settings.enableHint"),
@@ -4312,7 +4312,7 @@ window.__ModuleLoader__.load({
 		/**
 		* Market card dictionaries. zh is the key source; en mirrors every key.
 		*/
-		const zh$13 = {
+		const zh$11 = {
 			"settings.collapse": "收起",
 			"settings.expand": "展开",
 			"settings.notExposed": "该设置段未暴露（宿主命名空间缺失）",
@@ -4411,7 +4411,7 @@ window.__ModuleLoader__.load({
 			"npmDownloads": "npm 近 30 天 {count}",
 			"remote.note": "远程浏览器仅可浏览与复制命令；一键安装需在本机（回环）浏览器。"
 		};
-		const en$13 = {
+		const en$11 = {
 			"settings.collapse": "Collapse",
 			"settings.expand": "Expand",
 			"settings.notExposed": "Section not exposed (host namespace missing)",
@@ -4512,11 +4512,11 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region ../dsh-market/src/client/telemetry.ts
-		const VISITOR_KEY$8 = "dsh-web-ui-telemetry-visitor";
-		const DAY_KEY_PREFIX$8 = "dsh-web-ui-telemetry-day:";
-		const ENDPOINT$8 = "https://dsh-market.com/api/telemetry/event";
+		const VISITOR_KEY$6 = "dsh-web-ui-telemetry-visitor";
+		const DAY_KEY_PREFIX$6 = "dsh-web-ui-telemetry-day:";
+		const ENDPOINT$6 = "https://dsh-market.com/api/telemetry/event";
 		/** The building package's version, when the bundle carries it. */
-		function bakedVersion$8() {
+		function bakedVersion$6() {
 			try {
 				return "0.3.24";
 			} catch {
@@ -4524,23 +4524,23 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/** Read or lazily create the anonymous visitor id; null when storage is unavailable. */
-		function visitorId$8() {
+		function visitorId$6() {
 			try {
-				const existing = localStorage.getItem(VISITOR_KEY$8);
+				const existing = localStorage.getItem(VISITOR_KEY$6);
 				if (existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing)) return existing;
 				const fresh = crypto.randomUUID().replaceAll("-", "");
-				localStorage.setItem(VISITOR_KEY$8, fresh);
+				localStorage.setItem(VISITOR_KEY$6, fresh);
 				return fresh;
 			} catch {
 				return null;
 			}
 		}
 		/** Drop stale per-day dedup keys so localStorage does not grow forever. */
-		function pruneDayKeys$8(today) {
+		function pruneDayKeys$6(today) {
 			try {
 				for (let index = localStorage.length - 1; index >= 0; index -= 1) {
 					const key = localStorage.key(index);
-					if (key !== null && key.startsWith(DAY_KEY_PREFIX$8) && key !== DAY_KEY_PREFIX$8 + today) localStorage.removeItem(key);
+					if (key !== null && key.startsWith(DAY_KEY_PREFIX$6) && key !== DAY_KEY_PREFIX$6 + today) localStorage.removeItem(key);
 				}
 			} catch {}
 		}
@@ -4549,18 +4549,18 @@ window.__ModuleLoader__.load({
 		* browser. Never throws and never blocks the caller. Items without an explicit
 		* version inherit the bundle's baked build version.
 		*/
-		function reportDailyHeartbeat$8(items) {
+		function reportDailyHeartbeat$6(items) {
 			try {
 				if (items.length === 0) return;
 				const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
 				if (navigator.webdriver) return;
-				if (localStorage.getItem(DAY_KEY_PREFIX$8 + today) !== null) return;
-				const visitor = visitorId$8();
+				if (localStorage.getItem(DAY_KEY_PREFIX$6 + today) !== null) return;
+				const visitor = visitorId$6();
 				if (visitor === null) return;
-				pruneDayKeys$8(today);
+				pruneDayKeys$6(today);
 				const payloadItems = items.map((item) => {
 					const out = { name: item.name };
-					const version = item.version ?? bakedVersion$8();
+					const version = item.version ?? bakedVersion$6();
 					if (version !== void 0) out.version = version;
 					if (item.channel !== void 0) out.channel = item.channel;
 					return out;
@@ -4570,25 +4570,25 @@ window.__ModuleLoader__.load({
 					visitor,
 					items: payloadItems
 				});
-				fetch(ENDPOINT$8, {
+				fetch(ENDPOINT$6, {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body,
 					keepalive: true
 				}).then((response) => {
-					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$8 + today, "1");
+					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$6 + today, "1");
 				}).catch(() => {});
 			} catch {}
 		}
 		//#endregion
 		//#region ../dsh-market/src/client/index.ts
-		var client_exports$13 = /* @__PURE__ */ __exportAll({
-			apply: () => apply$14,
-			inject: () => inject$14
+		var client_exports$11 = /* @__PURE__ */ __exportAll({
+			apply: () => apply$12,
+			inject: () => inject$12
 		});
 		const MARKET_NS = "dsh-web-ui-market";
 		const SECTION_ID$1 = "dsh-workshop";
-		const inject$14 = [
+		const inject$12 = [
 			"slots",
 			"locale",
 			"connection",
@@ -4596,13 +4596,13 @@ window.__ModuleLoader__.load({
 			"remote"
 		];
 		/** Register the market section and the plugin-manager bridge. */
-		function apply$14(ctx) {
-			reportDailyHeartbeat$8([{ name: "@linxin666/dsh-client-ui-market" }]);
+		function apply$12(ctx) {
+			reportDailyHeartbeat$6([{ name: "@linxin666/dsh-client-ui-market" }]);
 			ctx.effect(() => {
 				try {
 					return ctx.locale.register(MARKET_NS, {
-						zh: zh$13,
-						en: en$13
+						zh: zh$11,
+						en: en$11
 					});
 				} catch {
 					return () => {};
@@ -5738,7 +5738,7 @@ window.__ModuleLoader__.load({
 		* @param byId - the session catalog's rows (`SessionListState.byId`), when available.
 		* @returns the main-view session id, or undefined when the main view shows none.
 		*/
-		function mainViewSessionId$5(byId) {
+		function mainViewSessionId$4(byId) {
 			if (byId === void 0 || byId === null) return void 0;
 			for (const row of Object.values(byId)) if (row !== void 0 && (row.retainedBy?.mainView ?? 0) > 0) return row.id;
 		}
@@ -6222,7 +6222,7 @@ window.__ModuleLoader__.load({
 		* lookup.
 		*/
 		/** zh dictionary (key-set source of truth). */
-		const zh$12 = {
+		const zh$10 = {
 			"entry.label": "任务看板",
 			"board.title": "任务看板",
 			"board.close": "返回会话",
@@ -6411,7 +6411,7 @@ window.__ModuleLoader__.load({
 			"settings.invalidNumber": "请输入数字，留空则使用默认值。"
 		};
 		/** en dictionary, complete against the zh key set. */
-		const en$12 = {
+		const en$10 = {
 			"entry.label": "Task Board",
 			"board.title": "Task Board",
 			"board.close": "Back to chat",
@@ -6601,7 +6601,7 @@ window.__ModuleLoader__.load({
 		};
 		/** Active dictionary, picked by the document language at call time. */
 		function dictionary$6() {
-			return (typeof document !== "undefined" ? document.documentElement.lang : "zh").toLowerCase().startsWith("en") ? en$12 : zh$12;
+			return (typeof document !== "undefined" ? document.documentElement.lang : "zh").toLowerCase().startsWith("en") ? en$10 : zh$10;
 		}
 		/**
 		* SDK translate seat wired by the browser apply() once ctx.locale is bound
@@ -6616,7 +6616,7 @@ window.__ModuleLoader__.load({
 			runtimeT$2 = t;
 		}
 		/** Translate a key with optional {name} template params. */
-		function t$6(key, params) {
+		function t$5(key, params) {
 			if (runtimeT$2 !== void 0) return runtimeT$2(key, params);
 			let text = dictionary$6()[key];
 			if (params !== void 0) for (const [name, value] of Object.entries(params)) text = text.replaceAll(`{${name}}`, value);
@@ -6624,13 +6624,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-task-board/src/client/board.module.css.mjs
-		const css$20 = "[data-pane=conversation],[class*=centerCol]{position:relative}[data-dsh-taskboard-view]{z-index:60;background:var(--dsw-alias-bg-base);display:none;position:absolute;inset:0;container:_7D6uKa_task-board-view/inline-size}html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [data-dsh-taskboard-view]{display:block}html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [data-pane=conversation]>:not([data-dsh-taskboard-view]),html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*=centerCol]>:not([data-dsh-taskboard-view]){display:none!important}._7D6uKa_entry{box-sizing:border-box;min-height:36px;color:var(--dsw-alias-label-primary);cursor:pointer;font:inherit;text-align:left;white-space:nowrap;background:0 0;border:none;border-radius:12px;align-items:center;gap:8px;margin:0 2px;padding:7px 8px;font-size:14px;line-height:22px;display:flex}._7D6uKa_entry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._7D6uKa_entry[data-active]{background:var(--dsw-alias-interactive-bg-active);color:var(--dsw-alias-label-primary);font-weight:600}._7D6uKa_entryIcon{flex:none;justify-content:center;align-items:center;width:16px;height:16px;display:inline-flex}._7D6uKa_entryIcon svg{width:16px;height:16px;display:block}._7D6uKa_entryLabel{text-overflow:ellipsis;overflow:hidden}[data-dsh-frame][data-sidebar-collapsed] ._7D6uKa_entry,[data-sidebar-collapsed] ._7D6uKa_entry{border-radius:12px;justify-content:center;width:36px;height:36px;margin:0 auto 12px;padding:0}[data-dsh-frame][data-sidebar-collapsed] ._7D6uKa_entryIcon,[data-sidebar-collapsed] ._7D6uKa_entryIcon,[data-dsh-frame][data-sidebar-collapsed] ._7D6uKa_entryIcon svg,[data-sidebar-collapsed] ._7D6uKa_entryIcon svg{width:18px;height:18px}[data-dsh-frame][data-sidebar-collapsed] ._7D6uKa_entryLabel,[data-sidebar-collapsed] ._7D6uKa_entryLabel{display:none}._7D6uKa_board{box-sizing:border-box;background:var(--dsw-alias-bg-base);min-width:0;height:100%;min-height:0;color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family);flex-direction:column;gap:12px;padding:14px 16px 16px;display:flex}._7D6uKa_boardHeader{flex:none;align-items:center;gap:10px;display:flex}._7D6uKa_boardTitle{color:var(--dsw-alias-label-primary);white-space:nowrap;margin:0;font-size:16px;font-weight:700}._7D6uKa_backButton{align-items:center;gap:4px;display:inline-flex}._7D6uKa_search{min-width:120px;color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;outline:none;flex:0 260px;padding:6px 10px;font-size:13px}._7D6uKa_search::placeholder{color:var(--dsw-alias-label-tertiary)}._7D6uKa_columns{overscroll-behavior-inline:contain;scrollbar-color:var(--dsw-alias-border-l3) var(--dsw-alias-interactive-bg-hover);scrollbar-width:thin;flex:1;grid-auto-columns:minmax(220px,1fr);grid-auto-flow:column;gap:12px;min-height:0;padding-bottom:6px;display:grid;overflow:auto hidden}._7D6uKa_columns::-webkit-scrollbar{height:10px}._7D6uKa_columns::-webkit-scrollbar-track{background:var(--dsw-alias-interactive-bg-hover);border-radius:999px}._7D6uKa_columns::-webkit-scrollbar-thumb{background:var(--dsw-alias-border-l3);background-clip:content-box;border:2px solid #0000;border-radius:999px}._7D6uKa_columns::-webkit-scrollbar-thumb:hover{background:var(--dsw-alias-border-l4);background-clip:content-box}._7D6uKa_column{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:12px;flex-direction:column;min-height:0;display:flex;overflow:hidden}._7D6uKa_columnHeader{flex:none;align-items:center;gap:6px;padding:10px 12px;display:flex}._7D6uKa_columnTitle{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:13px;font-weight:700;overflow:hidden}._7D6uKa_columnCount{min-width:0;color:var(--dsw-alias-label-tertiary);background:var(--dsw-alias-interactive-bg-hover);border-radius:999px;flex:none;padding:1px 8px;font-size:12px}._7D6uKa_statusDot{border-radius:50%;flex:none;width:8px;height:8px}._7D6uKa_statusDot[data-status=backlog]{background:var(--dsw-alias-label-tertiary)}._7D6uKa_statusDot[data-status=todo]{background:var(--dsw-alias-state-business-primary)}._7D6uKa_statusDot[data-status=running]{background:var(--dsw-alias-state-warn-primary)}._7D6uKa_statusDot[data-status=done]{background:var(--dsw-alias-state-success-primary)}._7D6uKa_statusDot[data-status=failed]{background:var(--dsw-alias-state-error-primary)}._7D6uKa_cards{flex-direction:column;flex:1;gap:8px;min-height:0;padding:2px 8px 10px;display:flex;overflow-y:auto}._7D6uKa_columnEmpty{text-align:center;color:var(--dsw-alias-label-tertiary);padding:24px 8px;font-size:12px}._7D6uKa_card{text-align:left;background:var(--dsw-alias-bg-base);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;color:var(--dsw-alias-label-primary);border-radius:10px;flex-direction:column;gap:6px;padding:10px 12px;font-family:inherit;transition:box-shadow .12s,border-color .12s,transform .12s;display:flex}._7D6uKa_card:hover{box-shadow:var(--dsw-shadow-lv2);border-color:var(--dsw-alias-border-l3);transform:translateY(-1px)}._7D6uKa_card[data-status=running]{border-color:var(--dsw-alias-state-warn-primary)}._7D6uKa_cardTitle{-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:13px;font-weight:600;line-height:1.35;display:-webkit-box;overflow:hidden}._7D6uKa_cardExcerpt{color:var(--dsw-alias-label-secondary);-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:12px;line-height:1.4;display:-webkit-box;overflow:hidden}._7D6uKa_cardMeta{color:var(--dsw-alias-label-tertiary);align-items:center;gap:8px;font-size:11px;display:flex}._7D6uKa_cardTime{text-overflow:ellipsis;white-space:nowrap;flex:1;overflow:hidden}._7D6uKa_cardSchedule{white-space:nowrap;min-width:0;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-interactive-bg-hover);border-radius:999px;flex:none;padding:2px 6px;font-size:12px;line-height:1}._7D6uKa_cardRun{flex:none}._7D6uKa_cardRun[data-result=failed]{color:var(--dsw-alias-state-error-primary)}._7D6uKa_cardRun[data-result=succeeded]{color:var(--dsw-alias-state-success-primary)}._7D6uKa_cardSession{color:var(--dsw-alias-state-business-primary);flex:none}._7D6uKa_cardRunningLabel{color:var(--dsw-alias-state-warn-primary);font-size:11px}._7D6uKa_cardSpinner{border:2px solid var(--dsw-alias-state-warn-primary);border-top-color:#0000;border-radius:50%;flex:none;width:10px;height:10px;animation:.8s linear infinite _7D6uKa_dshTbSpin}@keyframes _7D6uKa_dshTbSpin{to{transform:rotate(360deg)}}._7D6uKa_primaryButton{color:var(--dsw-alias-label-primary-foreground);background:var(--dsw-alias-button-info-fill);cursor:pointer;white-space:nowrap;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600}._7D6uKa_primaryButton:hover:not(:disabled){background:var(--dsw-alias-button-info-hover)}._7D6uKa_primaryButton:disabled{opacity:.5;cursor:default}._7D6uKa_ghostButton{color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;background:0 0;border-radius:8px;padding:5px 12px;font-size:12px}._7D6uKa_ghostButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}._7D6uKa_ghostButton:disabled{opacity:.45;cursor:default}._7D6uKa_dangerButton{color:#fff;background:var(--dsw-alias-state-error-primary);cursor:pointer;white-space:nowrap;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600}._7D6uKa_dangerButton:hover:not(:disabled){filter:brightness(1.08)}._7D6uKa_dangerButton:active:not(:disabled){filter:brightness(.94)}._7D6uKa_dangerButton:disabled{opacity:.5;cursor:default}._7D6uKa_iconButton{width:26px;height:26px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;justify-content:center;align-items:center;padding:0;font-size:13px;display:inline-flex}._7D6uKa_iconButton:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._7D6uKa_linkButton{color:var(--dsw-alias-state-business-primary);cursor:pointer;white-space:nowrap;background:0 0;border:none;padding:0;font-size:12px}._7D6uKa_linkButton:hover{text-decoration:underline}._7D6uKa_modalBackdrop{z-index:1300;background:var(--dsw-alias-bg-mask-1);justify-content:center;align-items:center;display:flex;position:fixed;inset:0}._7D6uKa_modal{background:var(--dsw-alias-bg-base);border:1px solid var(--dsw-alias-border-l2);width:min(520px,100vw - 48px);max-height:calc(100vh - 96px);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-primary);border-radius:14px;flex-direction:column;gap:12px;padding:18px;display:flex;overflow-y:auto}._7D6uKa_modalTitle{margin:0;font-size:15px;font-weight:700}._7D6uKa_confirmMessage{color:var(--dsw-alias-label-secondary);white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font-size:13px;line-height:1.5}._7D6uKa_modalFooter{justify-content:flex-end;gap:10px;margin-top:4px;display:flex}._7D6uKa_field{flex-direction:column;gap:5px;display:flex}._7D6uKa_fieldLabel{color:var(--dsw-alias-label-secondary);font-size:12px;font-weight:600}._7D6uKa_input{color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);resize:vertical;border-radius:8px;outline:none;padding:7px 10px;font-family:inherit;font-size:13px}._7D6uKa_input:focus{border-color:var(--dsw-alias-state-business-primary)}._7D6uKa_select{color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;outline:none;max-width:100%;padding:7px 10px;font-family:inherit;font-size:13px}._7D6uKa_input::placeholder{color:var(--dsw-alias-label-tertiary)}._7D6uKa_formError{color:var(--dsw-alias-state-error-primary);margin:0;font-size:12px}._7D6uKa_detail{background:var(--dsw-alias-bg-base);border:1px solid var(--dsw-alias-border-l2);width:min(640px,100vw - 48px);max-height:calc(100vh - 80px);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-primary);border-radius:14px;flex-direction:column;display:flex;overflow:hidden}._7D6uKa_detailHeader{border-bottom:1px solid var(--dsw-alias-separator-primary);flex:none;align-items:center;gap:10px;padding:14px 18px;display:flex}._7D6uKa_detailTitle{overflow-wrap:anywhere;flex:1;margin:0;font-size:15px;font-weight:700}._7D6uKa_statusBadge{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:2px 10px;font-size:12px}._7D6uKa_statusBadge[data-status=running]{color:var(--dsw-alias-state-warn-primary);border-color:var(--dsw-alias-state-warn-primary)}._7D6uKa_statusBadge[data-status=done]{color:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}._7D6uKa_statusBadge[data-status=failed]{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}._7D6uKa_detailBody{flex-direction:column;flex:1;gap:16px;padding:14px 18px;display:flex;overflow-y:auto}._7D6uKa_detailSection{flex-direction:column;gap:6px;display:flex}._7D6uKa_detailSection h4{color:var(--dsw-alias-label-tertiary);text-transform:none;margin:0;font-size:12px;font-weight:700}._7D6uKa_detailText{color:var(--dsw-alias-label-primary);white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font-size:13px;line-height:1.55}._7D6uKa_scheduleToggle{color:var(--dsw-alias-label-primary);cursor:pointer;user-select:none;align-items:center;gap:8px;font-size:13px;display:flex}._7D6uKa_scheduleToggle input{accent-color:var(--dsw-alias-state-business-primary)}._7D6uKa_scheduleRow{align-items:center;gap:8px;display:flex}._7D6uKa_scheduleInput{min-width:0;font-family:var(--dsw-font-markdown-code-block-small);flex:1;font-size:12.5px}._7D6uKa_scheduleInputInvalid,._7D6uKa_scheduleInputInvalid:focus{border-color:var(--dsw-alias-state-error-primary)}._7D6uKa_schedulePreset{color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;outline:none;flex:none;padding:7px 8px;font-size:12.5px}._7D6uKa_scheduleMeta{color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere;margin:0;font-size:12px}._7D6uKa_promptBlock{font-size:12.5px;line-height:1.5;font-family:var(--dsw-font-markdown-code-block-small);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-markdown-code-block);border:1px solid var(--dsw-alias-border-l1);white-space:pre-wrap;overflow-wrap:anywhere;border-radius:8px;max-height:240px;margin:0;padding:10px 12px;overflow-y:auto}._7D6uKa_executionList{flex-direction:column;gap:8px;margin:0;padding:0;list-style:none;display:flex}._7D6uKa_executionRow{border:1px solid var(--dsw-alias-border-l1);border-radius:8px;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 10px;display:flex}._7D6uKa_executionBadge{color:var(--dsw-alias-state-warn-primary);background:var(--dsw-alias-state-warn-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:600}._7D6uKa_executionBadge[data-result=succeeded]{color:var(--dsw-alias-state-success-primary);background:0 0}._7D6uKa_executionBadge[data-result=failed]{color:var(--dsw-alias-state-error-primary);background:0 0}._7D6uKa_executionBadge[data-result=cancelled]{color:var(--dsw-alias-label-tertiary);background:0 0}._7D6uKa_executionTimes{color:var(--dsw-alias-label-secondary);font-size:12px}._7D6uKa_executionError{width:100%;color:var(--dsw-alias-state-error-primary);overflow-wrap:anywhere;font-size:12px}._7D6uKa_moveRow{flex-wrap:wrap;gap:8px;display:flex}._7D6uKa_detailFooter{border-top:1px solid var(--dsw-alias-separator-primary);flex:none;align-items:center;gap:10px;padding:12px 18px;display:flex}._7D6uKa_detailMeta{color:var(--dsw-alias-label-tertiary);margin-left:auto;font-size:11px}@container _7D6uKa_task-board-view (width<=768px){._7D6uKa_board{gap:10px;padding:10px}._7D6uKa_boardHeader{flex-wrap:wrap;align-items:center;gap:8px}._7D6uKa_backButton{flex:none;order:1}._7D6uKa_boardTitle{flex:auto;order:2}._7D6uKa_boardHeader>._7D6uKa_detailMeta{flex:1 0 100%;order:3;margin-left:0}._7D6uKa_search{flex:1 0 100%;order:4;min-width:0}._7D6uKa_boardHeader>button:not(._7D6uKa_backButton){flex:1 1 0;order:5;min-width:0}._7D6uKa_columns{scroll-snap-type:inline mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;grid-auto-columns:86cqw;gap:10px;padding-inline:2px 14cqw;scroll-padding-inline:2px}._7D6uKa_columns::-webkit-scrollbar{display:none}._7D6uKa_column{scroll-snap-align:start;scroll-snap-stop:always}}@container _7D6uKa_task-board-view (width<=720px){._7D6uKa_boardHeader>._7D6uKa_detailMeta{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}}@container _7D6uKa_task-board-view (width<=600px){._7D6uKa_board{padding-inline:8px}}@media (width<=768px){[data-dsh-taskboard-view]{height:100dvh}._7D6uKa_entry,._7D6uKa_card,._7D6uKa_primaryButton,._7D6uKa_ghostButton,._7D6uKa_dangerButton,._7D6uKa_iconButton,._7D6uKa_linkButton,._7D6uKa_search,._7D6uKa_input,._7D6uKa_select,._7D6uKa_schedulePreset,._7D6uKa_scheduleToggle{min-height:44px}._7D6uKa_search,._7D6uKa_input,._7D6uKa_select,._7D6uKa_schedulePreset{box-sizing:border-box;font-size:16px}._7D6uKa_modalBackdrop{justify-content:stretch;align-items:stretch;width:100vw;height:100dvh}._7D6uKa_modal,._7D6uKa_detail{box-sizing:border-box;border:0;border-radius:0;width:100vw;height:100dvh;max-height:none}._7D6uKa_modal{padding-top:max(16px, env(safe-area-inset-top));padding-right:max(16px, env(safe-area-inset-right));padding-bottom:max(16px, env(safe-area-inset-bottom));padding-left:max(16px, env(safe-area-inset-left))}._7D6uKa_modalFooter{z-index:1;background:var(--dsw-alias-bg-base);flex-wrap:wrap;padding-top:8px;position:sticky;bottom:0}._7D6uKa_modalFooter>button{flex:120px}._7D6uKa_detailHeader{padding-top:max(12px, env(safe-area-inset-top));padding-right:max(14px, env(safe-area-inset-right));padding-left:max(14px, env(safe-area-inset-left));flex-wrap:wrap}._7D6uKa_detailTitle{min-width:0}._7D6uKa_detailBody{overscroll-behavior-y:contain;padding-right:max(14px, env(safe-area-inset-right));padding-left:max(14px, env(safe-area-inset-left))}._7D6uKa_detailFooter{padding-right:max(14px, env(safe-area-inset-right));padding-bottom:max(12px, env(safe-area-inset-bottom));padding-left:max(14px, env(safe-area-inset-left));flex-wrap:wrap}._7D6uKa_detailFooter>button{flex:96px}._7D6uKa_detailFooter>._7D6uKa_detailMeta{text-align:end;flex:1 0 100%;margin-left:0}._7D6uKa_scheduleRow{flex-direction:column;align-items:stretch}._7D6uKa_schedulePreset{width:100%}}._7D6uKa_entry:focus-visible,._7D6uKa_card:focus-visible,._7D6uKa_primaryButton:focus-visible,._7D6uKa_ghostButton:focus-visible,._7D6uKa_dangerButton:focus-visible,._7D6uKa_iconButton:focus-visible,._7D6uKa_linkButton:focus-visible,._7D6uKa_search:focus-visible,._7D6uKa_input:focus-visible,._7D6uKa_select:focus-visible,._7D6uKa_schedulePreset:focus-visible,._7D6uKa_scheduleToggle input:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}._7D6uKa_entry,._7D6uKa_primaryButton,._7D6uKa_ghostButton,._7D6uKa_dangerButton,._7D6uKa_iconButton,._7D6uKa_linkButton,._7D6uKa_search,._7D6uKa_input,._7D6uKa_select,._7D6uKa_schedulePreset,._7D6uKa_scheduleToggle input{transition:background-color .12s,color .12s,border-color .12s,outline-color .12s,box-shadow .12s,transform .12s}._7D6uKa_card:active{box-shadow:var(--dsw-shadow-lv1);transform:translateY(0)}._7D6uKa_entry:active,._7D6uKa_primaryButton:active:not(:disabled),._7D6uKa_ghostButton:active:not(:disabled),._7D6uKa_dangerButton:active:not(:disabled),._7D6uKa_iconButton:active:not(:disabled),._7D6uKa_linkButton:active:not(:disabled){transform:translateY(1px)}._7D6uKa_entry[data-active]:hover{background:var(--dsw-specific-sidebar-nav-item-active)}._7D6uKa_iconButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._7D6uKa_linkButton:hover:not(:disabled){text-decoration:underline}._7D6uKa_iconButton:disabled,._7D6uKa_linkButton:disabled{opacity:.45;cursor:default}._7D6uKa_search:focus,._7D6uKa_select:focus,._7D6uKa_schedulePreset:focus{border-color:var(--dsw-alias-state-business-primary)}._7D6uKa_scheduleToggle input{margin:0}@media (prefers-reduced-motion:reduce){._7D6uKa_entry,._7D6uKa_card,._7D6uKa_primaryButton,._7D6uKa_ghostButton,._7D6uKa_dangerButton,._7D6uKa_iconButton,._7D6uKa_linkButton,._7D6uKa_search,._7D6uKa_input,._7D6uKa_select,._7D6uKa_schedulePreset,._7D6uKa_scheduleToggle input{transition:none}._7D6uKa_cardSpinner{animation:none}}._7D6uKa_cardTags{flex-wrap:wrap;gap:4px;display:flex}._7D6uKa_cardTag{border:1px solid var(--dsh-task-tag-border);background:var(--dsh-task-tag-fill);max-width:100%;color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;border-radius:999px;padding:0 7px;font-size:10px;line-height:16px;overflow:hidden}._7D6uKa_tagFilter{flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;display:flex}._7D6uKa_tagFilterLabel{color:var(--dsw-alias-label-tertiary);font-size:11px}._7D6uKa_tagChip{border:1px solid var(--dsh-task-tag-border);color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border-radius:999px;padding:1px 9px;font-family:inherit;font-size:11px;line-height:18px}._7D6uKa_tagChip[data-active=true]{background:var(--dsh-task-tag-fill);color:var(--dsw-alias-label-primary)}._7D6uKa_cardTag[data-tag-tone=\"0\"],._7D6uKa_tagChip[data-tag-tone=\"0\"]{--dsh-task-tag-fill:#4e93e82e;--dsh-task-tag-border:#4e93e866}._7D6uKa_cardTag[data-tag-tone=\"1\"],._7D6uKa_tagChip[data-tag-tone=\"1\"]{--dsh-task-tag-fill:#2ea36a2e;--dsh-task-tag-border:#2ea36a66}._7D6uKa_cardTag[data-tag-tone=\"2\"],._7D6uKa_tagChip[data-tag-tone=\"2\"]{--dsh-task-tag-fill:#d08a2a2e;--dsh-task-tag-border:#d08a2a66}._7D6uKa_cardTag[data-tag-tone=\"3\"],._7D6uKa_tagChip[data-tag-tone=\"3\"]{--dsh-task-tag-fill:#b456c82e;--dsh-task-tag-border:#b456c866}._7D6uKa_cardTag[data-tag-tone=\"4\"],._7D6uKa_tagChip[data-tag-tone=\"4\"]{--dsh-task-tag-fill:#cf5f7a2e;--dsh-task-tag-border:#cf5f7a66}._7D6uKa_cardTag[data-tag-tone=\"5\"],._7D6uKa_tagChip[data-tag-tone=\"5\"]{--dsh-task-tag-fill:#4a9fb52e;--dsh-task-tag-border:#4a9fb566}._7D6uKa_fieldHint{color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:1.4}._7D6uKa_tagRow{align-items:center;gap:6px;display:flex}._7D6uKa_tagRow ._7D6uKa_input{flex:1 1 0;min-width:0}._7D6uKa_tagRow ._7D6uKa_ghostButton{flex:none}._7D6uKa_tagAddButton{align-self:flex-start}._7D6uKa_projectFilter{flex:none;align-items:center;gap:6px;display:flex}._7D6uKa_projectFilterLabel{color:var(--dsw-alias-label-secondary);white-space:nowrap;font-size:12px}._7D6uKa_projectDialog{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;flex-direction:column;flex:none;gap:8px;margin-bottom:8px;padding:10px 12px;display:flex}._7D6uKa_projectDialogActions{justify-content:flex-end;gap:8px;display:flex}._7D6uKa_aiParse{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;flex-direction:column;gap:6px;padding:10px 12px;display:flex}._7D6uKa_aiParseRow{align-items:center;gap:8px;display:flex}._7D6uKa_aiParseRow ._7D6uKa_select{flex:1 1 0;min-width:0}._7D6uKa_aiParseRow ._7D6uKa_ghostButton,._7D6uKa_aiParseRow ._7D6uKa_primaryButton{flex:none}";
-		const tagId$20 = "@linxin666/dsh-web-all/packages/dsh-task-board/src/client/board.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$20) + "]") === null) {
+		const css$15 = "[data-pane=conversation],[class*=centerCol]{position:relative}[data-dsh-taskboard-view]{z-index:60;background:var(--dsw-alias-bg-base);display:none;position:absolute;inset:0;container:_7D6uKa_task-board-view/inline-size}html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [data-dsh-taskboard-view]{display:block}html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [data-pane=conversation]>:not([data-dsh-taskboard-view]),html[data-dsh-taskboard-active]:not([data-dsh-ssh-active]) [class*=centerCol]>:not([data-dsh-taskboard-view]){display:none!important}._7D6uKa_entry{box-sizing:border-box;min-height:36px;color:var(--dsw-alias-label-primary);cursor:pointer;font:inherit;text-align:left;white-space:nowrap;background:0 0;border:none;border-radius:12px;align-items:center;gap:8px;margin:0 2px;padding:7px 8px;font-size:14px;line-height:22px;display:flex}._7D6uKa_entry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._7D6uKa_entry[data-active]{background:var(--dsw-alias-interactive-bg-active);color:var(--dsw-alias-label-primary);font-weight:600}._7D6uKa_entryIcon{flex:none;justify-content:center;align-items:center;width:16px;height:16px;display:inline-flex}._7D6uKa_entryIcon svg{width:16px;height:16px;display:block}._7D6uKa_entryLabel{text-overflow:ellipsis;overflow:hidden}[data-dsh-frame][data-sidebar-collapsed] ._7D6uKa_entry,[data-sidebar-collapsed] ._7D6uKa_entry{border-radius:12px;justify-content:center;width:36px;height:36px;margin:0 auto 12px;padding:0}[data-dsh-frame][data-sidebar-collapsed] ._7D6uKa_entryIcon,[data-sidebar-collapsed] ._7D6uKa_entryIcon,[data-dsh-frame][data-sidebar-collapsed] ._7D6uKa_entryIcon svg,[data-sidebar-collapsed] ._7D6uKa_entryIcon svg{width:18px;height:18px}[data-dsh-frame][data-sidebar-collapsed] ._7D6uKa_entryLabel,[data-sidebar-collapsed] ._7D6uKa_entryLabel{display:none}._7D6uKa_board{box-sizing:border-box;background:var(--dsw-alias-bg-base);min-width:0;height:100%;min-height:0;color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family);flex-direction:column;gap:12px;padding:14px 16px 16px;display:flex}._7D6uKa_boardHeader{flex:none;align-items:center;gap:10px;display:flex}._7D6uKa_boardTitle{color:var(--dsw-alias-label-primary);white-space:nowrap;margin:0;font-size:16px;font-weight:700}._7D6uKa_backButton{align-items:center;gap:4px;display:inline-flex}._7D6uKa_search{min-width:120px;color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;outline:none;flex:0 260px;padding:6px 10px;font-size:13px}._7D6uKa_search::placeholder{color:var(--dsw-alias-label-tertiary)}._7D6uKa_columns{overscroll-behavior-inline:contain;scrollbar-color:var(--dsw-alias-border-l3) var(--dsw-alias-interactive-bg-hover);scrollbar-width:thin;flex:1;grid-auto-columns:minmax(220px,1fr);grid-auto-flow:column;gap:12px;min-height:0;padding-bottom:6px;display:grid;overflow:auto hidden}._7D6uKa_columns::-webkit-scrollbar{height:10px}._7D6uKa_columns::-webkit-scrollbar-track{background:var(--dsw-alias-interactive-bg-hover);border-radius:999px}._7D6uKa_columns::-webkit-scrollbar-thumb{background:var(--dsw-alias-border-l3);background-clip:content-box;border:2px solid #0000;border-radius:999px}._7D6uKa_columns::-webkit-scrollbar-thumb:hover{background:var(--dsw-alias-border-l4);background-clip:content-box}._7D6uKa_column{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:12px;flex-direction:column;min-height:0;display:flex;overflow:hidden}._7D6uKa_columnHeader{flex:none;align-items:center;gap:6px;padding:10px 12px;display:flex}._7D6uKa_columnTitle{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:13px;font-weight:700;overflow:hidden}._7D6uKa_columnCount{min-width:0;color:var(--dsw-alias-label-tertiary);background:var(--dsw-alias-interactive-bg-hover);border-radius:999px;flex:none;padding:1px 8px;font-size:12px}._7D6uKa_statusDot{border-radius:50%;flex:none;width:8px;height:8px}._7D6uKa_statusDot[data-status=backlog]{background:var(--dsw-alias-label-tertiary)}._7D6uKa_statusDot[data-status=todo]{background:var(--dsw-alias-state-business-primary)}._7D6uKa_statusDot[data-status=running]{background:var(--dsw-alias-state-warn-primary)}._7D6uKa_statusDot[data-status=done]{background:var(--dsw-alias-state-success-primary)}._7D6uKa_statusDot[data-status=failed]{background:var(--dsw-alias-state-error-primary)}._7D6uKa_cards{flex-direction:column;flex:1;gap:8px;min-height:0;padding:2px 8px 10px;display:flex;overflow-y:auto}._7D6uKa_columnEmpty{text-align:center;color:var(--dsw-alias-label-tertiary);padding:24px 8px;font-size:12px}._7D6uKa_card{text-align:left;background:var(--dsw-alias-bg-base);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;color:var(--dsw-alias-label-primary);border-radius:10px;flex-direction:column;gap:6px;padding:10px 12px;font-family:inherit;transition:box-shadow .12s,border-color .12s,transform .12s;display:flex}._7D6uKa_card:hover{box-shadow:var(--dsw-shadow-lv2);border-color:var(--dsw-alias-border-l3);transform:translateY(-1px)}._7D6uKa_card[data-status=running]{border-color:var(--dsw-alias-state-warn-primary)}._7D6uKa_cardTitle{-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:13px;font-weight:600;line-height:1.35;display:-webkit-box;overflow:hidden}._7D6uKa_cardExcerpt{color:var(--dsw-alias-label-secondary);-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:12px;line-height:1.4;display:-webkit-box;overflow:hidden}._7D6uKa_cardMeta{color:var(--dsw-alias-label-tertiary);align-items:center;gap:8px;font-size:11px;display:flex}._7D6uKa_cardTime{text-overflow:ellipsis;white-space:nowrap;flex:1;overflow:hidden}._7D6uKa_cardSchedule{white-space:nowrap;min-width:0;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-interactive-bg-hover);border-radius:999px;flex:none;padding:2px 6px;font-size:12px;line-height:1}._7D6uKa_cardRun{flex:none}._7D6uKa_cardRun[data-result=failed]{color:var(--dsw-alias-state-error-primary)}._7D6uKa_cardRun[data-result=succeeded]{color:var(--dsw-alias-state-success-primary)}._7D6uKa_cardSession{color:var(--dsw-alias-state-business-primary);flex:none}._7D6uKa_cardRunningLabel{color:var(--dsw-alias-state-warn-primary);font-size:11px}._7D6uKa_cardSpinner{border:2px solid var(--dsw-alias-state-warn-primary);border-top-color:#0000;border-radius:50%;flex:none;width:10px;height:10px;animation:.8s linear infinite _7D6uKa_dshTbSpin}@keyframes _7D6uKa_dshTbSpin{to{transform:rotate(360deg)}}._7D6uKa_primaryButton{color:var(--dsw-alias-label-primary-foreground);background:var(--dsw-alias-button-info-fill);cursor:pointer;white-space:nowrap;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600}._7D6uKa_primaryButton:hover:not(:disabled){background:var(--dsw-alias-button-info-hover)}._7D6uKa_primaryButton:disabled{opacity:.5;cursor:default}._7D6uKa_ghostButton{color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;background:0 0;border-radius:8px;padding:5px 12px;font-size:12px}._7D6uKa_ghostButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}._7D6uKa_ghostButton:disabled{opacity:.45;cursor:default}._7D6uKa_dangerButton{color:#fff;background:var(--dsw-alias-state-error-primary);cursor:pointer;white-space:nowrap;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600}._7D6uKa_dangerButton:hover:not(:disabled){filter:brightness(1.08)}._7D6uKa_dangerButton:active:not(:disabled){filter:brightness(.94)}._7D6uKa_dangerButton:disabled{opacity:.5;cursor:default}._7D6uKa_iconButton{width:26px;height:26px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;justify-content:center;align-items:center;padding:0;font-size:13px;display:inline-flex}._7D6uKa_iconButton:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._7D6uKa_linkButton{color:var(--dsw-alias-state-business-primary);cursor:pointer;white-space:nowrap;background:0 0;border:none;padding:0;font-size:12px}._7D6uKa_linkButton:hover{text-decoration:underline}._7D6uKa_modalBackdrop{z-index:1300;background:var(--dsw-alias-bg-mask-1);justify-content:center;align-items:center;display:flex;position:fixed;inset:0}._7D6uKa_modal{background:var(--dsw-alias-bg-base);border:1px solid var(--dsw-alias-border-l2);width:min(520px,100vw - 48px);max-height:calc(100vh - 96px);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-primary);border-radius:14px;flex-direction:column;gap:12px;padding:18px;display:flex;overflow-y:auto}._7D6uKa_modalTitle{margin:0;font-size:15px;font-weight:700}._7D6uKa_confirmMessage{color:var(--dsw-alias-label-secondary);white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font-size:13px;line-height:1.5}._7D6uKa_modalFooter{justify-content:flex-end;gap:10px;margin-top:4px;display:flex}._7D6uKa_field{flex-direction:column;gap:5px;display:flex}._7D6uKa_fieldLabel{color:var(--dsw-alias-label-secondary);font-size:12px;font-weight:600}._7D6uKa_input{color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);resize:vertical;border-radius:8px;outline:none;padding:7px 10px;font-family:inherit;font-size:13px}._7D6uKa_input:focus{border-color:var(--dsw-alias-state-business-primary)}._7D6uKa_select{color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;outline:none;max-width:100%;padding:7px 10px;font-family:inherit;font-size:13px}._7D6uKa_input::placeholder{color:var(--dsw-alias-label-tertiary)}._7D6uKa_formError{color:var(--dsw-alias-state-error-primary);margin:0;font-size:12px}._7D6uKa_detail{background:var(--dsw-alias-bg-base);border:1px solid var(--dsw-alias-border-l2);width:min(640px,100vw - 48px);max-height:calc(100vh - 80px);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-primary);border-radius:14px;flex-direction:column;display:flex;overflow:hidden}._7D6uKa_detailHeader{border-bottom:1px solid var(--dsw-alias-separator-primary);flex:none;align-items:center;gap:10px;padding:14px 18px;display:flex}._7D6uKa_detailTitle{overflow-wrap:anywhere;flex:1;margin:0;font-size:15px;font-weight:700}._7D6uKa_statusBadge{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:2px 10px;font-size:12px}._7D6uKa_statusBadge[data-status=running]{color:var(--dsw-alias-state-warn-primary);border-color:var(--dsw-alias-state-warn-primary)}._7D6uKa_statusBadge[data-status=done]{color:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}._7D6uKa_statusBadge[data-status=failed]{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}._7D6uKa_detailBody{flex-direction:column;flex:1;gap:16px;padding:14px 18px;display:flex;overflow-y:auto}._7D6uKa_detailSection{flex-direction:column;gap:6px;display:flex}._7D6uKa_detailSection h4{color:var(--dsw-alias-label-tertiary);text-transform:none;margin:0;font-size:12px;font-weight:700}._7D6uKa_detailText{color:var(--dsw-alias-label-primary);white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font-size:13px;line-height:1.55}._7D6uKa_scheduleToggle{color:var(--dsw-alias-label-primary);cursor:pointer;user-select:none;align-items:center;gap:8px;font-size:13px;display:flex}._7D6uKa_scheduleToggle input{accent-color:var(--dsw-alias-state-business-primary)}._7D6uKa_scheduleRow{align-items:center;gap:8px;display:flex}._7D6uKa_scheduleInput{min-width:0;font-family:var(--dsw-font-markdown-code-block-small);flex:1;font-size:12.5px}._7D6uKa_scheduleInputInvalid,._7D6uKa_scheduleInputInvalid:focus{border-color:var(--dsw-alias-state-error-primary)}._7D6uKa_schedulePreset{color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;outline:none;flex:none;padding:7px 8px;font-size:12.5px}._7D6uKa_scheduleMeta{color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere;margin:0;font-size:12px}._7D6uKa_promptBlock{font-size:12.5px;line-height:1.5;font-family:var(--dsw-font-markdown-code-block-small);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-markdown-code-block);border:1px solid var(--dsw-alias-border-l1);white-space:pre-wrap;overflow-wrap:anywhere;border-radius:8px;max-height:240px;margin:0;padding:10px 12px;overflow-y:auto}._7D6uKa_executionList{flex-direction:column;gap:8px;margin:0;padding:0;list-style:none;display:flex}._7D6uKa_executionRow{border:1px solid var(--dsw-alias-border-l1);border-radius:8px;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 10px;display:flex}._7D6uKa_executionBadge{color:var(--dsw-alias-state-warn-primary);background:var(--dsw-alias-state-warn-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:600}._7D6uKa_executionBadge[data-result=succeeded]{color:var(--dsw-alias-state-success-primary);background:0 0}._7D6uKa_executionBadge[data-result=failed]{color:var(--dsw-alias-state-error-primary);background:0 0}._7D6uKa_executionBadge[data-result=cancelled]{color:var(--dsw-alias-label-tertiary);background:0 0}._7D6uKa_executionTimes{color:var(--dsw-alias-label-secondary);font-size:12px}._7D6uKa_executionError{width:100%;color:var(--dsw-alias-state-error-primary);overflow-wrap:anywhere;font-size:12px}._7D6uKa_moveRow{flex-wrap:wrap;gap:8px;display:flex}._7D6uKa_detailFooter{border-top:1px solid var(--dsw-alias-separator-primary);flex:none;align-items:center;gap:10px;padding:12px 18px;display:flex}._7D6uKa_detailMeta{color:var(--dsw-alias-label-tertiary);margin-left:auto;font-size:11px}@container _7D6uKa_task-board-view (width<=768px){._7D6uKa_board{gap:10px;padding:10px}._7D6uKa_boardHeader{flex-wrap:wrap;align-items:center;gap:8px}._7D6uKa_backButton{flex:none;order:1}._7D6uKa_boardTitle{flex:auto;order:2}._7D6uKa_boardHeader>._7D6uKa_detailMeta{flex:1 0 100%;order:3;margin-left:0}._7D6uKa_search{flex:1 0 100%;order:4;min-width:0}._7D6uKa_boardHeader>button:not(._7D6uKa_backButton){flex:1 1 0;order:5;min-width:0}._7D6uKa_columns{scroll-snap-type:inline mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;grid-auto-columns:86cqw;gap:10px;padding-inline:2px 14cqw;scroll-padding-inline:2px}._7D6uKa_columns::-webkit-scrollbar{display:none}._7D6uKa_column{scroll-snap-align:start;scroll-snap-stop:always}}@container _7D6uKa_task-board-view (width<=720px){._7D6uKa_boardHeader>._7D6uKa_detailMeta{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}}@container _7D6uKa_task-board-view (width<=600px){._7D6uKa_board{padding-inline:8px}}@media (width<=768px){[data-dsh-taskboard-view]{height:100dvh}._7D6uKa_entry,._7D6uKa_card,._7D6uKa_primaryButton,._7D6uKa_ghostButton,._7D6uKa_dangerButton,._7D6uKa_iconButton,._7D6uKa_linkButton,._7D6uKa_search,._7D6uKa_input,._7D6uKa_select,._7D6uKa_schedulePreset,._7D6uKa_scheduleToggle{min-height:44px}._7D6uKa_search,._7D6uKa_input,._7D6uKa_select,._7D6uKa_schedulePreset{box-sizing:border-box;font-size:16px}._7D6uKa_modalBackdrop{justify-content:stretch;align-items:stretch;width:100vw;height:100dvh}._7D6uKa_modal,._7D6uKa_detail{box-sizing:border-box;border:0;border-radius:0;width:100vw;height:100dvh;max-height:none}._7D6uKa_modal{padding-top:max(16px, env(safe-area-inset-top));padding-right:max(16px, env(safe-area-inset-right));padding-bottom:max(16px, env(safe-area-inset-bottom));padding-left:max(16px, env(safe-area-inset-left))}._7D6uKa_modalFooter{z-index:1;background:var(--dsw-alias-bg-base);flex-wrap:wrap;padding-top:8px;position:sticky;bottom:0}._7D6uKa_modalFooter>button{flex:120px}._7D6uKa_detailHeader{padding-top:max(12px, env(safe-area-inset-top));padding-right:max(14px, env(safe-area-inset-right));padding-left:max(14px, env(safe-area-inset-left));flex-wrap:wrap}._7D6uKa_detailTitle{min-width:0}._7D6uKa_detailBody{overscroll-behavior-y:contain;padding-right:max(14px, env(safe-area-inset-right));padding-left:max(14px, env(safe-area-inset-left))}._7D6uKa_detailFooter{padding-right:max(14px, env(safe-area-inset-right));padding-bottom:max(12px, env(safe-area-inset-bottom));padding-left:max(14px, env(safe-area-inset-left));flex-wrap:wrap}._7D6uKa_detailFooter>button{flex:96px}._7D6uKa_detailFooter>._7D6uKa_detailMeta{text-align:end;flex:1 0 100%;margin-left:0}._7D6uKa_scheduleRow{flex-direction:column;align-items:stretch}._7D6uKa_schedulePreset{width:100%}}._7D6uKa_entry:focus-visible,._7D6uKa_card:focus-visible,._7D6uKa_primaryButton:focus-visible,._7D6uKa_ghostButton:focus-visible,._7D6uKa_dangerButton:focus-visible,._7D6uKa_iconButton:focus-visible,._7D6uKa_linkButton:focus-visible,._7D6uKa_search:focus-visible,._7D6uKa_input:focus-visible,._7D6uKa_select:focus-visible,._7D6uKa_schedulePreset:focus-visible,._7D6uKa_scheduleToggle input:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}._7D6uKa_entry,._7D6uKa_primaryButton,._7D6uKa_ghostButton,._7D6uKa_dangerButton,._7D6uKa_iconButton,._7D6uKa_linkButton,._7D6uKa_search,._7D6uKa_input,._7D6uKa_select,._7D6uKa_schedulePreset,._7D6uKa_scheduleToggle input{transition:background-color .12s,color .12s,border-color .12s,outline-color .12s,box-shadow .12s,transform .12s}._7D6uKa_card:active{box-shadow:var(--dsw-shadow-lv1);transform:translateY(0)}._7D6uKa_entry:active,._7D6uKa_primaryButton:active:not(:disabled),._7D6uKa_ghostButton:active:not(:disabled),._7D6uKa_dangerButton:active:not(:disabled),._7D6uKa_iconButton:active:not(:disabled),._7D6uKa_linkButton:active:not(:disabled){transform:translateY(1px)}._7D6uKa_entry[data-active]:hover{background:var(--dsw-specific-sidebar-nav-item-active)}._7D6uKa_iconButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._7D6uKa_linkButton:hover:not(:disabled){text-decoration:underline}._7D6uKa_iconButton:disabled,._7D6uKa_linkButton:disabled{opacity:.45;cursor:default}._7D6uKa_search:focus,._7D6uKa_select:focus,._7D6uKa_schedulePreset:focus{border-color:var(--dsw-alias-state-business-primary)}._7D6uKa_scheduleToggle input{margin:0}@media (prefers-reduced-motion:reduce){._7D6uKa_entry,._7D6uKa_card,._7D6uKa_primaryButton,._7D6uKa_ghostButton,._7D6uKa_dangerButton,._7D6uKa_iconButton,._7D6uKa_linkButton,._7D6uKa_search,._7D6uKa_input,._7D6uKa_select,._7D6uKa_schedulePreset,._7D6uKa_scheduleToggle input{transition:none}._7D6uKa_cardSpinner{animation:none}}._7D6uKa_cardTags{flex-wrap:wrap;gap:4px;display:flex}._7D6uKa_cardTag{border:1px solid var(--dsh-task-tag-border);background:var(--dsh-task-tag-fill);max-width:100%;color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;border-radius:999px;padding:0 7px;font-size:10px;line-height:16px;overflow:hidden}._7D6uKa_tagFilter{flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;display:flex}._7D6uKa_tagFilterLabel{color:var(--dsw-alias-label-tertiary);font-size:11px}._7D6uKa_tagChip{border:1px solid var(--dsh-task-tag-border);color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border-radius:999px;padding:1px 9px;font-family:inherit;font-size:11px;line-height:18px}._7D6uKa_tagChip[data-active=true]{background:var(--dsh-task-tag-fill);color:var(--dsw-alias-label-primary)}._7D6uKa_cardTag[data-tag-tone=\"0\"],._7D6uKa_tagChip[data-tag-tone=\"0\"]{--dsh-task-tag-fill:#4e93e82e;--dsh-task-tag-border:#4e93e866}._7D6uKa_cardTag[data-tag-tone=\"1\"],._7D6uKa_tagChip[data-tag-tone=\"1\"]{--dsh-task-tag-fill:#2ea36a2e;--dsh-task-tag-border:#2ea36a66}._7D6uKa_cardTag[data-tag-tone=\"2\"],._7D6uKa_tagChip[data-tag-tone=\"2\"]{--dsh-task-tag-fill:#d08a2a2e;--dsh-task-tag-border:#d08a2a66}._7D6uKa_cardTag[data-tag-tone=\"3\"],._7D6uKa_tagChip[data-tag-tone=\"3\"]{--dsh-task-tag-fill:#b456c82e;--dsh-task-tag-border:#b456c866}._7D6uKa_cardTag[data-tag-tone=\"4\"],._7D6uKa_tagChip[data-tag-tone=\"4\"]{--dsh-task-tag-fill:#cf5f7a2e;--dsh-task-tag-border:#cf5f7a66}._7D6uKa_cardTag[data-tag-tone=\"5\"],._7D6uKa_tagChip[data-tag-tone=\"5\"]{--dsh-task-tag-fill:#4a9fb52e;--dsh-task-tag-border:#4a9fb566}._7D6uKa_fieldHint{color:var(--dsw-alias-label-tertiary);font-size:11px;line-height:1.4}._7D6uKa_tagRow{align-items:center;gap:6px;display:flex}._7D6uKa_tagRow ._7D6uKa_input{flex:1 1 0;min-width:0}._7D6uKa_tagRow ._7D6uKa_ghostButton{flex:none}._7D6uKa_tagAddButton{align-self:flex-start}._7D6uKa_projectFilter{flex:none;align-items:center;gap:6px;display:flex}._7D6uKa_projectFilterLabel{color:var(--dsw-alias-label-secondary);white-space:nowrap;font-size:12px}._7D6uKa_projectDialog{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;flex-direction:column;flex:none;gap:8px;margin-bottom:8px;padding:10px 12px;display:flex}._7D6uKa_projectDialogActions{justify-content:flex-end;gap:8px;display:flex}._7D6uKa_aiParse{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;flex-direction:column;gap:6px;padding:10px 12px;display:flex}._7D6uKa_aiParseRow{align-items:center;gap:8px;display:flex}._7D6uKa_aiParseRow ._7D6uKa_select{flex:1 1 0;min-width:0}._7D6uKa_aiParseRow ._7D6uKa_ghostButton,._7D6uKa_aiParseRow ._7D6uKa_primaryButton{flex:none}";
+		const tagId$15 = "@linxin666/dsh-web-all/packages/dsh-task-board/src/client/board.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$15) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$20;
-			tag.textContent = css$20;
+			tag.dataset.pluginCss = tagId$15;
+			tag.textContent = css$15;
 			document.head.appendChild(tag);
 		}
 		var board_module_css_default = {
@@ -6771,7 +6771,7 @@ window.__ModuleLoader__.load({
 									type: "button",
 									className: board_module_css_default.ghostButton,
 									onClick: onClose,
-									children: t$6("new.cancel")
+									children: t$5("new.cancel")
 								}),
 								secondaryAction !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
@@ -6799,12 +6799,12 @@ window.__ModuleLoader__.load({
 					className: board_module_css_default.field,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: board_module_css_default.fieldLabel,
-						children: t$6("new.title")
+						children: t$5("new.title")
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
 						className: board_module_css_default.input,
 						value: title,
 						autoFocus: true,
-						placeholder: t$6("new.titlePlaceholder"),
+						placeholder: t$5("new.titlePlaceholder"),
 						onChange: (event) => onTitleChange(event.target.value)
 					})]
 				}),
@@ -6812,12 +6812,12 @@ window.__ModuleLoader__.load({
 					className: board_module_css_default.field,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: board_module_css_default.fieldLabel,
-						children: t$6("new.description")
+						children: t$5("new.description")
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
 						className: board_module_css_default.input,
 						rows: 3,
 						value: description,
-						placeholder: t$6("new.descriptionPlaceholder"),
+						placeholder: t$5("new.descriptionPlaceholder"),
 						onChange: (event) => onDescriptionChange(event.target.value)
 					})]
 				}),
@@ -6825,12 +6825,12 @@ window.__ModuleLoader__.load({
 					className: board_module_css_default.field,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: board_module_css_default.fieldLabel,
-						children: t$6("new.prompt")
+						children: t$5("new.prompt")
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
 						className: board_module_css_default.input,
 						rows: 4,
 						value: prompt,
-						placeholder: t$6("new.promptPlaceholder"),
+						placeholder: t$5("new.promptPlaceholder"),
 						onChange: (event) => onPromptChange(event.target.value)
 					})]
 				})
@@ -6854,11 +6854,11 @@ window.__ModuleLoader__.load({
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: board_module_css_default.fieldLabel,
-						children: t$6("new.tags")
+						children: t$5("new.tags")
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: board_module_css_default.fieldHint,
-						children: t$6("new.tagsHint")
+						children: t$5("new.tagsHint")
 					}),
 					tags.map((tag, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: board_module_css_default.tagRow,
@@ -6868,8 +6868,8 @@ window.__ModuleLoader__.load({
 								list: TAG_NAME_LIST_ID,
 								value: tag.name,
 								maxLength: 32,
-								placeholder: t$6("new.tagNamePlaceholder"),
-								"aria-label": t$6("new.tagName"),
+								placeholder: t$5("new.tagNamePlaceholder"),
+								"aria-label": t$5("new.tagName"),
 								onChange: (event) => {
 									const name = event.target.value;
 									const known = knownTags.find((candidate) => candidate.name === name);
@@ -6884,8 +6884,8 @@ window.__ModuleLoader__.load({
 								className: board_module_css_default.input,
 								value: tag.promptPrefix ?? "",
 								maxLength: 200,
-								placeholder: t$6("new.tagPromptPlaceholder"),
-								"aria-label": t$6("new.tagPrompt"),
+								placeholder: t$5("new.tagPromptPlaceholder"),
+								"aria-label": t$5("new.tagPrompt"),
 								onChange: (event) => {
 									update(index, { promptPrefix: event.target.value });
 								}
@@ -6893,7 +6893,7 @@ window.__ModuleLoader__.load({
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: board_module_css_default.ghostButton,
-								"aria-label": t$6("new.tagRemove", { name: tag.name }),
+								"aria-label": t$5("new.tagRemove", { name: tag.name }),
 								onClick: () => {
 									onChange(tags.filter((_, position) => position !== index));
 								},
@@ -6912,7 +6912,7 @@ window.__ModuleLoader__.load({
 						onClick: () => {
 							onChange([...tags, { name: "" }]);
 						},
-						children: ["+ ", t$6("new.tagAdd")]
+						children: ["+ ", t$5("new.tagAdd")]
 					})
 				]
 			});
@@ -7000,7 +7000,7 @@ window.__ModuleLoader__.load({
 			const runParse = async () => {
 				const text = parseText.trim();
 				if (text === "") {
-					setParseError(t$6("new.aiParseEmpty"));
+					setParseError(t$5("new.aiParseEmpty"));
 					return;
 				}
 				const abort = new AbortController();
@@ -7032,7 +7032,7 @@ window.__ModuleLoader__.load({
 				if (scheduleEnabled) {
 					const cron = scheduleCron.trim();
 					if (cron === "" || !isValidCron(cron)) {
-						setScheduleError(t$6("detail.schedule.invalid"));
+						setScheduleError(t$5("detail.schedule.invalid"));
 						return;
 					}
 				}
@@ -7076,7 +7076,7 @@ window.__ModuleLoader__.load({
 				});
 				if (task === void 0) {
 					setPending(false);
-					setError(controller.getSnapshot().transportError ?? t$6("new.required"));
+					setError(controller.getSnapshot().transportError ?? t$5("new.required"));
 					return;
 				}
 				if (isDuplicate && archiveOriginal && initialTask !== void 0) if (onDuplicateSuccess !== void 0) await onDuplicateSuccess(initialTask.id);
@@ -7088,19 +7088,19 @@ window.__ModuleLoader__.load({
 			};
 			/** Next-run preview for a valid armed cron (creation-time only). */
 			const scheduleNextRun = scheduleEnabled && scheduleCron.trim() !== "" && isValidCron(scheduleCron) ? nextRunAtMs(scheduleCron, Date.now()) : void 0;
-			const modalTitle = isDuplicate ? t$6("new.duplicateTitle") : t$6("board.new");
+			const modalTitle = isDuplicate ? t$5("new.duplicateTitle") : t$5("board.new");
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(ModalShell, {
 				ariaLabel: modalTitle,
 				title: modalTitle,
 				error,
 				pending,
-				submitLabel: t$6("new.submit"),
+				submitLabel: t$5("new.submit"),
 				onSubmit: () => {
 					submit(false);
 				},
 				onClose,
 				secondaryAction: {
-					label: t$6("new.createAndRun"),
+					label: t$5("new.createAndRun"),
 					onSubmit: () => {
 						submit(true);
 					}
@@ -7112,17 +7112,17 @@ window.__ModuleLoader__.load({
 						children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								className: board_module_css_default.fieldLabel,
-								children: t$6("new.aiParse")
+								children: t$5("new.aiParse")
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 								className: board_module_css_default.fieldHint,
-								children: t$6("new.aiParseHint")
+								children: t$5("new.aiParseHint")
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
 								className: board_module_css_default.input,
 								rows: 3,
 								value: parseText,
-								placeholder: t$6("new.aiParsePlaceholder"),
+								placeholder: t$5("new.aiParsePlaceholder"),
 								spellCheck: false,
 								onChange: (event) => {
 									setParseText(event.target.value);
@@ -7134,14 +7134,14 @@ window.__ModuleLoader__.load({
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
 									className: board_module_css_default.select,
 									value: parseModel,
-									"aria-label": t$6("new.aiParseModel"),
+									"aria-label": t$5("new.aiParseModel"),
 									onChange: (event) => {
 										setParseModel(event.target.value);
 										writeParseModelPreference(event.target.value);
 									},
 									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 										value: "",
-										children: t$6("exec.model.default")
+										children: t$5("exec.model.default")
 									}), parseModels.map((option) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 										value: option.id,
 										children: option.name ?? option.id
@@ -7152,7 +7152,7 @@ window.__ModuleLoader__.load({
 									onClick: () => {
 										parseAbort.current?.abort();
 									},
-									children: t$6("new.aiParseCancel")
+									children: t$5("new.aiParseCancel")
 								}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
 									className: board_module_css_default.primaryButton,
@@ -7160,7 +7160,7 @@ window.__ModuleLoader__.load({
 									onClick: () => {
 										runParse();
 									},
-									children: t$6("new.aiParseRun")
+									children: t$5("new.aiParseRun")
 								})]
 							}),
 							parseError !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
@@ -7189,12 +7189,12 @@ window.__ModuleLoader__.load({
 						className: board_module_css_default.field,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: board_module_css_default.fieldLabel,
-							children: t$6("new.freeze")
+							children: t$5("new.freeze")
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
 							className: board_module_css_default.input,
 							rows: 4,
 							value: freezeText,
-							placeholder: t$6("new.freezePlaceholder"),
+							placeholder: t$5("new.freezePlaceholder"),
 							spellCheck: false,
 							onChange: (event) => {
 								setFreezeText(event.target.value);
@@ -7210,12 +7210,12 @@ window.__ModuleLoader__.load({
 						className: board_module_css_default.field,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: board_module_css_default.fieldLabel,
-							children: t$6("new.handover")
+							children: t$5("new.handover")
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
 							className: board_module_css_default.input,
 							rows: 3,
 							value: handoverText,
-							placeholder: t$6("new.handoverPlaceholder"),
+							placeholder: t$5("new.handoverPlaceholder"),
 							spellCheck: false,
 							onChange: (event) => {
 								setHandoverText(event.target.value);
@@ -7226,7 +7226,7 @@ window.__ModuleLoader__.load({
 						className: board_module_css_default.field,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: board_module_css_default.fieldLabel,
-							children: t$6("new.workspace")
+							children: t$5("new.workspace")
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
 							className: board_module_css_default.select,
 							value: workspaceId,
@@ -7235,7 +7235,7 @@ window.__ModuleLoader__.load({
 							},
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 								value: "",
-								children: t$6("exec.workspace.recent")
+								children: t$5("exec.workspace.recent")
 							}), options.workspaces.map((workspace) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 								value: workspace.workspaceId,
 								children: workspace.title
@@ -7246,7 +7246,7 @@ window.__ModuleLoader__.load({
 						className: board_module_css_default.field,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: board_module_css_default.fieldLabel,
-							children: t$6("new.mode")
+							children: t$5("new.mode")
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
 							className: board_module_css_default.select,
 							value: mode,
@@ -7255,14 +7255,14 @@ window.__ModuleLoader__.load({
 							},
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 								value: "",
-								children: t$6("exec.mode.default")
+								children: t$5("exec.mode.default")
 							}), options.presets.map((preset) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("option", {
 								value: preset.id,
 								disabled: preset.broken !== void 0,
 								children: [
 									preset.name ?? preset.id,
-									preset.isDefault ? t$6("exec.mode.defaultSuffix") : "",
-									preset.broken !== void 0 ? t$6("exec.mode.brokenSuffix") : ""
+									preset.isDefault ? t$5("exec.mode.defaultSuffix") : "",
+									preset.broken !== void 0 ? t$5("exec.mode.brokenSuffix") : ""
 								]
 							}, preset.id))]
 						})]
@@ -7271,7 +7271,7 @@ window.__ModuleLoader__.load({
 						className: board_module_css_default.field,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: board_module_css_default.fieldLabel,
-							children: t$6("new.permission")
+							children: t$5("new.permission")
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
 							className: board_module_css_default.select,
 							value: permission,
@@ -7280,10 +7280,10 @@ window.__ModuleLoader__.load({
 							},
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 								value: "",
-								children: t$6("exec.permission.default")
+								children: t$5("exec.permission.default")
 							}), TASK_PERMISSIONS.map((id) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 								value: id,
-								children: t$6(`exec.permission.${id}`)
+								children: t$5(`exec.permission.${id}`)
 							}, id))]
 						})]
 					}),
@@ -7291,7 +7291,7 @@ window.__ModuleLoader__.load({
 						className: board_module_css_default.field,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: board_module_css_default.fieldLabel,
-							children: t$6("new.model")
+							children: t$5("new.model")
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
 							className: board_module_css_default.select,
 							value: model,
@@ -7300,7 +7300,7 @@ window.__ModuleLoader__.load({
 							},
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 								value: "",
-								children: t$6("exec.model.default")
+								children: t$5("exec.model.default")
 							}), options.models?.map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 								value: item.id,
 								children: item.name ?? item.id
@@ -7315,16 +7315,16 @@ window.__ModuleLoader__.load({
 							onChange: (event) => {
 								setReuseSession(event.target.checked);
 							}
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t$6("exec.reuseSession") })]
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t$5("exec.reuseSession") })]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 						className: board_module_css_default.detailText,
-						children: t$6("exec.reuseSessionHint")
+						children: t$5("exec.reuseSessionHint")
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 						className: board_module_css_default.detailSection,
 						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$6("detail.schedule") }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$5("detail.schedule") }),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
 								className: board_module_css_default.scheduleToggle,
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
@@ -7334,7 +7334,7 @@ window.__ModuleLoader__.load({
 										setScheduleEnabled(event.target.checked);
 										if (!event.target.checked) setScheduleError(void 0);
 									}
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t$6("detail.schedule.enable") })]
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t$5("detail.schedule.enable") })]
 							}),
 							scheduleEnabled && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -7344,7 +7344,7 @@ window.__ModuleLoader__.load({
 										value: scheduleCron,
 										placeholder: "0 9 * * *",
 										spellCheck: false,
-										"aria-label": t$6("detail.schedule.cron"),
+										"aria-label": t$5("detail.schedule.cron"),
 										onChange: (event) => {
 											setScheduleCron(event.target.value);
 											setScheduleError(void 0);
@@ -7352,7 +7352,7 @@ window.__ModuleLoader__.load({
 									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
 										className: board_module_css_default.schedulePreset,
 										value: "",
-										"aria-label": t$6("detail.schedule.presets"),
+										"aria-label": t$5("detail.schedule.presets"),
 										onChange: (event) => {
 											if (event.target.value === "") return;
 											setScheduleCron(event.target.value);
@@ -7360,10 +7360,10 @@ window.__ModuleLoader__.load({
 										},
 										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("option", {
 											value: "",
-											children: [t$6("detail.schedule.presets"), "…"]
+											children: [t$5("detail.schedule.presets"), "…"]
 										}), SCHEDULE_PRESETS.map((preset) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 											value: preset.cron,
-											children: t$6(preset.label)
+											children: t$5(preset.label)
 										}, preset.cron))]
 									})]
 								}),
@@ -7374,7 +7374,7 @@ window.__ModuleLoader__.load({
 								scheduleError === void 0 && scheduleNextRun !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
 									className: board_module_css_default.scheduleMeta,
 									children: [
-										t$6("detail.schedule.nextRun"),
+										t$5("detail.schedule.nextRun"),
 										" ",
 										new Date(scheduleNextRun).toLocaleString()
 									]
@@ -7391,7 +7391,7 @@ window.__ModuleLoader__.load({
 							onChange: (event) => {
 								setArchiveOriginal(event.target.checked);
 							}
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t$6("new.archiveOriginal") })]
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t$5("new.archiveOriginal") })]
 					})
 				]
 			});
@@ -7429,10 +7429,10 @@ window.__ModuleLoader__.load({
 				return new Date(ms).toISOString();
 			}
 		}
-		function formatTime$4(ms, timeZone) {
+		function formatTime$3(ms, timeZone) {
 			const date = new Date(ms);
 			const minutes = Math.floor((Date.now() - ms) / 6e4);
-			if (minutes < 1) return t$6("time.justNow");
+			if (minutes < 1) return t$5("time.justNow");
 			if (minutes < 60) return `${minutes}m`;
 			if (minutes < 1440) return `${Math.floor(minutes / 60)}h`;
 			if (timeZone !== void 0) return formatHostTimestamp(ms, timeZone);
@@ -7482,20 +7482,20 @@ window.__ModuleLoader__.load({
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 								className: board_module_css_default.cardTime,
 								children: [
-									t$6("board.updated"),
+									t$5("board.updated"),
 									" ",
-									formatTime$4(task.updatedAt)
+									formatTime$3(task.updatedAt)
 								]
 							}),
 							task.freeze !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								className: board_module_css_default.cardSchedule,
 								title: task.freeze.goal,
-								children: t$6("card.frozen")
+								children: t$5("card.frozen")
 							}),
 							!archived && task.schedule?.enabled === true && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								className: board_module_css_default.cardSchedule,
-								title: task.schedule.nextRunAt !== void 0 ? `${t$6("card.scheduled")} · ${formatHostTimestamp(task.schedule.nextRunAt, timeZone)}` : t$6("card.scheduled"),
-								children: t$6("card.scheduled")
+								title: task.schedule.nextRunAt !== void 0 ? `${t$5("card.scheduled")} · ${formatHostTimestamp(task.schedule.nextRunAt, timeZone)}` : t$5("card.scheduled"),
+								children: t$5("card.scheduled")
 							}),
 							latest !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 								className: board_module_css_default.cardRun,
@@ -7503,7 +7503,7 @@ window.__ModuleLoader__.load({
 								children: [
 									runs,
 									" ",
-									t$6("board.runs")
+									t$5("board.runs")
 								]
 							}),
 							latest?.sessionId !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
@@ -7519,11 +7519,11 @@ window.__ModuleLoader__.load({
 					}),
 					!archived && pending && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 						className: board_module_css_default.cardRunningLabel,
-						children: [t$6("board.pending"), "…"]
+						children: [t$5("board.pending"), "…"]
 					}),
 					!archived && latest !== void 0 && executionLabel(latest) === "running" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 						className: board_module_css_default.cardRunningLabel,
-						children: [t$6("detail.result.running"), "…"]
+						children: [t$5("detail.result.running"), "…"]
 					})
 				]
 			});
@@ -7561,7 +7561,7 @@ window.__ModuleLoader__.load({
 								type: "button",
 								className: board_module_css_default.ghostButton,
 								onClick: onCancel,
-								children: t$6("delete.cancel")
+								children: t$5("delete.cancel")
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
 								className: danger ? board_module_css_default.dangerButton : board_module_css_default.primaryButton,
@@ -7592,7 +7592,7 @@ window.__ModuleLoader__.load({
 			const [pending, setPending] = (0, react.useState)(false);
 			const submit = async () => {
 				if (title.trim() === "") {
-					setError(t$6("new.required"));
+					setError(t$5("new.required"));
 					return;
 				}
 				setPending(true);
@@ -7608,14 +7608,14 @@ window.__ModuleLoader__.load({
 					return;
 				}
 				setPending(false);
-				setError(controller.getSnapshot().transportError ?? t$6("new.required"));
+				setError(controller.getSnapshot().transportError ?? t$5("new.required"));
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(ModalShell, {
-				ariaLabel: t$6("edit.title"),
-				title: t$6("edit.title"),
+				ariaLabel: t$5("edit.title"),
+				title: t$5("edit.title"),
 				error,
 				pending,
-				submitLabel: t$6("edit.save"),
+				submitLabel: t$5("edit.save"),
 				onSubmit: () => {
 					submit();
 				},
@@ -7651,14 +7651,14 @@ window.__ModuleLoader__.load({
 					return;
 				}
 				setPending(false);
-				setError(controller.getSnapshot().transportError ?? t$6("new.required"));
+				setError(controller.getSnapshot().transportError ?? t$5("new.required"));
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ModalShell, {
-				ariaLabel: t$6("detail.editTags"),
-				title: t$6("detail.editTags"),
+				ariaLabel: t$5("detail.editTags"),
+				title: t$5("detail.editTags"),
 				error,
 				pending,
-				submitLabel: t$6("edit.save"),
+				submitLabel: t$5("edit.save"),
 				onSubmit: () => {
 					submit();
 				},
@@ -7694,21 +7694,21 @@ window.__ModuleLoader__.load({
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: board_module_css_default.executionBadge,
 						"data-result": result,
-						children: result === void 0 ? t$6("detail.result.running") : t$6(RESULT_KEY[result])
+						children: result === void 0 ? t$5("detail.result.running") : t$5(RESULT_KEY[result])
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 						className: board_module_css_default.executionTimes,
 						children: [
-							t$6("detail.executionStarted"),
+							t$5("detail.executionStarted"),
 							" ",
-							formatTime$4(execution.startedAt, timeZone),
-							execution.endedAt !== void 0 && ` · ${t$6("detail.executionEnded")} ${formatTime$4(execution.endedAt, timeZone)}`
+							formatTime$3(execution.startedAt, timeZone),
+							execution.endedAt !== void 0 && ` · ${t$5("detail.executionEnded")} ${formatTime$3(execution.endedAt, timeZone)}`
 						]
 					}),
 					execution.initiatedBy !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: board_module_css_default.executionTimes,
 						title: execution.initiatedBy,
-						children: t$6("detail.execution.initiator", { session: execution.initiatedBy })
+						children: t$5("detail.execution.initiator", { session: execution.initiatedBy })
 					}),
 					execution.sessionId !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 						type: "button",
@@ -7717,7 +7717,7 @@ window.__ModuleLoader__.load({
 							onOpen(execution.sessionId);
 						},
 						title: execution.sessionId,
-						children: [t$6("detail.viewSession"), " ⌁"]
+						children: [t$5("detail.viewSession"), " ⌁"]
 					}),
 					execution.error !== void 0 && execution.error !== "" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: board_module_css_default.executionError,
@@ -7740,16 +7740,16 @@ window.__ModuleLoader__.load({
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 				className: board_module_css_default.detailSection,
 				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$6("detail.executionSettings") }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$5("detail.executionSettings") }),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 						className: board_module_css_default.detailText,
-						children: t$6("exec.hint")
+						children: t$5("exec.hint")
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
 						className: board_module_css_default.field,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: board_module_css_default.fieldLabel,
-							children: t$6("new.workspace")
+							children: t$5("new.workspace")
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
 							className: board_module_css_default.select,
 							value: workspaceId,
@@ -7760,11 +7760,11 @@ window.__ModuleLoader__.load({
 							children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 									value: "",
-									children: t$6("exec.workspace.recent")
+									children: t$5("exec.workspace.recent")
 								}),
 								!workspaceKnown && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("option", {
 									value: workspaceId,
-									children: [workspaceId, t$6("exec.mode.removed")]
+									children: [workspaceId, t$5("exec.mode.removed")]
 								}),
 								options.workspaces.map((workspace) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 									value: workspace.workspaceId,
@@ -7777,7 +7777,7 @@ window.__ModuleLoader__.load({
 						className: board_module_css_default.field,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: board_module_css_default.fieldLabel,
-							children: t$6("new.mode")
+							children: t$5("new.mode")
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
 							className: board_module_css_default.select,
 							value: mode,
@@ -7788,19 +7788,19 @@ window.__ModuleLoader__.load({
 							children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 									value: "",
-									children: t$6("exec.mode.default")
+									children: t$5("exec.mode.default")
 								}),
 								!modeKnown && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("option", {
 									value: mode,
-									children: [mode, t$6("exec.mode.removed")]
+									children: [mode, t$5("exec.mode.removed")]
 								}),
 								options.presets.map((preset) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("option", {
 									value: preset.id,
 									disabled: preset.broken !== void 0,
 									children: [
 										preset.name ?? preset.id,
-										preset.isDefault ? t$6("exec.mode.defaultSuffix") : "",
-										preset.broken !== void 0 ? t$6("exec.mode.brokenSuffix") : ""
+										preset.isDefault ? t$5("exec.mode.defaultSuffix") : "",
+										preset.broken !== void 0 ? t$5("exec.mode.brokenSuffix") : ""
 									]
 								}, preset.id))
 							]
@@ -7810,7 +7810,7 @@ window.__ModuleLoader__.load({
 						className: board_module_css_default.field,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: board_module_css_default.fieldLabel,
-							children: t$6("new.permission")
+							children: t$5("new.permission")
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
 							className: board_module_css_default.select,
 							value: permission,
@@ -7820,10 +7820,10 @@ window.__ModuleLoader__.load({
 							},
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 								value: "",
-								children: t$6("exec.permission.default")
+								children: t$5("exec.permission.default")
 							}), TASK_PERMISSIONS.map((id) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 								value: id,
-								children: t$6(`exec.permission.${id}`)
+								children: t$5(`exec.permission.${id}`)
 							}, id))]
 						})]
 					}),
@@ -7831,7 +7831,7 @@ window.__ModuleLoader__.load({
 						className: board_module_css_default.field,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: board_module_css_default.fieldLabel,
-							children: t$6("new.model")
+							children: t$5("new.model")
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
 							className: board_module_css_default.select,
 							value: model,
@@ -7842,11 +7842,11 @@ window.__ModuleLoader__.load({
 							children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 									value: "",
-									children: t$6("exec.model.default")
+									children: t$5("exec.model.default")
 								}),
 								!modelKnown && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("option", {
 									value: model,
-									children: [model, t$6("exec.model.unknown")]
+									children: [model, t$5("exec.model.unknown")]
 								}),
 								options.models?.map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 									value: item.id,
@@ -7864,11 +7864,11 @@ window.__ModuleLoader__.load({
 							onChange: (event) => {
 								controller.updateTask(task.id, { reuseSession: event.target.checked });
 							}
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t$6("exec.reuseSession") })]
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t$5("exec.reuseSession") })]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 						className: board_module_css_default.detailText,
-						children: t$6("exec.reuseSessionHint")
+						children: t$5("exec.reuseSessionHint")
 					})
 				]
 			});
@@ -7900,7 +7900,7 @@ window.__ModuleLoader__.load({
 				const trimmed = value.trim();
 				setCron(trimmed);
 				if (trimmed === "" || !isValidCron(trimmed)) {
-					setError(t$6("detail.schedule.invalid"));
+					setError(t$5("detail.schedule.invalid"));
 					return;
 				}
 				setError(void 0);
@@ -7910,7 +7910,7 @@ window.__ModuleLoader__.load({
 			const toggleEnabled = (next) => {
 				const trimmed = cron.trim();
 				if (next && (trimmed === "" || !isValidCron(trimmed))) {
-					setError(t$6("detail.schedule.invalid"));
+					setError(t$5("detail.schedule.invalid"));
 					return;
 				}
 				setError(void 0);
@@ -7925,12 +7925,12 @@ window.__ModuleLoader__.load({
 				setError(void 0);
 				controller.setSchedule(task.id, { cron: preset });
 			};
-			const nextLabel = !enabled || nextRunAt === void 0 ? t$6("detail.schedule.notScheduled") : nextRunAt <= Date.now() ? t$6("detail.schedule.dueSoon") : formatHostTimestamp(nextRunAt, timeZone);
+			const nextLabel = !enabled || nextRunAt === void 0 ? t$5("detail.schedule.notScheduled") : nextRunAt <= Date.now() ? t$5("detail.schedule.dueSoon") : formatHostTimestamp(nextRunAt, timeZone);
 			const lastLabel = lastTriggeredAt === void 0 ? "—" : formatHostTimestamp(lastTriggeredAt, timeZone);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 				className: board_module_css_default.detailSection,
 				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$6("detail.schedule") }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$5("detail.schedule") }),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
 						className: board_module_css_default.scheduleToggle,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
@@ -7940,7 +7940,7 @@ window.__ModuleLoader__.load({
 							onChange: (event) => {
 								toggleEnabled(event.target.checked);
 							}
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t$6("detail.schedule.enable") })]
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t$5("detail.schedule.enable") })]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: board_module_css_default.scheduleRow,
@@ -7950,7 +7950,7 @@ window.__ModuleLoader__.load({
 							disabled: pending,
 							placeholder: "0 9 * * *",
 							spellCheck: false,
-							"aria-label": t$6("detail.schedule.cron"),
+							"aria-label": t$5("detail.schedule.cron"),
 							onChange: (event) => {
 								setCron(event.target.value);
 								setError(void 0);
@@ -7965,16 +7965,16 @@ window.__ModuleLoader__.load({
 							className: board_module_css_default.schedulePreset,
 							value: "",
 							disabled: pending,
-							"aria-label": t$6("detail.schedule.presets"),
+							"aria-label": t$5("detail.schedule.presets"),
 							onChange: (event) => {
 								applyPreset(event.target.value);
 							},
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("option", {
 								value: "",
-								children: [t$6("detail.schedule.presets"), "…"]
+								children: [t$5("detail.schedule.presets"), "…"]
 							}), SCHEDULE_PRESETS.map((preset) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 								value: preset.cron,
-								children: t$6(preset.label)
+								children: t$5(preset.label)
 							}, preset.cron))]
 						})]
 					}),
@@ -7985,11 +7985,11 @@ window.__ModuleLoader__.load({
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
 						className: board_module_css_default.scheduleMeta,
 						children: [
-							t$6("detail.schedule.nextRun"),
+							t$5("detail.schedule.nextRun"),
 							" ",
 							nextLabel,
 							" · ",
-							t$6("detail.schedule.lastTriggered"),
+							t$5("detail.schedule.lastTriggered"),
 							" ",
 							lastLabel
 						]
@@ -8029,7 +8029,7 @@ window.__ModuleLoader__.load({
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: board_module_css_default.detail,
 						role: "dialog",
-						"aria-label": t$6("detail.title"),
+						"aria-label": t$5("detail.title"),
 						children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
 								className: board_module_css_default.detailHeader,
@@ -8041,12 +8041,12 @@ window.__ModuleLoader__.load({
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 										className: board_module_css_default.statusBadge,
 										"data-status": archived ? "archived" : current.status,
-										children: archived ? t$6("board.archive") : t$6(STATUS_KEY[current.status])
+										children: archived ? t$5("board.archive") : t$5(STATUS_KEY[current.status])
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
 										className: board_module_css_default.iconButton,
-										"aria-label": t$6("detail.close"),
+										"aria-label": t$5("detail.close"),
 										onClick: () => {
 											controller.closeTask();
 										},
@@ -8060,7 +8060,7 @@ window.__ModuleLoader__.load({
 									transportError !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 										className: board_module_css_default.formError,
 										children: [
-											t$6("board.hostError", { error: transportError }),
+											t$5("board.hostError", { error: transportError }),
 											" ",
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 												type: "button",
@@ -8068,13 +8068,13 @@ window.__ModuleLoader__.load({
 												onClick: () => {
 													controller.retryHostSync();
 												},
-												children: t$6("board.retryHost")
+												children: t$5("board.retryHost")
 											})
 										]
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 										className: board_module_css_default.detailSection,
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$6("detail.description") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$5("detail.description") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 											className: board_module_css_default.detailText,
 											children: current.description !== "" ? current.description : "—"
 										})]
@@ -8082,7 +8082,7 @@ window.__ModuleLoader__.load({
 									current.tags !== void 0 && current.tags.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 										className: board_module_css_default.detailSection,
 										"data-dsh-part": "tags",
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$6("new.tags") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$5("new.tags") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 											className: board_module_css_default.cardTags,
 											children: current.tags.map((tag) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 												className: board_module_css_default.cardTag,
@@ -8098,14 +8098,14 @@ window.__ModuleLoader__.load({
 										className: board_module_css_default.detailSection,
 										"data-dsh-part": "freeze",
 										children: [
-											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$6("detail.freeze") }),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$5("detail.freeze") }),
 											current.freeze.redacted === true && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 												className: board_module_css_default.formError,
-												children: t$6("detail.freeze.redacted")
+												children: t$5("detail.freeze.redacted")
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 												className: board_module_css_default.detailText,
-												children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t$6("detail.freeze.goal") })
+												children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t$5("detail.freeze.goal") })
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
 												className: board_module_css_default.promptBlock,
@@ -8113,7 +8113,7 @@ window.__ModuleLoader__.load({
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 												className: board_module_css_default.detailText,
-												children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t$6("detail.freeze.progress") })
+												children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t$5("detail.freeze.progress") })
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
 												className: board_module_css_default.promptBlock,
@@ -8121,7 +8121,7 @@ window.__ModuleLoader__.load({
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 												className: board_module_css_default.detailText,
-												children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t$6("detail.freeze.next") })
+												children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t$5("detail.freeze.next") })
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
 												className: board_module_css_default.promptBlock,
@@ -8129,11 +8129,11 @@ window.__ModuleLoader__.load({
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 												className: board_module_css_default.detailMeta,
-												children: t$6("detail.freeze.frozenAt", { time: formatHostTimestamp(current.freeze.frozenAt, timeZone) })
+												children: t$5("detail.freeze.frozenAt", { time: formatHostTimestamp(current.freeze.frozenAt, timeZone) })
 											}),
 											current.freeze.frozenBy !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 												className: board_module_css_default.detailMeta,
-												children: t$6("detail.freeze.frozenBy", { session: current.freeze.frozenBy })
+												children: t$5("detail.freeze.frozenBy", { session: current.freeze.frozenBy })
 											})
 										]
 									}),
@@ -8141,26 +8141,26 @@ window.__ModuleLoader__.load({
 										className: board_module_css_default.detailSection,
 										"data-dsh-part": "handover",
 										children: [
-											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$6("detail.handover") }),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$5("detail.handover") }),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
 												className: board_module_css_default.detailText,
 												children: [
-													t$6("new.workspace"),
+													t$5("new.workspace"),
 													": ",
-													current.handover.workspaceId ?? t$6("exec.workspace.recent"),
+													current.handover.workspaceId ?? t$5("exec.workspace.recent"),
 													" · ",
-													t$6("new.mode"),
+													t$5("new.mode"),
 													": ",
-													current.handover.mode ?? t$6("exec.mode.default"),
+													current.handover.mode ?? t$5("exec.mode.default"),
 													" · ",
-													t$6("new.permission"),
+													t$5("new.permission"),
 													": ",
-													current.handover.permission === void 0 ? t$6("exec.permission.default") : t$6(`exec.permission.${current.handover.permission}`)
+													current.handover.permission === void 0 ? t$5("exec.permission.default") : t$5(`exec.permission.${current.handover.permission}`)
 												]
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 												className: board_module_css_default.detailText,
-												children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t$6("detail.handover.references") })
+												children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t$5("detail.handover.references") })
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
 												className: board_module_css_default.executionList,
@@ -8171,7 +8171,7 @@ window.__ModuleLoader__.load({
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 												className: board_module_css_default.detailMeta,
-												children: t$6("detail.handover.bundledAt", { time: formatHostTimestamp(current.handover.bundledAt, timeZone) })
+												children: t$5("detail.handover.bundledAt", { time: formatHostTimestamp(current.handover.bundledAt, timeZone) })
 											})
 										]
 									}),
@@ -8180,7 +8180,7 @@ window.__ModuleLoader__.load({
 										"data-dsh-part": "permission-gate",
 										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 											className: board_module_css_default.formError,
-											children: t$6("detail.permissionPending", { permission: t$6(`exec.permission.${current.handover?.permission ?? current.permission}`) })
+											children: t$5("detail.permissionPending", { permission: t$5(`exec.permission.${current.handover?.permission ?? current.permission}`) })
 										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 											type: "button",
 											className: board_module_css_default.primaryButton,
@@ -8188,16 +8188,16 @@ window.__ModuleLoader__.load({
 											onClick: () => {
 												controller.confirmPermission(current.id);
 											},
-											children: t$6("detail.permissionConfirm")
+											children: t$5("detail.permissionConfirm")
 										})]
 									}),
 									current.permissionConfirmedAt !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 										className: board_module_css_default.detailMeta,
-										children: t$6("detail.permissionConfirmed", { time: formatHostTimestamp(current.permissionConfirmedAt, timeZone) })
+										children: t$5("detail.permissionConfirmed", { time: formatHostTimestamp(current.permissionConfirmedAt, timeZone) })
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 										className: board_module_css_default.detailSection,
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$6("detail.prompt") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$5("detail.prompt") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
 											className: board_module_css_default.promptBlock,
 											children: current.prompt !== "" ? current.prompt : current.title
 										})]
@@ -8213,9 +8213,9 @@ window.__ModuleLoader__.load({
 									})] }),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 										className: board_module_css_default.detailSection,
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$6("detail.execution") }), current.executions.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$5("detail.execution") }), current.executions.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 											className: board_module_css_default.detailText,
-											children: t$6("detail.noExecution")
+											children: t$5("detail.noExecution")
 										}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
 											className: board_module_css_default.executionList,
 											children: [...current.executions].reverse().map((execution) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ExecutionRow, {
@@ -8229,7 +8229,7 @@ window.__ModuleLoader__.load({
 									}),
 									!archived && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 										className: board_module_css_default.detailSection,
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$6("board.status") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: t$5("board.status") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 											className: board_module_css_default.moveRow,
 											children: MANUAL_STATUSES.map((status) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 												type: "button",
@@ -8238,7 +8238,7 @@ window.__ModuleLoader__.load({
 												onClick: () => {
 													controller.moveTask(current.id, status);
 												},
-												children: t$6(`status.move.${status}`)
+												children: t$5(`status.move.${status}`)
 											}, status))
 										})]
 									})
@@ -8249,7 +8249,7 @@ window.__ModuleLoader__.load({
 								children: [
 									!archived && pending && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 										className: board_module_css_default.detailMeta,
-										children: [t$6("board.pending"), "…"]
+										children: [t$5("board.pending"), "…"]
 									}),
 									!archived && canEditTaskContent(current) && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
@@ -8258,7 +8258,7 @@ window.__ModuleLoader__.load({
 										onClick: () => {
 											setShowEdit(true);
 										},
-										children: t$6("detail.edit")
+										children: t$5("detail.edit")
 									}),
 									!archived && !canEditTaskContent(current) && current.status !== "running" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
@@ -8267,7 +8267,7 @@ window.__ModuleLoader__.load({
 										onClick: () => {
 											setShowEditTags(true);
 										},
-										children: t$6("detail.editTags")
+										children: t$5("detail.editTags")
 									}),
 									!archived && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
@@ -8276,8 +8276,8 @@ window.__ModuleLoader__.load({
 										onClick: () => {
 											setShowDuplicate(true);
 										},
-										title: canEditTaskContent(current) ? t$6("detail.duplicate") : t$6("detail.duplicateAndEdit"),
-										children: canEditTaskContent(current) ? t$6("detail.duplicate") : t$6("detail.duplicateAndEdit")
+										title: canEditTaskContent(current) ? t$5("detail.duplicate") : t$5("detail.duplicateAndEdit"),
+										children: canEditTaskContent(current) ? t$5("detail.duplicate") : t$5("detail.duplicateAndEdit")
 									}),
 									!archived && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
@@ -8288,7 +8288,7 @@ window.__ModuleLoader__.load({
 												if (controller.getSnapshot().transportError === void 0) controller.closeTask();
 											});
 										},
-										children: current.executions.length === 0 ? t$6("detail.run") : t$6("detail.rerun")
+										children: current.executions.length === 0 ? t$5("detail.run") : t$5("detail.rerun")
 									}),
 									archived ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
@@ -8297,7 +8297,7 @@ window.__ModuleLoader__.load({
 										onClick: () => {
 											controller.restoreTask(current.id);
 										},
-										children: t$6("detail.restore")
+										children: t$5("detail.restore")
 									}) : (current.status === "done" || current.status === "failed") && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
 										className: board_module_css_default.ghostButton,
@@ -8305,7 +8305,7 @@ window.__ModuleLoader__.load({
 										onClick: () => {
 											controller.archiveTask(current.id);
 										},
-										children: t$6("detail.archive")
+										children: t$5("detail.archive")
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
@@ -8314,15 +8314,15 @@ window.__ModuleLoader__.load({
 										onClick: () => {
 											setConfirmDelete(true);
 										},
-										children: t$6("detail.delete")
+										children: t$5("detail.delete")
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 										className: board_module_css_default.detailMeta,
 										children: [
-											t$6("board.created"),
+											t$5("board.created"),
 											" ",
-											formatTime$4(current.createdAt, timeZone),
-											archived && ` · ${t$6("detail.archivedAt", { time: formatTime$4(current.archivedAt, timeZone) })}`
+											formatTime$3(current.createdAt, timeZone),
+											archived && ` · ${t$5("detail.archivedAt", { time: formatTime$3(current.archivedAt, timeZone) })}`
 										]
 									})
 								]
@@ -8330,9 +8330,9 @@ window.__ModuleLoader__.load({
 						]
 					}),
 					confirmDelete && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ConfirmDialog, {
-						title: t$6("delete.title"),
-						message: t$6("delete.confirm", { name: current.title }),
-						confirmLabel: t$6("delete.ok"),
+						title: t$5("delete.title"),
+						message: t$5("delete.confirm", { name: current.title }),
+						confirmLabel: t$5("delete.ok"),
 						danger: true,
 						onCancel: () => {
 							setConfirmDelete(false);
@@ -8461,22 +8461,22 @@ window.__ModuleLoader__.load({
 								type: "button",
 								className: `${board_module_css_default.ghostButton} ${board_module_css_default.backButton}`,
 								"data-dsh-center-view-back": "",
-								"aria-label": t$6("board.close"),
+								"aria-label": t$5("board.close"),
 								onClick: () => {
 									controller.closeBoard();
 								},
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 									"aria-hidden": "true",
 									children: "‹"
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t$6("board.close") })]
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t$5("board.close") })]
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
 								className: board_module_css_default.boardTitle,
-								children: t$6("board.title")
+								children: t$5("board.title")
 							}),
 							snapshot.host !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								className: board_module_css_default.detailMeta,
-								children: t$6("board.hostMeta", {
+								children: t$5("board.hostMeta", {
 									revision: String(snapshot.host.revision),
 									timeZone: snapshot.host.scheduler.timeZone
 								})
@@ -8485,12 +8485,12 @@ window.__ModuleLoader__.load({
 								className: board_module_css_default.projectFilter,
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 									className: board_module_css_default.projectFilterLabel,
-									children: t$6("board.project")
+									children: t$5("board.project")
 								}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
 									className: board_module_css_default.select,
 									"data-dsh-part": "project-filter",
 									value: projectId,
-									"aria-label": t$6("board.project"),
+									"aria-label": t$5("board.project"),
 									onChange: (event) => {
 										const value = event.target.value;
 										if (value === "__dsh_new_project__") {
@@ -8503,7 +8503,7 @@ window.__ModuleLoader__.load({
 									children: [
 										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 											value: "",
-											children: t$6("board.projectAll")
+											children: t$5("board.projectAll")
 										}),
 										projects.map((project) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 											value: project.workspaceId,
@@ -8511,7 +8511,7 @@ window.__ModuleLoader__.load({
 										}, project.workspaceId)),
 										canCreateProject && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
 											value: "__dsh_new_project__",
-											children: t$6("board.projectNew")
+											children: t$5("board.projectNew")
 										})
 									]
 								})]
@@ -8519,12 +8519,12 @@ window.__ModuleLoader__.load({
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
 								className: board_module_css_default.search,
 								type: "search",
-								placeholder: t$6("board.search"),
+								placeholder: t$5("board.search"),
 								value: filter,
 								onChange: (event) => {
 									setFilter(event.target.value);
 								},
-								"aria-label": t$6("board.search")
+								"aria-label": t$5("board.search")
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
@@ -8532,7 +8532,7 @@ window.__ModuleLoader__.load({
 								onClick: () => {
 									controller.toggleArchiveView();
 								},
-								children: archiveView ? t$6("board.backToBoard") : t$6("board.archiveView", { count: String(snapshot.tasks.filter((task) => task.archivedAt !== void 0).length) })
+								children: archiveView ? t$5("board.backToBoard") : t$5("board.archiveView", { count: String(snapshot.tasks.filter((task) => task.archivedAt !== void 0).length) })
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
@@ -8540,7 +8540,7 @@ window.__ModuleLoader__.load({
 								onClick: () => {
 									setShowNew(true);
 								},
-								children: ["+ ", t$6("board.new")]
+								children: ["+ ", t$5("board.new")]
 							})
 						]
 					}),
@@ -8552,11 +8552,11 @@ window.__ModuleLoader__.load({
 								className: board_module_css_default.field,
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 									className: board_module_css_default.fieldLabel,
-									children: t$6("board.projectNewPath")
+									children: t$5("board.projectNewPath")
 								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
 									className: board_module_css_default.input,
 									value: newProjectPath,
-									placeholder: t$6("board.projectNewPathPlaceholder"),
+									placeholder: t$5("board.projectNewPathPlaceholder"),
 									spellCheck: false,
 									onChange: (event) => {
 										setNewProjectPath(event.target.value);
@@ -8566,7 +8566,7 @@ window.__ModuleLoader__.load({
 							}),
 							newProjectError !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 								className: board_module_css_default.formError,
-								children: t$6("board.projectCreateFailed", { error: newProjectError })
+								children: t$5("board.projectCreateFailed", { error: newProjectError })
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								className: board_module_css_default.projectDialogActions,
@@ -8577,7 +8577,7 @@ window.__ModuleLoader__.load({
 										setShowNewProject(false);
 										setNewProjectError(void 0);
 									},
-									children: t$6("new.cancel")
+									children: t$5("new.cancel")
 								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
 									className: board_module_css_default.primaryButton,
@@ -8585,7 +8585,7 @@ window.__ModuleLoader__.load({
 									onClick: () => {
 										submitNewProject();
 									},
-									children: t$6("board.projectCreate")
+									children: t$5("board.projectCreate")
 								})]
 							})
 						]
@@ -8596,7 +8596,7 @@ window.__ModuleLoader__.load({
 						children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								className: board_module_css_default.tagFilterLabel,
-								children: t$6("board.tagFilter")
+								children: t$5("board.tagFilter")
 							}),
 							knownTags.map((tag) => {
 								const active = tagFilter.includes(tag.name);
@@ -8620,14 +8620,14 @@ window.__ModuleLoader__.load({
 								onClick: () => {
 									setTagFilter([]);
 								},
-								children: t$6("board.tagFilterClear")
+								children: t$5("board.tagFilterClear")
 							})
 						]
 					}),
 					snapshot.transportError !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: board_module_css_default.formError,
 						children: [
-							t$6("board.hostError", { error: snapshot.transportError }),
+							t$5("board.hostError", { error: snapshot.transportError }),
 							" ",
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
@@ -8635,7 +8635,7 @@ window.__ModuleLoader__.load({
 								onClick: () => {
 									controller.retryHostSync();
 								},
-								children: t$6("board.retryHost")
+								children: t$5("board.retryHost")
 							})
 						]
 					}),
@@ -8649,7 +8649,7 @@ window.__ModuleLoader__.load({
 								className: board_module_css_default.columnHeader,
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
 									className: board_module_css_default.columnTitle,
-									children: t$6("board.archive")
+									children: t$5("board.archive")
 								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 									className: board_module_css_default.columnCount,
 									children: visible.length
@@ -8663,7 +8663,7 @@ window.__ModuleLoader__.load({
 									onOpen: openTask
 								}, task.id)), visible.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 									className: board_module_css_default.columnEmpty,
-									children: tagFilter.length > 0 ? t$6("board.tagEmpty") : t$6("archive.empty")
+									children: tagFilter.length > 0 ? t$5("board.tagEmpty") : t$5("archive.empty")
 								})]
 							})]
 						}) : COLUMNS.map((column) => {
@@ -8694,7 +8694,7 @@ window.__ModuleLoader__.load({
 										}),
 										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
 											className: board_module_css_default.columnTitle,
-											children: t$6(STATUS_KEY[column.status])
+											children: t$5(STATUS_KEY[column.status])
 										}),
 										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 											className: board_module_css_default.columnCount,
@@ -8710,7 +8710,7 @@ window.__ModuleLoader__.load({
 										onOpen: openTask
 									}, task.id)), tasks.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 										className: board_module_css_default.columnEmpty,
-										children: tagFilter.length > 0 ? t$6("board.tagEmpty") : t$6("board.empty")
+										children: tagFilter.length > 0 ? t$5("board.tagEmpty") : t$5("board.empty")
 									})]
 								})]
 							}, column.status);
@@ -8733,10 +8733,10 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region ../dsh-task-board/src/client/body-mutations.ts
 		/** Cross-bundle registry key; `Symbol.for` so every module copy agrees. */
-		const HUB_KEY$3 = Symbol.for("dsh-web.body-mutation-hub");
-		const INVALIDATION_ONLY$3 = Symbol.for("dsh-web.body-mutation-invalidation");
-		function needsRecords$3(subscribers) {
-			for (const listener of subscribers) if (!listener[INVALIDATION_ONLY$3]) return true;
+		const HUB_KEY$4 = Symbol.for("dsh-web.body-mutation-hub");
+		const INVALIDATION_ONLY$4 = Symbol.for("dsh-web.body-mutation-invalidation");
+		function needsRecords$4(subscribers) {
+			for (const listener of subscribers) if (!listener[INVALIDATION_ONLY$4]) return true;
 			return false;
 		}
 		/**
@@ -8744,12 +8744,12 @@ window.__ModuleLoader__.load({
 		* The marked wrapper also works with an older hub, which delivers records
 		* that it simply ignores until a page reload picks up the updated hub.
 		*/
-		function subscribeBodyInvalidations$3(subscriber) {
+		function subscribeBodyInvalidations$4(subscriber) {
 			const listener = () => {
 				subscriber();
 			};
-			listener[INVALIDATION_ONLY$3] = true;
-			return subscribeBodyMutations$3(listener);
+			listener[INVALIDATION_ONLY$4] = true;
+			return subscribeBodyMutations$4(listener);
 		}
 		/**
 		* Subscribe to body-level childList mutations.
@@ -8758,11 +8758,11 @@ window.__ModuleLoader__.load({
 		* @returns the disposer removing this subscriber (and the observer when it was
 		*   the last one).
 		*/
-		function subscribeBodyMutations$3(subscriber) {
+		function subscribeBodyMutations$4(subscriber) {
 			if (typeof globalThis === "undefined" || typeof document === "undefined") return () => {};
 			if (typeof MutationObserver !== "function") return () => {};
 			const registry = globalThis;
-			let hub = registry[HUB_KEY$3];
+			let hub = registry[HUB_KEY$4];
 			if (hub === void 0) {
 				const subscribers = /* @__PURE__ */ new Set();
 				const created = {
@@ -8790,14 +8790,14 @@ window.__ModuleLoader__.load({
 					else flush();
 				};
 				created.observer = new MutationObserver((records) => {
-					if (needsRecords$3(subscribers)) for (const record of records) created.pending.push(record);
+					if (needsRecords$4(subscribers)) for (const record of records) created.pending.push(record);
 					schedule();
 				});
 				created.observer.observe(document.body ?? document.documentElement, {
 					childList: true,
 					subtree: true
 				});
-				registry[HUB_KEY$3] = created;
+				registry[HUB_KEY$4] = created;
 				hub = created;
 			}
 			const active = hub;
@@ -8807,14 +8807,14 @@ window.__ModuleLoader__.load({
 				if (!subscribed) return;
 				subscribed = false;
 				active.subscribers.delete(subscriber);
-				if (!needsRecords$3(active.subscribers)) active.pending = [];
-				if (active.subscribers.size === 0 && registry[HUB_KEY$3] === active) {
+				if (!needsRecords$4(active.subscribers)) active.pending = [];
+				if (active.subscribers.size === 0 && registry[HUB_KEY$4] === active) {
 					active.observer.disconnect();
 					if (active.frame !== void 0 && typeof cancelAnimationFrame === "function") cancelAnimationFrame(active.frame);
 					active.frame = void 0;
 					active.pending = [];
 					active.scheduled = false;
-					delete registry[HUB_KEY$3];
+					delete registry[HUB_KEY$4];
 				}
 			};
 		}
@@ -8882,7 +8882,7 @@ window.__ModuleLoader__.load({
 				root = (0, react_dom_client.createRoot)(container);
 				options.render(root);
 			};
-			const unsubscribeBody = subscribeBodyInvalidations$3(() => {
+			const unsubscribeBody = subscribeBodyInvalidations$4(() => {
 				ensure();
 			});
 			const applyActive = () => {
@@ -9051,7 +9051,7 @@ window.__ModuleLoader__.load({
 					subtree: true
 				});
 			};
-			const unsubscribeBody = subscribeBodyInvalidations$3(() => {
+			const unsubscribeBody = subscribeBodyInvalidations$4(() => {
 				tryPlace();
 			});
 			const rootObserver = new MutationObserver(() => {
@@ -9101,7 +9101,7 @@ window.__ModuleLoader__.load({
 				plugin: "task-board",
 				icon: ICON$2,
 				css: board_module_css_default,
-				label: () => t$6("entry.label"),
+				label: () => t$5("entry.label"),
 				refresh: locale === void 0 ? void 0 : { subscribe: (listener) => locale.subscribe(listener) },
 				onToggle: () => {
 					controller.toggleBoard();
@@ -9116,16 +9116,16 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-task-board/src/client/settings-card.module.css.mjs
-		const css$19 = ".Jh0q7G_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}.Jh0q7G_card:hover{border-color:var(--dsw-alias-label-dimmed)}.Jh0q7G_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.Jh0q7G_header{appearance:none;box-sizing:border-box;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.Jh0q7G_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.Jh0q7G_headerStatic{box-sizing:border-box;border-radius:12px;align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}.Jh0q7G_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.Jh0q7G_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.Jh0q7G_description{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.5}.Jh0q7G_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.Jh0q7G_chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.Jh0q7G_chevronOpen{transform:rotate(180deg)}.Jh0q7G_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.Jh0q7G_readOnly{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:12px;line-height:1.5}.Jh0q7G_notExposed{color:var(--dsw-alias-state-warn-primary);margin:12px 0 0;font-size:12px;line-height:1.5}.Jh0q7G_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.Jh0q7G_failed{min-width:0;color:var(--dsw-alias-state-error-primary,#b42318);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:12px;line-height:1.5;overflow:hidden}.Jh0q7G_discard,.Jh0q7G_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.Jh0q7G_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.Jh0q7G_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.Jh0q7G_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.Jh0q7G_discard:disabled,.Jh0q7G_save:disabled{opacity:.4;cursor:default}.Jh0q7G_discard:focus-visible,.Jh0q7G_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.Jh0q7G_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.Jh0q7G_field+.Jh0q7G_field{border-top:1px solid var(--dsw-alias-border-l2)}.Jh0q7G_head{align-items:center;gap:8px;display:flex}.Jh0q7G_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.Jh0q7G_badges{align-items:center;gap:8px;display:inline-flex}.Jh0q7G_badge{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.Jh0q7G_reset{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5}.Jh0q7G_reset:hover:not(:disabled){color:var(--dsw-alias-label-primary)}.Jh0q7G_reset:disabled{cursor:default}.Jh0q7G_reset:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}.Jh0q7G_input,.Jh0q7G_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.Jh0q7G_input:focus-visible,.Jh0q7G_select:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.Jh0q7G_input:disabled,.Jh0q7G_select:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.Jh0q7G_inputInvalid{border:1px solid var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.Jh0q7G_inputInvalid:focus-visible{outline:2px solid var(--dsw-alias-state-error-primary,#b42318);outline-offset:1px;border-color:var(--dsw-alias-state-error-primary,#b42318)}.Jh0q7G_selectWrap{position:relative}.Jh0q7G_selectButton{appearance:none;text-align:left;cursor:pointer;justify-content:space-between;align-items:center;gap:8px;width:100%;display:flex}.Jh0q7G_selectLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.Jh0q7G_selectChevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.Jh0q7G_selectChevronOpen{transform:rotate(180deg)}.Jh0q7G_selectPopup{z-index:40;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-height:240px;box-shadow:0 8px 24px var(--dsw-alias-bg-mask-2);opacity:0;border-radius:8px;flex-direction:column;padding:4px;transition:opacity .1s,transform .1s;display:flex;position:absolute;top:calc(100% + 4px);left:0;right:0;overflow-y:auto;transform:translateY(-4px)}.Jh0q7G_selectPopupOpen{opacity:1;transform:none}.Jh0q7G_selectPopupClose{opacity:0;pointer-events:none;transform:translateY(-4px)}.Jh0q7G_selectOption{color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;text-overflow:ellipsis;border-radius:6px;flex-shrink:0;padding:6px 10px;font-size:13px;line-height:1.5;overflow:hidden}.Jh0q7G_selectOption:hover,.Jh0q7G_selectOptionActive{background:var(--dsw-alias-interactive-bg-hover)}.Jh0q7G_selectOptionSelected{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 10%, transparent);font-weight:500}.Jh0q7G_invalid{color:var(--dsw-alias-state-error-primary,#b42318);margin:0;font-size:12px;line-height:1.5}.Jh0q7G_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){.Jh0q7G_card,.Jh0q7G_header,.Jh0q7G_chevron,.Jh0q7G_chevronOpen,.Jh0q7G_discard,.Jh0q7G_save,.Jh0q7G_selectChevron,.Jh0q7G_selectChevronOpen,.Jh0q7G_selectPopup{transition:none}}";
-		const tagId$19 = "@linxin666/dsh-web-all/packages/dsh-task-board/src/client/settings-card.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$19) + "]") === null) {
+		const css$14 = ".Jh0q7G_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}.Jh0q7G_card:hover{border-color:var(--dsw-alias-label-dimmed)}.Jh0q7G_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.Jh0q7G_header{appearance:none;box-sizing:border-box;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.Jh0q7G_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.Jh0q7G_headerStatic{box-sizing:border-box;border-radius:12px;align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}.Jh0q7G_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.Jh0q7G_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.Jh0q7G_description{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.5}.Jh0q7G_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.Jh0q7G_chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.Jh0q7G_chevronOpen{transform:rotate(180deg)}.Jh0q7G_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.Jh0q7G_readOnly{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:12px;line-height:1.5}.Jh0q7G_notExposed{color:var(--dsw-alias-state-warn-primary);margin:12px 0 0;font-size:12px;line-height:1.5}.Jh0q7G_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.Jh0q7G_failed{min-width:0;color:var(--dsw-alias-state-error-primary,#b42318);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:12px;line-height:1.5;overflow:hidden}.Jh0q7G_discard,.Jh0q7G_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.Jh0q7G_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.Jh0q7G_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.Jh0q7G_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.Jh0q7G_discard:disabled,.Jh0q7G_save:disabled{opacity:.4;cursor:default}.Jh0q7G_discard:focus-visible,.Jh0q7G_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.Jh0q7G_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.Jh0q7G_field+.Jh0q7G_field{border-top:1px solid var(--dsw-alias-border-l2)}.Jh0q7G_head{align-items:center;gap:8px;display:flex}.Jh0q7G_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.Jh0q7G_badges{align-items:center;gap:8px;display:inline-flex}.Jh0q7G_badge{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.Jh0q7G_reset{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5}.Jh0q7G_reset:hover:not(:disabled){color:var(--dsw-alias-label-primary)}.Jh0q7G_reset:disabled{cursor:default}.Jh0q7G_reset:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}.Jh0q7G_input,.Jh0q7G_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.Jh0q7G_input:focus-visible,.Jh0q7G_select:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.Jh0q7G_input:disabled,.Jh0q7G_select:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.Jh0q7G_inputInvalid{border:1px solid var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.Jh0q7G_inputInvalid:focus-visible{outline:2px solid var(--dsw-alias-state-error-primary,#b42318);outline-offset:1px;border-color:var(--dsw-alias-state-error-primary,#b42318)}.Jh0q7G_selectWrap{position:relative}.Jh0q7G_selectButton{appearance:none;text-align:left;cursor:pointer;justify-content:space-between;align-items:center;gap:8px;width:100%;display:flex}.Jh0q7G_selectLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.Jh0q7G_selectChevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.Jh0q7G_selectChevronOpen{transform:rotate(180deg)}.Jh0q7G_selectPopup{z-index:40;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-height:240px;box-shadow:0 8px 24px var(--dsw-alias-bg-mask-2);opacity:0;border-radius:8px;flex-direction:column;padding:4px;transition:opacity .1s,transform .1s;display:flex;position:absolute;top:calc(100% + 4px);left:0;right:0;overflow-y:auto;transform:translateY(-4px)}.Jh0q7G_selectPopupOpen{opacity:1;transform:none}.Jh0q7G_selectPopupClose{opacity:0;pointer-events:none;transform:translateY(-4px)}.Jh0q7G_selectOption{color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;text-overflow:ellipsis;border-radius:6px;flex-shrink:0;padding:6px 10px;font-size:13px;line-height:1.5;overflow:hidden}.Jh0q7G_selectOption:hover,.Jh0q7G_selectOptionActive{background:var(--dsw-alias-interactive-bg-hover)}.Jh0q7G_selectOptionSelected{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 10%, transparent);font-weight:500}.Jh0q7G_invalid{color:var(--dsw-alias-state-error-primary,#b42318);margin:0;font-size:12px;line-height:1.5}.Jh0q7G_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){.Jh0q7G_card,.Jh0q7G_header,.Jh0q7G_chevron,.Jh0q7G_chevronOpen,.Jh0q7G_discard,.Jh0q7G_save,.Jh0q7G_selectChevron,.Jh0q7G_selectChevronOpen,.Jh0q7G_selectPopup{transition:none}}";
+		const tagId$14 = "@linxin666/dsh-web-all/packages/dsh-task-board/src/client/settings-card.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$14) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$19;
-			tag.textContent = css$19;
+			tag.dataset.pluginCss = tagId$14;
+			tag.textContent = css$14;
 			document.head.appendChild(tag);
 		}
-		var settings_card_module_css_default$5 = {
+		var settings_card_module_css_default$3 = {
 			"badge": "Jh0q7G_badge",
 			"badges": "Jh0q7G_badges",
 			"body": "Jh0q7G_body",
@@ -9181,7 +9181,7 @@ window.__ModuleLoader__.load({
 		* @param props - the plugin's copy keys, its form state, and its controls.
 		* @returns the card, or nothing while the namespace is still loading.
 		*/
-		function PluginSettingsCard$5(props) {
+		function PluginSettingsCard$3(props) {
 			const [open, setOpen] = (0, react.useState)(props.defaultOpen ?? true);
 			const { state, alwaysOpen } = props;
 			if (!state.available) return null;
@@ -9189,28 +9189,28 @@ window.__ModuleLoader__.load({
 			const description = props.t(props.descriptionKey);
 			const blocked = !state.dirty || state.invalid || state.saving;
 			const expanded = alwaysOpen === true || open;
-			const cardClass = expanded ? `${settings_card_module_css_default$5.cardOpen} ${settings_card_module_css_default$5.card}` : settings_card_module_css_default$5.card;
+			const cardClass = expanded ? `${settings_card_module_css_default$3.cardOpen} ${settings_card_module_css_default$3.card}` : settings_card_module_css_default$3.card;
 			const header = alwaysOpen === true ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$5.headerStatic,
+				className: settings_card_module_css_default$3.headerStatic,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-					className: settings_card_module_css_default$5.headText,
+					className: settings_card_module_css_default$3.headText,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$5.name,
+						className: settings_card_module_css_default$3.name,
 						title,
 						children: title
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$5.description,
+						className: settings_card_module_css_default$3.description,
 						title: description,
 						children: props.descriptionNode ?? description
 					})]
 				}), state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-					className: settings_card_module_css_default$5.pending,
+					className: settings_card_module_css_default$3.pending,
 					title: props.t("settings.unsaved"),
 					children: props.t("settings.unsaved")
 				}) : null]
 			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 				type: "button",
-				className: settings_card_module_css_default$5.header,
+				className: settings_card_module_css_default$3.header,
 				"aria-expanded": open,
 				"aria-label": `${props.t(open ? "settings.collapse" : "settings.expand")}: ${title}`,
 				onClick: () => {
@@ -9218,19 +9218,19 @@ window.__ModuleLoader__.load({
 				},
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-						className: settings_card_module_css_default$5.headText,
+						className: settings_card_module_css_default$3.headText,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default$5.name,
+							className: settings_card_module_css_default$3.name,
 							title,
 							children: title
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default$5.description,
+							className: settings_card_module_css_default$3.description,
 							title: description,
 							children: props.descriptionNode ?? description
 						})]
 					}),
 					state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$5.pending,
+						className: settings_card_module_css_default$3.pending,
 						title: props.t("settings.unsaved"),
 						children: props.t("settings.unsaved")
 					}) : null,
@@ -9240,7 +9240,7 @@ window.__ModuleLoader__.load({
 						viewBox: "0 0 14 14",
 						fill: "none",
 						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default$5.chevron} ${settings_card_module_css_default$5.chevronOpen}` : settings_card_module_css_default$5.chevron,
+						className: open ? `${settings_card_module_css_default$3.chevron} ${settings_card_module_css_default$3.chevronOpen}` : settings_card_module_css_default$3.chevron,
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
 							fill: "currentColor"
@@ -9253,9 +9253,9 @@ window.__ModuleLoader__.load({
 				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 					className: cardClass,
 					children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: settings_card_module_css_default$5.body,
+						className: settings_card_module_css_default$3.body,
 						children: showNotice ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default$5.notExposed,
+							className: settings_card_module_css_default$3.notExposed,
 							role: "status",
 							children: props.t("settings.notExposed")
 						}) : null
@@ -9265,32 +9265,32 @@ window.__ModuleLoader__.load({
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 				className: cardClass,
 				children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: settings_card_module_css_default$5.body,
+					className: settings_card_module_css_default$3.body,
 					children: [
 						!state.writable ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default$5.readOnly,
+							className: settings_card_module_css_default$3.readOnly,
 							role: "status",
 							children: props.t("settings.readOnly")
 						}) : null,
 						props.children,
 						props.hideFooter === true ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: settings_card_module_css_default$5.footer,
+							className: settings_card_module_css_default$3.footer,
 							children: [
 								state.failed ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-									className: settings_card_module_css_default$5.failed,
+									className: settings_card_module_css_default$3.failed,
 									role: "status",
 									children: [props.t("settings.saveFailed"), state.failedReason ? " - " + state.failedReason : ""]
 								}) : null,
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
-									className: settings_card_module_css_default$5.discard,
+									className: settings_card_module_css_default$3.discard,
 									disabled: !state.dirty || state.saving,
 									onClick: props.onDiscard,
 									children: props.t("settings.discard")
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
-									className: settings_card_module_css_default$5.save,
+									className: settings_card_module_css_default$3.save,
 									disabled: blocked,
 									onClick: props.onSave,
 									children: props.t(!state.saving ? "settings.save" : "settings.saving")
@@ -9301,11 +9301,11 @@ window.__ModuleLoader__.load({
 				}) : null]
 			});
 		}
-		const NON_SKIN_BODY_MARKERS$5 = /* @__PURE__ */ new Set(["dshSkinCenter", "dshSidebarCollapsed"]);
-		function isSkinActive$5() {
-			return Object.keys(document.body.dataset).some((key) => key.startsWith("dsh") && !NON_SKIN_BODY_MARKERS$5.has(key));
+		const NON_SKIN_BODY_MARKERS$3 = /* @__PURE__ */ new Set(["dshSkinCenter", "dshSidebarCollapsed"]);
+		function isSkinActive$3() {
+			return Object.keys(document.body.dataset).some((key) => key.startsWith("dsh") && !NON_SKIN_BODY_MARKERS$3.has(key));
 		}
-		const SELECT_CLOSE_MS$5 = 100;
+		const SELECT_CLOSE_MS$3 = 100;
 		/**
 		* The shared dual-mode select control. While an appearance skin is active it
 		* renders the legacy native `<select>` untouched, so element-level skin
@@ -9315,7 +9315,7 @@ window.__ModuleLoader__.load({
 		* editors (the side-card prefs) bind it directly through onEdit.
 		* 双模式下拉框：皮肤激活时用原生 select，默认外观用自绘动画弹层。
 		*/
-		function SelectField$5(props) {
+		function SelectField$3(props) {
 			const { id, options, value } = props;
 			const [open, setOpen] = (0, react.useState)(false);
 			const [closing, setClosing] = (0, react.useState)(false);
@@ -9334,7 +9334,7 @@ window.__ModuleLoader__.load({
 				closeTimer.current = setTimeout(() => {
 					setClosing(false);
 					setOpen(false);
-				}, SELECT_CLOSE_MS$5);
+				}, SELECT_CLOSE_MS$3);
 			}, []);
 			const openPopup = () => {
 				if (closeTimer.current !== void 0) clearTimeout(closeTimer.current);
@@ -9408,9 +9408,9 @@ window.__ModuleLoader__.load({
 				open,
 				close
 			]);
-			if (isSkinActive$5()) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
+			if (isSkinActive$3()) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
 				id,
-				className: settings_card_module_css_default$5.select,
+				className: settings_card_module_css_default$3.select,
 				value,
 				disabled: props.disabled,
 				onChange: (event) => {
@@ -9422,14 +9422,14 @@ window.__ModuleLoader__.load({
 				}, option.value))
 			});
 			const label = options.find((option) => option.value === value)?.label ?? "";
-			const popupClass = closing ? `${settings_card_module_css_default$5.selectPopup} ${settings_card_module_css_default$5.selectPopupClose}` : phase === "open" ? `${settings_card_module_css_default$5.selectPopup} ${settings_card_module_css_default$5.selectPopupOpen}` : settings_card_module_css_default$5.selectPopup;
+			const popupClass = closing ? `${settings_card_module_css_default$3.selectPopup} ${settings_card_module_css_default$3.selectPopupClose}` : phase === "open" ? `${settings_card_module_css_default$3.selectPopup} ${settings_card_module_css_default$3.selectPopupOpen}` : settings_card_module_css_default$3.selectPopup;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$5.selectWrap,
+				className: settings_card_module_css_default$3.selectWrap,
 				ref: wrapRef,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 					type: "button",
 					id,
-					className: `${settings_card_module_css_default$5.select} ${settings_card_module_css_default$5.selectButton}`,
+					className: `${settings_card_module_css_default$3.select} ${settings_card_module_css_default$3.selectButton}`,
 					disabled: props.disabled,
 					"aria-haspopup": "listbox",
 					"aria-expanded": open,
@@ -9438,7 +9438,7 @@ window.__ModuleLoader__.load({
 					onClick: onTriggerClick,
 					onKeyDown,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$5.selectLabel,
+						className: settings_card_module_css_default$3.selectLabel,
 						children: label
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
 						width: "14",
@@ -9446,7 +9446,7 @@ window.__ModuleLoader__.load({
 						viewBox: "0 0 14 14",
 						fill: "none",
 						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default$5.selectChevron} ${settings_card_module_css_default$5.selectChevronOpen}` : settings_card_module_css_default$5.selectChevron,
+						className: open ? `${settings_card_module_css_default$3.selectChevron} ${settings_card_module_css_default$3.selectChevronOpen}` : settings_card_module_css_default$3.selectChevron,
 						"aria-hidden": "true",
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
@@ -9461,7 +9461,7 @@ window.__ModuleLoader__.load({
 						id: `${id}-o${index}`,
 						role: "option",
 						"aria-selected": option.value === value,
-						className: `${settings_card_module_css_default$5.selectOption}${option.value === value ? ` ${settings_card_module_css_default$5.selectOptionSelected}` : ""}${index === activeIndex && !closing ? ` ${settings_card_module_css_default$5.selectOptionActive}` : ""}`,
+						className: `${settings_card_module_css_default$3.selectOption}${option.value === value ? ` ${settings_card_module_css_default$3.selectOptionSelected}` : ""}${index === activeIndex && !closing ? ` ${settings_card_module_css_default$3.selectOptionActive}` : ""}`,
 						onClick: () => {
 							commit(index);
 						},
@@ -9471,31 +9471,31 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** A staged boolean field: 继承 / 开 / 关. */
-		function BooleanField$5(props) {
+		function BooleanField$3(props) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$5.field,
+				className: settings_card_module_css_default$3.field,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$5.head,
+						className: settings_card_module_css_default$3.head,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$5.label,
+							className: settings_card_module_css_default$3.label,
 							htmlFor: props.id,
 							children: props.label
 						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default$5.badges,
+							className: settings_card_module_css_default$3.badges,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default$5.badge,
+								className: settings_card_module_css_default$3.badge,
 								children: props.overriddenLabel
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: settings_card_module_css_default$5.reset,
+								className: settings_card_module_css_default$3.reset,
 								disabled: props.disabled,
 								onClick: props.onReset,
 								children: props.resetLabel
 							})]
 						}) : null]
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$5, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$3, {
 						id: props.id,
 						options: [
 							{
@@ -9517,7 +9517,7 @@ window.__ModuleLoader__.load({
 						onEdit: props.onEdit
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: settings_card_module_css_default$5.hint,
+						className: settings_card_module_css_default$3.hint,
 						children: props.hint
 					})
 				]
@@ -9526,7 +9526,7 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region ../dsh-task-board/src/client/settings-form.ts
 		/** A boolean field, edited through true/false draft text. */
-		function booleanField$5(field) {
+		function booleanField$3(field) {
 			return {
 				field,
 				format: (value) => typeof value === "boolean" ? String(value) : "",
@@ -9552,7 +9552,7 @@ window.__ModuleLoader__.load({
 		* read back from the section rather than predicted here. A save that did not
 		* land keeps its drafts, so the user can correct them instead of retyping.
 		*/
-		var CardForm$5 = class {
+		var CardForm$3 = class {
 			scope;
 			specs;
 			staged = /* @__PURE__ */ new Map();
@@ -9801,10 +9801,10 @@ window.__ModuleLoader__.load({
 			store;
 			/** @param scope - the bound configuration form for the `task-board` namespace. */
 			constructor(scope) {
-				this.form = new CardForm$5(scope, [
-					booleanField$5("enabled"),
-					booleanField$5("announceToAgent"),
-					booleanField$5("preventIdleSleep")
+				this.form = new CardForm$3(scope, [
+					booleanField$3("enabled"),
+					booleanField$3("announceToAgent"),
+					booleanField$3("preventIdleSleep")
 				]);
 				this.store = this.form.bind(() => this.projection());
 			}
@@ -9864,7 +9864,7 @@ window.__ModuleLoader__.load({
 				invalidLabel: t("settings.invalidNumber"),
 				disabled
 			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(PluginSettingsCard$5, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(PluginSettingsCard$3, {
 				t,
 				titleKey: "settings.title",
 				descriptionKey: "settings.description",
@@ -9875,7 +9875,7 @@ window.__ModuleLoader__.load({
 				onSave: props.save,
 				onDiscard: props.discard,
 				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$5, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$3, {
 						id: "settings-task-board-enabled",
 						label: t("settings.enabled"),
 						hint: t("settings.enabledHint"),
@@ -9891,7 +9891,7 @@ window.__ModuleLoader__.load({
 							props.resetField("enabled");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$5, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$3, {
 						id: "settings-task-board-announce",
 						label: t("settings.announceToAgent"),
 						hint: t("settings.announceToAgentHint"),
@@ -9907,7 +9907,7 @@ window.__ModuleLoader__.load({
 							props.resetField("announceToAgent");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$5, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$3, {
 						id: "settings-task-board-prevent-idle-sleep",
 						label: t("settings.preventIdleSleep"),
 						hint: t("settings.preventIdleSleepHint"),
@@ -9984,17 +9984,17 @@ window.__ModuleLoader__.load({
 			}
 			const hostError = readable && typeof parsed === "object" && parsed !== null && typeof parsed.error === "string" ? parsed.error : void 0;
 			if (response.ok) {
-				if (!readable) throw new HostApiError("unexpected", t$6("board.hostError.unexpected", { status: String(response.status) }), response.status);
+				if (!readable) throw new HostApiError("unexpected", t$5("board.hostError.unexpected", { status: String(response.status) }), response.status);
 				return parsed;
 			}
 			if (hostError !== void 0) {
-				if (hostError === "forbidden") throw new HostApiError("unauthorized", t$6("board.hostError.unauthorized"), response.status);
-				if (response.status === 503 || /lock/i.test(hostError)) throw new HostApiError("locked", t$6("board.hostError.locked", { detail: hostError }), response.status);
+				if (hostError === "forbidden") throw new HostApiError("unauthorized", t$5("board.hostError.unauthorized"), response.status);
+				if (response.status === 503 || /lock/i.test(hostError)) throw new HostApiError("locked", t$5("board.hostError.locked", { detail: hostError }), response.status);
 				throw new HostApiError("rejected", hostError, response.status);
 			}
-			if (response.status === 404) throw new HostApiError("not-mounted", t$6("board.hostError.notMounted"), 404);
-			if (response.status === 401 || response.status === 403) throw new HostApiError("unauthorized", t$6("board.hostError.unauthorized"), response.status);
-			throw new HostApiError("unexpected", t$6("board.hostError.unexpected", { status: String(response.status) }), response.status);
+			if (response.status === 404) throw new HostApiError("not-mounted", t$5("board.hostError.notMounted"), 404);
+			if (response.status === 401 || response.status === 403) throw new HostApiError("unauthorized", t$5("board.hostError.unauthorized"), response.status);
+			throw new HostApiError("unexpected", t$5("board.hostError.unexpected", { status: String(response.status) }), response.status);
 		}
 		var HttpTaskBoardHostTransport = class {
 			storage;
@@ -10055,8 +10055,8 @@ window.__ModuleLoader__.load({
 					}));
 				} catch (error) {
 					if (error instanceof HostApiError) throw error;
-					if (controller.signal.aborted) throw new HostApiError("timeout", t$6("board.hostError.timeout", { seconds: String(REQUEST_TIMEOUT_MS / 1e3) }));
-					throw new HostApiError("unreachable", t$6("board.hostError.unreachable"));
+					if (controller.signal.aborted) throw new HostApiError("timeout", t$5("board.hostError.timeout", { seconds: String(REQUEST_TIMEOUT_MS / 1e3) }));
+					throw new HostApiError("unreachable", t$5("board.hostError.unreachable"));
 				} finally {
 					globalThis.clearTimeout(timeout);
 				}
@@ -10076,7 +10076,7 @@ window.__ModuleLoader__.load({
 						...signal === void 0 ? {} : { signal }
 					});
 				} catch {
-					throw new HostApiError("unreachable", t$6("board.hostError.unreachable"));
+					throw new HostApiError("unreachable", t$5("board.hostError.unreachable"));
 				}
 				const text = await response.text();
 				let parsed;
@@ -10090,14 +10090,14 @@ window.__ModuleLoader__.load({
 				const record = readable && typeof parsed === "object" && parsed !== null ? parsed : void 0;
 				if (response.ok) {
 					if (record !== void 0 && isTaskParseDraft(record.draft)) return record.draft;
-					throw new HostApiError("unexpected", t$6("new.aiParseFailed", { error: t$6("board.hostError.unexpected", { status: String(response.status) }) }), response.status);
+					throw new HostApiError("unexpected", t$5("new.aiParseFailed", { error: t$5("board.hostError.unexpected", { status: String(response.status) }) }), response.status);
 				}
-				if (response.status === 404) throw new HostApiError("not-mounted", t$6("new.aiParseUnavailable"), 404);
-				if (response.status === 401 || response.status === 403) throw new HostApiError("unauthorized", t$6("board.hostError.unauthorized"), response.status);
+				if (response.status === 404) throw new HostApiError("not-mounted", t$5("new.aiParseUnavailable"), 404);
+				if (response.status === 401 || response.status === 403) throw new HostApiError("unauthorized", t$5("board.hostError.unauthorized"), response.status);
 				const code = typeof record?.code === "string" ? record.code : void 0;
-				if (code === "no-model") throw new HostApiError("rejected", t$6("new.aiParseNoModel"), response.status);
-				if (code === "timeout") throw new HostApiError("timeout", t$6("new.aiParseTimeout", { seconds: String(TASK_PARSE_TIMEOUT_SECONDS) }), response.status);
-				throw new HostApiError("rejected", t$6("new.aiParseFailed", { error: typeof record?.error === "string" && record.error !== "" ? record.error : String(response.status) }), response.status);
+				if (code === "no-model") throw new HostApiError("rejected", t$5("new.aiParseNoModel"), response.status);
+				if (code === "timeout") throw new HostApiError("timeout", t$5("new.aiParseTimeout", { seconds: String(TASK_PARSE_TIMEOUT_SECONDS) }), response.status);
+				throw new HostApiError("rejected", t$5("new.aiParseFailed", { error: typeof record?.error === "string" && record.error !== "" ? record.error : String(response.status) }), response.status);
 			}
 			subscribe(listener) {
 				const events = new EventSource(`${TASK_BOARD_API_PREFIX}/events`);
@@ -10129,11 +10129,11 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region ../dsh-task-board/src/client/telemetry.ts
-		const VISITOR_KEY$7 = "dsh-web-ui-telemetry-visitor";
-		const DAY_KEY_PREFIX$7 = "dsh-web-ui-telemetry-day:";
-		const ENDPOINT$7 = "https://dsh-market.com/api/telemetry/event";
+		const VISITOR_KEY$5 = "dsh-web-ui-telemetry-visitor";
+		const DAY_KEY_PREFIX$5 = "dsh-web-ui-telemetry-day:";
+		const ENDPOINT$5 = "https://dsh-market.com/api/telemetry/event";
 		/** The building package's version, when the bundle carries it. */
-		function bakedVersion$7() {
+		function bakedVersion$5() {
 			try {
 				return "0.3.24";
 			} catch {
@@ -10141,23 +10141,23 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/** Read or lazily create the anonymous visitor id; null when storage is unavailable. */
-		function visitorId$7() {
+		function visitorId$5() {
 			try {
-				const existing = localStorage.getItem(VISITOR_KEY$7);
+				const existing = localStorage.getItem(VISITOR_KEY$5);
 				if (existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing)) return existing;
 				const fresh = crypto.randomUUID().replaceAll("-", "");
-				localStorage.setItem(VISITOR_KEY$7, fresh);
+				localStorage.setItem(VISITOR_KEY$5, fresh);
 				return fresh;
 			} catch {
 				return null;
 			}
 		}
 		/** Drop stale per-day dedup keys so localStorage does not grow forever. */
-		function pruneDayKeys$7(today) {
+		function pruneDayKeys$5(today) {
 			try {
 				for (let index = localStorage.length - 1; index >= 0; index -= 1) {
 					const key = localStorage.key(index);
-					if (key !== null && key.startsWith(DAY_KEY_PREFIX$7) && key !== DAY_KEY_PREFIX$7 + today) localStorage.removeItem(key);
+					if (key !== null && key.startsWith(DAY_KEY_PREFIX$5) && key !== DAY_KEY_PREFIX$5 + today) localStorage.removeItem(key);
 				}
 			} catch {}
 		}
@@ -10166,18 +10166,18 @@ window.__ModuleLoader__.load({
 		* browser. Never throws and never blocks the caller. Items without an explicit
 		* version inherit the bundle's baked build version.
 		*/
-		function reportDailyHeartbeat$7(items) {
+		function reportDailyHeartbeat$5(items) {
 			try {
 				if (items.length === 0) return;
 				const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
 				if (navigator.webdriver) return;
-				if (localStorage.getItem(DAY_KEY_PREFIX$7 + today) !== null) return;
-				const visitor = visitorId$7();
+				if (localStorage.getItem(DAY_KEY_PREFIX$5 + today) !== null) return;
+				const visitor = visitorId$5();
 				if (visitor === null) return;
-				pruneDayKeys$7(today);
+				pruneDayKeys$5(today);
 				const payloadItems = items.map((item) => {
 					const out = { name: item.name };
-					const version = item.version ?? bakedVersion$7();
+					const version = item.version ?? bakedVersion$5();
 					if (version !== void 0) out.version = version;
 					if (item.channel !== void 0) out.channel = item.channel;
 					return out;
@@ -10187,13 +10187,13 @@ window.__ModuleLoader__.load({
 					visitor,
 					items: payloadItems
 				});
-				fetch(ENDPOINT$7, {
+				fetch(ENDPOINT$5, {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body,
 					keepalive: true
 				}).then((response) => {
-					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$7 + today, "1");
+					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$5 + today, "1");
 				}).catch(() => {});
 			} catch {}
 		}
@@ -10239,27 +10239,27 @@ window.__ModuleLoader__.load({
 		* `ctx`.
 		*/
 		/** The family list seat key. */
-		const FAMILY_PLUGIN_CARD_SEAT$4 = "web-ui.plugin.item";
+		const FAMILY_PLUGIN_CARD_SEAT$2 = "web-ui.plugin.item";
 		/** The official keyed plugin-card seat key (the alpha.2 bundle-configuration seat). */
-		const OFFICIAL_PLUGIN_CARD_SEAT$4 = "plugins.bundle.config";
+		const OFFICIAL_PLUGIN_CARD_SEAT$2 = "plugins.bundle.config";
 		/** The service dsh-web-settings publishes while it is loaded. */
-		const FAMILY_GROUP_SERVICE$4 = "webUiSettings";
+		const FAMILY_GROUP_SERVICE$2 = "webUiSettings";
 		/**
 		* Whether the family group (dsh-web-settings) is loaded in this page. The
 		* service is the group package's own contract, so the probe cannot be fooled
 		* by a harness release that starts declaring the official seat differently.
 		*/
-		function familyGroupLoaded$4(ctx) {
+		function familyGroupLoaded$2(ctx) {
 			const get = ctx.get;
 			if (typeof get !== "function") return false;
 			try {
-				return get.call(ctx, FAMILY_GROUP_SERVICE$4) !== void 0;
+				return get.call(ctx, FAMILY_GROUP_SERVICE$2) !== void 0;
 			} catch {
 				return false;
 			}
 		}
 		/** Report a refused registration instead of leaving the user with no card. */
-		function warnRefusedSeat$4(seat, error) {
+		function warnRefusedSeat$2(seat, error) {
 			try {
 				console.warn(`[dsh-web] plugin card registration into "${seat}" was refused; the card will not render`, error);
 			} catch {}
@@ -10271,7 +10271,7 @@ window.__ModuleLoader__.load({
 		* @param ctx - client context (its slot registry decides the seat).
 		* @param seat - the card contribution.
 		*/
-		function installPluginCard$4(ctx, seat) {
+		function installPluginCard$2(ctx, seat) {
 			const slots = ctx.slots;
 			const component = seat.component;
 			const inject = seat.inject;
@@ -10287,7 +10287,7 @@ window.__ModuleLoader__.load({
 			/** Reconcile the contribution with the currently live seat (no-op when unchanged). */
 			const reconcile = () => {
 				if (reconciling) return;
-				const target = familyGroupLoaded$4(ctx) ? FAMILY_PLUGIN_CARD_SEAT$4 : OFFICIAL_PLUGIN_CARD_SEAT$4;
+				const target = familyGroupLoaded$2(ctx) ? FAMILY_PLUGIN_CARD_SEAT$2 : OFFICIAL_PLUGIN_CARD_SEAT$2;
 				if (current === target) return;
 				reconciling = true;
 				const previous = dispose;
@@ -10296,21 +10296,21 @@ window.__ModuleLoader__.load({
 				previous?.();
 				try {
 					dispose = slots.register(target === "web-ui.plugin.item" ? {
-						name: FAMILY_PLUGIN_CARD_SEAT$4,
+						name: FAMILY_PLUGIN_CARD_SEAT$2,
 						id: seat.id,
 						...seat.order === void 0 ? {} : { order: seat.order },
 						...seat.label === void 0 ? {} : { label: seat.label },
 						locale: seat.locale,
 						...seat.inject === void 0 ? {} : { inject }
 					} : {
-						name: OFFICIAL_PLUGIN_CARD_SEAT$4,
+						name: OFFICIAL_PLUGIN_CARD_SEAT$2,
 						key: seat.bundle,
 						locale: seat.locale,
 						...seat.inject === void 0 ? {} : { inject }
 					}, component);
 					current = target;
 				} catch (error) {
-					warnRefusedSeat$4(target, error);
+					warnRefusedSeat$2(target, error);
 				} finally {
 					reconciling = false;
 				}
@@ -10324,13 +10324,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region ../dsh-task-board/src/client/index.ts
-		var client_exports$12 = /* @__PURE__ */ __exportAll({
-			apply: () => apply$13,
+		var client_exports$10 = /* @__PURE__ */ __exportAll({
+			apply: () => apply$11,
 			bindSettingsForm: () => bindSettingsForm,
-			inject: () => inject$13
+			inject: () => inject$11
 		});
 		/** Locale namespace this plugin owns. */
-		const NS$11 = "task-board";
+		const NS$9 = "task-board";
 		/** Settings namespace this card edits (the family identity of the plugin's own settings form). */
 		const TASK_BOARD_NS = "task-board";
 		/**
@@ -10339,7 +10339,7 @@ window.__ModuleLoader__.load({
 		* addressed by profile entry id, so the shared-forms fallback below has to
 		* name it; the family binder resolves the family namespace instead.
 		*/
-		const AGGREGATE_ENTRY_ID$1 = "web-ui-task-board";
+		const AGGREGATE_ENTRY_ID = "web-ui-task-board";
 		/**
 		* Profile entry ids this package's two patch rows carry: the aggregate's
 		* generated row and the standalone bundle patch's row (`ui-task-board`), plus
@@ -10347,7 +10347,7 @@ window.__ModuleLoader__.load({
 		* by the family namespace itself.
 		*/
 		const TASK_BOARD_ENTRY_IDS = [
-			AGGREGATE_ENTRY_ID$1,
+			AGGREGATE_ENTRY_ID,
 			"ui-task-board",
 			TASK_BOARD_NS
 		];
@@ -10359,7 +10359,7 @@ window.__ModuleLoader__.load({
 		* on hosts below that cohort, which serve the same roster through the
 		* connection RPC face.
 		*/
-		const inject$13 = [
+		const inject$11 = [
 			"slots",
 			"sessions",
 			"workspaces",
@@ -10374,30 +10374,30 @@ window.__ModuleLoader__.load({
 		* Mount the task board.
 		* @param ctx - client root context (services: sessions, workspaces).
 		*/
-		function apply$13(ctx) {
-			reportDailyHeartbeat$7([{ name: "@linxin666/dsh-client-ui-task-board" }]);
+		function apply$11(ctx) {
+			reportDailyHeartbeat$5([{ name: "@linxin666/dsh-client-ui-task-board" }]);
 			if (!claimTaskboardApply()) return;
 			ctx.effect(() => releaseTaskboardApply, "task-board: apply claim");
 			ctx.effect(() => {
 				try {
-					return ctx.locale.register(NS$11, {
-						zh: zh$12,
-						en: en$12
+					return ctx.locale.register(NS$9, {
+						zh: zh$10,
+						en: en$10
 					});
 				} catch {
 					return () => {};
 				}
 			}, "task-board: dictionaries");
 			try {
-				setRuntimeTranslate$2(ctx.locale.bind(NS$11));
+				setRuntimeTranslate$2(ctx.locale.bind(NS$9));
 			} catch {}
 			const settingsForm = bindSettingsForm(ctx);
 			const settingsCard = new TaskBoardSettingsCardController(settingsForm);
-			installPluginCard$4(ctx, {
+			installPluginCard$2(ctx, {
 				bundle: "@linxin666/dsh-client-ui-task-board",
 				id: "task-board",
 				order: 110,
-				locale: NS$11,
+				locale: NS$9,
 				inject: () => settingsCard.inject(),
 				component: TaskBoardSettingsCard
 			});
@@ -10414,7 +10414,7 @@ window.__ModuleLoader__.load({
 					store: new LocalStorageTaskStore(),
 					transport: new HttpTaskBoardHostTransport(),
 					sessions: {
-						current: () => mainViewSessionId$5(sessions.list.getSnapshot().byId),
+						current: () => mainViewSessionId$4(sessions.list.getSnapshot().byId),
 						open: (id) => ctx.uiWorkspace.openSession(id),
 						subscribe: (fn) => sessions.list.subscribe(fn)
 					}
@@ -10527,7 +10527,7 @@ window.__ModuleLoader__.load({
 		function bindSettingsForm(ctx) {
 			const binder = ctx.get("webUiSettings");
 			if (binder !== void 0 && typeof binder.bind === "function") return binder.bind({ namespace: TASK_BOARD_NS });
-			return ctx.configForms.get(servedEntryId$4(ctx.configForms));
+			return ctx.configForms.get(servedEntryId$3(ctx.configForms));
 		}
 		/**
 		* The profile entry id this package's own row carries.
@@ -10541,14 +10541,14 @@ window.__ModuleLoader__.load({
 		* @param forms - the shared configuration forms service.
 		* @returns the entry id to bind.
 		*/
-		function servedEntryId$4(forms) {
+		function servedEntryId$3(forms) {
 			let served;
 			try {
 				served = forms.describe().getSnapshot().view?.namespaces.map((view) => view.ns);
 			} catch {
 				served = void 0;
 			}
-			if (served === void 0) return AGGREGATE_ENTRY_ID$1;
+			if (served === void 0) return AGGREGATE_ENTRY_ID;
 			return TASK_BOARD_ENTRY_IDS.find((id) => served.includes(id)) ?? TASK_BOARD_NS;
 		}
 		//#endregion
@@ -10754,13 +10754,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-git-graph/src/client/chips/context.module.css.mjs
-		const css$18 = "._7rgC5q_anchor{position:relative}._7rgC5q_chipWrap{display:inline-flex;position:relative}._7rgC5q_anchorHero{align-items:center;padding-left:0;display:inline-flex}._7rgC5q_chip{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-button-tool-bar-fill);height:24px;color:var(--dsw-alias-label-secondary);cursor:pointer;white-space:nowrap;border-radius:999px;align-items:center;gap:6px;padding:0 10px;font-size:12px;line-height:1;transition:background-color .12s,border-color .12s,color .12s,gap .12s,padding .12s;display:inline-flex}._7rgC5q_chip:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_chip:active{background:var(--dsw-alias-interactive-bg-active)}._7rgC5q_chip:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);outline:none}._7rgC5q_chip:disabled{opacity:.55;cursor:not-allowed}._7rgC5q_chip:disabled:hover{background:var(--dsw-alias-button-tool-bar-fill)}._7rgC5q_chipOpen{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-primary)}._7rgC5q_chipLabel{text-overflow:ellipsis;max-width:220px;overflow:hidden}._7rgC5q_chipChevron{color:var(--dsw-alias-label-tertiary)}._7rgC5q_chipHero{max-width:min(100%,240px);height:auto;min-height:28px;color:var(--dsw-alias-label-primary);background:0 0;border:none;border-radius:16px;gap:4px;padding:0 8px;font-size:13px;font-weight:500;line-height:20px;overflow:hidden}._7rgC5q_chipHero:hover,._7rgC5q_chipHero:active,._7rgC5q_chipHero._7rgC5q_chipOpen{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_chipHero ._7rgC5q_chipLabel{max-width:180px}._7rgC5q_chipHero ._7rgC5q_chipChevron{color:var(--dsw-alias-label-caption)}._7rgC5q_backdrop{z-index:30;position:fixed;inset:0}._7rgC5q_popover{z-index:100;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu);width:280px;max-height:360px;box-shadow:var(--dsw-shadow-lv3);border-radius:12px;flex-direction:column;padding:4px;display:flex;position:absolute;bottom:calc(100% + 8px);left:0;overflow:hidden}._7rgC5q_popoverHero{top:calc(100% + 4px);bottom:auto}._7rgC5q_searchBox{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary);border:2px solid #0000;border-radius:8px;align-items:center;gap:6px;margin:8px;padding:6px 10px;transition:border-color .12s,box-shadow .12s;display:flex}._7rgC5q_searchBox:focus-within{border-color:var(--dsw-alias-brand-primary);box-shadow:none}body[data-ds-dark-theme] ._7rgC5q_searchBox{background:var(--dsw-alias-bg-base)}._7rgC5q_searchInput{min-width:0;color:var(--dsw-alias-label-primary);background:0 0;border:none;outline:none;flex:1;font-size:13px;transition:box-shadow .12s}._7rgC5q_searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}._7rgC5q_list{scrollbar-width:thin;scrollbar-color:var(--dsw-alias-scrollbar-bg-l2) transparent;flex:1;min-height:64px;padding:2px 6px 6px;overflow:hidden auto}._7rgC5q_list::-webkit-scrollbar{width:6px}._7rgC5q_list::-webkit-scrollbar-thumb{background:var(--dsw-alias-scrollbar-bg-l2);border-radius:3px}._7rgC5q_list::-webkit-scrollbar-track{background:0 0}._7rgC5q_item{box-sizing:border-box;cursor:pointer;text-align:left;background:0 0;border:none;border-radius:8px;align-items:center;gap:8px;width:100%;min-width:0;max-width:100%;padding:7px 8px;transition:background-color .12s;display:flex;position:relative}._7rgC5q_item:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_item:active{background:var(--dsw-alias-interactive-bg-active)}._7rgC5q_item:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);outline:none}._7rgC5q_item:disabled{opacity:.55;cursor:not-allowed}._7rgC5q_item:disabled:hover{background:0 0}._7rgC5q_itemText{flex:1;min-width:0}._7rgC5q_itemName{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-primary);font-size:13px;display:block;overflow:hidden}._7rgC5q_itemPath{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);margin-top:1px;font-size:11px;overflow:hidden}._7rgC5q_check{color:var(--dsw-alias-brand-primary);flex:none}._7rgC5q_empty{text-align:center;color:var(--dsw-alias-label-tertiary);padding:14px 10px;font-size:12px}._7rgC5q_dirty{color:var(--dsw-alias-state-warn-primary);margin:0 10px 4px;font-size:11px}._7rgC5q_notice{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 14%, transparent);color:var(--dsw-alias-state-error-primary);border-radius:8px;margin:0 8px 8px;padding:6px 10px;font-size:12px}._7rgC5q_noticeOk{background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 14%, transparent);color:var(--dsw-alias-state-success-primary)}._7rgC5q_footer{border-top:1px solid var(--dsw-alias-border-l1);flex-direction:column;gap:2px;padding:6px;display:flex}._7rgC5q_footerItem{cursor:pointer;color:var(--dsw-alias-label-primary);text-align:left;background:0 0;border:none;border-radius:8px;align-items:center;gap:8px;padding:7px 10px;font-size:13px;transition:background-color .12s;display:flex}._7rgC5q_footerItem:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_footerItem:active{background:var(--dsw-alias-interactive-bg-active)}._7rgC5q_footerItem:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);outline:none}._7rgC5q_footerItem:disabled{opacity:.55;cursor:not-allowed}._7rgC5q_footerItem:disabled:hover{background:0 0}._7rgC5q_footerItemDisabled{opacity:.55;cursor:not-allowed}._7rgC5q_footerItemDisabled:hover{background:0 0}._7rgC5q_footerHint{color:var(--dsw-alias-label-tertiary);margin-left:auto;font-size:11px}._7rgC5q_dialog{z-index:50;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-overlay);width:min(760px,100vw - 48px);max-height:min(76vh,720px);box-shadow:0 12px 32px var(--dsw-alias-bg-mask-2);border-radius:12px;flex-direction:column;padding:16px 16px 12px;display:flex;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%)}._7rgC5q_dialogHeader{justify-content:space-between;align-items:flex-start;gap:12px;padding:0 4px;display:flex}._7rgC5q_dialogHeading{min-width:0}._7rgC5q_dialogClose{width:26px;height:26px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:8px;flex:none;justify-content:center;align-items:center;margin:-2px;transition:background-color .12s,color .12s;display:inline-flex}._7rgC5q_dialogClose:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._7rgC5q_dialogClose:active{background:var(--dsw-alias-interactive-bg-active)}._7rgC5q_dialogClose:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);outline:none}._7rgC5q_dialogTitle{color:var(--dsw-alias-label-primary);margin:0 0 2px;font-size:15px;font-weight:600}._7rgC5q_dialogDescription{color:var(--dsw-alias-label-secondary);margin:0 0 12px;font-size:12px;line-height:1.5}._7rgC5q_dialogField{flex-direction:column;gap:6px;display:flex}._7rgC5q_dialogLabel{color:var(--dsw-alias-label-secondary);font-size:12px}._7rgC5q_dialogInput{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);border-radius:8px;outline:none;padding:8px 10px;font-size:13px;transition:border-color .12s,box-shadow .12s}._7rgC5q_dialogInput:focus{border-color:var(--dsw-alias-brand-primary)}._7rgC5q_dialogInput:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary)}._7rgC5q_dialogError{color:var(--dsw-alias-state-error-primary);margin-top:8px;font-size:12px}._7rgC5q_dialogActions{justify-content:flex-end;gap:8px;margin-top:14px;display:flex}._7rgC5q_dialogButton{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-button-tool-bar-fill);color:var(--dsw-alias-label-primary);cursor:pointer;border-radius:8px;padding:6px 14px;font-size:13px;transition:background-color .12s,border-color .12s,color .12s}._7rgC5q_dialogButton:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_dialogButton:active{background:var(--dsw-alias-interactive-bg-active)}._7rgC5q_dialogButton:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);outline:none}._7rgC5q_dialogButton:disabled{opacity:.55;cursor:not-allowed}._7rgC5q_dialogButton:disabled:hover{background:var(--dsw-alias-button-tool-bar-fill)}._7rgC5q_dialogButtonPrimary{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-button-contrast-fill);transition:background-color .12s,border-color .12s,filter .12s}._7rgC5q_dialogButtonPrimary:hover{background:var(--dsw-alias-button-primary-hover)}._7rgC5q_dialogButtonPrimary:active{filter:brightness(.92)}._7rgC5q_dialogButtonPrimary:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-button-contrast-fill), 0 0 0 4px var(--dsw-alias-brand-primary);outline:none}._7rgC5q_dialogButtonPrimary:disabled{opacity:.6;cursor:not-allowed}._7rgC5q_dialogButtonPrimary:disabled:hover{background:var(--dsw-alias-brand-primary)}._7rgC5q_graphBody{border:1px solid var(--dsw-alias-border-l1);border-radius:10px;flex:1;min-height:240px;margin-top:10px;padding:4px;overflow-y:auto}._7rgC5q_graphSubtitle{color:var(--dsw-alias-label-tertiary);margin-top:2px;font-size:11px}._7rgC5q_graphRow{border-radius:8px;align-items:center;gap:10px;padding:7px 8px;font-size:12px;display:flex}._7rgC5q_graphRow:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_graphLanes{color:var(--dsw-alias-label-tertiary);flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.4;display:flex}._7rgC5q_graphLaneCell{text-align:center;flex:none;width:15px;display:inline-block}._7rgC5q_graphLaneNode,._7rgC5q_graphLaneMerge{color:var(--dsw-alias-brand-primary);font-weight:700}._7rgC5q_graphLanePass{color:var(--dsw-alias-label-tertiary)}._7rgC5q_graphOid{min-width:58px;color:var(--dsw-alias-label-tertiary);flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px}._7rgC5q_graphMain{flex-direction:column;flex:1;gap:3px;min-width:0;display:flex}._7rgC5q_graphSubject{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-primary);font-size:13px;font-weight:500;overflow:hidden}._7rgC5q_graphMeta{color:var(--dsw-alias-label-tertiary);flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:11px;display:flex}._7rgC5q_graphMetaSep{color:var(--dsw-alias-label-tertiary);flex:none}._7rgC5q_graphRef{text-overflow:ellipsis;background:var(--dsw-alias-bg-layer-2);max-width:120px;color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 6px;font-size:10px;overflow:hidden}._7rgC5q_graphRefCurrent{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-button-contrast-fill)}[data-gitgraph-chip-anchor][data-gitgraph-stock-light]{--gitgraph-stock-ink-rgb:15, 17, 21;--gitgraph-stock-ink:#0f1115;--gitgraph-stock-on-success:#fff;--gitgraph-stock-success-fill:#137333;--gitgraph-stock-success-border:#0f5f2b;--dsw-alias-button-tool-bar-fill:rgba(var(--gitgraph-stock-ink-rgb), .04);--dsw-alias-button-tool-bar-hover:rgba(var(--gitgraph-stock-ink-rgb), .08);--dsw-alias-border-l2:rgba(var(--gitgraph-stock-ink-rgb), .16);--dsw-alias-interactive-bg-hover:rgba(var(--gitgraph-stock-ink-rgb), .06);--dsw-alias-interactive-bg-active:rgba(var(--gitgraph-stock-ink-rgb), .1);--dsw-alias-label-primary:var(--gitgraph-stock-ink);--dsw-alias-label-secondary:var(--gitgraph-stock-ink);--dsw-alias-label-tertiary:rgba(var(--gitgraph-stock-ink-rgb), .56);--dsw-alias-button-contrast-fill:var(--gitgraph-stock-on-success)}[data-gitgraph-chip-anchor][data-gitgraph-stock-light] ._7rgC5q_noticeOk{background:var(--gitgraph-stock-success-fill);color:var(--gitgraph-stock-on-success);box-shadow:inset 0 0 0 1px var(--gitgraph-stock-success-border)}._7rgC5q_graphEmpty{text-align:center;color:var(--dsw-alias-label-tertiary);padding:24px 10px;font-size:12px}._7rgC5q_graphMore{border:1px solid var(--dsw-alias-border-l1);width:100%;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border-radius:8px;margin-top:8px;padding:6px;font-size:12px;transition:background-color .12s;display:block}._7rgC5q_graphMore:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_graphMore:active{background:var(--dsw-alias-interactive-bg-active)}._7rgC5q_graphMore:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);outline:none}@media (prefers-reduced-motion:reduce){._7rgC5q_chip,._7rgC5q_searchBox,._7rgC5q_searchInput,._7rgC5q_item,._7rgC5q_footerItem,._7rgC5q_dialogClose,._7rgC5q_dialogInput,._7rgC5q_dialogButton,._7rgC5q_dialogButtonPrimary,._7rgC5q_graphMore{transition:none}}._7rgC5q_item:after{content:attr(data-tip);z-index:80;background:var(--dsw-alias-label-primary,#111);color:var(--dsw-alias-bg-base,#fff);border:1px solid var(--dsw-alias-border-l1,#ffffff40);white-space:normal;word-break:break-all;box-shadow:var(--dsw-shadow-lv3);pointer-events:none;border-radius:8px;padding:6px 8px;font-size:12px;line-height:1.5;display:none;position:absolute;bottom:calc(100% + 4px);left:0;right:0}._7rgC5q_item[data-tip=\"\"]:after{display:none!important}._7rgC5q_item[data-tip-dir=down]:after{top:calc(100% + 4px);bottom:auto}._7rgC5q_item[data-tip-ready=true]:hover:after{display:block}._7rgC5q_managerList{border:1px solid var(--dsw-alias-border-l1);border-radius:10px;flex:1;min-height:120px;margin-top:10px;padding:4px;overflow-y:auto}._7rgC5q_managerRow{border-radius:8px;justify-content:space-between;align-items:flex-start;gap:10px;padding:8px;font-size:12px;display:flex}._7rgC5q_managerRow:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_managerInfo{flex-direction:column;flex:1;gap:3px;min-width:0;display:flex}._7rgC5q_managerHeadline{color:var(--dsw-alias-label-primary);align-items:center;gap:6px;display:flex}._7rgC5q_managerBranch{text-overflow:ellipsis;white-space:nowrap;font-weight:500;overflow:hidden}._7rgC5q_managerBadge{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 6px;font-size:10px}._7rgC5q_managerOid{color:var(--dsw-alias-label-tertiary);flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px}._7rgC5q_managerPath{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;overflow:hidden}._7rgC5q_managerConfirm{color:var(--dsw-alias-state-error-primary);align-items:center;gap:8px;margin-top:2px;font-size:12px;display:flex}._7rgC5q_managerActions{flex-direction:column;flex:none;align-items:flex-end;gap:6px;display:flex}._7rgC5q_managerCheck{color:var(--dsw-alias-label-secondary);cursor:pointer;align-items:center;gap:4px;font-size:11px;display:flex}";
-		const tagId$18 = "@linxin666/dsh-web-all/packages/dsh-git-graph/src/client/chips/context.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$18) + "]") === null) {
+		const css$13 = "._7rgC5q_anchor{position:relative}._7rgC5q_chipWrap{display:inline-flex;position:relative}._7rgC5q_anchorHero{align-items:center;padding-left:0;display:inline-flex}._7rgC5q_chip{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-button-tool-bar-fill);height:24px;color:var(--dsw-alias-label-secondary);cursor:pointer;white-space:nowrap;border-radius:999px;align-items:center;gap:6px;padding:0 10px;font-size:12px;line-height:1;transition:background-color .12s,border-color .12s,color .12s,gap .12s,padding .12s;display:inline-flex}._7rgC5q_chip:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_chip:active{background:var(--dsw-alias-interactive-bg-active)}._7rgC5q_chip:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);outline:none}._7rgC5q_chip:disabled{opacity:.55;cursor:not-allowed}._7rgC5q_chip:disabled:hover{background:var(--dsw-alias-button-tool-bar-fill)}._7rgC5q_chipOpen{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-primary)}._7rgC5q_chipLabel{text-overflow:ellipsis;max-width:220px;overflow:hidden}._7rgC5q_chipChevron{color:var(--dsw-alias-label-tertiary)}._7rgC5q_chipHero{max-width:min(100%,240px);height:auto;min-height:28px;color:var(--dsw-alias-label-primary);background:0 0;border:none;border-radius:16px;gap:4px;padding:0 8px;font-size:13px;font-weight:500;line-height:20px;overflow:hidden}._7rgC5q_chipHero:hover,._7rgC5q_chipHero:active,._7rgC5q_chipHero._7rgC5q_chipOpen{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_chipHero ._7rgC5q_chipLabel{max-width:180px}._7rgC5q_chipHero ._7rgC5q_chipChevron{color:var(--dsw-alias-label-caption)}._7rgC5q_backdrop{z-index:30;position:fixed;inset:0}._7rgC5q_popover{z-index:100;border:1px solid var(--dsw-alias-border-inverted);background:var(--dsw-specific-menu);width:280px;max-height:360px;box-shadow:var(--dsw-shadow-lv3);border-radius:12px;flex-direction:column;padding:4px;display:flex;position:absolute;bottom:calc(100% + 8px);left:0;overflow:hidden}._7rgC5q_popoverHero{top:calc(100% + 4px);bottom:auto}._7rgC5q_searchBox{background:var(--dsw-alias-interactive-bg-hover-solid);color:var(--dsw-alias-label-primary);border:2px solid #0000;border-radius:8px;align-items:center;gap:6px;margin:8px;padding:6px 10px;transition:border-color .12s,box-shadow .12s;display:flex}._7rgC5q_searchBox:focus-within{border-color:var(--dsw-alias-brand-primary);box-shadow:none}body[data-ds-dark-theme] ._7rgC5q_searchBox{background:var(--dsw-alias-bg-base)}._7rgC5q_searchInput{min-width:0;color:var(--dsw-alias-label-primary);background:0 0;border:none;outline:none;flex:1;font-size:13px;transition:box-shadow .12s}._7rgC5q_searchInput::placeholder{color:var(--dsw-alias-label-tertiary)}._7rgC5q_list{scrollbar-width:thin;scrollbar-color:var(--dsw-alias-scrollbar-bg-l2) transparent;flex:1;min-height:64px;padding:2px 6px 6px;overflow:hidden auto}._7rgC5q_list::-webkit-scrollbar{width:6px}._7rgC5q_list::-webkit-scrollbar-thumb{background:var(--dsw-alias-scrollbar-bg-l2);border-radius:3px}._7rgC5q_list::-webkit-scrollbar-track{background:0 0}._7rgC5q_item{box-sizing:border-box;cursor:pointer;text-align:left;background:0 0;border:none;border-radius:8px;align-items:center;gap:8px;width:100%;min-width:0;max-width:100%;padding:7px 8px;transition:background-color .12s;display:flex;position:relative}._7rgC5q_item:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_item:active{background:var(--dsw-alias-interactive-bg-active)}._7rgC5q_item:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);outline:none}._7rgC5q_item:disabled{opacity:.55;cursor:not-allowed}._7rgC5q_item:disabled:hover{background:0 0}._7rgC5q_itemText{flex:1;min-width:0}._7rgC5q_itemName{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-primary);font-size:13px;display:block;overflow:hidden}._7rgC5q_itemPath{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);margin-top:1px;font-size:11px;overflow:hidden}._7rgC5q_check{color:var(--dsw-alias-brand-primary);flex:none}._7rgC5q_empty{text-align:center;color:var(--dsw-alias-label-tertiary);padding:14px 10px;font-size:12px}._7rgC5q_dirty{color:var(--dsw-alias-state-warn-primary);margin:0 10px 4px;font-size:11px}._7rgC5q_notice{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 14%, transparent);color:var(--dsw-alias-state-error-primary);border-radius:8px;margin:0 8px 8px;padding:6px 10px;font-size:12px}._7rgC5q_noticeOk{background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 14%, transparent);color:var(--dsw-alias-state-success-primary)}._7rgC5q_footer{border-top:1px solid var(--dsw-alias-border-l1);flex-direction:column;gap:2px;padding:6px;display:flex}._7rgC5q_footerItem{cursor:pointer;color:var(--dsw-alias-label-primary);text-align:left;background:0 0;border:none;border-radius:8px;align-items:center;gap:8px;padding:7px 10px;font-size:13px;transition:background-color .12s;display:flex}._7rgC5q_footerItem:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_footerItem:active{background:var(--dsw-alias-interactive-bg-active)}._7rgC5q_footerItem:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);outline:none}._7rgC5q_footerItem:disabled{opacity:.55;cursor:not-allowed}._7rgC5q_footerItem:disabled:hover{background:0 0}._7rgC5q_footerItemDisabled{opacity:.55;cursor:not-allowed}._7rgC5q_footerItemDisabled:hover{background:0 0}._7rgC5q_footerHint{color:var(--dsw-alias-label-tertiary);margin-left:auto;font-size:11px}._7rgC5q_dialog{z-index:50;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-overlay);width:min(760px,100vw - 48px);max-height:min(76vh,720px);box-shadow:0 12px 32px var(--dsw-alias-bg-mask-2);border-radius:12px;flex-direction:column;padding:16px 16px 12px;display:flex;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%)}._7rgC5q_dialogHeader{justify-content:space-between;align-items:flex-start;gap:12px;padding:0 4px;display:flex}._7rgC5q_dialogHeading{min-width:0}._7rgC5q_dialogClose{width:26px;height:26px;color:var(--dsw-alias-label-tertiary);cursor:pointer;background:0 0;border:none;border-radius:8px;flex:none;justify-content:center;align-items:center;margin:-2px;transition:background-color .12s,color .12s;display:inline-flex}._7rgC5q_dialogClose:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}._7rgC5q_dialogClose:active{background:var(--dsw-alias-interactive-bg-active)}._7rgC5q_dialogClose:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);outline:none}._7rgC5q_dialogTitle{color:var(--dsw-alias-label-primary);margin:0 0 2px;font-size:15px;font-weight:600}._7rgC5q_dialogDescription{color:var(--dsw-alias-label-secondary);margin:0 0 12px;font-size:12px;line-height:1.5}._7rgC5q_dialogField{flex-direction:column;gap:6px;display:flex}._7rgC5q_dialogLabel{color:var(--dsw-alias-label-secondary);font-size:12px}._7rgC5q_dialogInput{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);border-radius:8px;outline:none;padding:8px 10px;font-size:13px;transition:border-color .12s,box-shadow .12s}._7rgC5q_dialogInput:focus{border-color:var(--dsw-alias-brand-primary)}._7rgC5q_dialogInput:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary)}._7rgC5q_dialogError{color:var(--dsw-alias-state-error-primary);margin-top:8px;font-size:12px}._7rgC5q_dialogActions{justify-content:flex-end;gap:8px;margin-top:14px;display:flex}._7rgC5q_dialogButton{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-button-tool-bar-fill);color:var(--dsw-alias-label-primary);cursor:pointer;border-radius:8px;padding:6px 14px;font-size:13px;transition:background-color .12s,border-color .12s,color .12s}._7rgC5q_dialogButton:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_dialogButton:active{background:var(--dsw-alias-interactive-bg-active)}._7rgC5q_dialogButton:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);outline:none}._7rgC5q_dialogButton:disabled{opacity:.55;cursor:not-allowed}._7rgC5q_dialogButton:disabled:hover{background:var(--dsw-alias-button-tool-bar-fill)}._7rgC5q_dialogButtonPrimary{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-button-contrast-fill);transition:background-color .12s,border-color .12s,filter .12s}._7rgC5q_dialogButtonPrimary:hover{background:var(--dsw-alias-button-primary-hover)}._7rgC5q_dialogButtonPrimary:active{filter:brightness(.92)}._7rgC5q_dialogButtonPrimary:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-button-contrast-fill), 0 0 0 4px var(--dsw-alias-brand-primary);outline:none}._7rgC5q_dialogButtonPrimary:disabled{opacity:.6;cursor:not-allowed}._7rgC5q_dialogButtonPrimary:disabled:hover{background:var(--dsw-alias-brand-primary)}._7rgC5q_graphBody{border:1px solid var(--dsw-alias-border-l1);border-radius:10px;flex:1;min-height:240px;margin-top:10px;padding:4px;overflow-y:auto}._7rgC5q_graphSubtitle{color:var(--dsw-alias-label-tertiary);margin-top:2px;font-size:11px}._7rgC5q_graphRow{border-radius:8px;align-items:center;gap:10px;padding:7px 8px;font-size:12px;display:flex}._7rgC5q_graphRow:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_graphLanes{color:var(--dsw-alias-label-tertiary);flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.4;display:flex}._7rgC5q_graphLaneCell{text-align:center;flex:none;width:15px;display:inline-block}._7rgC5q_graphLaneNode,._7rgC5q_graphLaneMerge{color:var(--dsw-alias-brand-primary);font-weight:700}._7rgC5q_graphLanePass{color:var(--dsw-alias-label-tertiary)}._7rgC5q_graphOid{min-width:58px;color:var(--dsw-alias-label-tertiary);flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px}._7rgC5q_graphMain{flex-direction:column;flex:1;gap:3px;min-width:0;display:flex}._7rgC5q_graphSubject{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-primary);font-size:13px;font-weight:500;overflow:hidden}._7rgC5q_graphMeta{color:var(--dsw-alias-label-tertiary);flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:11px;display:flex}._7rgC5q_graphMetaSep{color:var(--dsw-alias-label-tertiary);flex:none}._7rgC5q_graphRef{text-overflow:ellipsis;background:var(--dsw-alias-bg-layer-2);max-width:120px;color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 6px;font-size:10px;overflow:hidden}._7rgC5q_graphRefCurrent{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-button-contrast-fill)}[data-gitgraph-chip-anchor][data-gitgraph-stock-light]{--gitgraph-stock-ink-rgb:15, 17, 21;--gitgraph-stock-ink:#0f1115;--gitgraph-stock-on-success:#fff;--gitgraph-stock-success-fill:#137333;--gitgraph-stock-success-border:#0f5f2b;--dsw-alias-button-tool-bar-fill:rgba(var(--gitgraph-stock-ink-rgb), .04);--dsw-alias-button-tool-bar-hover:rgba(var(--gitgraph-stock-ink-rgb), .08);--dsw-alias-border-l2:rgba(var(--gitgraph-stock-ink-rgb), .16);--dsw-alias-interactive-bg-hover:rgba(var(--gitgraph-stock-ink-rgb), .06);--dsw-alias-interactive-bg-active:rgba(var(--gitgraph-stock-ink-rgb), .1);--dsw-alias-label-primary:var(--gitgraph-stock-ink);--dsw-alias-label-secondary:var(--gitgraph-stock-ink);--dsw-alias-label-tertiary:rgba(var(--gitgraph-stock-ink-rgb), .56);--dsw-alias-button-contrast-fill:var(--gitgraph-stock-on-success)}[data-gitgraph-chip-anchor][data-gitgraph-stock-light] ._7rgC5q_noticeOk{background:var(--gitgraph-stock-success-fill);color:var(--gitgraph-stock-on-success);box-shadow:inset 0 0 0 1px var(--gitgraph-stock-success-border)}._7rgC5q_graphEmpty{text-align:center;color:var(--dsw-alias-label-tertiary);padding:24px 10px;font-size:12px}._7rgC5q_graphMore{border:1px solid var(--dsw-alias-border-l1);width:100%;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border-radius:8px;margin-top:8px;padding:6px;font-size:12px;transition:background-color .12s;display:block}._7rgC5q_graphMore:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_graphMore:active{background:var(--dsw-alias-interactive-bg-active)}._7rgC5q_graphMore:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-brand-primary);outline:none}@media (prefers-reduced-motion:reduce){._7rgC5q_chip,._7rgC5q_searchBox,._7rgC5q_searchInput,._7rgC5q_item,._7rgC5q_footerItem,._7rgC5q_dialogClose,._7rgC5q_dialogInput,._7rgC5q_dialogButton,._7rgC5q_dialogButtonPrimary,._7rgC5q_graphMore{transition:none}}._7rgC5q_item:after{content:attr(data-tip);z-index:80;background:var(--dsw-alias-label-primary,#111);color:var(--dsw-alias-bg-base,#fff);border:1px solid var(--dsw-alias-border-l1,#ffffff40);white-space:normal;word-break:break-all;box-shadow:var(--dsw-shadow-lv3);pointer-events:none;border-radius:8px;padding:6px 8px;font-size:12px;line-height:1.5;display:none;position:absolute;bottom:calc(100% + 4px);left:0;right:0}._7rgC5q_item[data-tip=\"\"]:after{display:none!important}._7rgC5q_item[data-tip-dir=down]:after{top:calc(100% + 4px);bottom:auto}._7rgC5q_item[data-tip-ready=true]:hover:after{display:block}._7rgC5q_managerList{border:1px solid var(--dsw-alias-border-l1);border-radius:10px;flex:1;min-height:120px;margin-top:10px;padding:4px;overflow-y:auto}._7rgC5q_managerRow{border-radius:8px;justify-content:space-between;align-items:flex-start;gap:10px;padding:8px;font-size:12px;display:flex}._7rgC5q_managerRow:hover{background:var(--dsw-alias-interactive-bg-hover)}._7rgC5q_managerInfo{flex-direction:column;flex:1;gap:3px;min-width:0;display:flex}._7rgC5q_managerHeadline{color:var(--dsw-alias-label-primary);align-items:center;gap:6px;display:flex}._7rgC5q_managerBranch{text-overflow:ellipsis;white-space:nowrap;font-weight:500;overflow:hidden}._7rgC5q_managerBadge{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 6px;font-size:10px}._7rgC5q_managerOid{color:var(--dsw-alias-label-tertiary);flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px}._7rgC5q_managerPath{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;overflow:hidden}._7rgC5q_managerConfirm{color:var(--dsw-alias-state-error-primary);align-items:center;gap:8px;margin-top:2px;font-size:12px;display:flex}._7rgC5q_managerActions{flex-direction:column;flex:none;align-items:flex-end;gap:6px;display:flex}._7rgC5q_managerCheck{color:var(--dsw-alias-label-secondary);cursor:pointer;align-items:center;gap:4px;font-size:11px;display:flex}";
+		const tagId$13 = "@linxin666/dsh-web-all/packages/dsh-git-graph/src/client/chips/context.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$13) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$18;
-			tag.textContent = css$18;
+			tag.dataset.pluginCss = tagId$13;
+			tag.textContent = css$13;
 			document.head.appendChild(tag);
 		}
 		var context_module_css_default = {
@@ -11567,7 +11567,7 @@ window.__ModuleLoader__.load({
 		* @param t - the dictionary.
 		* @returns the display string.
 		*/
-		function formatTime$3(epochSeconds, t) {
+		function formatTime$2(epochSeconds, t) {
 			const elapsed = Math.max(0, Math.floor(Date.now() / 1e3) - epochSeconds);
 			if (elapsed < MINUTE) return t("graph.time.justNow");
 			if (elapsed < HOUR) return t("graph.time.minutesAgo", { count: Math.floor(elapsed / MINUTE) });
@@ -11698,7 +11698,7 @@ window.__ModuleLoader__.load({
 													className: context_module_css_default.graphMetaSep,
 													children: "·"
 												}),
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatTime$3(commit.authorTime, t) })
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatTime$2(commit.authorTime, t) })
 											]
 										})]
 									})
@@ -11974,7 +11974,7 @@ window.__ModuleLoader__.load({
 		* @param byId - the session catalog's rows (`SessionListState.byId`), when available.
 		* @returns the main-view session id, or undefined when the main view shows none.
 		*/
-		function mainViewSessionId$4(byId) {
+		function mainViewSessionId$3(byId) {
 			if (byId === void 0 || byId === null) return void 0;
 			for (const row of Object.values(byId)) if (row !== void 0 && (row.retainedBy?.mainView ?? 0) > 0) return row.id;
 		}
@@ -12015,7 +12015,7 @@ window.__ModuleLoader__.load({
 			/** The official target resolution (explicit > current session's workspace > recent). */
 			const resolveTarget = (workspaceId) => {
 				const snapshot = workspaces.list.getSnapshot();
-				const current = mainViewSessionId$4(scope.sessions.list.getSnapshot().byId);
+				const current = mainViewSessionId$3(scope.sessions.list.getSnapshot().byId);
 				const currentWorkspaceId = current === void 0 ? void 0 : snapshot.items.find((item) => item.sessionIds.includes(current))?.workspaceId;
 				return workspaceId ?? currentWorkspaceId ?? snapshot.recentWorkspaceId;
 			};
@@ -12102,7 +12102,7 @@ window.__ModuleLoader__.load({
 		//#region ../dsh-git-graph/src/client/locales.ts
 		/** `git-graph` namespace dictionaries (branch selector + Git graph copy). */
 		/** Simplified Chinese dictionary (the key-set source of truth). */
-		const zh$11 = {
+		const zh$9 = {
 			"branch.search": "搜索分支",
 			"branch.empty": "未找到匹配分支",
 			"branch.detached": "分离 HEAD",
@@ -12168,7 +12168,7 @@ window.__ModuleLoader__.load({
 			"error.baseRefNotFound": "基线分支或修订不存在。"
 		};
 		/** English dictionary, checked complete against the zh key set. */
-		const en$11 = {
+		const en$9 = {
 			"branch.search": "Search branches",
 			"branch.empty": "No matching branches",
 			"branch.detached": "Detached HEAD",
@@ -12235,11 +12235,11 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region ../dsh-git-graph/src/client/telemetry.ts
-		const VISITOR_KEY$6 = "dsh-web-ui-telemetry-visitor";
-		const DAY_KEY_PREFIX$6 = "dsh-web-ui-telemetry-day:";
-		const ENDPOINT$6 = "https://dsh-market.com/api/telemetry/event";
+		const VISITOR_KEY$4 = "dsh-web-ui-telemetry-visitor";
+		const DAY_KEY_PREFIX$4 = "dsh-web-ui-telemetry-day:";
+		const ENDPOINT$4 = "https://dsh-market.com/api/telemetry/event";
 		/** The building package's version, when the bundle carries it. */
-		function bakedVersion$6() {
+		function bakedVersion$4() {
 			try {
 				return "0.3.24";
 			} catch {
@@ -12247,23 +12247,23 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/** Read or lazily create the anonymous visitor id; null when storage is unavailable. */
-		function visitorId$6() {
+		function visitorId$4() {
 			try {
-				const existing = localStorage.getItem(VISITOR_KEY$6);
+				const existing = localStorage.getItem(VISITOR_KEY$4);
 				if (existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing)) return existing;
 				const fresh = crypto.randomUUID().replaceAll("-", "");
-				localStorage.setItem(VISITOR_KEY$6, fresh);
+				localStorage.setItem(VISITOR_KEY$4, fresh);
 				return fresh;
 			} catch {
 				return null;
 			}
 		}
 		/** Drop stale per-day dedup keys so localStorage does not grow forever. */
-		function pruneDayKeys$6(today) {
+		function pruneDayKeys$4(today) {
 			try {
 				for (let index = localStorage.length - 1; index >= 0; index -= 1) {
 					const key = localStorage.key(index);
-					if (key !== null && key.startsWith(DAY_KEY_PREFIX$6) && key !== DAY_KEY_PREFIX$6 + today) localStorage.removeItem(key);
+					if (key !== null && key.startsWith(DAY_KEY_PREFIX$4) && key !== DAY_KEY_PREFIX$4 + today) localStorage.removeItem(key);
 				}
 			} catch {}
 		}
@@ -12272,18 +12272,18 @@ window.__ModuleLoader__.load({
 		* browser. Never throws and never blocks the caller. Items without an explicit
 		* version inherit the bundle's baked build version.
 		*/
-		function reportDailyHeartbeat$6(items) {
+		function reportDailyHeartbeat$4(items) {
 			try {
 				if (items.length === 0) return;
 				const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
 				if (navigator.webdriver) return;
-				if (localStorage.getItem(DAY_KEY_PREFIX$6 + today) !== null) return;
-				const visitor = visitorId$6();
+				if (localStorage.getItem(DAY_KEY_PREFIX$4 + today) !== null) return;
+				const visitor = visitorId$4();
 				if (visitor === null) return;
-				pruneDayKeys$6(today);
+				pruneDayKeys$4(today);
 				const payloadItems = items.map((item) => {
 					const out = { name: item.name };
-					const version = item.version ?? bakedVersion$6();
+					const version = item.version ?? bakedVersion$4();
 					if (version !== void 0) out.version = version;
 					if (item.channel !== void 0) out.channel = item.channel;
 					return out;
@@ -12293,28 +12293,28 @@ window.__ModuleLoader__.load({
 					visitor,
 					items: payloadItems
 				});
-				fetch(ENDPOINT$6, {
+				fetch(ENDPOINT$4, {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body,
 					keepalive: true
 				}).then((response) => {
-					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$6 + today, "1");
+					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$4 + today, "1");
 				}).catch(() => {});
 			} catch {}
 		}
 		//#endregion
 		//#region ../dsh-git-graph/src/client/index.ts
-		var client_exports$11 = /* @__PURE__ */ __exportAll({
+		var client_exports$9 = /* @__PURE__ */ __exportAll({
 			BranchChip: () => BranchChip,
 			CONTEXT_FALLBACK_MS: () => CONTEXT_FALLBACK_MS,
-			apply: () => apply$12,
-			inject: () => inject$12
+			apply: () => apply$10,
+			inject: () => inject$10
 		});
 		/** Dictionary namespace owned by this plugin. */
-		const NS$10 = "git-graph";
+		const NS$8 = "git-graph";
 		/** Required services: slots for the selector-context entry, sessions for the cwd lookup, workspaces for worktree sessions, locale for the copy. */
-		const inject$12 = [
+		const inject$10 = [
 			"slots",
 			"sessions",
 			"workspaces",
@@ -12338,13 +12338,13 @@ window.__ModuleLoader__.load({
 		* selector-context hole with an input-dock fallback.
 		* @param ctx - client root context.
 		*/
-		function apply$12(ctx) {
-			reportDailyHeartbeat$6([{ name: "@linxin666/dsh-client-ui-git-graph" }]);
+		function apply$10(ctx) {
+			reportDailyHeartbeat$4([{ name: "@linxin666/dsh-client-ui-git-graph" }]);
 			ctx.effect(() => {
 				try {
-					return ctx.locale.register(NS$10, {
-						zh: zh$11,
-						en: en$11
+					return ctx.locale.register(NS$8, {
+						zh: zh$9,
+						en: en$9
 					});
 				} catch {
 					return () => {};
@@ -12495,7 +12495,7 @@ window.__ModuleLoader__.load({
 				const chipEntry = {
 					id: "git-graph",
 					order: 100,
-					locale: NS$10,
+					locale: NS$8,
 					inject: injected
 				};
 				let mounted = false;
@@ -13858,14 +13858,14 @@ window.__ModuleLoader__.load({
 			return status === 401 || status === 403;
 		}
 		/** Human-readable expiry clock, e.g. "10:35". */
-		function formatClock$1(epochMs) {
+		function formatClock$2(epochMs) {
 			const date = new Date(epochMs);
 			return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 		}
 		/** Calendar + clock for last-seen timestamps, e.g. "2026-08-19 10:35". */
 		function formatLastSeen(epochMs) {
 			const date = new Date(epochMs);
-			return `${String(date.getFullYear())}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${formatClock$1(epochMs)}`;
+			return `${String(date.getFullYear())}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${formatClock$2(epochMs)}`;
 		}
 		/**
 		* Copy text to the clipboard with a fallback for insecure contexts
@@ -13873,7 +13873,7 @@ window.__ModuleLoader__.load({
 		* @param text - the text to copy.
 		* @returns whether the copy succeeded.
 		*/
-		async function copyText$1(text) {
+		async function copyText(text) {
 			if (typeof navigator !== "undefined" && navigator.clipboard !== void 0) try {
 				await navigator.clipboard.writeText(text);
 				return true;
@@ -13904,13 +13904,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-remote-web-ui/src/client/remote.module.css.mjs
-		const css$17 = ".fThDlq_overlay{z-index:1000;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.fThDlq_mask{background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);position:absolute;inset:0}.fThDlq_trigger{width:36px;height:36px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;transition:background-color .12s,color .12s,box-shadow .12s;display:inline-flex;position:relative}.fThDlq_trigger[data-update-available]{color:var(--dsw-alias-brand-primary)}.fThDlq_trigger[data-update-available]:after{box-sizing:border-box;border:2px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-brand-primary);content:\"\";pointer-events:none;border-radius:50%;width:8px;height:8px;position:absolute;top:4px;right:4px}.fThDlq_trigger[data-wide=wide]{border-radius:999px;flex:auto;justify-content:flex-start;gap:8px;width:auto;min-width:0;padding:0 10px}.fThDlq_trigger[data-update-available][data-wide=wide]{flex:none;gap:6px}.fThDlq_trigger[data-update-available][data-wide=wide]:after{display:none}.fThDlq_updateBadgeText{white-space:nowrap;font-size:13px;font-weight:500;line-height:1}.fThDlq_trigger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.fThDlq_trigger:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}.fThDlq_trigger:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-2), 0 0 0 4px var(--dsw-alias-brand-primary);outline:none}.fThDlq_trigger:disabled{opacity:.5;cursor:default}.fThDlq_panel{z-index:1;box-sizing:border-box;background:var(--dsw-alias-bg-layer-2);width:560px;max-width:calc(100vw - 48px);max-height:calc(100vh - 48px);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-primary);border-radius:24px;flex-direction:column;gap:14px;padding:24px;font-size:14px;line-height:22px;display:flex;position:relative;overflow:auto}.fThDlq_header{align-items:flex-start;gap:12px;display:flex}.fThDlq_heading{flex:1;min-width:0}.fThDlq_title{margin:0;font-size:18px;font-weight:600;line-height:26px}.fThDlq_subtitle{color:var(--dsw-alias-label-secondary);margin:4px 0 0;font-size:13px}.fThDlq_close{width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;transition:background-color .12s,color .12s,box-shadow .12s;display:inline-flex}.fThDlq_close:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_close:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}.fThDlq_close:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-2), 0 0 0 4px var(--dsw-alias-brand-primary);outline:none}.fThDlq_close:disabled{opacity:.5;cursor:default}.fThDlq_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:16px;flex-direction:column;align-items:center;gap:12px;padding:16px;display:flex}.fThDlq_cardHeader{justify-content:space-between;align-items:center;gap:12px;width:100%;display:flex}.fThDlq_cardTitle{font-weight:500}.fThDlq_badge{white-space:nowrap;border-radius:999px;flex:none;align-items:center;gap:6px;min-width:0;padding:2px 10px;font-size:12px;line-height:18px;display:inline-flex}.fThDlq_badge:before{content:\"\";background:currentColor;border-radius:50%;width:8px;height:8px}.fThDlq_badge-waiting{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_badge-connected{color:var(--dsw-alias-state-success-primary);background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_badge-disconnected{color:var(--dsw-alias-state-warn-primary);background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_badge-stopped{color:var(--dsw-alias-state-error-primary);background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_badgePublic{color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_badges{flex:none;align-items:center;gap:6px;display:inline-flex}.fThDlq_qrWrap{background:var(--dsw-alias-bg-base);border-radius:12px;justify-content:center;align-items:center;padding:12px;display:flex}.fThDlq_qr{display:block}.fThDlq_expired{color:var(--dsw-alias-state-error-primary);margin:0;font-size:13px}.fThDlq_expiry{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px}.fThDlq_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:13px}.fThDlq_link{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-caption);font-family:var(--dsw-font-mono,ui-monospace, monospace);margin:0;font-size:12px;display:block;overflow:hidden}.fThDlq_pairLinks{flex-direction:column;gap:8px;display:flex}.fThDlq_pairLinkRow{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:10px;align-items:center;gap:10px;min-width:0;padding:10px 12px;display:flex}.fThDlq_pairLinkText{flex:1;min-width:0}.fThDlq_pairLinkLabel{color:var(--dsw-alias-label-secondary);margin-bottom:3px;font-size:12px;display:block}.fThDlq_copyLink{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-button-elevated-fill);min-height:30px;color:var(--dsw-alias-label-primary);cursor:pointer;border-radius:8px;flex:none;align-items:center;gap:5px;padding:0 10px;display:inline-flex}.fThDlq_oneTimeHint{color:var(--dsw-alias-label-caption);margin:0;font-size:12px}.fThDlq_stoppedHint{color:var(--dsw-alias-state-error-primary);margin:0;font-size:13px}.fThDlq_tunnelNote{color:var(--dsw-alias-label-secondary);margin:0;font-size:13px}.fThDlq_tunnelFailed{color:var(--dsw-alias-state-error-primary);margin:0;font-size:13px}.fThDlq_actions{gap:8px;display:flex}.fThDlq_action{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-button-elevated-fill);height:34px;color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;border-radius:10px;justify-content:center;align-items:center;gap:6px;padding:0 14px;font-size:13px;transition:background-color .12s,border-color .12s,box-shadow .12s;display:inline-flex}.fThDlq_action:hover:not(:disabled){background:var(--dsw-alias-button-floating-hover)}.fThDlq_action:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}.fThDlq_action:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-2), 0 0 0 4px var(--dsw-alias-brand-primary);outline:none}.fThDlq_action:disabled{opacity:.5;cursor:default}.fThDlq_banner{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:16px;padding:16px}.fThDlq_bannerTitle{color:var(--dsw-alias-state-warn-primary);margin:0;font-weight:500}.fThDlq_bannerHint{color:var(--dsw-alias-label-secondary);margin:6px 0 0;font-size:13px}.fThDlq_fencePage{z-index:2000;box-sizing:border-box;background:var(--dsw-alias-bg-base);text-align:center;flex-direction:column;justify-content:center;align-items:center;padding:40px 24px;display:flex;position:fixed;inset:0;overflow:auto}.fThDlq_fenceCard{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);width:min(520px,100%);box-shadow:var(--dsw-shadow-lv3);text-align:center;border-radius:20px;margin-inline:auto;padding:36px 40px}.fThDlq_fenceMark{background:var(--dsw-alias-state-error-secondary);width:44px;height:44px;color:var(--dsw-alias-state-error-primary);border-radius:50%;place-items:center;margin-inline:auto;font-size:24px;line-height:1;display:grid}.fThDlq_fenceEyebrow{color:var(--dsw-alias-state-error-primary);margin:22px 0 8px;font-size:13px;font-weight:600}.fThDlq_fenceTitle{color:var(--dsw-alias-label-primary);margin:0;font-size:24px;line-height:1.35}.fThDlq_fenceDetail{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:14px;line-height:1.65}.fThDlq_fenceSteps{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);text-align:left;border-radius:12px;margin:24px auto 0;padding:20px 20px 20px 42px;font-size:14px;line-height:1.65}.fThDlq_fenceSteps li+li{margin-top:8px}.fThDlq_fenceForm{width:100%;margin-top:20px}.fThDlq_fenceInputRow{gap:8px;width:100%;display:flex}.fThDlq_fenceInput{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);min-width:0;color:var(--dsw-alias-label-primary);font:inherit;border-radius:10px;flex:1;padding:10px 14px;font-size:13px;transition:border-color .12s,box-shadow .12s}.fThDlq_fenceInput:focus{border-color:var(--dsw-alias-brand-primary);outline:none;box-shadow:0 0 0 2px #0066ff26}.fThDlq_fencePairButton{border:1px solid var(--dsw-alias-button-primary-fill);background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground);font:inherit;cursor:pointer;border-radius:10px;flex-shrink:0;padding:10px 18px;font-size:13px;font-weight:500;transition:filter .12s,opacity .12s}.fThDlq_fencePairButton:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover,var(--dsw-alias-button-primary-fill));border-color:var(--dsw-alias-button-primary-hover,var(--dsw-alias-button-primary-fill))}.fThDlq_fencePairButton:disabled{opacity:.55;cursor:not-allowed}.fThDlq_fencePairButton:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}.fThDlq_fenceError{color:var(--dsw-alias-state-error-primary);text-align:left;margin:10px 0 0;font-size:13px;line-height:1.4}.fThDlq_fenceRetry{border:1px solid var(--dsw-alias-border-l2);width:100%;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;background:0 0;border-radius:10px;margin-top:12px;padding:10px 16px;font-weight:500;transition:background-color .12s,color .12s}.fThDlq_fenceRetry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.fThDlq_fenceRetry:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:3px}.fThDlq_fenceFootnote{color:var(--dsw-alias-label-tertiary);margin:14px 0 0;font-size:12px;line-height:1.55}.fThDlq_addresses{border:none;margin:12px 0 0;padding:0}.fThDlq_addresses legend{color:var(--dsw-alias-label-secondary);padding:0;font-size:13px}.fThDlq_address{color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;cursor:pointer;border-radius:6px;align-items:center;gap:8px;margin-top:6px;padding:4px 6px;font-size:13px;transition:background-color .12s;display:flex}.fThDlq_address:hover{background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_address input:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-2), 0 0 0 4px var(--dsw-alias-brand-primary);border-radius:50%;outline:none}.fThDlq_addressValue{text-overflow:ellipsis;white-space:nowrap;min-width:0;color:var(--dsw-alias-label-secondary);flex:1;font-size:12px;overflow:hidden}.fThDlq_addressHint{color:var(--dsw-alias-label-tertiary);margin:6px 0 0;font-size:12px}.fThDlq_devices{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:16px;flex-direction:column;gap:8px;padding:12px 16px 14px;display:flex}.fThDlq_devicesTitle{margin:0;font-size:13px;font-weight:500;line-height:20px}.fThDlq_devicesEmpty{color:var(--dsw-alias-label-secondary);margin:0;font-size:13px}.fThDlq_deviceList{flex-direction:column;gap:8px;margin:0;padding:0;list-style:none;display:flex}.fThDlq_deviceRow{justify-content:space-between;align-items:flex-start;gap:12px;display:flex}.fThDlq_deviceMeta{flex-direction:column;gap:2px;min-width:0;display:flex}.fThDlq_deviceName{text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500;overflow:hidden}.fThDlq_devicePresence{font-size:12px;line-height:18px}.fThDlq_deviceOnline{color:var(--dsw-alias-state-success-primary)}.fThDlq_deviceOffline{color:var(--dsw-alias-label-secondary)}.fThDlq_deviceSeen{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;font-size:12px}.fThDlq_deviceRevoke{color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:8px;flex:none;padding:6px 10px;font-size:12px;transition:background-color .12s,color .12s}.fThDlq_deviceRevoke:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.fThDlq_deviceRevoke:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-2), 0 0 0 4px var(--dsw-alias-brand-primary);outline:none}@media (prefers-reduced-motion:reduce){.fThDlq_trigger,.fThDlq_close,.fThDlq_action,.fThDlq_address,.fThDlq_deviceRevoke{transition:none}}.fThDlq_entryRow{flex:none;align-items:center;gap:6px;min-width:0;display:flex}.fThDlq_entryRow[data-rail=rail]{flex-direction:column-reverse;gap:4px}.fThDlq_updateStatus{margin:0;font-weight:600}.fThDlq_updateDetail{color:var(--dsw-alias-label-secondary);margin:6px 0 0;font-size:13px}.fThDlq_updateError{color:var(--dsw-alias-text-danger,var(--dsw-alias-label-primary));margin:0;font-weight:600}.fThDlq_updateOutput{background:var(--dsw-alias-bg-layer-1);max-height:180px;color:var(--dsw-alias-label-secondary);white-space:pre-wrap;word-break:break-all;border-radius:10px;margin:10px 0 0;padding:10px 12px;font-size:12px;line-height:18px;overflow:auto}.fThDlq_updateList{flex-direction:column;gap:6px;margin:12px 0 0;padding:0;list-style:none;display:flex}.fThDlq_updateListItem{justify-content:space-between;align-items:baseline;gap:12px;font-size:13px;display:flex}.fThDlq_updateListName{text-overflow:ellipsis;white-space:nowrap;min-width:0;color:var(--dsw-alias-label-primary);overflow:hidden}.fThDlq_updateListVersions{color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;flex:none}.fThDlq_updateNotes{margin-top:14px}.fThDlq_updateNotesTitle{margin:0 0 8px;font-size:14px;font-weight:600}.fThDlq_updateNoteSection{flex-direction:column;gap:4px;margin-top:10px;display:flex}.fThDlq_updateNoteHeading{color:var(--dsw-alias-label-secondary);margin:0;font-size:13px;font-weight:600}.fThDlq_updateNoteList{flex-direction:column;gap:4px;margin:0;padding-left:18px;font-size:13px;display:flex}.fThDlq_updateNoteItem{color:var(--dsw-alias-label-primary);overflow-wrap:anywhere}.fThDlq_updateVersions{margin-top:12px}.fThDlq_updateVersionsSummary{cursor:pointer;color:var(--dsw-alias-label-secondary);user-select:none;font-size:12px}.fThDlq_updateActions{justify-content:flex-end;margin-top:16px;display:flex}.fThDlq_updateRetry{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary);cursor:pointer;border:none;border-radius:10px;align-items:center;gap:6px;padding:8px 14px;font-size:13px;transition:background-color .12s,color .12s;display:inline-flex}.fThDlq_updateRetry:hover{background:var(--dsw-alias-interactive-bg-active)}@media (prefers-reduced-motion:reduce){.fThDlq_updateRetry{transition:none}}";
-		const tagId$17 = "@linxin666/dsh-web-all/packages/dsh-remote-web-ui/src/client/remote.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$17) + "]") === null) {
+		const css$12 = ".fThDlq_overlay{z-index:1000;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.fThDlq_mask{background:var(--dsw-alias-bg-mask-1);backdrop-filter:var(--dsw-mask-blur);position:absolute;inset:0}.fThDlq_trigger{width:36px;height:36px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;transition:background-color .12s,color .12s,box-shadow .12s;display:inline-flex;position:relative}.fThDlq_trigger[data-update-available]{color:var(--dsw-alias-brand-primary)}.fThDlq_trigger[data-update-available]:after{box-sizing:border-box;border:2px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-brand-primary);content:\"\";pointer-events:none;border-radius:50%;width:8px;height:8px;position:absolute;top:4px;right:4px}.fThDlq_trigger[data-wide=wide]{border-radius:999px;flex:auto;justify-content:flex-start;gap:8px;width:auto;min-width:0;padding:0 10px}.fThDlq_trigger[data-update-available][data-wide=wide]{flex:none;gap:6px}.fThDlq_trigger[data-update-available][data-wide=wide]:after{display:none}.fThDlq_updateBadgeText{white-space:nowrap;font-size:13px;font-weight:500;line-height:1}.fThDlq_trigger:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.fThDlq_trigger:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}.fThDlq_trigger:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-2), 0 0 0 4px var(--dsw-alias-brand-primary);outline:none}.fThDlq_trigger:disabled{opacity:.5;cursor:default}.fThDlq_panel{z-index:1;box-sizing:border-box;background:var(--dsw-alias-bg-layer-2);width:560px;max-width:calc(100vw - 48px);max-height:calc(100vh - 48px);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-primary);border-radius:24px;flex-direction:column;gap:14px;padding:24px;font-size:14px;line-height:22px;display:flex;position:relative;overflow:auto}.fThDlq_header{align-items:flex-start;gap:12px;display:flex}.fThDlq_heading{flex:1;min-width:0}.fThDlq_title{margin:0;font-size:18px;font-weight:600;line-height:26px}.fThDlq_subtitle{color:var(--dsw-alias-label-secondary);margin:4px 0 0;font-size:13px}.fThDlq_close{width:28px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;transition:background-color .12s,color .12s,box-shadow .12s;display:inline-flex}.fThDlq_close:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_close:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}.fThDlq_close:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-2), 0 0 0 4px var(--dsw-alias-brand-primary);outline:none}.fThDlq_close:disabled{opacity:.5;cursor:default}.fThDlq_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:16px;flex-direction:column;align-items:center;gap:12px;padding:16px;display:flex}.fThDlq_cardHeader{justify-content:space-between;align-items:center;gap:12px;width:100%;display:flex}.fThDlq_cardTitle{font-weight:500}.fThDlq_badge{white-space:nowrap;border-radius:999px;flex:none;align-items:center;gap:6px;min-width:0;padding:2px 10px;font-size:12px;line-height:18px;display:inline-flex}.fThDlq_badge:before{content:\"\";background:currentColor;border-radius:50%;width:8px;height:8px}.fThDlq_badge-waiting{color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_badge-connected{color:var(--dsw-alias-state-success-primary);background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_badge-disconnected{color:var(--dsw-alias-state-warn-primary);background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_badge-stopped{color:var(--dsw-alias-state-error-primary);background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_badgePublic{color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_badges{flex:none;align-items:center;gap:6px;display:inline-flex}.fThDlq_qrWrap{background:var(--dsw-alias-bg-base);border-radius:12px;justify-content:center;align-items:center;padding:12px;display:flex}.fThDlq_qr{display:block}.fThDlq_expired{color:var(--dsw-alias-state-error-primary);margin:0;font-size:13px}.fThDlq_expiry{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px}.fThDlq_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:13px}.fThDlq_link{text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-caption);font-family:var(--dsw-font-mono,ui-monospace, monospace);margin:0;font-size:12px;display:block;overflow:hidden}.fThDlq_pairLinks{flex-direction:column;gap:8px;display:flex}.fThDlq_pairLinkRow{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:10px;align-items:center;gap:10px;min-width:0;padding:10px 12px;display:flex}.fThDlq_pairLinkText{flex:1;min-width:0}.fThDlq_pairLinkLabel{color:var(--dsw-alias-label-secondary);margin-bottom:3px;font-size:12px;display:block}.fThDlq_copyLink{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-button-elevated-fill);min-height:30px;color:var(--dsw-alias-label-primary);cursor:pointer;border-radius:8px;flex:none;align-items:center;gap:5px;padding:0 10px;display:inline-flex}.fThDlq_oneTimeHint{color:var(--dsw-alias-label-caption);margin:0;font-size:12px}.fThDlq_stoppedHint{color:var(--dsw-alias-state-error-primary);margin:0;font-size:13px}.fThDlq_tunnelNote{color:var(--dsw-alias-label-secondary);margin:0;font-size:13px}.fThDlq_tunnelFailed{color:var(--dsw-alias-state-error-primary);margin:0;font-size:13px}.fThDlq_actions{gap:8px;display:flex}.fThDlq_action{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-button-elevated-fill);height:34px;color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;border-radius:10px;justify-content:center;align-items:center;gap:6px;padding:0 14px;font-size:13px;transition:background-color .12s,border-color .12s,box-shadow .12s;display:inline-flex}.fThDlq_action:hover:not(:disabled){background:var(--dsw-alias-button-floating-hover)}.fThDlq_action:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}.fThDlq_action:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-2), 0 0 0 4px var(--dsw-alias-brand-primary);outline:none}.fThDlq_action:disabled{opacity:.5;cursor:default}.fThDlq_banner{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:16px;padding:16px}.fThDlq_bannerTitle{color:var(--dsw-alias-state-warn-primary);margin:0;font-weight:500}.fThDlq_bannerHint{color:var(--dsw-alias-label-secondary);margin:6px 0 0;font-size:13px}.fThDlq_fencePage{z-index:2000;box-sizing:border-box;background:var(--dsw-alias-bg-base);text-align:center;flex-direction:column;justify-content:center;align-items:center;padding:40px 24px;display:flex;position:fixed;inset:0;overflow:auto}.fThDlq_fenceCard{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);width:min(520px,100%);box-shadow:var(--dsw-shadow-lv3);text-align:center;border-radius:20px;margin-inline:auto;padding:36px 40px}.fThDlq_fenceMark{background:var(--dsw-alias-state-error-secondary);width:44px;height:44px;color:var(--dsw-alias-state-error-primary);border-radius:50%;place-items:center;margin-inline:auto;font-size:24px;line-height:1;display:grid}.fThDlq_fenceEyebrow{color:var(--dsw-alias-state-error-primary);margin:22px 0 8px;font-size:13px;font-weight:600}.fThDlq_fenceTitle{color:var(--dsw-alias-label-primary);margin:0;font-size:24px;line-height:1.35}.fThDlq_fenceDetail{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:14px;line-height:1.65}.fThDlq_fenceSteps{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);text-align:left;border-radius:12px;margin:24px auto 0;padding:20px 20px 20px 42px;font-size:14px;line-height:1.65}.fThDlq_fenceSteps li+li{margin-top:8px}.fThDlq_fenceForm{width:100%;margin-top:20px}.fThDlq_fenceInputRow{gap:8px;width:100%;display:flex}.fThDlq_fenceInput{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);min-width:0;color:var(--dsw-alias-label-primary);font:inherit;border-radius:10px;flex:1;padding:10px 14px;font-size:13px;transition:border-color .12s,box-shadow .12s}.fThDlq_fenceInput:focus{border-color:var(--dsw-alias-brand-primary);outline:none;box-shadow:0 0 0 2px #0066ff26}.fThDlq_fencePairButton{border:1px solid var(--dsw-alias-button-primary-fill);background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground);font:inherit;cursor:pointer;border-radius:10px;flex-shrink:0;padding:10px 18px;font-size:13px;font-weight:500;transition:filter .12s,opacity .12s}.fThDlq_fencePairButton:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover,var(--dsw-alias-button-primary-fill));border-color:var(--dsw-alias-button-primary-hover,var(--dsw-alias-button-primary-fill))}.fThDlq_fencePairButton:disabled{opacity:.55;cursor:not-allowed}.fThDlq_fencePairButton:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}.fThDlq_fenceError{color:var(--dsw-alias-state-error-primary);text-align:left;margin:10px 0 0;font-size:13px;line-height:1.4}.fThDlq_fenceRetry{border:1px solid var(--dsw-alias-border-l2);width:100%;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;background:0 0;border-radius:10px;margin-top:12px;padding:10px 16px;font-weight:500;transition:background-color .12s,color .12s}.fThDlq_fenceRetry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.fThDlq_fenceRetry:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:3px}.fThDlq_fenceFootnote{color:var(--dsw-alias-label-tertiary);margin:14px 0 0;font-size:12px;line-height:1.55}.fThDlq_addresses{border:none;margin:12px 0 0;padding:0}.fThDlq_addresses legend{color:var(--dsw-alias-label-secondary);padding:0;font-size:13px}.fThDlq_address{color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;cursor:pointer;border-radius:6px;align-items:center;gap:8px;margin-top:6px;padding:4px 6px;font-size:13px;transition:background-color .12s;display:flex}.fThDlq_address:hover{background:var(--dsw-alias-interactive-bg-hover)}.fThDlq_address input:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-2), 0 0 0 4px var(--dsw-alias-brand-primary);border-radius:50%;outline:none}.fThDlq_addressValue{text-overflow:ellipsis;white-space:nowrap;min-width:0;color:var(--dsw-alias-label-secondary);flex:1;font-size:12px;overflow:hidden}.fThDlq_addressHint{color:var(--dsw-alias-label-tertiary);margin:6px 0 0;font-size:12px}.fThDlq_devices{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);border-radius:16px;flex-direction:column;gap:8px;padding:12px 16px 14px;display:flex}.fThDlq_devicesTitle{margin:0;font-size:13px;font-weight:500;line-height:20px}.fThDlq_devicesEmpty{color:var(--dsw-alias-label-secondary);margin:0;font-size:13px}.fThDlq_deviceList{flex-direction:column;gap:8px;margin:0;padding:0;list-style:none;display:flex}.fThDlq_deviceRow{justify-content:space-between;align-items:flex-start;gap:12px;display:flex}.fThDlq_deviceMeta{flex-direction:column;gap:2px;min-width:0;display:flex}.fThDlq_deviceName{text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500;overflow:hidden}.fThDlq_devicePresence{font-size:12px;line-height:18px}.fThDlq_deviceOnline{color:var(--dsw-alias-state-success-primary)}.fThDlq_deviceOffline{color:var(--dsw-alias-label-secondary)}.fThDlq_deviceSeen{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;font-size:12px}.fThDlq_deviceRevoke{color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:8px;flex:none;padding:6px 10px;font-size:12px;transition:background-color .12s,color .12s}.fThDlq_deviceRevoke:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.fThDlq_deviceRevoke:focus-visible{box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-2), 0 0 0 4px var(--dsw-alias-brand-primary);outline:none}@media (prefers-reduced-motion:reduce){.fThDlq_trigger,.fThDlq_close,.fThDlq_action,.fThDlq_address,.fThDlq_deviceRevoke{transition:none}}.fThDlq_entryRow{flex:none;align-items:center;gap:6px;min-width:0;display:flex}.fThDlq_entryRow[data-rail=rail]{flex-direction:column-reverse;gap:4px}[data-dsh-frame]:not([data-sidebar-collapsed]) [class*=footArea]{flex-flow:wrap;align-items:center}[data-dsh-frame]:not([data-sidebar-collapsed]) [class*=footArea]>:not([class*=settingsArea]):not([class*=footerActions]){flex:100%;min-width:0}[data-dsh-frame]:not([data-sidebar-collapsed]) [class*=settingsArea]{flex:auto;order:1;width:auto;min-width:0}[data-dsh-frame]:not([data-sidebar-collapsed]) [class*=footerActions]{flex:none;order:2;align-items:center;width:auto;min-width:0}.fThDlq_updateStatus{margin:0;font-weight:600}.fThDlq_updateDetail{color:var(--dsw-alias-label-secondary);margin:6px 0 0;font-size:13px}.fThDlq_updateError{color:var(--dsw-alias-text-danger,var(--dsw-alias-label-primary));margin:0;font-weight:600}.fThDlq_updateOutput{background:var(--dsw-alias-bg-layer-1);max-height:180px;color:var(--dsw-alias-label-secondary);white-space:pre-wrap;word-break:break-all;border-radius:10px;margin:10px 0 0;padding:10px 12px;font-size:12px;line-height:18px;overflow:auto}.fThDlq_updateList{flex-direction:column;gap:6px;margin:12px 0 0;padding:0;list-style:none;display:flex}.fThDlq_updateListItem{justify-content:space-between;align-items:baseline;gap:12px;font-size:13px;display:flex}.fThDlq_updateListName{text-overflow:ellipsis;white-space:nowrap;min-width:0;color:var(--dsw-alias-label-primary);overflow:hidden}.fThDlq_updateListVersions{color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;flex:none}.fThDlq_updateNotes{margin-top:14px}.fThDlq_updateNotesTitle{margin:0 0 8px;font-size:14px;font-weight:600}.fThDlq_updateNoteSection{flex-direction:column;gap:4px;margin-top:10px;display:flex}.fThDlq_updateNoteHeading{color:var(--dsw-alias-label-secondary);margin:0;font-size:13px;font-weight:600}.fThDlq_updateNoteList{flex-direction:column;gap:4px;margin:0;padding-left:18px;font-size:13px;display:flex}.fThDlq_updateNoteItem{color:var(--dsw-alias-label-primary);overflow-wrap:anywhere}.fThDlq_updateVersions{margin-top:12px}.fThDlq_updateVersionsSummary{cursor:pointer;color:var(--dsw-alias-label-secondary);user-select:none;font-size:12px}.fThDlq_updateActions{justify-content:flex-end;margin-top:16px;display:flex}.fThDlq_updateRetry{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary);cursor:pointer;border:none;border-radius:10px;align-items:center;gap:6px;padding:8px 14px;font-size:13px;transition:background-color .12s,color .12s;display:inline-flex}.fThDlq_updateRetry:hover{background:var(--dsw-alias-interactive-bg-active)}@media (prefers-reduced-motion:reduce){.fThDlq_updateRetry{transition:none}}";
+		const tagId$12 = "@linxin666/dsh-web-all/packages/dsh-remote-web-ui/src/client/remote.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$12) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$17;
-			tag.textContent = css$17;
+			tag.dataset.pluginCss = tagId$12;
+			tag.textContent = css$12;
 			document.head.appendChild(tag);
 		}
 		var remote_module_css_default = {
@@ -14154,7 +14154,7 @@ window.__ModuleLoader__.load({
 								children: t("pair.expired")
 							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 								className: remote_module_css_default.expiry,
-								children: t("pair.expires", { time: formatClock$1(state.expiresAt) })
+								children: t("pair.expires", { time: formatClock$2(state.expiresAt) })
 							})
 						]
 					}),
@@ -14981,7 +14981,7 @@ window.__ModuleLoader__.load({
 				mint().then(setState);
 			}, [mint]);
 			const handleCopy = (0, react.useCallback)((url) => {
-				copyText$1(url).then((ok) => {
+				copyText(url).then((ok) => {
 					if (!ok) return;
 					setCopied(true);
 					window.setTimeout(() => {
@@ -14990,7 +14990,7 @@ window.__ModuleLoader__.load({
 				});
 			}, []);
 			const handleCopyToken = (0, react.useCallback)((token) => {
-				copyText$1(token).then((ok) => {
+				copyText(token).then((ok) => {
 					if (!ok) return;
 					setCopiedToken(true);
 					window.setTimeout(() => {
@@ -15097,16 +15097,16 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-remote-web-ui/src/client/settings-card.module.css.mjs
-		const css$16 = ".Kwoi6G_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}.Kwoi6G_card:hover{border-color:var(--dsw-alias-label-dimmed)}.Kwoi6G_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.Kwoi6G_header{appearance:none;box-sizing:border-box;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.Kwoi6G_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.Kwoi6G_headerStatic{box-sizing:border-box;border-radius:12px;align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}.Kwoi6G_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.Kwoi6G_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.Kwoi6G_description{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.5}.Kwoi6G_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.Kwoi6G_chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.Kwoi6G_chevronOpen{transform:rotate(180deg)}.Kwoi6G_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.Kwoi6G_readOnly{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:12px;line-height:1.5}.Kwoi6G_notExposed{color:var(--dsw-alias-state-warn-primary);margin:12px 0 0;font-size:12px;line-height:1.5}.Kwoi6G_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.Kwoi6G_failed{min-width:0;color:var(--dsw-alias-state-error-primary,#b42318);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:12px;line-height:1.5;overflow:hidden}.Kwoi6G_discard,.Kwoi6G_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.Kwoi6G_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.Kwoi6G_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.Kwoi6G_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.Kwoi6G_discard:disabled,.Kwoi6G_save:disabled{opacity:.4;cursor:default}.Kwoi6G_discard:focus-visible,.Kwoi6G_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.Kwoi6G_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.Kwoi6G_field+.Kwoi6G_field{border-top:1px solid var(--dsw-alias-border-l2)}.Kwoi6G_head{align-items:center;gap:8px;display:flex}.Kwoi6G_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.Kwoi6G_badges{align-items:center;gap:8px;display:inline-flex}.Kwoi6G_badge{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.Kwoi6G_reset{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5}.Kwoi6G_reset:hover:not(:disabled){color:var(--dsw-alias-label-primary)}.Kwoi6G_reset:disabled{cursor:default}.Kwoi6G_reset:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}.Kwoi6G_input,.Kwoi6G_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.Kwoi6G_input:focus-visible,.Kwoi6G_select:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.Kwoi6G_input:disabled,.Kwoi6G_select:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.Kwoi6G_inputInvalid{border:1px solid var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.Kwoi6G_inputInvalid:focus-visible{outline:2px solid var(--dsw-alias-state-error-primary,#b42318);outline-offset:1px;border-color:var(--dsw-alias-state-error-primary,#b42318)}.Kwoi6G_selectWrap{position:relative}.Kwoi6G_selectButton{appearance:none;text-align:left;cursor:pointer;justify-content:space-between;align-items:center;gap:8px;width:100%;display:flex}.Kwoi6G_selectLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.Kwoi6G_selectChevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.Kwoi6G_selectChevronOpen{transform:rotate(180deg)}.Kwoi6G_selectPopup{z-index:40;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-height:240px;box-shadow:0 8px 24px var(--dsw-alias-bg-mask-2);opacity:0;border-radius:8px;flex-direction:column;padding:4px;transition:opacity .1s,transform .1s;display:flex;position:absolute;top:calc(100% + 4px);left:0;right:0;overflow-y:auto;transform:translateY(-4px)}.Kwoi6G_selectPopupOpen{opacity:1;transform:none}.Kwoi6G_selectPopupClose{opacity:0;pointer-events:none;transform:translateY(-4px)}.Kwoi6G_selectOption{color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;text-overflow:ellipsis;border-radius:6px;flex-shrink:0;padding:6px 10px;font-size:13px;line-height:1.5;overflow:hidden}.Kwoi6G_selectOption:hover,.Kwoi6G_selectOptionActive{background:var(--dsw-alias-interactive-bg-hover)}.Kwoi6G_selectOptionSelected{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 10%, transparent);font-weight:500}.Kwoi6G_invalid{color:var(--dsw-alias-state-error-primary,#b42318);margin:0;font-size:12px;line-height:1.5}.Kwoi6G_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){.Kwoi6G_card,.Kwoi6G_header,.Kwoi6G_chevron,.Kwoi6G_chevronOpen,.Kwoi6G_discard,.Kwoi6G_save,.Kwoi6G_selectChevron,.Kwoi6G_selectChevronOpen,.Kwoi6G_selectPopup{transition:none}}";
-		const tagId$16 = "@linxin666/dsh-web-all/packages/dsh-remote-web-ui/src/client/settings-card.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$16) + "]") === null) {
+		const css$11 = ".Kwoi6G_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}.Kwoi6G_card:hover{border-color:var(--dsw-alias-label-dimmed)}.Kwoi6G_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.Kwoi6G_header{appearance:none;box-sizing:border-box;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.Kwoi6G_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.Kwoi6G_headerStatic{box-sizing:border-box;border-radius:12px;align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}.Kwoi6G_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.Kwoi6G_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.Kwoi6G_description{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.5}.Kwoi6G_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.Kwoi6G_chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.Kwoi6G_chevronOpen{transform:rotate(180deg)}.Kwoi6G_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.Kwoi6G_readOnly{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:12px;line-height:1.5}.Kwoi6G_notExposed{color:var(--dsw-alias-state-warn-primary);margin:12px 0 0;font-size:12px;line-height:1.5}.Kwoi6G_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.Kwoi6G_failed{min-width:0;color:var(--dsw-alias-state-error-primary,#b42318);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:12px;line-height:1.5;overflow:hidden}.Kwoi6G_discard,.Kwoi6G_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.Kwoi6G_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.Kwoi6G_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.Kwoi6G_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.Kwoi6G_discard:disabled,.Kwoi6G_save:disabled{opacity:.4;cursor:default}.Kwoi6G_discard:focus-visible,.Kwoi6G_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.Kwoi6G_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.Kwoi6G_field+.Kwoi6G_field{border-top:1px solid var(--dsw-alias-border-l2)}.Kwoi6G_head{align-items:center;gap:8px;display:flex}.Kwoi6G_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.Kwoi6G_badges{align-items:center;gap:8px;display:inline-flex}.Kwoi6G_badge{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.Kwoi6G_reset{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5}.Kwoi6G_reset:hover:not(:disabled){color:var(--dsw-alias-label-primary)}.Kwoi6G_reset:disabled{cursor:default}.Kwoi6G_reset:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}.Kwoi6G_input,.Kwoi6G_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.Kwoi6G_input:focus-visible,.Kwoi6G_select:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.Kwoi6G_input:disabled,.Kwoi6G_select:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.Kwoi6G_inputInvalid{border:1px solid var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.Kwoi6G_inputInvalid:focus-visible{outline:2px solid var(--dsw-alias-state-error-primary,#b42318);outline-offset:1px;border-color:var(--dsw-alias-state-error-primary,#b42318)}.Kwoi6G_selectWrap{position:relative}.Kwoi6G_selectButton{appearance:none;text-align:left;cursor:pointer;justify-content:space-between;align-items:center;gap:8px;width:100%;display:flex}.Kwoi6G_selectLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.Kwoi6G_selectChevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.Kwoi6G_selectChevronOpen{transform:rotate(180deg)}.Kwoi6G_selectPopup{z-index:40;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-height:240px;box-shadow:0 8px 24px var(--dsw-alias-bg-mask-2);opacity:0;border-radius:8px;flex-direction:column;padding:4px;transition:opacity .1s,transform .1s;display:flex;position:absolute;top:calc(100% + 4px);left:0;right:0;overflow-y:auto;transform:translateY(-4px)}.Kwoi6G_selectPopupOpen{opacity:1;transform:none}.Kwoi6G_selectPopupClose{opacity:0;pointer-events:none;transform:translateY(-4px)}.Kwoi6G_selectOption{color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;text-overflow:ellipsis;border-radius:6px;flex-shrink:0;padding:6px 10px;font-size:13px;line-height:1.5;overflow:hidden}.Kwoi6G_selectOption:hover,.Kwoi6G_selectOptionActive{background:var(--dsw-alias-interactive-bg-hover)}.Kwoi6G_selectOptionSelected{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 10%, transparent);font-weight:500}.Kwoi6G_invalid{color:var(--dsw-alias-state-error-primary,#b42318);margin:0;font-size:12px;line-height:1.5}.Kwoi6G_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){.Kwoi6G_card,.Kwoi6G_header,.Kwoi6G_chevron,.Kwoi6G_chevronOpen,.Kwoi6G_discard,.Kwoi6G_save,.Kwoi6G_selectChevron,.Kwoi6G_selectChevronOpen,.Kwoi6G_selectPopup{transition:none}}";
+		const tagId$11 = "@linxin666/dsh-web-all/packages/dsh-remote-web-ui/src/client/settings-card.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$11) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$16;
-			tag.textContent = css$16;
+			tag.dataset.pluginCss = tagId$11;
+			tag.textContent = css$11;
 			document.head.appendChild(tag);
 		}
-		var settings_card_module_css_default$4 = {
+		var settings_card_module_css_default$2 = {
 			"badge": "Kwoi6G_badge",
 			"badges": "Kwoi6G_badges",
 			"body": "Kwoi6G_body",
@@ -15162,7 +15162,7 @@ window.__ModuleLoader__.load({
 		* @param props - the plugin's copy keys, its form state, and its controls.
 		* @returns the card, or nothing while the namespace is still loading.
 		*/
-		function PluginSettingsCard$4(props) {
+		function PluginSettingsCard$2(props) {
 			const [open, setOpen] = (0, react.useState)(props.defaultOpen ?? true);
 			const { state, alwaysOpen } = props;
 			if (!state.available) return null;
@@ -15170,28 +15170,28 @@ window.__ModuleLoader__.load({
 			const description = props.t(props.descriptionKey);
 			const blocked = !state.dirty || state.invalid || state.saving;
 			const expanded = alwaysOpen === true || open;
-			const cardClass = expanded ? `${settings_card_module_css_default$4.cardOpen} ${settings_card_module_css_default$4.card}` : settings_card_module_css_default$4.card;
+			const cardClass = expanded ? `${settings_card_module_css_default$2.cardOpen} ${settings_card_module_css_default$2.card}` : settings_card_module_css_default$2.card;
 			const header = alwaysOpen === true ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$4.headerStatic,
+				className: settings_card_module_css_default$2.headerStatic,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-					className: settings_card_module_css_default$4.headText,
+					className: settings_card_module_css_default$2.headText,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$4.name,
+						className: settings_card_module_css_default$2.name,
 						title,
 						children: title
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$4.description,
+						className: settings_card_module_css_default$2.description,
 						title: description,
 						children: props.descriptionNode ?? description
 					})]
 				}), state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-					className: settings_card_module_css_default$4.pending,
+					className: settings_card_module_css_default$2.pending,
 					title: props.t("settings.unsaved"),
 					children: props.t("settings.unsaved")
 				}) : null]
 			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 				type: "button",
-				className: settings_card_module_css_default$4.header,
+				className: settings_card_module_css_default$2.header,
 				"aria-expanded": open,
 				"aria-label": `${props.t(open ? "settings.collapse" : "settings.expand")}: ${title}`,
 				onClick: () => {
@@ -15199,19 +15199,19 @@ window.__ModuleLoader__.load({
 				},
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-						className: settings_card_module_css_default$4.headText,
+						className: settings_card_module_css_default$2.headText,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default$4.name,
+							className: settings_card_module_css_default$2.name,
 							title,
 							children: title
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default$4.description,
+							className: settings_card_module_css_default$2.description,
 							title: description,
 							children: props.descriptionNode ?? description
 						})]
 					}),
 					state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$4.pending,
+						className: settings_card_module_css_default$2.pending,
 						title: props.t("settings.unsaved"),
 						children: props.t("settings.unsaved")
 					}) : null,
@@ -15221,7 +15221,7 @@ window.__ModuleLoader__.load({
 						viewBox: "0 0 14 14",
 						fill: "none",
 						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default$4.chevron} ${settings_card_module_css_default$4.chevronOpen}` : settings_card_module_css_default$4.chevron,
+						className: open ? `${settings_card_module_css_default$2.chevron} ${settings_card_module_css_default$2.chevronOpen}` : settings_card_module_css_default$2.chevron,
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
 							fill: "currentColor"
@@ -15234,9 +15234,9 @@ window.__ModuleLoader__.load({
 				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 					className: cardClass,
 					children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: settings_card_module_css_default$4.body,
+						className: settings_card_module_css_default$2.body,
 						children: showNotice ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default$4.notExposed,
+							className: settings_card_module_css_default$2.notExposed,
 							role: "status",
 							children: props.t("settings.notExposed")
 						}) : null
@@ -15246,32 +15246,32 @@ window.__ModuleLoader__.load({
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 				className: cardClass,
 				children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: settings_card_module_css_default$4.body,
+					className: settings_card_module_css_default$2.body,
 					children: [
 						!state.writable ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default$4.readOnly,
+							className: settings_card_module_css_default$2.readOnly,
 							role: "status",
 							children: props.t("settings.readOnly")
 						}) : null,
 						props.children,
 						props.hideFooter === true ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: settings_card_module_css_default$4.footer,
+							className: settings_card_module_css_default$2.footer,
 							children: [
 								state.failed ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-									className: settings_card_module_css_default$4.failed,
+									className: settings_card_module_css_default$2.failed,
 									role: "status",
 									children: [props.t("settings.saveFailed"), state.failedReason ? " - " + state.failedReason : ""]
 								}) : null,
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
-									className: settings_card_module_css_default$4.discard,
+									className: settings_card_module_css_default$2.discard,
 									disabled: !state.dirty || state.saving,
 									onClick: props.onDiscard,
 									children: props.t("settings.discard")
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
-									className: settings_card_module_css_default$4.save,
+									className: settings_card_module_css_default$2.save,
 									disabled: blocked,
 									onClick: props.onSave,
 									children: props.t(!state.saving ? "settings.save" : "settings.saving")
@@ -15283,24 +15283,24 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** A staged value field. `numeric` only hints the keypad: which drafts a field accepts is decided by its spec. */
-		function ValueField$3(props) {
+		function ValueField$2(props) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$4.field,
+				className: settings_card_module_css_default$2.field,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$4.head,
+						className: settings_card_module_css_default$2.head,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$4.label,
+							className: settings_card_module_css_default$2.label,
 							htmlFor: props.id,
 							children: props.label
 						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default$4.badges,
+							className: settings_card_module_css_default$2.badges,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default$4.badge,
+								className: settings_card_module_css_default$2.badge,
 								children: props.overriddenLabel
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: settings_card_module_css_default$4.reset,
+								className: settings_card_module_css_default$2.reset,
 								disabled: props.disabled,
 								onClick: props.onReset,
 								children: props.resetLabel
@@ -15309,7 +15309,7 @@ window.__ModuleLoader__.load({
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
 						id: props.id,
-						className: props.invalid ? settings_card_module_css_default$4.inputInvalid : settings_card_module_css_default$4.input,
+						className: props.invalid ? settings_card_module_css_default$2.inputInvalid : settings_card_module_css_default$2.input,
 						type: "text",
 						...props.numeric === true ? { inputMode: "numeric" } : {},
 						...props.invalid ? { "aria-invalid": true } : {},
@@ -15321,17 +15321,17 @@ window.__ModuleLoader__.load({
 						}
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: props.invalid ? settings_card_module_css_default$4.invalid : settings_card_module_css_default$4.hint,
+						className: props.invalid ? settings_card_module_css_default$2.invalid : settings_card_module_css_default$2.hint,
 						children: props.invalid ? props.invalidLabel : props.hint
 					})
 				]
 			});
 		}
-		const NON_SKIN_BODY_MARKERS$4 = /* @__PURE__ */ new Set(["dshSkinCenter", "dshSidebarCollapsed"]);
-		function isSkinActive$4() {
-			return Object.keys(document.body.dataset).some((key) => key.startsWith("dsh") && !NON_SKIN_BODY_MARKERS$4.has(key));
+		const NON_SKIN_BODY_MARKERS$2 = /* @__PURE__ */ new Set(["dshSkinCenter", "dshSidebarCollapsed"]);
+		function isSkinActive$2() {
+			return Object.keys(document.body.dataset).some((key) => key.startsWith("dsh") && !NON_SKIN_BODY_MARKERS$2.has(key));
 		}
-		const SELECT_CLOSE_MS$4 = 100;
+		const SELECT_CLOSE_MS$2 = 100;
 		/**
 		* The shared dual-mode select control. While an appearance skin is active it
 		* renders the legacy native `<select>` untouched, so element-level skin
@@ -15341,7 +15341,7 @@ window.__ModuleLoader__.load({
 		* editors (the side-card prefs) bind it directly through onEdit.
 		* 双模式下拉框：皮肤激活时用原生 select，默认外观用自绘动画弹层。
 		*/
-		function SelectField$4(props) {
+		function SelectField$2(props) {
 			const { id, options, value } = props;
 			const [open, setOpen] = (0, react.useState)(false);
 			const [closing, setClosing] = (0, react.useState)(false);
@@ -15360,7 +15360,7 @@ window.__ModuleLoader__.load({
 				closeTimer.current = setTimeout(() => {
 					setClosing(false);
 					setOpen(false);
-				}, SELECT_CLOSE_MS$4);
+				}, SELECT_CLOSE_MS$2);
 			}, []);
 			const openPopup = () => {
 				if (closeTimer.current !== void 0) clearTimeout(closeTimer.current);
@@ -15434,9 +15434,9 @@ window.__ModuleLoader__.load({
 				open,
 				close
 			]);
-			if (isSkinActive$4()) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
+			if (isSkinActive$2()) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
 				id,
-				className: settings_card_module_css_default$4.select,
+				className: settings_card_module_css_default$2.select,
 				value,
 				disabled: props.disabled,
 				onChange: (event) => {
@@ -15448,14 +15448,14 @@ window.__ModuleLoader__.load({
 				}, option.value))
 			});
 			const label = options.find((option) => option.value === value)?.label ?? "";
-			const popupClass = closing ? `${settings_card_module_css_default$4.selectPopup} ${settings_card_module_css_default$4.selectPopupClose}` : phase === "open" ? `${settings_card_module_css_default$4.selectPopup} ${settings_card_module_css_default$4.selectPopupOpen}` : settings_card_module_css_default$4.selectPopup;
+			const popupClass = closing ? `${settings_card_module_css_default$2.selectPopup} ${settings_card_module_css_default$2.selectPopupClose}` : phase === "open" ? `${settings_card_module_css_default$2.selectPopup} ${settings_card_module_css_default$2.selectPopupOpen}` : settings_card_module_css_default$2.selectPopup;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$4.selectWrap,
+				className: settings_card_module_css_default$2.selectWrap,
 				ref: wrapRef,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 					type: "button",
 					id,
-					className: `${settings_card_module_css_default$4.select} ${settings_card_module_css_default$4.selectButton}`,
+					className: `${settings_card_module_css_default$2.select} ${settings_card_module_css_default$2.selectButton}`,
 					disabled: props.disabled,
 					"aria-haspopup": "listbox",
 					"aria-expanded": open,
@@ -15464,7 +15464,7 @@ window.__ModuleLoader__.load({
 					onClick: onTriggerClick,
 					onKeyDown,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$4.selectLabel,
+						className: settings_card_module_css_default$2.selectLabel,
 						children: label
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
 						width: "14",
@@ -15472,7 +15472,7 @@ window.__ModuleLoader__.load({
 						viewBox: "0 0 14 14",
 						fill: "none",
 						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default$4.selectChevron} ${settings_card_module_css_default$4.selectChevronOpen}` : settings_card_module_css_default$4.selectChevron,
+						className: open ? `${settings_card_module_css_default$2.selectChevron} ${settings_card_module_css_default$2.selectChevronOpen}` : settings_card_module_css_default$2.selectChevron,
 						"aria-hidden": "true",
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
@@ -15487,7 +15487,7 @@ window.__ModuleLoader__.load({
 						id: `${id}-o${index}`,
 						role: "option",
 						"aria-selected": option.value === value,
-						className: `${settings_card_module_css_default$4.selectOption}${option.value === value ? ` ${settings_card_module_css_default$4.selectOptionSelected}` : ""}${index === activeIndex && !closing ? ` ${settings_card_module_css_default$4.selectOptionActive}` : ""}`,
+						className: `${settings_card_module_css_default$2.selectOption}${option.value === value ? ` ${settings_card_module_css_default$2.selectOptionSelected}` : ""}${index === activeIndex && !closing ? ` ${settings_card_module_css_default$2.selectOptionActive}` : ""}`,
 						onClick: () => {
 							commit(index);
 						},
@@ -15497,31 +15497,31 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** A staged boolean field: 继承 / 开 / 关. */
-		function BooleanField$4(props) {
+		function BooleanField$2(props) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$4.field,
+				className: settings_card_module_css_default$2.field,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$4.head,
+						className: settings_card_module_css_default$2.head,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$4.label,
+							className: settings_card_module_css_default$2.label,
 							htmlFor: props.id,
 							children: props.label
 						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default$4.badges,
+							className: settings_card_module_css_default$2.badges,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default$4.badge,
+								className: settings_card_module_css_default$2.badge,
 								children: props.overriddenLabel
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: settings_card_module_css_default$4.reset,
+								className: settings_card_module_css_default$2.reset,
 								disabled: props.disabled,
 								onClick: props.onReset,
 								children: props.resetLabel
 							})]
 						}) : null]
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$4, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$2, {
 						id: props.id,
 						options: [
 							{
@@ -15543,7 +15543,7 @@ window.__ModuleLoader__.load({
 						onEdit: props.onEdit
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: settings_card_module_css_default$4.hint,
+						className: settings_card_module_css_default$2.hint,
 						children: props.hint
 					})
 				]
@@ -15552,7 +15552,7 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region ../dsh-remote-web-ui/src/client/settings-form.ts
 		/** A whole- or decimal-number field. An empty draft clears the field; any other draft that is not a finite number within the constraints blocks the save. */
-		function numberField$3(field, constraints = {}) {
+		function numberField$2(field, constraints = {}) {
 			const { integer = false, min } = constraints;
 			return {
 				field,
@@ -15572,7 +15572,7 @@ window.__ModuleLoader__.load({
 			};
 		}
 		/** A free-text field. An empty draft clears the field. */
-		function textField$1(field) {
+		function textField(field) {
 			return {
 				field,
 				format: (value) => typeof value === "string" ? value : "",
@@ -15591,14 +15591,14 @@ window.__ModuleLoader__.load({
 		* but a save never compares the redacted value back: the staged set is judged
 		* by the mutation settling (see {@link FieldSpec.secret}).
 		*/
-		function secretField$1(field) {
+		function secretField(field) {
 			return {
-				...textField$1(field),
+				...textField(field),
 				secret: true
 			};
 		}
 		/** A boolean field, edited through true/false draft text. */
-		function booleanField$4(field) {
+		function booleanField$2(field) {
 			return {
 				field,
 				format: (value) => typeof value === "boolean" ? String(value) : "",
@@ -15624,7 +15624,7 @@ window.__ModuleLoader__.load({
 		* read back from the section rather than predicted here. A save that did not
 		* land keeps its drafts, so the user can correct them instead of retyping.
 		*/
-		var CardForm$4 = class {
+		var CardForm$2 = class {
 			scope;
 			specs;
 			staged = /* @__PURE__ */ new Map();
@@ -15878,19 +15878,19 @@ window.__ModuleLoader__.load({
 			store;
 			/** @param scope - the configuration form for the `remote-web-ui` entry. */
 			constructor(scope) {
-				this.form = new CardForm$4(scope, [
-					booleanField$4("enabled"),
-					numberField$3("tokenTtlMs"),
-					numberField$3("offlineAfterMs"),
-					numberField$3("maxDevices"),
-					numberField$3("idleExpireMs"),
-					textField$1("cookieName"),
-					booleanField$4("requirePairingForLan"),
-					textField$1("publicBaseUrl"),
-					booleanField$4("autoTunnel"),
-					secretField$1("tunnelToken"),
-					booleanField$4("relay"),
-					booleanField$4("lanBind")
+				this.form = new CardForm$2(scope, [
+					booleanField$2("enabled"),
+					numberField$2("tokenTtlMs"),
+					numberField$2("offlineAfterMs"),
+					numberField$2("maxDevices"),
+					numberField$2("idleExpireMs"),
+					textField("cookieName"),
+					booleanField$2("requirePairingForLan"),
+					textField("publicBaseUrl"),
+					booleanField$2("autoTunnel"),
+					secretField("tunnelToken"),
+					booleanField$2("relay"),
+					booleanField$2("lanBind")
 				]);
 				this.store = this.form.bind(() => this.projection());
 			}
@@ -15944,7 +15944,7 @@ window.__ModuleLoader__.load({
 				invalidLabel: t("settings.invalidNumber"),
 				disabled
 			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(PluginSettingsCard$4, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(PluginSettingsCard$2, {
 				t,
 				titleKey: "settings.title",
 				descriptionKey: "settings.description",
@@ -15955,7 +15955,7 @@ window.__ModuleLoader__.load({
 				onSave: props.save,
 				onDiscard: props.discard,
 				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$4, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$2, {
 						id: "settings-remote-enabled",
 						label: t("settings.enabled"),
 						hint: t("settings.enabledHint"),
@@ -15971,7 +15971,7 @@ window.__ModuleLoader__.load({
 							props.resetField("enabled");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$3, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$2, {
 						id: "settings-remote-token-ttl",
 						label: t("settings.tokenTtlMs"),
 						hint: t("settings.tokenTtlMsHint"),
@@ -15985,7 +15985,7 @@ window.__ModuleLoader__.load({
 							props.resetField("tokenTtlMs");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$3, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$2, {
 						id: "settings-remote-offline",
 						label: t("settings.offlineAfterMs"),
 						hint: t("settings.offlineAfterMsHint"),
@@ -15999,7 +15999,7 @@ window.__ModuleLoader__.load({
 							props.resetField("offlineAfterMs");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$3, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$2, {
 						id: "settings-remote-max-devices",
 						label: t("settings.maxDevices"),
 						hint: t("settings.maxDevicesHint"),
@@ -16013,7 +16013,7 @@ window.__ModuleLoader__.load({
 							props.resetField("maxDevices");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$3, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$2, {
 						id: "settings-remote-idle-expire",
 						label: t("settings.idleExpireMs"),
 						hint: t("settings.idleExpireMsHint"),
@@ -16027,7 +16027,7 @@ window.__ModuleLoader__.load({
 							props.resetField("idleExpireMs");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$3, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$2, {
 						id: "settings-remote-cookie",
 						label: t("settings.cookieName"),
 						hint: t("settings.cookieNameHint"),
@@ -16040,7 +16040,7 @@ window.__ModuleLoader__.load({
 							props.resetField("cookieName");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$4, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$2, {
 						id: "settings-remote-fence",
 						label: t("settings.requirePairingForLan"),
 						hint: t("settings.requirePairingForLanHint"),
@@ -16056,7 +16056,7 @@ window.__ModuleLoader__.load({
 							props.resetField("requirePairingForLan");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$3, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$2, {
 						id: "settings-remote-public-base",
 						label: t("settings.publicBaseUrl"),
 						hint: t("settings.publicBaseUrlHint"),
@@ -16070,7 +16070,7 @@ window.__ModuleLoader__.load({
 							props.resetField("publicBaseUrl");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$4, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$2, {
 						id: "settings-remote-auto-tunnel",
 						label: t("settings.autoTunnel"),
 						hint: t("settings.autoTunnelHint"),
@@ -16086,7 +16086,7 @@ window.__ModuleLoader__.load({
 							props.resetField("autoTunnel");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$3, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$2, {
 						id: "settings-remote-tunnel-token",
 						label: t("settings.tunnelToken"),
 						hint: t("settings.tunnelTokenHint"),
@@ -16100,7 +16100,7 @@ window.__ModuleLoader__.load({
 							props.resetField("tunnelToken");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$4, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$2, {
 						id: "settings-remote-relay",
 						label: t("settings.relay"),
 						hint: t("settings.relayHint"),
@@ -16117,7 +16117,7 @@ window.__ModuleLoader__.load({
 						}
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(LanBindStatus, { t }),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$4, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$2, {
 						id: "settings-remote-lan-bind",
 						label: t("settings.lanBind"),
 						hint: t("settings.lanBindHint"),
@@ -16190,7 +16190,7 @@ window.__ModuleLoader__.load({
 		//#region ../dsh-remote-web-ui/src/client/locales.ts
 		/** `remote` namespace dictionaries: the remote-access surface copy. */
 		/** Simplified Chinese dictionary (the key-set source of truth). */
-		const zh$10 = {
+		const zh$8 = {
 			"entry.label": "远程访问",
 			"mobile.whale.open": "打开侧边栏",
 			"mobile.composer.pickModel": "选择模型",
@@ -16354,7 +16354,7 @@ window.__ModuleLoader__.load({
 			"update.error.unknown": "更新失败，请重试。"
 		};
 		/** English dictionary, checked complete against the zh key set. */
-		const en$10 = {
+		const en$8 = {
 			"entry.label": "Remote access",
 			"mobile.whale.open": "Open sidebar",
 			"mobile.composer.pickModel": "Pick model",
@@ -17029,11 +17029,11 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region ../dsh-remote-web-ui/src/client/telemetry.ts
-		const VISITOR_KEY$5 = "dsh-web-ui-telemetry-visitor";
-		const DAY_KEY_PREFIX$5 = "dsh-web-ui-telemetry-day:";
-		const ENDPOINT$5 = "https://dsh-market.com/api/telemetry/event";
+		const VISITOR_KEY$3 = "dsh-web-ui-telemetry-visitor";
+		const DAY_KEY_PREFIX$3 = "dsh-web-ui-telemetry-day:";
+		const ENDPOINT$3 = "https://dsh-market.com/api/telemetry/event";
 		/** The building package's version, when the bundle carries it. */
-		function bakedVersion$5() {
+		function bakedVersion$3() {
 			try {
 				return "0.3.24";
 			} catch {
@@ -17041,23 +17041,23 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/** Read or lazily create the anonymous visitor id; null when storage is unavailable. */
-		function visitorId$5() {
+		function visitorId$3() {
 			try {
-				const existing = localStorage.getItem(VISITOR_KEY$5);
+				const existing = localStorage.getItem(VISITOR_KEY$3);
 				if (existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing)) return existing;
 				const fresh = crypto.randomUUID().replaceAll("-", "");
-				localStorage.setItem(VISITOR_KEY$5, fresh);
+				localStorage.setItem(VISITOR_KEY$3, fresh);
 				return fresh;
 			} catch {
 				return null;
 			}
 		}
 		/** Drop stale per-day dedup keys so localStorage does not grow forever. */
-		function pruneDayKeys$5(today) {
+		function pruneDayKeys$3(today) {
 			try {
 				for (let index = localStorage.length - 1; index >= 0; index -= 1) {
 					const key = localStorage.key(index);
-					if (key !== null && key.startsWith(DAY_KEY_PREFIX$5) && key !== DAY_KEY_PREFIX$5 + today) localStorage.removeItem(key);
+					if (key !== null && key.startsWith(DAY_KEY_PREFIX$3) && key !== DAY_KEY_PREFIX$3 + today) localStorage.removeItem(key);
 				}
 			} catch {}
 		}
@@ -17066,18 +17066,18 @@ window.__ModuleLoader__.load({
 		* browser. Never throws and never blocks the caller. Items without an explicit
 		* version inherit the bundle's baked build version.
 		*/
-		function reportDailyHeartbeat$5(items) {
+		function reportDailyHeartbeat$3(items) {
 			try {
 				if (items.length === 0) return;
 				const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
 				if (navigator.webdriver) return;
-				if (localStorage.getItem(DAY_KEY_PREFIX$5 + today) !== null) return;
-				const visitor = visitorId$5();
+				if (localStorage.getItem(DAY_KEY_PREFIX$3 + today) !== null) return;
+				const visitor = visitorId$3();
 				if (visitor === null) return;
-				pruneDayKeys$5(today);
+				pruneDayKeys$3(today);
 				const payloadItems = items.map((item) => {
 					const out = { name: item.name };
-					const version = item.version ?? bakedVersion$5();
+					const version = item.version ?? bakedVersion$3();
 					if (version !== void 0) out.version = version;
 					if (item.channel !== void 0) out.channel = item.channel;
 					return out;
@@ -17087,13 +17087,13 @@ window.__ModuleLoader__.load({
 					visitor,
 					items: payloadItems
 				});
-				fetch(ENDPOINT$5, {
+				fetch(ENDPOINT$3, {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body,
 					keepalive: true
 				}).then((response) => {
-					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$5 + today, "1");
+					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$3 + today, "1");
 				}).catch(() => {});
 			} catch {}
 		}
@@ -18075,27 +18075,27 @@ window.__ModuleLoader__.load({
 		* `ctx`.
 		*/
 		/** The family list seat key. */
-		const FAMILY_PLUGIN_CARD_SEAT$3 = "web-ui.plugin.item";
+		const FAMILY_PLUGIN_CARD_SEAT$1 = "web-ui.plugin.item";
 		/** The official keyed plugin-card seat key (the alpha.2 bundle-configuration seat). */
-		const OFFICIAL_PLUGIN_CARD_SEAT$3 = "plugins.bundle.config";
+		const OFFICIAL_PLUGIN_CARD_SEAT$1 = "plugins.bundle.config";
 		/** The service dsh-web-settings publishes while it is loaded. */
-		const FAMILY_GROUP_SERVICE$3 = "webUiSettings";
+		const FAMILY_GROUP_SERVICE$1 = "webUiSettings";
 		/**
 		* Whether the family group (dsh-web-settings) is loaded in this page. The
 		* service is the group package's own contract, so the probe cannot be fooled
 		* by a harness release that starts declaring the official seat differently.
 		*/
-		function familyGroupLoaded$3(ctx) {
+		function familyGroupLoaded$1(ctx) {
 			const get = ctx.get;
 			if (typeof get !== "function") return false;
 			try {
-				return get.call(ctx, FAMILY_GROUP_SERVICE$3) !== void 0;
+				return get.call(ctx, FAMILY_GROUP_SERVICE$1) !== void 0;
 			} catch {
 				return false;
 			}
 		}
 		/** Report a refused registration instead of leaving the user with no card. */
-		function warnRefusedSeat$3(seat, error) {
+		function warnRefusedSeat$1(seat, error) {
 			try {
 				console.warn(`[dsh-web] plugin card registration into "${seat}" was refused; the card will not render`, error);
 			} catch {}
@@ -18107,7 +18107,7 @@ window.__ModuleLoader__.load({
 		* @param ctx - client context (its slot registry decides the seat).
 		* @param seat - the card contribution.
 		*/
-		function installPluginCard$3(ctx, seat) {
+		function installPluginCard$1(ctx, seat) {
 			const slots = ctx.slots;
 			const component = seat.component;
 			const inject = seat.inject;
@@ -18123,7 +18123,7 @@ window.__ModuleLoader__.load({
 			/** Reconcile the contribution with the currently live seat (no-op when unchanged). */
 			const reconcile = () => {
 				if (reconciling) return;
-				const target = familyGroupLoaded$3(ctx) ? FAMILY_PLUGIN_CARD_SEAT$3 : OFFICIAL_PLUGIN_CARD_SEAT$3;
+				const target = familyGroupLoaded$1(ctx) ? FAMILY_PLUGIN_CARD_SEAT$1 : OFFICIAL_PLUGIN_CARD_SEAT$1;
 				if (current === target) return;
 				reconciling = true;
 				const previous = dispose;
@@ -18132,21 +18132,21 @@ window.__ModuleLoader__.load({
 				previous?.();
 				try {
 					dispose = slots.register(target === "web-ui.plugin.item" ? {
-						name: FAMILY_PLUGIN_CARD_SEAT$3,
+						name: FAMILY_PLUGIN_CARD_SEAT$1,
 						id: seat.id,
 						...seat.order === void 0 ? {} : { order: seat.order },
 						...seat.label === void 0 ? {} : { label: seat.label },
 						locale: seat.locale,
 						...seat.inject === void 0 ? {} : { inject }
 					} : {
-						name: OFFICIAL_PLUGIN_CARD_SEAT$3,
+						name: OFFICIAL_PLUGIN_CARD_SEAT$1,
 						key: seat.bundle,
 						locale: seat.locale,
 						...seat.inject === void 0 ? {} : { inject }
 					}, component);
 					current = target;
 				} catch (error) {
-					warnRefusedSeat$3(target, error);
+					warnRefusedSeat$1(target, error);
 				} finally {
 					reconciling = false;
 				}
@@ -18169,12 +18169,12 @@ window.__ModuleLoader__.load({
 		* on dispose, so disabled plugin entries stay inert. Export discipline: packages/client/AGENTS.md — the
 		* /client surface carries only what cordis loading needs plus types.
 		*/
-		var client_exports$10 = /* @__PURE__ */ __exportAll({
-			apply: () => apply$11,
-			inject: () => inject$11
+		var client_exports$8 = /* @__PURE__ */ __exportAll({
+			apply: () => apply$9,
+			inject: () => inject$9
 		});
 		/** Dictionary namespace owned by this plugin. */
-		const NS$9 = "remote";
+		const NS$7 = "remote";
 		/** Settings namespace the remote-control card edits (the Host plugin registers it). */
 		const REMOTE_WEB_UI_NS = "remote-web-ui";
 		const REMOTE_WEB_UI_ENTRY_IDS = [
@@ -18182,7 +18182,7 @@ window.__ModuleLoader__.load({
 			"ui-remote-web-ui",
 			REMOTE_WEB_UI_NS
 		];
-		function servedEntryId$3(forms) {
+		function servedEntryId$2(forms) {
 			let served;
 			try {
 				served = forms.describe().getSnapshot().view?.namespaces.map((view) => view.ns);
@@ -18195,7 +18195,7 @@ window.__ModuleLoader__.load({
 		/** Heartbeat cadence from a paired phone (presence + revocation liveness). */
 		const HEARTBEAT_INTERVAL_MS = 1e4;
 		/** Services required by this plugin. */
-		const inject$11 = [
+		const inject$9 = [
 			"slots",
 			"locale",
 			"connection",
@@ -18206,17 +18206,17 @@ window.__ModuleLoader__.load({
 		* Register the remote-control surface.
 		* @param ctx - client root context.
 		*/
-		function apply$11(ctx) {
+		function apply$9(ctx) {
 			startMobileAdapt();
 			ctx.effect(() => () => {
 				window.__dshRemoteAdapt?.setEnabled?.(false);
 			}, "remote-web-ui: mobile-adapt");
-			reportDailyHeartbeat$5([{ name: "@linxin666/dsh-remote-web-ui" }]);
+			reportDailyHeartbeat$3([{ name: "@linxin666/dsh-remote-web-ui" }]);
 			ctx.effect(() => {
 				try {
-					return ctx.locale.register(NS$9, {
-						zh: zh$10,
-						en: en$10
+					return ctx.locale.register(NS$7, {
+						zh: zh$8,
+						en: en$8
 					});
 				} catch {
 					return () => {};
@@ -18240,10 +18240,10 @@ window.__ModuleLoader__.load({
 			if (adapt !== void 0 && adapt.toggleSidebar === null) adapt.toggleSidebar = () => {
 				document.querySelector("[class$=\"_railFish\"] button, [class$=\"_logoRow\"] [class*=\"_iconButton\"]")?.click();
 			};
-			const t = ctx.locale.bind(NS$9);
+			const t = ctx.locale.bind(NS$7);
 			if (adapt !== void 0) adapt.translate = t;
 			const family = ctx.get("webUiSettings");
-			const settingsForm = family !== void 0 && typeof family.bind === "function" ? family.bind({ namespace: REMOTE_WEB_UI_NS }) : ctx.configForms.get(servedEntryId$3(ctx.configForms));
+			const settingsForm = family !== void 0 && typeof family.bind === "function" ? family.bind({ namespace: REMOTE_WEB_UI_NS }) : ctx.configForms.get(servedEntryId$2(ctx.configForms));
 			const enabled = () => {
 				const snapshot = settingsForm.getSnapshot();
 				return snapshot.status === "ready" ? snapshot.value?.enabled ?? true : snapshot.status === "unavailable";
@@ -18263,7 +18263,7 @@ window.__ModuleLoader__.load({
 						disposeEntry = ctx.slots.register({
 							name: "sidebar.footer.action",
 							id: "remote-web-ui",
-							locale: NS$9
+							locale: NS$7
 						}, FooterRemoteEntry);
 					} catch {}
 					else if (!enabled() && disposeEntry !== void 0) {
@@ -18279,11 +18279,11 @@ window.__ModuleLoader__.load({
 				};
 			});
 			const remoteSettings = new RemoteSettingsCardController(settingsForm);
-			installPluginCard$3(ctx, {
+			installPluginCard$1(ctx, {
 				bundle: "@linxin666/dsh-remote-web-ui",
 				id: "remote-web-ui",
 				order: 90,
-				locale: NS$9,
+				locale: NS$7,
 				inject: () => remoteSettings.inject(),
 				component: RemoteSettingsCard
 			});
@@ -18635,13 +18635,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-pet/src/client/pet.module.css.mjs
-		const css$15 = ".kz2Bea_float{pointer-events:auto;-webkit-user-select:none;user-select:none;will-change:transform;contain:layout style;flex-direction:column;align-items:center;display:flex;position:fixed}.kz2Bea_sprite{image-rendering:auto;touch-action:none;contain:paint}.kz2Bea_spriteWrap{flex:none;position:relative}.kz2Bea_bubble{white-space:nowrap;padding:calc(4px * var(--pet-bubble-scale,1)) calc(10px * var(--pet-bubble-scale,1));font-size:calc(12px * var(--pet-bubble-scale,1));color:#f4f7ff;pointer-events:none;border-radius:999px;margin-bottom:6px;line-height:1.4;animation:2.6s ease-out forwards kz2Bea_pet-bubble-pop;position:absolute;bottom:100%;box-shadow:0 2px 8px #00000040}.kz2Bea_bubblePet{background:#4d6bfef2}.kz2Bea_bubbleFeed{background:#0369a1f2}.kz2Bea_bubbleStatus{max-width:min(calc(280px * var(--pet-bubble-scale,1)), calc(100vw - 24px));text-overflow:ellipsis;padding:calc(5px * var(--pet-bubble-scale,1)) calc(12px * var(--pet-bubble-scale,1));backdrop-filter:blur(8px);letter-spacing:.02em;background:linear-gradient(160deg,#131c36e6,#070b1af0);border:1px solid #7e98ff73;animation:.24s ease-out kz2Bea_pet-bubble-in;overflow:hidden;box-shadow:0 4px 12px #02061759,inset 0 1px #e2e8ff1a,0 0 12px #4d6bfe2e}.kz2Bea_bubbleWhisper{letter-spacing:.03em;animation:.32s cubic-bezier(.22,1,.36,1) kz2Bea_pet-whisper-in}.kz2Bea_bubbleWhisper:before{content:\"「\";opacity:.7;margin-right:2px}.kz2Bea_bubbleWhisper:after{content:\"」\";opacity:.7;margin-left:2px}.kz2Bea_bubbleStack{pointer-events:auto;flex-direction:column-reverse;align-items:center;gap:4px;display:flex;position:absolute;bottom:100%}.kz2Bea_bubbleAnchor{display:inline-flex;position:relative}.kz2Bea_bubbleMore{z-index:1;color:#eef2ff;cursor:pointer;background:linear-gradient(160deg,#4a68f5f2,#2f44b8f2);border:1px solid #7e98ff8c;border-radius:999px;justify-content:center;align-items:center;min-width:18px;height:18px;padding:0 5px;font-size:10px;font-weight:600;line-height:1;transition:filter .12s;display:inline-flex;position:absolute;top:-9px;right:-10px;box-shadow:0 2px 6px #02061766}.kz2Bea_bubbleMore:hover{filter:brightness(1.15)}.kz2Bea_bubbleMore:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}.kz2Bea_bubbleStack .kz2Bea_bubble{pointer-events:auto;margin-bottom:0;position:relative;bottom:auto}.kz2Bea_bubbleClickable{cursor:pointer;font:inherit;text-align:center;appearance:none;transition:filter .12s,box-shadow .12s}.kz2Bea_bubbleClickable:hover{filter:brightness(1.12)}.kz2Bea_bubbleClickable:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}@keyframes kz2Bea_pet-bubble-in{0%{opacity:0;transform:translateY(6px)scale(.96)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes kz2Bea_pet-whisper-in{0%{opacity:0;transform:translateY(8px)scale(.9)}60%{transform:translateY(-1px)scale(1.02)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes kz2Bea_pet-panel-in{0%{opacity:0;transform:translateY(4px)scale(.97)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes kz2Bea_pet-bubble-pop{0%{opacity:0;transform:translateY(6px)scale(.85)}15%{opacity:1;transform:translateY(0)scale(1.05)}25%{transform:translateY(0)scale(1)}75%{opacity:1}to{opacity:0;transform:translateY(-8px)scale(.95)}}.kz2Bea_panel{color:#e6ebf8;backdrop-filter:blur(10px);transform-origin:50% 0;background:linear-gradient(165deg,#131c36f2,#070b1af7);border:1px solid #7e98ff4d;border-radius:12px;flex-direction:column;gap:7px;min-width:148px;margin-top:8px;padding:10px 12px;font-size:12px;animation:.2s cubic-bezier(.22,1,.36,1) kz2Bea_pet-panel-in;display:flex;position:absolute;top:100%;box-shadow:0 8px 24px #02061773,0 0 0 1px #4d6bfe1a,inset 0 1px #e2e8ff14}.kz2Bea_panel:after{content:\"\";height:14px;position:absolute;bottom:100%;left:0;right:0}.kz2Bea_panelAbove{transform-origin:50% 100%;margin-top:0;margin-bottom:8px;top:auto;bottom:100%}.kz2Bea_panelAbove:after{top:100%;bottom:auto}.kz2Bea_rankRow{white-space:nowrap;justify-content:space-between;gap:10px;display:flex}.kz2Bea_nameCell{letter-spacing:.02em;background:linear-gradient(90deg,#a9c1ff,#6c8bff 60%,#4d6bfe);color:#0000;-webkit-background-clip:text;background-clip:text;font-weight:600}.kz2Bea_statRank{color:#9db4ff;font-weight:600}.kz2Bea_statTreats{color:#7dd3fc;font-weight:600}.kz2Bea_statPoints{color:#fcd34d;font-weight:600}.kz2Bea_renameRow{align-items:center;gap:6px;display:flex}.kz2Bea_nameInput{color:#e6ebf8;background:#131c36e6;border:1px solid #7e98ff80;border-radius:6px;outline:none;flex:1;min-width:0;padding:3px 6px;font-size:12px}.kz2Bea_nameInput:focus{border-color:#4d6bfe;box-shadow:0 0 0 2px #4d6bfe73}.kz2Bea_actions{gap:6px;display:flex}.kz2Bea_action{cursor:pointer;color:#fff;background:linear-gradient(#4a68f5,#3a55e0);border:none;border-radius:6px;flex:1;padding:4px 8px;font-size:12px;font-weight:600;transition:filter .12s,box-shadow .12s,transform .12s;box-shadow:0 2px 6px #4d6bfe4d}.kz2Bea_action:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 4px 10px #4d6bfe66}.kz2Bea_action:active{filter:brightness(.94);transform:translateY(0);box-shadow:0 1px 4px #4d6bfe4d}.kz2Bea_action:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}.kz2Bea_summon{color:#8ea6ff;cursor:pointer;background:#070b1abf;border:1px dashed #7e98ff99;border-radius:999px;padding:2px 10px;font-size:11px;transition:border-color .12s,color .12s,background .12s,box-shadow .12s}.kz2Bea_summon:hover{color:#c3d3ff;background:#070b1ae6;border-color:#7e98fff2}.kz2Bea_summon:active{color:#8ea6ff;border-color:#7e98ffcc}.kz2Bea_summon:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}@media (prefers-reduced-motion:reduce){.kz2Bea_bubble,.kz2Bea_bubbleStatus,.kz2Bea_bubbleWhisper,.kz2Bea_panel{opacity:1;animation:none}.kz2Bea_action,.kz2Bea_summon,.kz2Bea_bubbleMore{transition:none}}.kz2Bea_gameplayHud{width:0;height:0;position:absolute;bottom:0;left:0}.kz2Bea_gameplayModeChip{color:#cdd7ff;white-space:nowrap;pointer-events:none;background:#7e98ff2e;border-radius:999px;padding:1px 8px;font-size:10px;position:absolute;top:0;left:0;transform:translateY(-100%)translateY(-4px)}.kz2Bea_gameplayCard{color:#dfe6ff;background:#070b1aeb;border:1px solid #7e98ff40;border-radius:10px;min-width:180px;max-height:340px;padding:10px 12px;font-size:12px;position:absolute;bottom:0;left:0;overflow-y:auto;transform:none;box-shadow:0 8px 24px #0006}.kz2Bea_gameplayBars{flex-direction:column;gap:4px;margin-bottom:8px;display:flex}.kz2Bea_gameplayBarRow{align-items:center;gap:6px;display:flex}.kz2Bea_gameplayBarLabel{color:#9aa8d8;flex-shrink:0;width:34px}.kz2Bea_gameplayBarTrack{background:#7e98ff26;border-radius:3px;flex:1;height:6px;overflow:hidden}.kz2Bea_gameplayBarFill{background:linear-gradient(90deg,#7e98ff,#9db4ff);border-radius:3px;height:100%;transition:width .3s;display:block}.kz2Bea_gameplayActions{flex-wrap:wrap;gap:6px;display:flex}.kz2Bea_gameplayShopItems{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px;display:grid}.kz2Bea_gameplayShopItem{color:inherit;cursor:pointer;background:#7e98ff14;border:1px solid #7e98ff40;border-radius:8px;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;display:flex}.kz2Bea_gameplayShopItem:hover{background:#7e98ff29;border-color:#7e98ffb3}.kz2Bea_gameplayShopItemImage{object-fit:contain;width:36px;height:36px;image-rendering:pixelated;pointer-events:none}.kz2Bea_gameplayShopItemLabel{text-align:center;font-size:11px}.kz2Bea_gameplayShopItemPrice{color:#ffd27e;font-size:10px}.kz2Bea_gameplaySkinItems{flex-direction:column;gap:6px;margin-bottom:8px;display:flex}.kz2Bea_gameplaySkinItem{width:100%;color:inherit;cursor:pointer;text-align:left;background:#7e98ff14;border:1px solid #7e98ff40;border-radius:8px;padding:8px 10px;font-size:12px;display:block}.kz2Bea_gameplaySkinItem:hover{background:#7e98ff29;border-color:#7e98ffb3}.kz2Bea_gameplaySkinItemActive{background:#7e98ff47;border-color:#7e98ffe6}.kz2Bea_gameplayClose{color:#9aa8d8;cursor:pointer;background:0 0;border:none;padding:0 2px;font-size:14px;position:absolute;top:4px;right:8px}.kz2Bea_gameplayClose:hover{color:#fff}.kz2Bea_gameplayFloat{color:#3a2a00;white-space:nowrap;pointer-events:none;background:#ffd27eeb;border-radius:999px;padding:2px 10px;font-size:11px;animation:1.1s ease-out forwards kz2Bea_pet-gameplay-float;position:absolute;top:-8px;left:50%;transform:translate(-50%)}@keyframes kz2Bea_pet-gameplay-float{0%{opacity:0;transform:translate(-50%)translateY(6px)}20%{opacity:1}to{opacity:0;transform:translate(-50%)translateY(-18px)}}@media (prefers-reduced-motion:reduce){.kz2Bea_gameplayFloat{opacity:1;animation:none}.kz2Bea_gameplayBarFill{transition:none}}.kz2Bea_bubbleUsage{white-space:nowrap;backdrop-filter:blur(8px);letter-spacing:.02em;background:linear-gradient(160deg,#131c36eb,#070b1af2);border:1px solid #7e98ff73;flex-direction:column;align-items:stretch;gap:3px;min-width:128px;max-width:min(280px,100vw - 24px);padding:6px 12px;animation:.28s cubic-bezier(.22,1,.36,1) kz2Bea_pet-usage-in;display:flex;box-shadow:0 4px 12px #02061759,inset 0 1px #e2e8ff1a,0 0 12px #4d6bfe2e}.kz2Bea_bubbleUsageHead{justify-content:space-between;align-items:baseline;gap:10px;display:flex}.kz2Bea_bubbleUsageTitle{text-overflow:ellipsis;opacity:.85;overflow:hidden}.kz2Bea_bubbleUsageValue{font-variant-numeric:tabular-nums;flex-shrink:0;font-weight:600}.kz2Bea_bubbleUsageNote{text-overflow:ellipsis;opacity:.55;font-size:10px;overflow:hidden}.kz2Bea_bubbleUsageMeter{background:#e2e8ff24;border-radius:999px;height:4px;display:block;overflow:hidden}.kz2Bea_bubbleUsageMeterFill{background:#6ee7b7;border-radius:999px;height:100%;transition:width .3s;display:block}.kz2Bea_bubbleUsageOk{border-color:#7e98ff73}.kz2Bea_bubbleUsageWarn{border-color:#fbbf248c}.kz2Bea_bubbleUsageWarn .kz2Bea_bubbleUsageMeterFill{background:#fbbf24}.kz2Bea_bubbleUsageLow{border-color:#f8717199}.kz2Bea_bubbleUsageLow .kz2Bea_bubbleUsageMeterFill{background:#f87171}@keyframes kz2Bea_pet-usage-in{0%{opacity:0;transform:translateY(6px)scale(.96)}to{opacity:1;transform:translateY(0)scale(1)}}@media (prefers-reduced-motion:reduce){.kz2Bea_bubbleUsage{animation:none}}";
-		const tagId$15 = "@linxin666/dsh-web-all/packages/dsh-pet/src/client/pet.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$15) + "]") === null) {
+		const css$10 = ".kz2Bea_float{pointer-events:auto;-webkit-user-select:none;user-select:none;will-change:transform;contain:layout style;flex-direction:column;align-items:center;display:flex;position:fixed}.kz2Bea_sprite{image-rendering:auto;touch-action:none;contain:paint}.kz2Bea_spriteWrap{flex:none;position:relative}.kz2Bea_bubble{white-space:nowrap;padding:calc(4px * var(--pet-bubble-scale,1)) calc(10px * var(--pet-bubble-scale,1));font-size:calc(12px * var(--pet-bubble-scale,1));color:#f4f7ff;pointer-events:none;border-radius:999px;margin-bottom:6px;line-height:1.4;animation:2.6s ease-out forwards kz2Bea_pet-bubble-pop;position:absolute;bottom:100%;box-shadow:0 2px 8px #00000040}.kz2Bea_bubblePet{background:#4d6bfef2}.kz2Bea_bubbleFeed{background:#0369a1f2}.kz2Bea_bubbleStatus{max-width:min(calc(280px * var(--pet-bubble-scale,1)), calc(100vw - 24px));text-overflow:ellipsis;padding:calc(5px * var(--pet-bubble-scale,1)) calc(12px * var(--pet-bubble-scale,1));backdrop-filter:blur(8px);letter-spacing:.02em;background:linear-gradient(160deg,#131c36e6,#070b1af0);border:1px solid #7e98ff73;animation:.24s ease-out kz2Bea_pet-bubble-in;overflow:hidden;box-shadow:0 4px 12px #02061759,inset 0 1px #e2e8ff1a,0 0 12px #4d6bfe2e}.kz2Bea_bubbleWhisper{letter-spacing:.03em;animation:.32s cubic-bezier(.22,1,.36,1) kz2Bea_pet-whisper-in}.kz2Bea_bubbleWhisper:before{content:\"「\";opacity:.7;margin-right:2px}.kz2Bea_bubbleWhisper:after{content:\"」\";opacity:.7;margin-left:2px}.kz2Bea_bubbleStack{pointer-events:auto;flex-direction:column-reverse;align-items:center;gap:4px;display:flex;position:absolute;bottom:100%}.kz2Bea_bubbleAnchor{display:inline-flex;position:relative}.kz2Bea_bubbleMore{z-index:1;color:#eef2ff;cursor:pointer;background:linear-gradient(160deg,#4a68f5f2,#2f44b8f2);border:1px solid #7e98ff8c;border-radius:999px;justify-content:center;align-items:center;min-width:18px;height:18px;padding:0 5px;font-size:10px;font-weight:600;line-height:1;transition:filter .12s;display:inline-flex;position:absolute;top:-9px;right:-10px;box-shadow:0 2px 6px #02061766}.kz2Bea_bubbleMore:hover{filter:brightness(1.15)}.kz2Bea_bubbleMore:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}.kz2Bea_bubbleStack .kz2Bea_bubble{pointer-events:auto;margin-bottom:0;position:relative;bottom:auto}.kz2Bea_bubbleClickable{cursor:pointer;font:inherit;text-align:center;appearance:none;transition:filter .12s,box-shadow .12s}.kz2Bea_bubbleClickable:hover{filter:brightness(1.12)}.kz2Bea_bubbleClickable:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}@keyframes kz2Bea_pet-bubble-in{0%{opacity:0;transform:translateY(6px)scale(.96)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes kz2Bea_pet-whisper-in{0%{opacity:0;transform:translateY(8px)scale(.9)}60%{transform:translateY(-1px)scale(1.02)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes kz2Bea_pet-panel-in{0%{opacity:0;transform:translateY(4px)scale(.97)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes kz2Bea_pet-bubble-pop{0%{opacity:0;transform:translateY(6px)scale(.85)}15%{opacity:1;transform:translateY(0)scale(1.05)}25%{transform:translateY(0)scale(1)}75%{opacity:1}to{opacity:0;transform:translateY(-8px)scale(.95)}}.kz2Bea_panel{color:#e6ebf8;backdrop-filter:blur(10px);transform-origin:50% 0;background:linear-gradient(165deg,#131c36f2,#070b1af7);border:1px solid #7e98ff4d;border-radius:12px;flex-direction:column;gap:7px;min-width:148px;margin-top:8px;padding:10px 12px;font-size:12px;animation:.2s cubic-bezier(.22,1,.36,1) kz2Bea_pet-panel-in;display:flex;position:absolute;top:100%;box-shadow:0 8px 24px #02061773,0 0 0 1px #4d6bfe1a,inset 0 1px #e2e8ff14}.kz2Bea_panel:after{content:\"\";height:14px;position:absolute;bottom:100%;left:0;right:0}.kz2Bea_panelAbove{transform-origin:50% 100%;margin-top:0;margin-bottom:8px;top:auto;bottom:100%}.kz2Bea_panelAbove:after{top:100%;bottom:auto}.kz2Bea_rankRow{white-space:nowrap;justify-content:space-between;gap:10px;display:flex}.kz2Bea_nameCell{letter-spacing:.02em;background:linear-gradient(90deg,#a9c1ff,#6c8bff 60%,#4d6bfe);color:#0000;-webkit-background-clip:text;background-clip:text;font-weight:600}.kz2Bea_statRank{color:#9db4ff;font-weight:600}.kz2Bea_statTreats{color:#7dd3fc;font-weight:600}.kz2Bea_statPoints{color:#fcd34d;font-weight:600}.kz2Bea_renameRow{align-items:center;gap:6px;display:flex}.kz2Bea_nameInput{color:#e6ebf8;background:#131c36e6;border:1px solid #7e98ff80;border-radius:6px;outline:none;flex:1;min-width:0;padding:3px 6px;font-size:12px}.kz2Bea_nameInput:focus{border-color:#4d6bfe;box-shadow:0 0 0 2px #4d6bfe73}.kz2Bea_actions{gap:6px;display:flex}.kz2Bea_action{cursor:pointer;color:#fff;background:linear-gradient(#4a68f5,#3a55e0);border:none;border-radius:6px;flex:1;padding:4px 8px;font-size:12px;font-weight:600;transition:filter .12s,box-shadow .12s,transform .12s;box-shadow:0 2px 6px #4d6bfe4d}.kz2Bea_action:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 4px 10px #4d6bfe66}.kz2Bea_action:active{filter:brightness(.94);transform:translateY(0);box-shadow:0 1px 4px #4d6bfe4d}.kz2Bea_action:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}.kz2Bea_summon{color:#8ea6ff;cursor:pointer;background:#070b1abf;border:1px dashed #7e98ff99;border-radius:999px;padding:2px 10px;font-size:11px;transition:border-color .12s,color .12s,background .12s,box-shadow .12s}.kz2Bea_summon:hover{color:#c3d3ff;background:#070b1ae6;border-color:#7e98fff2}.kz2Bea_summon:active{color:#8ea6ff;border-color:#7e98ffcc}.kz2Bea_summon:focus-visible{outline:none;box-shadow:0 0 0 2px #7e98ffe6}@media (prefers-reduced-motion:reduce){.kz2Bea_bubble,.kz2Bea_bubbleStatus,.kz2Bea_bubbleWhisper,.kz2Bea_panel{opacity:1;animation:none}.kz2Bea_action,.kz2Bea_summon,.kz2Bea_bubbleMore{transition:none}}.kz2Bea_gameplayHud{width:0;height:0;position:absolute;bottom:0;left:0}.kz2Bea_gameplayModeChip{color:#cdd7ff;white-space:nowrap;pointer-events:none;background:#7e98ff2e;border-radius:999px;padding:1px 8px;font-size:10px;position:absolute;top:0;left:0;transform:translateY(-100%)translateY(-4px)}.kz2Bea_gameplayCard{color:#dfe6ff;background:#070b1aeb;border:1px solid #7e98ff40;border-radius:10px;min-width:180px;max-height:340px;padding:10px 12px;font-size:12px;position:absolute;bottom:0;left:0;overflow-y:auto;transform:none;box-shadow:0 8px 24px #0006}.kz2Bea_gameplayBars{flex-direction:column;gap:4px;margin-bottom:8px;display:flex}.kz2Bea_gameplayBarRow{align-items:center;gap:6px;display:flex}.kz2Bea_gameplayBarLabel{color:#9aa8d8;flex-shrink:0;width:34px}.kz2Bea_gameplayBarTrack{background:#7e98ff26;border-radius:3px;flex:1;height:6px;overflow:hidden}.kz2Bea_gameplayBarFill{background:linear-gradient(90deg,#7e98ff,#9db4ff);border-radius:3px;height:100%;transition:width .3s;display:block}.kz2Bea_gameplayActions{flex-wrap:wrap;gap:6px;display:flex}.kz2Bea_gameplayShopItems{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px;display:grid}.kz2Bea_gameplayShopItem{color:inherit;cursor:pointer;background:#7e98ff14;border:1px solid #7e98ff40;border-radius:8px;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;display:flex}.kz2Bea_gameplayShopItem:hover{background:#7e98ff29;border-color:#7e98ffb3}.kz2Bea_gameplayShopItemImage{object-fit:contain;width:36px;height:36px;image-rendering:pixelated;pointer-events:none}.kz2Bea_gameplayShopItemLabel{text-align:center;font-size:11px}.kz2Bea_gameplayShopItemPrice{color:#ffd27e;font-size:10px}.kz2Bea_gameplaySkinItems{flex-direction:column;gap:6px;margin-bottom:8px;display:flex}.kz2Bea_gameplaySkinItem{width:100%;color:inherit;cursor:pointer;text-align:left;background:#7e98ff14;border:1px solid #7e98ff40;border-radius:8px;padding:8px 10px;font-size:12px;display:block}.kz2Bea_gameplaySkinItem:hover{background:#7e98ff29;border-color:#7e98ffb3}.kz2Bea_gameplaySkinItemActive{background:#7e98ff47;border-color:#7e98ffe6}.kz2Bea_gameplayClose{color:#9aa8d8;cursor:pointer;background:0 0;border:none;padding:0 2px;font-size:14px;position:absolute;top:4px;right:8px}.kz2Bea_gameplayClose:hover{color:#fff}.kz2Bea_gameplayFloat{color:#3a2a00;white-space:nowrap;pointer-events:none;background:#ffd27eeb;border-radius:999px;padding:2px 10px;font-size:11px;animation:1.1s ease-out forwards kz2Bea_pet-gameplay-float;position:absolute;top:-8px;left:50%;transform:translate(-50%)}@keyframes kz2Bea_pet-gameplay-float{0%{opacity:0;transform:translate(-50%)translateY(6px)}20%{opacity:1}to{opacity:0;transform:translate(-50%)translateY(-18px)}}@media (prefers-reduced-motion:reduce){.kz2Bea_gameplayFloat{opacity:1;animation:none}.kz2Bea_gameplayBarFill{transition:none}}.kz2Bea_bubbleUsage{white-space:nowrap;backdrop-filter:blur(8px);letter-spacing:.02em;background:linear-gradient(160deg,#131c36eb,#070b1af2);border:1px solid #7e98ff73;flex-direction:column;align-items:stretch;gap:3px;min-width:128px;max-width:min(280px,100vw - 24px);padding:6px 12px;animation:.28s cubic-bezier(.22,1,.36,1) kz2Bea_pet-usage-in;display:flex;box-shadow:0 4px 12px #02061759,inset 0 1px #e2e8ff1a,0 0 12px #4d6bfe2e}.kz2Bea_bubbleUsageHead{justify-content:space-between;align-items:baseline;gap:10px;display:flex}.kz2Bea_bubbleUsageTitle{text-overflow:ellipsis;opacity:.85;overflow:hidden}.kz2Bea_bubbleUsageValue{font-variant-numeric:tabular-nums;flex-shrink:0;font-weight:600}.kz2Bea_bubbleUsageNote{text-overflow:ellipsis;opacity:.55;font-size:10px;overflow:hidden}.kz2Bea_bubbleUsageMeter{background:#e2e8ff24;border-radius:999px;height:4px;display:block;overflow:hidden}.kz2Bea_bubbleUsageMeterFill{background:#6ee7b7;border-radius:999px;height:100%;transition:width .3s;display:block}.kz2Bea_bubbleUsageOk{border-color:#7e98ff73}.kz2Bea_bubbleUsageWarn{border-color:#fbbf248c}.kz2Bea_bubbleUsageWarn .kz2Bea_bubbleUsageMeterFill{background:#fbbf24}.kz2Bea_bubbleUsageLow{border-color:#f8717199}.kz2Bea_bubbleUsageLow .kz2Bea_bubbleUsageMeterFill{background:#f87171}@keyframes kz2Bea_pet-usage-in{0%{opacity:0;transform:translateY(6px)scale(.96)}to{opacity:1;transform:translateY(0)scale(1)}}@media (prefers-reduced-motion:reduce){.kz2Bea_bubbleUsage{animation:none}}";
+		const tagId$10 = "@linxin666/dsh-web-all/packages/dsh-pet/src/client/pet.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$10) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$15;
-			tag.textContent = css$15;
+			tag.dataset.pluginCss = tagId$10;
+			tag.textContent = css$10;
 			document.head.appendChild(tag);
 		}
 		var pet_module_css_default = {
@@ -21076,16 +21076,16 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-pet/src/client/settings-card.module.css.mjs
-		const css$14 = ".kKk9aW_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}.kKk9aW_card:hover{border-color:var(--dsw-alias-label-dimmed)}.kKk9aW_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.kKk9aW_header{appearance:none;box-sizing:border-box;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.kKk9aW_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.kKk9aW_headerStatic{box-sizing:border-box;border-radius:12px;align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}.kKk9aW_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.kKk9aW_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.kKk9aW_description{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.5}.kKk9aW_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.kKk9aW_chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.kKk9aW_chevronOpen{transform:rotate(180deg)}.kKk9aW_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.kKk9aW_readOnly{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:12px;line-height:1.5}.kKk9aW_notExposed{color:var(--dsw-alias-state-warn-primary);margin:12px 0 0;font-size:12px;line-height:1.5}.kKk9aW_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.kKk9aW_failed{min-width:0;color:var(--dsw-alias-state-error-primary,#b42318);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:12px;line-height:1.5;overflow:hidden}.kKk9aW_discard,.kKk9aW_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.kKk9aW_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.kKk9aW_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.kKk9aW_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.kKk9aW_discard:disabled,.kKk9aW_save:disabled{opacity:.4;cursor:default}.kKk9aW_discard:focus-visible,.kKk9aW_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.kKk9aW_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.kKk9aW_field+.kKk9aW_field{border-top:1px solid var(--dsw-alias-border-l2)}.kKk9aW_head{align-items:center;gap:8px;display:flex}.kKk9aW_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.kKk9aW_badges{align-items:center;gap:8px;display:inline-flex}.kKk9aW_badge{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.kKk9aW_reset{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5}.kKk9aW_reset:hover:not(:disabled){color:var(--dsw-alias-label-primary)}.kKk9aW_reset:disabled{cursor:default}.kKk9aW_reset:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}.kKk9aW_input,.kKk9aW_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.kKk9aW_input:focus-visible,.kKk9aW_select:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.kKk9aW_input:disabled,.kKk9aW_select:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.kKk9aW_inputInvalid{border:1px solid var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.kKk9aW_inputInvalid:focus-visible{outline:2px solid var(--dsw-alias-state-error-primary,#b42318);outline-offset:1px;border-color:var(--dsw-alias-state-error-primary,#b42318)}.kKk9aW_selectWrap{position:relative}.kKk9aW_selectButton{appearance:none;text-align:left;cursor:pointer;justify-content:space-between;align-items:center;gap:8px;width:100%;display:flex}.kKk9aW_selectLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.kKk9aW_selectChevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.kKk9aW_selectChevronOpen{transform:rotate(180deg)}.kKk9aW_selectPopup{z-index:40;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-height:240px;box-shadow:0 8px 24px var(--dsw-alias-bg-mask-2);opacity:0;border-radius:8px;flex-direction:column;padding:4px;transition:opacity .1s,transform .1s;display:flex;position:absolute;top:calc(100% + 4px);left:0;right:0;overflow-y:auto;transform:translateY(-4px)}.kKk9aW_selectPopupOpen{opacity:1;transform:none}.kKk9aW_selectPopupClose{opacity:0;pointer-events:none;transform:translateY(-4px)}.kKk9aW_selectOption{color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;text-overflow:ellipsis;border-radius:6px;flex-shrink:0;padding:6px 10px;font-size:13px;line-height:1.5;overflow:hidden}.kKk9aW_selectOption:hover,.kKk9aW_selectOptionActive{background:var(--dsw-alias-interactive-bg-hover)}.kKk9aW_selectOptionSelected{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 10%, transparent);font-weight:500}.kKk9aW_invalid{color:var(--dsw-alias-state-error-primary,#b42318);margin:0;font-size:12px;line-height:1.5}.kKk9aW_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){.kKk9aW_card,.kKk9aW_header,.kKk9aW_chevron,.kKk9aW_chevronOpen,.kKk9aW_discard,.kKk9aW_save,.kKk9aW_selectChevron,.kKk9aW_selectChevronOpen,.kKk9aW_selectPopup{transition:none}}";
-		const tagId$14 = "@linxin666/dsh-web-all/packages/dsh-pet/src/client/settings-card.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$14) + "]") === null) {
+		const css$9 = ".kKk9aW_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}.kKk9aW_card:hover{border-color:var(--dsw-alias-label-dimmed)}.kKk9aW_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.kKk9aW_header{appearance:none;box-sizing:border-box;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.kKk9aW_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.kKk9aW_headerStatic{box-sizing:border-box;border-radius:12px;align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}.kKk9aW_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.kKk9aW_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.kKk9aW_description{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.5}.kKk9aW_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.kKk9aW_chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.kKk9aW_chevronOpen{transform:rotate(180deg)}.kKk9aW_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.kKk9aW_readOnly{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:12px;line-height:1.5}.kKk9aW_notExposed{color:var(--dsw-alias-state-warn-primary);margin:12px 0 0;font-size:12px;line-height:1.5}.kKk9aW_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.kKk9aW_failed{min-width:0;color:var(--dsw-alias-state-error-primary,#b42318);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:12px;line-height:1.5;overflow:hidden}.kKk9aW_discard,.kKk9aW_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.kKk9aW_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.kKk9aW_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.kKk9aW_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.kKk9aW_discard:disabled,.kKk9aW_save:disabled{opacity:.4;cursor:default}.kKk9aW_discard:focus-visible,.kKk9aW_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.kKk9aW_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.kKk9aW_field+.kKk9aW_field{border-top:1px solid var(--dsw-alias-border-l2)}.kKk9aW_head{align-items:center;gap:8px;display:flex}.kKk9aW_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.kKk9aW_badges{align-items:center;gap:8px;display:inline-flex}.kKk9aW_badge{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.kKk9aW_reset{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5}.kKk9aW_reset:hover:not(:disabled){color:var(--dsw-alias-label-primary)}.kKk9aW_reset:disabled{cursor:default}.kKk9aW_reset:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}.kKk9aW_input,.kKk9aW_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.kKk9aW_input:focus-visible,.kKk9aW_select:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.kKk9aW_input:disabled,.kKk9aW_select:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.kKk9aW_inputInvalid{border:1px solid var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.kKk9aW_inputInvalid:focus-visible{outline:2px solid var(--dsw-alias-state-error-primary,#b42318);outline-offset:1px;border-color:var(--dsw-alias-state-error-primary,#b42318)}.kKk9aW_selectWrap{position:relative}.kKk9aW_selectButton{appearance:none;text-align:left;cursor:pointer;justify-content:space-between;align-items:center;gap:8px;width:100%;display:flex}.kKk9aW_selectLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.kKk9aW_selectChevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.kKk9aW_selectChevronOpen{transform:rotate(180deg)}.kKk9aW_selectPopup{z-index:40;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-height:240px;box-shadow:0 8px 24px var(--dsw-alias-bg-mask-2);opacity:0;border-radius:8px;flex-direction:column;padding:4px;transition:opacity .1s,transform .1s;display:flex;position:absolute;top:calc(100% + 4px);left:0;right:0;overflow-y:auto;transform:translateY(-4px)}.kKk9aW_selectPopupOpen{opacity:1;transform:none}.kKk9aW_selectPopupClose{opacity:0;pointer-events:none;transform:translateY(-4px)}.kKk9aW_selectOption{color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;text-overflow:ellipsis;border-radius:6px;flex-shrink:0;padding:6px 10px;font-size:13px;line-height:1.5;overflow:hidden}.kKk9aW_selectOption:hover,.kKk9aW_selectOptionActive{background:var(--dsw-alias-interactive-bg-hover)}.kKk9aW_selectOptionSelected{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 10%, transparent);font-weight:500}.kKk9aW_invalid{color:var(--dsw-alias-state-error-primary,#b42318);margin:0;font-size:12px;line-height:1.5}.kKk9aW_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){.kKk9aW_card,.kKk9aW_header,.kKk9aW_chevron,.kKk9aW_chevronOpen,.kKk9aW_discard,.kKk9aW_save,.kKk9aW_selectChevron,.kKk9aW_selectChevronOpen,.kKk9aW_selectPopup{transition:none}}";
+		const tagId$9 = "@linxin666/dsh-web-all/packages/dsh-pet/src/client/settings-card.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$9) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$14;
-			tag.textContent = css$14;
+			tag.dataset.pluginCss = tagId$9;
+			tag.textContent = css$9;
 			document.head.appendChild(tag);
 		}
-		var settings_card_module_css_default$3 = {
+		var settings_card_module_css_default$1 = {
 			"badge": "kKk9aW_badge",
 			"badges": "kKk9aW_badges",
 			"body": "kKk9aW_body",
@@ -21141,7 +21141,7 @@ window.__ModuleLoader__.load({
 		* @param props - the plugin's copy keys, its form state, and its controls.
 		* @returns the card, or nothing while the namespace is still loading.
 		*/
-		function PluginSettingsCard$3(props) {
+		function PluginSettingsCard$1(props) {
 			const [open, setOpen] = (0, react.useState)(props.defaultOpen ?? true);
 			const { state, alwaysOpen } = props;
 			if (!state.available) return null;
@@ -21149,28 +21149,28 @@ window.__ModuleLoader__.load({
 			const description = props.t(props.descriptionKey);
 			const blocked = !state.dirty || state.invalid || state.saving;
 			const expanded = alwaysOpen === true || open;
-			const cardClass = expanded ? `${settings_card_module_css_default$3.cardOpen} ${settings_card_module_css_default$3.card}` : settings_card_module_css_default$3.card;
+			const cardClass = expanded ? `${settings_card_module_css_default$1.cardOpen} ${settings_card_module_css_default$1.card}` : settings_card_module_css_default$1.card;
 			const header = alwaysOpen === true ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$3.headerStatic,
+				className: settings_card_module_css_default$1.headerStatic,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-					className: settings_card_module_css_default$3.headText,
+					className: settings_card_module_css_default$1.headText,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$3.name,
+						className: settings_card_module_css_default$1.name,
 						title,
 						children: title
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$3.description,
+						className: settings_card_module_css_default$1.description,
 						title: description,
 						children: props.descriptionNode ?? description
 					})]
 				}), state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-					className: settings_card_module_css_default$3.pending,
+					className: settings_card_module_css_default$1.pending,
 					title: props.t("settings.unsaved"),
 					children: props.t("settings.unsaved")
 				}) : null]
 			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 				type: "button",
-				className: settings_card_module_css_default$3.header,
+				className: settings_card_module_css_default$1.header,
 				"aria-expanded": open,
 				"aria-label": `${props.t(open ? "settings.collapse" : "settings.expand")}: ${title}`,
 				onClick: () => {
@@ -21178,19 +21178,19 @@ window.__ModuleLoader__.load({
 				},
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-						className: settings_card_module_css_default$3.headText,
+						className: settings_card_module_css_default$1.headText,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default$3.name,
+							className: settings_card_module_css_default$1.name,
 							title,
 							children: title
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default$3.description,
+							className: settings_card_module_css_default$1.description,
 							title: description,
 							children: props.descriptionNode ?? description
 						})]
 					}),
 					state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$3.pending,
+						className: settings_card_module_css_default$1.pending,
 						title: props.t("settings.unsaved"),
 						children: props.t("settings.unsaved")
 					}) : null,
@@ -21200,7 +21200,7 @@ window.__ModuleLoader__.load({
 						viewBox: "0 0 14 14",
 						fill: "none",
 						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default$3.chevron} ${settings_card_module_css_default$3.chevronOpen}` : settings_card_module_css_default$3.chevron,
+						className: open ? `${settings_card_module_css_default$1.chevron} ${settings_card_module_css_default$1.chevronOpen}` : settings_card_module_css_default$1.chevron,
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
 							fill: "currentColor"
@@ -21213,9 +21213,9 @@ window.__ModuleLoader__.load({
 				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 					className: cardClass,
 					children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: settings_card_module_css_default$3.body,
+						className: settings_card_module_css_default$1.body,
 						children: showNotice ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default$3.notExposed,
+							className: settings_card_module_css_default$1.notExposed,
 							role: "status",
 							children: props.t("settings.notExposed")
 						}) : null
@@ -21225,32 +21225,32 @@ window.__ModuleLoader__.load({
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 				className: cardClass,
 				children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: settings_card_module_css_default$3.body,
+					className: settings_card_module_css_default$1.body,
 					children: [
 						!state.writable ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default$3.readOnly,
+							className: settings_card_module_css_default$1.readOnly,
 							role: "status",
 							children: props.t("settings.readOnly")
 						}) : null,
 						props.children,
 						props.hideFooter === true ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: settings_card_module_css_default$3.footer,
+							className: settings_card_module_css_default$1.footer,
 							children: [
 								state.failed ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-									className: settings_card_module_css_default$3.failed,
+									className: settings_card_module_css_default$1.failed,
 									role: "status",
 									children: [props.t("settings.saveFailed"), state.failedReason ? " - " + state.failedReason : ""]
 								}) : null,
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
-									className: settings_card_module_css_default$3.discard,
+									className: settings_card_module_css_default$1.discard,
 									disabled: !state.dirty || state.saving,
 									onClick: props.onDiscard,
 									children: props.t("settings.discard")
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
-									className: settings_card_module_css_default$3.save,
+									className: settings_card_module_css_default$1.save,
 									disabled: blocked,
 									onClick: props.onSave,
 									children: props.t(!state.saving ? "settings.save" : "settings.saving")
@@ -21262,24 +21262,24 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** A staged value field. `numeric` only hints the keypad: which drafts a field accepts is decided by its spec. */
-		function ValueField$2(props) {
+		function ValueField$1(props) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$3.field,
+				className: settings_card_module_css_default$1.field,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$3.head,
+						className: settings_card_module_css_default$1.head,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$3.label,
+							className: settings_card_module_css_default$1.label,
 							htmlFor: props.id,
 							children: props.label
 						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default$3.badges,
+							className: settings_card_module_css_default$1.badges,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default$3.badge,
+								className: settings_card_module_css_default$1.badge,
 								children: props.overriddenLabel
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: settings_card_module_css_default$3.reset,
+								className: settings_card_module_css_default$1.reset,
 								disabled: props.disabled,
 								onClick: props.onReset,
 								children: props.resetLabel
@@ -21288,7 +21288,7 @@ window.__ModuleLoader__.load({
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
 						id: props.id,
-						className: props.invalid ? settings_card_module_css_default$3.inputInvalid : settings_card_module_css_default$3.input,
+						className: props.invalid ? settings_card_module_css_default$1.inputInvalid : settings_card_module_css_default$1.input,
 						type: "text",
 						...props.numeric === true ? { inputMode: "numeric" } : {},
 						...props.invalid ? { "aria-invalid": true } : {},
@@ -21300,17 +21300,17 @@ window.__ModuleLoader__.load({
 						}
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: props.invalid ? settings_card_module_css_default$3.invalid : settings_card_module_css_default$3.hint,
+						className: props.invalid ? settings_card_module_css_default$1.invalid : settings_card_module_css_default$1.hint,
 						children: props.invalid ? props.invalidLabel : props.hint
 					})
 				]
 			});
 		}
-		const NON_SKIN_BODY_MARKERS$3 = /* @__PURE__ */ new Set(["dshSkinCenter", "dshSidebarCollapsed"]);
-		function isSkinActive$3() {
-			return Object.keys(document.body.dataset).some((key) => key.startsWith("dsh") && !NON_SKIN_BODY_MARKERS$3.has(key));
+		const NON_SKIN_BODY_MARKERS$1 = /* @__PURE__ */ new Set(["dshSkinCenter", "dshSidebarCollapsed"]);
+		function isSkinActive$1() {
+			return Object.keys(document.body.dataset).some((key) => key.startsWith("dsh") && !NON_SKIN_BODY_MARKERS$1.has(key));
 		}
-		const SELECT_CLOSE_MS$3 = 100;
+		const SELECT_CLOSE_MS$1 = 100;
 		/**
 		* The shared dual-mode select control. While an appearance skin is active it
 		* renders the legacy native `<select>` untouched, so element-level skin
@@ -21320,7 +21320,7 @@ window.__ModuleLoader__.load({
 		* editors (the side-card prefs) bind it directly through onEdit.
 		* 双模式下拉框：皮肤激活时用原生 select，默认外观用自绘动画弹层。
 		*/
-		function SelectField$3(props) {
+		function SelectField$1(props) {
 			const { id, options, value } = props;
 			const [open, setOpen] = (0, react.useState)(false);
 			const [closing, setClosing] = (0, react.useState)(false);
@@ -21339,7 +21339,7 @@ window.__ModuleLoader__.load({
 				closeTimer.current = setTimeout(() => {
 					setClosing(false);
 					setOpen(false);
-				}, SELECT_CLOSE_MS$3);
+				}, SELECT_CLOSE_MS$1);
 			}, []);
 			const openPopup = () => {
 				if (closeTimer.current !== void 0) clearTimeout(closeTimer.current);
@@ -21413,9 +21413,9 @@ window.__ModuleLoader__.load({
 				open,
 				close
 			]);
-			if (isSkinActive$3()) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
+			if (isSkinActive$1()) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
 				id,
-				className: settings_card_module_css_default$3.select,
+				className: settings_card_module_css_default$1.select,
 				value,
 				disabled: props.disabled,
 				onChange: (event) => {
@@ -21427,14 +21427,14 @@ window.__ModuleLoader__.load({
 				}, option.value))
 			});
 			const label = options.find((option) => option.value === value)?.label ?? "";
-			const popupClass = closing ? `${settings_card_module_css_default$3.selectPopup} ${settings_card_module_css_default$3.selectPopupClose}` : phase === "open" ? `${settings_card_module_css_default$3.selectPopup} ${settings_card_module_css_default$3.selectPopupOpen}` : settings_card_module_css_default$3.selectPopup;
+			const popupClass = closing ? `${settings_card_module_css_default$1.selectPopup} ${settings_card_module_css_default$1.selectPopupClose}` : phase === "open" ? `${settings_card_module_css_default$1.selectPopup} ${settings_card_module_css_default$1.selectPopupOpen}` : settings_card_module_css_default$1.selectPopup;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$3.selectWrap,
+				className: settings_card_module_css_default$1.selectWrap,
 				ref: wrapRef,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 					type: "button",
 					id,
-					className: `${settings_card_module_css_default$3.select} ${settings_card_module_css_default$3.selectButton}`,
+					className: `${settings_card_module_css_default$1.select} ${settings_card_module_css_default$1.selectButton}`,
 					disabled: props.disabled,
 					"aria-haspopup": "listbox",
 					"aria-expanded": open,
@@ -21443,7 +21443,7 @@ window.__ModuleLoader__.load({
 					onClick: onTriggerClick,
 					onKeyDown,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$3.selectLabel,
+						className: settings_card_module_css_default$1.selectLabel,
 						children: label
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
 						width: "14",
@@ -21451,7 +21451,7 @@ window.__ModuleLoader__.load({
 						viewBox: "0 0 14 14",
 						fill: "none",
 						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default$3.selectChevron} ${settings_card_module_css_default$3.selectChevronOpen}` : settings_card_module_css_default$3.selectChevron,
+						className: open ? `${settings_card_module_css_default$1.selectChevron} ${settings_card_module_css_default$1.selectChevronOpen}` : settings_card_module_css_default$1.selectChevron,
 						"aria-hidden": "true",
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
@@ -21466,7 +21466,7 @@ window.__ModuleLoader__.load({
 						id: `${id}-o${index}`,
 						role: "option",
 						"aria-selected": option.value === value,
-						className: `${settings_card_module_css_default$3.selectOption}${option.value === value ? ` ${settings_card_module_css_default$3.selectOptionSelected}` : ""}${index === activeIndex && !closing ? ` ${settings_card_module_css_default$3.selectOptionActive}` : ""}`,
+						className: `${settings_card_module_css_default$1.selectOption}${option.value === value ? ` ${settings_card_module_css_default$1.selectOptionSelected}` : ""}${index === activeIndex && !closing ? ` ${settings_card_module_css_default$1.selectOptionActive}` : ""}`,
 						onClick: () => {
 							commit(index);
 						},
@@ -21476,31 +21476,31 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** A staged boolean field: 继承 / 开 / 关. */
-		function BooleanField$3(props) {
+		function BooleanField$1(props) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$3.field,
+				className: settings_card_module_css_default$1.field,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$3.head,
+						className: settings_card_module_css_default$1.head,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$3.label,
+							className: settings_card_module_css_default$1.label,
 							htmlFor: props.id,
 							children: props.label
 						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default$3.badges,
+							className: settings_card_module_css_default$1.badges,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default$3.badge,
+								className: settings_card_module_css_default$1.badge,
 								children: props.overriddenLabel
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: settings_card_module_css_default$3.reset,
+								className: settings_card_module_css_default$1.reset,
 								disabled: props.disabled,
 								onClick: props.onReset,
 								children: props.resetLabel
 							})]
 						}) : null]
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$3, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$1, {
 						id: props.id,
 						options: [
 							{
@@ -21522,38 +21522,38 @@ window.__ModuleLoader__.load({
 						onEdit: props.onEdit
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: settings_card_module_css_default$3.hint,
+						className: settings_card_module_css_default$1.hint,
 						children: props.hint
 					})
 				]
 			});
 		}
 		/** A staged enumerated field rendered as a select. */
-		function ChoiceField$2(props) {
+		function ChoiceField$1(props) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$3.field,
+				className: settings_card_module_css_default$1.field,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$3.head,
+						className: settings_card_module_css_default$1.head,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$3.label,
+							className: settings_card_module_css_default$1.label,
 							htmlFor: props.id,
 							children: props.label
 						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default$3.badges,
+							className: settings_card_module_css_default$1.badges,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default$3.badge,
+								className: settings_card_module_css_default$1.badge,
 								children: props.overriddenLabel
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: settings_card_module_css_default$3.reset,
+								className: settings_card_module_css_default$1.reset,
 								disabled: props.disabled,
 								onClick: props.onReset,
 								children: props.resetLabel
 							})]
 						}) : null]
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$3, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$1, {
 						id: props.id,
 						options: [{
 							value: "",
@@ -21565,7 +21565,7 @@ window.__ModuleLoader__.load({
 						onEdit: props.onEdit
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: props.invalid ? settings_card_module_css_default$3.invalid : settings_card_module_css_default$3.hint,
+						className: props.invalid ? settings_card_module_css_default$1.invalid : settings_card_module_css_default$1.hint,
 						children: props.invalid ? props.invalidLabel : props.hint
 					})
 				]
@@ -21574,7 +21574,7 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region ../dsh-pet/src/client/settings-form.ts
 		/** A whole- or decimal-number field. An empty draft clears the field; any other draft that is not a finite number within the constraints blocks the save. */
-		function numberField$2(field, constraints = {}) {
+		function numberField$1(field, constraints = {}) {
 			const { integer = false, min } = constraints;
 			return {
 				field,
@@ -21594,7 +21594,7 @@ window.__ModuleLoader__.load({
 			};
 		}
 		/** A boolean field, edited through true/false draft text. */
-		function booleanField$3(field) {
+		function booleanField$1(field) {
 			return {
 				field,
 				format: (value) => typeof value === "boolean" ? String(value) : "",
@@ -21613,7 +21613,7 @@ window.__ModuleLoader__.load({
 			};
 		}
 		/** An enumerated string field; only the listed choices are accepted. An empty draft clears the field. */
-		function choiceField$2(field, choices) {
+		function choiceField$1(field, choices) {
 			return {
 				field,
 				format: (value) => typeof value === "string" && choices.includes(value) ? value : "",
@@ -21634,7 +21634,7 @@ window.__ModuleLoader__.load({
 		* read back from the section rather than predicted here. A save that did not
 		* land keeps its drafts, so the user can correct them instead of retyping.
 		*/
-		var CardForm$3 = class {
+		var CardForm$1 = class {
 			scope;
 			specs;
 			staged = /* @__PURE__ */ new Map();
@@ -21877,13 +21877,13 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:packages/dsh-pet/src/client/settings-section.module.css.mjs
-		const css$13 = ".t0P0pa_sectionList{margin:0;padding:0;list-style:none}.t0P0pa_diagnostics{border:1px dashed var(--dsw-alias-border-l2);color:var(--dsw-alias-label-tertiary);border-radius:8px;margin:8px 0;padding:8px 12px;font-size:12px}.t0P0pa_diagnosticsTitle{color:var(--dsw-alias-label-primary);margin-bottom:4px;font-weight:600;display:block}.t0P0pa_diagnostics ul{margin:0;padding-left:16px}.t0P0pa_diagnostics li[data-level=error]{color:var(--dsw-alias-label-error,#c04848)}";
-		const tagId$13 = "@linxin666/dsh-web-all/packages/dsh-pet/src/client/settings-section.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$13) + "]") === null) {
+		const css$8 = ".t0P0pa_sectionList{margin:0;padding:0;list-style:none}.t0P0pa_diagnostics{border:1px dashed var(--dsw-alias-border-l2);color:var(--dsw-alias-label-tertiary);border-radius:8px;margin:8px 0;padding:8px 12px;font-size:12px}.t0P0pa_diagnosticsTitle{color:var(--dsw-alias-label-primary);margin-bottom:4px;font-weight:600;display:block}.t0P0pa_diagnostics ul{margin:0;padding-left:16px}.t0P0pa_diagnostics li[data-level=error]{color:var(--dsw-alias-label-error,#c04848)}";
+		const tagId$8 = "@linxin666/dsh-web-all/packages/dsh-pet/src/client/settings-section.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$8) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$13;
-			tag.textContent = css$13;
+			tag.dataset.pluginCss = tagId$8;
+			tag.textContent = css$8;
 			document.head.appendChild(tag);
 		}
 		var settings_section_module_css_default = {
@@ -21931,15 +21931,15 @@ window.__ModuleLoader__.load({
 			pendingTimer;
 			/** @param scope - the bound configuration form for the 'pet' entry. */
 			constructor(scope) {
-				this.form = new CardForm$3(scope, [
-					booleanField$3("enabled"),
-					booleanField$3("decorationEnabled"),
-					booleanField$3("visible"),
-					numberField$2("size"),
-					numberField$2("right"),
-					numberField$2("bottom"),
-					numberField$2("bubbleScale"),
-					choiceField$2("petId", this.petChoices)
+				this.form = new CardForm$1(scope, [
+					booleanField$1("enabled"),
+					booleanField$1("decorationEnabled"),
+					booleanField$1("visible"),
+					numberField$1("size"),
+					numberField$1("right"),
+					numberField$1("bottom"),
+					numberField$1("bubbleScale"),
+					choiceField$1("petId", this.petChoices)
 				]);
 				this.store = this.form.bind(() => this.projection());
 				this.pendingTimer = window.setTimeout(() => {
@@ -22116,7 +22116,7 @@ window.__ModuleLoader__.load({
 				invalidLabel: t("settings.invalidNumber"),
 				disabled
 			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(PluginSettingsCard$3, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(PluginSettingsCard$1, {
 				t,
 				titleKey: "settings.title",
 				descriptionKey: "settings.description",
@@ -22126,7 +22126,7 @@ window.__ModuleLoader__.load({
 				onDiscard: props.discard,
 				alwaysOpen: true,
 				children: [
-					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$3, {
+					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$1, {
 						id: "settings-pet-enabled",
 						label: t("settings.enabled"),
 						hint: t("settings.enabledHint"),
@@ -22142,7 +22142,7 @@ window.__ModuleLoader__.load({
 							props.resetField("enabled");
 						}
 					}),
-					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$3, {
+					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$1, {
 						id: "settings-pet-decoration",
 						label: t("settings.decoration"),
 						hint: t("settings.decorationHint"),
@@ -22158,7 +22158,7 @@ window.__ModuleLoader__.load({
 							props.resetField("decorationEnabled");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChoiceField$2, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChoiceField$1, {
 						id: "settings-pet-pet",
 						label: t("settings.pet"),
 						hint: t("settings.petHint"),
@@ -22184,7 +22184,7 @@ window.__ModuleLoader__.load({
 							children: diagnostic.message
 						}, index)) })]
 					}),
-					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$3, {
+					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$1, {
 						id: "settings-pet-visible",
 						label: t("settings.visible"),
 						hint: t("settings.visibleHint"),
@@ -22200,7 +22200,7 @@ window.__ModuleLoader__.load({
 							props.resetField("visible");
 						}
 					}),
-					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$2, {
+					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$1, {
 						id: "settings-pet-size",
 						label: t("settings.size"),
 						hint: t("settings.sizeHint"),
@@ -22214,7 +22214,7 @@ window.__ModuleLoader__.load({
 							props.resetField("size");
 						}
 					}),
-					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$2, {
+					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$1, {
 						id: "settings-pet-right",
 						label: t("settings.right"),
 						hint: t("settings.rightHint"),
@@ -22228,7 +22228,7 @@ window.__ModuleLoader__.load({
 							props.resetField("right");
 						}
 					}),
-					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$2, {
+					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$1, {
 						id: "settings-pet-bottom",
 						label: t("settings.bottom"),
 						hint: t("settings.bottomHint"),
@@ -22242,7 +22242,7 @@ window.__ModuleLoader__.load({
 							props.resetField("bottom");
 						}
 					}),
-					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$2, {
+					state.petSelectionFallback ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$1, {
 						id: "settings-pet-bubble-scale",
 						label: t("settings.bubbleScale"),
 						hint: t("settings.bubbleScaleHint"),
@@ -22277,7 +22277,7 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region ../dsh-pet/src/client/locales.ts
 		/** Chinese copy. */
-		const zh$9 = {
+		const zh$7 = {
 			"pet.feed": "喂食",
 			"pet.hide": "隐藏",
 			"pet.rename": "改名",
@@ -22360,7 +22360,7 @@ window.__ModuleLoader__.load({
 			"settings.invalidNumber": "请输入数字，留空则使用默认值。"
 		};
 		/** English copy. */
-		const en$9 = {
+		const en$7 = {
 			"pet.feed": "Feed",
 			"pet.hide": "Hide",
 			"pet.rename": "Rename",
@@ -22449,7 +22449,7 @@ window.__ModuleLoader__.load({
 		* task-board's DOM-injected surface does.
 		*/
 		function dictionary$5() {
-			return (typeof document !== "undefined" ? document.documentElement.lang : "zh").toLowerCase().startsWith("en") ? en$9 : zh$9;
+			return (typeof document !== "undefined" ? document.documentElement.lang : "zh").toLowerCase().startsWith("en") ? en$7 : zh$7;
 		}
 		/**
 		* Translate a key with optional `{name}` template params. Mirrors the slot
@@ -22459,7 +22459,7 @@ window.__ModuleLoader__.load({
 		* `TranslateNS<'pet'>` (whose key domain also spans the shared common
 		* vocabulary); a missing key degrades to the key itself rather than throwing.
 		*/
-		function t$5(key, params) {
+		function t$4(key, params) {
 			let text = dictionary$5()[key] ?? key;
 			if (params !== void 0) for (const [name, value] of Object.entries(params)) text = text.replaceAll(`{${name}}`, String(value));
 			return text;
@@ -22475,17 +22475,17 @@ window.__ModuleLoader__.load({
 		* @param byId - the session catalog's rows (`SessionListState.byId`), when available.
 		* @returns the main-view session id, or undefined when the main view shows none.
 		*/
-		function mainViewSessionId$3(byId) {
+		function mainViewSessionId$2(byId) {
 			if (byId === void 0 || byId === null) return void 0;
 			for (const row of Object.values(byId)) if (row !== void 0 && (row.retainedBy?.mainView ?? 0) > 0) return row.id;
 		}
 		//#endregion
 		//#region ../dsh-pet/src/client/telemetry.ts
-		const VISITOR_KEY$4 = "dsh-web-ui-telemetry-visitor";
-		const DAY_KEY_PREFIX$4 = "dsh-web-ui-telemetry-day:";
-		const ENDPOINT$4 = "https://dsh-market.com/api/telemetry/event";
+		const VISITOR_KEY$2 = "dsh-web-ui-telemetry-visitor";
+		const DAY_KEY_PREFIX$2 = "dsh-web-ui-telemetry-day:";
+		const ENDPOINT$2 = "https://dsh-market.com/api/telemetry/event";
 		/** The building package's version, when the bundle carries it. */
-		function bakedVersion$4() {
+		function bakedVersion$2() {
 			try {
 				return "0.3.24";
 			} catch {
@@ -22493,23 +22493,23 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/** Read or lazily create the anonymous visitor id; null when storage is unavailable. */
-		function visitorId$4() {
+		function visitorId$2() {
 			try {
-				const existing = localStorage.getItem(VISITOR_KEY$4);
+				const existing = localStorage.getItem(VISITOR_KEY$2);
 				if (existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing)) return existing;
 				const fresh = crypto.randomUUID().replaceAll("-", "");
-				localStorage.setItem(VISITOR_KEY$4, fresh);
+				localStorage.setItem(VISITOR_KEY$2, fresh);
 				return fresh;
 			} catch {
 				return null;
 			}
 		}
 		/** Drop stale per-day dedup keys so localStorage does not grow forever. */
-		function pruneDayKeys$4(today) {
+		function pruneDayKeys$2(today) {
 			try {
 				for (let index = localStorage.length - 1; index >= 0; index -= 1) {
 					const key = localStorage.key(index);
-					if (key !== null && key.startsWith(DAY_KEY_PREFIX$4) && key !== DAY_KEY_PREFIX$4 + today) localStorage.removeItem(key);
+					if (key !== null && key.startsWith(DAY_KEY_PREFIX$2) && key !== DAY_KEY_PREFIX$2 + today) localStorage.removeItem(key);
 				}
 			} catch {}
 		}
@@ -22518,18 +22518,18 @@ window.__ModuleLoader__.load({
 		* browser. Never throws and never blocks the caller. Items without an explicit
 		* version inherit the bundle's baked build version.
 		*/
-		function reportDailyHeartbeat$4(items) {
+		function reportDailyHeartbeat$2(items) {
 			try {
 				if (items.length === 0) return;
 				const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
 				if (navigator.webdriver) return;
-				if (localStorage.getItem(DAY_KEY_PREFIX$4 + today) !== null) return;
-				const visitor = visitorId$4();
+				if (localStorage.getItem(DAY_KEY_PREFIX$2 + today) !== null) return;
+				const visitor = visitorId$2();
 				if (visitor === null) return;
-				pruneDayKeys$4(today);
+				pruneDayKeys$2(today);
 				const payloadItems = items.map((item) => {
 					const out = { name: item.name };
-					const version = item.version ?? bakedVersion$4();
+					const version = item.version ?? bakedVersion$2();
 					if (version !== void 0) out.version = version;
 					if (item.channel !== void 0) out.channel = item.channel;
 					return out;
@@ -22539,21 +22539,21 @@ window.__ModuleLoader__.load({
 					visitor,
 					items: payloadItems
 				});
-				fetch(ENDPOINT$4, {
+				fetch(ENDPOINT$2, {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body,
 					keepalive: true
 				}).then((response) => {
-					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$4 + today, "1");
+					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$2 + today, "1");
 				}).catch(() => {});
 			} catch {}
 		}
 		//#endregion
 		//#region ../dsh-pet/src/client/index.ts
-		var client_exports$9 = /* @__PURE__ */ __exportAll({
-			apply: () => apply$10,
-			inject: () => inject$10
+		var client_exports$7 = /* @__PURE__ */ __exportAll({
+			apply: () => apply$8,
+			inject: () => inject$8
 		});
 		/** Same-origin JSON fetch helper (GET without body, POST with JSON body). */
 		async function petFetch(path, body) {
@@ -22585,7 +22585,7 @@ window.__ModuleLoader__.load({
 		/** Settings namespace of the pet's settings page. It is the profile entry id the Host serves a form for. */
 		const PET_SETTINGS_NS = "pet";
 		/** Required services (sessions powers bubble-to-session navigation). */
-		const inject$10 = [
+		const inject$8 = [
 			"slots",
 			"locale",
 			"connection",
@@ -22599,7 +22599,7 @@ window.__ModuleLoader__.load({
 			"ui-pet",
 			PET_SETTINGS_NS
 		];
-		function servedEntryId$2(forms) {
+		function servedEntryId$1(forms) {
 			let served;
 			try {
 				served = forms.describe().getSnapshot().view?.namespaces.map((view) => view.ns);
@@ -22612,7 +22612,7 @@ window.__ModuleLoader__.load({
 		function petSettingsForm(ctx) {
 			const binder = ctx.get("webUiSettings");
 			if (binder !== void 0 && typeof binder.bind === "function") return binder.bind({ namespace: PET_SETTINGS_NS });
-			return ctx.configForms.get(servedEntryId$2(ctx.configForms));
+			return ctx.configForms.get(servedEntryId$1(ctx.configForms));
 		}
 		/**
 		* Client plugin body: register dictionaries, mount the global pet entry and
@@ -22631,13 +22631,13 @@ window.__ModuleLoader__.load({
 			const state = store.getSnapshot();
 			return state.pets.find((entry) => entry.id === state.snapshot?.pet.id)?.gameplay?.work?.tickMs;
 		}
-		function apply$10(ctx) {
-			reportDailyHeartbeat$4([{ name: "@linxin666/dsh-pet" }]);
+		function apply$8(ctx) {
+			reportDailyHeartbeat$2([{ name: "@linxin666/dsh-pet" }]);
 			ctx.effect(() => {
 				try {
 					return ctx.locale.register("pet", {
-						zh: zh$9,
-						en: en$9
+						zh: zh$7,
+						en: en$7
 					});
 				} catch {
 					return () => {};
@@ -22688,7 +22688,7 @@ window.__ModuleLoader__.load({
 					const setState = petStore.actions.setState;
 					const setFeedback = petStore.actions.setFeedback;
 					const sessions = ctx.sessions;
-					const currentSessionId = () => mainViewSessionId$3(sessions.list.getSnapshot().byId);
+					const currentSessionId = () => mainViewSessionId$2(sessions.list.getSnapshot().byId);
 					let petsLoaded = false;
 					let stateSeq = 0;
 					const pollNow = () => {
@@ -22816,7 +22816,7 @@ window.__ModuleLoader__.load({
 					const petRoot = (0, react_dom_client.createRoot)(container);
 					petRoot.render((0, react.createElement)(PetDockEntry, {
 						...injected(),
-						t: t$5,
+						t: t$4,
 						portalTarget: container
 					}));
 					let uiGone = false;
@@ -22866,7 +22866,7 @@ window.__ModuleLoader__.load({
 		/**
 		* dsh-ssh surface copy: zh is the key source, en mirrors every key.
 		*/
-		const zh$8 = {
+		const zh$6 = {
 			"entry.label": "SSH",
 			"entry.tooltip": "远程 SSH 运维面板",
 			"panel.title": "远程 SSH",
@@ -23021,7 +23021,7 @@ window.__ModuleLoader__.load({
 			"common.confirm": "确定",
 			"error.disabled": "SSH 插件在宿主端未启用。请前往「设置 → Web 插件 → SSH」打开 enabled 开关。"
 		};
-		const en$8 = {
+		const en$6 = {
 			"entry.label": "SSH",
 			"entry.tooltip": "Remote SSH operations panel",
 			"panel.title": "Remote SSH",
@@ -23177,7 +23177,7 @@ window.__ModuleLoader__.load({
 			"error.disabled": "The SSH plugin is disabled on the host. Please enable it in Settings → Web Plugins → SSH."
 		};
 		/** Tiny interpolation: {name} -> value. */
-		function t$4(dictionary, key, values) {
+		function t$3(dictionary, key, values) {
 			let text = dictionary[key] ?? key;
 			if (values !== void 0) for (const [name, value] of Object.entries(values)) text = text.replaceAll(`{${name}}`, String(value));
 			return text;
@@ -23191,7 +23191,7 @@ window.__ModuleLoader__.load({
 		*/
 		/** Active dictionary, picked by the document language at call time. */
 		function dictionary$4() {
-			return (typeof document !== "undefined" ? document.documentElement.lang : "zh").toLowerCase().startsWith("en") ? { ...en$8 } : { ...zh$8 };
+			return (typeof document !== "undefined" ? document.documentElement.lang : "zh").toLowerCase().startsWith("en") ? { ...en$6 } : { ...zh$6 };
 		}
 		/**
 		* SDK translate seat wired by the browser apply() once ctx.locale is bound
@@ -23207,7 +23207,7 @@ window.__ModuleLoader__.load({
 		/** Translate a key with optional {name} template params (current language). */
 		function tt$1(key, values) {
 			if (runtimeT$1 !== void 0) return runtimeT$1(key, values);
-			return t$4(dictionary$4(), key, values);
+			return t$3(dictionary$4(), key, values);
 		}
 		/** Human-readable error text from an unknown thrown value. */
 		function errorMessage(error) {
@@ -23543,13 +23543,13 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:packages/dsh-ssh/src/client/panel/panel.module.css.mjs
-		const css$12 = "[data-pane=conversation],[class*=centerCol]{position:relative}[data-dsh-ssh-view]{z-index:60;background:var(--dsw-alias-bg-base);display:none;position:absolute;inset:0}html[data-dsh-ssh-active]:not([data-dsh-taskboard-active]) [data-dsh-ssh-view]{display:block}html[data-dsh-ssh-active]:not([data-dsh-taskboard-active]) [data-pane=conversation]>:not([data-dsh-ssh-view]),html[data-dsh-ssh-active]:not([data-dsh-taskboard-active]) [class*=centerCol]>:not([data-dsh-ssh-view]){display:none!important}.mL8Uca_entry{box-sizing:border-box;min-height:36px;color:var(--dsw-alias-label-primary);cursor:pointer;font:inherit;text-align:left;white-space:nowrap;background:0 0;border:none;border-radius:12px;align-items:center;gap:8px;margin:0 2px;padding:7px 8px;font-size:14px;line-height:22px;display:flex}.mL8Uca_entry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.mL8Uca_entry[data-active]{background:var(--dsw-alias-interactive-bg-active);color:var(--dsw-alias-label-primary);font-weight:600}.mL8Uca_entryIcon{flex:none;justify-content:center;align-items:center;width:16px;height:16px;display:inline-flex}.mL8Uca_entryIcon svg{width:16px;height:16px;display:block}.mL8Uca_entryLabel{text-overflow:ellipsis;overflow:hidden}[data-dsh-frame][data-sidebar-collapsed] .mL8Uca_entry,[data-sidebar-collapsed] .mL8Uca_entry{border-radius:12px;justify-content:center;width:36px;min-height:36px;margin:0 auto 12px;padding:0}[data-dsh-frame][data-sidebar-collapsed] .mL8Uca_entryIcon,[data-sidebar-collapsed] .mL8Uca_entryIcon,[data-dsh-frame][data-sidebar-collapsed] .mL8Uca_entryIcon svg,[data-sidebar-collapsed] .mL8Uca_entryIcon svg{width:18px;height:18px}[data-dsh-frame][data-sidebar-collapsed] .mL8Uca_entryLabel,[data-sidebar-collapsed] .mL8Uca_entryLabel{display:none}.mL8Uca_view{overflow:hidden}.mL8Uca_panel{background:var(--dsw-alias-bg-base);min-width:0;height:100%;min-height:0;color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family);flex-direction:column;gap:10px;padding:14px 16px 16px;display:flex}.mL8Uca_panelHeader{flex:none;align-items:center;gap:10px;display:flex}.mL8Uca_panelTitle{color:var(--dsw-alias-label-primary);white-space:nowrap;flex:1;margin:0;font-size:16px;font-weight:700}.mL8Uca_backButton{align-items:center;gap:4px;display:inline-flex}.mL8Uca_tabBar{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;gap:2px;display:flex}.mL8Uca_tab{color:var(--dsw-alias-label-secondary);cursor:pointer;white-space:nowrap;background:0 0;border:none;border-bottom:2px solid #0000;border-radius:6px 6px 0 0;padding:7px 14px;font-size:13px}.mL8Uca_tab:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}.mL8Uca_tab[data-active]{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-state-business-primary);font-weight:600}.mL8Uca_panelContent{flex-direction:column;flex:1;min-height:0;display:flex;overflow:hidden}.mL8Uca_tabBody{flex-direction:column;flex:1;gap:10px;min-height:0;display:flex;overflow-y:auto}.mL8Uca_fillBody{flex-direction:column;flex:1;gap:10px;min-height:0;display:flex;overflow:hidden}.mL8Uca_toolbar,.mL8Uca_controls{flex-wrap:wrap;flex:none;align-items:center;gap:8px;display:flex}.mL8Uca_controls .mL8Uca_input{flex:0 260px;min-width:150px}.mL8Uca_toolbarSpacer{flex:1}.mL8Uca_search{min-width:120px;color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;outline:none;flex:0 260px;padding:6px 10px;font-size:13px}.mL8Uca_search::placeholder{color:var(--dsw-alias-label-tertiary)}.mL8Uca_groupBySelect{color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;outline:none;padding:6px 8px;font-size:13px}.mL8Uca_groupSection+.mL8Uca_groupSection{border-top:1px solid var(--dsw-alias-border-l1)}.mL8Uca_groupHeader{background:var(--dsw-alias-bg-base,var(--dsw-specific-input-major));align-items:center;gap:8px;padding:4px 8px;display:flex;position:sticky;top:0}.mL8Uca_groupToggle{min-width:0;color:var(--dsw-alias-label-primary);cursor:pointer;text-align:left;background:0 0;border:none;border-radius:6px;flex:1;align-items:center;gap:6px;padding:4px 6px;font-size:12.5px;font-weight:500;display:flex}.mL8Uca_groupToggle:hover{background:var(--dsw-alias-interactive-bg-hover)}.mL8Uca_groupChevron{border-right:1.5px solid var(--dsw-alias-label-tertiary);border-bottom:1.5px solid var(--dsw-alias-label-tertiary);flex:none;width:7px;height:7px;margin-bottom:2px;transition:transform .12s;transform:rotate(45deg)}.mL8Uca_groupChevron[data-collapsed]{margin-bottom:0;transform:rotate(-45deg)}.mL8Uca_groupName{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.mL8Uca_groupCount{color:var(--dsw-alias-label-tertiary);flex:none;font-weight:400}.mL8Uca_tableWrap{border:1px solid var(--dsw-alias-border-l1);border-radius:10px;flex:1;min-height:0;overflow:auto}.mL8Uca_table{border-collapse:collapse;width:100%;font-size:12.5px}.mL8Uca_table th{z-index:1;text-align:left;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);border-bottom:1px solid var(--dsw-alias-border-l1);white-space:nowrap;padding:8px 10px;font-weight:600;position:sticky;top:0}.mL8Uca_table td{border-bottom:1px solid var(--dsw-alias-separator-primary);vertical-align:top;padding:7px 10px}.mL8Uca_table tbody tr:last-child td{border-bottom:none}.mL8Uca_table tbody tr:hover td{background:var(--dsw-alias-interactive-bg-hover)}.mL8Uca_mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.mL8Uca_cellMuted{color:var(--dsw-alias-label-tertiary)}.mL8Uca_actions{white-space:nowrap;align-items:center;gap:8px;display:flex}.mL8Uca_inlineTest{color:var(--dsw-alias-label-secondary);align-items:center;gap:6px;font-size:11.5px;display:inline-flex}.mL8Uca_inlineTest[data-status=ok]{color:var(--dsw-alias-state-success-primary)}.mL8Uca_inlineTest[data-status=fail]{color:var(--dsw-alias-state-error-primary)}.mL8Uca_badge{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);white-space:nowrap;border-radius:999px;padding:1px 8px;font-size:11px;line-height:1.6;display:inline-block}.mL8Uca_badge[data-kind=key]{color:var(--dsw-alias-state-business-primary);border-color:var(--dsw-alias-state-business-primary)}.mL8Uca_badge[data-kind=password]{color:var(--dsw-alias-state-warn-primary);border-color:var(--dsw-alias-state-warn-primary)}.mL8Uca_badge[data-kind=agent]{color:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}.mL8Uca_badge[data-kind=proxy]{color:var(--dsw-alias-state-business-primary);border-color:var(--dsw-alias-state-business-primary);margin-left:6px}.mL8Uca_badge[data-status=ok]{color:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}.mL8Uca_badge[data-status=fail]{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}.mL8Uca_badge[data-status=timeout]{color:var(--dsw-alias-state-warn-primary);border-color:var(--dsw-alias-state-warn-primary)}.mL8Uca_primaryButton{color:var(--dsw-alias-label-primary-foreground);background:var(--dsw-alias-button-info-fill);cursor:pointer;white-space:nowrap;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600}.mL8Uca_primaryButton:hover:not(:disabled){background:var(--dsw-alias-button-info-hover)}.mL8Uca_primaryButton:disabled{opacity:.5;cursor:default}.mL8Uca_ghostButton{color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;background:0 0;border-radius:8px;padding:5px 12px;font-size:12px}.mL8Uca_ghostButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.mL8Uca_ghostButton:disabled{opacity:.45;cursor:default}.mL8Uca_iconButton{width:26px;height:26px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;justify-content:center;align-items:center;padding:0;font-size:13px;display:inline-flex}.mL8Uca_iconButton:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.mL8Uca_linkButton{color:var(--dsw-alias-state-business-primary);cursor:pointer;white-space:nowrap;background:0 0;border:none;padding:0;font-size:12px}.mL8Uca_linkButton:hover:not(:disabled){text-decoration:underline}.mL8Uca_linkButton:disabled{opacity:.45;cursor:default}.mL8Uca_linkButton[data-danger]{color:var(--dsw-alias-state-error-primary)}.mL8Uca_spinner{border:2px solid var(--dsw-alias-state-business-primary);vertical-align:-1px;border-top-color:#0000;border-radius:50%;flex:none;width:11px;height:11px;animation:.8s linear infinite mL8Uca_dshSshSpin;display:inline-block}@keyframes mL8Uca_dshSshSpin{to{transform:rotate(360deg)}}.mL8Uca_banner{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere;border-radius:8px;padding:8px 12px;font-size:12.5px;line-height:1.5}.mL8Uca_importSkips{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);border-radius:8px;flex-direction:column;gap:4px;margin:6px 0 0;padding:8px 12px;list-style:none;display:flex}.mL8Uca_importSkipRow{justify-content:space-between;align-items:baseline;gap:12px;font-size:12px;display:flex}.mL8Uca_banner[data-kind=ok]{color:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}.mL8Uca_banner[data-kind=error]{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}.mL8Uca_banner[data-kind=info]{color:var(--dsw-alias-state-business-primary);border-color:var(--dsw-alias-state-business-primary)}.mL8Uca_empty,.mL8Uca_loading{text-align:center;color:var(--dsw-alias-label-tertiary);padding:28px 12px;font-size:12.5px}.mL8Uca_modalBackdrop{z-index:40;background:var(--dsw-alias-bg-mask-1);justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.mL8Uca_modal{background:var(--dsw-alias-bg-base);border:1px solid var(--dsw-alias-border-l2);width:min(560px,100vw - 48px);max-height:calc(100vh - 96px);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-primary);border-radius:14px;flex-direction:column;gap:12px;padding:18px;display:flex;overflow-y:auto}.mL8Uca_modalTitle{margin:0;font-size:15px;font-weight:700}.mL8Uca_modalFooter{justify-content:flex-end;gap:10px;margin-top:4px;display:flex}.mL8Uca_formError{color:var(--dsw-alias-state-error-primary);margin:0;font-size:12px}.mL8Uca_hint{color:var(--dsw-alias-label-tertiary);font-size:11.5px}.mL8Uca_field{flex-direction:column;gap:5px;display:flex}.mL8Uca_fieldLabel{color:var(--dsw-alias-label-secondary);font-size:12px;font-weight:600}.mL8Uca_input{color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);resize:vertical;border-radius:8px;outline:none;padding:7px 10px;font-family:inherit;font-size:13px}.mL8Uca_input:focus{border-color:var(--dsw-alias-state-business-primary)}.mL8Uca_input::placeholder{color:var(--dsw-alias-label-tertiary)}.mL8Uca_input:disabled{opacity:.55}.mL8Uca_formRow{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 12px;display:grid}.mL8Uca_radioRow{align-items:center;gap:16px;display:flex}.mL8Uca_radioLabel{color:var(--dsw-alias-label-primary);cursor:pointer;align-items:center;gap:6px;font-size:13px;display:inline-flex}.mL8Uca_termBody{flex-direction:column;flex:1;gap:8px;min-height:0;display:flex;overflow:hidden}.mL8Uca_termWrap{border:1px solid var(--dsw-alias-border-l1);background:#0b0e14;border-radius:10px;flex:1;min-height:0;position:relative;overflow:hidden}.mL8Uca_termContainer{position:absolute;inset:8px 10px}.mL8Uca_termPlaceholder{z-index:2;text-align:center;color:var(--dsw-alias-label-tertiary);background:var(--dsw-alias-bg-base);justify-content:center;align-items:center;padding:0 24px;font-size:12.5px;display:flex;position:absolute;inset:0}.mL8Uca_hiddenFile{display:none}.mL8Uca_browsePanel{border:1px solid var(--dsw-alias-border-l1);border-radius:10px;flex-direction:column;flex:none;display:flex;overflow:hidden}.mL8Uca_browseHeader{background:var(--dsw-alias-bg-layer-2);border-bottom:1px solid var(--dsw-alias-border-l1);align-items:center;gap:8px;padding:8px 10px;display:flex}.mL8Uca_browsePath{text-overflow:ellipsis;white-space:nowrap;min-width:0;color:var(--dsw-alias-label-secondary);flex:1;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;overflow:hidden}.mL8Uca_browseList{max-height:240px;overflow-y:auto}.mL8Uca_dirRow{text-align:left;width:100%;font:inherit;color:var(--dsw-alias-label-primary);border:none;border-bottom:1px solid var(--dsw-alias-separator-primary);cursor:pointer;background:0 0;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;padding:5px 10px;font-size:12.5px;display:grid}.mL8Uca_dirRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.mL8Uca_dirRow[data-type=dir] .mL8Uca_dirName{color:var(--dsw-alias-state-business-primary)}.mL8Uca_dirRow[data-up]{color:var(--dsw-alias-label-secondary)}.mL8Uca_dirName{text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow:hidden}.mL8Uca_dirType{color:var(--dsw-alias-label-tertiary);white-space:nowrap}.mL8Uca_dirSize{color:var(--dsw-alias-label-tertiary);white-space:nowrap;text-align:right}.mL8Uca_transferBlock{flex-direction:column;flex:none;gap:6px;display:flex}.mL8Uca_progressMeta{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;gap:12px;font-size:12px;display:flex}.mL8Uca_progressTrack{background:var(--dsw-alias-interactive-bg-hover);border-radius:999px;height:8px;overflow:hidden}.mL8Uca_progressBar{background:var(--dsw-alias-state-business-primary);border-radius:999px;height:100%;transition:width .12s linear}.mL8Uca_tunnelList{flex-direction:column;flex:none;gap:8px;display:flex}.mL8Uca_tunnelRow{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;align-items:center;gap:10px;padding:8px 12px;display:flex}.mL8Uca_tunnelRow[data-state=forwarding]{border-color:var(--dsw-alias-state-success-primary)}.mL8Uca_tunnelRow[data-state=connecting]{border-color:var(--dsw-alias-state-warn-primary)}.mL8Uca_tunnelRow[data-state=failed]{border-color:var(--dsw-alias-state-error-primary)}.mL8Uca_tunnelLabel{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;overflow:hidden}.mL8Uca_formCard{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:10px;flex-direction:column;flex:none;gap:10px;padding:12px;display:flex}.mL8Uca_clusterForm{flex-direction:column;flex:none;gap:8px;display:flex}.mL8Uca_clusterFilters{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;display:grid}.mL8Uca_commandInput{min-height:96px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.mL8Uca_cellDetails summary{cursor:pointer;color:var(--dsw-alias-label-secondary);font-size:12px}.mL8Uca_cellPre{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);white-space:pre-wrap;word-break:break-all;border-radius:6px;max-height:180px;margin:4px 0 0;padding:6px 8px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;overflow:auto}";
-		const tagId$12 = "@linxin666/dsh-web-all/packages/dsh-ssh/src/client/panel/panel.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$12) + "]") === null) {
+		const css$7 = "[data-pane=conversation],[class*=centerCol]{position:relative}[data-dsh-ssh-view]{z-index:60;background:var(--dsw-alias-bg-base);display:none;position:absolute;inset:0}html[data-dsh-ssh-active]:not([data-dsh-taskboard-active]) [data-dsh-ssh-view]{display:block}html[data-dsh-ssh-active]:not([data-dsh-taskboard-active]) [data-pane=conversation]>:not([data-dsh-ssh-view]),html[data-dsh-ssh-active]:not([data-dsh-taskboard-active]) [class*=centerCol]>:not([data-dsh-ssh-view]){display:none!important}.mL8Uca_entry{box-sizing:border-box;min-height:36px;color:var(--dsw-alias-label-primary);cursor:pointer;font:inherit;text-align:left;white-space:nowrap;background:0 0;border:none;border-radius:12px;align-items:center;gap:8px;margin:0 2px;padding:7px 8px;font-size:14px;line-height:22px;display:flex}.mL8Uca_entry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.mL8Uca_entry[data-active]{background:var(--dsw-alias-interactive-bg-active);color:var(--dsw-alias-label-primary);font-weight:600}.mL8Uca_entryIcon{flex:none;justify-content:center;align-items:center;width:16px;height:16px;display:inline-flex}.mL8Uca_entryIcon svg{width:16px;height:16px;display:block}.mL8Uca_entryLabel{text-overflow:ellipsis;overflow:hidden}[data-dsh-frame][data-sidebar-collapsed] .mL8Uca_entry,[data-sidebar-collapsed] .mL8Uca_entry{border-radius:12px;justify-content:center;width:36px;min-height:36px;margin:0 auto 12px;padding:0}[data-dsh-frame][data-sidebar-collapsed] .mL8Uca_entryIcon,[data-sidebar-collapsed] .mL8Uca_entryIcon,[data-dsh-frame][data-sidebar-collapsed] .mL8Uca_entryIcon svg,[data-sidebar-collapsed] .mL8Uca_entryIcon svg{width:18px;height:18px}[data-dsh-frame][data-sidebar-collapsed] .mL8Uca_entryLabel,[data-sidebar-collapsed] .mL8Uca_entryLabel{display:none}.mL8Uca_view{overflow:hidden}.mL8Uca_panel{background:var(--dsw-alias-bg-base);min-width:0;height:100%;min-height:0;color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family);flex-direction:column;gap:10px;padding:14px 16px 16px;display:flex}.mL8Uca_panelHeader{flex:none;align-items:center;gap:10px;display:flex}.mL8Uca_panelTitle{color:var(--dsw-alias-label-primary);white-space:nowrap;flex:1;margin:0;font-size:16px;font-weight:700}.mL8Uca_backButton{align-items:center;gap:4px;display:inline-flex}.mL8Uca_tabBar{border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;gap:2px;display:flex}.mL8Uca_tab{color:var(--dsw-alias-label-secondary);cursor:pointer;white-space:nowrap;background:0 0;border:none;border-bottom:2px solid #0000;border-radius:6px 6px 0 0;padding:7px 14px;font-size:13px}.mL8Uca_tab:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}.mL8Uca_tab[data-active]{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-state-business-primary);font-weight:600}.mL8Uca_panelContent{flex-direction:column;flex:1;min-height:0;display:flex;overflow:hidden}.mL8Uca_tabBody{flex-direction:column;flex:1;gap:10px;min-height:0;display:flex;overflow-y:auto}.mL8Uca_fillBody{flex-direction:column;flex:1;gap:10px;min-height:0;display:flex;overflow:hidden}.mL8Uca_toolbar,.mL8Uca_controls{flex-wrap:wrap;flex:none;align-items:center;gap:8px;display:flex}.mL8Uca_controls .mL8Uca_input{flex:0 260px;min-width:150px}.mL8Uca_toolbarSpacer{flex:1}.mL8Uca_search{min-width:120px;color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;outline:none;flex:0 260px;padding:6px 10px;font-size:13px}.mL8Uca_search::placeholder{color:var(--dsw-alias-label-tertiary)}.mL8Uca_groupBySelect{color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;outline:none;padding:6px 8px;font-size:13px}.mL8Uca_groupSection+.mL8Uca_groupSection{border-top:1px solid var(--dsw-alias-border-l1)}.mL8Uca_groupHeader{background:var(--dsw-alias-bg-base,var(--dsw-specific-input-major));align-items:center;gap:8px;padding:4px 8px;display:flex;position:sticky;top:0}.mL8Uca_groupToggle{min-width:0;color:var(--dsw-alias-label-primary);cursor:pointer;text-align:left;background:0 0;border:none;border-radius:6px;flex:1;align-items:center;gap:6px;padding:4px 6px;font-size:12.5px;font-weight:500;display:flex}.mL8Uca_groupToggle:hover{background:var(--dsw-alias-interactive-bg-hover)}.mL8Uca_groupChevron{border-right:1.5px solid var(--dsw-alias-label-tertiary);border-bottom:1.5px solid var(--dsw-alias-label-tertiary);flex:none;width:7px;height:7px;margin-bottom:2px;transition:transform .12s;transform:rotate(45deg)}.mL8Uca_groupChevron[data-collapsed]{margin-bottom:0;transform:rotate(-45deg)}.mL8Uca_groupName{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.mL8Uca_groupCount{color:var(--dsw-alias-label-tertiary);flex:none;font-weight:400}.mL8Uca_tableWrap{border:1px solid var(--dsw-alias-border-l1);border-radius:10px;flex:1;min-height:0;overflow:auto}.mL8Uca_table{border-collapse:collapse;width:100%;font-size:12.5px}.mL8Uca_table th{z-index:1;text-align:left;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);border-bottom:1px solid var(--dsw-alias-border-l1);white-space:nowrap;padding:8px 10px;font-weight:600;position:sticky;top:0}.mL8Uca_table td{border-bottom:1px solid var(--dsw-alias-separator-primary);vertical-align:top;padding:7px 10px}.mL8Uca_table tbody tr:last-child td{border-bottom:none}.mL8Uca_table tbody tr:hover td{background:var(--dsw-alias-interactive-bg-hover)}.mL8Uca_mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.mL8Uca_cellMuted{color:var(--dsw-alias-label-tertiary)}.mL8Uca_actions{white-space:nowrap;align-items:center;gap:8px;display:flex}.mL8Uca_inlineTest{color:var(--dsw-alias-label-secondary);align-items:center;gap:6px;font-size:11.5px;display:inline-flex}.mL8Uca_inlineTest[data-status=ok]{color:var(--dsw-alias-state-success-primary)}.mL8Uca_inlineTest[data-status=fail]{color:var(--dsw-alias-state-error-primary)}.mL8Uca_badge{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);white-space:nowrap;border-radius:999px;padding:1px 8px;font-size:11px;line-height:1.6;display:inline-block}.mL8Uca_badge[data-kind=key]{color:var(--dsw-alias-state-business-primary);border-color:var(--dsw-alias-state-business-primary)}.mL8Uca_badge[data-kind=password]{color:var(--dsw-alias-state-warn-primary);border-color:var(--dsw-alias-state-warn-primary)}.mL8Uca_badge[data-kind=agent]{color:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}.mL8Uca_badge[data-kind=proxy]{color:var(--dsw-alias-state-business-primary);border-color:var(--dsw-alias-state-business-primary);margin-left:6px}.mL8Uca_badge[data-status=ok]{color:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}.mL8Uca_badge[data-status=fail]{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}.mL8Uca_badge[data-status=timeout]{color:var(--dsw-alias-state-warn-primary);border-color:var(--dsw-alias-state-warn-primary)}.mL8Uca_primaryButton{color:var(--dsw-alias-label-primary-foreground);background:var(--dsw-alias-button-info-fill);cursor:pointer;white-space:nowrap;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600}.mL8Uca_primaryButton:hover:not(:disabled){background:var(--dsw-alias-button-info-hover)}.mL8Uca_primaryButton:disabled{opacity:.5;cursor:default}.mL8Uca_ghostButton{color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l2);cursor:pointer;white-space:nowrap;background:0 0;border-radius:8px;padding:5px 12px;font-size:12px}.mL8Uca_ghostButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}.mL8Uca_ghostButton:disabled{opacity:.45;cursor:default}.mL8Uca_iconButton{width:26px;height:26px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;border-radius:6px;justify-content:center;align-items:center;padding:0;font-size:13px;display:inline-flex}.mL8Uca_iconButton:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.mL8Uca_linkButton{color:var(--dsw-alias-state-business-primary);cursor:pointer;white-space:nowrap;background:0 0;border:none;padding:0;font-size:12px}.mL8Uca_linkButton:hover:not(:disabled){text-decoration:underline}.mL8Uca_linkButton:disabled{opacity:.45;cursor:default}.mL8Uca_linkButton[data-danger]{color:var(--dsw-alias-state-error-primary)}.mL8Uca_spinner{border:2px solid var(--dsw-alias-state-business-primary);vertical-align:-1px;border-top-color:#0000;border-radius:50%;flex:none;width:11px;height:11px;animation:.8s linear infinite mL8Uca_dshSshSpin;display:inline-block}@keyframes mL8Uca_dshSshSpin{to{transform:rotate(360deg)}}.mL8Uca_banner{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere;border-radius:8px;padding:8px 12px;font-size:12.5px;line-height:1.5}.mL8Uca_importSkips{border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);border-radius:8px;flex-direction:column;gap:4px;margin:6px 0 0;padding:8px 12px;list-style:none;display:flex}.mL8Uca_importSkipRow{justify-content:space-between;align-items:baseline;gap:12px;font-size:12px;display:flex}.mL8Uca_banner[data-kind=ok]{color:var(--dsw-alias-state-success-primary);border-color:var(--dsw-alias-state-success-primary)}.mL8Uca_banner[data-kind=error]{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}.mL8Uca_banner[data-kind=info]{color:var(--dsw-alias-state-business-primary);border-color:var(--dsw-alias-state-business-primary)}.mL8Uca_empty,.mL8Uca_loading{text-align:center;color:var(--dsw-alias-label-tertiary);padding:28px 12px;font-size:12.5px}.mL8Uca_modalBackdrop{z-index:40;background:var(--dsw-alias-bg-mask-1);justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.mL8Uca_modal{background:var(--dsw-alias-bg-base);border:1px solid var(--dsw-alias-border-l2);width:min(560px,100vw - 48px);max-height:calc(100vh - 96px);box-shadow:var(--dsw-shadow-lv3);color:var(--dsw-alias-label-primary);border-radius:14px;flex-direction:column;gap:12px;padding:18px;display:flex;overflow-y:auto}.mL8Uca_modalTitle{margin:0;font-size:15px;font-weight:700}.mL8Uca_modalFooter{justify-content:flex-end;gap:10px;margin-top:4px;display:flex}.mL8Uca_formError{color:var(--dsw-alias-state-error-primary);margin:0;font-size:12px}.mL8Uca_hint{color:var(--dsw-alias-label-tertiary);font-size:11.5px}.mL8Uca_field{flex-direction:column;gap:5px;display:flex}.mL8Uca_fieldLabel{color:var(--dsw-alias-label-secondary);font-size:12px;font-weight:600}.mL8Uca_input{color:var(--dsw-alias-label-primary);background:var(--dsw-specific-input-major);border:1px solid var(--dsw-alias-border-l2);resize:vertical;border-radius:8px;outline:none;padding:7px 10px;font-family:inherit;font-size:13px}.mL8Uca_input:focus{border-color:var(--dsw-alias-state-business-primary)}.mL8Uca_input::placeholder{color:var(--dsw-alias-label-tertiary)}.mL8Uca_input:disabled{opacity:.55}.mL8Uca_formRow{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 12px;display:grid}.mL8Uca_radioRow{align-items:center;gap:16px;display:flex}.mL8Uca_radioLabel{color:var(--dsw-alias-label-primary);cursor:pointer;align-items:center;gap:6px;font-size:13px;display:inline-flex}.mL8Uca_termBody{flex-direction:column;flex:1;gap:8px;min-height:0;display:flex;overflow:hidden}.mL8Uca_termWrap{border:1px solid var(--dsw-alias-border-l1);background:#0b0e14;border-radius:10px;flex:1;min-height:0;position:relative;overflow:hidden}.mL8Uca_termContainer{position:absolute;inset:8px 10px}.mL8Uca_termPlaceholder{z-index:2;text-align:center;color:var(--dsw-alias-label-tertiary);background:var(--dsw-alias-bg-base);justify-content:center;align-items:center;padding:0 24px;font-size:12.5px;display:flex;position:absolute;inset:0}.mL8Uca_hiddenFile{display:none}.mL8Uca_browsePanel{border:1px solid var(--dsw-alias-border-l1);border-radius:10px;flex-direction:column;flex:none;display:flex;overflow:hidden}.mL8Uca_browseHeader{background:var(--dsw-alias-bg-layer-2);border-bottom:1px solid var(--dsw-alias-border-l1);align-items:center;gap:8px;padding:8px 10px;display:flex}.mL8Uca_browsePath{text-overflow:ellipsis;white-space:nowrap;min-width:0;color:var(--dsw-alias-label-secondary);flex:1;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;overflow:hidden}.mL8Uca_browseList{max-height:240px;overflow-y:auto}.mL8Uca_dirRow{text-align:left;width:100%;font:inherit;color:var(--dsw-alias-label-primary);border:none;border-bottom:1px solid var(--dsw-alias-separator-primary);cursor:pointer;background:0 0;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;padding:5px 10px;font-size:12.5px;display:grid}.mL8Uca_dirRow:hover{background:var(--dsw-alias-interactive-bg-hover)}.mL8Uca_dirRow[data-type=dir] .mL8Uca_dirName{color:var(--dsw-alias-state-business-primary)}.mL8Uca_dirRow[data-up]{color:var(--dsw-alias-label-secondary)}.mL8Uca_dirName{text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow:hidden}.mL8Uca_dirType{color:var(--dsw-alias-label-tertiary);white-space:nowrap}.mL8Uca_dirSize{color:var(--dsw-alias-label-tertiary);white-space:nowrap;text-align:right}.mL8Uca_transferBlock{flex-direction:column;flex:none;gap:6px;display:flex}.mL8Uca_progressMeta{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;gap:12px;font-size:12px;display:flex}.mL8Uca_progressTrack{background:var(--dsw-alias-interactive-bg-hover);border-radius:999px;height:8px;overflow:hidden}.mL8Uca_progressBar{background:var(--dsw-alias-state-business-primary);border-radius:999px;height:100%;transition:width .12s linear}.mL8Uca_tunnelList{flex-direction:column;flex:none;gap:8px;display:flex}.mL8Uca_tunnelRow{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;align-items:center;gap:10px;padding:8px 12px;display:flex}.mL8Uca_tunnelRow[data-state=forwarding]{border-color:var(--dsw-alias-state-success-primary)}.mL8Uca_tunnelRow[data-state=connecting]{border-color:var(--dsw-alias-state-warn-primary)}.mL8Uca_tunnelRow[data-state=failed]{border-color:var(--dsw-alias-state-error-primary)}.mL8Uca_tunnelLabel{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;overflow:hidden}.mL8Uca_formCard{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:10px;flex-direction:column;flex:none;gap:10px;padding:12px;display:flex}.mL8Uca_clusterForm{flex-direction:column;flex:none;gap:8px;display:flex}.mL8Uca_clusterFilters{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;display:grid}.mL8Uca_commandInput{min-height:96px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.mL8Uca_cellDetails summary{cursor:pointer;color:var(--dsw-alias-label-secondary);font-size:12px}.mL8Uca_cellPre{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);white-space:pre-wrap;word-break:break-all;border-radius:6px;max-height:180px;margin:4px 0 0;padding:6px 8px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;overflow:auto}";
+		const tagId$7 = "@linxin666/dsh-web-all/packages/dsh-ssh/src/client/panel/panel.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$7) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$12;
-			tag.textContent = css$12;
+			tag.dataset.pluginCss = tagId$7;
+			tag.textContent = css$7;
 			document.head.appendChild(tag);
 		}
 		var panel_module_css_default = {
@@ -38775,10 +38775,10 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region ../dsh-ssh/src/client/body-mutations.ts
 		/** Cross-bundle registry key; `Symbol.for` so every module copy agrees. */
-		const HUB_KEY$2 = Symbol.for("dsh-web.body-mutation-hub");
-		const INVALIDATION_ONLY$2 = Symbol.for("dsh-web.body-mutation-invalidation");
-		function needsRecords$2(subscribers) {
-			for (const listener of subscribers) if (!listener[INVALIDATION_ONLY$2]) return true;
+		const HUB_KEY$3 = Symbol.for("dsh-web.body-mutation-hub");
+		const INVALIDATION_ONLY$3 = Symbol.for("dsh-web.body-mutation-invalidation");
+		function needsRecords$3(subscribers) {
+			for (const listener of subscribers) if (!listener[INVALIDATION_ONLY$3]) return true;
 			return false;
 		}
 		/**
@@ -38786,12 +38786,12 @@ window.__ModuleLoader__.load({
 		* The marked wrapper also works with an older hub, which delivers records
 		* that it simply ignores until a page reload picks up the updated hub.
 		*/
-		function subscribeBodyInvalidations$2(subscriber) {
+		function subscribeBodyInvalidations$3(subscriber) {
 			const listener = () => {
 				subscriber();
 			};
-			listener[INVALIDATION_ONLY$2] = true;
-			return subscribeBodyMutations$2(listener);
+			listener[INVALIDATION_ONLY$3] = true;
+			return subscribeBodyMutations$3(listener);
 		}
 		/**
 		* Subscribe to body-level childList mutations.
@@ -38800,11 +38800,11 @@ window.__ModuleLoader__.load({
 		* @returns the disposer removing this subscriber (and the observer when it was
 		*   the last one).
 		*/
-		function subscribeBodyMutations$2(subscriber) {
+		function subscribeBodyMutations$3(subscriber) {
 			if (typeof globalThis === "undefined" || typeof document === "undefined") return () => {};
 			if (typeof MutationObserver !== "function") return () => {};
 			const registry = globalThis;
-			let hub = registry[HUB_KEY$2];
+			let hub = registry[HUB_KEY$3];
 			if (hub === void 0) {
 				const subscribers = /* @__PURE__ */ new Set();
 				const created = {
@@ -38832,14 +38832,14 @@ window.__ModuleLoader__.load({
 					else flush();
 				};
 				created.observer = new MutationObserver((records) => {
-					if (needsRecords$2(subscribers)) for (const record of records) created.pending.push(record);
+					if (needsRecords$3(subscribers)) for (const record of records) created.pending.push(record);
 					schedule();
 				});
 				created.observer.observe(document.body ?? document.documentElement, {
 					childList: true,
 					subtree: true
 				});
-				registry[HUB_KEY$2] = created;
+				registry[HUB_KEY$3] = created;
 				hub = created;
 			}
 			const active = hub;
@@ -38849,14 +38849,14 @@ window.__ModuleLoader__.load({
 				if (!subscribed) return;
 				subscribed = false;
 				active.subscribers.delete(subscriber);
-				if (!needsRecords$2(active.subscribers)) active.pending = [];
-				if (active.subscribers.size === 0 && registry[HUB_KEY$2] === active) {
+				if (!needsRecords$3(active.subscribers)) active.pending = [];
+				if (active.subscribers.size === 0 && registry[HUB_KEY$3] === active) {
 					active.observer.disconnect();
 					if (active.frame !== void 0 && typeof cancelAnimationFrame === "function") cancelAnimationFrame(active.frame);
 					active.frame = void 0;
 					active.pending = [];
 					active.scheduled = false;
-					delete registry[HUB_KEY$2];
+					delete registry[HUB_KEY$3];
 				}
 			};
 		}
@@ -38924,7 +38924,7 @@ window.__ModuleLoader__.load({
 				root = (0, react_dom_client.createRoot)(container);
 				options.render(root);
 			};
-			const unsubscribeBody = subscribeBodyInvalidations$2(() => {
+			const unsubscribeBody = subscribeBodyInvalidations$3(() => {
 				ensure();
 			});
 			const applyActive = () => {
@@ -39234,7 +39234,7 @@ window.__ModuleLoader__.load({
 					subtree: true
 				});
 			};
-			const unsubscribeBody = subscribeBodyInvalidations$2(() => {
+			const unsubscribeBody = subscribeBodyInvalidations$3(() => {
 				tryPlace();
 			});
 			const rootObserver = new MutationObserver(() => {
@@ -39300,11 +39300,11 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region ../dsh-ssh/src/client/telemetry.ts
-		const VISITOR_KEY$3 = "dsh-web-ui-telemetry-visitor";
-		const DAY_KEY_PREFIX$3 = "dsh-web-ui-telemetry-day:";
-		const ENDPOINT$3 = "https://dsh-market.com/api/telemetry/event";
+		const VISITOR_KEY$1 = "dsh-web-ui-telemetry-visitor";
+		const DAY_KEY_PREFIX$1 = "dsh-web-ui-telemetry-day:";
+		const ENDPOINT$1 = "https://dsh-market.com/api/telemetry/event";
 		/** The building package's version, when the bundle carries it. */
-		function bakedVersion$3() {
+		function bakedVersion$1() {
 			try {
 				return "0.3.24";
 			} catch {
@@ -39312,23 +39312,23 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/** Read or lazily create the anonymous visitor id; null when storage is unavailable. */
-		function visitorId$3() {
+		function visitorId$1() {
 			try {
-				const existing = localStorage.getItem(VISITOR_KEY$3);
+				const existing = localStorage.getItem(VISITOR_KEY$1);
 				if (existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing)) return existing;
 				const fresh = crypto.randomUUID().replaceAll("-", "");
-				localStorage.setItem(VISITOR_KEY$3, fresh);
+				localStorage.setItem(VISITOR_KEY$1, fresh);
 				return fresh;
 			} catch {
 				return null;
 			}
 		}
 		/** Drop stale per-day dedup keys so localStorage does not grow forever. */
-		function pruneDayKeys$3(today) {
+		function pruneDayKeys$1(today) {
 			try {
 				for (let index = localStorage.length - 1; index >= 0; index -= 1) {
 					const key = localStorage.key(index);
-					if (key !== null && key.startsWith(DAY_KEY_PREFIX$3) && key !== DAY_KEY_PREFIX$3 + today) localStorage.removeItem(key);
+					if (key !== null && key.startsWith(DAY_KEY_PREFIX$1) && key !== DAY_KEY_PREFIX$1 + today) localStorage.removeItem(key);
 				}
 			} catch {}
 		}
@@ -39337,18 +39337,18 @@ window.__ModuleLoader__.load({
 		* browser. Never throws and never blocks the caller. Items without an explicit
 		* version inherit the bundle's baked build version.
 		*/
-		function reportDailyHeartbeat$3(items) {
+		function reportDailyHeartbeat$1(items) {
 			try {
 				if (items.length === 0) return;
 				const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
 				if (navigator.webdriver) return;
-				if (localStorage.getItem(DAY_KEY_PREFIX$3 + today) !== null) return;
-				const visitor = visitorId$3();
+				if (localStorage.getItem(DAY_KEY_PREFIX$1 + today) !== null) return;
+				const visitor = visitorId$1();
 				if (visitor === null) return;
-				pruneDayKeys$3(today);
+				pruneDayKeys$1(today);
 				const payloadItems = items.map((item) => {
 					const out = { name: item.name };
-					const version = item.version ?? bakedVersion$3();
+					const version = item.version ?? bakedVersion$1();
 					if (version !== void 0) out.version = version;
 					if (item.channel !== void 0) out.channel = item.channel;
 					return out;
@@ -39358,24 +39358,24 @@ window.__ModuleLoader__.load({
 					visitor,
 					items: payloadItems
 				});
-				fetch(ENDPOINT$3, {
+				fetch(ENDPOINT$1, {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body,
 					keepalive: true
 				}).then((response) => {
-					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$3 + today, "1");
+					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$1 + today, "1");
 				}).catch(() => {});
 			} catch {}
 		}
 		//#endregion
 		//#region ../dsh-ssh/src/client/index.ts
-		var client_exports$8 = /* @__PURE__ */ __exportAll({
-			apply: () => apply$9,
-			inject: () => inject$9
+		var client_exports$6 = /* @__PURE__ */ __exportAll({
+			apply: () => apply$7,
+			inject: () => inject$7
 		});
 		/** Locale namespace this plugin owns. */
-		const NS$8 = "dsh-ssh";
+		const NS$6 = "dsh-ssh";
 		/**
 		* Family settings namespace the terminal-font preference is addressed by
 		* (issue #577); dsh-web-settings maps it to the owning profile entry id.
@@ -39384,7 +39384,7 @@ window.__ModuleLoader__.load({
 		/** The one field this plugin's own Config schema declares (its entry identity on the shared settings surface). */
 		const TERMINAL_FONT_FIELD = "terminalFontFamily";
 		/** Required services (fiber inject waiting — the runtime must be up first). */
-		const inject$9 = [
+		const inject$7 = [
 			"slots",
 			"locale",
 			"configForms"
@@ -39393,20 +39393,20 @@ window.__ModuleLoader__.load({
 		* Mount the SSH panel.
 		* @param ctx - client root context (locale service).
 		*/
-		function apply$9(ctx) {
-			reportDailyHeartbeat$3([{ name: "@linxin666/dsh-ssh" }]);
+		function apply$7(ctx) {
+			reportDailyHeartbeat$1([{ name: "@linxin666/dsh-ssh" }]);
 			ctx.effect(() => {
 				try {
-					return ctx.locale.register(NS$8, {
-						zh: zh$8,
-						en: en$8
+					return ctx.locale.register(NS$6, {
+						zh: zh$6,
+						en: en$6
 					});
 				} catch {
 					return () => {};
 				}
 			}, "dsh-ssh: dictionaries");
 			try {
-				setRuntimeTranslate$1(ctx.locale.bind(NS$8));
+				setRuntimeTranslate$1(ctx.locale.bind(NS$6));
 			} catch {}
 			const controller = new PanelController();
 			const api = new SshApi();
@@ -39433,2616 +39433,14 @@ window.__ModuleLoader__.load({
 			}, "dsh-ssh: ui mounts");
 		}
 		//#endregion
-		//#region ../dsh-tool-describe-image/src/client/attach.ts
-		/**
-		* Browser half of the attach seam: the upload client for the host
-		* /describe-image/attach route. The browser sends the picked image as base64
-		* text; the host validates magic bytes, persists the bytes in the attachment
-		* store, and returns both a durable `[image attachment ...]` note and
-		* self-contained Markdown reference. Image bytes never enter the conversation
-		* log — only durable reference text does.
-		* @module @linxin666/dsh-tool-describe-image/client/attach
-		*/
-		/** The host attach endpoint, same-origin with the web shell. */
-		const ATTACH_ENDPOINT = "/describe-image/attach";
-		/**
-		* Read a picked file as base64 text (no data-URL prefix).
-		* @param file - the file the user picked.
-		* @returns the base64 payload, or a structured rejection.
-		*/
-		function readFileAsBase64(file) {
-			return new Promise((resolve) => {
-				const reader = new FileReader();
-				reader.onerror = () => resolve({
-					ok: false,
-					message: "read-failed"
-				});
-				reader.onload = () => {
-					const result = typeof reader.result === "string" ? reader.result : "";
-					const comma = result.indexOf(",");
-					if (comma < 0) {
-						resolve({
-							ok: false,
-							message: "read-failed"
-						});
-						return;
-					}
-					resolve({
-						ok: true,
-						base64: result.slice(comma + 1)
-					});
-				};
-				reader.readAsDataURL(file);
-			});
-		}
-		/**
-		* Upload base64 image bytes to the host attach route.
-		* @param base64 - the base64 image payload.
-		* @param mediaType - the declared media type (verified against magic bytes on the host).
-		* @param name - optional display name.
-		* @returns durable note and Markdown reference text, or a structured rejection.
-		*/
-		async function uploadImageForDescribe(base64, mediaType, name) {
-			let response;
-			try {
-				response = await fetch(ATTACH_ENDPOINT, {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({
-						data: base64,
-						mediaType,
-						...name === void 0 ? {} : { name }
-					})
-				});
-			} catch {
-				return {
-					ok: false,
-					message: "network-failed"
-				};
-			}
-			let envelope;
-			try {
-				envelope = await response.json();
-			} catch {
-				return {
-					ok: false,
-					message: "bad-response"
-				};
-			}
-			const record = envelope;
-			if (typeof record !== "object" || record === null) return {
-				ok: false,
-				message: "bad-response"
-			};
-			if (record.ok === true && typeof record.value === "object" && record.value !== null) {
-				const value = record.value;
-				if (typeof value.note === "string" && value.note !== "") return {
-					ok: true,
-					note: value.note,
-					markdown: typeof value.markdown === "string" ? value.markdown : value.note
-				};
-				return {
-					ok: false,
-					message: "bad-response"
-				};
-			}
-			const message = record.error?.message;
-			return {
-				ok: false,
-				message: typeof message === "string" && message !== "" ? message : "server-failed"
-			};
-		}
-		//#endregion
-		//#region ../dsh-tool-describe-image/src/client/send-hook.ts
-		/**
-		* Send interception: text-only models reject image blocks at submit, so a
-		* send that carries draft images is rewritten into a plain-text prompt that
-		* carries durable describe-image references instead. The images are uploaded
-		* through the host attach route (so bytes stay out of the conversation log),
-		* the draft images are released, and the model analyzes them through the
-		* describe_image tool rather than receiving the bytes it cannot read.
-		*
-		* The hook wraps the conversation service's sendSession method in place. It
-		* is structural (no dependency on the conversation package's internal
-		* types) and idempotent (a module marker guards against double install).
-		* @module @linxin666/dsh-tool-describe-image/client/send-hook
-		*/
-		/** Installed-marker key on the wrapped service instance. */
-		const HOOK_MARKER = "__dshDescribeImageSendHooked";
-		/**
-		* Wrap the conversation service so image-bearing sends route through the
-		* describe-image attach seam. No-op when the service surface is unavailable
-		* (older shell) or already wrapped. When `isEnabled` is given it is read on
-		* every send: a send that reports the interception disabled passes straight
-		* through to the original `sendSession`, so other vision plugins keep the
-		* raw image blocks (issue #301). When `acceptsImages` is given it is
-		* consulted per image-bearing send: a session whose model accepts image
-		* input passes straight through with the raw image blocks — rewriting them
-		* into references would hide the images behind a redundant describe_image
-		* call the model never needed. A checker failure answers false and the
-		* legacy rewrite proceeds, so text-only models never lose the feature.
-		* @param conversation - the `conversation` service instance.
-		* @param isEnabled - live switch; consulted per send (default: always on).
-		* @param acceptsImages - per-session capability predicate (default: always false).
-		*/
-		function installSendHook(conversation, isEnabled, acceptsImages) {
-			const face = conversation;
-			if (face === null || typeof face !== "object") return;
-			if (typeof face.sendSession !== "function") return;
-			if (typeof face.draftImages !== "function" || typeof face.releaseDraftImage !== "function") return;
-			if (face[HOOK_MARKER] === true) return;
-			const original = face.sendSession;
-			face.sendSession = async (session, text, imageIds, mode, signal) => {
-				if (isEnabled !== void 0 && !isEnabled()) return original.call(face, session, text, imageIds, mode, signal);
-				if (imageIds.length === 0) return original.call(face, session, text, imageIds, mode, signal);
-				if (acceptsImages !== void 0) {
-					let native = false;
-					try {
-						native = await acceptsImages(session);
-					} catch {
-						native = false;
-					}
-					if (native) return original.call(face, session, text, imageIds, mode, signal);
-				}
-				const attachments = face.draftImages(imageIds);
-				if (attachments.length !== imageIds.length) return original.call(face, session, text, imageIds, mode, signal);
-				const payloads = [];
-				for (const attachment of attachments) {
-					const read = await readFileAsBase64(attachment.file);
-					if (!read.ok) return original.call(face, session, text, imageIds, mode, signal);
-					payloads.push({
-						base64: read.base64,
-						type: attachment.file.type,
-						name: attachment.file.name
-					});
-				}
-				const refs = [];
-				for (const payload of payloads) {
-					const upload = await uploadImageForDescribe(payload.base64, payload.type, payload.name);
-					if (!upload.ok) break;
-					refs.push(upload.markdown);
-				}
-				if (refs.length !== attachments.length) return original.call(face, session, text, imageIds, mode, signal);
-				const fullText = [text.trim(), ...refs].filter((part) => part !== "").join("\n");
-				const outcome = await original.call(face, session, fullText, [], mode, signal);
-				if (outcome.kind === "success") for (const id of imageIds) face.releaseDraftImage(id);
-				return outcome;
-			};
-			face[HOOK_MARKER] = true;
-		}
-		/** Default probe fetch timeout, in milliseconds; a stalled host must not stall a send. */
-		const DEFAULT_CAPABILITY_TIMEOUT_MS = 1500;
-		/** Read the session id off the structural session face the send hook wraps. */
-		function sessionIdOf(session) {
-			if (session === null || typeof session !== "object") return void 0;
-			const id = session.sessionId;
-			return typeof id === "string" && id !== "" ? id : void 0;
-		}
-		/**
-		* Fetch one session's verdict from the host route. True only on an explicit
-		* acceptsImages-true envelope; network failures, bad envelopes, and unknowns
-		* all answer false (keep the legacy rewrite).
-		* @param sessionId - the session whose model is probed.
-		* @param timeoutMs - fetch timeout in milliseconds.
-		* @returns whether the model accepts raw image blocks.
-		*/
-		async function fetchSessionAcceptsImages(sessionId, timeoutMs = DEFAULT_CAPABILITY_TIMEOUT_MS) {
-			const controller = new AbortController();
-			const timer = setTimeout(() => controller.abort(), timeoutMs);
-			try {
-				const envelope = await (await fetch("/describe-image/capability?session=" + encodeURIComponent(sessionId), { signal: controller.signal })).json();
-				if (envelope === null || typeof envelope !== "object" || envelope.ok !== true) return false;
-				const value = envelope.value;
-				return value !== null && typeof value === "object" && value.acceptsImages === true;
-			} catch {
-				return false;
-			} finally {
-				clearTimeout(timer);
-			}
-		}
-		/** Registry of live checkers for module-level invalidation on setting toggle. */
-		const activeStores = /* @__PURE__ */ new Set();
-		/**
-		* Drop cached verdicts and any in-flight probe for one store. Dropping the
-		* in-flight entry is what makes the invalidation stick: the pending probe still
-		* resolves for its caller, but the write-back in `createImageCapabilityChecker`
-		* refuses to publish a verdict that started before the invalidation.
-		*/
-		function invalidateStore(store, sessionId) {
-			if (typeof sessionId === "string") {
-				store.cache.delete(sessionId);
-				store.inflight.delete(sessionId);
-			} else {
-				store.cache.clear();
-				store.inflight.clear();
-			}
-		}
-		/**
-		* Invalidate cached capability verdicts across all active checkers (or for a specific session).
-		* Called after changing the native image request setting so subsequent sends immediately probe fresh.
-		* @param sessionId - optional session id to invalidate; if omitted, clears all session caches.
-		*/
-		function invalidateImageCapabilityCaches(sessionId) {
-			for (const store of activeStores) invalidateStore(store, sessionId);
-		}
-		/**
-		* Create the send-hook's capability checker: per-session cached, in-flight
-		* deduped, fail-closed. Sessions without a readable id answer false.
-		* @param options - cache and timeout tuning.
-		* @returns an async predicate over the structural session face with invalidation support.
-		*/
-		function createImageCapabilityChecker(options = {}) {
-			const ttl = options.ttlMs ?? 3e4;
-			const timeout = options.timeoutMs ?? 1500;
-			const store = {
-				cache: /* @__PURE__ */ new Map(),
-				inflight: /* @__PURE__ */ new Map()
-			};
-			const { cache, inflight } = store;
-			activeStores.add(store);
-			const checker = (session) => {
-				const id = sessionIdOf(session);
-				if (id === void 0) return Promise.resolve(false);
-				const hit = cache.get(id);
-				if (hit !== void 0 && Date.now() - hit.at < ttl) return Promise.resolve(hit.value);
-				const pending = inflight.get(id);
-				if (pending !== void 0) return pending;
-				const task = fetchSessionAcceptsImages(id, timeout);
-				inflight.set(id, task);
-				return task.then((value) => {
-					if (inflight.get(id) === task) {
-						inflight.delete(id);
-						cache.set(id, {
-							at: Date.now(),
-							value
-						});
-					}
-					return value;
-				}, () => {
-					if (inflight.get(id) === task) inflight.delete(id);
-					return false;
-				});
-			};
-			checker.invalidate = (sessionId) => {
-				invalidateStore(store, sessionId);
-			};
-			checker.dispose = () => {
-				activeStores.delete(store);
-				cache.clear();
-				inflight.clear();
-			};
-			return checker;
-		}
-		//#endregion
-		//#region ../dsh-tool-describe-image/src/client/locales.ts
-		/** `describe-image` client namespace dictionaries (composer attach button copy). */
-		/** Simplified Chinese dictionary (the key-set source of truth). */
-		const zh$7 = {
-			"attach.button.title": "插入图片引用（describe-image 图像理解）",
-			"attach.button.aria": "插入图片引用，交给 describe_image 工具分析",
-			"attach.uploading": "上传中…",
-			"attach.success": "图片引用已插入输入框；发送后文本模型可通过 describe_image 分析这张图片。",
-			"attach.error.read": "无法读取所选图片文件。",
-			"attach.error.type": "不支持的图片类型，仅接受 PNG / JPEG / GIF / WebP。",
-			"attach.error.size": "图片超过 10 MB 上限。",
-			"attach.error.noSession": "当前没有可用会话，无法插入图片引用。",
-			"attach.error.upload": "上传失败：{error}",
-			"card.title": "图像理解",
-			"card.description": "describe_image 工具所调用的视觉语言端点。",
-			"settings.expand": "展开设置",
-			"settings.collapse": "收起设置",
-			"settings.notExposed": "当前部署未暴露此命名空间，无法在此编辑；请在挂载配置中填写端点。",
-			"settings.unsaved": "有未保存的修改",
-			"settings.readOnly": "当前部署的设置为只读。",
-			"settings.saveFailed": "保存失败，请重试。",
-			"settings.discard": "放弃修改",
-			"settings.save": "保存",
-			"settings.saving": "保存中…",
-			"settings.overridden": "已覆盖",
-			"settings.reset": "重置",
-			"settings.inherit": "继承",
-			"settings.on": "开",
-			"settings.off": "关",
-			"settings.invalidNumber": "需要有效的数字",
-			"field.baseURL": "接口地址",
-			"field.baseURL.hint": "接口根地址；chat-completions 追加 /chat/completions，responses 追加 /responses，anthropic-messages 追加 /v1/messages。",
-			"field.model": "模型",
-			"field.model.hint": "该端点提供的视觉模型 id。",
-			"field.apiStyle": "接口协议",
-			"field.apiStyle.hint": "chat-completions 走 /chat/completions，responses 走 /responses，anthropic-messages 走 /v1/messages（x-api-key 鉴权）。",
-			"field.apiStyle.chatCompletions": "Chat Completions",
-			"field.apiStyle.responses": "Responses",
-			"field.apiStyle.anthropicMessages": "Anthropic Messages",
-			"field.apiKey": "API Key",
-			"field.apiKey.hint": "不写入设置文件。留空表示保持当前密钥。",
-			"field.apiKeyEnv": "密钥环境变量",
-			"field.apiKeyEnv.hint": "凭证服务解析该环境变量名；空字符串禁用。",
-			"field.defaultPrompt": "默认指令",
-			"field.defaultPrompt.hint": "调用未带 prompt 参数时的默认指令。",
-			"field.maxBytes": "图片字节上限",
-			"field.maxBytes.hint": "本地文件与下载一致的字节上限。",
-			"field.maxOutputTokens": "输出 token 上限",
-			"field.maxOutputTokens.hint": "发给端点的 max_tokens（responses 协议为 max_output_tokens）。",
-			"field.timeoutMs": "超时（毫秒）",
-			"field.timeoutMs.hint": "单次视觉请求超时。",
-			"field.renderImagePreview": "会话内渲染图片预览",
-			"field.renderImagePreview.hint": "开：会话里的图片引用原地显示为缩略图，点击查看大图；关：保持原始引用文本。仅影响本地显示，消息文本与模型识别不变。",
-			"field.interceptImageSend": "发送时改写图片为 describe-image 引用",
-			"field.interceptImageSend.hint": "开（默认）：发往纯文本模型的带图发送在提交时被改写为 describe-image 引用；支持图片输入的模型会被自动识别，原图直接交给模型本身。关：发送原样放行，图片与附件块交给会话（与其他视觉插件共用时需要关闭）。",
-			"field.rotationMode": "多端点调度策略",
-			"field.rotationMode.hint": "当配置了多个端点时的调度方式：轮询模式在模型间依次循环分摊请求，故障转移模式优先主端点并在失败时顺延。",
-			"field.rotationMode.roundRobin": "循环轮询 (Round-Robin)",
-			"field.rotationMode.failover": "故障转移 (Failover)",
-			"field.retryNextOnFailure": "失败自动顺延尝试下一个端点",
-			"field.retryNextOnFailure.hint": "开（默认）：当某个端点调用遇到 429 限流或服务故障时，自动顺延尝试候选列表中的下一个端点。关：当前端点失败立即抛错。",
-			"probe.fetchModels": "获取模型",
-			"probe.connectivity": "测试连通性",
-			"probe.running": "测试中…",
-			"probe.hint": "请求当前填写的接口地址与密钥（未保存也可测）：列出成功即端点可达且鉴权通过，返回的模型填充下拉选择。",
-			"probe.testHint": "用当前模型发一次最小补全请求（max_tokens 1），测模型本身的往返延迟，消耗极少 token。",
-			"probe.fetched": "已获取 {count} 个模型",
-			"probe.success": "成功：{ms} ms",
-			"probe.error": "失败：{error}",
-			"preview.expand": "点击查看大图",
-			"preview.close": "关闭大图",
-			"native.title": "原生图片请求",
-			"native.loading": "读取中…",
-			"native.enable": "启用",
-			"native.disable": "停用",
-			"native.busy": "写入中…",
-			"native.enabled": "当前默认模型「{model}」已启用原生图片输入；发送的图片直接交给模型，describe_image 会从该模型的工具集中隐藏。",
-			"native.disabled": "当前默认模型「{model}」未启用原生图片输入；发送的图片会被改写为 describe-image 引用。",
-			"native.unknownModel": "当前没有可用的默认模型选择。",
-			"native.unsupported": "当前宿主未挂载 llm-deepseek 设置命名空间，无法在此配置。",
-			"native.failed": "写入失败：{error}"
-		};
-		/** The two dictionaries, keyed by language. */
-		const dictionaries = {
-			zh: zh$7,
-			en: {
-				"attach.button.title": "Insert image reference (describe-image vision)",
-				"attach.button.aria": "Insert an image reference for the describe_image tool",
-				"attach.uploading": "Uploading…",
-				"attach.success": "Image reference inserted; the text model can analyze this image via describe_image once you send the message.",
-				"attach.error.read": "Could not read the selected image file.",
-				"attach.error.type": "Unsupported image type; only PNG / JPEG / GIF / WebP are accepted.",
-				"attach.error.size": "The image exceeds the 10 MB bound.",
-				"attach.error.noSession": "No active session; cannot insert an image reference.",
-				"attach.error.upload": "Upload failed: {error}",
-				"card.title": "Image understanding",
-				"card.description": "The vision-language endpoint the describe_image tool calls.",
-				"settings.expand": "Expand settings",
-				"settings.collapse": "Collapse settings",
-				"settings.notExposed": "This deployment does not expose the namespace; configure the endpoint in the mount config instead.",
-				"settings.unsaved": "Unsaved changes",
-				"settings.readOnly": "Settings are read-only in this deployment.",
-				"settings.saveFailed": "Save failed; try again.",
-				"settings.discard": "Discard",
-				"settings.save": "Save",
-				"settings.saving": "Saving…",
-				"settings.overridden": "Overridden",
-				"settings.reset": "Reset",
-				"settings.inherit": "Inherit",
-				"settings.on": "On",
-				"settings.off": "Off",
-				"settings.invalidNumber": "A valid number is required",
-				"field.baseURL": "Base URL",
-				"field.baseURL.hint": "Endpoint root; /chat/completions, /responses, or /v1/messages is appended per the API style.",
-				"field.model": "Model",
-				"field.model.hint": "The vision model id this endpoint provides.",
-				"field.apiStyle": "API style",
-				"field.apiStyle.hint": "chat-completions posts to /chat/completions; responses posts to /responses; anthropic-messages posts to /v1/messages with x-api-key auth.",
-				"field.apiStyle.chatCompletions": "Chat Completions",
-				"field.apiStyle.responses": "Responses",
-				"field.apiStyle.anthropicMessages": "Anthropic Messages",
-				"field.apiKey": "API key",
-				"field.apiKey.hint": "Never written to the settings file. Leave empty to keep the current key.",
-				"field.apiKeyEnv": "Key environment variable",
-				"field.apiKeyEnv.hint": "Resolved through the credential service; empty disables it.",
-				"field.defaultPrompt": "Default instruction",
-				"field.defaultPrompt.hint": "Used when a call omits its prompt parameter.",
-				"field.maxBytes": "Max image bytes",
-				"field.maxBytes.hint": "Byte bound for local files and downloads alike.",
-				"field.maxOutputTokens": "Max output tokens",
-				"field.maxOutputTokens.hint": "The max_tokens sent to the endpoint (max_output_tokens under the responses style).",
-				"field.timeoutMs": "Timeout (ms)",
-				"field.timeoutMs.hint": "Per-call vision request timeout.",
-				"field.renderImagePreview": "Render image preview in chat",
-				"field.renderImagePreview.hint": "On: image references in the conversation upgrade into inline thumbnails (click for full size). Off: the raw reference text stays. Display-only — the message text and model-side analysis are unchanged.",
-				"field.interceptImageSend": "Rewrite image sends into describe-image references",
-				"field.interceptImageSend.hint": "On (default): image-bearing sends to text-only models are rewritten into describe-image references at submit; models that accept image input are detected automatically and receive the raw images natively. Off: sends pass through untouched, handing the raw image blocks to other vision plugins.",
-				"field.rotationMode": "Multi-endpoint rotation strategy",
-				"field.rotationMode.hint": "How calls are routed when multiple endpoints are configured: round-robin cycles through models, failover prioritizes the primary endpoint.",
-				"field.rotationMode.roundRobin": "Round-Robin",
-				"field.rotationMode.failover": "Failover",
-				"field.retryNextOnFailure": "Auto-retry next endpoint on failure",
-				"field.retryNextOnFailure.hint": "On (default): automatically tries the next candidate endpoint if the current one encounters 429 rate limit or service error. Off: fails immediately.",
-				"probe.fetchModels": "Fetch models",
-				"probe.connectivity": "Test connectivity",
-				"probe.running": "Testing…",
-				"probe.hint": "Requests the endpoint and key currently filled in (works before saving): a model listing proves the endpoint is reachable and the key authenticates, and fills the model dropdown.",
-				"probe.testHint": "Sends one minimal completion call (max_tokens 1) with the current model to measure that model's own round-trip latency; spends a single output token.",
-				"probe.fetched": "Fetched {count} models",
-				"probe.success": "OK: {ms} ms",
-				"probe.error": "Failed: {error}",
-				"preview.expand": "Click to view full size",
-				"preview.close": "Close full image",
-				"native.title": "Native image requests",
-				"native.loading": "Loading…",
-				"native.enable": "Enable",
-				"native.disable": "Disable",
-				"native.busy": "Saving…",
-				"native.enabled": "Native image input is enabled for the default model \"{model}\"; sent images reach the model directly and describe_image is hidden from its toolset.",
-				"native.disabled": "Native image input is disabled for the default model \"{model}\"; sent images are rewritten into describe-image references.",
-				"native.unknownModel": "No default model selection is available.",
-				"native.unsupported": "This host does not expose the llm-deepseek settings namespace; configuration is unavailable here.",
-				"native.failed": "Write failed: {error}"
-			}
-		};
-		/** Current UI language, mirrored from the shell (defaults to zh). */
-		let currentLanguage = "zh";
-		/** Switch the client copy language. */
-		function setLanguage(language) {
-			currentLanguage = language;
-		}
-		/** Format a `{name}` template with values. */
-		function format(template, params) {
-			return template.replace(/\{([a-zA-Z0-9]+)\}/g, (match, name) => name in params ? String(params[name]) : match);
-		}
-		/** Translate one key; falls back to the zh dictionary for unknown keys. */
-		function t$3(key, params) {
-			const template = (dictionaries[currentLanguage] ?? zh$7)[key] ?? zh$7[key];
-			return params === void 0 ? template : format(template, params);
-		}
-		//#endregion
-		//#region \0dsh-css:packages/dsh-tool-describe-image/src/client/preview.module.css.mjs
-		const css$11 = ".mOs4Ya_preview{margin:4px 0;display:block}.mOs4Ya_thumbButton{cursor:zoom-in;background:0 0;border:0;margin:0;padding:0;display:block}.mOs4Ya_thumbButton:focus-visible{outline-offset:2px;border-radius:8px;outline:2px solid highlight}.mOs4Ya_thumb{object-fit:contain;background:0 0;border:1px solid #7f7f7f59;border-radius:8px;max-width:320px;max-height:200px;display:block}.mOs4Ya_lightbox{z-index:9999;cursor:zoom-out;background:#000000b8;outline:none;justify-content:center;align-items:center;display:flex;position:fixed;inset:0}.mOs4Ya_lightbox img{object-fit:contain;border-radius:8px;max-width:92vw;max-height:92vh}";
-		const tagId$11 = "@linxin666/dsh-web-all/packages/dsh-tool-describe-image/src/client/preview.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$11) + "]") === null) {
-			const tag = document.createElement("style");
-			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$11;
-			tag.textContent = css$11;
-			document.head.appendChild(tag);
-		}
-		var preview_module_css_default = {
-			"lightbox": "mOs4Ya_lightbox",
-			"preview": "mOs4Ya_preview",
-			"thumb": "mOs4Ya_thumb",
-			"thumbButton": "mOs4Ya_thumbButton"
-		};
-		//#endregion
-		//#region ../dsh-tool-describe-image/src/client/preview.ts
-		/**
-		* Conversation image preview enhancer. The web shell renders user messages
-		* as plain text (no markdown pipeline), so the describe-image reference the
-		* send hook splices (`![图片](/describe-image/raw/sha256:…)`) sits in the
-		* transcript as raw text. This module watches the chat transcript — the
-		* official `conversation.session` slot wrapper, which excludes the composer —
-		* and upgrades each reference in place into an inline thumbnail (a real
-		* button: Enter/Space opens a full-size overlay, focus returns on close).
-		* The message text itself is never edited — the original markdown is
-		* restored when the toggle turns off or the plugin unloads — so the session
-		* log and the model side are untouched.
-		*
-		* Scanning is scoped and incremental: a lightweight observer on the document
-		* only (re)discovers the transcript container, while the content observer on
-		* the container processes just the nodes each mutation record carries — no
-		* full-page walks during streaming or sidebar churn. If the raw route is
-		* unreachable through the current origin (for example a proxy that does not
-		* forward it), the thumbnail load fails, the failure is remembered for the
-		* session, and the reference text is left alone from there on.
-		* @module @linxin666/dsh-tool-describe-image/client/preview
-		*/
-		/** Matches one describe-image reference inside message text (global flag for repeated matches). */
-		const REFERENCE_PATTERN = /!\[([^\]]*)]\((\/describe-image\/raw\/[^)\s]+)\)/g;
-		/** The official slot wrapper owning the chat transcript; the composer lives outside it. */
-		const CONVERSATION_ROOT_SELECTOR = "[data-slot=\"conversation.session\"]";
-		/** Attribute marking an injected preview; its value is the original markdown source. */
-		const PREVIEW_ATTR = "data-dsh-di-preview";
-		/** Attribute marking the full-size overlay. */
-		const LIGHTBOX_ATTR = "data-dsh-di-lightbox";
-		/** Session-level bound on remembered unreachable raw paths. */
-		const MAX_FAILED_PATHS = 200;
-		/**
-		* Locate every describe-image reference in one text chunk. Pure string math
-		* (exported for tests); the DOM side walks text nodes and applies it.
-		* @param text - raw message text.
-		* @returns the references in source order.
-		*/
-		function findImageReferences(text) {
-			const matches = [];
-			REFERENCE_PATTERN.lastIndex = 0;
-			for (let match = REFERENCE_PATTERN.exec(text); match !== null; match = REFERENCE_PATTERN.exec(text)) matches.push({
-				alt: match[1] ?? "",
-				path: match[2] ?? "",
-				start: match.index,
-				end: match.index + match[0].length
-			});
-			return matches;
-		}
-		/**
-		* Install the enhancer. With `root` omitted the transcript container is
-		* resolved through the official slot attribute and re-resolved whenever the
-		* shell remounts it (session switch); a fixed `root` (tests) skips that
-		* watch. Content passes are record-driven and idempotent — processed
-		* references are elements, never text nodes, so a re-scan finds nothing new.
-		* @param isEnabled - read per pass so settings edits apply without a reload.
-		* @param root - fixed subtree to watch (defaults to the transcript container).
-		* @returns the handle; {@link ConversationImagePreview.dispose} restores the DOM.
-		*/
-		function installConversationImagePreview(isEnabled, root) {
-			/** Raw paths whose thumbnail load failed this session. */
-			const failedPaths = /* @__PURE__ */ new Set();
-			let lightboxCleanup;
-			let contentObserver;
-			let mountObserver;
-			let observedRoot;
-			let disposed = false;
-			let scheduled = false;
-			/** Whether the text node sits inside an editable surface, raw-text island, or our own UI. */
-			const isExcluded = (node) => {
-				const parent = node.parentElement;
-				if (parent === null) return true;
-				return parent.closest(`input, textarea, script, style, [contenteditable], [${PREVIEW_ATTR}]`) !== null;
-			};
-			/** Remember one unreachable raw path, evicting the oldest beyond the bound. */
-			const rememberFailure = (path) => {
-				if (failedPaths.size >= MAX_FAILED_PATHS) {
-					const oldest = failedPaths.values().next();
-					if (oldest.done !== true) failedPaths.delete(oldest.value);
-				}
-				failedPaths.add(path);
-			};
-			/** Restore one injected preview to its original markdown text. */
-			const restorePreview = (preview) => {
-				const source = preview.getAttribute(PREVIEW_ATTR);
-				if (source === null) return;
-				preview.replaceWith(document.createTextNode(source));
-			};
-			/** The subtree every scan and restore is confined to. */
-			const scope = () => root ?? observedRoot;
-			/** Restore every preview inside the scope (toggle off / dispose). */
-			const restoreAll = () => {
-				const within = scope();
-				if (within === void 0) return;
-				for (const preview of within.querySelectorAll(`[${PREVIEW_ATTR}]`)) restorePreview(preview);
-			};
-			/** Close the full-size overlay when one stands. */
-			const closeLightbox = () => {
-				lightboxCleanup?.();
-				lightboxCleanup = void 0;
-			};
-			/** Open the full-size overlay; focus moves in and returns to the trigger on close. */
-			const openLightbox = (src, alt, trigger) => {
-				closeLightbox();
-				const overlay = document.createElement("div");
-				overlay.className = preview_module_css_default.lightbox ?? "";
-				overlay.setAttribute(LIGHTBOX_ATTR, "");
-				overlay.setAttribute("role", "dialog");
-				overlay.setAttribute("aria-modal", "true");
-				overlay.setAttribute("aria-label", t$3("preview.close"));
-				overlay.tabIndex = -1;
-				const image = document.createElement("img");
-				image.src = src;
-				image.alt = alt;
-				overlay.append(image);
-				overlay.addEventListener("click", closeLightbox);
-				const onKeydown = (event) => {
-					if (event.key === "Escape") closeLightbox();
-				};
-				overlay.addEventListener("keydown", onKeydown);
-				lightboxCleanup = () => {
-					overlay.remove();
-					if (trigger.isConnected) trigger.focus({ preventScroll: true });
-				};
-				document.body.append(overlay);
-				overlay.focus();
-			};
-			/** Build one inline, keyboard-operable thumbnail for one located reference. */
-			const buildPreview = (match, source) => {
-				const preview = document.createElement("span");
-				preview.className = preview_module_css_default.preview ?? "";
-				preview.setAttribute(PREVIEW_ATTR, source);
-				const button = document.createElement("button");
-				button.type = "button";
-				button.className = preview_module_css_default.thumbButton ?? "";
-				button.title = t$3("preview.expand");
-				button.setAttribute("aria-label", t$3("preview.expand"));
-				const image = document.createElement("img");
-				image.className = preview_module_css_default.thumb ?? "";
-				image.src = window.location.origin + match.path;
-				image.alt = match.alt;
-				image.addEventListener("error", () => {
-					rememberFailure(match.path);
-					restorePreview(preview);
-				}, { once: true });
-				button.addEventListener("click", () => openLightbox(image.src, match.alt, button));
-				button.append(image);
-				preview.append(button);
-				return preview;
-			};
-			/** Upgrade every reference inside one text node, keeping the surrounding text. */
-			const enhanceNode = (node) => {
-				const matches = findImageReferences(node.data).filter((match) => !failedPaths.has(match.path));
-				if (matches.length === 0) return;
-				const text = node.data;
-				const fragment = document.createDocumentFragment();
-				let cursor = 0;
-				for (const match of matches) {
-					fragment.append(document.createTextNode(text.slice(cursor, match.start)));
-					fragment.append(buildPreview(match, text.slice(match.start, match.end)));
-					cursor = match.end;
-				}
-				fragment.append(document.createTextNode(text.slice(cursor)));
-				node.replaceWith(fragment);
-			};
-			/** Upgrade the references inside one added or changed node (text node or subtree). */
-			const scanNode = (node) => {
-				if (node.nodeType === Node.TEXT_NODE) {
-					const text = node;
-					if (text.data.includes("/describe-image/raw/") && !isExcluded(text)) enhanceNode(text);
-					return;
-				}
-				if (node.nodeType !== Node.ELEMENT_NODE && node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) return;
-				const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: (candidate) => {
-					const text = candidate;
-					if (!text.data.includes("/describe-image/raw/")) return NodeFilter.FILTER_REJECT;
-					return isExcluded(text) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
-				} });
-				const targets = [];
-				while (walker.nextNode()) targets.push(walker.currentNode);
-				for (const target of targets) enhanceNode(target);
-			};
-			/** One full upgrade pass over the scope (initial attach, toggle on). */
-			const enhanceAll = () => {
-				const within = scope();
-				if (within !== void 0) scanNode(within);
-			};
-			/** Content observer: process only the nodes each mutation record carries. */
-			const onContentRecords = (records) => {
-				if (disposed || !isEnabled()) return;
-				for (const record of records) if (record.type === "characterData") scanNode(record.target);
-				else for (const node of record.addedNodes) scanNode(node);
-			};
-			/** (Re)attach the content observer to the live transcript container. */
-			const attach = () => {
-				const next = root ?? document.querySelector(CONVERSATION_ROOT_SELECTOR) ?? void 0;
-				if (next === observedRoot) return;
-				contentObserver?.disconnect();
-				observedRoot = next;
-				if (observedRoot !== void 0) {
-					contentObserver = new MutationObserver(onContentRecords);
-					contentObserver.observe(observedRoot, {
-						childList: true,
-						subtree: true,
-						characterData: true
-					});
-					if (isEnabled()) enhanceAll();
-				}
-			};
-			/** Collapse a mutation burst into one container re-resolution per microtask. */
-			const schedule = () => {
-				if (scheduled || disposed) return;
-				scheduled = true;
-				queueMicrotask(() => {
-					scheduled = false;
-					if (!disposed) attach();
-				});
-			};
-			/** Apply the current toggle state once. */
-			const apply = () => {
-				if (disposed) return;
-				if (isEnabled()) {
-					attach();
-					enhanceAll();
-				} else restoreAll();
-			};
-			if (root === void 0) {
-				mountObserver = new MutationObserver(schedule);
-				mountObserver.observe(document.body, {
-					childList: true,
-					subtree: true
-				});
-			}
-			attach();
-			return {
-				refresh: apply,
-				dispose: () => {
-					disposed = true;
-					mountObserver?.disconnect();
-					contentObserver?.disconnect();
-					restoreAll();
-					closeLightbox();
-				}
-			};
-		}
-		//#endregion
-		//#region \0dsh-css:packages/dsh-tool-describe-image/src/client/settings-card.module.css.mjs
-		const css$10 = ".rUBhvW_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}.rUBhvW_card:hover{border-color:var(--dsw-alias-label-dimmed)}.rUBhvW_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.rUBhvW_header{appearance:none;box-sizing:border-box;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.rUBhvW_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.rUBhvW_headerStatic{box-sizing:border-box;border-radius:12px;align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}.rUBhvW_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.rUBhvW_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.rUBhvW_description{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.5}.rUBhvW_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.rUBhvW_chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.rUBhvW_chevronOpen{transform:rotate(180deg)}.rUBhvW_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.rUBhvW_readOnly{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:12px;line-height:1.5}.rUBhvW_notExposed{color:var(--dsw-alias-state-warn-primary);margin:12px 0 0;font-size:12px;line-height:1.5}.rUBhvW_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.rUBhvW_failed{min-width:0;color:var(--dsw-alias-state-error-primary,#b42318);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:12px;line-height:1.5;overflow:hidden}.rUBhvW_discard,.rUBhvW_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.rUBhvW_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.rUBhvW_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.rUBhvW_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.rUBhvW_discard:disabled,.rUBhvW_save:disabled{opacity:.4;cursor:default}.rUBhvW_discard:focus-visible,.rUBhvW_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.rUBhvW_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.rUBhvW_field+.rUBhvW_field{border-top:1px solid var(--dsw-alias-border-l2)}.rUBhvW_head{align-items:center;gap:8px;display:flex}.rUBhvW_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.rUBhvW_badges{align-items:center;gap:8px;display:inline-flex}.rUBhvW_badge{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.rUBhvW_reset{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5}.rUBhvW_reset:hover:not(:disabled){color:var(--dsw-alias-label-primary)}.rUBhvW_reset:disabled{cursor:default}.rUBhvW_reset:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}.rUBhvW_input,.rUBhvW_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.rUBhvW_input:focus-visible,.rUBhvW_select:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.rUBhvW_input:disabled,.rUBhvW_select:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.rUBhvW_inputInvalid{border:1px solid var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.rUBhvW_inputInvalid:focus-visible{outline:2px solid var(--dsw-alias-state-error-primary,#b42318);outline-offset:1px;border-color:var(--dsw-alias-state-error-primary,#b42318)}.rUBhvW_selectWrap{position:relative}.rUBhvW_selectButton{appearance:none;text-align:left;cursor:pointer;justify-content:space-between;align-items:center;gap:8px;width:100%;display:flex}.rUBhvW_selectLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.rUBhvW_selectChevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.rUBhvW_selectChevronOpen{transform:rotate(180deg)}.rUBhvW_selectPopup{z-index:40;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-height:240px;box-shadow:0 8px 24px var(--dsw-alias-bg-mask-2);opacity:0;border-radius:8px;flex-direction:column;padding:4px;transition:opacity .1s,transform .1s;display:flex;position:absolute;top:calc(100% + 4px);left:0;right:0;overflow-y:auto;transform:translateY(-4px)}.rUBhvW_selectPopupOpen{opacity:1;transform:none}.rUBhvW_selectPopupClose{opacity:0;pointer-events:none;transform:translateY(-4px)}.rUBhvW_selectOption{color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;text-overflow:ellipsis;border-radius:6px;flex-shrink:0;padding:6px 10px;font-size:13px;line-height:1.5;overflow:hidden}.rUBhvW_selectOption:hover,.rUBhvW_selectOptionActive{background:var(--dsw-alias-interactive-bg-hover)}.rUBhvW_selectOptionSelected{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 10%, transparent);font-weight:500}.rUBhvW_invalid{color:var(--dsw-alias-state-error-primary,#b42318);margin:0;font-size:12px;line-height:1.5}.rUBhvW_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){.rUBhvW_card,.rUBhvW_header,.rUBhvW_chevron,.rUBhvW_chevronOpen,.rUBhvW_discard,.rUBhvW_save,.rUBhvW_selectChevron,.rUBhvW_selectChevronOpen,.rUBhvW_selectPopup{transition:none}}";
-		const tagId$10 = "@linxin666/dsh-web-all/packages/dsh-tool-describe-image/src/client/settings-card.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$10) + "]") === null) {
-			const tag = document.createElement("style");
-			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$10;
-			tag.textContent = css$10;
-			document.head.appendChild(tag);
-		}
-		var settings_card_module_css_default$2 = {
-			"badge": "rUBhvW_badge",
-			"badges": "rUBhvW_badges",
-			"body": "rUBhvW_body",
-			"card": "rUBhvW_card",
-			"cardOpen": "rUBhvW_cardOpen",
-			"chevron": "rUBhvW_chevron",
-			"chevronOpen": "rUBhvW_chevronOpen",
-			"description": "rUBhvW_description",
-			"discard": "rUBhvW_discard",
-			"failed": "rUBhvW_failed",
-			"field": "rUBhvW_field",
-			"footer": "rUBhvW_footer",
-			"head": "rUBhvW_head",
-			"headText": "rUBhvW_headText",
-			"header": "rUBhvW_header",
-			"headerStatic": "rUBhvW_headerStatic",
-			"hint": "rUBhvW_hint",
-			"input": "rUBhvW_input",
-			"inputInvalid": "rUBhvW_inputInvalid",
-			"invalid": "rUBhvW_invalid",
-			"label": "rUBhvW_label",
-			"name": "rUBhvW_name",
-			"notExposed": "rUBhvW_notExposed",
-			"pending": "rUBhvW_pending",
-			"readOnly": "rUBhvW_readOnly",
-			"reset": "rUBhvW_reset",
-			"save": "rUBhvW_save",
-			"select": "rUBhvW_select",
-			"selectButton": "rUBhvW_selectButton",
-			"selectChevron": "rUBhvW_selectChevron",
-			"selectChevronOpen": "rUBhvW_selectChevronOpen",
-			"selectLabel": "rUBhvW_selectLabel",
-			"selectOption": "rUBhvW_selectOption",
-			"selectOptionActive": "rUBhvW_selectOptionActive",
-			"selectOptionSelected": "rUBhvW_selectOptionSelected",
-			"selectPopup": "rUBhvW_selectPopup",
-			"selectPopupClose": "rUBhvW_selectPopupClose",
-			"selectPopupOpen": "rUBhvW_selectPopupOpen",
-			"selectWrap": "rUBhvW_selectWrap"
-		};
-		//#endregion
-		//#region ../dsh-tool-describe-image/src/client/PluginSettingsCard.tsx
-		/**
-		* Family-shared chrome for plugin settings cards: a disclosure header naming
-		* the plugin and what its settings govern, the controls inside, and the save
-		* that writes them. Renders nothing while the namespace is unavailable — a
-		* deployment that does not compose the owning plugin should show no trace of
-		* it. Inlined into each consumer's client bundle; mirrors the official
-		* ui-plugin-config PluginCard in a self-contained slice.
-		*/
-		/**
-		* Render one plugin settings card.
-		* @param props - the plugin's copy keys, its form state, and its controls.
-		* @returns the card, or nothing while the namespace is still loading.
-		*/
-		function PluginSettingsCard$2(props) {
-			const [open, setOpen] = (0, react.useState)(props.defaultOpen ?? true);
-			const { state, alwaysOpen } = props;
-			if (!state.available) return null;
-			const title = props.t(props.titleKey);
-			const description = props.t(props.descriptionKey);
-			const blocked = !state.dirty || state.invalid || state.saving;
-			const expanded = alwaysOpen === true || open;
-			const cardClass = expanded ? `${settings_card_module_css_default$2.cardOpen} ${settings_card_module_css_default$2.card}` : settings_card_module_css_default$2.card;
-			const header = alwaysOpen === true ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$2.headerStatic,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-					className: settings_card_module_css_default$2.headText,
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$2.name,
-						title,
-						children: title
-					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$2.description,
-						title: description,
-						children: props.descriptionNode ?? description
-					})]
-				}), state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-					className: settings_card_module_css_default$2.pending,
-					title: props.t("settings.unsaved"),
-					children: props.t("settings.unsaved")
-				}) : null]
-			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-				type: "button",
-				className: settings_card_module_css_default$2.header,
-				"aria-expanded": open,
-				"aria-label": `${props.t(open ? "settings.collapse" : "settings.expand")}: ${title}`,
-				onClick: () => {
-					setOpen(!open);
-				},
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-						className: settings_card_module_css_default$2.headText,
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default$2.name,
-							title,
-							children: title
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default$2.description,
-							title: description,
-							children: props.descriptionNode ?? description
-						})]
-					}),
-					state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$2.pending,
-						title: props.t("settings.unsaved"),
-						children: props.t("settings.unsaved")
-					}) : null,
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
-						width: "14",
-						height: "14",
-						viewBox: "0 0 14 14",
-						fill: "none",
-						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default$2.chevron} ${settings_card_module_css_default$2.chevronOpen}` : settings_card_module_css_default$2.chevron,
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
-							fill: "currentColor"
-						})
-					})
-				]
-			});
-			if (!state.exposed && props.renderChildrenWhenNotExposed !== true) {
-				const showNotice = props.hideNotExposedNotice !== true;
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
-					className: cardClass,
-					children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: settings_card_module_css_default$2.body,
-						children: showNotice ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default$2.notExposed,
-							role: "status",
-							children: props.t("settings.notExposed")
-						}) : null
-					}) : null]
-				});
-			}
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
-				className: cardClass,
-				children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: settings_card_module_css_default$2.body,
-					children: [
-						!state.writable ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default$2.readOnly,
-							role: "status",
-							children: props.t("settings.readOnly")
-						}) : null,
-						props.children,
-						props.hideFooter === true ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: settings_card_module_css_default$2.footer,
-							children: [
-								state.failed ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-									className: settings_card_module_css_default$2.failed,
-									role: "status",
-									children: [props.t("settings.saveFailed"), state.failedReason ? " - " + state.failedReason : ""]
-								}) : null,
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: settings_card_module_css_default$2.discard,
-									disabled: !state.dirty || state.saving,
-									onClick: props.onDiscard,
-									children: props.t("settings.discard")
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: settings_card_module_css_default$2.save,
-									disabled: blocked,
-									onClick: props.onSave,
-									children: props.t(!state.saving ? "settings.save" : "settings.saving")
-								})
-							]
-						})
-					]
-				}) : null]
-			});
-		}
-		/** A staged value field. `numeric` only hints the keypad: which drafts a field accepts is decided by its spec. */
-		function ValueField$1(props) {
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$2.field,
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$2.head,
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$2.label,
-							htmlFor: props.id,
-							children: props.label
-						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default$2.badges,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default$2.badge,
-								children: props.overriddenLabel
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: settings_card_module_css_default$2.reset,
-								disabled: props.disabled,
-								onClick: props.onReset,
-								children: props.resetLabel
-							})]
-						}) : null]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-						id: props.id,
-						className: props.invalid ? settings_card_module_css_default$2.inputInvalid : settings_card_module_css_default$2.input,
-						type: "text",
-						...props.numeric === true ? { inputMode: "numeric" } : {},
-						...props.invalid ? { "aria-invalid": true } : {},
-						value: props.text,
-						placeholder: props.placeholder ?? "",
-						disabled: props.disabled,
-						onChange: (event) => {
-							props.onEdit(event.target.value);
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: props.invalid ? settings_card_module_css_default$2.invalid : settings_card_module_css_default$2.hint,
-						children: props.invalid ? props.invalidLabel : props.hint
-					})
-				]
-			});
-		}
-		const NON_SKIN_BODY_MARKERS$2 = /* @__PURE__ */ new Set(["dshSkinCenter", "dshSidebarCollapsed"]);
-		function isSkinActive$2() {
-			return Object.keys(document.body.dataset).some((key) => key.startsWith("dsh") && !NON_SKIN_BODY_MARKERS$2.has(key));
-		}
-		const SELECT_CLOSE_MS$2 = 100;
-		/**
-		* The shared dual-mode select control. While an appearance skin is active it
-		* renders the legacy native `<select>` untouched, so element-level skin
-		* selectors keep working; under the default appearance it renders a
-		* self-drawn `role="listbox"` popup whose open/close is transition-animated.
-		* Staged cards reach it through BooleanField/ChoiceField; immediate-apply
-		* editors (the side-card prefs) bind it directly through onEdit.
-		* 双模式下拉框：皮肤激活时用原生 select，默认外观用自绘动画弹层。
-		*/
-		function SelectField$2(props) {
-			const { id, options, value } = props;
-			const [open, setOpen] = (0, react.useState)(false);
-			const [closing, setClosing] = (0, react.useState)(false);
-			const [phase, setPhase] = (0, react.useState)("initial");
-			const [activeIndex, setActiveIndex] = (0, react.useState)(0);
-			const closeTimer = (0, react.useRef)(void 0);
-			const wrapRef = (0, react.useRef)(null);
-			const popupRef = (0, react.useRef)(null);
-			const currentIndex = () => {
-				const index = options.findIndex((option) => option.value === value);
-				return index >= 0 ? index : 0;
-			};
-			const close = (0, react.useCallback)(() => {
-				if (closeTimer.current !== void 0) clearTimeout(closeTimer.current);
-				setClosing(true);
-				closeTimer.current = setTimeout(() => {
-					setClosing(false);
-					setOpen(false);
-				}, SELECT_CLOSE_MS$2);
-			}, []);
-			const openPopup = () => {
-				if (closeTimer.current !== void 0) clearTimeout(closeTimer.current);
-				setActiveIndex(currentIndex());
-				setPhase("initial");
-				setClosing(false);
-				setOpen(true);
-			};
-			const commit = (index) => {
-				const option = options[index];
-				if (option) props.onEdit(option.value);
-				close();
-			};
-			const onTriggerClick = () => {
-				if (props.disabled) return;
-				if (open && !closing) close();
-				else openPopup();
-			};
-			const onKeyDown = (event) => {
-				if (props.disabled) return;
-				const count = options.length;
-				switch (event.key) {
-					case "ArrowDown":
-					case "ArrowUp":
-					case "Enter":
-					case " ":
-						event.preventDefault();
-						if (!open) openPopup();
-						else if (!closing) if (event.key === "ArrowDown") setActiveIndex((index) => (index + 1) % count);
-						else if (event.key === "ArrowUp") setActiveIndex((index) => (index - 1 + count) % count);
-						else commit(activeIndex);
-						break;
-					case "Escape":
-						if (open) {
-							event.preventDefault();
-							event.stopPropagation();
-							close();
-						}
-						break;
-					case "Tab":
-						if (open) close();
-						break;
-				}
-			};
-			(0, react.useEffect)(() => () => {
-				if (closeTimer.current !== void 0) clearTimeout(closeTimer.current);
-			}, []);
-			(0, react.useLayoutEffect)(() => {
-				if (open && !closing && phase === "initial") {
-					popupRef.current?.offsetHeight;
-					setPhase("open");
-				}
-			}, [
-				open,
-				closing,
-				phase
-			]);
-			(0, react.useEffect)(() => {
-				if (!open) return;
-				const onPointerDown = (event) => {
-					const target = event.target;
-					if (target instanceof Node && !wrapRef.current?.contains(target)) close();
-				};
-				document.addEventListener("pointerdown", onPointerDown);
-				return () => document.removeEventListener("pointerdown", onPointerDown);
-			}, [open, close]);
-			(0, react.useEffect)(() => {
-				if (props.disabled && open) close();
-			}, [
-				props.disabled,
-				open,
-				close
-			]);
-			if (isSkinActive$2()) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
-				id,
-				className: settings_card_module_css_default$2.select,
-				value,
-				disabled: props.disabled,
-				onChange: (event) => {
-					props.onEdit(event.target.value);
-				},
-				children: options.map((option) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
-					value: option.value,
-					children: option.label
-				}, option.value))
-			});
-			const label = options.find((option) => option.value === value)?.label ?? "";
-			const popupClass = closing ? `${settings_card_module_css_default$2.selectPopup} ${settings_card_module_css_default$2.selectPopupClose}` : phase === "open" ? `${settings_card_module_css_default$2.selectPopup} ${settings_card_module_css_default$2.selectPopupOpen}` : settings_card_module_css_default$2.selectPopup;
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$2.selectWrap,
-				ref: wrapRef,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-					type: "button",
-					id,
-					className: `${settings_card_module_css_default$2.select} ${settings_card_module_css_default$2.selectButton}`,
-					disabled: props.disabled,
-					"aria-haspopup": "listbox",
-					"aria-expanded": open,
-					"aria-activedescendant": open ? `${id}-o${activeIndex}` : void 0,
-					"aria-invalid": props.invalid || void 0,
-					onClick: onTriggerClick,
-					onKeyDown,
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$2.selectLabel,
-						children: label
-					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
-						width: "14",
-						height: "14",
-						viewBox: "0 0 14 14",
-						fill: "none",
-						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default$2.selectChevron} ${settings_card_module_css_default$2.selectChevronOpen}` : settings_card_module_css_default$2.selectChevron,
-						"aria-hidden": "true",
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
-							fill: "currentColor"
-						})
-					})]
-				}), open ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: popupClass,
-					role: "listbox",
-					ref: popupRef,
-					children: options.map((option, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						id: `${id}-o${index}`,
-						role: "option",
-						"aria-selected": option.value === value,
-						className: `${settings_card_module_css_default$2.selectOption}${option.value === value ? ` ${settings_card_module_css_default$2.selectOptionSelected}` : ""}${index === activeIndex && !closing ? ` ${settings_card_module_css_default$2.selectOptionActive}` : ""}`,
-						onClick: () => {
-							commit(index);
-						},
-						children: option.label
-					}, option.value))
-				}) : null]
-			});
-		}
-		/** A staged boolean field: 继承 / 开 / 关. */
-		function BooleanField$2(props) {
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$2.field,
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$2.head,
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$2.label,
-							htmlFor: props.id,
-							children: props.label
-						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default$2.badges,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default$2.badge,
-								children: props.overriddenLabel
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: settings_card_module_css_default$2.reset,
-								disabled: props.disabled,
-								onClick: props.onReset,
-								children: props.resetLabel
-							})]
-						}) : null]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$2, {
-						id: props.id,
-						options: [
-							{
-								value: "",
-								label: props.inheritLabel
-							},
-							{
-								value: "true",
-								label: props.onLabel
-							},
-							{
-								value: "false",
-								label: props.offLabel
-							}
-						],
-						value: props.text,
-						disabled: props.disabled,
-						invalid: props.invalid,
-						onEdit: props.onEdit
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: settings_card_module_css_default$2.hint,
-						children: props.hint
-					})
-				]
-			});
-		}
-		/** A staged enumerated field rendered as a select. */
-		function ChoiceField$1(props) {
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$2.field,
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$2.head,
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$2.label,
-							htmlFor: props.id,
-							children: props.label
-						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default$2.badges,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default$2.badge,
-								children: props.overriddenLabel
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: settings_card_module_css_default$2.reset,
-								disabled: props.disabled,
-								onClick: props.onReset,
-								children: props.resetLabel
-							})]
-						}) : null]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$2, {
-						id: props.id,
-						options: [{
-							value: "",
-							label: props.inheritLabel
-						}, ...props.choices],
-						value: props.text,
-						disabled: props.disabled,
-						invalid: props.invalid,
-						onEdit: props.onEdit
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: props.invalid ? settings_card_module_css_default$2.invalid : settings_card_module_css_default$2.hint,
-						children: props.invalid ? props.invalidLabel : props.hint
-					})
-				]
-			});
-		}
-		//#endregion
-		//#region ../dsh-tool-describe-image/src/client/settings-form.ts
-		/** A whole- or decimal-number field. An empty draft clears the field; any other draft that is not a finite number within the constraints blocks the save. */
-		function numberField$1(field, constraints = {}) {
-			const { integer = false, min } = constraints;
-			return {
-				field,
-				format: (value) => typeof value === "number" ? String(value) : "",
-				parse: (text) => {
-					const trimmed = text.trim();
-					if (trimmed === "") return { kind: "clear" };
-					const parsed = Number(trimmed);
-					if (!Number.isFinite(parsed)) return void 0;
-					if (integer && !Number.isInteger(parsed)) return void 0;
-					if (min !== void 0 && parsed < min) return void 0;
-					return {
-						kind: "set",
-						value: parsed
-					};
-				}
-			};
-		}
-		/** A free-text field. An empty draft clears the field. */
-		function textField(field) {
-			return {
-				field,
-				format: (value) => typeof value === "string" ? value : "",
-				parse: (text) => {
-					const trimmed = text.trim();
-					return trimmed === "" ? { kind: "clear" } : {
-						kind: "set",
-						value: trimmed
-					};
-				}
-			};
-		}
-		/**
-		* A free-text field the Host treats as a secret and redacts from the read-back
-		* (role('secret') in the section schema). The card still edits it like text,
-		* but a save never compares the redacted value back: the staged set is judged
-		* by the mutation settling (see {@link FieldSpec.secret}).
-		*/
-		function secretField(field) {
-			return {
-				...textField(field),
-				secret: true
-			};
-		}
-		/** A boolean field, edited through true/false draft text. */
-		function booleanField$2(field) {
-			return {
-				field,
-				format: (value) => typeof value === "boolean" ? String(value) : "",
-				parse: (text) => {
-					const trimmed = text.trim();
-					if (trimmed === "") return { kind: "clear" };
-					if (trimmed === "true") return {
-						kind: "set",
-						value: true
-					};
-					if (trimmed === "false") return {
-						kind: "set",
-						value: false
-					};
-				}
-			};
-		}
-		/** An enumerated string field; only the listed choices are accepted. An empty draft clears the field. */
-		function choiceField$1(field, choices) {
-			return {
-				field,
-				format: (value) => typeof value === "string" && choices.includes(value) ? value : "",
-				parse: (text) => {
-					if (text === "") return { kind: "clear" };
-					return choices.includes(text) ? {
-						kind: "set",
-						value: text
-					} : void 0;
-				}
-			};
-		}
-		/**
-		* Stages one card's edits over one settings namespace and writes them on save.
-		*
-		* The Host is the only authority on whether a value was accepted — its
-		* validators own the constraints no schema can express — so the outcome is
-		* read back from the section rather than predicted here. A save that did not
-		* land keeps its drafts, so the user can correct them instead of retyping.
-		*/
-		var CardForm$2 = class {
-			scope;
-			specs;
-			staged = /* @__PURE__ */ new Map();
-			listeners = /* @__PURE__ */ new Set();
-			/** The form subscription installed in the constructor; released by dispose(). */
-			disposeForm;
-			disposed = false;
-			saving = false;
-			failed = false;
-			failedReason;
-			/** @param scope - the bound configuration form for this card's namespace. */
-			constructor(scope, specs) {
-				this.scope = scope;
-				this.specs = new Map(specs.map((spec) => [spec.field, spec]));
-				this.disposeForm = scope.subscribe(() => {
-					this.publish();
-				});
-			}
-			/**
-			* Release the form subscription and every bound store listener. The card
-			* must call this on teardown; later calls are no-ops.
-			*/
-			dispose() {
-				if (this.disposed) return;
-				this.disposed = true;
-				this.disposeForm();
-				this.listeners.clear();
-			}
-			/** Publish a projection of this form, rebuilt whenever the form or a draft changes. */
-			bind(project) {
-				const store = createSnapshotStore(project());
-				this.listeners.add(() => {
-					store.set(project());
-				});
-				return store;
-			}
-			/** Read the card-level state: what the Host serves, and what a save would do. */
-			shell() {
-				const snapshot = this.scope.getSnapshot();
-				const plan = this.plan();
-				return {
-					available: snapshot.status !== "loading",
-					exposed: snapshot.status === "ready",
-					writable: snapshot.writable,
-					dirty: plan.length > 0,
-					invalid: plan.some((item) => item.judge === void 0),
-					saving: this.saving,
-					failed: this.failed,
-					...this.failedReason === void 0 ? {} : { failedReason: this.failedReason }
-				};
-			}
-			/** Read one field's state from the effective section and its staged draft. */
-			field(field) {
-				const spec = this.specOf(field);
-				const staged = this.staged.get(field);
-				if (staged === void 0) return {
-					text: spec.format(this.sectionValue(field)),
-					overridden: this.stored(field),
-					invalid: false
-				};
-				const write = staged.clear ? { kind: "clear" } : spec.parse(staged.text);
-				return {
-					text: staged.text,
-					overridden: write?.kind === "set",
-					invalid: write === void 0
-				};
-			}
-			/** The actions the card's slot registration injects. */
-			actions() {
-				return {
-					edit: (field, text) => {
-						this.stage(field, {
-							text,
-							clear: false
-						});
-					},
-					resetField: (field) => {
-						this.stage(field, {
-							text: this.specOf(field).format(this.baseValue(field)),
-							clear: true
-						});
-					},
-					save: () => {
-						this.save();
-					},
-					discard: () => {
-						if (this.staged.size === 0 && !this.failed) return;
-						this.staged.clear();
-						this.failed = false;
-						this.failedReason = void 0;
-						this.publish();
-					}
-				};
-			}
-			/**
-			* Write every staged edit in one atomic form mutation, then re-seed from
-			* what the Host accepted.
-			*
-			* The whole batch rides one mutate, so cross-field validate hooks
-			* (baseURL+model) judge it as a unit: the Host either applies every write
-			* or refuses the batch. The form contract answers a refusal or a skipped
-			* write with `false` (it recovers with a fresh Host view instead of
-			* throwing), so the outcome is judged twice: the answer itself, and then the
-			* settled snapshot read back one planned write at a time. One missed write
-			* fails the whole save. A transport that rejects instead (the dsh-web bridge
-			* controller on a dead connection) reports through the same failure path
-			* with its rejection message. A save that did not land keeps its drafts, so
-			* the user can correct them instead of retyping.
-			* @returns settlement after the mutation and the read-back.
-			*/
-			async save() {
-				const plan = this.plan();
-				const valid = plan.filter((item) => item.judge !== void 0);
-				if (plan.length === 0 || this.saving || valid.length !== plan.length) return;
-				const pending = /* @__PURE__ */ new Map();
-				for (const item of plan) pending.set(item.field, this.staged.get(item.field));
-				this.saving = true;
-				this.failed = false;
-				this.failedReason = void 0;
-				this.publish();
-				const ops = valid.map((item) => item.op.op === "set" ? {
-					op: "set",
-					path: [item.field],
-					value: item.op.value
-				} : {
-					op: "unset",
-					path: [item.field]
-				});
-				let failedReason;
-				let accepted = false;
-				try {
-					accepted = await this.scope.mutate(ops);
-				} catch (error) {
-					failedReason = error instanceof Error ? error.message : String(error);
-				}
-				const landed = accepted && failedReason === void 0 && valid.every((item) => item.judge());
-				for (const [field, before] of pending) if (landed && this.staged.get(field) === before) this.staged.delete(field);
-				this.saving = false;
-				this.failed = !landed;
-				this.failedReason = failedReason;
-				this.publish();
-			}
-			/**
-			* Every staged edit a save would write. An entry whose draft is not a value
-			* its field accepts carries no write: the form is still dirty, and the save
-			* refuses rather than dropping the edit. A staged edit that matches the
-			* effective section is not a write at all.
-			* @returns the planned writes, in the order the fields were staged.
-			*/
-			plan() {
-				const plan = [];
-				for (const [field, staged] of this.staged) {
-					const spec = this.specOf(field);
-					if (staged.clear) {
-						if (this.stored(field)) plan.push({
-							field,
-							op: {
-								field,
-								op: "unset"
-							},
-							judge: () => this.landedUnset(field)
-						});
-						continue;
-					}
-					if (staged.text === spec.format(this.sectionValue(field))) continue;
-					const write = spec.parse(staged.text);
-					if (write === void 0) plan.push({
-						field,
-						op: {
-							field,
-							op: "unset"
-						},
-						judge: void 0
-					});
-					else if (write.kind === "clear") plan.push({
-						field,
-						op: {
-							field,
-							op: "unset"
-						},
-						judge: () => this.landedUnset(field)
-					});
-					else plan.push({
-						field,
-						op: {
-							field,
-							op: "set",
-							value: write.value
-						},
-						judge: () => this.landedSet(field, write.value)
-					});
-				}
-				return plan;
-			}
-			/**
-			* Read-back judgment for a planned set: the user layer must hold the
-			* intended value once the mutation has settled.
-			*/
-			landedSet(field, value) {
-				if (this.specOf(field).secret) return true;
-				return this.userLayer()?.[field] === value;
-			}
-			/**
-			* Read-back judgment for a planned unset: the field must be gone from the
-			* user layer once the mutation has settled.
-			*/
-			landedUnset(field) {
-				return !this.stored(field);
-			}
-			stage(field, edit) {
-				this.staged.set(field, edit);
-				this.failed = false;
-				this.failedReason = void 0;
-				this.publish();
-			}
-			specOf(field) {
-				const spec = this.specs.get(field);
-				if (spec === void 0) throw new Error(`settings card has no field ${field}`);
-				return spec;
-			}
-			snapshotOf() {
-				return this.scope.getSnapshot();
-			}
-			sectionValue(field) {
-				return this.snapshotOf().value?.[field];
-			}
-			baseValue(field) {
-				return this.snapshotOf().base?.[field];
-			}
-			userLayer() {
-				return this.snapshotOf().user;
-			}
-			stored(field) {
-				const user = this.userLayer();
-				return user !== void 0 && Object.hasOwn(user, field);
-			}
-			publish() {
-				for (const listener of this.listeners) listener();
-			}
-		};
-		//#endregion
-		//#region ../dsh-tool-describe-image/src/client/model-probe.ts
-		/**
-		* Browser half of the model probe: the settings card's connectivity check.
-		* Posts the card's unsaved connection drafts to the host /describe-image/models
-		* route; the host resolves the key through the credential seam (the key never
-		* crosses into the browser), lists the endpoint's models, and returns only the
-		* id list — a success doubles as the connectivity and credential check.
-		* @module @linxin666/dsh-tool-describe-image/client/model-probe
-		*/
-		/** The host model-probe endpoint, same-origin with the web shell. */
-		const MODELS_ENDPOINT = "/describe-image/models";
-		/** The host model-test endpoint: one minimal completion ping of the selected model. */
-		const MODEL_TEST_ENDPOINT = "/describe-image/models/test";
-		/**
-		* Ask the host to list the configured endpoint's models. The drafts ride the
-		* body so an unsaved endpoint can be verified before saving; the host owns
-		* validation, key resolution, and the upstream call.
-		* @param draft - the card's current connection drafts.
-		* @returns the served model ids, or a structured rejection.
-		*/
-		async function fetchEndpointModels(draft) {
-			let response;
-			try {
-				response = await fetch(MODELS_ENDPOINT, {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify(draft)
-				});
-			} catch {
-				return {
-					ok: false,
-					message: "network-failed"
-				};
-			}
-			let envelope;
-			try {
-				envelope = await response.json();
-			} catch {
-				return {
-					ok: false,
-					message: "bad-response"
-				};
-			}
-			const record = envelope;
-			if (typeof record !== "object" || record === null) return {
-				ok: false,
-				message: "bad-response"
-			};
-			if (record.ok === true && typeof record.value === "object" && record.value !== null) {
-				const value = record.value;
-				if (Array.isArray(value.models) && value.models.every((id) => typeof id === "string")) return {
-					ok: true,
-					models: value.models
-				};
-				return {
-					ok: false,
-					message: "bad-response"
-				};
-			}
-			const message = record.error?.message;
-			return {
-				ok: false,
-				message: typeof message === "string" && message !== "" ? message : "server-failed"
-			};
-		}
-		/**
-		* Ping the selected model through the host test route: one minimal
-		* completion call (`max_tokens` 1) whose round-trip latency is the model's
-		* own first-response time — not the models listing's. The host owns key
-		* resolution and the upstream call; the browser receives only the latency.
-		* @param draft - the card's connection drafts plus the selected model id.
-		* @returns the round-trip milliseconds, or a structured rejection.
-		*/
-		async function testEndpointModel(draft) {
-			let response;
-			try {
-				response = await fetch(MODEL_TEST_ENDPOINT, {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify(draft)
-				});
-			} catch {
-				return {
-					ok: false,
-					message: "network-failed"
-				};
-			}
-			let envelope;
-			try {
-				envelope = await response.json();
-			} catch {
-				return {
-					ok: false,
-					message: "bad-response"
-				};
-			}
-			const record = envelope;
-			if (typeof record !== "object" || record === null) return {
-				ok: false,
-				message: "bad-response"
-			};
-			if (record.ok === true && typeof record.value === "object" && record.value !== null) {
-				const value = record.value;
-				if (typeof value.latencyMs === "number" && Number.isFinite(value.latencyMs) && value.latencyMs >= 0) return {
-					ok: true,
-					latencyMs: value.latencyMs
-				};
-				return {
-					ok: false,
-					message: "bad-response"
-				};
-			}
-			const message = record.error?.message;
-			return {
-				ok: false,
-				message: typeof message === "string" && message !== "" ? message : "server-failed"
-			};
-		}
-		//#endregion
-		//#region ../dsh-tool-describe-image/src/client/native-images.ts
-		/**
-		* Browser half of the native-image configuration seam (rc.8 feature): reads
-		* the current agent-default route's image-input state from the host route
-		* and toggles the DeepSeek adapter catalog entry. Every failure answers a
-		* conservative envelope — the section renders an unsupported hint instead of
-		* throwing, and a failed toggle never pretends the state changed.
-		* @module @linxin666/dsh-tool-describe-image/client/native-images
-		*/
-		/** The host native-image endpoint, same-origin with the web shell. */
-		const NATIVE_IMAGES_ENDPOINT = "/describe-image/native-images";
-		/** Default fetch timeouts: reads are quick, writes ride the settings seam. */
-		const DEFAULT_NATIVE_STATE_TIMEOUT_MS = 4e3;
-		const DEFAULT_NATIVE_TOGGLE_TIMEOUT_MS = 8e3;
-		async function fetchWithTimeout(url, init, timeoutMs) {
-			const controller = new AbortController();
-			const timer = setTimeout(() => controller.abort(), timeoutMs);
-			try {
-				return await fetch(url, {
-					...init,
-					signal: controller.signal
-				});
-			} finally {
-				clearTimeout(timer);
-			}
-		}
-		/** Read the current native-image state; null when the host route is unreachable. */
-		async function fetchNativeImageState(timeoutMs = DEFAULT_NATIVE_STATE_TIMEOUT_MS) {
-			try {
-				const envelope = await (await fetchWithTimeout(NATIVE_IMAGES_ENDPOINT, {}, timeoutMs)).json();
-				if (envelope === null || typeof envelope !== "object" || envelope.ok !== true) return null;
-				return envelope.value;
-			} catch {
-				return null;
-			}
-		}
-		/** Toggle native image input; the envelope carries the refreshed state or the refusal. */
-		async function setNativeImageEnabled(enabled, timeoutMs = DEFAULT_NATIVE_TOGGLE_TIMEOUT_MS) {
-			try {
-				const envelope = await (await fetchWithTimeout(NATIVE_IMAGES_ENDPOINT, {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ enabled })
-				}, timeoutMs)).json();
-				if (envelope === null || typeof envelope !== "object") return {
-					ok: false,
-					message: "bad envelope"
-				};
-				if (envelope.ok === true) return {
-					ok: true,
-					value: envelope.value
-				};
-				return {
-					ok: false,
-					message: typeof envelope.message === "string" ? envelope.message : "request rejected"
-				};
-			} catch {
-				return {
-					ok: false,
-					message: "request failed"
-				};
-			}
-		}
-		//#endregion
-		//#region \0dsh-css:packages/dsh-tool-describe-image/src/client/probe.module.css.mjs
-		const css$9 = ".AI4OQW_probeInline{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;white-space:nowrap;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5}.AI4OQW_probeInline:hover:not(:disabled){color:var(--dsw-alias-label-primary)}.AI4OQW_probeInline:disabled{opacity:.4;cursor:default}.AI4OQW_probeInline:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}.AI4OQW_probeRunning{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px;line-height:1.5}.AI4OQW_probeError{color:var(--dsw-alias-label-error);overflow-wrap:anywhere;margin:0;font-size:12px;line-height:1.5}.AI4OQW_probeOk{color:var(--dsw-alias-brand-primary);margin:0;font-size:12px;line-height:1.5}";
-		const tagId$9 = "@linxin666/dsh-web-all/packages/dsh-tool-describe-image/src/client/probe.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$9) + "]") === null) {
-			const tag = document.createElement("style");
-			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$9;
-			tag.textContent = css$9;
-			document.head.appendChild(tag);
-		}
-		var probe_module_css_default = {
-			"probeError": "AI4OQW_probeError",
-			"probeInline": "AI4OQW_probeInline",
-			"probeOk": "AI4OQW_probeOk",
-			"probeRunning": "AI4OQW_probeRunning"
-		};
-		//#endregion
-		//#region ../dsh-tool-describe-image/src/client/NativeImageSection.tsx
-		/**
-		* Native-image section of the describe-image card (rc.8 feature): reports
-		* the current agent-default route's image-input state and toggles the
-		* DeepSeek adapter catalog entry through the loopback host route. The
-		* section is self-contained (its own fetch state) — it never rides the card
-		* form, so a toggle settles immediately while the rest of the card keeps its
-		* staged drafts. Unsupported hosts and failed writes render a hint; nothing
-		* here throws.
-		* @module @linxin666/dsh-tool-describe-image/client/NativeImageSection
-		*/
-		/**
-		* Render the native-image request section.
-		* @returns the section block.
-		*/
-		function NativeImageSection() {
-			const [phase, setPhase] = (0, react.useState)("loading");
-			const [state, setState] = (0, react.useState)(null);
-			const [busy, setBusy] = (0, react.useState)(false);
-			const [error, setError] = (0, react.useState)();
-			const refresh = (0, react.useCallback)(() => {
-				setPhase("loading");
-				setError(void 0);
-				fetchNativeImageState().then((value) => {
-					setState(value);
-					setPhase(value === null ? "failed" : "ready");
-				});
-			}, []);
-			(0, react.useEffect)(() => {
-				refresh();
-			}, [refresh]);
-			const toggle = (0, react.useCallback)(() => {
-				if (busy || state === null) return;
-				setBusy(true);
-				setError(void 0);
-				setNativeImageEnabled(!state.capability.acceptsImages).then((result) => {
-					setBusy(false);
-					if (result.ok && result.value !== void 0) {
-						invalidateImageCapabilityCaches();
-						setState(result.value);
-						setPhase("ready");
-						return;
-					}
-					setError(result.message ?? "failed");
-				});
-			}, [busy, state]);
-			const enabled = state?.capability.acceptsImages === true;
-			const canToggle = phase === "ready" && state !== null && state.supported && state.model !== void 0 && !busy;
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$2.field,
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$2.head,
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$2.label,
-							htmlFor: "settings-describe-image-native-images",
-							children: t$3("native.title")
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-							type: "button",
-							id: "settings-describe-image-native-images",
-							className: probe_module_css_default.probeInline,
-							disabled: !canToggle,
-							onClick: toggle,
-							children: busy ? t$3("native.busy") : enabled ? t$3("native.disable") : t$3("native.enable")
-						})]
-					}),
-					phase === "loading" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: settings_card_module_css_default$2.hint,
-						children: t$3("native.loading")
-					}) : null,
-					phase === "ready" && state !== null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: settings_card_module_css_default$2.hint,
-						children: state.model === void 0 ? t$3("native.unknownModel") : state.supported ? enabled ? t$3("native.enabled", { model: state.model }) : t$3("native.disabled", { model: state.model }) : t$3("native.unsupported")
-					}) : null,
-					phase === "failed" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: settings_card_module_css_default$2.hint,
-						children: t$3("native.unsupported")
-					}) : null,
-					error !== void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: probe_module_css_default.probeError,
-						role: "status",
-						children: t$3("native.failed", { error })
-					}) : null
-				]
-			});
-		}
-		//#endregion
-		//#region ../dsh-tool-describe-image/src/client/DescribeImageSettingsCard.tsx
-		/** Bridges this plugin's configuration form onto the card's staged form. */
-		var DescribeImageSettingsCardController = class {
-			form;
-			store;
-			probeState = {
-				status: "idle",
-				models: []
-			};
-			disposed = false;
-			/** @param scope - the bound configuration form for the `describe-image` entry. */
-			constructor(scope) {
-				this.form = new CardForm$2(scope, [
-					textField("baseURL"),
-					textField("model"),
-					choiceField$1("apiStyle", [
-						"chat-completions",
-						"responses",
-						"anthropic-messages"
-					]),
-					secretField("apiKey"),
-					textField("apiKeyEnv"),
-					choiceField$1("rotationMode", ["round-robin", "failover"]),
-					booleanField$2("retryNextOnFailure"),
-					textField("defaultPrompt"),
-					numberField$1("maxBytes"),
-					numberField$1("maxOutputTokens"),
-					numberField$1("timeoutMs"),
-					booleanField$2("renderImagePreview"),
-					booleanField$2("interceptImageSend")
-				]);
-				this.store = this.form.bind(() => this.projection());
-			}
-			/**
-			* List the endpoint named by the card's current drafts. Drafts ride the
-			* request so an unsaved endpoint can be verified before saving; the key
-			* never crosses into the browser. A failed listing drops any stale list.
-			*/
-			fetchModels() {
-				if (this.disposed || this.probeState.status === "running") return;
-				const draft = {
-					baseURL: this.form.field("baseURL").text,
-					apiStyle: this.form.field("apiStyle").text,
-					apiKey: this.form.field("apiKey").text
-				};
-				this.probeState = {
-					...this.probeState,
-					status: "running",
-					pending: "fetch",
-					error: void 0
-				};
-				this.publish();
-				fetchEndpointModels(draft).then((result) => {
-					if (this.disposed) return;
-					this.probeState = result.ok ? {
-						status: "idle",
-						pending: "fetch",
-						models: result.models
-					} : {
-						status: "idle",
-						pending: "fetch",
-						models: [],
-						error: result.message
-					};
-					this.publish();
-				});
-			}
-			/**
-			* Ping the selected model once: one minimal completion call whose
-			* round-trip latency is the model's own first-response time. Hidden until
-			* the model field carries a value; the listing stays while it runs.
-			*/
-			testModel() {
-				if (this.disposed || this.probeState.status === "running") return;
-				const model = this.form.field("model").text;
-				if (model.trim() === "") return;
-				const draft = {
-					baseURL: this.form.field("baseURL").text,
-					apiStyle: this.form.field("apiStyle").text,
-					apiKey: this.form.field("apiKey").text,
-					model
-				};
-				this.probeState = {
-					...this.probeState,
-					status: "running",
-					pending: "test",
-					latencyMs: void 0,
-					error: void 0
-				};
-				this.publish();
-				testEndpointModel(draft).then((result) => {
-					if (this.disposed) return;
-					this.probeState = result.ok ? {
-						...this.probeState,
-						status: "idle",
-						pending: "test",
-						latencyMs: result.latencyMs
-					} : {
-						...this.probeState,
-						status: "idle",
-						pending: "test",
-						error: result.message
-					};
-					this.publish();
-				});
-			}
-			/** Re-emit the projection; a probe settling publishes outside scope changes. */
-			publish() {
-				this.store.set(this.projection());
-			}
-			projection() {
-				return {
-					...this.form.shell(),
-					baseURL: this.form.field("baseURL"),
-					model: this.form.field("model"),
-					apiStyle: this.form.field("apiStyle"),
-					apiKey: this.form.field("apiKey"),
-					apiKeyEnv: this.form.field("apiKeyEnv"),
-					rotationMode: this.form.field("rotationMode"),
-					retryNextOnFailure: this.form.field("retryNextOnFailure"),
-					defaultPrompt: this.form.field("defaultPrompt"),
-					maxBytes: this.form.field("maxBytes"),
-					maxOutputTokens: this.form.field("maxOutputTokens"),
-					timeoutMs: this.form.field("timeoutMs"),
-					renderImagePreview: this.form.field("renderImagePreview"),
-					interceptImageSend: this.form.field("interceptImageSend"),
-					probe: this.probeState
-				};
-			}
-			/**
-			* Build the face the card's slot registration injects.
-			* @returns the card's snapshot and its form actions.
-			*/
-			inject() {
-				return {
-					hooks: { describeImageSettingsCard: this.store },
-					...this.form.actions(),
-					fetchModels: () => {
-						this.fetchModels();
-					},
-					testModel: () => {
-						this.testModel();
-					}
-				};
-			}
-			/**
-			* Release the card's form subscription and bound stores; the slot
-			* disposer calls this on teardown. A request still in flight settles into
-			* nothing once disposed.
-			*/
-			dispose() {
-				this.disposed = true;
-				this.form.dispose();
-			}
-		};
-		/**
-		* Render the describe-image card.
-		* @param props - the card snapshot and its form actions.
-		* @returns the card.
-		*/
-		function DescribeImageSettingsCard(props) {
-			const state = props.useDescribeImageSettingsCard((snapshot) => snapshot);
-			const disabled = !state.writable;
-			const fieldProps = {
-				overriddenLabel: t$3("settings.overridden"),
-				resetLabel: t$3("settings.reset"),
-				invalidLabel: t$3("settings.invalidNumber"),
-				disabled
-			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(PluginSettingsCard$2, {
-				t: t$3,
-				titleKey: "card.title",
-				descriptionKey: "card.description",
-				defaultOpen: false,
-				state,
-				renderChildrenWhenNotExposed: true,
-				hideNotExposedNotice: true,
-				onSave: props.save,
-				onDiscard: props.discard,
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$1, {
-						id: "settings-describe-image-baseurl",
-						label: t$3("field.baseURL"),
-						hint: t$3("field.baseURL.hint"),
-						placeholder: "https://api.example.com/v1",
-						...fieldProps,
-						...state.baseURL,
-						onEdit: (text) => {
-							props.edit("baseURL", text);
-						},
-						onReset: () => {
-							props.resetField("baseURL");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$2.field,
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: settings_card_module_css_default$2.head,
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-									className: settings_card_module_css_default$2.label,
-									htmlFor: "settings-describe-image-model",
-									children: t$3("field.model")
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-									className: settings_card_module_css_default$2.badges,
-									children: [
-										state.model.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											className: settings_card_module_css_default$2.badge,
-											children: t$3("settings.overridden")
-										}) : null,
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-											type: "button",
-											className: probe_module_css_default.probeInline,
-											title: t$3("probe.hint"),
-											disabled: disabled || state.probe.status === "running",
-											onClick: props.fetchModels,
-											children: t$3(state.probe.status === "running" && state.probe.pending === "fetch" ? "probe.running" : "probe.fetchModels")
-										}),
-										state.model.text.trim() !== "" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-											type: "button",
-											className: probe_module_css_default.probeInline,
-											title: t$3("probe.testHint"),
-											disabled: disabled || state.probe.status === "running",
-											onClick: props.testModel,
-											children: t$3(state.probe.status === "running" && state.probe.pending === "test" ? "probe.running" : "probe.connectivity")
-										}) : null
-									]
-								})]
-							}),
-							state.probe.models.length > 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
-								id: "settings-describe-image-model",
-								className: settings_card_module_css_default$2.select,
-								value: state.model.text,
-								disabled,
-								onChange: (event) => {
-									props.edit("model", event.target.value);
-								},
-								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
-										value: "",
-										children: t$3("settings.inherit")
-									}),
-									state.model.text !== "" && !state.probe.models.includes(state.model.text) ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
-										value: state.model.text,
-										children: state.model.text
-									}) : null,
-									state.probe.models.map((model) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
-										value: model,
-										children: model
-									}, model))
-								]
-							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-								id: "settings-describe-image-model",
-								className: state.model.invalid ? settings_card_module_css_default$2.inputInvalid : settings_card_module_css_default$2.input,
-								type: "text",
-								...state.model.invalid ? { "aria-invalid": true } : {},
-								value: state.model.text,
-								placeholder: "",
-								disabled,
-								onChange: (event) => {
-									props.edit("model", event.target.value);
-								}
-							}),
-							state.probe.status === "running" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-								className: probe_module_css_default.probeRunning,
-								role: "status",
-								children: t$3("probe.running")
-							}) : null,
-							state.probe.status === "idle" && state.probe.error !== void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-								className: probe_module_css_default.probeError,
-								role: "status",
-								children: t$3("probe.error", { error: state.probe.error })
-							}) : null,
-							state.probe.status === "idle" && state.probe.error === void 0 && state.probe.pending === "test" && state.probe.latencyMs !== void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-								className: probe_module_css_default.probeOk,
-								role: "status",
-								children: t$3("probe.success", { ms: String(state.probe.latencyMs) })
-							}) : null,
-							state.probe.status === "idle" && state.probe.error === void 0 && state.probe.pending === "fetch" && state.probe.models.length > 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-								className: probe_module_css_default.probeOk,
-								role: "status",
-								children: t$3("probe.fetched", { count: String(state.probe.models.length) })
-							}) : null,
-							state.probe.status === "idle" && state.probe.error === void 0 && state.probe.models.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-								className: state.model.invalid ? settings_card_module_css_default$2.invalid : settings_card_module_css_default$2.hint,
-								children: state.model.invalid ? t$3("settings.invalidNumber") : t$3("field.model.hint")
-							}) : null
-						]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChoiceField$1, {
-						id: "settings-describe-image-apistyle",
-						label: t$3("field.apiStyle"),
-						hint: t$3("field.apiStyle.hint"),
-						inheritLabel: t$3("settings.inherit"),
-						choices: [
-							{
-								value: "chat-completions",
-								label: t$3("field.apiStyle.chatCompletions")
-							},
-							{
-								value: "responses",
-								label: t$3("field.apiStyle.responses")
-							},
-							{
-								value: "anthropic-messages",
-								label: t$3("field.apiStyle.anthropicMessages")
-							}
-						],
-						...fieldProps,
-						...state.apiStyle,
-						onEdit: (text) => {
-							props.edit("apiStyle", text);
-						},
-						onReset: () => {
-							props.resetField("apiStyle");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$1, {
-						id: "settings-describe-image-apikey",
-						label: t$3("field.apiKey"),
-						hint: t$3("field.apiKey.hint"),
-						...fieldProps,
-						...state.apiKey,
-						onEdit: (text) => {
-							props.edit("apiKey", text);
-						},
-						onReset: () => {
-							props.resetField("apiKey");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$1, {
-						id: "settings-describe-image-apikeyenv",
-						label: t$3("field.apiKeyEnv"),
-						hint: t$3("field.apiKeyEnv.hint"),
-						...fieldProps,
-						...state.apiKeyEnv,
-						onEdit: (text) => {
-							props.edit("apiKeyEnv", text);
-						},
-						onReset: () => {
-							props.resetField("apiKeyEnv");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$1, {
-						id: "settings-describe-image-defaultprompt",
-						label: t$3("field.defaultPrompt"),
-						hint: t$3("field.defaultPrompt.hint"),
-						...fieldProps,
-						...state.defaultPrompt,
-						onEdit: (text) => {
-							props.edit("defaultPrompt", text);
-						},
-						onReset: () => {
-							props.resetField("defaultPrompt");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$1, {
-						id: "settings-describe-image-maxbytes",
-						label: t$3("field.maxBytes"),
-						hint: t$3("field.maxBytes.hint"),
-						numeric: true,
-						...fieldProps,
-						...state.maxBytes,
-						onEdit: (text) => {
-							props.edit("maxBytes", text);
-						},
-						onReset: () => {
-							props.resetField("maxBytes");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$1, {
-						id: "settings-describe-image-maxoutputtokens",
-						label: t$3("field.maxOutputTokens"),
-						hint: t$3("field.maxOutputTokens.hint"),
-						numeric: true,
-						...fieldProps,
-						...state.maxOutputTokens,
-						onEdit: (text) => {
-							props.edit("maxOutputTokens", text);
-						},
-						onReset: () => {
-							props.resetField("maxOutputTokens");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ValueField$1, {
-						id: "settings-describe-image-timeoutms",
-						label: t$3("field.timeoutMs"),
-						hint: t$3("field.timeoutMs.hint"),
-						numeric: true,
-						...fieldProps,
-						...state.timeoutMs,
-						onEdit: (text) => {
-							props.edit("timeoutMs", text);
-						},
-						onReset: () => {
-							props.resetField("timeoutMs");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChoiceField$1, {
-						id: "settings-describe-image-rotation-mode",
-						label: t$3("field.rotationMode"),
-						hint: t$3("field.rotationMode.hint"),
-						inheritLabel: t$3("settings.inherit"),
-						choices: [{
-							value: "round-robin",
-							label: t$3("field.rotationMode.roundRobin")
-						}, {
-							value: "failover",
-							label: t$3("field.rotationMode.failover")
-						}],
-						...fieldProps,
-						...state.rotationMode,
-						onEdit: (text) => {
-							props.edit("rotationMode", text);
-						},
-						onReset: () => {
-							props.resetField("rotationMode");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$2, {
-						id: "settings-describe-image-retry-next",
-						label: t$3("field.retryNextOnFailure"),
-						hint: t$3("field.retryNextOnFailure.hint"),
-						inheritLabel: t$3("settings.inherit"),
-						onLabel: t$3("settings.on"),
-						offLabel: t$3("settings.off"),
-						...fieldProps,
-						...state.retryNextOnFailure,
-						onEdit: (text) => {
-							props.edit("retryNextOnFailure", text);
-						},
-						onReset: () => {
-							props.resetField("retryNextOnFailure");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$2, {
-						id: "settings-describe-image-render-preview",
-						label: t$3("field.renderImagePreview"),
-						hint: t$3("field.renderImagePreview.hint"),
-						inheritLabel: t$3("settings.inherit"),
-						onLabel: t$3("settings.on"),
-						offLabel: t$3("settings.off"),
-						...fieldProps,
-						...state.renderImagePreview,
-						onEdit: (text) => {
-							props.edit("renderImagePreview", text);
-						},
-						onReset: () => {
-							props.resetField("renderImagePreview");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$2, {
-						id: "settings-describe-image-intercept-send",
-						label: t$3("field.interceptImageSend"),
-						hint: t$3("field.interceptImageSend.hint"),
-						inheritLabel: t$3("settings.inherit"),
-						onLabel: t$3("settings.on"),
-						offLabel: t$3("settings.off"),
-						...fieldProps,
-						...state.interceptImageSend,
-						onEdit: (text) => {
-							props.edit("interceptImageSend", text);
-						},
-						onReset: () => {
-							props.resetField("interceptImageSend");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(NativeImageSection, {})
-				]
-			});
-		}
-		//#endregion
-		//#region ../dsh-tool-describe-image/src/client/telemetry.ts
-		const VISITOR_KEY$2 = "dsh-web-ui-telemetry-visitor";
-		const DAY_KEY_PREFIX$2 = "dsh-web-ui-telemetry-day:";
-		const ENDPOINT$2 = "https://dsh-market.com/api/telemetry/event";
-		/** The building package's version, when the bundle carries it. */
-		function bakedVersion$2() {
-			try {
-				return "0.3.24";
-			} catch {
-				return;
-			}
-		}
-		/** Read or lazily create the anonymous visitor id; null when storage is unavailable. */
-		function visitorId$2() {
-			try {
-				const existing = localStorage.getItem(VISITOR_KEY$2);
-				if (existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing)) return existing;
-				const fresh = crypto.randomUUID().replaceAll("-", "");
-				localStorage.setItem(VISITOR_KEY$2, fresh);
-				return fresh;
-			} catch {
-				return null;
-			}
-		}
-		/** Drop stale per-day dedup keys so localStorage does not grow forever. */
-		function pruneDayKeys$2(today) {
-			try {
-				for (let index = localStorage.length - 1; index >= 0; index -= 1) {
-					const key = localStorage.key(index);
-					if (key !== null && key.startsWith(DAY_KEY_PREFIX$2) && key !== DAY_KEY_PREFIX$2 + today) localStorage.removeItem(key);
-				}
-			} catch {}
-		}
-		/**
-		* Fire the daily heartbeat for the given items at most once per UTC day per
-		* browser. Never throws and never blocks the caller. Items without an explicit
-		* version inherit the bundle's baked build version.
-		*/
-		function reportDailyHeartbeat$2(items) {
-			try {
-				if (items.length === 0) return;
-				const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-				if (navigator.webdriver) return;
-				if (localStorage.getItem(DAY_KEY_PREFIX$2 + today) !== null) return;
-				const visitor = visitorId$2();
-				if (visitor === null) return;
-				pruneDayKeys$2(today);
-				const payloadItems = items.map((item) => {
-					const out = { name: item.name };
-					const version = item.version ?? bakedVersion$2();
-					if (version !== void 0) out.version = version;
-					if (item.channel !== void 0) out.channel = item.channel;
-					return out;
-				});
-				const body = JSON.stringify({
-					kind: "heartbeat",
-					visitor,
-					items: payloadItems
-				});
-				fetch(ENDPOINT$2, {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body,
-					keepalive: true
-				}).then((response) => {
-					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$2 + today, "1");
-				}).catch(() => {});
-			} catch {}
-		}
-		//#endregion
-		//#region ../dsh-tool-describe-image/src/client/plugin-card-seat.ts
-		/**
-		* Family plugin-card seat.
-		*
-		* A family plugin contributes its settings card to whichever plugin-card seat
-		* the running host actually renders:
-		*
-		* - `web-ui.plugin.item` — the list seat declared by the dsh-web-settings
-		*   group section (this family's own first-level "Web UI plugins" section);
-		* - `plugins.bundle.config` — the official keyed seat of the harness's plugin
-		*   manager page, keyed by the bundle's package name and rendered on that
-		*   bundle's page. alpha.2 removed the `settings.plugin.item` keyed seat of the
-		*   `ui-settings-plugins` tab that this helper used before, so a card keyed by
-		*   its settings namespace has no seat to land in any more.
-		*
-		* SEAT SELECTION IS NOT A DECLARATION PROBE. The official plugin surface
-		* belongs to the harness bundle and declares its seats before any external
-		* plugin's `apply()` runs, so "is the official seat declared?" answers yes even
-		* in the deployment whose whole point is the family group. Choosing on that
-		* probe sends every family card to the official page and leaves the group's own
-		* section permanently empty — the family of reports where the section renders
-		* its heading and zero cards.
-		*
-		* The signal that actually distinguishes the two deployments is whether
-		* dsh-web-settings is loaded: it is the package that owns the group section and
-		* it publishes the `webUiSettings` service during `apply()`, which every
-		* family plugin already reads for its settings form. Group loaded -> the family
-		* seat; group absent -> the official seat.
-		*
-		* The decision is re-evaluated on every `slots/changed` because the group may
-		* apply after this plugin (the family aggregate orders it first, a profile that
-		* installs the group separately need not): the initial contribution goes to the
-		* official seat, then moves to the family seat the moment the group's section
-		* registers. The entry is disposed before the replacement is registered, so a
-		* card is never in two seats at once.
-		*
-		* The shared tree has no client-SDK dependency, so this module reads its
-		* context through the structural shape below; callers pass the plugin's own
-		* `ctx`.
-		*/
-		/** The family list seat key. */
-		const FAMILY_PLUGIN_CARD_SEAT$2 = "web-ui.plugin.item";
-		/** The official keyed plugin-card seat key (the alpha.2 bundle-configuration seat). */
-		const OFFICIAL_PLUGIN_CARD_SEAT$2 = "plugins.bundle.config";
-		/** The service dsh-web-settings publishes while it is loaded. */
-		const FAMILY_GROUP_SERVICE$2 = "webUiSettings";
-		/**
-		* Whether the family group (dsh-web-settings) is loaded in this page. The
-		* service is the group package's own contract, so the probe cannot be fooled
-		* by a harness release that starts declaring the official seat differently.
-		*/
-		function familyGroupLoaded$2(ctx) {
-			const get = ctx.get;
-			if (typeof get !== "function") return false;
-			try {
-				return get.call(ctx, FAMILY_GROUP_SERVICE$2) !== void 0;
-			} catch {
-				return false;
-			}
-		}
-		/** Report a refused registration instead of leaving the user with no card. */
-		function warnRefusedSeat$2(seat, error) {
-			try {
-				console.warn(`[dsh-web] plugin card registration into "${seat}" was refused; the card will not render`, error);
-			} catch {}
-		}
-		/**
-		* Contribute one family plugin card to the seat this host renders, following
-		* the group if it loads later. The entry is disposed and re-registered on a
-		* seat change, never duplicated.
-		* @param ctx - client context (its slot registry decides the seat).
-		* @param seat - the card contribution.
-		*/
-		function installPluginCard$2(ctx, seat) {
-			const slots = ctx.slots;
-			const component = seat.component;
-			const inject = seat.inject;
-			let dispose;
-			let current;
-			/**
-			* Re-entrancy latch. The registry emits a change event synchronously from
-			* inside both `register` and the previous entry's disposer, so an unguarded
-			* reconcile would re-enter itself mid-move and register the card twice into
-			* the seat it is leaving ("already has an entry for key ...").
-			*/
-			let reconciling = false;
-			/** Reconcile the contribution with the currently live seat (no-op when unchanged). */
-			const reconcile = () => {
-				if (reconciling) return;
-				const target = familyGroupLoaded$2(ctx) ? FAMILY_PLUGIN_CARD_SEAT$2 : OFFICIAL_PLUGIN_CARD_SEAT$2;
-				if (current === target) return;
-				reconciling = true;
-				const previous = dispose;
-				dispose = void 0;
-				current = void 0;
-				previous?.();
-				try {
-					dispose = slots.register(target === "web-ui.plugin.item" ? {
-						name: FAMILY_PLUGIN_CARD_SEAT$2,
-						id: seat.id,
-						...seat.order === void 0 ? {} : { order: seat.order },
-						...seat.label === void 0 ? {} : { label: seat.label },
-						locale: seat.locale,
-						...seat.inject === void 0 ? {} : { inject }
-					} : {
-						name: OFFICIAL_PLUGIN_CARD_SEAT$2,
-						key: seat.bundle,
-						locale: seat.locale,
-						...seat.inject === void 0 ? {} : { inject }
-					}, component);
-					current = target;
-				} catch (error) {
-					warnRefusedSeat$2(target, error);
-				} finally {
-					reconciling = false;
-				}
-			};
-			if (typeof ctx.on === "function") try {
-				ctx.on("slots/changed", () => {
-					reconcile();
-				});
-			} catch {}
-			reconcile();
-		}
-		//#endregion
-		//#region ../dsh-tool-describe-image/src/client/index.ts
-		var client_exports$7 = /* @__PURE__ */ __exportAll({
-			NS: () => NS$7,
-			apply: () => apply$8,
-			inject: () => inject$8
-		});
-		/**
-		* Locale namespace of the browser half, and the family settings namespace its
-		* card binds — the profile entry id of a standalone install of this bundle.
-		*/
-		const NS$7 = "describe-image";
-		const DESCRIBE_IMAGE_ENTRY_IDS = [
-			"web-ui-describe-image",
-			"ui-describe-image",
-			NS$7
-		];
-		function servedEntryId$1(forms) {
-			let served;
-			try {
-				served = forms.describe().getSnapshot().view?.namespaces.map((view) => view.ns);
-			} catch {
-				served = void 0;
-			}
-			if (!served || served.length === 0) return NS$7;
-			return DESCRIBE_IMAGE_ENTRY_IDS.find((id) => served.includes(id)) ?? "describe-image";
-		}
-		/** Required services: slots for the settings card, conversation for the send hook, the shared configuration forms and locale for the card copy. */
-		const inject$8 = [
-			"slots",
-			"conversation",
-			"configForms",
-			"locale"
-		];
-		/** Apply the browser half. */
-		function apply$8(ctx) {
-			reportDailyHeartbeat$2([{ name: "@linxin666/dsh-tool-describe-image" }]);
-			ctx.effect(() => {
-				try {
-					return ctx.locale.register(NS$7, dictionaries);
-				} catch {
-					return () => {};
-				}
-			}, "dsh-tool-describe-image: dictionaries");
-			ctx.effect(() => {
-				const sync = () => {
-					const lang = document.documentElement.lang;
-					setLanguage(lang === "zh" || lang.startsWith("zh-") ? "zh" : "en");
-				};
-				sync();
-				const observer = new MutationObserver(sync);
-				observer.observe(document.documentElement, {
-					attributes: true,
-					attributeFilter: ["lang"]
-				});
-				return () => observer.disconnect();
-			}, "dsh-tool-describe-image: language mirror");
-			ctx.inject(["slots", "conversation"], (scope) => {
-				const conversation = scope.conversation;
-				scope.slots;
-				let settingsFormRef;
-				let unsubscribeSettings;
-				installSendHook(conversation, () => settingsFormRef?.getSnapshot().value?.interceptImageSend !== false, createImageCapabilityChecker());
-				let previewRef;
-				ctx.effect(() => {
-					const handle = installConversationImagePreview(() => settingsFormRef?.getSnapshot().value?.renderImagePreview !== false);
-					previewRef = handle;
-					return () => {
-						previewRef = void 0;
-						unsubscribeSettings?.();
-						unsubscribeSettings = void 0;
-						settingsFormRef = void 0;
-						handle.dispose();
-					};
-				}, "dsh-tool-describe-image: conversation image preview");
-				ctx.inject(["configForms"], (settingsCtx) => {
-					const binder = settingsCtx.get("webUiSettings");
-					const settingsForm = binder !== void 0 && typeof binder.bind === "function" ? binder.bind({ namespace: NS$7 }) : settingsCtx.configForms.get(servedEntryId$1(settingsCtx.configForms));
-					unsubscribeSettings?.();
-					settingsFormRef = settingsForm;
-					unsubscribeSettings = settingsForm.subscribe(() => previewRef?.refresh());
-					const settingsCard = new DescribeImageSettingsCardController(settingsForm);
-					installPluginCard$2(settingsCtx, {
-						bundle: "@linxin666/dsh-tool-describe-image",
-						id: "describe-image",
-						order: 115,
-						locale: NS$7,
-						inject: () => settingsCard.inject(),
-						component: DescribeImageSettingsCard
-					});
-					settingsCtx.effect(() => () => {
-						settingsCard.dispose();
-					}, "describe-image: settings card");
-				});
-			});
-		}
-		//#endregion
 		//#region \0dsh-css:packages/dsh-liangshen/src/client/LiangShenLever.module.css.mjs
-		const css$8 = ".hYkIZq_lever{align-items:center;font-size:12px;line-height:1;display:inline-flex;position:relative}.hYkIZq_control{color:var(--dsw-alias-label-secondary,inherit);font:inherit;cursor:pointer;touch-action:none;-webkit-user-select:none;user-select:none;background:0 0;border:none;border-radius:999px;align-items:center;gap:6px;margin:0;padding:2px 8px 2px 4px;transition:background-color .16s,color .16s;display:inline-flex}.hYkIZq_control:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,#0000000f)}.hYkIZq_control:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,currentColor);outline-offset:2px}.hYkIZq_control:disabled{cursor:default;opacity:.55}.hYkIZq_track{background:linear-gradient(#2b2f36,#14161a);border-radius:8px;justify-content:center;align-items:flex-end;width:24px;height:28px;display:inline-flex;position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px #ffffff24,inset 0 6px 10px #0000008c}.hYkIZq_track:after{content:\"\";background:#ffffff38;border-radius:2px;height:3px;position:absolute;bottom:2px;left:3px;right:3px}.hYkIZq_arm{transform-origin:50% 24px;width:16px;height:26px;margin-left:-8px;transition:transform .34s cubic-bezier(.2,1.7,.32,1);position:absolute;bottom:2px;left:50%;transform:rotate(-24deg)}.hYkIZq_lever[data-state=on] .hYkIZq_arm{transform:rotate(24deg)}.hYkIZq_rod{fill:#c9ced6;transition:fill .2s}.hYkIZq_knob{fill:#e04a33;stroke:#00000059;stroke-width:.6px;transition:fill .2s}.hYkIZq_lever[data-state=on] .hYkIZq_rod{fill:#ffd76a}.hYkIZq_lever[data-state=on] .hYkIZq_knob{fill:#f7c637}.hYkIZq_lever[data-state=on] .hYkIZq_track{box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l3,#0000001f), 0 0 10px #f7c6378c}.hYkIZq_lever[data-busy=true] .hYkIZq_arm{animation:.42s ease-in-out infinite hYkIZq_lever-jitter}.hYkIZq_readout{white-space:nowrap;letter-spacing:.02em;min-width:4.4em}.hYkIZq_lever[data-state=on] .hYkIZq_readout{color:var(--dsw-alias-label-primary,inherit);font-weight:600}.hYkIZq_error{background:var(--dsw-alias-bg-layer-3,#0000000f);max-width:22ch;color:var(--dsw-alias-state-error-primary,#c0392b);text-overflow:ellipsis;white-space:nowrap;border-radius:6px;margin-left:4px;padding:2px 6px;overflow:hidden}.hYkIZq_burst{z-index:60;pointer-events:none;place-items:center;display:grid;position:fixed;inset:0;overflow:hidden}.hYkIZq_flash{background:radial-gradient(circle at 50% 62%,#fff6c8eb,#ffd04a73 38%,#ffa00000 72%);animation:.72s ease-out both hYkIZq_burst-flash;position:absolute;inset:0}.hYkIZq_ring{border:6px solid #ffd65ad9;border-radius:50%;width:220px;height:220px;animation:1.1s cubic-bezier(.16,.9,.3,1) both hYkIZq_burst-ring;position:absolute}.hYkIZq_ring:nth-of-type(2){animation-delay:.12s}.hYkIZq_ring:nth-of-type(3){animation-delay:.24s}.hYkIZq_banner{color:#ffe9a8;text-align:center;background:linear-gradient(160deg,#181004f0,#402604eb);border-radius:22px;flex-direction:column;align-items:center;gap:6px;padding:22px 40px;animation:.6s cubic-bezier(.16,1.5,.3,1) both hYkIZq_banner-slam,.5s ease-in-out .6s 2 hYkIZq_banner-shake;display:flex;position:relative;box-shadow:0 0 0 2px #ffd65abf,0 24px 70px #00000073}.hYkIZq_bannerName{letter-spacing:.16em;background:linear-gradient(#fff6d0,#ffc93c 55%,#b8730a);color:#0000;text-shadow:0 0 24px #ffc93ca6;-webkit-background-clip:text;background-clip:text;font-size:44px;font-weight:800}.hYkIZq_line{letter-spacing:.08em;font-size:15px}.hYkIZq_code{font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Menlo, monospace);letter-spacing:.06em;opacity:.82;font-size:11px;animation:.5s steps(2,end) 6 hYkIZq_code-blink}.hYkIZq_sparks{place-items:center;display:grid;position:absolute;inset:0}.hYkIZq_spark{transform-origin:50%;background:linear-gradient(#ffeca0f2,#ffaa1400);border-radius:3px;grid-area:1/1;width:3px;height:30px;animation:.95s ease-out both hYkIZq_spark-fly}@keyframes hYkIZq_lever-jitter{0%,to{transform:rotate(-22deg)}50%{transform:rotate(-8deg)}}@keyframes hYkIZq_burst-flash{0%{opacity:0;transform:scale(.6)}18%{opacity:1}to{opacity:0;transform:scale(1.5)}}@keyframes hYkIZq_burst-ring{0%{opacity:.9;transform:scale(.2)}to{opacity:0;transform:scale(3.4)}}@keyframes hYkIZq_banner-slam{0%{opacity:0;transform:scale(3.6)rotate(-9deg)}55%{opacity:1;transform:scale(.94)rotate(1.5deg)}75%{transform:scale(1.06)rotate(-1deg)}to{opacity:1;transform:scale(1)rotate(0)}}@keyframes hYkIZq_banner-shake{0%,to{transform:translate(0)}25%{transform:translate(-9px)rotate(-.6deg)}75%{transform:translate(9px)rotate(.6deg)}}@keyframes hYkIZq_spark-fly{0%{opacity:0;transform:translateY(-40px)scaleY(.3)}18%{opacity:1}to{opacity:0;transform:translateY(-300px)scaleY(1.15)}}@keyframes hYkIZq_code-blink{0%,to{opacity:.35}50%{opacity:1}}@media (prefers-reduced-motion:reduce){.hYkIZq_arm,.hYkIZq_control,.hYkIZq_rod,.hYkIZq_knob{transition:none}.hYkIZq_lever[data-busy=true] .hYkIZq_arm,.hYkIZq_flash,.hYkIZq_ring,.hYkIZq_banner,.hYkIZq_code,.hYkIZq_spark{animation:none}.hYkIZq_burst{animation:.3s ease-out both hYkIZq_burst-flash}.hYkIZq_spark{display:none}}";
-		const tagId$8 = "@linxin666/dsh-web-all/packages/dsh-liangshen/src/client/LiangShenLever.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$8) + "]") === null) {
+		const css$6 = ".hYkIZq_lever{align-items:center;font-size:12px;line-height:1;display:inline-flex;position:relative}.hYkIZq_control{color:var(--dsw-alias-label-secondary,inherit);font:inherit;cursor:pointer;touch-action:none;-webkit-user-select:none;user-select:none;background:0 0;border:none;border-radius:999px;align-items:center;gap:6px;margin:0;padding:2px 8px 2px 4px;transition:background-color .16s,color .16s;display:inline-flex}.hYkIZq_control:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,#0000000f)}.hYkIZq_control:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,currentColor);outline-offset:2px}.hYkIZq_control:disabled{cursor:default;opacity:.55}.hYkIZq_track{background:linear-gradient(#2b2f36,#14161a);border-radius:8px;justify-content:center;align-items:flex-end;width:24px;height:28px;display:inline-flex;position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px #ffffff24,inset 0 6px 10px #0000008c}.hYkIZq_track:after{content:\"\";background:#ffffff38;border-radius:2px;height:3px;position:absolute;bottom:2px;left:3px;right:3px}.hYkIZq_arm{transform-origin:50% 24px;width:16px;height:26px;margin-left:-8px;transition:transform .34s cubic-bezier(.2,1.7,.32,1);position:absolute;bottom:2px;left:50%;transform:rotate(-24deg)}.hYkIZq_lever[data-state=on] .hYkIZq_arm{transform:rotate(24deg)}.hYkIZq_rod{fill:#c9ced6;transition:fill .2s}.hYkIZq_knob{fill:#e04a33;stroke:#00000059;stroke-width:.6px;transition:fill .2s}.hYkIZq_lever[data-state=on] .hYkIZq_rod{fill:#ffd76a}.hYkIZq_lever[data-state=on] .hYkIZq_knob{fill:#f7c637}.hYkIZq_lever[data-state=on] .hYkIZq_track{box-shadow:inset 0 0 0 1px var(--dsw-alias-border-l3,#0000001f), 0 0 10px #f7c6378c}.hYkIZq_lever[data-busy=true] .hYkIZq_arm{animation:.42s ease-in-out infinite hYkIZq_lever-jitter}.hYkIZq_readout{white-space:nowrap;letter-spacing:.02em;min-width:4.4em}.hYkIZq_lever[data-state=on] .hYkIZq_readout{color:var(--dsw-alias-label-primary,inherit);font-weight:600}.hYkIZq_error{background:var(--dsw-alias-bg-layer-3,#0000000f);max-width:22ch;color:var(--dsw-alias-state-error-primary,#c0392b);text-overflow:ellipsis;white-space:nowrap;border-radius:6px;margin-left:4px;padding:2px 6px;overflow:hidden}.hYkIZq_burst{z-index:60;pointer-events:none;place-items:center;display:grid;position:fixed;inset:0;overflow:hidden}.hYkIZq_flash{background:radial-gradient(circle at 50% 62%,#fff6c8eb,#ffd04a73 38%,#ffa00000 72%);animation:.72s ease-out both hYkIZq_burst-flash;position:absolute;inset:0}.hYkIZq_ring{border:6px solid #ffd65ad9;border-radius:50%;width:220px;height:220px;animation:1.1s cubic-bezier(.16,.9,.3,1) both hYkIZq_burst-ring;position:absolute}.hYkIZq_ring:nth-of-type(2){animation-delay:.12s}.hYkIZq_ring:nth-of-type(3){animation-delay:.24s}.hYkIZq_banner{color:#ffe9a8;text-align:center;background:linear-gradient(160deg,#181004f0,#402604eb);border-radius:22px;flex-direction:column;align-items:center;gap:6px;padding:22px 40px;animation:.6s cubic-bezier(.16,1.5,.3,1) both hYkIZq_banner-slam,.5s ease-in-out .6s 2 hYkIZq_banner-shake;display:flex;position:relative;box-shadow:0 0 0 2px #ffd65abf,0 24px 70px #00000073}.hYkIZq_bannerName{letter-spacing:.16em;background:linear-gradient(#fff6d0,#ffc93c 55%,#b8730a);color:#0000;text-shadow:0 0 24px #ffc93ca6;-webkit-background-clip:text;background-clip:text;font-size:44px;font-weight:800}.hYkIZq_line{letter-spacing:.08em;font-size:15px}.hYkIZq_code{font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Menlo, monospace);letter-spacing:.06em;opacity:.82;font-size:11px;animation:.5s steps(2,end) 6 hYkIZq_code-blink}.hYkIZq_sparks{place-items:center;display:grid;position:absolute;inset:0}.hYkIZq_spark{transform-origin:50%;background:linear-gradient(#ffeca0f2,#ffaa1400);border-radius:3px;grid-area:1/1;width:3px;height:30px;animation:.95s ease-out both hYkIZq_spark-fly}@keyframes hYkIZq_lever-jitter{0%,to{transform:rotate(-22deg)}50%{transform:rotate(-8deg)}}@keyframes hYkIZq_burst-flash{0%{opacity:0;transform:scale(.6)}18%{opacity:1}to{opacity:0;transform:scale(1.5)}}@keyframes hYkIZq_burst-ring{0%{opacity:.9;transform:scale(.2)}to{opacity:0;transform:scale(3.4)}}@keyframes hYkIZq_banner-slam{0%{opacity:0;transform:scale(3.6)rotate(-9deg)}55%{opacity:1;transform:scale(.94)rotate(1.5deg)}75%{transform:scale(1.06)rotate(-1deg)}to{opacity:1;transform:scale(1)rotate(0)}}@keyframes hYkIZq_banner-shake{0%,to{transform:translate(0)}25%{transform:translate(-9px)rotate(-.6deg)}75%{transform:translate(9px)rotate(.6deg)}}@keyframes hYkIZq_spark-fly{0%{opacity:0;transform:translateY(-40px)scaleY(.3)}18%{opacity:1}to{opacity:0;transform:translateY(-300px)scaleY(1.15)}}@keyframes hYkIZq_code-blink{0%,to{opacity:.35}50%{opacity:1}}@media (prefers-reduced-motion:reduce){.hYkIZq_arm,.hYkIZq_control,.hYkIZq_rod,.hYkIZq_knob{transition:none}.hYkIZq_lever[data-busy=true] .hYkIZq_arm,.hYkIZq_flash,.hYkIZq_ring,.hYkIZq_banner,.hYkIZq_code,.hYkIZq_spark{animation:none}.hYkIZq_burst{animation:.3s ease-out both hYkIZq_burst-flash}.hYkIZq_spark{display:none}}";
+		const tagId$6 = "@linxin666/dsh-web-all/packages/dsh-liangshen/src/client/LiangShenLever.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$6) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$8;
-			tag.textContent = css$8;
+			tag.dataset.pluginCss = tagId$6;
+			tag.textContent = css$6;
 			document.head.appendChild(tag);
 		}
 		var LiangShenLever_module_css_default = {
@@ -42295,7 +39693,7 @@ window.__ModuleLoader__.load({
 		* @param byId - the session catalog's rows (`SessionListState.byId`), when available.
 		* @returns the main-view session id, or undefined when the main view shows none.
 		*/
-		function mainViewSessionId$2(byId) {
+		function mainViewSessionId$1(byId) {
 			if (byId === void 0 || byId === null) return void 0;
 			for (const row of Object.values(byId)) if (row !== void 0 && (row.retainedBy?.mainView ?? 0) > 0) return row.id;
 		}
@@ -42564,11 +39962,11 @@ window.__ModuleLoader__.load({
 				};
 			}
 			currentSessionId() {
-				return mainViewSessionId$2(this.sessions?.list.getSnapshot().byId);
+				return mainViewSessionId$1(this.sessions?.list.getSnapshot().byId);
 			}
 			currentSession() {
 				const state = this.sessions?.list.getSnapshot();
-				const current = mainViewSessionId$2(state?.byId);
+				const current = mainViewSessionId$1(state?.byId);
 				if (state === void 0 || current === void 0) return void 0;
 				return state.byId[current];
 			}
@@ -42629,16 +40027,16 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-liangshen/src/client/settings-card.module.css.mjs
-		const css$7 = "._9t79wq_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}._9t79wq_card:hover{border-color:var(--dsw-alias-label-dimmed)}._9t79wq_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}._9t79wq_header{appearance:none;box-sizing:border-box;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}._9t79wq_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}._9t79wq_headerStatic{box-sizing:border-box;border-radius:12px;align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}._9t79wq_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}._9t79wq_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}._9t79wq_description{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.5}._9t79wq_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}._9t79wq_chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}._9t79wq_chevronOpen{transform:rotate(180deg)}._9t79wq_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}._9t79wq_readOnly{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:12px;line-height:1.5}._9t79wq_notExposed{color:var(--dsw-alias-state-warn-primary);margin:12px 0 0;font-size:12px;line-height:1.5}._9t79wq_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}._9t79wq_failed{min-width:0;color:var(--dsw-alias-state-error-primary,#b42318);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:12px;line-height:1.5;overflow:hidden}._9t79wq_discard,._9t79wq_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}._9t79wq_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}._9t79wq_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}._9t79wq_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}._9t79wq_discard:disabled,._9t79wq_save:disabled{opacity:.4;cursor:default}._9t79wq_discard:focus-visible,._9t79wq_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}._9t79wq_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}._9t79wq_field+._9t79wq_field{border-top:1px solid var(--dsw-alias-border-l2)}._9t79wq_head{align-items:center;gap:8px;display:flex}._9t79wq_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}._9t79wq_badges{align-items:center;gap:8px;display:inline-flex}._9t79wq_badge{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}._9t79wq_reset{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5}._9t79wq_reset:hover:not(:disabled){color:var(--dsw-alias-label-primary)}._9t79wq_reset:disabled{cursor:default}._9t79wq_reset:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}._9t79wq_input,._9t79wq_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}._9t79wq_input:focus-visible,._9t79wq_select:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}._9t79wq_input:disabled,._9t79wq_select:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}._9t79wq_inputInvalid{border:1px solid var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}._9t79wq_inputInvalid:focus-visible{outline:2px solid var(--dsw-alias-state-error-primary,#b42318);outline-offset:1px;border-color:var(--dsw-alias-state-error-primary,#b42318)}._9t79wq_selectWrap{position:relative}._9t79wq_selectButton{appearance:none;text-align:left;cursor:pointer;justify-content:space-between;align-items:center;gap:8px;width:100%;display:flex}._9t79wq_selectLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}._9t79wq_selectChevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}._9t79wq_selectChevronOpen{transform:rotate(180deg)}._9t79wq_selectPopup{z-index:40;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-height:240px;box-shadow:0 8px 24px var(--dsw-alias-bg-mask-2);opacity:0;border-radius:8px;flex-direction:column;padding:4px;transition:opacity .1s,transform .1s;display:flex;position:absolute;top:calc(100% + 4px);left:0;right:0;overflow-y:auto;transform:translateY(-4px)}._9t79wq_selectPopupOpen{opacity:1;transform:none}._9t79wq_selectPopupClose{opacity:0;pointer-events:none;transform:translateY(-4px)}._9t79wq_selectOption{color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;text-overflow:ellipsis;border-radius:6px;flex-shrink:0;padding:6px 10px;font-size:13px;line-height:1.5;overflow:hidden}._9t79wq_selectOption:hover,._9t79wq_selectOptionActive{background:var(--dsw-alias-interactive-bg-hover)}._9t79wq_selectOptionSelected{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 10%, transparent);font-weight:500}._9t79wq_invalid{color:var(--dsw-alias-state-error-primary,#b42318);margin:0;font-size:12px;line-height:1.5}._9t79wq_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){._9t79wq_card,._9t79wq_header,._9t79wq_chevron,._9t79wq_chevronOpen,._9t79wq_discard,._9t79wq_save,._9t79wq_selectChevron,._9t79wq_selectChevronOpen,._9t79wq_selectPopup{transition:none}}";
-		const tagId$7 = "@linxin666/dsh-web-all/packages/dsh-liangshen/src/client/settings-card.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$7) + "]") === null) {
+		const css$5 = "._9t79wq_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}._9t79wq_card:hover{border-color:var(--dsw-alias-label-dimmed)}._9t79wq_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}._9t79wq_header{appearance:none;box-sizing:border-box;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}._9t79wq_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}._9t79wq_headerStatic{box-sizing:border-box;border-radius:12px;align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}._9t79wq_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}._9t79wq_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}._9t79wq_description{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.5}._9t79wq_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}._9t79wq_chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}._9t79wq_chevronOpen{transform:rotate(180deg)}._9t79wq_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}._9t79wq_readOnly{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:12px;line-height:1.5}._9t79wq_notExposed{color:var(--dsw-alias-state-warn-primary);margin:12px 0 0;font-size:12px;line-height:1.5}._9t79wq_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}._9t79wq_failed{min-width:0;color:var(--dsw-alias-state-error-primary,#b42318);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:12px;line-height:1.5;overflow:hidden}._9t79wq_discard,._9t79wq_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}._9t79wq_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}._9t79wq_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}._9t79wq_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}._9t79wq_discard:disabled,._9t79wq_save:disabled{opacity:.4;cursor:default}._9t79wq_discard:focus-visible,._9t79wq_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}._9t79wq_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}._9t79wq_field+._9t79wq_field{border-top:1px solid var(--dsw-alias-border-l2)}._9t79wq_head{align-items:center;gap:8px;display:flex}._9t79wq_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}._9t79wq_badges{align-items:center;gap:8px;display:inline-flex}._9t79wq_badge{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}._9t79wq_reset{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5}._9t79wq_reset:hover:not(:disabled){color:var(--dsw-alias-label-primary)}._9t79wq_reset:disabled{cursor:default}._9t79wq_reset:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}._9t79wq_input,._9t79wq_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}._9t79wq_input:focus-visible,._9t79wq_select:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}._9t79wq_input:disabled,._9t79wq_select:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}._9t79wq_inputInvalid{border:1px solid var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}._9t79wq_inputInvalid:focus-visible{outline:2px solid var(--dsw-alias-state-error-primary,#b42318);outline-offset:1px;border-color:var(--dsw-alias-state-error-primary,#b42318)}._9t79wq_selectWrap{position:relative}._9t79wq_selectButton{appearance:none;text-align:left;cursor:pointer;justify-content:space-between;align-items:center;gap:8px;width:100%;display:flex}._9t79wq_selectLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}._9t79wq_selectChevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}._9t79wq_selectChevronOpen{transform:rotate(180deg)}._9t79wq_selectPopup{z-index:40;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-height:240px;box-shadow:0 8px 24px var(--dsw-alias-bg-mask-2);opacity:0;border-radius:8px;flex-direction:column;padding:4px;transition:opacity .1s,transform .1s;display:flex;position:absolute;top:calc(100% + 4px);left:0;right:0;overflow-y:auto;transform:translateY(-4px)}._9t79wq_selectPopupOpen{opacity:1;transform:none}._9t79wq_selectPopupClose{opacity:0;pointer-events:none;transform:translateY(-4px)}._9t79wq_selectOption{color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;text-overflow:ellipsis;border-radius:6px;flex-shrink:0;padding:6px 10px;font-size:13px;line-height:1.5;overflow:hidden}._9t79wq_selectOption:hover,._9t79wq_selectOptionActive{background:var(--dsw-alias-interactive-bg-hover)}._9t79wq_selectOptionSelected{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 10%, transparent);font-weight:500}._9t79wq_invalid{color:var(--dsw-alias-state-error-primary,#b42318);margin:0;font-size:12px;line-height:1.5}._9t79wq_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){._9t79wq_card,._9t79wq_header,._9t79wq_chevron,._9t79wq_chevronOpen,._9t79wq_discard,._9t79wq_save,._9t79wq_selectChevron,._9t79wq_selectChevronOpen,._9t79wq_selectPopup{transition:none}}";
+		const tagId$5 = "@linxin666/dsh-web-all/packages/dsh-liangshen/src/client/settings-card.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$7;
-			tag.textContent = css$7;
+			tag.dataset.pluginCss = tagId$5;
+			tag.textContent = css$5;
 			document.head.appendChild(tag);
 		}
-		var settings_card_module_css_default$1 = {
+		var settings_card_module_css_default = {
 			"badge": "_9t79wq_badge",
 			"badges": "_9t79wq_badges",
 			"body": "_9t79wq_body",
@@ -42694,7 +40092,7 @@ window.__ModuleLoader__.load({
 		* @param props - the plugin's copy keys, its form state, and its controls.
 		* @returns the card, or nothing while the namespace is still loading.
 		*/
-		function PluginSettingsCard$1(props) {
+		function PluginSettingsCard(props) {
 			const [open, setOpen] = (0, react.useState)(props.defaultOpen ?? true);
 			const { state, alwaysOpen } = props;
 			if (!state.available) return null;
@@ -42702,28 +40100,28 @@ window.__ModuleLoader__.load({
 			const description = props.t(props.descriptionKey);
 			const blocked = !state.dirty || state.invalid || state.saving;
 			const expanded = alwaysOpen === true || open;
-			const cardClass = expanded ? `${settings_card_module_css_default$1.cardOpen} ${settings_card_module_css_default$1.card}` : settings_card_module_css_default$1.card;
+			const cardClass = expanded ? `${settings_card_module_css_default.cardOpen} ${settings_card_module_css_default.card}` : settings_card_module_css_default.card;
 			const header = alwaysOpen === true ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$1.headerStatic,
+				className: settings_card_module_css_default.headerStatic,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-					className: settings_card_module_css_default$1.headText,
+					className: settings_card_module_css_default.headText,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$1.name,
+						className: settings_card_module_css_default.name,
 						title,
 						children: title
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$1.description,
+						className: settings_card_module_css_default.description,
 						title: description,
 						children: props.descriptionNode ?? description
 					})]
 				}), state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-					className: settings_card_module_css_default$1.pending,
+					className: settings_card_module_css_default.pending,
 					title: props.t("settings.unsaved"),
 					children: props.t("settings.unsaved")
 				}) : null]
 			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 				type: "button",
-				className: settings_card_module_css_default$1.header,
+				className: settings_card_module_css_default.header,
 				"aria-expanded": open,
 				"aria-label": `${props.t(open ? "settings.collapse" : "settings.expand")}: ${title}`,
 				onClick: () => {
@@ -42731,19 +40129,19 @@ window.__ModuleLoader__.load({
 				},
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-						className: settings_card_module_css_default$1.headText,
+						className: settings_card_module_css_default.headText,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default$1.name,
+							className: settings_card_module_css_default.name,
 							title,
 							children: title
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default$1.description,
+							className: settings_card_module_css_default.description,
 							title: description,
 							children: props.descriptionNode ?? description
 						})]
 					}),
 					state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$1.pending,
+						className: settings_card_module_css_default.pending,
 						title: props.t("settings.unsaved"),
 						children: props.t("settings.unsaved")
 					}) : null,
@@ -42753,7 +40151,7 @@ window.__ModuleLoader__.load({
 						viewBox: "0 0 14 14",
 						fill: "none",
 						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default$1.chevron} ${settings_card_module_css_default$1.chevronOpen}` : settings_card_module_css_default$1.chevron,
+						className: open ? `${settings_card_module_css_default.chevron} ${settings_card_module_css_default.chevronOpen}` : settings_card_module_css_default.chevron,
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
 							fill: "currentColor"
@@ -42766,9 +40164,9 @@ window.__ModuleLoader__.load({
 				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 					className: cardClass,
 					children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: settings_card_module_css_default$1.body,
+						className: settings_card_module_css_default.body,
 						children: showNotice ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default$1.notExposed,
+							className: settings_card_module_css_default.notExposed,
 							role: "status",
 							children: props.t("settings.notExposed")
 						}) : null
@@ -42778,32 +40176,32 @@ window.__ModuleLoader__.load({
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 				className: cardClass,
 				children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: settings_card_module_css_default$1.body,
+					className: settings_card_module_css_default.body,
 					children: [
 						!state.writable ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default$1.readOnly,
+							className: settings_card_module_css_default.readOnly,
 							role: "status",
 							children: props.t("settings.readOnly")
 						}) : null,
 						props.children,
 						props.hideFooter === true ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: settings_card_module_css_default$1.footer,
+							className: settings_card_module_css_default.footer,
 							children: [
 								state.failed ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-									className: settings_card_module_css_default$1.failed,
+									className: settings_card_module_css_default.failed,
 									role: "status",
 									children: [props.t("settings.saveFailed"), state.failedReason ? " - " + state.failedReason : ""]
 								}) : null,
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
-									className: settings_card_module_css_default$1.discard,
+									className: settings_card_module_css_default.discard,
 									disabled: !state.dirty || state.saving,
 									onClick: props.onDiscard,
 									children: props.t("settings.discard")
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
-									className: settings_card_module_css_default$1.save,
+									className: settings_card_module_css_default.save,
 									disabled: blocked,
 									onClick: props.onSave,
 									children: props.t(!state.saving ? "settings.save" : "settings.saving")
@@ -42817,22 +40215,22 @@ window.__ModuleLoader__.load({
 		/** A staged value field. `numeric` only hints the keypad: which drafts a field accepts is decided by its spec. */
 		function ValueField(props) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$1.field,
+				className: settings_card_module_css_default.field,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$1.head,
+						className: settings_card_module_css_default.head,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$1.label,
+							className: settings_card_module_css_default.label,
 							htmlFor: props.id,
 							children: props.label
 						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default$1.badges,
+							className: settings_card_module_css_default.badges,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default$1.badge,
+								className: settings_card_module_css_default.badge,
 								children: props.overriddenLabel
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: settings_card_module_css_default$1.reset,
+								className: settings_card_module_css_default.reset,
 								disabled: props.disabled,
 								onClick: props.onReset,
 								children: props.resetLabel
@@ -42841,7 +40239,7 @@ window.__ModuleLoader__.load({
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
 						id: props.id,
-						className: props.invalid ? settings_card_module_css_default$1.inputInvalid : settings_card_module_css_default$1.input,
+						className: props.invalid ? settings_card_module_css_default.inputInvalid : settings_card_module_css_default.input,
 						type: "text",
 						...props.numeric === true ? { inputMode: "numeric" } : {},
 						...props.invalid ? { "aria-invalid": true } : {},
@@ -42853,17 +40251,17 @@ window.__ModuleLoader__.load({
 						}
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: props.invalid ? settings_card_module_css_default$1.invalid : settings_card_module_css_default$1.hint,
+						className: props.invalid ? settings_card_module_css_default.invalid : settings_card_module_css_default.hint,
 						children: props.invalid ? props.invalidLabel : props.hint
 					})
 				]
 			});
 		}
-		const NON_SKIN_BODY_MARKERS$1 = /* @__PURE__ */ new Set(["dshSkinCenter", "dshSidebarCollapsed"]);
-		function isSkinActive$1() {
-			return Object.keys(document.body.dataset).some((key) => key.startsWith("dsh") && !NON_SKIN_BODY_MARKERS$1.has(key));
+		const NON_SKIN_BODY_MARKERS = /* @__PURE__ */ new Set(["dshSkinCenter", "dshSidebarCollapsed"]);
+		function isSkinActive() {
+			return Object.keys(document.body.dataset).some((key) => key.startsWith("dsh") && !NON_SKIN_BODY_MARKERS.has(key));
 		}
-		const SELECT_CLOSE_MS$1 = 100;
+		const SELECT_CLOSE_MS = 100;
 		/**
 		* The shared dual-mode select control. While an appearance skin is active it
 		* renders the legacy native `<select>` untouched, so element-level skin
@@ -42873,7 +40271,7 @@ window.__ModuleLoader__.load({
 		* editors (the side-card prefs) bind it directly through onEdit.
 		* 双模式下拉框：皮肤激活时用原生 select，默认外观用自绘动画弹层。
 		*/
-		function SelectField$1(props) {
+		function SelectField(props) {
 			const { id, options, value } = props;
 			const [open, setOpen] = (0, react.useState)(false);
 			const [closing, setClosing] = (0, react.useState)(false);
@@ -42892,7 +40290,7 @@ window.__ModuleLoader__.load({
 				closeTimer.current = setTimeout(() => {
 					setClosing(false);
 					setOpen(false);
-				}, SELECT_CLOSE_MS$1);
+				}, SELECT_CLOSE_MS);
 			}, []);
 			const openPopup = () => {
 				if (closeTimer.current !== void 0) clearTimeout(closeTimer.current);
@@ -42966,9 +40364,9 @@ window.__ModuleLoader__.load({
 				open,
 				close
 			]);
-			if (isSkinActive$1()) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
+			if (isSkinActive()) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
 				id,
-				className: settings_card_module_css_default$1.select,
+				className: settings_card_module_css_default.select,
 				value,
 				disabled: props.disabled,
 				onChange: (event) => {
@@ -42980,14 +40378,14 @@ window.__ModuleLoader__.load({
 				}, option.value))
 			});
 			const label = options.find((option) => option.value === value)?.label ?? "";
-			const popupClass = closing ? `${settings_card_module_css_default$1.selectPopup} ${settings_card_module_css_default$1.selectPopupClose}` : phase === "open" ? `${settings_card_module_css_default$1.selectPopup} ${settings_card_module_css_default$1.selectPopupOpen}` : settings_card_module_css_default$1.selectPopup;
+			const popupClass = closing ? `${settings_card_module_css_default.selectPopup} ${settings_card_module_css_default.selectPopupClose}` : phase === "open" ? `${settings_card_module_css_default.selectPopup} ${settings_card_module_css_default.selectPopupOpen}` : settings_card_module_css_default.selectPopup;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$1.selectWrap,
+				className: settings_card_module_css_default.selectWrap,
 				ref: wrapRef,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 					type: "button",
 					id,
-					className: `${settings_card_module_css_default$1.select} ${settings_card_module_css_default$1.selectButton}`,
+					className: `${settings_card_module_css_default.select} ${settings_card_module_css_default.selectButton}`,
 					disabled: props.disabled,
 					"aria-haspopup": "listbox",
 					"aria-expanded": open,
@@ -42996,7 +40394,7 @@ window.__ModuleLoader__.load({
 					onClick: onTriggerClick,
 					onKeyDown,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default$1.selectLabel,
+						className: settings_card_module_css_default.selectLabel,
 						children: label
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
 						width: "14",
@@ -43004,7 +40402,7 @@ window.__ModuleLoader__.load({
 						viewBox: "0 0 14 14",
 						fill: "none",
 						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default$1.selectChevron} ${settings_card_module_css_default$1.selectChevronOpen}` : settings_card_module_css_default$1.selectChevron,
+						className: open ? `${settings_card_module_css_default.selectChevron} ${settings_card_module_css_default.selectChevronOpen}` : settings_card_module_css_default.selectChevron,
 						"aria-hidden": "true",
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
@@ -43019,7 +40417,7 @@ window.__ModuleLoader__.load({
 						id: `${id}-o${index}`,
 						role: "option",
 						"aria-selected": option.value === value,
-						className: `${settings_card_module_css_default$1.selectOption}${option.value === value ? ` ${settings_card_module_css_default$1.selectOptionSelected}` : ""}${index === activeIndex && !closing ? ` ${settings_card_module_css_default$1.selectOptionActive}` : ""}`,
+						className: `${settings_card_module_css_default.selectOption}${option.value === value ? ` ${settings_card_module_css_default.selectOptionSelected}` : ""}${index === activeIndex && !closing ? ` ${settings_card_module_css_default.selectOptionActive}` : ""}`,
 						onClick: () => {
 							commit(index);
 						},
@@ -43029,31 +40427,31 @@ window.__ModuleLoader__.load({
 			});
 		}
 		/** A staged boolean field: 继承 / 开 / 关. */
-		function BooleanField$1(props) {
+		function BooleanField(props) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$1.field,
+				className: settings_card_module_css_default.field,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$1.head,
+						className: settings_card_module_css_default.head,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$1.label,
+							className: settings_card_module_css_default.label,
 							htmlFor: props.id,
 							children: props.label
 						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default$1.badges,
+							className: settings_card_module_css_default.badges,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default$1.badge,
+								className: settings_card_module_css_default.badge,
 								children: props.overriddenLabel
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: settings_card_module_css_default$1.reset,
+								className: settings_card_module_css_default.reset,
 								disabled: props.disabled,
 								onClick: props.onReset,
 								children: props.resetLabel
 							})]
 						}) : null]
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$1, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField, {
 						id: props.id,
 						options: [
 							{
@@ -43075,7 +40473,7 @@ window.__ModuleLoader__.load({
 						onEdit: props.onEdit
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: settings_card_module_css_default$1.hint,
+						className: settings_card_module_css_default.hint,
 						children: props.hint
 					})
 				]
@@ -43084,29 +40482,29 @@ window.__ModuleLoader__.load({
 		/** A staged enumerated field rendered as a select. */
 		function ChoiceField(props) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default$1.field,
+				className: settings_card_module_css_default.field,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default$1.head,
+						className: settings_card_module_css_default.head,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default$1.label,
+							className: settings_card_module_css_default.label,
 							htmlFor: props.id,
 							children: props.label
 						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default$1.badges,
+							className: settings_card_module_css_default.badges,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default$1.badge,
+								className: settings_card_module_css_default.badge,
 								children: props.overriddenLabel
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: settings_card_module_css_default$1.reset,
+								className: settings_card_module_css_default.reset,
 								disabled: props.disabled,
 								onClick: props.onReset,
 								children: props.resetLabel
 							})]
 						}) : null]
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField$1, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField, {
 						id: props.id,
 						options: [{
 							value: "",
@@ -43118,7 +40516,7 @@ window.__ModuleLoader__.load({
 						onEdit: props.onEdit
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: props.invalid ? settings_card_module_css_default$1.invalid : settings_card_module_css_default$1.hint,
+						className: props.invalid ? settings_card_module_css_default.invalid : settings_card_module_css_default.hint,
 						children: props.invalid ? props.invalidLabel : props.hint
 					})
 				]
@@ -43147,7 +40545,7 @@ window.__ModuleLoader__.load({
 			};
 		}
 		/** A boolean field, edited through true/false draft text. */
-		function booleanField$1(field) {
+		function booleanField(field) {
 			return {
 				field,
 				format: (value) => typeof value === "boolean" ? String(value) : "",
@@ -43187,7 +40585,7 @@ window.__ModuleLoader__.load({
 		* read back from the section rather than predicted here. A save that did not
 		* land keeps its drafts, so the user can correct them instead of retyping.
 		*/
-		var CardForm$1 = class {
+		var CardForm = class {
 			scope;
 			specs;
 			staged = /* @__PURE__ */ new Map();
@@ -43448,11 +40846,11 @@ window.__ModuleLoader__.load({
 			store;
 			/** @param scope - the bound configuration form of the entry that owns this namespace. */
 			constructor(scope) {
-				this.form = new CardForm$1(scope, [
-					booleanField$1("enabled"),
-					booleanField$1("announceToAgent"),
+				this.form = new CardForm(scope, [
+					booleanField("enabled"),
+					booleanField("announceToAgent"),
 					choiceField("presentation", PRESENTATION_CHOICES),
-					booleanField$1("guardEnabled"),
+					booleanField("guardEnabled"),
 					choiceField("guardSensitivity", SENSITIVITY_CHOICES),
 					numberField("guardStallReasoningChars", {
 						integer: true,
@@ -43512,7 +40910,7 @@ window.__ModuleLoader__.load({
 				disabled: !state.writable,
 				inheritLabel: t("settings.inherit")
 			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(PluginSettingsCard$1, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(PluginSettingsCard, {
 				t,
 				titleKey: "settings.title",
 				descriptionKey: "settings.description",
@@ -43523,7 +40921,7 @@ window.__ModuleLoader__.load({
 				onSave: props.save,
 				onDiscard: props.discard,
 				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$1, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField, {
 						id: "settings-liangshen-enabled",
 						label: t("settings.enabled"),
 						hint: t("settings.enabledHint"),
@@ -43538,7 +40936,7 @@ window.__ModuleLoader__.load({
 							props.resetField("enabled");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$1, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField, {
 						id: "settings-liangshen-announce",
 						label: t("settings.announceToAgent"),
 						hint: t("settings.announceToAgentHint"),
@@ -43570,7 +40968,7 @@ window.__ModuleLoader__.load({
 							props.resetField("presentation");
 						}
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField$1, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField, {
 						id: "settings-liangshen-guard-enabled",
 						label: t("settings.guardEnabled"),
 						hint: t("settings.guardEnabledHint"),
@@ -43658,7 +41056,7 @@ window.__ModuleLoader__.load({
 		* centralized ru dictionary and `pnpm i18n:check` enforces the parity.
 		*/
 		/** Lever copy, key source of truth. */
-		const zh$6 = {
+		const zh$5 = {
 			"lever.a11y": "梁神模式拨杆",
 			"lever.name": "梁神模式",
 			"lever.hint.pull": "拨下拨杆：开启「梁神模式」",
@@ -43715,7 +41113,7 @@ window.__ModuleLoader__.load({
 			"settings.guardEchoFailuresHint": "同一工具以相同参数连续失败多少次触发空转熔断（默认 3）。"
 		};
 		/** English counterpart; the key set mirrors {@link zh} exactly. */
-		const en$6 = {
+		const en$5 = {
 			"lever.a11y": "LiangShen mode lever",
 			"lever.name": "LiangShen mode",
 			"lever.hint.pull": "Pull the lever down to turn on LiangShen mode",
@@ -43813,27 +41211,27 @@ window.__ModuleLoader__.load({
 		* `ctx`.
 		*/
 		/** The family list seat key. */
-		const FAMILY_PLUGIN_CARD_SEAT$1 = "web-ui.plugin.item";
+		const FAMILY_PLUGIN_CARD_SEAT = "web-ui.plugin.item";
 		/** The official keyed plugin-card seat key (the alpha.2 bundle-configuration seat). */
-		const OFFICIAL_PLUGIN_CARD_SEAT$1 = "plugins.bundle.config";
+		const OFFICIAL_PLUGIN_CARD_SEAT = "plugins.bundle.config";
 		/** The service dsh-web-settings publishes while it is loaded. */
-		const FAMILY_GROUP_SERVICE$1 = "webUiSettings";
+		const FAMILY_GROUP_SERVICE = "webUiSettings";
 		/**
 		* Whether the family group (dsh-web-settings) is loaded in this page. The
 		* service is the group package's own contract, so the probe cannot be fooled
 		* by a harness release that starts declaring the official seat differently.
 		*/
-		function familyGroupLoaded$1(ctx) {
+		function familyGroupLoaded(ctx) {
 			const get = ctx.get;
 			if (typeof get !== "function") return false;
 			try {
-				return get.call(ctx, FAMILY_GROUP_SERVICE$1) !== void 0;
+				return get.call(ctx, FAMILY_GROUP_SERVICE) !== void 0;
 			} catch {
 				return false;
 			}
 		}
 		/** Report a refused registration instead of leaving the user with no card. */
-		function warnRefusedSeat$1(seat, error) {
+		function warnRefusedSeat(seat, error) {
 			try {
 				console.warn(`[dsh-web] plugin card registration into "${seat}" was refused; the card will not render`, error);
 			} catch {}
@@ -43845,7 +41243,7 @@ window.__ModuleLoader__.load({
 		* @param ctx - client context (its slot registry decides the seat).
 		* @param seat - the card contribution.
 		*/
-		function installPluginCard$1(ctx, seat) {
+		function installPluginCard(ctx, seat) {
 			const slots = ctx.slots;
 			const component = seat.component;
 			const inject = seat.inject;
@@ -43861,7 +41259,7 @@ window.__ModuleLoader__.load({
 			/** Reconcile the contribution with the currently live seat (no-op when unchanged). */
 			const reconcile = () => {
 				if (reconciling) return;
-				const target = familyGroupLoaded$1(ctx) ? FAMILY_PLUGIN_CARD_SEAT$1 : OFFICIAL_PLUGIN_CARD_SEAT$1;
+				const target = familyGroupLoaded(ctx) ? FAMILY_PLUGIN_CARD_SEAT : OFFICIAL_PLUGIN_CARD_SEAT;
 				if (current === target) return;
 				reconciling = true;
 				const previous = dispose;
@@ -43870,21 +41268,21 @@ window.__ModuleLoader__.load({
 				previous?.();
 				try {
 					dispose = slots.register(target === "web-ui.plugin.item" ? {
-						name: FAMILY_PLUGIN_CARD_SEAT$1,
+						name: FAMILY_PLUGIN_CARD_SEAT,
 						id: seat.id,
 						...seat.order === void 0 ? {} : { order: seat.order },
 						...seat.label === void 0 ? {} : { label: seat.label },
 						locale: seat.locale,
 						...seat.inject === void 0 ? {} : { inject }
 					} : {
-						name: OFFICIAL_PLUGIN_CARD_SEAT$1,
+						name: OFFICIAL_PLUGIN_CARD_SEAT,
 						key: seat.bundle,
 						locale: seat.locale,
 						...seat.inject === void 0 ? {} : { inject }
 					}, component);
 					current = target;
 				} catch (error) {
-					warnRefusedSeat$1(target, error);
+					warnRefusedSeat(target, error);
 				} finally {
 					reconciling = false;
 				}
@@ -43898,19 +41296,19 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region ../dsh-liangshen/src/client/index.ts
-		var client_exports$6 = /* @__PURE__ */ __exportAll({
+		var client_exports$5 = /* @__PURE__ */ __exportAll({
 			LIANGSHEN_PRESET_ID: () => LIANGSHEN_PRESET_ID,
 			LeverController: () => LeverController,
 			LiangShenLever: () => LiangShenLever,
-			NS: () => NS$6,
+			NS: () => NS$5,
 			SETTINGS_NAMESPACE: () => SETTINGS_NAMESPACE,
-			apply: () => apply$7,
-			inject: () => inject$7,
+			apply: () => apply$6,
+			inject: () => inject$6,
 			leverState: () => leverState,
 			restoreTarget: () => restoreTarget
 		});
 		/** Locale namespace this half owns. */
-		const NS$6 = "liangshen";
+		const NS$5 = "liangshen";
 		/**
 		* Settings namespace the settings card edits. Under the 0.1.7 settings
 		* contract the namespace IS the Host profile entry id, so this names the
@@ -43941,7 +41339,7 @@ window.__ModuleLoader__.load({
 		* service, and a nested service name does not imply its parent, so reading
 		* `ctx.remote.agentPresets` needs `remote` as well.
 		*/
-		const inject$7 = [
+		const inject$6 = [
 			"slots",
 			"locale",
 			"sessions",
@@ -43954,12 +41352,12 @@ window.__ModuleLoader__.load({
 		* session, and claim the composer tool row.
 		* @param ctx - the browser plugin context.
 		*/
-		function apply$7(ctx) {
+		function apply$6(ctx) {
 			ctx.effect(() => {
 				try {
-					return ctx.locale.register(NS$6, {
-						zh: zh$6,
-						en: en$6
+					return ctx.locale.register(NS$5, {
+						zh: zh$5,
+						en: en$5
 					});
 				} catch {
 					return () => {};
@@ -43973,11 +41371,11 @@ window.__ModuleLoader__.load({
 			try {
 				const binder = ctx.get("webUiSettings");
 				const settingsCard = new LiangShenSettingsCardController(binder !== void 0 && typeof binder.bind === "function" ? binder.bind({ namespace: SETTINGS_NAMESPACE }) : ctx.configForms.get(servedEntryId(ctx.configForms)));
-				installPluginCard$1(ctx, {
+				installPluginCard(ctx, {
 					bundle: "@linxin666/dsh-liangshen",
 					id: "liangshen",
 					order: 120,
-					locale: NS$6,
+					locale: NS$5,
 					inject: () => settingsCard.inject(),
 					component: LiangShenSettingsCard
 				});
@@ -44086,7 +41484,7 @@ window.__ModuleLoader__.load({
 		/**
 		* skill-explorer surface copy: zh is the key source, en mirrors every key.
 		*/
-		const zh$5 = {
+		const zh$4 = {
 			"entry.label": "技能中心",
 			"entry.tooltip": "技能中心：浏览与管理已加载的 skill",
 			"panel.title": "技能中心",
@@ -44160,7 +41558,7 @@ window.__ModuleLoader__.load({
 			"close": "关闭",
 			"cwd": "cwd: {cwd}"
 		};
-		const en$5 = {
+		const en$4 = {
 			"entry.label": "Skill Center",
 			"entry.tooltip": "Skill center: browse and manage loaded skills",
 			"panel.title": "Skill Center",
@@ -44242,7 +41640,7 @@ window.__ModuleLoader__.load({
 		*/
 		/** Active dictionary, picked by the document language at call time. */
 		function dictionary$3() {
-			return (typeof document !== "undefined" ? document.documentElement.lang : "zh").toLowerCase().startsWith("en") ? { ...en$5 } : { ...zh$5 };
+			return (typeof document !== "undefined" ? document.documentElement.lang : "zh").toLowerCase().startsWith("en") ? { ...en$4 } : { ...zh$4 };
 		}
 		/**
 		* SDK translate seat wired by the browser apply() once ctx.locale is bound
@@ -44307,13 +41705,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-skill-explorer/src/client/skill-panel.module.css.mjs
-		const css$6 = ".cBrkua_entry{box-sizing:border-box;min-height:36px;color:var(--dsw-alias-label-primary);cursor:pointer;font:inherit;text-align:left;white-space:nowrap;background:0 0;border:none;border-radius:12px;align-items:center;gap:8px;margin:0 2px;padding:7px 8px;font-size:14px;line-height:22px;display:flex}.cBrkua_entry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.cBrkua_entryIcon{flex:none;justify-content:center;align-items:center;width:16px;height:16px;display:inline-flex}.cBrkua_entryIcon svg{width:16px;height:16px;display:block}.cBrkua_entryLabel{text-overflow:ellipsis;overflow:hidden}[data-dsh-frame][data-sidebar-collapsed] .cBrkua_entry,[data-sidebar-collapsed] .cBrkua_entry{border-radius:12px;justify-content:center;width:36px;height:36px;margin:0 auto 12px;padding:0}[data-dsh-frame][data-sidebar-collapsed] .cBrkua_entryIcon,[data-sidebar-collapsed] .cBrkua_entryIcon,[data-dsh-frame][data-sidebar-collapsed] .cBrkua_entryIcon svg,[data-sidebar-collapsed] .cBrkua_entryIcon svg{width:18px;height:18px}[data-dsh-frame][data-sidebar-collapsed] .cBrkua_entryLabel,[data-sidebar-collapsed] .cBrkua_entryLabel{display:none}.cBrkua_overlay{background:var(--dsw-alias-bg-mask-2,#080a1073);z-index:9999;justify-content:center;align-items:center;font-family:system-ui,-apple-system,Segoe UI,sans-serif;display:flex;position:fixed;inset:0}.cBrkua_card{background:var(--dsw-alias-bg-overlay,#fdfdfd);width:min(780px,92vw);max-height:84vh;color:var(--dsw-alias-label-primary,#1c1e26);border-radius:12px;flex-direction:column;display:flex;overflow:hidden;box-shadow:0 18px 60px #00000059}.cBrkua_head{background:var(--dsw-alias-bg-base,#fff);align-items:center;gap:10px;padding:12px 16px;display:flex}.cBrkua_headTitle{flex:1;margin:0;font-size:15px;font-weight:600}.cBrkua_headButton{color:var(--dsw-alias-label-primary,#3a3f4b);cursor:pointer;background:#f2f3f5;border:none;border-radius:6px;padding:4px 10px;font-size:12px}.cBrkua_headButton:hover{background:#e7e8ea}.cBrkua_tabs{background:var(--dsw-alias-bg-layer-1,#f7f8fa);gap:4px;padding:8px 16px 0;display:flex}.cBrkua_tab{border:1px solid var(--dsw-alias-border-l1,#d7dae0);color:var(--dsw-alias-label-secondary,#8a8f9c);cursor:pointer;background:0 0;border-bottom:none;border-radius:8px 8px 0 0;padding:6px 14px;font-size:12px}.cBrkua_tabActive{background:var(--dsw-alias-bg-base,#fdfdfd);color:var(--dsw-alias-label-primary,#1c1e26);font-weight:600}.cBrkua_body{padding:12px 16px;overflow:auto}.cBrkua_status{color:var(--dsw-alias-label-secondary,#6b7280);text-align:center;padding:18px;font-size:13px}.cBrkua_group{margin-bottom:18px}.cBrkua_groupTitle{color:var(--dsw-alias-label-primary,#2f3542);margin:0 0 2px;font-size:13px;font-weight:600}.cBrkua_groupHint{color:var(--dsw-alias-label-secondary,#8a8f9c);margin:0 0 8px;font-size:11px}.cBrkua_count{color:var(--dsw-alias-label-secondary,#8a8f9c);margin-left:6px;font-weight:400}.cBrkua_skill{border:1px solid var(--dsw-alias-border-l1,#e5e7eb);background:var(--dsw-alias-bg-base,#fff);border-radius:8px;margin-bottom:8px;padding:10px 12px}.cBrkua_skillHeader{flex-wrap:wrap;align-items:center;gap:8px;display:flex}.cBrkua_skillName{color:var(--dsw-alias-label-primary,#111827);font-family:ui-monospace,Consolas,monospace;font-size:13px;font-weight:600}.cBrkua_badge{background:var(--dsw-alias-state-business-secondary,#eef2ff);color:var(--dsw-alias-state-business-primary,#4353a3);border:1px solid var(--dsw-alias-state-business-tertiary,#dde3f8);border-radius:99px;padding:1px 6px;font-size:10px}.cBrkua_badgeInvokable{background:var(--dsw-alias-state-success-secondary,#e6f4ea);color:var(--dsw-alias-state-success-primary,#0d6832);border-color:var(--dsw-alias-state-success-tertiary,#b7e1cd)}.cBrkua_badgeWorkspace{background:var(--dsw-alias-bg-layer-2,#ebeef5);color:var(--dsw-alias-label-secondary,#4b5563);border-color:var(--dsw-alias-border-l1,#d1d5db)}.cBrkua_badgeIsolated{color:#b45309;cursor:help;background:#f59e0b1f;border-color:#f59e0b59}.cBrkua_skillIsolated{opacity:.76}.cBrkua_skillIsolated:hover{opacity:.98}.cBrkua_filterBar{background:var(--dsw-alias-bg-layer-1,#f7f8fa);border-radius:6px;flex-direction:column;gap:6px;margin-bottom:12px;padding:8px 10px;font-size:12px;display:flex}.cBrkua_filterRow{align-items:center;gap:8px;display:flex}.cBrkua_filterLabel{color:var(--dsw-alias-label-secondary,#6b7280);flex:none;font-weight:500}.cBrkua_filterInput,.cBrkua_filterSelect{border:1px solid var(--dsw-alias-border-l1,#d7dae0);background:var(--dsw-alias-bg-base,#fff);max-width:280px;height:26px;color:var(--dsw-alias-label-primary,#1c1e26);border-radius:4px;outline:none;flex:1;padding:0 8px;font-size:12px}.cBrkua_filterInput:focus,.cBrkua_filterSelect:focus{border-color:var(--dsw-alias-border-l2,#d1d5db)}.cBrkua_filterClear{border:1px solid var(--dsw-alias-border-l1,#d7dae0);height:24px;color:var(--dsw-alias-label-secondary,#6b7280);cursor:pointer;background:0 0;border-radius:4px;flex:none;padding:0 10px;font-size:12px}.cBrkua_filterClear:hover{color:var(--dsw-alias-label-primary,#1c1e26)}.cBrkua_filterEmpty{color:var(--dsw-alias-label-secondary,#6b7280);text-align:center;padding:18px 0;font-size:13px}.cBrkua_switch{cursor:pointer;background:0 0;border:none;border-radius:99px;align-items:center;margin-left:auto;padding:2px;display:inline-flex}.cBrkua_switchTrack{background:var(--dsw-alias-border-l2,#d1d5db);border-radius:99px;flex:none;width:30px;height:16px;transition:background .18s;position:relative}.cBrkua_switchThumb{background:var(--dsw-alias-bg-base,#fff);border-radius:50%;width:12px;height:12px;transition:left .18s;position:absolute;top:2px;left:2px;box-shadow:0 1px 2px #00000040}.cBrkua_switch[aria-checked=true] .cBrkua_switchTrack{background:var(--dsw-alias-state-success-primary,#10b981)}.cBrkua_switch[aria-checked=true] .cBrkua_switchThumb{left:16px}.cBrkua_editButton{color:var(--dsw-alias-label-primary,#3a3f4b);cursor:pointer;background:#f2f3f5;border:none;border-radius:6px;padding:3px 9px;font-size:11px}.cBrkua_editButton:hover{background:#e7e8ea}.cBrkua_deleteButton{color:#d92d20;cursor:pointer;background:#feeceb;border:none;border-radius:6px;padding:3px 9px;font-size:11px}.cBrkua_deleteButton:hover{background:#fbdcd9}.cBrkua_skillDesc{color:var(--dsw-alias-label-primary,#3a3f4b);margin:6px 0 0;font-size:12px;line-height:1.5}.cBrkua_skillWhen{color:var(--dsw-alias-label-secondary,#8a8f9c);margin:4px 0 0;font-size:11px}.cBrkua_skillPath{color:var(--dsw-alias-label-tertiary,#a2a7b3);word-break:break-all;margin:6px 0 0;font-family:ui-monospace,Consolas,monospace;font-size:10px}.cBrkua_feedback{color:var(--dsw-alias-state-error-primary,#b42318);font-size:11px}.cBrkua_feedbackOk{color:var(--dsw-alias-state-success-primary,#0f9d6e)}.cBrkua_form{flex-direction:column;gap:8px;max-width:640px;display:flex}.cBrkua_formLabel{color:var(--dsw-alias-label-secondary,#5f6672);flex-direction:column;gap:4px;font-size:12px;display:flex}.cBrkua_formInput{box-sizing:border-box;background:var(--dsw-alias-bg-layer-1,#f7f8fa);width:100%;color:var(--dsw-alias-label-primary,#1c1e26);border:1px solid #0000;border-radius:6px;padding:6px 8px;font-size:12px}select.cBrkua_formInput{height:30px;padding:0 8px}.cBrkua_formTextarea{resize:vertical;min-height:120px;font-family:ui-monospace,monospace}.cBrkua_formActionsRow{gap:8px;display:flex}.cBrkua_formButtonGhost{color:var(--dsw-alias-label-primary,#3a3f4b);cursor:pointer;background:#f2f3f5;border:none;border-radius:6px;align-self:flex-start;padding:6px 14px;font-size:12px}.cBrkua_formButtonGhost:hover{background:#e7e8ea}body[data-ds-dark-theme] .cBrkua_formButtonGhost{color:#e5e5ea;background:#2a2a2c}body[data-ds-dark-theme] .cBrkua_formButtonGhost:hover{background:#3a3a3c}.cBrkua_formButton{color:#fff;cursor:pointer;background:#111;border:1px solid #0000;border-radius:6px;align-self:flex-start;padding:6px 14px;font-size:12px}.cBrkua_formButton:hover{background:#2a2a2c}body[data-ds-dark-theme] .cBrkua_formButton{color:#111827;background:#e5e5ea}body[data-ds-dark-theme] .cBrkua_formButton:hover{background:#d1d5db}.cBrkua_note{color:var(--dsw-alias-label-tertiary,#a0a5b1);margin-top:10px;font-size:11px;line-height:1.7}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_card,body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_head{background:#2c2c2e}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_tabs{background:#1e1e1e}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_skill{background:#48484a;border-color:#ffffff14}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_badge{color:#a5b4fc;background:#6378dc38;border-color:#6378dc66}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_badgeInvokable{color:#30d158;background:#30d15826;border-color:#30d1584d}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_switchThumb{background:#fff}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_tab{color:#ffffff80}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_tabActive{color:#fff;background:#3a3a3c;border:.5px solid #ffffff14;box-shadow:0 1px 3px #0000004d}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_formInput{background:#1c1c1e;border-color:#ffffff0f}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_headButton{color:#ffffffd9;background:#ffffff1a;border-color:#0000}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_headButton:hover{background:#ffffff26}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_headButton:active{background:#ffffff0d}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_deleteButton{color:#ff6b61;background:#ff3b3029;border-color:#0000}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_deleteButton:hover{background:#ff3b3042}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_filterBar{background:#1e1e1e}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_filterInput,body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_filterSelect{color:#fff;background:#2c2c2e;border-color:#ffffff1a}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_filterClear{color:#ffffffb3;border-color:#ffffff1a}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_filterEmpty{color:#ffffffb3}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_badgeWorkspace{color:#ffffffb3;background:#ffffff1a;border-color:#ffffff26}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_badgeIsolated{color:#fbbf24;background:#f59e0b33;border-color:#f59e0b66}";
-		const tagId$6 = "@linxin666/dsh-web-all/packages/dsh-skill-explorer/src/client/skill-panel.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$6) + "]") === null) {
+		const css$4 = ".cBrkua_entry{box-sizing:border-box;min-height:36px;color:var(--dsw-alias-label-primary);cursor:pointer;font:inherit;text-align:left;white-space:nowrap;background:0 0;border:none;border-radius:12px;align-items:center;gap:8px;margin:0 2px;padding:7px 8px;font-size:14px;line-height:22px;display:flex}.cBrkua_entry:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}.cBrkua_entryIcon{flex:none;justify-content:center;align-items:center;width:16px;height:16px;display:inline-flex}.cBrkua_entryIcon svg{width:16px;height:16px;display:block}.cBrkua_entryLabel{text-overflow:ellipsis;overflow:hidden}[data-dsh-frame][data-sidebar-collapsed] .cBrkua_entry,[data-sidebar-collapsed] .cBrkua_entry{border-radius:12px;justify-content:center;width:36px;height:36px;margin:0 auto 12px;padding:0}[data-dsh-frame][data-sidebar-collapsed] .cBrkua_entryIcon,[data-sidebar-collapsed] .cBrkua_entryIcon,[data-dsh-frame][data-sidebar-collapsed] .cBrkua_entryIcon svg,[data-sidebar-collapsed] .cBrkua_entryIcon svg{width:18px;height:18px}[data-dsh-frame][data-sidebar-collapsed] .cBrkua_entryLabel,[data-sidebar-collapsed] .cBrkua_entryLabel{display:none}.cBrkua_overlay{background:var(--dsw-alias-bg-mask-2,#080a1073);z-index:9999;justify-content:center;align-items:center;font-family:system-ui,-apple-system,Segoe UI,sans-serif;display:flex;position:fixed;inset:0}.cBrkua_card{background:var(--dsw-alias-bg-overlay,#fdfdfd);width:min(780px,92vw);max-height:84vh;color:var(--dsw-alias-label-primary,#1c1e26);border-radius:12px;flex-direction:column;display:flex;overflow:hidden;box-shadow:0 18px 60px #00000059}.cBrkua_head{background:var(--dsw-alias-bg-base,#fff);align-items:center;gap:10px;padding:12px 16px;display:flex}.cBrkua_headTitle{flex:1;margin:0;font-size:15px;font-weight:600}.cBrkua_headButton{color:var(--dsw-alias-label-primary,#3a3f4b);cursor:pointer;background:#f2f3f5;border:none;border-radius:6px;padding:4px 10px;font-size:12px}.cBrkua_headButton:hover{background:#e7e8ea}.cBrkua_tabs{background:var(--dsw-alias-bg-layer-1,#f7f8fa);gap:4px;padding:8px 16px 0;display:flex}.cBrkua_tab{border:1px solid var(--dsw-alias-border-l1,#d7dae0);color:var(--dsw-alias-label-secondary,#8a8f9c);cursor:pointer;background:0 0;border-bottom:none;border-radius:8px 8px 0 0;padding:6px 14px;font-size:12px}.cBrkua_tabActive{background:var(--dsw-alias-bg-base,#fdfdfd);color:var(--dsw-alias-label-primary,#1c1e26);font-weight:600}.cBrkua_body{padding:12px 16px;overflow:auto}.cBrkua_status{color:var(--dsw-alias-label-secondary,#6b7280);text-align:center;padding:18px;font-size:13px}.cBrkua_group{margin-bottom:18px}.cBrkua_groupTitle{color:var(--dsw-alias-label-primary,#2f3542);margin:0 0 2px;font-size:13px;font-weight:600}.cBrkua_groupHint{color:var(--dsw-alias-label-secondary,#8a8f9c);margin:0 0 8px;font-size:11px}.cBrkua_count{color:var(--dsw-alias-label-secondary,#8a8f9c);margin-left:6px;font-weight:400}.cBrkua_skill{border:1px solid var(--dsw-alias-border-l1,#e5e7eb);background:var(--dsw-alias-bg-base,#fff);border-radius:8px;margin-bottom:8px;padding:10px 12px}.cBrkua_skillHeader{flex-wrap:wrap;align-items:center;gap:8px;display:flex}.cBrkua_skillName{color:var(--dsw-alias-label-primary,#111827);font-family:ui-monospace,Consolas,monospace;font-size:13px;font-weight:600}.cBrkua_badge{background:var(--dsw-alias-state-business-secondary,#eef2ff);color:var(--dsw-alias-state-business-primary,#4353a3);border:1px solid var(--dsw-alias-state-business-tertiary,#dde3f8);border-radius:99px;padding:1px 6px;font-size:10px}.cBrkua_badgeInvokable{background:var(--dsw-alias-state-success-secondary,#e6f4ea);color:var(--dsw-alias-state-success-primary,#0d6832);border-color:var(--dsw-alias-state-success-tertiary,#b7e1cd)}.cBrkua_badgeWorkspace{background:var(--dsw-alias-bg-layer-2,#ebeef5);color:var(--dsw-alias-label-secondary,#4b5563);border-color:var(--dsw-alias-border-l1,#d1d5db)}.cBrkua_badgeIsolated{color:#b45309;cursor:help;background:#f59e0b1f;border-color:#f59e0b59}.cBrkua_skillIsolated{opacity:.76}.cBrkua_skillIsolated:hover{opacity:.98}.cBrkua_filterBar{background:var(--dsw-alias-bg-layer-1,#f7f8fa);border-radius:6px;flex-direction:column;gap:6px;margin-bottom:12px;padding:8px 10px;font-size:12px;display:flex}.cBrkua_filterRow{align-items:center;gap:8px;display:flex}.cBrkua_filterLabel{color:var(--dsw-alias-label-secondary,#6b7280);flex:none;font-weight:500}.cBrkua_filterInput,.cBrkua_filterSelect{border:1px solid var(--dsw-alias-border-l1,#d7dae0);background:var(--dsw-alias-bg-base,#fff);max-width:280px;height:26px;color:var(--dsw-alias-label-primary,#1c1e26);border-radius:4px;outline:none;flex:1;padding:0 8px;font-size:12px}.cBrkua_filterInput:focus,.cBrkua_filterSelect:focus{border-color:var(--dsw-alias-border-l2,#d1d5db)}.cBrkua_filterClear{border:1px solid var(--dsw-alias-border-l1,#d7dae0);height:24px;color:var(--dsw-alias-label-secondary,#6b7280);cursor:pointer;background:0 0;border-radius:4px;flex:none;padding:0 10px;font-size:12px}.cBrkua_filterClear:hover{color:var(--dsw-alias-label-primary,#1c1e26)}.cBrkua_filterEmpty{color:var(--dsw-alias-label-secondary,#6b7280);text-align:center;padding:18px 0;font-size:13px}.cBrkua_switch{cursor:pointer;background:0 0;border:none;border-radius:99px;align-items:center;margin-left:auto;padding:2px;display:inline-flex}.cBrkua_switchTrack{background:var(--dsw-alias-border-l2,#d1d5db);border-radius:99px;flex:none;width:30px;height:16px;transition:background .18s;position:relative}.cBrkua_switchThumb{background:var(--dsw-alias-bg-base,#fff);border-radius:50%;width:12px;height:12px;transition:left .18s;position:absolute;top:2px;left:2px;box-shadow:0 1px 2px #00000040}.cBrkua_switch[aria-checked=true] .cBrkua_switchTrack{background:var(--dsw-alias-state-success-primary,#10b981)}.cBrkua_switch[aria-checked=true] .cBrkua_switchThumb{left:16px}.cBrkua_editButton{color:var(--dsw-alias-label-primary,#3a3f4b);cursor:pointer;background:#f2f3f5;border:none;border-radius:6px;padding:3px 9px;font-size:11px}.cBrkua_editButton:hover{background:#e7e8ea}.cBrkua_deleteButton{color:#d92d20;cursor:pointer;background:#feeceb;border:none;border-radius:6px;padding:3px 9px;font-size:11px}.cBrkua_deleteButton:hover{background:#fbdcd9}.cBrkua_skillDesc{color:var(--dsw-alias-label-primary,#3a3f4b);margin:6px 0 0;font-size:12px;line-height:1.5}.cBrkua_skillWhen{color:var(--dsw-alias-label-secondary,#8a8f9c);margin:4px 0 0;font-size:11px}.cBrkua_skillPath{color:var(--dsw-alias-label-tertiary,#a2a7b3);word-break:break-all;margin:6px 0 0;font-family:ui-monospace,Consolas,monospace;font-size:10px}.cBrkua_feedback{color:var(--dsw-alias-state-error-primary,#b42318);font-size:11px}.cBrkua_feedbackOk{color:var(--dsw-alias-state-success-primary,#0f9d6e)}.cBrkua_form{flex-direction:column;gap:8px;max-width:640px;display:flex}.cBrkua_formLabel{color:var(--dsw-alias-label-secondary,#5f6672);flex-direction:column;gap:4px;font-size:12px;display:flex}.cBrkua_formInput{box-sizing:border-box;background:var(--dsw-alias-bg-layer-1,#f7f8fa);width:100%;color:var(--dsw-alias-label-primary,#1c1e26);border:1px solid #0000;border-radius:6px;padding:6px 8px;font-size:12px}select.cBrkua_formInput{height:30px;padding:0 8px}.cBrkua_formTextarea{resize:vertical;min-height:120px;font-family:ui-monospace,monospace}.cBrkua_formActionsRow{gap:8px;display:flex}.cBrkua_formButtonGhost{color:var(--dsw-alias-label-primary,#3a3f4b);cursor:pointer;background:#f2f3f5;border:none;border-radius:6px;align-self:flex-start;padding:6px 14px;font-size:12px}.cBrkua_formButtonGhost:hover{background:#e7e8ea}body[data-ds-dark-theme] .cBrkua_formButtonGhost{color:#e5e5ea;background:#2a2a2c}body[data-ds-dark-theme] .cBrkua_formButtonGhost:hover{background:#3a3a3c}.cBrkua_formButton{color:#fff;cursor:pointer;background:#111;border:1px solid #0000;border-radius:6px;align-self:flex-start;padding:6px 14px;font-size:12px}.cBrkua_formButton:hover{background:#2a2a2c}body[data-ds-dark-theme] .cBrkua_formButton{color:#111827;background:#e5e5ea}body[data-ds-dark-theme] .cBrkua_formButton:hover{background:#d1d5db}.cBrkua_note{color:var(--dsw-alias-label-tertiary,#a0a5b1);margin-top:10px;font-size:11px;line-height:1.7}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_card,body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_head{background:#2c2c2e}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_tabs{background:#1e1e1e}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_skill{background:#48484a;border-color:#ffffff14}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_badge{color:#a5b4fc;background:#6378dc38;border-color:#6378dc66}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_badgeInvokable{color:#30d158;background:#30d15826;border-color:#30d1584d}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_switchThumb{background:#fff}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_tab{color:#ffffff80}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_tabActive{color:#fff;background:#3a3a3c;border:.5px solid #ffffff14;box-shadow:0 1px 3px #0000004d}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_formInput{background:#1c1c1e;border-color:#ffffff0f}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_headButton{color:#ffffffd9;background:#ffffff1a;border-color:#0000}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_headButton:hover{background:#ffffff26}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_headButton:active{background:#ffffff0d}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_deleteButton{color:#ff6b61;background:#ff3b3029;border-color:#0000}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_deleteButton:hover{background:#ff3b3042}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_filterBar{background:#1e1e1e}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_filterInput,body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_filterSelect{color:#fff;background:#2c2c2e;border-color:#ffffff1a}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_filterClear{color:#ffffffb3;border-color:#ffffff1a}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_filterEmpty{color:#ffffffb3}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_badgeWorkspace{color:#ffffffb3;background:#ffffff1a;border-color:#ffffff26}body[data-ds-dark-theme]:not([data-dsh-skin]) .cBrkua_badgeIsolated{color:#fbbf24;background:#f59e0b33;border-color:#f59e0b66}";
+		const tagId$4 = "@linxin666/dsh-web-all/packages/dsh-skill-explorer/src/client/skill-panel.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$6;
-			tag.textContent = css$6;
+			tag.dataset.pluginCss = tagId$4;
+			tag.textContent = css$4;
 			document.head.appendChild(tag);
 		}
 		var skill_panel_module_css_default = {
@@ -44626,8 +42024,8 @@ window.__ModuleLoader__.load({
 				}) : visibleGroups.map((group) => {
 					const groupKey = `group.${group.key}`;
 					const hintKey = `groupHint.${group.key}`;
-					const title = groupKey in zh$5 ? tt(groupKey) : group.title;
-					const hint = hintKey in zh$5 ? tt(hintKey) : group.hint;
+					const title = groupKey in zh$4 ? tt(groupKey) : group.title;
+					const hint = hintKey in zh$4 ? tt(hintKey) : group.hint;
 					return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 						className: skill_panel_module_css_default.group,
 						children: [
@@ -45102,10 +42500,10 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region ../dsh-skill-explorer/src/client/body-mutations.ts
 		/** Cross-bundle registry key; `Symbol.for` so every module copy agrees. */
-		const HUB_KEY$1 = Symbol.for("dsh-web.body-mutation-hub");
-		const INVALIDATION_ONLY$1 = Symbol.for("dsh-web.body-mutation-invalidation");
-		function needsRecords$1(subscribers) {
-			for (const listener of subscribers) if (!listener[INVALIDATION_ONLY$1]) return true;
+		const HUB_KEY$2 = Symbol.for("dsh-web.body-mutation-hub");
+		const INVALIDATION_ONLY$2 = Symbol.for("dsh-web.body-mutation-invalidation");
+		function needsRecords$2(subscribers) {
+			for (const listener of subscribers) if (!listener[INVALIDATION_ONLY$2]) return true;
 			return false;
 		}
 		/**
@@ -45113,12 +42511,12 @@ window.__ModuleLoader__.load({
 		* The marked wrapper also works with an older hub, which delivers records
 		* that it simply ignores until a page reload picks up the updated hub.
 		*/
-		function subscribeBodyInvalidations$1(subscriber) {
+		function subscribeBodyInvalidations$2(subscriber) {
 			const listener = () => {
 				subscriber();
 			};
-			listener[INVALIDATION_ONLY$1] = true;
-			return subscribeBodyMutations$1(listener);
+			listener[INVALIDATION_ONLY$2] = true;
+			return subscribeBodyMutations$2(listener);
 		}
 		/**
 		* Subscribe to body-level childList mutations.
@@ -45127,11 +42525,11 @@ window.__ModuleLoader__.load({
 		* @returns the disposer removing this subscriber (and the observer when it was
 		*   the last one).
 		*/
-		function subscribeBodyMutations$1(subscriber) {
+		function subscribeBodyMutations$2(subscriber) {
 			if (typeof globalThis === "undefined" || typeof document === "undefined") return () => {};
 			if (typeof MutationObserver !== "function") return () => {};
 			const registry = globalThis;
-			let hub = registry[HUB_KEY$1];
+			let hub = registry[HUB_KEY$2];
 			if (hub === void 0) {
 				const subscribers = /* @__PURE__ */ new Set();
 				const created = {
@@ -45159,14 +42557,14 @@ window.__ModuleLoader__.load({
 					else flush();
 				};
 				created.observer = new MutationObserver((records) => {
-					if (needsRecords$1(subscribers)) for (const record of records) created.pending.push(record);
+					if (needsRecords$2(subscribers)) for (const record of records) created.pending.push(record);
 					schedule();
 				});
 				created.observer.observe(document.body ?? document.documentElement, {
 					childList: true,
 					subtree: true
 				});
-				registry[HUB_KEY$1] = created;
+				registry[HUB_KEY$2] = created;
 				hub = created;
 			}
 			const active = hub;
@@ -45176,14 +42574,14 @@ window.__ModuleLoader__.load({
 				if (!subscribed) return;
 				subscribed = false;
 				active.subscribers.delete(subscriber);
-				if (!needsRecords$1(active.subscribers)) active.pending = [];
-				if (active.subscribers.size === 0 && registry[HUB_KEY$1] === active) {
+				if (!needsRecords$2(active.subscribers)) active.pending = [];
+				if (active.subscribers.size === 0 && registry[HUB_KEY$2] === active) {
 					active.observer.disconnect();
 					if (active.frame !== void 0 && typeof cancelAnimationFrame === "function") cancelAnimationFrame(active.frame);
 					active.frame = void 0;
 					active.pending = [];
 					active.scheduled = false;
-					delete registry[HUB_KEY$1];
+					delete registry[HUB_KEY$2];
 				}
 			};
 		}
@@ -45292,7 +42690,7 @@ window.__ModuleLoader__.load({
 					subtree: true
 				});
 			};
-			const unsubscribeBody = subscribeBodyInvalidations$1(() => {
+			const unsubscribeBody = subscribeBodyInvalidations$2(() => {
 				tryPlace();
 			});
 			const rootObserver = new MutationObserver(() => {
@@ -45368,3423 +42766,6 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region ../dsh-skill-explorer/src/client/telemetry.ts
-		const VISITOR_KEY$1 = "dsh-web-ui-telemetry-visitor";
-		const DAY_KEY_PREFIX$1 = "dsh-web-ui-telemetry-day:";
-		const ENDPOINT$1 = "https://dsh-market.com/api/telemetry/event";
-		/** The building package's version, when the bundle carries it. */
-		function bakedVersion$1() {
-			try {
-				return "0.3.24";
-			} catch {
-				return;
-			}
-		}
-		/** Read or lazily create the anonymous visitor id; null when storage is unavailable. */
-		function visitorId$1() {
-			try {
-				const existing = localStorage.getItem(VISITOR_KEY$1);
-				if (existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing)) return existing;
-				const fresh = crypto.randomUUID().replaceAll("-", "");
-				localStorage.setItem(VISITOR_KEY$1, fresh);
-				return fresh;
-			} catch {
-				return null;
-			}
-		}
-		/** Drop stale per-day dedup keys so localStorage does not grow forever. */
-		function pruneDayKeys$1(today) {
-			try {
-				for (let index = localStorage.length - 1; index >= 0; index -= 1) {
-					const key = localStorage.key(index);
-					if (key !== null && key.startsWith(DAY_KEY_PREFIX$1) && key !== DAY_KEY_PREFIX$1 + today) localStorage.removeItem(key);
-				}
-			} catch {}
-		}
-		/**
-		* Fire the daily heartbeat for the given items at most once per UTC day per
-		* browser. Never throws and never blocks the caller. Items without an explicit
-		* version inherit the bundle's baked build version.
-		*/
-		function reportDailyHeartbeat$1(items) {
-			try {
-				if (items.length === 0) return;
-				const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-				if (navigator.webdriver) return;
-				if (localStorage.getItem(DAY_KEY_PREFIX$1 + today) !== null) return;
-				const visitor = visitorId$1();
-				if (visitor === null) return;
-				pruneDayKeys$1(today);
-				const payloadItems = items.map((item) => {
-					const out = { name: item.name };
-					const version = item.version ?? bakedVersion$1();
-					if (version !== void 0) out.version = version;
-					if (item.channel !== void 0) out.channel = item.channel;
-					return out;
-				});
-				const body = JSON.stringify({
-					kind: "heartbeat",
-					visitor,
-					items: payloadItems
-				});
-				fetch(ENDPOINT$1, {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body,
-					keepalive: true
-				}).then((response) => {
-					if (response.ok) localStorage.setItem(DAY_KEY_PREFIX$1 + today, "1");
-				}).catch(() => {});
-			} catch {}
-		}
-		//#endregion
-		//#region ../dsh-skill-explorer/src/client/index.ts
-		var client_exports$5 = /* @__PURE__ */ __exportAll({
-			apply: () => apply$6,
-			inject: () => inject$6
-		});
-		/** Locale namespace this plugin owns. */
-		const NS$5 = "dsh-skill-explorer";
-		/** Required services (fiber inject waiting — the runtime must be up first). */
-		const inject$6 = ["slots", "locale"];
-		/**
-		* Mount the skill center surfaces.
-		* @param ctx - client root context (locale service).
-		*/
-		function apply$6(ctx) {
-			reportDailyHeartbeat$1([{ name: "@linxin666/dsh-client-ui-skill-explorer" }]);
-			ctx.effect(() => {
-				try {
-					return ctx.locale.register(NS$5, {
-						zh: zh$5,
-						en: en$5
-					});
-				} catch {
-					return () => {};
-				}
-			}, "skill-explorer: dictionaries");
-			try {
-				setRuntimeTranslate(ctx.locale.bind(NS$5));
-			} catch {}
-			const panel = mountPanel(new SkillApi(), ctx.locale);
-			const disposers = [];
-			try {
-				disposers.push(mountSidebarEntry(() => panel.toggle(), ctx.locale));
-				disposers.push(() => panel.dispose());
-			} catch (error) {
-				console.warn("[skill-explorer] mount failed:", error);
-			}
-			ctx.effect(() => () => {
-				for (const dispose of disposers.splice(0)) dispose();
-			}, "skill-explorer: ui mounts");
-		}
-		/** Default fetch seam over the page global. */
-		const defaultFetch = async (url, init) => {
-			return await globalThis.fetch(url, init ?? {});
-		};
-		/** Extract a record from an unknown JSON body. */
-		function asRecord(value) {
-			if (typeof value === "object" && value !== null && !Array.isArray(value)) return value;
-		}
-		/** Known incident kinds. */
-		const INCIDENT_KINDS = /* @__PURE__ */ new Set([
-			"boot-failure",
-			"process-crash",
-			"heartbeat-timeout",
-			"http-failure",
-			"client-failure",
-			"dependency-failure",
-			"configuration-failure"
-		]);
-		/** Known incident phases. */
-		const INCIDENT_PHASES = /* @__PURE__ */ new Set([
-			"opened",
-			"collecting",
-			"rescue-starting",
-			"rescue-active",
-			"diagnosing",
-			"plan-ready",
-			"repairing",
-			"candidate-testing",
-			"awaiting-confirmation",
-			"promoting",
-			"recovered",
-			"rolled-back",
-			"unresolved"
-		]);
-		/** Known profile phases. */
-		const PROFILE_PHASES = /* @__PURE__ */ new Set([
-			"idle",
-			"starting",
-			"healthy",
-			"degraded",
-			"stopping",
-			"exited",
-			"suspected",
-			"failed",
-			"quarantined"
-		]);
-		/** Known system phases. */
-		const SYSTEM_PHASES = /* @__PURE__ */ new Set([
-			"disabled",
-			"provisioning",
-			"armed",
-			"degraded",
-			"updating",
-			"rolling-back",
-			"uninstalling",
-			"broken"
-		]);
-		/** Lenient validation of one incident row; invalid rows are dropped. */
-		function parseIncident(value) {
-			const record = asRecord(value);
-			if (record === void 0) return void 0;
-			const id = record["id"];
-			const summary = record["summary"];
-			const kind = record["kind"];
-			const phase = record["phase"];
-			if (typeof id !== "string" || id === "" || typeof summary !== "string") return void 0;
-			if (typeof kind !== "string" || !INCIDENT_KINDS.has(kind)) return void 0;
-			if (typeof phase !== "string" || !INCIDENT_PHASES.has(phase)) return void 0;
-			const profileId = record["profileId"];
-			const openedAt = record["openedAt"];
-			const updatedAt = record["updatedAt"];
-			const repairable = record["repairable"];
-			const candidateId = record["candidateId"];
-			return {
-				id,
-				summary,
-				kind,
-				phase,
-				profileId: typeof profileId === "string" ? profileId : void 0,
-				openedAt: typeof openedAt === "string" ? openedAt : void 0,
-				updatedAt: typeof updatedAt === "string" ? updatedAt : void 0,
-				repairable: typeof repairable === "boolean" ? repairable : void 0,
-				candidateId: typeof candidateId === "string" ? candidateId : void 0
-			};
-		}
-		/** Lenient validation of one profile row; invalid rows are dropped. */
-		function parseProfile(value) {
-			const record = asRecord(value);
-			if (record === void 0) return void 0;
-			const identity = asRecord(record["identity"]);
-			const phase = record["phase"];
-			if (phase !== void 0 && (typeof phase !== "string" || !PROFILE_PHASES.has(phase))) return void 0;
-			return {
-				identity: identity === void 0 ? void 0 : {
-					id: typeof identity["id"] === "string" ? identity["id"] : void 0,
-					name: typeof identity["name"] === "string" ? identity["name"] : void 0
-				},
-				phase,
-				pid: typeof record["pid"] === "number" ? record["pid"] : void 0,
-				runId: typeof record["runId"] === "string" ? record["runId"] : void 0,
-				startedAt: typeof record["startedAt"] === "string" ? record["startedAt"] : void 0,
-				lastHealthyAt: typeof record["lastHealthyAt"] === "string" ? record["lastHealthyAt"] : void 0,
-				restartCount: typeof record["restartCount"] === "number" ? record["restartCount"] : void 0,
-				managed: typeof record["managed"] === "boolean" ? record["managed"] : void 0
-			};
-		}
-		/** Lenient validation of the snapshot object. */
-		function parseSnapshot(value) {
-			const record = asRecord(value);
-			if (record === void 0) return void 0;
-			const phase = record["phase"];
-			const profilesValue = record["profiles"];
-			const incidentsValue = record["incidents"];
-			const profiles = Array.isArray(profilesValue) ? profilesValue.map(parseProfile).filter((entry) => entry !== void 0) : void 0;
-			const incidents = Array.isArray(incidentsValue) ? incidentsValue.map(parseIncident).filter((entry) => entry !== void 0) : void 0;
-			return {
-				protocol: typeof record["protocol"] === "number" ? record["protocol"] : void 0,
-				phase: phase !== void 0 && (typeof phase !== "string" || !SYSTEM_PHASES.has(phase)) ? void 0 : phase,
-				version: typeof record["version"] === "string" ? record["version"] : void 0,
-				capsuleVersion: typeof record["capsuleVersion"] === "string" ? record["capsuleVersion"] : void 0,
-				profiles,
-				incidents,
-				updatedAt: typeof record["updatedAt"] === "string" ? record["updatedAt"] : void 0,
-				degradedReason: typeof record["degradedReason"] === "string" ? record["degradedReason"] : void 0,
-				policy: (() => {
-					const policy = asRecord(record["policy"]);
-					return policy === void 0 ? void 0 : {
-						fullProtection: typeof policy["fullProtection"] === "boolean" ? policy["fullProtection"] : void 0,
-						autoRepair: typeof policy["autoRepair"] === "boolean" ? policy["autoRepair"] : void 0,
-						autoMigrate: typeof policy["autoMigrate"] === "boolean" ? policy["autoMigrate"] : void 0
-					};
-				})()
-			};
-		}
-		/**
-		* Validate a SupervisorResponse body. Returns undefined on malformed input;
-		* the response keeps its business ok flag so callers can distinguish a
-		* supervisor refusal from a transport failure.
-		*/
-		function parseSupervisorResponse(value) {
-			const record = asRecord(value);
-			if (record === void 0) return void 0;
-			const ok = record["ok"];
-			if (typeof ok !== "boolean") return void 0;
-			const snapshot = parseSnapshot(record["snapshot"]);
-			const error = asRecord(record["error"]);
-			const message = error?.["message"];
-			const hostVersion = record["hostVersion"];
-			return {
-				ok,
-				snapshot: snapshot === void 0 ? void 0 : snapshot,
-				error: error === void 0 ? void 0 : {
-					code: typeof error["code"] === "string" ? error["code"] : void 0,
-					message: typeof message === "string" ? message : void 0
-				},
-				hostVersion: typeof hostVersion === "string" ? hostVersion : void 0
-			};
-		}
-		/**
-		* Loopback API client. Pass a fetch seam in tests; the browser default calls
-		* the page's global fetch with the DOCTOR_API_BASE prefix.
-		*/
-		var DoctorApi = class {
-			fetch;
-			base;
-			constructor(deps) {
-				this.fetch = deps?.fetch ?? defaultFetch;
-				this.base = deps?.base ?? "/api/doctor";
-			}
-			/** GET /api/doctor/status (supervisor snapshot). */
-			async status() {
-				return await this.request("status", void 0);
-			}
-			/** POST /api/doctor/action: run a supervisor action by name. */
-			async action(name, selection) {
-				const body = { action: name };
-				if (selection?.profileId !== void 0) body["profileId"] = selection.profileId;
-				if (selection?.incidentId !== void 0) body["incidentId"] = selection.incidentId;
-				return await this.post("action", body);
-			}
-			/** POST /api/doctor/client-failure: report a browser-side failure. */
-			async reportClientFailure(input) {
-				const body = { message: input.message.slice(0, 4096) };
-				if (input.stack !== void 0) body["stack"] = input.stack.slice(0, 16384);
-				if (input.phase !== void 0) body["phase"] = input.phase.slice(0, 128);
-				if (input.runId !== void 0) body["runId"] = input.runId;
-				return await this.post("client-failure", body);
-			}
-			async post(endpoint, body) {
-				return await this.request(endpoint, {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify(body)
-				});
-			}
-			async request(endpoint, init) {
-				let response;
-				try {
-					response = await this.fetch(this.base + "/" + endpoint, init);
-				} catch (error) {
-					return {
-						ok: false,
-						kind: "network",
-						message: safeError(error)
-					};
-				}
-				if (response.status === 403 || response.status === 401 || response.status === 405) return {
-					ok: false,
-					kind: "loopback",
-					status: response.status,
-					message: "request refused"
-				};
-				if (response.status === 404) return {
-					ok: false,
-					kind: "not-available",
-					status: response.status
-				};
-				if (response.status === 503) return {
-					ok: false,
-					...await serviceError(response)
-				};
-				if (!response.ok) return {
-					ok: false,
-					kind: "http",
-					status: response.status,
-					message: await bodyError(response)
-				};
-				let body;
-				try {
-					body = await response.json();
-				} catch {
-					return {
-						ok: false,
-						kind: "not-available",
-						status: response.status
-					};
-				}
-				const parsed = parseSupervisorResponse(body);
-				if (parsed === void 0) return {
-					ok: false,
-					kind: "malformed",
-					status: response.status
-				};
-				if (!parsed.ok) {
-					const message = parsed.error?.message;
-					return {
-						ok: false,
-						kind: "supervisor",
-						status: response.status,
-						message: message ?? "supervisor refused"
-					};
-				}
-				return {
-					ok: true,
-					value: parsed
-				};
-			}
-		};
-		/**
-		* Classify a 503 service-deployment error. The host half answers 503 with
-		* SUPERVISOR_UNPROVISIONED (state missing) or SUPERVISOR_DOWN (state present
-		* but the daemon is not answering); anything else degrades to the http kind.
-		*/
-		async function serviceError(response) {
-			try {
-				const error = asRecord(asRecord(await response.json())?.["error"]);
-				const code = typeof error?.["code"] === "string" ? error["code"] : void 0;
-				const message = typeof error?.["message"] === "string" ? error["message"] : void 0;
-				return {
-					kind: code === "SUPERVISOR_UNPROVISIONED" ? "unprovisioned" : code === "SUPERVISOR_DOWN" ? "supervisor-down" : "http",
-					status: response.status,
-					message,
-					code
-				};
-			} catch {
-				return {
-					kind: "http",
-					status: response.status
-				};
-			}
-		}
-		/** Read an error message from a failed response (never throws). */
-		async function bodyError(response) {
-			try {
-				const record = asRecord(await response.json());
-				const message = asRecord(record?.["error"])?.["message"] ?? record?.["error"];
-				if (typeof message === "string" && message !== "") return message;
-				return "HTTP " + String(response.status);
-			} catch {
-				return "HTTP " + String(response.status);
-			}
-		}
-		/** Safe one-line error description. */
-		function safeError(error) {
-			if (error instanceof Error) return error.message || error.name;
-			return String(error);
-		}
-		//#endregion
-		//#region ../dsh-doctor/src/client/plugin-failures.ts
-		/** Failed-plugin ids that were listed but never materialized. */
-		function detectFailedPluginIds(modules) {
-			if (modules === void 0 || modules === null) return [];
-			try {
-				const rows = modules.manifest?.plugins;
-				if (rows === void 0 || rows.length === 0) return [];
-				const cache = modules.loadCache;
-				const has = (id) => {
-					if (cache === void 0 || typeof cache.has !== "function") return false;
-					try {
-						return cache.has(id) === true;
-					} catch {
-						return false;
-					}
-				};
-				const failed = [];
-				const seen = /* @__PURE__ */ new Set();
-				for (const row of rows) {
-					if (typeof row?.id !== "string" || row.id === "") continue;
-					if (seen.has(row.id)) continue;
-					seen.add(row.id);
-					if (!has(row.id)) failed.push(row.id);
-				}
-				return failed;
-			} catch {
-				return [];
-			}
-		}
-		//#endregion
-		//#region ../dsh-doctor/src/client/doctor-controller.ts
-		/**
-		* Browser-half state controller for the dsh-doctor recovery console.
-		*
-		* Owns one immutable snapshot (a small external store for useSyncExternalStore),
-		* the refresh/action/report verbs over the loopback API, the passive probe
-		* merge, and the poll loop. Resilience contract: every public method resolves
-		* or no-ops, never throws; the host being absent, a fetch failure or a broken
-		* response only degrades the snapshot.
-		* @module @linxin666/dsh-doctor/client
-		*/
-		/** Initial (pre-connect) snapshot. */
-		function initialDoctorView() {
-			return {
-				phase: "idle",
-				host: "unknown",
-				snapshot: void 0,
-				profiles: [],
-				incidents: [],
-				probe: [],
-				pluginFailures: [],
-				bootSignals: [],
-				lastCheckedAt: void 0,
-				lastError: void 0,
-				lastErrorCode: void 0,
-				hostVersion: void 0,
-				actionRunning: false,
-				action: void 0
-			};
-		}
-		/** Minimal external store: immutable snapshots, never-throwing notify. */
-		var DoctorStore = class {
-			view = initialDoctorView();
-			listeners = /* @__PURE__ */ new Set();
-			getSnapshot() {
-				return this.view;
-			}
-			subscribe(listener) {
-				this.listeners.add(listener);
-				return () => {
-					this.listeners.delete(listener);
-				};
-			}
-			set(patch) {
-				this.view = {
-					...this.view,
-					...patch
-				};
-				for (const listener of [...this.listeners]) try {
-					listener();
-				} catch {}
-			}
-		};
-		/** The default timer pair over the page globals (guarded for non-browser use). */
-		const defaultTimers = {
-			set: (callback, ms) => setTimeout(callback, ms),
-			clear: (handle) => {
-				clearTimeout(handle);
-			}
-		};
-		/** One-line summary of an API failure (never throws). */
-		function describeApiFailure(failure) {
-			if (failure.kind !== "unprovisioned" && failure.kind !== "supervisor-down" && failure.message !== void 0 && failure.message !== "") return failure.message;
-			switch (failure.kind) {
-				case "network": return "network error";
-				case "loopback": return "loopback only";
-				case "not-available": return "endpoint unavailable";
-				case "malformed": return "malformed response";
-				case "http": return "HTTP " + String(failure.status ?? "");
-				case "supervisor": return "supervisor refused";
-				case "unprovisioned": return "supervisor service not provisioned";
-				case "supervisor-down": return "supervisor service not answering";
-			}
-		}
-		/**
-		* Owns the console snapshot and its refresh loop. Construct with a PassiveProbe
-		* whose notify callback routes to syncProbe; start() kicks the poll loop and
-		* the visibility guard; dispose() stops everything.
-		*/
-		var DoctorController = class {
-			/** Read-only external store face. */
-			store;
-			/** Bound subscribe for useSyncExternalStore. */
-			subscribe;
-			/** Bound snapshot for useSyncExternalStore. */
-			getSnapshot;
-			api;
-			passive;
-			intervalMs;
-			now;
-			timers;
-			modules;
-			harness;
-			pluginRepair;
-			failureGraceMs;
-			/** Plugin ids seen missing so far; a steady config lets failures be confirmed across a poll. */
-			pendingPluginFailures = /* @__PURE__ */ new Map();
-			/** Plugin ids already recorded as startup failures. */
-			recordedPluginFailures = /* @__PURE__ */ new Set();
-			timer;
-			visibilityListener;
-			disposed = false;
-			constructor(options) {
-				this.store = new DoctorStore();
-				this.subscribe = (listener) => this.store.subscribe(listener);
-				this.getSnapshot = () => this.store.getSnapshot();
-				this.api = options.api ?? new DoctorApi();
-				this.passive = options.passive;
-				this.intervalMs = options.intervalMs ?? 15e3;
-				this.now = options.now ?? (() => Date.now());
-				this.timers = options.timers ?? defaultTimers;
-				this.modules = options.modules;
-				this.harness = options.harness;
-				this.pluginRepair = options.pluginRepair;
-				this.failureGraceMs = options.failureGraceMs ?? 8e3;
-			}
-			/** Merge the passive probe's current ring into the snapshot. */
-			syncProbe() {
-				try {
-					this.store.set({ probe: this.passive.snapshot() });
-				} catch {}
-			}
-			/**
-			* Reconcile the boot graph against the module registry and record plugins
-			* that were enabled but never started. A plugin must stay missing across the
-			* grace window before it is recorded, so entries that materialize slightly
-			* after this console's own apply are never misreported.
-			*/
-			scanPluginFailures() {
-				try {
-					const missing = detectFailedPluginIds(this.modules);
-					if (missing.length === 0) {
-						this.pendingPluginFailures.clear();
-						return;
-					}
-					const nowMs = this.now();
-					const missingSet = new Set(missing);
-					for (const id of missing) {
-						if (this.recordedPluginFailures.has(id) || this.pendingPluginFailures.has(id)) continue;
-						this.pendingPluginFailures.set(id, nowMs);
-					}
-					for (const [id, seenAt] of [...this.pendingPluginFailures]) if (missingSet.has(id)) {
-						if (nowMs - seenAt < this.failureGraceMs) continue;
-						this.recordedPluginFailures.add(id);
-						this.pendingPluginFailures.delete(id);
-						this.passive.recordPluginStartupFailure(id);
-					} else this.pendingPluginFailures.delete(id);
-					this.syncProbe();
-				} catch {}
-			}
-			/** Record a plugin startup failure observed by an external signal (loader event). */
-			notePluginStartupFailure(pluginId) {
-				try {
-					const id = typeof pluginId === "string" ? pluginId.trim() : "";
-					if (id === "") return;
-					if (this.recordedPluginFailures.has(id)) return;
-					this.recordedPluginFailures.add(id);
-					this.passive.recordPluginStartupFailure(id);
-					this.syncProbe();
-				} catch {}
-			}
-			/** Resolve the current session the console would send into. */
-			harnessTarget() {
-				try {
-					return this.harness?.current();
-				} catch {
-					return;
-				}
-			}
-			/** Refresh the plugin-manager failure ring (best effort). */
-			async refreshPluginFailures() {
-				if (this.disposed) return;
-				try {
-					const items = await this.pluginRepair?.failures();
-					if (this.disposed) return;
-					this.store.set({ pluginFailures: items ?? [] });
-				} catch {}
-			}
-			/**
-			* Disable one failed plugin for the next host restart through the
-			* plugin-manager port.
-			*/
-			async disablePlugin(pluginId) {
-				const id = typeof pluginId === "string" ? pluginId.trim() : "";
-				if (id === "") {
-					this.store.set({ action: {
-						ok: false,
-						message: "empty plugin id"
-					} });
-					return {
-						ok: false,
-						message: "empty plugin id"
-					};
-				}
-				const port = this.pluginRepair;
-				if (port === void 0) {
-					this.store.set({ action: {
-						ok: false,
-						message: "plugin manager unavailable"
-					} });
-					return {
-						ok: false,
-						message: "plugin manager unavailable"
-					};
-				}
-				if (this.disposed) return {
-					ok: false,
-					message: "disposed"
-				};
-				this.store.set({
-					actionRunning: true,
-					action: void 0
-				});
-				let outcome;
-				let result;
-				try {
-					const disabled = await port.disable(id);
-					result = disabled.ok ? { ok: true } : {
-						ok: false,
-						message: disabled.message
-					};
-					outcome = disabled.ok ? {
-						ok: true,
-						kind: "disabled",
-						id
-					} : {
-						ok: false,
-						message: disabled.message
-					};
-				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					result = {
-						ok: false,
-						message
-					};
-					outcome = {
-						ok: false,
-						message
-					};
-				}
-				if (this.disposed) return result;
-				this.store.set({
-					actionRunning: false,
-					action: outcome
-				});
-				return result;
-			}
-			/**
-			* Queue the composed prompt into the current session; the outcome lands in
-			* the snapshot's action line ('sent' on success).
-			*/
-			async sendToHarness(text) {
-				const trimmed = typeof text === "string" ? text.trim() : "";
-				if (trimmed === "") {
-					this.store.set({ action: {
-						ok: false,
-						message: "empty prompt"
-					} });
-					return {
-						ok: false,
-						message: "empty prompt"
-					};
-				}
-				const port = this.harness;
-				const target = port?.current();
-				if (port === void 0 || target === void 0) {
-					const message = "no current session";
-					this.store.set({ action: {
-						ok: false,
-						message
-					} });
-					return {
-						ok: false,
-						message
-					};
-				}
-				if (this.disposed) return {
-					ok: false,
-					message: "disposed"
-				};
-				this.store.set({
-					actionRunning: true,
-					action: void 0
-				});
-				let outcome;
-				let result;
-				try {
-					const sent = await port.send(target, trimmed);
-					result = sent.ok ? { ok: true } : {
-						ok: false,
-						message: sent.message
-					};
-					outcome = sent.ok ? {
-						ok: true,
-						kind: "sent"
-					} : {
-						ok: false,
-						message: sent.message
-					};
-				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					result = {
-						ok: false,
-						message
-					};
-					outcome = {
-						ok: false,
-						message
-					};
-				}
-				if (this.disposed) return result;
-				this.store.set({
-					actionRunning: false,
-					action: outcome
-				});
-				return result;
-			}
-			/** One refresh cycle: the supervisor snapshot over the loopback API. */
-			async refresh() {
-				this.scanPluginFailures();
-				this.refreshPluginFailures();
-				if (this.disposed) return;
-				const previous = this.store.getSnapshot();
-				if (previous.host === "unknown") this.store.set({ phase: "loading" });
-				let result;
-				try {
-					result = await this.api.status();
-				} catch {
-					result = {
-						ok: false,
-						kind: "network"
-					};
-				}
-				if (this.disposed) return;
-				if (result.ok) {
-					const snapshot = result.value.snapshot;
-					this.store.set({
-						phase: "ready",
-						host: "available",
-						snapshot,
-						profiles: snapshot?.profiles ?? previous.profiles,
-						incidents: snapshot?.incidents ?? previous.incidents,
-						lastCheckedAt: this.now(),
-						lastError: void 0,
-						lastErrorCode: void 0,
-						hostVersion: result.value.hostVersion
-					});
-				} else this.store.set({
-					phase: "ready",
-					host: "unavailable",
-					lastError: describeApiFailure(result),
-					lastErrorCode: result.code,
-					hostVersion: void 0
-				});
-			}
-			/** Run the diagnose action and merge the resulting snapshot. */
-			async runDiagnose() {
-				await this.invokeAction("diagnose");
-			}
-			/** One-click lifecycle install/repair: deploy the service and refresh the capsule. */
-			async runProvision() {
-				await this.invokeAction("provision");
-			}
-			/** Remove the user-level supervisor service (state data is kept). */
-			async runUninstall() {
-				await this.invokeAction("uninstall");
-			}
-			/** Run the repair action against the first repairable incident. */
-			async runRepair() {
-				const incident = this.firstRepairableIncident();
-				if (incident === void 0) {
-					this.store.set({ action: {
-						ok: false,
-						message: "no repairable incident"
-					} });
-					return;
-				}
-				await this.invokeAction("repair", {
-					incidentId: incident.id,
-					profileId: incident.profileId
-				});
-			}
-			/** Confirm the first isolated candidate waiting for promotion. */
-			async runConfirm() {
-				const incident = this.store.getSnapshot().incidents.find((item) => item.phase === "awaiting-confirmation" && item.candidateId !== void 0);
-				if (incident === void 0) {
-					this.store.set({ action: {
-						ok: false,
-						message: "no candidate awaiting confirmation"
-					} });
-					return;
-				}
-				await this.invokeAction("confirm", {
-					incidentId: incident.id,
-					profileId: incident.profileId
-				});
-			}
-			/** Report the newest passive incident to the supervisor (best effort). */
-			async reportProbe() {
-				const incident = this.store.getSnapshot().probe[this.store.getSnapshot().probe.length - 1];
-				if (incident === void 0) {
-					this.store.set({ action: {
-						ok: false,
-						message: "probe list empty"
-					} });
-					return;
-				}
-				if (this.disposed) return;
-				this.store.set({
-					actionRunning: true,
-					action: void 0
-				});
-				let outcome;
-				try {
-					const result = await this.api.reportClientFailure({
-						message: incident.message,
-						stack: incident.detail,
-						phase: "recovery-console:" + incident.kind
-					});
-					outcome = result.ok ? {
-						ok: true,
-						kind: "reported"
-					} : {
-						ok: false,
-						message: describeApiFailure(result)
-					};
-				} catch {
-					outcome = {
-						ok: false,
-						message: "report failed"
-					};
-				}
-				if (this.disposed) return;
-				this.store.set({
-					actionRunning: false,
-					action: outcome
-				});
-			}
-			/** Clear the passive probe ring (local only). */
-			clearProbe() {
-				try {
-					this.passive.clear();
-					this.store.set({ probe: [] });
-				} catch {}
-			}
-			/** Report a React boundary catch into the probe list. */
-			recordBoundary(error) {
-				try {
-					const text = error instanceof Error ? error.message || error.name : String(error);
-					this.passive.record("react-boundary", text, error instanceof Error ? error.message ?? "" : void 0);
-					this.syncProbe();
-				} catch {}
-			}
-			/** Record a boot/reconnect signal and trigger a refresh. */
-			noteConnectionReset() {
-				try {
-					const at = this.now();
-					this.passive.record("connection-reset", "connection/reset event observed");
-					this.syncProbe();
-					const ring = [...this.store.getSnapshot().bootSignals, {
-						kind: "connection-reset",
-						at
-					}];
-					this.store.set({ bootSignals: ring.slice(-8) });
-					this.refresh();
-				} catch {}
-			}
-			/** First incident that is repairable and not already settled. */
-			firstRepairableIncident() {
-				return this.store.getSnapshot().incidents.find((incident) => incident.repairable === true && incident.phase !== "recovered" && incident.phase !== "rolled-back" && incident.phase !== "unresolved");
-			}
-			async invokeAction(name, selection) {
-				if (this.disposed) return;
-				if (this.store.getSnapshot().actionRunning) return;
-				this.store.set({
-					actionRunning: true,
-					action: void 0
-				});
-				let outcome;
-				try {
-					const result = await this.api.action(name, selection);
-					if (result.ok) {
-						const snapshot = result.value.snapshot;
-						this.store.set({
-							snapshot,
-							profiles: snapshot?.profiles ?? this.store.getSnapshot().profiles,
-							incidents: snapshot?.incidents ?? this.store.getSnapshot().incidents,
-							lastCheckedAt: this.now(),
-							hostVersion: result.value.hostVersion,
-							...result.value.hostVersion !== void 0 ? { lastErrorCode: void 0 } : {}
-						});
-						outcome = {
-							ok: true,
-							kind: "completed"
-						};
-					} else outcome = {
-						ok: false,
-						message: describeApiFailure(result)
-					};
-				} catch {
-					outcome = {
-						ok: false,
-						message: "action failed"
-					};
-				}
-				if (this.disposed) return;
-				this.store.set({
-					actionRunning: false,
-					action: outcome
-				});
-			}
-			/**
-			* Start the poll loop plus the visibility guard. Polling pauses while the
-			* tab is hidden. Returns the disposer.
-			*/
-			start() {
-				this.refresh();
-				const tick = () => {
-					this.refresh();
-				};
-				this.timer = this.timers.set(tick, this.intervalMs);
-				let visibilityListener;
-				try {
-					if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
-						const onVisibility = () => {
-							try {
-								if (document.visibilityState === "visible") {
-									this.refresh();
-									if (this.timer === void 0) this.timer = this.timers.set(tick, this.intervalMs);
-								} else if (this.timer !== void 0) {
-									this.timers.clear(this.timer);
-									this.timer = void 0;
-								}
-							} catch {}
-						};
-						document.addEventListener("visibilitychange", onVisibility);
-						visibilityListener = onVisibility;
-					}
-				} catch {}
-				this.visibilityListener = visibilityListener;
-				return () => this.dispose();
-			}
-			/** Stop the poll loop; the passive probe keeps its ring but listeners stay. */
-			dispose() {
-				if (this.disposed) return;
-				this.disposed = true;
-				if (this.timer !== void 0) {
-					try {
-						this.timers.clear(this.timer);
-					} catch {}
-					this.timer = void 0;
-				}
-				if (this.visibilityListener !== void 0) {
-					try {
-						if (typeof document !== "undefined" && typeof document.removeEventListener === "function") document.removeEventListener("visibilitychange", this.visibilityListener);
-					} catch {}
-					this.visibilityListener = void 0;
-				}
-			}
-		};
-		//#endregion
-		//#region ../dsh-doctor/src/client/main-session.ts
-		/**
-		* Resolve the Session the main view currently shows.
-		*
-		* Reads the catalog's rows rather than a per-id retain-info source: ownership
-		* counts ride the list snapshot, so this neither allocates observers nor opens
-		* history, and a subscription to the list still fires when the selection moves.
-		* @param byId - the session catalog's rows (`SessionListState.byId`), when available.
-		* @returns the main-view session id, or undefined when the main view shows none.
-		*/
-		function mainViewSessionId$1(byId) {
-			if (byId === void 0 || byId === null) return void 0;
-			for (const row of Object.values(byId)) if (row !== void 0 && (row.retainedBy?.mainView ?? 0) > 0) return row.id;
-		}
-		//#endregion
-		//#region ../dsh-doctor/src/client/harness-send.ts
-		/**
-		* Build the real port over ctx.sessions. Returns undefined when no sessions
-		* service is provided (the console then degrades the send affordance).
-		* @param sessions - the raw ctx.sessions value (unknown by design: the port
-		*   is optional and must never make apply fail).
-		*/
-		function createHarnessPort(sessions) {
-			if (sessions === void 0 || sessions === null) return void 0;
-			const s = sessions;
-			return {
-				current: () => {
-					try {
-						const list = s.list?.getSnapshot?.();
-						const id = mainViewSessionId$1(list?.byId);
-						if (id === void 0) return void 0;
-						return {
-							id,
-							label: (list?.byId?.[id])?.displayTitle ?? id
-						};
-					} catch {
-						return;
-					}
-				},
-				send: async (target, text) => {
-					try {
-						const binding = s.binding(target.id);
-						if (binding === void 0) return {
-							ok: false,
-							message: "target session is not available"
-						};
-						const result = await binding.session.prompt([{
-							type: "text",
-							text
-						}], "queue");
-						if (result.ok) return { ok: true };
-						return {
-							ok: false,
-							message: result.error.code + ": " + result.error.message
-						};
-					} catch (error) {
-						return {
-							ok: false,
-							message: error instanceof Error ? error.message : String(error)
-						};
-					}
-				}
-			};
-		}
-		/** Compose the troubleshooting prompt text (never throws). */
-		function composeHarnessPrompt(failure, env, lines) {
-			try {
-				const parts = [lines.title];
-				parts.push("");
-				parts.push("## " + lines.summary);
-				parts.push(failure.summary !== "" ? failure.summary : "-");
-				if (failure.kind !== void 0 && failure.kind !== "") parts.push(lines.kind + ": " + failure.kind);
-				if (failure.stack !== void 0 && failure.stack.trim() !== "") {
-					parts.push("");
-					parts.push("## " + lines.stack);
-					parts.push(failure.stack);
-				}
-				const envFacts = [];
-				if (env.webVersion !== void 0 && env.webVersion !== "") envFacts.push("Doctor Web " + env.webVersion);
-				if (env.supervisorVersion !== void 0 && env.supervisorVersion !== "") envFacts.push("Supervisor " + env.supervisorVersion);
-				if (failure.at !== void 0 && Number.isFinite(failure.at)) envFacts.push(new Date(failure.at).toISOString());
-				if (envFacts.length > 0) {
-					parts.push("");
-					parts.push("## " + lines.environment);
-					parts.push(envFacts.join(" / "));
-				}
-				return parts.join("\n");
-			} catch {
-				return lines.title;
-			}
-		}
-		//#endregion
-		//#region ../dsh-doctor/src/client/plugin-repair.ts
-		/**
-		* Build the port over the raw `ctx.get('pluginManager')` value. Returns
-		* undefined when the service is absent.
-		* @param pluginManager - the raw service value (unknown by design).
-		*/
-		function createPluginRepairPort(pluginManager) {
-			if (pluginManager === void 0 || pluginManager === null) return void 0;
-			const service = pluginManager;
-			if (typeof service.failures !== "function" || typeof service.setEnabled !== "function") return void 0;
-			return {
-				failures: async () => {
-					try {
-						const items = (await service.failures?.())?.items ?? [];
-						const out = [];
-						for (const item of items) {
-							const pluginId = typeof item?.pluginId === "string" ? item.pluginId : "";
-							if (pluginId === "") continue;
-							out.push({
-								pluginId,
-								message: typeof item.message === "string" ? item.message : "",
-								stack: typeof item.stack === "string" ? item.stack : void 0
-							});
-						}
-						return out;
-					} catch {
-						return [];
-					}
-				},
-				disable: async (pluginId) => {
-					try {
-						await service.setEnabled?.(pluginId, false);
-						return { ok: true };
-					} catch (error) {
-						return {
-							ok: false,
-							message: error instanceof Error ? error.message : String(error)
-						};
-					}
-				}
-			};
-		}
-		//#endregion
-		//#region ../dsh-doctor/src/client/doctor-passive.ts
-		/** Max detail length kept per incident. */
-		const MAX_DETAIL_CHARS = 800;
-		/** Max message length kept per incident. */
-		const MAX_MESSAGE_CHARS = 300;
-		/** Skip an exact repeat of the last incident within this window (ms). */
-		const DEDUPE_WINDOW_MS = 2e3;
-		/** Cap a string, appending an ellipsis when truncated. */
-		function capText(text, limit) {
-			if (text.length <= limit) return text;
-			return text.slice(0, limit) + "...";
-		}
-		/** Produce a safe, plain-text description of an unknown error value. */
-		function safeDescribe(value) {
-			if (value === void 0) return "undefined";
-			if (value === null) return "null";
-			if (typeof value === "string") return capText(value, MAX_DETAIL_CHARS);
-			if (typeof value !== "object") return String(value);
-			if (value instanceof Error) {
-				const name = value.name || "Error";
-				const message = capText(value.message ?? "", MAX_MESSAGE_CHARS);
-				const stack = typeof value.stack === "string" ? capText(value.stack, MAX_DETAIL_CHARS) : "";
-				return name + ": " + message + (stack !== "" ? "\n" + stack : "");
-			}
-			try {
-				const seen = /* @__PURE__ */ new Set();
-				return capText(JSON.stringify(value, (_key, inner) => {
-					if (typeof inner === "object" && inner !== null) {
-						if (seen.has(inner)) return "[circular]";
-						seen.add(inner);
-						if (Array.isArray(inner) && inner.length > 20) return inner.slice(0, 20).concat("[...]");
-					}
-					return inner;
-				}) ?? String(value), MAX_DETAIL_CHARS);
-			} catch {
-				return capText(String(value), MAX_DETAIL_CHARS);
-			}
-		}
-		/** Normalize one window error event into incident fields (never throws). */
-		function normalizeWindowError(event) {
-			if (typeof event === "object" && event !== null && "message" in event) {
-				const like = event;
-				const message = safeDescribe(like.message ?? like.error ?? "unknown window error");
-				const source = typeof like.filename === "string" && like.filename !== "" ? like.filename : void 0;
-				const line = typeof like.lineno === "number" && Number.isFinite(like.lineno) ? Math.trunc(like.lineno) : void 0;
-				const column = typeof like.colno === "number" && Number.isFinite(like.colno) ? Math.trunc(like.colno) : void 0;
-				const detail = like.error === void 0 ? void 0 : safeDescribe(like.error);
-				return {
-					message: capText(message, MAX_MESSAGE_CHARS),
-					source,
-					line,
-					column,
-					detail
-				};
-			}
-			return { message: capText(safeDescribe(event), MAX_MESSAGE_CHARS) };
-		}
-		/** Normalize one unhandledrejection event into incident fields (never throws). */
-		function normalizeRejection(event) {
-			if (typeof event === "object" && event !== null && "reason" in event) {
-				const reason = event.reason;
-				return {
-					message: capText(safeDescribe(reason), MAX_MESSAGE_CHARS),
-					detail: reason instanceof Error ? safeDescribe(reason) : void 0
-				};
-			}
-			return { message: capText(safeDescribe(event), MAX_MESSAGE_CHARS) };
-		}
-		/**
-		* Bounded, non-throwing capture of window failure events plus the app-level
-		* signal sink. Start once per page; stop on plugin teardown.
-		*/
-		var PassiveProbe = class {
-			notify;
-			max;
-			now;
-			incidents = [];
-			sequence = 0;
-			started = false;
-			onError = (event) => {
-				try {
-					this.push("window-error", normalizeWindowError(event));
-				} catch {}
-			};
-			onRejection = (event) => {
-				try {
-					this.push("unhandled-rejection", normalizeRejection(event));
-				} catch {}
-			};
-			constructor(options) {
-				this.notify = options.notify;
-				this.max = options.max ?? 50;
-				this.now = options.now ?? (() => Date.now());
-			}
-			/** Install window listeners (no-op outside a browser window). */
-			start() {
-				if (this.started) return;
-				try {
-					if (typeof window === "undefined") return;
-					window.addEventListener("error", this.onError);
-					window.addEventListener("unhandledrejection", this.onRejection);
-					this.started = true;
-				} catch {
-					this.started = false;
-				}
-			}
-			/** Remove window listeners and stop capturing raw window events. */
-			stop() {
-				if (!this.started) return;
-				try {
-					if (typeof window !== "undefined") {
-						window.removeEventListener("error", this.onError);
-						window.removeEventListener("unhandledrejection", this.onRejection);
-					}
-				} catch {}
-				this.started = false;
-			}
-			/** Current snapshot (copy; never throws). */
-			snapshot() {
-				return [...this.incidents];
-			}
-			/** Clear the ring and notify an empty batch. */
-			clear() {
-				this.incidents.length = 0;
-				try {
-					this.notify([]);
-				} catch {}
-			}
-			/** Record an app-level signal (boundary catch or connection rebuild). */
-			record(kind, message, detail) {
-				try {
-					this.push(kind, {
-						message,
-						detail
-					});
-				} catch {}
-			}
-			/** Record a Web UI plugin that was listed in the boot graph but never started. */
-			recordPluginStartupFailure(pluginId, detail) {
-				try {
-					const id = typeof pluginId === "string" ? pluginId.trim() : "";
-					if (id === "") return;
-					this.push("plugin-startup-failure", {
-						message: "plugin failed to start: " + id,
-						detail
-					});
-				} catch {}
-			}
-			push(kind, fields) {
-				const at = this.now();
-				const last = this.incidents[this.incidents.length - 1];
-				if (last !== void 0 && last.kind === kind && last.message === fields.message && last.source === fields.source && last.line === fields.line && at - last.at <= DEDUPE_WINDOW_MS && at >= last.at) return;
-				const incident = {
-					id: "probe-" + String(++this.sequence),
-					kind,
-					message: fields.message,
-					source: fields.source,
-					line: fields.line,
-					column: fields.column,
-					detail: fields.detail,
-					at
-				};
-				this.incidents.push(incident);
-				if (this.incidents.length > this.max) this.incidents.splice(0, this.incidents.length - this.max);
-				try {
-					this.notify([incident]);
-				} catch {}
-			}
-		};
-		//#endregion
-		//#region \0dsh-css:packages/dsh-doctor/src/client/settings-card.module.css.mjs
-		const css$5 = ".VadyJG_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;list-style:none;transition:border-color .16s,background .16s}.VadyJG_card:hover{border-color:var(--dsw-alias-label-dimmed)}.VadyJG_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.VadyJG_header{appearance:none;box-sizing:border-box;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.VadyJG_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.VadyJG_headerStatic{box-sizing:border-box;border-radius:12px;align-items:center;gap:12px;width:100%;padding:14px 16px;display:flex}.VadyJG_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.VadyJG_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.VadyJG_description{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.5}.VadyJG_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.VadyJG_chevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.VadyJG_chevronOpen{transform:rotate(180deg)}.VadyJG_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.VadyJG_readOnly{color:var(--dsw-alias-label-secondary);margin:12px 0 0;font-size:12px;line-height:1.5}.VadyJG_notExposed{color:var(--dsw-alias-state-warn-primary);margin:12px 0 0;font-size:12px;line-height:1.5}.VadyJG_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.VadyJG_failed{min-width:0;color:var(--dsw-alias-state-error-primary,#b42318);text-overflow:ellipsis;white-space:nowrap;flex:1;margin:0;font-size:12px;line-height:1.5;overflow:hidden}.VadyJG_discard,.VadyJG_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.VadyJG_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.VadyJG_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.VadyJG_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.VadyJG_discard:disabled,.VadyJG_save:disabled{opacity:.4;cursor:default}.VadyJG_discard:focus-visible,.VadyJG_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}.VadyJG_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.VadyJG_field+.VadyJG_field{border-top:1px solid var(--dsw-alias-border-l2)}.VadyJG_head{align-items:center;gap:8px;display:flex}.VadyJG_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.VadyJG_badges{align-items:center;gap:8px;display:inline-flex}.VadyJG_badge{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.VadyJG_reset{font:inherit;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;padding:0;font-size:12px;line-height:1.5}.VadyJG_reset:hover:not(:disabled){color:var(--dsw-alias-label-primary)}.VadyJG_reset:disabled{cursor:default}.VadyJG_reset:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}.VadyJG_input,.VadyJG_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.VadyJG_input:focus-visible,.VadyJG_select:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.VadyJG_input:disabled,.VadyJG_select:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.VadyJG_inputInvalid{border:1px solid var(--dsw-alias-state-error-primary,#b42318);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.VadyJG_inputInvalid:focus-visible{outline:2px solid var(--dsw-alias-state-error-primary,#b42318);outline-offset:1px;border-color:var(--dsw-alias-state-error-primary,#b42318)}.VadyJG_selectWrap{position:relative}.VadyJG_selectButton{appearance:none;text-align:left;cursor:pointer;justify-content:space-between;align-items:center;gap:8px;width:100%;display:flex}.VadyJG_selectLabel{text-overflow:ellipsis;white-space:nowrap;min-width:0;overflow:hidden}.VadyJG_selectChevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.VadyJG_selectChevronOpen{transform:rotate(180deg)}.VadyJG_selectPopup{z-index:40;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);max-height:240px;box-shadow:0 8px 24px var(--dsw-alias-bg-mask-2);opacity:0;border-radius:8px;flex-direction:column;padding:4px;transition:opacity .1s,transform .1s;display:flex;position:absolute;top:calc(100% + 4px);left:0;right:0;overflow-y:auto;transform:translateY(-4px)}.VadyJG_selectPopupOpen{opacity:1;transform:none}.VadyJG_selectPopupClose{opacity:0;pointer-events:none;transform:translateY(-4px)}.VadyJG_selectOption{color:var(--dsw-alias-label-primary);cursor:pointer;white-space:nowrap;text-overflow:ellipsis;border-radius:6px;flex-shrink:0;padding:6px 10px;font-size:13px;line-height:1.5;overflow:hidden}.VadyJG_selectOption:hover,.VadyJG_selectOptionActive{background:var(--dsw-alias-interactive-bg-hover)}.VadyJG_selectOptionSelected{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 10%, transparent);font-weight:500}.VadyJG_invalid{color:var(--dsw-alias-state-error-primary,#b42318);margin:0;font-size:12px;line-height:1.5}.VadyJG_hint{color:var(--dsw-alias-label-secondary);margin:0;font-size:12px;line-height:1.5}@media (prefers-reduced-motion:reduce){.VadyJG_card,.VadyJG_header,.VadyJG_chevron,.VadyJG_chevronOpen,.VadyJG_discard,.VadyJG_save,.VadyJG_selectChevron,.VadyJG_selectChevronOpen,.VadyJG_selectPopup{transition:none}}";
-		const tagId$5 = "@linxin666/dsh-web-all/packages/dsh-doctor/src/client/settings-card.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
-			const tag = document.createElement("style");
-			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$5;
-			tag.textContent = css$5;
-			document.head.appendChild(tag);
-		}
-		var settings_card_module_css_default = {
-			"badge": "VadyJG_badge",
-			"badges": "VadyJG_badges",
-			"body": "VadyJG_body",
-			"card": "VadyJG_card",
-			"cardOpen": "VadyJG_cardOpen",
-			"chevron": "VadyJG_chevron",
-			"chevronOpen": "VadyJG_chevronOpen",
-			"description": "VadyJG_description",
-			"discard": "VadyJG_discard",
-			"failed": "VadyJG_failed",
-			"field": "VadyJG_field",
-			"footer": "VadyJG_footer",
-			"head": "VadyJG_head",
-			"headText": "VadyJG_headText",
-			"header": "VadyJG_header",
-			"headerStatic": "VadyJG_headerStatic",
-			"hint": "VadyJG_hint",
-			"input": "VadyJG_input",
-			"inputInvalid": "VadyJG_inputInvalid",
-			"invalid": "VadyJG_invalid",
-			"label": "VadyJG_label",
-			"name": "VadyJG_name",
-			"notExposed": "VadyJG_notExposed",
-			"pending": "VadyJG_pending",
-			"readOnly": "VadyJG_readOnly",
-			"reset": "VadyJG_reset",
-			"save": "VadyJG_save",
-			"select": "VadyJG_select",
-			"selectButton": "VadyJG_selectButton",
-			"selectChevron": "VadyJG_selectChevron",
-			"selectChevronOpen": "VadyJG_selectChevronOpen",
-			"selectLabel": "VadyJG_selectLabel",
-			"selectOption": "VadyJG_selectOption",
-			"selectOptionActive": "VadyJG_selectOptionActive",
-			"selectOptionSelected": "VadyJG_selectOptionSelected",
-			"selectPopup": "VadyJG_selectPopup",
-			"selectPopupClose": "VadyJG_selectPopupClose",
-			"selectPopupOpen": "VadyJG_selectPopupOpen",
-			"selectWrap": "VadyJG_selectWrap"
-		};
-		//#endregion
-		//#region ../dsh-doctor/src/client/PluginSettingsCard.tsx
-		/**
-		* Family-shared chrome for plugin settings cards: a disclosure header naming
-		* the plugin and what its settings govern, the controls inside, and the save
-		* that writes them. Renders nothing while the namespace is unavailable — a
-		* deployment that does not compose the owning plugin should show no trace of
-		* it. Inlined into each consumer's client bundle; mirrors the official
-		* ui-plugin-config PluginCard in a self-contained slice.
-		*/
-		/**
-		* Render one plugin settings card.
-		* @param props - the plugin's copy keys, its form state, and its controls.
-		* @returns the card, or nothing while the namespace is still loading.
-		*/
-		function PluginSettingsCard(props) {
-			const [open, setOpen] = (0, react.useState)(props.defaultOpen ?? true);
-			const { state, alwaysOpen } = props;
-			if (!state.available) return null;
-			const title = props.t(props.titleKey);
-			const description = props.t(props.descriptionKey);
-			const blocked = !state.dirty || state.invalid || state.saving;
-			const expanded = alwaysOpen === true || open;
-			const cardClass = expanded ? `${settings_card_module_css_default.cardOpen} ${settings_card_module_css_default.card}` : settings_card_module_css_default.card;
-			const header = alwaysOpen === true ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default.headerStatic,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-					className: settings_card_module_css_default.headText,
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default.name,
-						title,
-						children: title
-					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default.description,
-						title: description,
-						children: props.descriptionNode ?? description
-					})]
-				}), state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-					className: settings_card_module_css_default.pending,
-					title: props.t("settings.unsaved"),
-					children: props.t("settings.unsaved")
-				}) : null]
-			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-				type: "button",
-				className: settings_card_module_css_default.header,
-				"aria-expanded": open,
-				"aria-label": `${props.t(open ? "settings.collapse" : "settings.expand")}: ${title}`,
-				onClick: () => {
-					setOpen(!open);
-				},
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-						className: settings_card_module_css_default.headText,
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default.name,
-							title,
-							children: title
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: settings_card_module_css_default.description,
-							title: description,
-							children: props.descriptionNode ?? description
-						})]
-					}),
-					state.dirty ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default.pending,
-						title: props.t("settings.unsaved"),
-						children: props.t("settings.unsaved")
-					}) : null,
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
-						width: "14",
-						height: "14",
-						viewBox: "0 0 14 14",
-						fill: "none",
-						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default.chevron} ${settings_card_module_css_default.chevronOpen}` : settings_card_module_css_default.chevron,
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
-							fill: "currentColor"
-						})
-					})
-				]
-			});
-			if (!state.exposed && props.renderChildrenWhenNotExposed !== true) {
-				const showNotice = props.hideNotExposedNotice !== true;
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
-					className: cardClass,
-					children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: settings_card_module_css_default.body,
-						children: showNotice ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default.notExposed,
-							role: "status",
-							children: props.t("settings.notExposed")
-						}) : null
-					}) : null]
-				});
-			}
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
-				className: cardClass,
-				children: [header, expanded ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: settings_card_module_css_default.body,
-					children: [
-						!state.writable ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: settings_card_module_css_default.readOnly,
-							role: "status",
-							children: props.t("settings.readOnly")
-						}) : null,
-						props.children,
-						props.hideFooter === true ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: settings_card_module_css_default.footer,
-							children: [
-								state.failed ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-									className: settings_card_module_css_default.failed,
-									role: "status",
-									children: [props.t("settings.saveFailed"), state.failedReason ? " - " + state.failedReason : ""]
-								}) : null,
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: settings_card_module_css_default.discard,
-									disabled: !state.dirty || state.saving,
-									onClick: props.onDiscard,
-									children: props.t("settings.discard")
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: settings_card_module_css_default.save,
-									disabled: blocked,
-									onClick: props.onSave,
-									children: props.t(!state.saving ? "settings.save" : "settings.saving")
-								})
-							]
-						})
-					]
-				}) : null]
-			});
-		}
-		const NON_SKIN_BODY_MARKERS = /* @__PURE__ */ new Set(["dshSkinCenter", "dshSidebarCollapsed"]);
-		function isSkinActive() {
-			return Object.keys(document.body.dataset).some((key) => key.startsWith("dsh") && !NON_SKIN_BODY_MARKERS.has(key));
-		}
-		const SELECT_CLOSE_MS = 100;
-		/**
-		* The shared dual-mode select control. While an appearance skin is active it
-		* renders the legacy native `<select>` untouched, so element-level skin
-		* selectors keep working; under the default appearance it renders a
-		* self-drawn `role="listbox"` popup whose open/close is transition-animated.
-		* Staged cards reach it through BooleanField/ChoiceField; immediate-apply
-		* editors (the side-card prefs) bind it directly through onEdit.
-		* 双模式下拉框：皮肤激活时用原生 select，默认外观用自绘动画弹层。
-		*/
-		function SelectField(props) {
-			const { id, options, value } = props;
-			const [open, setOpen] = (0, react.useState)(false);
-			const [closing, setClosing] = (0, react.useState)(false);
-			const [phase, setPhase] = (0, react.useState)("initial");
-			const [activeIndex, setActiveIndex] = (0, react.useState)(0);
-			const closeTimer = (0, react.useRef)(void 0);
-			const wrapRef = (0, react.useRef)(null);
-			const popupRef = (0, react.useRef)(null);
-			const currentIndex = () => {
-				const index = options.findIndex((option) => option.value === value);
-				return index >= 0 ? index : 0;
-			};
-			const close = (0, react.useCallback)(() => {
-				if (closeTimer.current !== void 0) clearTimeout(closeTimer.current);
-				setClosing(true);
-				closeTimer.current = setTimeout(() => {
-					setClosing(false);
-					setOpen(false);
-				}, SELECT_CLOSE_MS);
-			}, []);
-			const openPopup = () => {
-				if (closeTimer.current !== void 0) clearTimeout(closeTimer.current);
-				setActiveIndex(currentIndex());
-				setPhase("initial");
-				setClosing(false);
-				setOpen(true);
-			};
-			const commit = (index) => {
-				const option = options[index];
-				if (option) props.onEdit(option.value);
-				close();
-			};
-			const onTriggerClick = () => {
-				if (props.disabled) return;
-				if (open && !closing) close();
-				else openPopup();
-			};
-			const onKeyDown = (event) => {
-				if (props.disabled) return;
-				const count = options.length;
-				switch (event.key) {
-					case "ArrowDown":
-					case "ArrowUp":
-					case "Enter":
-					case " ":
-						event.preventDefault();
-						if (!open) openPopup();
-						else if (!closing) if (event.key === "ArrowDown") setActiveIndex((index) => (index + 1) % count);
-						else if (event.key === "ArrowUp") setActiveIndex((index) => (index - 1 + count) % count);
-						else commit(activeIndex);
-						break;
-					case "Escape":
-						if (open) {
-							event.preventDefault();
-							event.stopPropagation();
-							close();
-						}
-						break;
-					case "Tab":
-						if (open) close();
-						break;
-				}
-			};
-			(0, react.useEffect)(() => () => {
-				if (closeTimer.current !== void 0) clearTimeout(closeTimer.current);
-			}, []);
-			(0, react.useLayoutEffect)(() => {
-				if (open && !closing && phase === "initial") {
-					popupRef.current?.offsetHeight;
-					setPhase("open");
-				}
-			}, [
-				open,
-				closing,
-				phase
-			]);
-			(0, react.useEffect)(() => {
-				if (!open) return;
-				const onPointerDown = (event) => {
-					const target = event.target;
-					if (target instanceof Node && !wrapRef.current?.contains(target)) close();
-				};
-				document.addEventListener("pointerdown", onPointerDown);
-				return () => document.removeEventListener("pointerdown", onPointerDown);
-			}, [open, close]);
-			(0, react.useEffect)(() => {
-				if (props.disabled && open) close();
-			}, [
-				props.disabled,
-				open,
-				close
-			]);
-			if (isSkinActive()) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
-				id,
-				className: settings_card_module_css_default.select,
-				value,
-				disabled: props.disabled,
-				onChange: (event) => {
-					props.onEdit(event.target.value);
-				},
-				children: options.map((option) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
-					value: option.value,
-					children: option.label
-				}, option.value))
-			});
-			const label = options.find((option) => option.value === value)?.label ?? "";
-			const popupClass = closing ? `${settings_card_module_css_default.selectPopup} ${settings_card_module_css_default.selectPopupClose}` : phase === "open" ? `${settings_card_module_css_default.selectPopup} ${settings_card_module_css_default.selectPopupOpen}` : settings_card_module_css_default.selectPopup;
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default.selectWrap,
-				ref: wrapRef,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-					type: "button",
-					id,
-					className: `${settings_card_module_css_default.select} ${settings_card_module_css_default.selectButton}`,
-					disabled: props.disabled,
-					"aria-haspopup": "listbox",
-					"aria-expanded": open,
-					"aria-activedescendant": open ? `${id}-o${activeIndex}` : void 0,
-					"aria-invalid": props.invalid || void 0,
-					onClick: onTriggerClick,
-					onKeyDown,
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: settings_card_module_css_default.selectLabel,
-						children: label
-					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
-						width: "14",
-						height: "14",
-						viewBox: "0 0 14 14",
-						fill: "none",
-						xmlns: "http://www.w3.org/2000/svg",
-						className: open ? `${settings_card_module_css_default.selectChevron} ${settings_card_module_css_default.selectChevronOpen}` : settings_card_module_css_default.selectChevron,
-						"aria-hidden": "true",
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-							d: "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z",
-							fill: "currentColor"
-						})
-					})]
-				}), open ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: popupClass,
-					role: "listbox",
-					ref: popupRef,
-					children: options.map((option, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						id: `${id}-o${index}`,
-						role: "option",
-						"aria-selected": option.value === value,
-						className: `${settings_card_module_css_default.selectOption}${option.value === value ? ` ${settings_card_module_css_default.selectOptionSelected}` : ""}${index === activeIndex && !closing ? ` ${settings_card_module_css_default.selectOptionActive}` : ""}`,
-						onClick: () => {
-							commit(index);
-						},
-						children: option.label
-					}, option.value))
-				}) : null]
-			});
-		}
-		/** A staged boolean field: 继承 / 开 / 关. */
-		function BooleanField(props) {
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: settings_card_module_css_default.field,
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: settings_card_module_css_default.head,
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: settings_card_module_css_default.label,
-							htmlFor: props.id,
-							children: props.label
-						}), props.overridden ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: settings_card_module_css_default.badges,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: settings_card_module_css_default.badge,
-								children: props.overriddenLabel
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: settings_card_module_css_default.reset,
-								disabled: props.disabled,
-								onClick: props.onReset,
-								children: props.resetLabel
-							})]
-						}) : null]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectField, {
-						id: props.id,
-						options: [
-							{
-								value: "",
-								label: props.inheritLabel
-							},
-							{
-								value: "true",
-								label: props.onLabel
-							},
-							{
-								value: "false",
-								label: props.offLabel
-							}
-						],
-						value: props.text,
-						disabled: props.disabled,
-						invalid: props.invalid,
-						onEdit: props.onEdit
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: settings_card_module_css_default.hint,
-						children: props.hint
-					})
-				]
-			});
-		}
-		//#endregion
-		//#region ../dsh-doctor/src/client/settings-form.ts
-		/** A boolean field, edited through true/false draft text. */
-		function booleanField(field) {
-			return {
-				field,
-				format: (value) => typeof value === "boolean" ? String(value) : "",
-				parse: (text) => {
-					const trimmed = text.trim();
-					if (trimmed === "") return { kind: "clear" };
-					if (trimmed === "true") return {
-						kind: "set",
-						value: true
-					};
-					if (trimmed === "false") return {
-						kind: "set",
-						value: false
-					};
-				}
-			};
-		}
-		/**
-		* Stages one card's edits over one settings namespace and writes them on save.
-		*
-		* The Host is the only authority on whether a value was accepted — its
-		* validators own the constraints no schema can express — so the outcome is
-		* read back from the section rather than predicted here. A save that did not
-		* land keeps its drafts, so the user can correct them instead of retyping.
-		*/
-		var CardForm = class {
-			scope;
-			specs;
-			staged = /* @__PURE__ */ new Map();
-			listeners = /* @__PURE__ */ new Set();
-			/** The form subscription installed in the constructor; released by dispose(). */
-			disposeForm;
-			disposed = false;
-			saving = false;
-			failed = false;
-			failedReason;
-			/** @param scope - the bound configuration form for this card's namespace. */
-			constructor(scope, specs) {
-				this.scope = scope;
-				this.specs = new Map(specs.map((spec) => [spec.field, spec]));
-				this.disposeForm = scope.subscribe(() => {
-					this.publish();
-				});
-			}
-			/**
-			* Release the form subscription and every bound store listener. The card
-			* must call this on teardown; later calls are no-ops.
-			*/
-			dispose() {
-				if (this.disposed) return;
-				this.disposed = true;
-				this.disposeForm();
-				this.listeners.clear();
-			}
-			/** Publish a projection of this form, rebuilt whenever the form or a draft changes. */
-			bind(project) {
-				const store = createSnapshotStore(project());
-				this.listeners.add(() => {
-					store.set(project());
-				});
-				return store;
-			}
-			/** Read the card-level state: what the Host serves, and what a save would do. */
-			shell() {
-				const snapshot = this.scope.getSnapshot();
-				const plan = this.plan();
-				return {
-					available: snapshot.status !== "loading",
-					exposed: snapshot.status === "ready",
-					writable: snapshot.writable,
-					dirty: plan.length > 0,
-					invalid: plan.some((item) => item.judge === void 0),
-					saving: this.saving,
-					failed: this.failed,
-					...this.failedReason === void 0 ? {} : { failedReason: this.failedReason }
-				};
-			}
-			/** Read one field's state from the effective section and its staged draft. */
-			field(field) {
-				const spec = this.specOf(field);
-				const staged = this.staged.get(field);
-				if (staged === void 0) return {
-					text: spec.format(this.sectionValue(field)),
-					overridden: this.stored(field),
-					invalid: false
-				};
-				const write = staged.clear ? { kind: "clear" } : spec.parse(staged.text);
-				return {
-					text: staged.text,
-					overridden: write?.kind === "set",
-					invalid: write === void 0
-				};
-			}
-			/** The actions the card's slot registration injects. */
-			actions() {
-				return {
-					edit: (field, text) => {
-						this.stage(field, {
-							text,
-							clear: false
-						});
-					},
-					resetField: (field) => {
-						this.stage(field, {
-							text: this.specOf(field).format(this.baseValue(field)),
-							clear: true
-						});
-					},
-					save: () => {
-						this.save();
-					},
-					discard: () => {
-						if (this.staged.size === 0 && !this.failed) return;
-						this.staged.clear();
-						this.failed = false;
-						this.failedReason = void 0;
-						this.publish();
-					}
-				};
-			}
-			/**
-			* Write every staged edit in one atomic form mutation, then re-seed from
-			* what the Host accepted.
-			*
-			* The whole batch rides one mutate, so cross-field validate hooks
-			* (baseURL+model) judge it as a unit: the Host either applies every write
-			* or refuses the batch. The form contract answers a refusal or a skipped
-			* write with `false` (it recovers with a fresh Host view instead of
-			* throwing), so the outcome is judged twice: the answer itself, and then the
-			* settled snapshot read back one planned write at a time. One missed write
-			* fails the whole save. A transport that rejects instead (the dsh-web bridge
-			* controller on a dead connection) reports through the same failure path
-			* with its rejection message. A save that did not land keeps its drafts, so
-			* the user can correct them instead of retyping.
-			* @returns settlement after the mutation and the read-back.
-			*/
-			async save() {
-				const plan = this.plan();
-				const valid = plan.filter((item) => item.judge !== void 0);
-				if (plan.length === 0 || this.saving || valid.length !== plan.length) return;
-				const pending = /* @__PURE__ */ new Map();
-				for (const item of plan) pending.set(item.field, this.staged.get(item.field));
-				this.saving = true;
-				this.failed = false;
-				this.failedReason = void 0;
-				this.publish();
-				const ops = valid.map((item) => item.op.op === "set" ? {
-					op: "set",
-					path: [item.field],
-					value: item.op.value
-				} : {
-					op: "unset",
-					path: [item.field]
-				});
-				let failedReason;
-				let accepted = false;
-				try {
-					accepted = await this.scope.mutate(ops);
-				} catch (error) {
-					failedReason = error instanceof Error ? error.message : String(error);
-				}
-				const landed = accepted && failedReason === void 0 && valid.every((item) => item.judge());
-				for (const [field, before] of pending) if (landed && this.staged.get(field) === before) this.staged.delete(field);
-				this.saving = false;
-				this.failed = !landed;
-				this.failedReason = failedReason;
-				this.publish();
-			}
-			/**
-			* Every staged edit a save would write. An entry whose draft is not a value
-			* its field accepts carries no write: the form is still dirty, and the save
-			* refuses rather than dropping the edit. A staged edit that matches the
-			* effective section is not a write at all.
-			* @returns the planned writes, in the order the fields were staged.
-			*/
-			plan() {
-				const plan = [];
-				for (const [field, staged] of this.staged) {
-					const spec = this.specOf(field);
-					if (staged.clear) {
-						if (this.stored(field)) plan.push({
-							field,
-							op: {
-								field,
-								op: "unset"
-							},
-							judge: () => this.landedUnset(field)
-						});
-						continue;
-					}
-					if (staged.text === spec.format(this.sectionValue(field))) continue;
-					const write = spec.parse(staged.text);
-					if (write === void 0) plan.push({
-						field,
-						op: {
-							field,
-							op: "unset"
-						},
-						judge: void 0
-					});
-					else if (write.kind === "clear") plan.push({
-						field,
-						op: {
-							field,
-							op: "unset"
-						},
-						judge: () => this.landedUnset(field)
-					});
-					else plan.push({
-						field,
-						op: {
-							field,
-							op: "set",
-							value: write.value
-						},
-						judge: () => this.landedSet(field, write.value)
-					});
-				}
-				return plan;
-			}
-			/**
-			* Read-back judgment for a planned set: the user layer must hold the
-			* intended value once the mutation has settled.
-			*/
-			landedSet(field, value) {
-				if (this.specOf(field).secret) return true;
-				return this.userLayer()?.[field] === value;
-			}
-			/**
-			* Read-back judgment for a planned unset: the field must be gone from the
-			* user layer once the mutation has settled.
-			*/
-			landedUnset(field) {
-				return !this.stored(field);
-			}
-			stage(field, edit) {
-				this.staged.set(field, edit);
-				this.failed = false;
-				this.failedReason = void 0;
-				this.publish();
-			}
-			specOf(field) {
-				const spec = this.specs.get(field);
-				if (spec === void 0) throw new Error(`settings card has no field ${field}`);
-				return spec;
-			}
-			snapshotOf() {
-				return this.scope.getSnapshot();
-			}
-			sectionValue(field) {
-				return this.snapshotOf().value?.[field];
-			}
-			baseValue(field) {
-				return this.snapshotOf().base?.[field];
-			}
-			userLayer() {
-				return this.snapshotOf().user;
-			}
-			stored(field) {
-				const user = this.userLayer();
-				return user !== void 0 && Object.hasOwn(user, field);
-			}
-			publish() {
-				for (const listener of this.listeners) listener();
-			}
-		};
-		//#endregion
-		//#region ../dsh-doctor/src/client/clipboard.ts
-		/**
-		* Clipboard write shared by the recovery console surfaces (the send-to-Harness
-		* dialog copy button and the failed-plugin row copy). Never rejects and never
-		* throws: an unavailable clipboard degrades to a false result instead of
-		* breaking the console.
-		* @module @linxin666/dsh-doctor/client
-		*/
-		/** Copy text to the clipboard; resolves to whether it landed. */
-		function copyText(value) {
-			try {
-				if (typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function") return navigator.clipboard.writeText(value).then(() => true, () => false);
-				if (typeof document !== "undefined") {
-					const area = document.createElement("textarea");
-					area.value = value;
-					document.body.appendChild(area);
-					area.select();
-					let ok = false;
-					try {
-						ok = document.execCommand("copy") === true;
-					} catch {
-						ok = false;
-					}
-					document.body.removeChild(area);
-					return Promise.resolve(ok);
-				}
-				return Promise.resolve(false);
-			} catch {
-				return Promise.resolve(false);
-			}
-		}
-		//#endregion
-		//#region \0dsh-css:packages/dsh-doctor/src/client/doctor.module.css.mjs
-		const css$4 = ".SaqOXq_section{color:var(--dsw-alias-label-primary,#1f2328);flex-direction:column;gap:12px;padding:4px 0;font-size:13px;display:flex}.SaqOXq_header{flex-direction:column;gap:4px;margin:0;display:flex}.SaqOXq_title{color:var(--dsw-alias-label-primary,#1f2328);margin:0;font-size:16px;font-weight:600}.SaqOXq_subtitle{color:var(--dsw-alias-label-secondary,#57606a);margin:0;font-size:12px}.SaqOXq_enableRow{border:1px solid var(--dsw-alias-border-l2,#d0d7de);background:var(--dsw-alias-bg-layer-2,#f6f8fa);border-radius:8px;flex-wrap:wrap;align-items:center;gap:12px;padding:10px 12px;display:flex}.SaqOXq_enableCopy{flex-direction:column;gap:2px;min-width:0;display:flex}.SaqOXq_enableLabel{color:var(--dsw-alias-label-primary,#1f2328);font-weight:600}.SaqOXq_enableHint{color:var(--dsw-alias-label-dimmed,#8c959f);font-size:12px}.SaqOXq_switchButton{border:1px solid var(--dsw-alias-border-l1,#d0d7de);background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#1f2328);cursor:pointer;font:inherit;border-radius:999px;align-items:center;gap:8px;margin-left:auto;padding:4px 8px;display:inline-flex}.SaqOXq_switchButton:disabled{opacity:.6;cursor:not-allowed}.SaqOXq_switchTrack{background:var(--dsw-alias-border-l2,#d0d7de);border-radius:999px;align-items:center;width:28px;height:16px;transition:background .12s;display:inline-flex}.SaqOXq_switchTrack[data-checked=on]{background:var(--dsw-alias-state-success-primary,#2da44e)}.SaqOXq_switchThumb{background:var(--dsw-alias-bg-base,#fff);border-radius:999px;width:12px;height:12px;margin:0 2px;transition:transform .12s}.SaqOXq_switchTrack[data-checked=on] .SaqOXq_switchThumb{transform:translate(12px)}.SaqOXq_switchText{color:var(--dsw-alias-label-secondary,#57606a);font-size:12px}.SaqOXq_dynamic{flex-direction:column;gap:12px;display:flex}.SaqOXq_card{border:1px solid var(--dsw-alias-border-l2,#d0d7de);background:var(--dsw-alias-bg-layer-1,#fff);border-radius:8px;padding:10px 12px}.SaqOXq_cardTitle{color:var(--dsw-alias-label-primary,#1f2328);margin:0 0 6px;font-size:13px;font-weight:600}.SaqOXq_stateLine{align-items:center;gap:8px;display:flex}.SaqOXq_stateText{font-weight:600}.SaqOXq_verdict{color:var(--dsw-alias-label-tertiary,#8c959f);margin-left:auto;font-size:12px}.SaqOXq_dot{background:var(--dsw-alias-label-tertiary,#8c959f);border-radius:999px;flex:none;width:8px;height:8px;display:inline-block}.SaqOXq_dot[data-state=ok],.SaqOXq_dot[data-state=healthy]{background:var(--dsw-alias-state-success-primary,#2da44e)}.SaqOXq_dot[data-state=warn],.SaqOXq_dot[data-state=degraded]{background:var(--dsw-alias-state-warn-primary,#bf8700)}.SaqOXq_dot[data-state=fail],.SaqOXq_dot[data-state=down]{background:var(--dsw-alias-state-error-primary,#cf222e)}.SaqOXq_dot[data-state=unknown]{background:var(--dsw-alias-label-tertiary,#8c959f)}.SaqOXq_meta{color:var(--dsw-alias-label-dimmed,#8c959f);margin:4px 0 0;font-size:12px}.SaqOXq_hint{color:var(--dsw-alias-label-secondary,#57606a);margin:4px 0 0;font-size:12px}.SaqOXq_errorLine{color:var(--dsw-alias-label-error,#cf222e);margin:4px 0 0;font-size:12px}.SaqOXq_checkList,.SaqOXq_incidentList{flex-direction:column;gap:4px;margin:8px 0 0;padding:0;list-style:none;display:flex}.SaqOXq_checkRow,.SaqOXq_incidentRow{align-items:baseline;gap:8px;font-size:12px;display:flex}.SaqOXq_checkName{color:var(--dsw-alias-label-primary,#1f2328)}.SaqOXq_checkDetail,.SaqOXq_incidentDetail{color:var(--dsw-alias-label-tertiary,#8c959f);overflow-wrap:anywhere}.SaqOXq_incidentTitle{color:var(--dsw-alias-label-primary,#1f2328)}.SaqOXq_empty{color:var(--dsw-alias-label-dimmed,#8c959f);margin:4px 0 0;font-size:12px}.SaqOXq_profileBlock{margin-top:8px}.SaqOXq_blockLabel{color:var(--dsw-alias-label-secondary,#57606a);margin:0 0 4px;font-size:12px;font-weight:600;display:block}.SaqOXq_actionRow{flex-wrap:wrap;gap:8px;display:flex}.SaqOXq_button{border:1px solid var(--dsw-alias-border-l1,#d0d7de);background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#1f2328);font:inherit;cursor:pointer;border-radius:6px;padding:4px 12px}.SaqOXq_button[data-variant=primary]{border-color:var(--dsw-alias-state-business-primary,#0969da);color:var(--dsw-alias-label-on-primary,#fff);background:var(--dsw-alias-state-business-primary,#0969da)}.SaqOXq_button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,#0969da14)}.SaqOXq_button:disabled{opacity:.55;cursor:not-allowed}.SaqOXq_boundary{border:1px dashed var(--dsw-alias-state-warn-primary,#bf8700);border-radius:8px;flex-direction:column;align-items:flex-start;gap:8px;padding:12px;display:flex}.SaqOXq_boundaryText{color:var(--dsw-alias-label-primary,#1f2328);margin:0;font-size:12px}.SaqOXq_dialogBackdrop{z-index:1000;background:#0006;justify-content:center;align-items:center;padding:16px;display:flex;position:fixed;inset:0}.SaqOXq_dialog{border:1px solid var(--dsw-alias-border-l2,#d0d7de);background:var(--dsw-alias-bg-layer-1,#fff);width:min(720px,100%);max-height:90vh;color:var(--dsw-alias-label-primary,#1f2328);border-radius:10px;flex-direction:column;gap:10px;padding:16px;display:flex;overflow:auto}.SaqOXq_dialogTitle{margin:0;font-size:15px;font-weight:600}.SaqOXq_dialogLabel{color:var(--dsw-alias-label-secondary,#57606a);font-size:12px;font-weight:600}.SaqOXq_dialogTextarea{border:1px solid var(--dsw-alias-border-l1,#d0d7de);background:var(--dsw-alias-bg-base,#fff);width:100%;min-height:180px;color:var(--dsw-alias-label-primary,#1f2328);resize:vertical;box-sizing:border-box;border-radius:6px;padding:8px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.SaqOXq_dialogTarget{color:var(--dsw-alias-label-secondary,#57606a);gap:8px;font-size:12px;display:flex}.SaqOXq_dialogTargetValue{overflow-wrap:anywhere;color:var(--dsw-alias-label-primary,#1f2328)}.SaqOXq_rowActions{gap:6px;margin-left:auto;display:inline-flex}.SaqOXq_miniButton{border:1px solid var(--dsw-alias-border-l1,#d0d7de);background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-secondary,#57606a);font:inherit;cursor:pointer;border-radius:5px;padding:1px 8px;font-size:11px}.SaqOXq_miniButton:disabled{opacity:.55;cursor:not-allowed}";
-		const tagId$4 = "@linxin666/dsh-web-all/packages/dsh-doctor/src/client/doctor.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
-			const tag = document.createElement("style");
-			tag.dataset.plugin = "@linxin666/dsh-web-all";
-			tag.dataset.pluginCss = tagId$4;
-			tag.textContent = css$4;
-			document.head.appendChild(tag);
-		}
-		var doctor_module_css_default = {
-			"actionRow": "SaqOXq_actionRow",
-			"blockLabel": "SaqOXq_blockLabel",
-			"boundary": "SaqOXq_boundary",
-			"boundaryText": "SaqOXq_boundaryText",
-			"button": "SaqOXq_button",
-			"card": "SaqOXq_card",
-			"cardTitle": "SaqOXq_cardTitle",
-			"checkDetail": "SaqOXq_checkDetail",
-			"checkList": "SaqOXq_checkList",
-			"checkName": "SaqOXq_checkName",
-			"checkRow": "SaqOXq_checkRow",
-			"dialog": "SaqOXq_dialog",
-			"dialogBackdrop": "SaqOXq_dialogBackdrop",
-			"dialogLabel": "SaqOXq_dialogLabel",
-			"dialogTarget": "SaqOXq_dialogTarget",
-			"dialogTargetValue": "SaqOXq_dialogTargetValue",
-			"dialogTextarea": "SaqOXq_dialogTextarea",
-			"dialogTitle": "SaqOXq_dialogTitle",
-			"dot": "SaqOXq_dot",
-			"dynamic": "SaqOXq_dynamic",
-			"empty": "SaqOXq_empty",
-			"enableCopy": "SaqOXq_enableCopy",
-			"enableHint": "SaqOXq_enableHint",
-			"enableLabel": "SaqOXq_enableLabel",
-			"enableRow": "SaqOXq_enableRow",
-			"errorLine": "SaqOXq_errorLine",
-			"header": "SaqOXq_header",
-			"hint": "SaqOXq_hint",
-			"incidentDetail": "SaqOXq_incidentDetail",
-			"incidentList": "SaqOXq_incidentList",
-			"incidentRow": "SaqOXq_incidentRow",
-			"incidentTitle": "SaqOXq_incidentTitle",
-			"meta": "SaqOXq_meta",
-			"miniButton": "SaqOXq_miniButton",
-			"profileBlock": "SaqOXq_profileBlock",
-			"rowActions": "SaqOXq_rowActions",
-			"section": "SaqOXq_section",
-			"stateLine": "SaqOXq_stateLine",
-			"stateText": "SaqOXq_stateText",
-			"subtitle": "SaqOXq_subtitle",
-			"switchButton": "SaqOXq_switchButton",
-			"switchText": "SaqOXq_switchText",
-			"switchThumb": "SaqOXq_switchThumb",
-			"switchTrack": "SaqOXq_switchTrack",
-			"title": "SaqOXq_title",
-			"verdict": "SaqOXq_verdict"
-		};
-		//#endregion
-		//#region ../dsh-doctor/src/client/HarnessSendDialog.tsx
-		/**
-		* Send-to-Harness dialog for the dsh-doctor recovery console.
-		*
-		* Shows the composed troubleshooting prompt (failure summary plus error stack)
-		* in an editable textarea, offers copy-to-clipboard, and queues the prompt
-		* into the CURRENT DSH session when one is open. The dialog never touches the
-		* supervisor state; a missing current session simply disables sending and
-		* explains why.
-		* @module @linxin666/dsh-doctor/client
-		*/
-		/**
-		* Render the dialog; returns null when closed. Text is local state seeded on
-		* open, so edits survive re-renders but never leak into later openings.
-		*/
-		function HarnessSendDialog(props) {
-			const { t, open } = props;
-			const [text, setText] = (0, react.useState)(props.initialText);
-			const [copied, setCopied] = (0, react.useState)(false);
-			(0, react.useEffect)(() => {
-				if (open) {
-					setText(props.initialText);
-					setCopied(false);
-				}
-			}, [open]);
-			if (!open) return null;
-			const copy = () => {
-				copyText(text).then((ok) => {
-					setCopied(ok);
-				});
-			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: doctor_module_css_default.dialogBackdrop,
-				role: "presentation",
-				onClick: props.onClose,
-				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: doctor_module_css_default.dialog,
-					role: "dialog",
-					"aria-modal": "true",
-					"aria-label": t("harness.title"),
-					onClick: (event) => {
-						event.stopPropagation();
-					},
-					children: [
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
-							className: doctor_module_css_default.dialogTitle,
-							children: t("harness.title")
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: doctor_module_css_default.hint,
-							children: t("harness.subtitle")
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-							className: doctor_module_css_default.dialogLabel,
-							htmlFor: "harness-prompt-text",
-							children: t("harness.prompt")
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
-							id: "harness-prompt-text",
-							className: doctor_module_css_default.dialogTextarea,
-							value: text,
-							onChange: (event) => {
-								setText(event.target.value);
-							},
-							spellCheck: false
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: doctor_module_css_default.dialogTarget,
-							"data-dsh-part": "harness-target",
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("harness.target") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: doctor_module_css_default.dialogTargetValue,
-								children: props.target !== void 0 ? props.target.label : t("harness.noTarget")
-							})]
-						}),
-						props.error !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: doctor_module_css_default.errorLine,
-							role: "status",
-							children: props.error
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: doctor_module_css_default.actionRow,
-							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: doctor_module_css_default.button,
-									disabled: props.busy,
-									onClick: copy,
-									children: copied ? t("harness.copied") : t("harness.copy")
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: doctor_module_css_default.button,
-									"data-variant": "primary",
-									disabled: props.busy || !props.canSend || text.trim() === "",
-									onClick: () => {
-										props.onSend(text);
-									},
-									children: props.busy ? t("harness.sending") : t("harness.send")
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: doctor_module_css_default.button,
-									disabled: props.busy,
-									onClick: props.onClose,
-									children: t("harness.cancel")
-								})
-							]
-						})
-					]
-				})
-			});
-		}
-		//#endregion
-		//#region ../dsh-doctor/src/client/DoctorRecoveryConsole.tsx
-		/**
-		* First-level settings section for dsh-doctor: the recovery console.
-		*
-		* Renders the supervisor snapshot (system phase, protected profiles,
-		* incidents), the browser probe list and the diagnostic actions inside a
-		* settings.section slot entry. All dynamic content sits behind a React error
-		* boundary so a crash in one subview degrades to a recoverable fallback
-		* instead of taking the settings surface down; the boundary reports into the
-		* probe list.
-		*
-		* Semantic attrs: the root carries data-dsh-plugin="doctor"; parts carry bare
-		* data-dsh-part values scoped by that plugin attribute.
-		* @module @linxin666/dsh-doctor/client
-		*/
-		/** Fallback settings state when the handle is absent. */
-		const UNAVAILABLE_SETTINGS = {
-			status: "unavailable",
-			enabled: void 0,
-			writable: false
-		};
-		/** Singleton unavailable handle: getState returns a cached snapshot so the
-		* useSyncExternalStore snapshot identity never changes. */
-		const UNAVAILABLE_ADAPTER = {
-			getState: () => UNAVAILABLE_SETTINGS,
-			listen: () => () => {},
-			setEnabled: async () => ({
-				ok: false,
-				error: "settings unavailable"
-			})
-		};
-		/** Always-available settings adapter so the hook order never changes. */
-		function stableSettingsAdapter(settings) {
-			return settings ?? UNAVAILABLE_ADAPTER;
-		}
-		/** The recovery console: a first-level settings section, or the card body when embedded. */
-		function DoctorRecoveryConsole(props) {
-			const { t, controller } = props;
-			const embedded = props.embedded === true;
-			const view = (0, react.useSyncExternalStore)(controller.subscribe, controller.getSnapshot);
-			const adapter = (0, react.useMemo)(() => stableSettingsAdapter(props.settings), [props.settings]);
-			const settingsState = (0, react.useSyncExternalStore)(adapter.listen, adapter.getState);
-			const [saving, setSaving] = (0, react.useState)(false);
-			const [saveError, setSaveError] = (0, react.useState)(void 0);
-			const [harnessOpen, setHarnessOpen] = (0, react.useState)(false);
-			const [harnessBusy, setHarnessBusy] = (0, react.useState)(false);
-			const [harnessError, setHarnessError] = (0, react.useState)(void 0);
-			const toggleLock = (0, react.useRef)(false);
-			const harnessFailure = newestFailure(t, view);
-			const harnessInitialText = harnessFailure === void 0 ? "" : composeHarnessPrompt(harnessFailure, {
-				webVersion: view.hostVersion,
-				supervisorVersion: view.snapshot?.version
-			}, {
-				title: t("harness.prompt.title"),
-				summary: t("harness.prompt.summary"),
-				kind: t("harness.prompt.kind"),
-				stack: t("harness.prompt.stack"),
-				environment: t("harness.prompt.environment")
-			});
-			const harnessTarget = controller.harnessTarget();
-			const hasFailures = view.probe.length > 0 || view.incidents.length > 0;
-			const openHarness = () => {
-				setHarnessError(void 0);
-				setHarnessOpen(true);
-			};
-			const sendHarness = async (text) => {
-				setHarnessBusy(true);
-				setHarnessError(void 0);
-				try {
-					const result = await controller.sendToHarness(text);
-					if (result.ok) setHarnessOpen(false);
-					else setHarnessError(result.message);
-				} catch (error) {
-					setHarnessError(error instanceof Error ? error.message : String(error));
-				} finally {
-					setHarnessBusy(false);
-				}
-			};
-			const toggleEnabled = async () => {
-				if (settingsState.status !== "ready" || !settingsState.writable || toggleLock.current) return;
-				const next = settingsState.enabled !== true;
-				toggleLock.current = true;
-				setSaving(true);
-				setSaveError(void 0);
-				try {
-					const result = await adapter.setEnabled(next);
-					if (!result.ok) setSaveError(result.error);
-				} catch (error) {
-					setSaveError(error instanceof Error ? error.message : String(error));
-				} finally {
-					setSaving(false);
-					toggleLock.current = false;
-					controller.refresh();
-				}
-			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-				"data-dsh-plugin": "doctor",
-				className: doctor_module_css_default.section,
-				"aria-label": t("settings.title"),
-				children: [
-					embedded === false ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
-						className: doctor_module_css_default.header,
-						"data-dsh-part": "header",
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
-							className: doctor_module_css_default.title,
-							children: t("settings.title")
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: doctor_module_css_default.subtitle,
-							children: t("settings.subtitle")
-						})]
-					}) : null,
-					embedded === false ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: doctor_module_css_default.enableRow,
-						"data-dsh-part": "enable",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: doctor_module_css_default.enableCopy,
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: doctor_module_css_default.enableLabel,
-									children: t("enable.label")
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: doctor_module_css_default.enableHint,
-									children: enableHint(t, settingsState)
-								})]
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-								type: "button",
-								role: "switch",
-								"data-testid": "doctor-enable-switch",
-								"aria-checked": settingsState.enabled === true,
-								"aria-label": t("enable.label"),
-								disabled: settingsState.status !== "ready" || !settingsState.writable || saving,
-								className: doctor_module_css_default.switchButton,
-								onClick: () => {
-									toggleEnabled();
-								},
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: doctor_module_css_default.switchTrack,
-									"data-checked": settingsState.enabled === true ? "on" : "off",
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: doctor_module_css_default.switchThumb })
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: doctor_module_css_default.switchText,
-									children: saving ? t("enable.saving") : settingsState.enabled === true ? t("enable.on") : t("enable.off")
-								})]
-							}),
-							saveError !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-								className: doctor_module_css_default.errorLine,
-								role: "status",
-								children: t("enable.saveFailed", { reason: saveError })
-							})
-						]
-					}) : null,
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(DoctorErrorBoundary, {
-						t,
-						onReport: (error) => {
-							controller.recordBoundary(error);
-						},
-						onRecover: () => {
-							controller.refresh();
-						},
-						children: () => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: doctor_module_css_default.dynamic,
-							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(StatusCard, {
-									t,
-									view,
-									settings: settingsState
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(LifecycleCard, {
-									t,
-									view,
-									onEnsure: () => {
-										controller.runProvision();
-									},
-									onUninstall: () => {
-										controller.runUninstall();
-									}
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(IncidentsCard, {
-									t,
-									view
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ProbeCard, {
-									t,
-									view,
-									controller
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionsCard, {
-									t,
-									view,
-									onDiagnose: () => {
-										controller.runDiagnose();
-									},
-									onRepair: () => {
-										controller.runRepair();
-									},
-									onConfirm: () => {
-										controller.runConfirm();
-									},
-									onReport: () => {
-										controller.reportProbe();
-									},
-									onSendToHarness: openHarness,
-									onRefresh: () => {
-										controller.refresh();
-									},
-									onClear: () => {
-										controller.clearProbe();
-									},
-									hasFailures
-								})
-							]
-						})
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(HarnessSendDialog, {
-						t,
-						open: harnessOpen,
-						initialText: harnessInitialText,
-						target: harnessTarget,
-						canSend: hasFailures && harnessTarget !== void 0,
-						busy: harnessBusy,
-						error: harnessError,
-						onClose: () => {
-							if (!harnessBusy) setHarnessOpen(false);
-						},
-						onSend: (text) => {
-							sendHarness(text);
-						}
-					})
-				]
-			});
-		}
-		/** Newest recorded failure for the send-to-Harness prompt (probe first, then supervisor incidents). */
-		function newestFailure(t, view) {
-			const probe = view.probe[view.probe.length - 1];
-			if (probe !== void 0) try {
-				return {
-					summary: probe.message,
-					kind: t(probeKindKey(probe.kind)),
-					stack: probe.detail,
-					at: probe.at
-				};
-			} catch {
-				return {
-					summary: probe.message,
-					stack: probe.detail,
-					at: probe.at
-				};
-			}
-			const incident = view.incidents[view.incidents.length - 1];
-			if (incident === void 0) return void 0;
-			const evidence = (incident.evidence ?? []).filter((line) => typeof line === "string" && line.trim() !== "");
-			return {
-				summary: incident.summary,
-				kind: kindLabel(t, incident.kind),
-				stack: evidence.join("\n"),
-				at: incident.updatedAt === void 0 ? void 0 : parseTime(incident.updatedAt)
-			};
-		}
-		/** Enable-switch helper copy. */
-		function enableHint(t, state) {
-			if (state.status !== "ready") return t("enable.unavailable");
-			if (state.enabled === true) return t("enable.on");
-			return t("enable.off");
-		}
-		/** Combined status card: host verdict, system phase, profiles. */
-		function StatusCard({ t, view, settings }) {
-			const phase = view.snapshot?.phase;
-			const state = view.host === "unavailable" ? "down" : view.phase === "loading" || view.host === "unknown" ? "unknown" : phaseState(phase);
-			const stateText = view.host === "unavailable" ? t("host.unavailable") : view.host === "available" ? t("host.available") : t("status.unknown");
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: doctor_module_css_default.card,
-				"data-dsh-part": "status",
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
-						className: doctor_module_css_default.cardTitle,
-						children: t("status.title")
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: doctor_module_css_default.stateLine,
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: doctor_module_css_default.dot,
-								"data-state": state
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: doctor_module_css_default.stateText,
-								children: stateText
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: doctor_module_css_default.verdict,
-								children: phase === void 0 ? t("status.unknown") : phaseLabel(t, "phase." + phase)
-							})
-						]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: doctor_module_css_default.meta,
-						children: view.lastCheckedAt === void 0 ? t("status.neverChecked") : t("status.lastChecked", { time: formatTime$2(view.lastCheckedAt) })
-					}),
-					settings.status === "ready" && settings.enabled !== true && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: doctor_module_css_default.hint,
-						children: t("host.disabledHint")
-					}),
-					view.lastError !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: doctor_module_css_default.errorLine,
-						role: "status",
-						children: view.lastError
-					}),
-					view.host === "unavailable" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: doctor_module_css_default.hint,
-						children: offlineHint(t, view.lastErrorCode)
-					}),
-					view.snapshot?.degradedReason !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: doctor_module_css_default.hint,
-						children: view.snapshot.degradedReason
-					}),
-					view.snapshot?.version !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: doctor_module_css_default.meta,
-						children: view.hostVersion !== void 0 ? t("lifecycle.version", {
-							supervisor: view.snapshot.version,
-							web: view.hostVersion
-						}) : t("snapshot.version", { version: view.snapshot.version })
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ProfilesList, {
-						t,
-						view
-					})
-				]
-			});
-		}
-		/** Lifecycle card: one-click service install/repair/upgrade and uninstall. */
-		function LifecycleCard({ t, view, onEnsure, onUninstall }) {
-			const busy = view.actionRunning;
-			const offline = view.host === "unavailable";
-			const version = view.snapshot?.version;
-			const mismatch = !offline && version !== void 0 && view.hostVersion !== void 0 && version !== view.hostVersion;
-			const ensureLabel = offline && view.lastErrorCode === "SUPERVISOR_UNPROVISIONED" ? t("lifecycle.install") : offline ? t("lifecycle.repair") : mismatch ? t("lifecycle.upgrade") : void 0;
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: doctor_module_css_default.card,
-				"data-dsh-part": "lifecycle",
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
-						className: doctor_module_css_default.cardTitle,
-						children: t("lifecycle.title")
-					}),
-					offline && view.lastErrorCode === "SUPERVISOR_UNPROVISIONED" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: doctor_module_css_default.hint,
-						children: t("lifecycle.neverInstalled")
-					}),
-					offline && view.lastErrorCode === "SUPERVISOR_DOWN" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: doctor_module_css_default.hint,
-						children: t("lifecycle.serviceDown")
-					}),
-					mismatch && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: doctor_module_css_default.hint,
-						children: t("lifecycle.versionMismatch", {
-							supervisor: version ?? "",
-							web: view.hostVersion ?? ""
-						})
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: doctor_module_css_default.actionRow,
-						children: [ensureLabel !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-							type: "button",
-							className: doctor_module_css_default.button,
-							"data-variant": "primary",
-							"data-testid": "doctor-ensure-button",
-							disabled: busy,
-							onClick: onEnsure,
-							children: busy ? t("lifecycle.running") : ensureLabel
-						}), !offline && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-							type: "button",
-							className: doctor_module_css_default.button,
-							"data-testid": "doctor-uninstall-button",
-							disabled: busy,
-							onClick: onUninstall,
-							children: t("lifecycle.uninstall")
-						})]
-					}),
-					!offline && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: doctor_module_css_default.meta,
-						children: t("lifecycle.uninstallHint")
-					})
-				]
-			});
-		}
-		/** Offline copy keyed by the host failure code. */
-		function offlineHint(t, code) {
-			if (code === "SUPERVISOR_UNPROVISIONED") return t("api.unprovisioned");
-			if (code === "SUPERVISOR_DOWN") return t("api.supervisorDown");
-			return t("host.unavailableHint");
-		}
-		/** Protected profile rows. */
-		function ProfilesList({ t, view }) {
-			if (view.profiles.length === 0 && view.host === "available") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-				className: doctor_module_css_default.empty,
-				children: t("profiles.empty")
-			});
-			if (view.profiles.length === 0) return null;
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: doctor_module_css_default.profileBlock,
-				"data-dsh-part": "profiles",
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-					className: doctor_module_css_default.blockLabel,
-					children: t("profiles.title")
-				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
-					className: doctor_module_css_default.checkList,
-					children: view.profiles.map((profile, index) => {
-						const name = profile.identity?.name ?? profile.identity?.id ?? "#" + String(index);
-						const phase = profile.phase;
-						return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
-							className: doctor_module_css_default.checkRow,
-							"data-phase": phase ?? "unknown",
-							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: doctor_module_css_default.dot,
-									"data-state": phaseState(phase)
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: doctor_module_css_default.checkName,
-									children: name
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: doctor_module_css_default.incidentDetail,
-									children: phase === void 0 ? t("status.unknown") : phaseLabel(t, "phase." + phase)
-								}),
-								profile.pid !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: doctor_module_css_default.incidentDetail,
-									children: t("profile.pid", { pid: profile.pid })
-								}),
-								profile.restartCount !== void 0 && profile.restartCount > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: doctor_module_css_default.incidentDetail,
-									children: t("profile.restarts", { count: profile.restartCount })
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: doctor_module_css_default.incidentDetail,
-									children: profile.managed === true ? t("profile.managed") : profile.managed === false ? t("profile.unmanaged") : ""
-								})
-							]
-						}, profile.identity?.id ?? "p" + String(index));
-					})
-				})]
-			});
-		}
-		/** Incident rows. */
-		function IncidentsCard({ t, view }) {
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: doctor_module_css_default.card,
-				"data-dsh-part": "incidents",
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
-					className: doctor_module_css_default.cardTitle,
-					children: t("incidents.title")
-				}), view.incidents.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-					className: doctor_module_css_default.empty,
-					children: t("incidents.empty")
-				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
-					className: doctor_module_css_default.incidentList,
-					children: view.incidents.map((incident, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
-						className: doctor_module_css_default.incidentRow,
-						"data-severity": incidentSeverity(incident.phase),
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: doctor_module_css_default.dot,
-								"data-state": incidentSeverity(incident.phase)
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: doctor_module_css_default.incidentTitle,
-								children: kindLabel(t, incident.kind)
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: doctor_module_css_default.incidentDetail,
-								children: incident.summary
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: doctor_module_css_default.incidentDetail,
-								children: phaseLabel(t, "phase." + incident.phase)
-							}),
-							incident.updatedAt !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: doctor_module_css_default.incidentDetail,
-								children: formatTime$2(parseTime(incident.updatedAt))
-							})
-						]
-					}, incident.id + "-" + String(index)))
-				})]
-			});
-		}
-		/** Browser probe card (passive incidents). */
-		function ProbeCard({ t, view, controller }) {
-			const [copiedId, setCopiedId] = (0, react.useState)(void 0);
-			const copyFailure = (incident) => {
-				const stack = failureStackFor(incident, view);
-				copyText(t(probeKindKey(incident.kind)) + ": " + incident.message + (stack !== "" ? "\n\n" + stack : "")).then((ok) => {
-					if (ok) setCopiedId(incident.id);
-				});
-			};
-			const disablePlugin = (incident) => {
-				controller.disablePlugin(pluginIdOf(incident.message));
-			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: doctor_module_css_default.card,
-				"data-dsh-part": "probe",
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
-						className: doctor_module_css_default.cardTitle,
-						children: t("probe.title")
-					}),
-					view.probe.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: doctor_module_css_default.empty,
-						children: t("probe.empty")
-					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
-						className: doctor_module_css_default.incidentList,
-						children: view.probe.map((incident, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
-							className: doctor_module_css_default.incidentRow,
-							"data-kind": incident.kind,
-							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: doctor_module_css_default.dot,
-									"data-state": incident.kind === "unhandled-rejection" ? "warn" : "fail"
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: doctor_module_css_default.incidentTitle,
-									children: t(probeKindKey(incident.kind))
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: doctor_module_css_default.incidentDetail,
-									children: probeIncidentText(t, incident)
-								}),
-								incident.kind === "plugin-startup-failure" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-									className: doctor_module_css_default.rowActions,
-									"data-dsh-part": "plugin-row-actions",
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-										type: "button",
-										className: doctor_module_css_default.miniButton,
-										"data-testid": "doctor-copy-" + String(index),
-										disabled: controller.getSnapshot().actionRunning,
-										onClick: () => {
-											copyFailure(incident);
-										},
-										children: copiedId === incident.id ? t("actions.copied") : t("actions.copyError")
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-										type: "button",
-										className: doctor_module_css_default.miniButton,
-										"data-testid": "doctor-disable-" + String(index),
-										disabled: controller.getSnapshot().actionRunning,
-										onClick: () => {
-											disablePlugin(incident);
-										},
-										children: t("actions.disable")
-									})]
-								})
-							]
-						}, incident.id + "-" + String(index)))
-					}),
-					view.bootSignals.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-						className: doctor_module_css_default.meta,
-						children: [
-							t("kind.connection-reset"),
-							" x ",
-							String(view.bootSignals.length)
-						]
-					})
-				]
-			});
-		}
-		/** The plugin id recorded in a startup-failure probe message. */
-		function pluginIdOf(message) {
-			return message.startsWith("plugin failed to start: ") ? message.slice(24) : message;
-		}
-		/** Best available stack for one probe failure: probe detail, then the plugin-manager ring. */
-		function failureStackFor(incident, view) {
-			if (incident.kind !== "plugin-startup-failure") return incident.detail ?? "";
-			if (incident.detail !== void 0 && incident.detail !== "") return incident.detail;
-			const id = pluginIdOf(incident.message);
-			return view.pluginFailures.find((item) => item.pluginId === id)?.stack ?? "";
-		}
-		/** Actions card. */
-		function ActionsCard({ t, view, onDiagnose, onRepair, onConfirm, onReport, onSendToHarness, onRefresh, onClear, hasFailures }) {
-			const busy = view.actionRunning;
-			const offline = view.host === "unavailable";
-			const awaitingConfirm = view.incidents.some((incident) => incident.phase === "awaiting-confirmation" && incident.candidateId !== void 0);
-			const repairId = view.incidents.some((incident) => incident.repairable === true && incident.phase !== "awaiting-confirmation" && incident.phase !== "recovered" && incident.phase !== "rolled-back" && incident.phase !== "unresolved");
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: doctor_module_css_default.card,
-				"data-dsh-part": "actions",
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
-						className: doctor_module_css_default.cardTitle,
-						children: t("actions.title")
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: doctor_module_css_default.actionRow,
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: doctor_module_css_default.button,
-								"data-variant": "primary",
-								disabled: busy || offline,
-								onClick: onDiagnose,
-								children: busy ? t("actions.running") : t("actions.diagnose")
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: doctor_module_css_default.button,
-								disabled: busy || offline || !repairId,
-								onClick: onRepair,
-								children: t("actions.repair")
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: doctor_module_css_default.button,
-								"data-variant": "primary",
-								disabled: busy || offline || !awaitingConfirm,
-								onClick: onConfirm,
-								children: t("actions.confirm")
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: doctor_module_css_default.button,
-								disabled: busy || offline || view.probe.length === 0,
-								onClick: onReport,
-								children: t("actions.report")
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: doctor_module_css_default.button,
-								"data-variant": "primary",
-								disabled: busy || !hasFailures,
-								onClick: onSendToHarness,
-								children: t("actions.sendToHarness")
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: doctor_module_css_default.button,
-								disabled: busy || offline,
-								onClick: onRefresh,
-								children: t("actions.refresh")
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								className: doctor_module_css_default.button,
-								disabled: view.probe.length === 0,
-								onClick: onClear,
-								children: t("actions.clearProbe")
-							})
-						]
-					}),
-					view.action !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActionOutcome, {
-						t,
-						outcome: view.action
-					})
-				]
-			});
-		}
-		/** Action result line. */
-		function ActionOutcome({ t, outcome }) {
-			if (outcome.ok) {
-				const label = outcome.kind === "reported" ? t("actions.reported") : outcome.kind === "sent" ? t("actions.sent") : outcome.kind === "disabled" ? t("actions.disabled", { id: outcome.id ?? "" }) : t("actions.completed");
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-					className: doctor_module_css_default.meta,
-					role: "status",
-					children: label
-				});
-			}
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-				className: doctor_module_css_default.errorLine,
-				role: "status",
-				children: outcome.message ?? t("api.supervisor", { reason: "" })
-			});
-		}
-		/**
-		* Error boundary for the dynamic console area. Reports into the probe list and
-		* renders a recoverable fallback; retry resets the boundary and refreshes.
-		*/
-		var DoctorErrorBoundary = class extends react.Component {
-			state = { failed: false };
-			static getDerivedStateFromError() {
-				return { failed: true };
-			}
-			componentDidCatch(error) {
-				try {
-					this.props.onReport(error);
-				} catch {}
-			}
-			reset = () => {
-				try {
-					this.setState({ failed: false });
-					this.props.onRecover();
-				} catch {}
-			};
-			render() {
-				if (!this.state.failed) return this.props.children();
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: doctor_module_css_default.boundary,
-					"data-dsh-part": "boundary",
-					role: "alert",
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: doctor_module_css_default.boundaryText,
-						children: this.props.t("boundary.fallback")
-					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-						type: "button",
-						className: doctor_module_css_default.button,
-						onClick: this.reset,
-						children: this.props.t("boundary.retry")
-					})]
-				});
-			}
-		};
-		/** Locale key of a passive kind. */
-		function probeKindKey(kind) {
-			switch (kind) {
-				case "window-error": return "kind.window-error";
-				case "unhandled-rejection": return "kind.unhandled-rejection";
-				case "react-boundary": return "kind.react-boundary";
-				case "connection-reset": return "kind.connection-reset";
-				case "plugin-startup-failure": return "kind.plugin-startup-failure";
-			}
-		}
-		/** Incident kind label with raw fallback. */
-		function kindLabel(t, kind) {
-			const key = "incident.kind." + kind;
-			if (incidentKindKeys.includes(key)) return t(key);
-			return kind;
-		}
-		const incidentKindKeys = [
-			"incident.kind.boot-failure",
-			"incident.kind.process-crash",
-			"incident.kind.heartbeat-timeout",
-			"incident.kind.http-failure",
-			"incident.kind.client-failure",
-			"incident.kind.dependency-failure",
-			"incident.kind.configuration-failure"
-		];
-		/** Phase label with raw fallback. */
-		function phaseLabel(t, key) {
-			const candidate = key;
-			if (phaseKeys.includes(candidate)) return t(candidate);
-			return key.replace(/^phase\./, "");
-		}
-		const phaseKeys = [
-			"phase.disabled",
-			"phase.provisioning",
-			"phase.armed",
-			"phase.degraded",
-			"phase.updating",
-			"phase.rolling-back",
-			"phase.uninstalling",
-			"phase.broken",
-			"phase.idle",
-			"phase.starting",
-			"phase.healthy",
-			"phase.stopping",
-			"phase.exited",
-			"phase.suspected",
-			"phase.failed",
-			"phase.quarantined"
-		];
-		/** Combined detail text of one passive incident. */
-		function probeIncidentText(t, incident) {
-			const parts = [incident.message];
-			if (incident.line !== void 0 && incident.column !== void 0) parts.push(t("incident.detail", { summary: "line " + String(incident.line) + ", column " + String(incident.column) }));
-			else if (incident.source !== void 0) parts.push(t("incident.detail", { summary: "source " + incident.source }));
-			if (incident.detail !== void 0 && incident.detail !== "") parts.push(incident.detail);
-			return parts.join(" — ");
-		}
-		/** data-state of a phase. */
-		function phaseState(phase) {
-			switch (phase) {
-				case "healthy":
-				case "armed":
-				case "recovered": return "ok";
-				case "degraded":
-				case "starting":
-				case "suspected":
-				case "awaiting-confirmation":
-				case "repairing": return "warn";
-				case "failed":
-				case "broken":
-				case "quarantined":
-				case "unresolved": return "fail";
-				default: return "unknown";
-			}
-		}
-		/** Incident severity derived from its phase. */
-		function incidentSeverity(phase) {
-			if (phase === "recovered" || phase === "rolled-back") return "ok";
-			if (phase === "awaiting-confirmation" || phase === "repairing" || phase === "candidate-testing") return "warn";
-			return "fail";
-		}
-		/** Parse an ISO timestamp; never throws. */
-		function parseTime(value) {
-			const at = Date.parse(value);
-			return Number.isFinite(at) ? at : 0;
-		}
-		/** Locale-neutral time rendering. */
-		function formatTime$2(at) {
-			if (at <= 0) return "-";
-			try {
-				return new Date(at).toLocaleTimeString();
-			} catch {
-				return String(at);
-			}
-		}
-		//#endregion
-		//#region ../dsh-doctor/src/client/DoctorSettingsCard.tsx
-		/** Bridges the `doctor` settings form onto the card staged form. */
-		var DoctorSettingsCardController = class {
-			form;
-			store;
-			/** @param scope - the bound configuration form for the `doctor` settings entry. */
-			constructor(scope) {
-				this.form = new CardForm(scope, [
-					booleanField("enabled"),
-					booleanField("fullProtection"),
-					booleanField("autoRepair"),
-					booleanField("autoMigrate")
-				]);
-				this.store = this.form.bind(() => this.projection());
-			}
-			projection() {
-				return {
-					...this.form.shell(),
-					enabled: this.form.field("enabled"),
-					fullProtection: this.form.field("fullProtection"),
-					autoRepair: this.form.field("autoRepair"),
-					autoMigrate: this.form.field("autoMigrate")
-				};
-			}
-			/** Build the form face the card slot registration injects. */
-			inject() {
-				return {
-					hooks: { doctorSettingsCard: this.store },
-					...this.form.actions()
-				};
-			}
-		};
-		/**
-		* Render the doctor card.
-		* @param props - locale copy, the card snapshot, form actions, and the console controller.
-		* @returns the card.
-		*/
-		function DoctorSettingsCard(props) {
-			const { t } = props;
-			const state = props.useDoctorSettingsCard((snapshot) => snapshot);
-			const fieldProps = {
-				overriddenLabel: t("settings.overridden"),
-				resetLabel: t("settings.reset"),
-				invalidLabel: t("settings.invalidNumber"),
-				disabled: !state.writable
-			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(PluginSettingsCard, {
-				t,
-				titleKey: "settings.title",
-				descriptionKey: "settings.description",
-				defaultOpen: false,
-				state,
-				renderChildrenWhenNotExposed: true,
-				hideNotExposedNotice: true,
-				onSave: props.save,
-				onDiscard: props.discard,
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField, {
-						id: "settings-doctor-enabled",
-						label: t("settings.enabled"),
-						hint: t("settings.enabledHint"),
-						inheritLabel: t("settings.inherit"),
-						onLabel: t("settings.on"),
-						offLabel: t("settings.off"),
-						...fieldProps,
-						...state.enabled,
-						onEdit: (text) => {
-							props.edit("enabled", text);
-						},
-						onReset: () => {
-							props.resetField("enabled");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField, {
-						id: "settings-doctor-full-protection",
-						label: t("settings.fullProtection"),
-						hint: t("settings.fullProtectionHint"),
-						inheritLabel: t("settings.inherit"),
-						onLabel: t("settings.on"),
-						offLabel: t("settings.off"),
-						...fieldProps,
-						...state.fullProtection,
-						onEdit: (text) => {
-							props.edit("fullProtection", text);
-						},
-						onReset: () => {
-							props.resetField("fullProtection");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField, {
-						id: "settings-doctor-auto-migrate",
-						label: t("settings.autoMigrate"),
-						hint: t("settings.autoMigrateHint"),
-						inheritLabel: t("settings.inherit"),
-						onLabel: t("settings.on"),
-						offLabel: t("settings.off"),
-						...fieldProps,
-						...state.autoMigrate,
-						onEdit: (text) => {
-							props.edit("autoMigrate", text);
-						},
-						onReset: () => {
-							props.resetField("autoMigrate");
-						}
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(BooleanField, {
-						id: "settings-doctor-auto-repair",
-						label: t("settings.autoRepair"),
-						hint: t("settings.autoRepairHint"),
-						inheritLabel: t("settings.inherit"),
-						onLabel: t("settings.on"),
-						offLabel: t("settings.off"),
-						...fieldProps,
-						...state.autoRepair,
-						onEdit: (text) => {
-							props.edit("autoRepair", text);
-						},
-						onReset: () => {
-							props.resetField("autoRepair");
-						}
-					}),
-					props.controller === null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						role: "status",
-						children: t("settings.controllerUnavailable")
-					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DoctorRecoveryConsole, {
-						t,
-						controller: props.controller,
-						settings: null,
-						embedded: true
-					})
-				]
-			});
-		}
-		//#endregion
-		//#region ../dsh-doctor/src/client/locales.ts
-		/**
-		* Locale dictionaries for the dsh-doctor recovery console. The zh dictionary is
-		* the key source; the en dictionary mirrors the exact key set.
-		* @module @linxin666/dsh-doctor/client
-		*/
-		/** Simplified Chinese copy (the key-set source of truth). */
-		const STATIC_ZH = {
-			"settings.title": "Doctor 恢复控制台",
-			"settings.subtitle": "监控受保护档案、重建信号与浏览器故障，并运行诊断与修复动作。",
-			"settings.description": "故障检测、隔离修复与事务式回滚的救助模式。",
-			"settings.enabled": "启用救助模式",
-			"settings.enabledHint": "开启后自动核对并部署 Supervisor 与救援胶囊；关闭时暂停自动干预但不卸载。",
-			"settings.fullProtection": "完整保护",
-			"settings.fullProtectionHint": "托管模式发送心跳、记录故障并执行熔断；关闭后保留只观察、不自动干预。",
-			"settings.autoMigrate": "自动迁移旧聚合包",
-			"settings.autoMigrateHint": "启动前自动把 dsh-web-ui-all 迁移到 dsh-web-all；关闭时保留旧包并等待手动处理。",
-			"settings.autoRepair": "自动修复",
-			"settings.autoRepairHint": "开启后在隔离门禁通过时自动提升；关闭时保留候选并等待明确确认。",
-			"settings.controllerUnavailable": "恢复控制台当前不可用。",
-			"settings.overridden": "已覆盖",
-			"settings.reset": "恢复默认",
-			"settings.notExposed": "当前 DSH 版本未向设置页暴露本插件的配置命名空间，表单不可用。可编辑 $DSH_HOME/settings.yaml 直接配置后重启。",
-			"settings.readOnly": "当前部署的设置只读。",
-			"settings.inherit": "继承",
-			"settings.on": "开",
-			"settings.off": "关",
-			"settings.expand": "展开设置",
-			"settings.collapse": "收起设置",
-			"settings.save": "保存",
-			"settings.saving": "保存中…",
-			"settings.discard": "放弃",
-			"settings.unsaved": "未保存",
-			"settings.saveFailed": "部署未接受这些值，已保留供你修改。",
-			"settings.invalidNumber": "请输入数字，留空则使用默认值。",
-			"status.title": "宿主状态",
-			"status.checking": "检查中…",
-			"status.unknown": "未知",
-			"host.available": "Doctor 在线",
-			"host.unavailable": "Doctor 离线",
-			"status.lastChecked": "上次检查 {time}",
-			"status.neverChecked": "尚未检查",
-			"host.unavailableHint": "未检测到 /api/doctor 宿主端点：宿主半区未启用、未挂载，或返回了非 JSON 响应。",
-			"host.disabledHint": "Doctor 已停用：打开上方开关后，宿主半区才会挂载诊断端点。",
-			"snapshot.version": "快照版本 {version}",
-			"snapshot.updated": "更新于 {time}",
-			"profiles.title": "受保护档案",
-			"profiles.empty": "无受保护档案。",
-			"profile.restarts": "重启 {count} 次",
-			"profile.managed": "托管",
-			"profile.unmanaged": "未托管",
-			"profile.pid": "PID {pid}",
-			"profile.lastHealthy": "上次健康 {time}",
-			"incidents.title": "事件",
-			"incidents.empty": "暂无事件。",
-			"probe.title": "浏览器探针",
-			"probe.empty": "未捕获到窗口错误或未处理的 Promise 拒绝。",
-			"actions.title": "动作",
-			"actions.diagnose": "诊断",
-			"actions.repair": "修复",
-			"actions.confirm": "确认提升",
-			"actions.report": "上报到 Doctor",
-			"actions.refresh": "刷新",
-			"actions.clearProbe": "清除探针",
-			"actions.running": "执行中…",
-			"actions.reported": "已上报浏览器侧事件。",
-			"actions.completed": "动作已完成，快照已更新。",
-			"actions.reportEmpty": "没有可上报的探针事件。",
-			"actions.sendToHarness": "发送给 Harness",
-			"actions.sent": "已发送到当前 DSH 会话。",
-			"actions.copyError": "复制错误",
-			"actions.copied": "已复制",
-			"actions.disable": "禁用并重启",
-			"actions.disabled": "已禁用 {id}；重启 dsh web 后生效。",
-			"harness.title": "发送给 Harness",
-			"harness.subtitle": "把最近一次故障的摘要与错误堆栈连同排障提示词发给当前 DSH 会话。",
-			"harness.prompt": "排障提示词",
-			"harness.prompt.title": "请排查以下 DSH Web 故障，给出根因与修复步骤：",
-			"harness.prompt.summary": "故障摘要",
-			"harness.prompt.kind": "故障类型",
-			"harness.prompt.stack": "错误堆栈",
-			"harness.prompt.environment": "环境",
-			"harness.target": "目标会话",
-			"harness.noTarget": "当前没有打开的会话，请先新建或打开一个会话。",
-			"harness.send": "发送",
-			"harness.sending": "发送中…",
-			"harness.copy": "复制",
-			"harness.copied": "已复制",
-			"harness.cancel": "取消",
-			"harness.noFailure": "暂无已记录的启动或运行故障。",
-			"lifecycle.title": "服务与胶囊",
-			"lifecycle.install": "一键安装",
-			"lifecycle.repair": "修复并重启服务",
-			"lifecycle.upgrade": "重启并升级服务",
-			"lifecycle.uninstall": "卸载救助服务",
-			"lifecycle.uninstallHint": "移除本机用户级 Supervisor 服务；安装状态数据保留，可随时重新安装。",
-			"lifecycle.running": "安装/修复中…",
-			"lifecycle.neverInstalled": "Supervisor 服务尚未安装：一键安装将注册用户级服务、启动守护进程并配置救援胶囊。",
-			"lifecycle.serviceDown": "Supervisor 服务已安装但未应答：一键修复会重新部署服务并刷新救援胶囊。",
-			"lifecycle.version": "Supervisor {supervisor} / Web {web}",
-			"lifecycle.versionMismatch": "Supervisor {supervisor} 与 Web 端 {web} 版本不一致：升级重启后生效。",
-			"api.network": "网络错误：{reason}",
-			"api.loopback": "仅限本机浏览器访问。",
-			"api.notAvailable": "宿主端点不可用（未启用或未挂载宿主半区）。",
-			"api.malformed": "宿主响应格式异常。",
-			"api.http": "宿主错误：{reason}",
-			"api.supervisor": "Supervisor 错误：{reason}",
-			"api.unprovisioned": "Supervisor 服务未安装。",
-			"api.supervisorDown": "Supervisor 服务未应答。",
-			"enable.label": "启用 Doctor",
-			"enable.on": "已启用：宿主半区挂载诊断端点并发送心跳。",
-			"enable.off": "已停用：控制台只读显示，宿主端点处于离线。",
-			"enable.unavailable": "设置命名空间不可用（宿主未注册 doctor 设置）。",
-			"enable.saving": "保存中…",
-			"enable.saveFailed": "保存失败：{reason}",
-			"kind.window-error": "窗口错误",
-			"kind.unhandled-rejection": "未处理的 Promise 拒绝",
-			"kind.react-boundary": "React 渲染异常",
-			"kind.connection-reset": "连接重建",
-			"kind.plugin-startup-failure": "插件启动失败",
-			"phase.disabled": "已停用",
-			"phase.provisioning": "初始化中",
-			"phase.armed": "已就绪",
-			"phase.degraded": "部分异常",
-			"phase.updating": "更新中",
-			"phase.rolling-back": "回滚中",
-			"phase.uninstalling": "卸载中",
-			"phase.broken": "已损坏",
-			"phase.idle": "空闲",
-			"phase.starting": "启动中",
-			"phase.healthy": "健康",
-			"phase.stopping": "停止中",
-			"phase.exited": "已退出",
-			"phase.suspected": "疑似异常",
-			"phase.failed": "失败",
-			"phase.quarantined": "已隔离",
-			"incident.kind.boot-failure": "启动失败",
-			"incident.kind.process-crash": "进程崩溃",
-			"incident.kind.heartbeat-timeout": "心跳超时",
-			"incident.kind.http-failure": "HTTP 故障",
-			"incident.kind.client-failure": "浏览器侧故障",
-			"incident.kind.dependency-failure": "依赖故障",
-			"incident.kind.configuration-failure": "配置故障",
-			"incident.detail": "{summary}",
-			"boundary.fallback": "恢复控制台的动态区域渲染失败，已记录一条事件；可重试以恢复显示。",
-			"boundary.retry": "重试"
-		};
-		/** English copy mirroring the zh key set exactly. */
-		const STATIC_EN = {
-			"settings.title": "Doctor recovery console",
-			"settings.subtitle": "Monitors protected profiles, rebuild signals and browser failures, and runs diagnostic actions.",
-			"settings.description": "Rescue mode with failure detection, isolated repair and transactional rollback.",
-			"settings.enabled": "Enable rescue mode",
-			"settings.enabledHint": "Reconciles the Supervisor and rescue capsule automatically; disabling pauses intervention without uninstalling.",
-			"settings.fullProtection": "Full protection",
-			"settings.fullProtectionHint": "Managed mode sends heartbeats, records incidents and enforces circuit breaking; off remains observation-only.",
-			"settings.autoMigrate": "Auto migrate legacy aggregate",
-			"settings.autoMigrateHint": "Migrates dsh-web-ui-all to dsh-web-all before startup; off keeps the legacy package until manual action.",
-			"settings.autoRepair": "Auto repair",
-			"settings.autoRepairHint": "Promotes after isolated gates when on; off keeps the candidate staged until explicit confirmation.",
-			"settings.controllerUnavailable": "The recovery console is currently unavailable.",
-			"settings.overridden": "Overridden",
-			"settings.reset": "Reset to default",
-			"settings.notExposed": "This DSH version does not expose this plugin's settings namespace to the configuration page, so the form is unavailable. Edit $DSH_HOME/settings.yaml directly and restart.",
-			"settings.readOnly": "This deployment stores settings read-only.",
-			"settings.inherit": "Inherit",
-			"settings.on": "On",
-			"settings.off": "Off",
-			"settings.expand": "Show settings",
-			"settings.collapse": "Hide settings",
-			"settings.save": "Save",
-			"settings.saving": "Saving…",
-			"settings.discard": "Discard",
-			"settings.unsaved": "Unsaved",
-			"settings.saveFailed": "The deployment did not accept these values; they were left for you to correct.",
-			"settings.invalidNumber": "Enter a number, or leave blank to use the default.",
-			"status.title": "Host status",
-			"status.checking": "Checking...",
-			"status.unknown": "Unknown",
-			"host.available": "Doctor online",
-			"host.unavailable": "Doctor offline",
-			"status.lastChecked": "Last checked {time}",
-			"status.neverChecked": "Never checked",
-			"host.unavailableHint": "No /api/doctor host endpoint detected: the host half is disabled, unmounted, or answered with a non-JSON response.",
-			"host.disabledHint": "Doctor is disabled: the host half mounts its endpoints only after the switch above is on.",
-			"snapshot.version": "Snapshot {version}",
-			"snapshot.updated": "Updated {time}",
-			"profiles.title": "Protected profiles",
-			"profiles.empty": "No protected profiles.",
-			"profile.restarts": "restarted {count} times",
-			"profile.managed": "managed",
-			"profile.unmanaged": "unmanaged",
-			"profile.pid": "PID {pid}",
-			"profile.lastHealthy": "last healthy {time}",
-			"incidents.title": "Incidents",
-			"incidents.empty": "No incidents.",
-			"probe.title": "Browser probe",
-			"probe.empty": "No window errors or unhandled promise rejections captured.",
-			"actions.title": "Actions",
-			"actions.diagnose": "Diagnose",
-			"actions.repair": "Repair",
-			"actions.confirm": "Confirm promotion",
-			"actions.report": "Report to Doctor",
-			"actions.refresh": "Refresh",
-			"actions.clearProbe": "Clear probe",
-			"actions.running": "Running...",
-			"actions.reported": "Browser incident reported.",
-			"actions.completed": "Action completed; snapshot refreshed.",
-			"actions.reportEmpty": "Nothing to report from the probe list.",
-			"actions.sendToHarness": "Send to Harness",
-			"actions.sent": "Sent to the current DSH session.",
-			"actions.copyError": "Copy error",
-			"actions.copied": "Copied",
-			"actions.disable": "Disable and restart",
-			"actions.disabled": "Disabled {id}; takes effect after restarting dsh web.",
-			"harness.title": "Send to Harness",
-			"harness.subtitle": "Sends the latest failure summary and error stack along with a troubleshooting prompt to the current DSH session.",
-			"harness.prompt": "Troubleshooting prompt",
-			"harness.prompt.title": "Please diagnose the following DSH Web failure and provide root cause and fix steps:",
-			"harness.prompt.summary": "Failure summary",
-			"harness.prompt.kind": "Failure kind",
-			"harness.prompt.stack": "Error stack",
-			"harness.prompt.environment": "Environment",
-			"harness.target": "Target session",
-			"harness.noTarget": "No session is currently open; create or open one first.",
-			"harness.send": "Send",
-			"harness.sending": "Sending...",
-			"harness.copy": "Copy",
-			"harness.copied": "Copied",
-			"harness.cancel": "Cancel",
-			"harness.noFailure": "No recorded startup or runtime failure yet.",
-			"lifecycle.title": "Service and capsule",
-			"lifecycle.install": "Install now",
-			"lifecycle.repair": "Repair and restart",
-			"lifecycle.upgrade": "Restart and upgrade",
-			"lifecycle.uninstall": "Uninstall rescue service",
-			"lifecycle.uninstallHint": "Removes the user-level supervisor service on this machine; state data is kept and reinstall is always possible.",
-			"lifecycle.running": "Installing/repairing...",
-			"lifecycle.neverInstalled": "The supervisor service is not installed: install registers the user-level service, starts the daemon and provisions the rescue capsule.",
-			"lifecycle.serviceDown": "The supervisor service is installed but not answering: repair redeploys the service and refreshes the capsule.",
-			"lifecycle.version": "Supervisor {supervisor} / Web {web}",
-			"lifecycle.versionMismatch": "Supervisor {supervisor} and Web {web} versions differ: upgrade and restart takes effect.",
-			"api.network": "Network error: {reason}",
-			"api.loopback": "Only reachable from a local browser.",
-			"api.notAvailable": "Host endpoint unavailable (host half disabled or unmounted).",
-			"api.malformed": "Host response is malformed.",
-			"api.http": "Host error: {reason}",
-			"api.supervisor": "Supervisor error: {reason}",
-			"api.unprovisioned": "The supervisor service is not installed.",
-			"api.supervisorDown": "The supervisor service is not answering.",
-			"enable.label": "Enable Doctor",
-			"enable.on": "Enabled: the host half mounts diagnostic endpoints and sends heartbeats.",
-			"enable.off": "Disabled: the console is read-only and host endpoints are offline.",
-			"enable.unavailable": "Settings namespace unavailable (host did not register the doctor settings).",
-			"enable.saving": "Saving...",
-			"enable.saveFailed": "Save failed: {reason}",
-			"kind.window-error": "Window error",
-			"kind.unhandled-rejection": "Unhandled promise rejection",
-			"kind.react-boundary": "React render error",
-			"kind.connection-reset": "Connection rebuilt",
-			"kind.plugin-startup-failure": "Plugin startup failure",
-			"phase.disabled": "Disabled",
-			"phase.provisioning": "Provisioning",
-			"phase.armed": "Armed",
-			"phase.degraded": "Degraded",
-			"phase.updating": "Updating",
-			"phase.rolling-back": "Rolling back",
-			"phase.uninstalling": "Uninstalling",
-			"phase.broken": "Broken",
-			"phase.idle": "Idle",
-			"phase.starting": "Starting",
-			"phase.healthy": "Healthy",
-			"phase.stopping": "Stopping",
-			"phase.exited": "Exited",
-			"phase.suspected": "Suspected",
-			"phase.failed": "Failed",
-			"phase.quarantined": "Quarantined",
-			"incident.kind.boot-failure": "Boot failure",
-			"incident.kind.process-crash": "Process crash",
-			"incident.kind.heartbeat-timeout": "Heartbeat timeout",
-			"incident.kind.http-failure": "HTTP failure",
-			"incident.kind.client-failure": "Browser failure",
-			"incident.kind.dependency-failure": "Dependency failure",
-			"incident.kind.configuration-failure": "Configuration failure",
-			"incident.detail": "{summary}",
-			"boundary.fallback": "The dynamic area of the recovery console failed to render; one incident was recorded. Retry to restore the display.",
-			"boundary.retry": "Retry"
-		};
-		/** Simplified Chinese dictionary. */
-		const zh$4 = STATIC_ZH;
-		/** English dictionary. */
-		const en$4 = STATIC_EN;
-		//#endregion
-		//#region ../dsh-doctor/src/client/telemetry.ts
 		const VISITOR_KEY = "dsh-web-ui-telemetry-visitor";
 		const DAY_KEY_PREFIX = "dsh-web-ui-telemetry-day:";
 		const ENDPOINT = "https://dsh-market.com/api/telemetry/event";
@@ -48854,270 +42835,45 @@ window.__ModuleLoader__.load({
 			} catch {}
 		}
 		//#endregion
-		//#region ../dsh-doctor/src/client/plugin-card-seat.ts
-		/**
-		* Family plugin-card seat.
-		*
-		* A family plugin contributes its settings card to whichever plugin-card seat
-		* the running host actually renders:
-		*
-		* - `web-ui.plugin.item` — the list seat declared by the dsh-web-settings
-		*   group section (this family's own first-level "Web UI plugins" section);
-		* - `plugins.bundle.config` — the official keyed seat of the harness's plugin
-		*   manager page, keyed by the bundle's package name and rendered on that
-		*   bundle's page. alpha.2 removed the `settings.plugin.item` keyed seat of the
-		*   `ui-settings-plugins` tab that this helper used before, so a card keyed by
-		*   its settings namespace has no seat to land in any more.
-		*
-		* SEAT SELECTION IS NOT A DECLARATION PROBE. The official plugin surface
-		* belongs to the harness bundle and declares its seats before any external
-		* plugin's `apply()` runs, so "is the official seat declared?" answers yes even
-		* in the deployment whose whole point is the family group. Choosing on that
-		* probe sends every family card to the official page and leaves the group's own
-		* section permanently empty — the family of reports where the section renders
-		* its heading and zero cards.
-		*
-		* The signal that actually distinguishes the two deployments is whether
-		* dsh-web-settings is loaded: it is the package that owns the group section and
-		* it publishes the `webUiSettings` service during `apply()`, which every
-		* family plugin already reads for its settings form. Group loaded -> the family
-		* seat; group absent -> the official seat.
-		*
-		* The decision is re-evaluated on every `slots/changed` because the group may
-		* apply after this plugin (the family aggregate orders it first, a profile that
-		* installs the group separately need not): the initial contribution goes to the
-		* official seat, then moves to the family seat the moment the group's section
-		* registers. The entry is disposed before the replacement is registered, so a
-		* card is never in two seats at once.
-		*
-		* The shared tree has no client-SDK dependency, so this module reads its
-		* context through the structural shape below; callers pass the plugin's own
-		* `ctx`.
-		*/
-		/** The family list seat key. */
-		const FAMILY_PLUGIN_CARD_SEAT = "web-ui.plugin.item";
-		/** The official keyed plugin-card seat key (the alpha.2 bundle-configuration seat). */
-		const OFFICIAL_PLUGIN_CARD_SEAT = "plugins.bundle.config";
-		/** The service dsh-web-settings publishes while it is loaded. */
-		const FAMILY_GROUP_SERVICE = "webUiSettings";
-		/**
-		* Whether the family group (dsh-web-settings) is loaded in this page. The
-		* service is the group package's own contract, so the probe cannot be fooled
-		* by a harness release that starts declaring the official seat differently.
-		*/
-		function familyGroupLoaded(ctx) {
-			const get = ctx.get;
-			if (typeof get !== "function") return false;
-			try {
-				return get.call(ctx, FAMILY_GROUP_SERVICE) !== void 0;
-			} catch {
-				return false;
-			}
-		}
-		/** Report a refused registration instead of leaving the user with no card. */
-		function warnRefusedSeat(seat, error) {
-			try {
-				console.warn(`[dsh-web] plugin card registration into "${seat}" was refused; the card will not render`, error);
-			} catch {}
-		}
-		/**
-		* Contribute one family plugin card to the seat this host renders, following
-		* the group if it loads later. The entry is disposed and re-registered on a
-		* seat change, never duplicated.
-		* @param ctx - client context (its slot registry decides the seat).
-		* @param seat - the card contribution.
-		*/
-		function installPluginCard(ctx, seat) {
-			const slots = ctx.slots;
-			const component = seat.component;
-			const inject = seat.inject;
-			let dispose;
-			let current;
-			/**
-			* Re-entrancy latch. The registry emits a change event synchronously from
-			* inside both `register` and the previous entry's disposer, so an unguarded
-			* reconcile would re-enter itself mid-move and register the card twice into
-			* the seat it is leaving ("already has an entry for key ...").
-			*/
-			let reconciling = false;
-			/** Reconcile the contribution with the currently live seat (no-op when unchanged). */
-			const reconcile = () => {
-				if (reconciling) return;
-				const target = familyGroupLoaded(ctx) ? FAMILY_PLUGIN_CARD_SEAT : OFFICIAL_PLUGIN_CARD_SEAT;
-				if (current === target) return;
-				reconciling = true;
-				const previous = dispose;
-				dispose = void 0;
-				current = void 0;
-				previous?.();
-				try {
-					dispose = slots.register(target === "web-ui.plugin.item" ? {
-						name: FAMILY_PLUGIN_CARD_SEAT,
-						id: seat.id,
-						...seat.order === void 0 ? {} : { order: seat.order },
-						...seat.label === void 0 ? {} : { label: seat.label },
-						locale: seat.locale,
-						...seat.inject === void 0 ? {} : { inject }
-					} : {
-						name: OFFICIAL_PLUGIN_CARD_SEAT,
-						key: seat.bundle,
-						locale: seat.locale,
-						...seat.inject === void 0 ? {} : { inject }
-					}, component);
-					current = target;
-				} catch (error) {
-					warnRefusedSeat(target, error);
-				} finally {
-					reconciling = false;
-				}
-			};
-			if (typeof ctx.on === "function") try {
-				ctx.on("slots/changed", () => {
-					reconcile();
-				});
-			} catch {}
-			reconcile();
-		}
-		//#endregion
-		//#region ../dsh-doctor/src/client/index.ts
+		//#region ../dsh-skill-explorer/src/client/index.ts
 		var client_exports$4 = /* @__PURE__ */ __exportAll({
-			NS: () => NS$4,
-			PLUGIN_SHORT_NAME: () => PLUGIN_SHORT_NAME,
 			apply: () => apply$5,
 			inject: () => inject$5
 		});
-		/** Locale namespace owned by this plugin. */
-		const NS$4 = "doctor";
-		/** Semantic plugin short name used on the console root container. */
-		const PLUGIN_SHORT_NAME = "doctor";
+		/** Locale namespace this plugin owns. */
+		const NS$4 = "dsh-skill-explorer";
+		/** Required services (fiber inject waiting — the runtime must be up first). */
+		const inject$5 = ["slots", "locale"];
 		/**
-		* Profile entry id the family aggregate's generated row carries — the
-		* deployment shape nearly every user runs. Under 0.1.7 a settings form is
-		* addressed by profile entry id, so the shared-forms fallback below has to
-		* name it; the family binder resolves the family namespace instead.
+		* Mount the skill center surfaces.
+		* @param ctx - client root context (locale service).
 		*/
-		const AGGREGATE_ENTRY_ID = "web-ui-doctor";
-		/**
-		* Entry ids this package's rows carry, most common deployment first: the
-		* aggregate's generated row, then the bare family namespace — which is both
-		* the standalone bundle patch row id and the descriptor key a Host that keys
-		* rows by the plugin's own namespace reports.
-		*/
-		const DOCTOR_ENTRY_IDS = [AGGREGATE_ENTRY_ID, NS$4];
-		/** Services required by the browser half. */
-		const inject$5 = [
-			"slots",
-			"locale",
-			"configForms"
-		];
-		/** Apply-guard: a duplicated client injection must not mount a second card. */
-		let claimed = false;
-		/** Apply the browser half; never throws. */
 		function apply$5(ctx) {
-			reportDailyHeartbeat([{ name: "@linxin666/dsh-doctor" }]);
-			if (claimed) return;
-			claimed = true;
-			safe(() => {
-				ctx.effect(() => {
-					try {
-						return ctx.locale.register(NS$4, {
-							zh: zh$4,
-							en: en$4
-						});
-					} catch {
-						return () => {};
-					}
-				}, "doctor: dictionaries");
-			});
-			let controller;
-			safe(() => {
-				const passive = new PassiveProbe({ notify: () => {
-					controller?.syncProbe();
-				} });
-				const modules = ctx.get("modules");
-				const harness = createHarnessPort(ctx.get("sessions"));
-				const pluginRepair = createPluginRepairPort(ctx.get("pluginManager"));
-				controller = new DoctorController({
-					api: new DoctorApi(),
-					passive,
-					modules,
-					harness,
-					pluginRepair
-				});
-				passive.start();
-				ctx.effect(() => {
-					controller?.start();
-					return () => {
-						controller?.dispose();
-					};
-				}, "doctor: poll loop");
-				ctx.effect(() => ctx.on("connection/reset", () => {
-					controller?.noteConnectionReset();
-				}), "doctor: connection signals");
-				const events = ctx;
-				ctx.effect(() => events.on("loader/partial-dispose", (_loader, options, failed) => {
-					try {
-						if (failed !== true) return;
-						const row = options ?? {};
-						const id = typeof row.id === "string" ? row.id : typeof row.name === "string" ? row.name : void 0;
-						if (id !== void 0 && id !== "") controller?.notePluginStartupFailure(id);
-					} catch {}
-				}), "doctor: plugin failure events");
-			});
-			let cardController;
-			safe(() => {
-				const binder = ctx.get("webUiSettings");
-				cardController = new DoctorSettingsCardController(binder === void 0 || typeof binder.bind !== "function" ? ctx.configForms.get(doctorEntryId(ctx.configForms)) : binder.bind({ namespace: NS$4 }));
-			});
-			const label = () => {
+			reportDailyHeartbeat([{ name: "@linxin666/dsh-client-ui-skill-explorer" }]);
+			ctx.effect(() => {
 				try {
-					return ctx.locale.bind(NS$4)("settings.title");
+					return ctx.locale.register(NS$4, {
+						zh: zh$4,
+						en: en$4
+					});
 				} catch {
-					return "Doctor";
+					return () => {};
 				}
-			};
-			const card = cardController;
-			const doctor = controller;
-			if (doctor !== void 0 && card !== void 0) installPluginCard(ctx, {
-				bundle: "@linxin666/dsh-doctor",
-				id: NS$4,
-				order: 140,
-				label,
-				locale: NS$4,
-				inject: () => ({
-					...card.inject(),
-					controller: doctor
-				}),
-				component: DoctorSettingsCard
-			});
-		}
-		/** Run one guarded step; never rethrows. */
-		function safe(step) {
+			}, "skill-explorer: dictionaries");
 			try {
-				step();
+				setRuntimeTranslate(ctx.locale.bind(NS$4));
 			} catch {}
-		}
-		/**
-		* The profile entry id this page serves the doctor config under.
-		*
-		* The shared describe mirror is the only local evidence of which row id this
-		* profile actually carries, but it answers asynchronously: at plugin
-		* activation it usually holds nothing yet. An unanswered mirror therefore
-		* binds the aggregate row id rather than guessing among the candidates — the
-		* form is bound once for the session, so a wrong guess would leave the card
-		* reporting an unserved namespace even after the mirror settles.
-		* @param forms - the shared configuration forms service.
-		* @returns the entry id to bind.
-		*/
-		function doctorEntryId(forms) {
-			let served;
+			const panel = mountPanel(new SkillApi(), ctx.locale);
+			const disposers = [];
 			try {
-				served = forms.describe().getSnapshot().view?.namespaces.map((view) => view.ns);
-			} catch {
-				served = void 0;
+				disposers.push(mountSidebarEntry(() => panel.toggle(), ctx.locale));
+				disposers.push(() => panel.dispose());
+			} catch (error) {
+				console.warn("[skill-explorer] mount failed:", error);
 			}
-			if (served === void 0) return AGGREGATE_ENTRY_ID;
-			return DOCTOR_ENTRY_IDS.find((id) => served.includes(id)) ?? "doctor";
+			ctx.effect(() => () => {
+				for (const dispose of disposers.splice(0)) dispose();
+			}, "skill-explorer: ui mounts");
 		}
 		//#endregion
 		//#region ../dsh-usage/src/client/usage-store.ts
@@ -49208,7 +42964,12 @@ window.__ModuleLoader__.load({
 			"usage.bank.window": "统计窗口 {from} ~ {to}",
 			"usage.bank.save": "保存图片",
 			"usage.bank.share": "分享",
-			"usage.bank.drawError": "票券生成失败：{error}"
+			"usage.bank.drawError": "票券生成失败：{error}",
+			"usage.foot.cost": "今日消费",
+			"usage.foot.noData": "今日暂无用量",
+			"usage.foot.open": "打开使用统计设置",
+			"usage.foot.collapse": "收起用量卡片",
+			"usage.foot.expand": "展开用量卡片"
 		};
 		/** English mirror; every zh key present. */
 		const en$3 = {
@@ -49261,7 +43022,12 @@ window.__ModuleLoader__.load({
 			"usage.bank.window": "Window {from} - {to}",
 			"usage.bank.save": "Save image",
 			"usage.bank.share": "Share",
-			"usage.bank.drawError": "Failed to render the voucher: {error}"
+			"usage.bank.drawError": "Failed to render the voucher: {error}",
+			"usage.foot.cost": "Today spend",
+			"usage.foot.noData": "No usage yet today",
+			"usage.foot.open": "Open usage statistics settings",
+			"usage.foot.collapse": "Collapse the usage card",
+			"usage.foot.expand": "Expand the usage card"
 		};
 		/**
 		* Active dictionary, picked by the document language at call time. The
@@ -49279,7 +43045,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:packages/dsh-usage/src/client/usage.module.css.mjs
-		const css$3 = ".cvtkAW_section{color:inherit;flex-direction:column;gap:16px;display:flex}.cvtkAW_header{justify-content:space-between;align-items:center;gap:12px;display:flex}.cvtkAW_currentProvider{opacity:.75;font-size:13px}.cvtkAW_refreshBtn{appearance:none;color:inherit;font:inherit;cursor:pointer;opacity:.85;background:0 0;border:1px solid;border-radius:8px;padding:4px 12px;font-size:12px;transition:opacity .12s,background-color .12s}.cvtkAW_refreshBtn:hover:not(:disabled){opacity:1;background:color-mix(in srgb, currentColor 8%, transparent)}.cvtkAW_refreshBtn:disabled{cursor:default;opacity:.5}.cvtkAW_refreshBtn:focus-visible{box-shadow:0 0 0 2px color-mix(in srgb, currentColor 45%, transparent);outline:none}.cvtkAW_tabs{border-bottom:1px solid color-mix(in srgb, currentColor 14%, transparent);gap:4px;display:flex}.cvtkAW_tab{appearance:none;color:inherit;font:inherit;cursor:pointer;opacity:.65;background:0 0;border:none;border-bottom:2px solid #0000;margin-bottom:-1px;padding:6px 14px;font-size:13px}.cvtkAW_tab:hover{opacity:.9}.cvtkAW_tab:focus-visible{box-shadow:0 0 0 2px color-mix(in srgb, currentColor 45%, transparent);outline:none}.cvtkAW_tabActive{opacity:1;border-bottom-color:currentColor;font-weight:600}.cvtkAW_card{border:1px solid color-mix(in srgb, currentColor 14%, transparent);border-radius:12px;flex-direction:column;gap:10px;padding:14px 16px;display:flex}.cvtkAW_cardTitle{letter-spacing:.04em;text-transform:uppercase;opacity:.6;font-size:12px;font-weight:600}.cvtkAW_statRow{flex-wrap:wrap;gap:18px;display:flex}.cvtkAW_stat{flex-direction:column;gap:2px;display:flex}.cvtkAW_statValue{font-variant-numeric:tabular-nums;font-size:18px;font-weight:600}.cvtkAW_statLabel{opacity:.6;font-size:11px}.cvtkAW_providerRow{border-top:1px solid color-mix(in srgb, currentColor 8%, transparent);justify-content:space-between;align-items:center;gap:12px;padding:6px 0;font-size:13px;display:flex}.cvtkAW_providerRow:first-of-type{border-top:none}.cvtkAW_providerName{align-items:center;gap:8px;min-width:0;display:flex}.cvtkAW_providerTokens{font-variant-numeric:tabular-nums;opacity:.75;white-space:nowrap}.cvtkAW_providerBalance{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}.cvtkAW_currentBadge{border:1px solid color-mix(in srgb, currentColor 35%, transparent);opacity:.8;border-radius:999px;flex:none;padding:1px 7px;font-size:10px;font-weight:600}.cvtkAW_chart{flex-direction:column;gap:12px;display:flex}.cvtkAW_chartProvider{flex-direction:column;gap:4px;display:flex}.cvtkAW_chartHead{justify-content:space-between;align-items:baseline;gap:10px;font-size:13px;display:flex}.cvtkAW_chartTokens{font-variant-numeric:tabular-nums;opacity:.65;white-space:nowrap;font-size:11px}.cvtkAW_chartBar{background:color-mix(in srgb, currentColor 8%, transparent);border-radius:999px;height:8px;display:block;overflow:hidden}.cvtkAW_chartFill{background:color-mix(in srgb, currentColor 55%, transparent);border-radius:999px;height:100%;transition:width .3s;display:block}.cvtkAW_chartModel{opacity:.8;grid-template-columns:minmax(80px,180px) 1fr auto;align-items:center;gap:8px;padding-left:14px;font-size:11px;display:grid}.cvtkAW_chartModelName{text-overflow:ellipsis;white-space:nowrap;opacity:.8;overflow:hidden}.cvtkAW_chartModelBar{background:color-mix(in srgb, currentColor 6%, transparent);border-radius:999px;height:4px;display:block;overflow:hidden}.cvtkAW_chartModelFill{background:color-mix(in srgb, currentColor 35%, transparent);border-radius:999px;height:100%;transition:width .3s;display:block}.cvtkAW_trendAxis{opacity:.5;font-variant-numeric:tabular-nums;justify-content:space-between;font-size:10px;display:flex}.cvtkAW_muted{opacity:.6;font-size:12px}.cvtkAW_voucherPreview canvas{border-radius:8px;width:100%;height:auto;display:block}.cvtkAW_buttonRow{gap:8px;display:flex}.cvtkAW_errorLine{opacity:.75;font-size:12px}.cvtkAW_planCard{flex-direction:column;gap:8px;display:flex}.cvtkAW_planHead{justify-content:space-between;align-items:baseline;gap:10px;display:flex}.cvtkAW_planName{font-size:14px;font-weight:600}.cvtkAW_windowRow{flex-direction:column;gap:4px;display:flex}.cvtkAW_windowLabel{opacity:.8;font-variant-numeric:tabular-nums;justify-content:space-between;font-size:12px;display:flex}.cvtkAW_bar{background:color-mix(in srgb, currentColor 10%, transparent);border-radius:999px;height:6px;overflow:hidden}.cvtkAW_barFill{background:color-mix(in srgb, currentColor 55%, transparent);border-radius:999px;height:100%;transition:width .3s}.cvtkAW_barWarn{background:#d97706}.cvtkAW_barLow{background:#dc2626}.cvtkAW_resetLine{opacity:.55;font-variant-numeric:tabular-nums;font-size:11px}.cvtkAW_settingsGrid{flex-wrap:wrap;align-items:center;gap:16px;display:flex}.cvtkAW_settingItem{align-items:center;gap:8px;font-size:13px;display:flex}.cvtkAW_settingItem input[type=checkbox]{accent-color:currentColor}.cvtkAW_settingItem input[type=number]{border:1px solid color-mix(in srgb, currentColor 25%, transparent);width:90px;color:inherit;font:inherit;background:0 0;border-radius:6px;padding:3px 8px;font-size:13px}.cvtkAW_settingItem select{border:1px solid color-mix(in srgb, currentColor 25%, transparent);color:inherit;font:inherit;background:0 0;border-radius:6px;padding:3px 8px;font-size:13px}.cvtkAW_settingItem input:focus-visible,.cvtkAW_settingItem select:focus-visible{box-shadow:0 0 0 2px color-mix(in srgb, currentColor 45%, transparent);outline:none}";
+		const css$3 = ".cvtkAW_section{color:inherit;flex-direction:column;gap:16px;display:flex}.cvtkAW_header{justify-content:space-between;align-items:center;gap:12px;display:flex}.cvtkAW_currentProvider{opacity:.75;font-size:13px}.cvtkAW_refreshBtn{appearance:none;color:inherit;font:inherit;cursor:pointer;opacity:.85;background:0 0;border:1px solid;border-radius:8px;padding:4px 12px;font-size:12px;transition:opacity .12s,background-color .12s}.cvtkAW_refreshBtn:hover:not(:disabled){opacity:1;background:color-mix(in srgb, currentColor 8%, transparent)}.cvtkAW_refreshBtn:disabled{cursor:default;opacity:.5}.cvtkAW_refreshBtn:focus-visible{box-shadow:0 0 0 2px color-mix(in srgb, currentColor 45%, transparent);outline:none}.cvtkAW_tabs{border-bottom:1px solid color-mix(in srgb, currentColor 14%, transparent);gap:4px;display:flex}.cvtkAW_tab{appearance:none;color:inherit;font:inherit;cursor:pointer;opacity:.65;background:0 0;border:none;border-bottom:2px solid #0000;margin-bottom:-1px;padding:6px 14px;font-size:13px}.cvtkAW_tab:hover{opacity:.9}.cvtkAW_tab:focus-visible{box-shadow:0 0 0 2px color-mix(in srgb, currentColor 45%, transparent);outline:none}.cvtkAW_tabActive{opacity:1;border-bottom-color:currentColor;font-weight:600}.cvtkAW_card{border:1px solid color-mix(in srgb, currentColor 14%, transparent);border-radius:12px;flex-direction:column;gap:10px;padding:14px 16px;display:flex}.cvtkAW_cardTitle{letter-spacing:.04em;text-transform:uppercase;opacity:.6;font-size:12px;font-weight:600}.cvtkAW_statRow{flex-wrap:wrap;gap:18px;display:flex}.cvtkAW_stat{flex-direction:column;gap:2px;display:flex}.cvtkAW_statValue{font-variant-numeric:tabular-nums;font-size:18px;font-weight:600}.cvtkAW_statLabel{opacity:.6;font-size:11px}.cvtkAW_providerRow{border-top:1px solid color-mix(in srgb, currentColor 8%, transparent);justify-content:space-between;align-items:center;gap:12px;padding:6px 0;font-size:13px;display:flex}.cvtkAW_providerRow:first-of-type{border-top:none}.cvtkAW_providerName{align-items:center;gap:8px;min-width:0;display:flex}.cvtkAW_providerTokens{font-variant-numeric:tabular-nums;opacity:.75;white-space:nowrap}.cvtkAW_providerBalance{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}.cvtkAW_currentBadge{border:1px solid color-mix(in srgb, currentColor 35%, transparent);opacity:.8;border-radius:999px;flex:none;padding:1px 7px;font-size:10px;font-weight:600}.cvtkAW_chart{flex-direction:column;gap:12px;display:flex}.cvtkAW_chartProvider{flex-direction:column;gap:4px;display:flex}.cvtkAW_chartHead{justify-content:space-between;align-items:baseline;gap:10px;font-size:13px;display:flex}.cvtkAW_chartTokens{font-variant-numeric:tabular-nums;opacity:.65;white-space:nowrap;font-size:11px}.cvtkAW_chartBar{background:color-mix(in srgb, currentColor 8%, transparent);border-radius:999px;height:8px;display:block;overflow:hidden}.cvtkAW_chartFill{background:color-mix(in srgb, currentColor 55%, transparent);border-radius:999px;height:100%;transition:width .3s;display:block}.cvtkAW_chartModel{opacity:.8;grid-template-columns:minmax(80px,180px) 1fr auto;align-items:center;gap:8px;padding-left:14px;font-size:11px;display:grid}.cvtkAW_chartModelName{text-overflow:ellipsis;white-space:nowrap;opacity:.8;overflow:hidden}.cvtkAW_chartModelBar{background:color-mix(in srgb, currentColor 6%, transparent);border-radius:999px;height:4px;display:block;overflow:hidden}.cvtkAW_chartModelFill{background:color-mix(in srgb, currentColor 35%, transparent);border-radius:999px;height:100%;transition:width .3s;display:block}.cvtkAW_trendAxis{opacity:.5;font-variant-numeric:tabular-nums;justify-content:space-between;font-size:10px;display:flex}.cvtkAW_muted{opacity:.6;font-size:12px}.cvtkAW_voucherPreview canvas{border-radius:8px;width:100%;height:auto;display:block}.cvtkAW_buttonRow{gap:8px;display:flex}.cvtkAW_errorLine{opacity:.75;font-size:12px}.cvtkAW_planCard{flex-direction:column;gap:8px;display:flex}.cvtkAW_planHead{justify-content:space-between;align-items:baseline;gap:10px;display:flex}.cvtkAW_planName{font-size:14px;font-weight:600}.cvtkAW_windowRow{flex-direction:column;gap:4px;display:flex}.cvtkAW_windowLabel{opacity:.8;font-variant-numeric:tabular-nums;justify-content:space-between;font-size:12px;display:flex}.cvtkAW_bar{background:color-mix(in srgb, currentColor 10%, transparent);border-radius:999px;height:6px;overflow:hidden}.cvtkAW_barFill{background:color-mix(in srgb, currentColor 55%, transparent);border-radius:999px;height:100%;transition:width .3s}.cvtkAW_barWarn{background:#d97706}.cvtkAW_barLow{background:#dc2626}.cvtkAW_resetLine{opacity:.55;font-variant-numeric:tabular-nums;font-size:11px}.cvtkAW_settingsGrid{flex-wrap:wrap;align-items:center;gap:16px;display:flex}.cvtkAW_settingItem{align-items:center;gap:8px;font-size:13px;display:flex}.cvtkAW_settingItem input[type=checkbox]{accent-color:currentColor}.cvtkAW_settingItem input[type=number]{border:1px solid color-mix(in srgb, currentColor 25%, transparent);width:90px;color:inherit;font:inherit;background:0 0;border-radius:6px;padding:3px 8px;font-size:13px}.cvtkAW_settingItem select{border:1px solid color-mix(in srgb, currentColor 25%, transparent);color:inherit;font:inherit;background:0 0;border-radius:6px;padding:3px 8px;font-size:13px}.cvtkAW_settingItem input:focus-visible,.cvtkAW_settingItem select:focus-visible{box-shadow:0 0 0 2px color-mix(in srgb, currentColor 45%, transparent);outline:none}.cvtkAW_footCard{box-sizing:border-box;background:color-mix(in srgb, currentColor 4%, transparent);width:100%;color:inherit;border:none;border-radius:12px;margin:2px 0 4px;transition:background-color .12s;position:relative}.cvtkAW_footCard:hover{background:var(--dsw-alias-interactive-bg-hover)}.cvtkAW_footCardCollapsed{background:0 0}.cvtkAW_footMain{appearance:none;box-sizing:border-box;width:100%;color:inherit;font:inherit;text-align:left;cursor:pointer;background:0 0;border:none;border-radius:12px;flex-direction:column;gap:4px;padding:8px;display:flex}.cvtkAW_footMain:focus-visible{box-shadow:0 0 0 2px color-mix(in srgb, currentColor 45%, transparent);outline:none}.cvtkAW_footToggle{appearance:none;width:20px;height:20px;color:inherit;cursor:pointer;opacity:.55;background:0 0;border:none;border-radius:6px;justify-content:center;align-items:center;padding:0;transition:opacity .12s,background-color .12s;display:inline-flex;position:absolute;top:6px;right:6px}.cvtkAW_footCard:hover .cvtkAW_footToggle{opacity:.8}.cvtkAW_footToggle:hover{opacity:1;background:color-mix(in srgb, currentColor 10%, transparent)}.cvtkAW_footToggle:focus-visible{box-shadow:0 0 0 2px color-mix(in srgb, currentColor 45%, transparent);outline:none}.cvtkAW_footToggle svg{display:block}.cvtkAW_footHead{justify-content:space-between;align-items:baseline;gap:8px;display:flex}.cvtkAW_footTitle{opacity:.65;white-space:nowrap;align-items:center;gap:6px;min-width:0;font-size:12px;display:inline-flex}.cvtkAW_footTitle svg{flex:none;display:block}.cvtkAW_footValue{font-variant-numeric:tabular-nums;white-space:nowrap;margin-right:18px;font-size:15px;font-weight:600}.cvtkAW_footLine{opacity:.7;font-variant-numeric:tabular-nums;text-overflow:ellipsis;white-space:nowrap;font-size:11px;overflow:hidden}.cvtkAW_footMeta{opacity:.5;font-variant-numeric:tabular-nums;font-size:10px}.cvtkAW_footCardCollapsed .cvtkAW_footMain{min-height:36px;padding:7px 8px}.cvtkAW_footStrip{white-space:nowrap;align-items:center;gap:6px;padding-right:20px;font-size:12px;display:flex;overflow:hidden}.cvtkAW_footStrip svg{opacity:.65;flex:none;display:block}.cvtkAW_footStripProvider{text-overflow:ellipsis;flex:none;max-width:45%;font-weight:500;overflow:hidden}.cvtkAW_footStripLabel{opacity:.65;text-overflow:ellipsis;overflow:hidden}.cvtkAW_footStripValue{font-variant-numeric:tabular-nums;margin-left:auto;font-weight:600}[data-dsh-frame][data-sidebar-collapsed] .cvtkAW_footCard,[data-sidebar-collapsed] .cvtkAW_footCard{display:none}";
 		const tagId$3 = "@linxin666/dsh-web-all/packages/dsh-usage/src/client/usage.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
 			const tag = document.createElement("style");
@@ -49309,6 +43075,19 @@ window.__ModuleLoader__.load({
 			"currentBadge": "cvtkAW_currentBadge",
 			"currentProvider": "cvtkAW_currentProvider",
 			"errorLine": "cvtkAW_errorLine",
+			"footCard": "cvtkAW_footCard",
+			"footCardCollapsed": "cvtkAW_footCardCollapsed",
+			"footHead": "cvtkAW_footHead",
+			"footLine": "cvtkAW_footLine",
+			"footMain": "cvtkAW_footMain",
+			"footMeta": "cvtkAW_footMeta",
+			"footStrip": "cvtkAW_footStrip",
+			"footStripLabel": "cvtkAW_footStripLabel",
+			"footStripProvider": "cvtkAW_footStripProvider",
+			"footStripValue": "cvtkAW_footStripValue",
+			"footTitle": "cvtkAW_footTitle",
+			"footToggle": "cvtkAW_footToggle",
+			"footValue": "cvtkAW_footValue",
 			"header": "cvtkAW_header",
 			"muted": "cvtkAW_muted",
 			"planCard": "cvtkAW_planCard",
@@ -49988,7 +43767,7 @@ window.__ModuleLoader__.load({
 				return "";
 			}
 		}
-		function formatClock(ms) {
+		function formatClock$1(ms) {
 			try {
 				return new Date(ms).toLocaleTimeString([], {
 					hour: "2-digit",
@@ -50079,7 +43858,7 @@ window.__ModuleLoader__.load({
 				]
 			});
 		}
-		function balanceLine(provider) {
+		function balanceLine$1(provider) {
 			if (provider.balance !== void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 				className: usage_module_css_default.providerBalance,
 				children: [
@@ -50115,7 +43894,7 @@ window.__ModuleLoader__.load({
 					})]
 				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 					className: usage_module_css_default.providerTokens,
-					children: balanceLine(provider)
+					children: balanceLine$1(provider)
 				})]
 			});
 		}
@@ -50251,7 +44030,7 @@ window.__ModuleLoader__.load({
 								deepseekVisible && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 									className: usage_module_css_default.muted,
 									"data-dsh-part": "peak-status",
-									children: t$2(deepseekPeriod.peak ? "usage.peak.on" : "usage.peak.off", { time: formatClock(deepseekPeriod.boundaryMs) })
+									children: t$2(deepseekPeriod.peak ? "usage.peak.on" : "usage.peak.off", { time: formatClock$1(deepseekPeriod.boundaryMs) })
 								}),
 								snapshot.usage.today.totals.calls === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 									className: usage_module_css_default.muted,
@@ -50702,6 +44481,500 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region ../dsh-usage/src/client/body-mutations.ts
+		/** Cross-bundle registry key; `Symbol.for` so every module copy agrees. */
+		const HUB_KEY$1 = Symbol.for("dsh-web.body-mutation-hub");
+		const INVALIDATION_ONLY$1 = Symbol.for("dsh-web.body-mutation-invalidation");
+		function needsRecords$1(subscribers) {
+			for (const listener of subscribers) if (!listener[INVALIDATION_ONLY$1]) return true;
+			return false;
+		}
+		/**
+		* Subscribe to a coalesced DOM re-check without retaining mutation records.
+		* The marked wrapper also works with an older hub, which delivers records
+		* that it simply ignores until a page reload picks up the updated hub.
+		*/
+		function subscribeBodyInvalidations$1(subscriber) {
+			const listener = () => {
+				subscriber();
+			};
+			listener[INVALIDATION_ONLY$1] = true;
+			return subscribeBodyMutations$1(listener);
+		}
+		/**
+		* Subscribe to body-level childList mutations.
+		* @param subscriber - called at most once per animation frame with the records
+		*   collected since the previous flush; must be safe to run repeatedly.
+		* @returns the disposer removing this subscriber (and the observer when it was
+		*   the last one).
+		*/
+		function subscribeBodyMutations$1(subscriber) {
+			if (typeof globalThis === "undefined" || typeof document === "undefined") return () => {};
+			if (typeof MutationObserver !== "function") return () => {};
+			const registry = globalThis;
+			let hub = registry[HUB_KEY$1];
+			if (hub === void 0) {
+				const subscribers = /* @__PURE__ */ new Set();
+				const created = {
+					observer: void 0,
+					subscribers,
+					pending: [],
+					scheduled: false
+				};
+				const flush = () => {
+					created.frame = void 0;
+					created.scheduled = false;
+					const batch = created.pending;
+					created.pending = [];
+					for (const listener of [...subscribers]) {
+						if (!subscribers.has(listener)) continue;
+						try {
+							listener(batch);
+						} catch {}
+					}
+				};
+				const schedule = () => {
+					if (created.scheduled) return;
+					created.scheduled = true;
+					if (typeof requestAnimationFrame === "function") created.frame = requestAnimationFrame(flush);
+					else flush();
+				};
+				created.observer = new MutationObserver((records) => {
+					if (needsRecords$1(subscribers)) for (const record of records) created.pending.push(record);
+					schedule();
+				});
+				created.observer.observe(document.body ?? document.documentElement, {
+					childList: true,
+					subtree: true
+				});
+				registry[HUB_KEY$1] = created;
+				hub = created;
+			}
+			const active = hub;
+			active.subscribers.add(subscriber);
+			let subscribed = true;
+			return () => {
+				if (!subscribed) return;
+				subscribed = false;
+				active.subscribers.delete(subscriber);
+				if (!needsRecords$1(active.subscribers)) active.pending = [];
+				if (active.subscribers.size === 0 && registry[HUB_KEY$1] === active) {
+					active.observer.disconnect();
+					if (active.frame !== void 0 && typeof cancelAnimationFrame === "function") cancelAnimationFrame(active.frame);
+					active.frame = void 0;
+					active.pending = [];
+					active.scheduled = false;
+					delete registry[HUB_KEY$1];
+				}
+			};
+		}
+		//#endregion
+		//#region ../dsh-usage/src/client/UsageFootCard.tsx
+		/**
+		* Sidebar foot card: the compact usage glance seated below the shell sidebar's
+		* Settings row. It is deliberately a GLANCE, not the panel the 2026-09-18
+		* removal took out. Two states, persisted across reloads:
+		*
+		* - expanded (default): a price-first headline (today's estimated spend,
+		*   falling back to today's tokens when nothing priced was recorded), a
+		*   tokens/calls line, up to two configured-provider balances, and an
+		*   updated-at footer;
+		* - collapsed: a one-line strip with the gauge glyph, the spending
+		*   provider's name, the label and the headline value.
+		*
+		* The card body is one button that opens the settings panel on the usage
+		* section, so detail lives in exactly one place; the corner chevron toggles
+		* the collapse state (sibling buttons — buttons inside a button are invalid
+		* HTML).
+		*
+		* Data comes from the same shared store the settings section reads; the card
+		* runs its own relaxed poll loop (30 s, visible-tab only) because the sidebar
+		* foot is permanently mounted. The card disappears while the plugin is
+		* disabled (settings flag) or while the host serves no usage routes (a 404
+		* means the host half is off), matching the section's own gating.
+		* @module @linxin666/dsh-usage/client/UsageFootCard
+		*/
+		/** Poll cadence of the permanently seated card; the section's 10 s loop stays its own. */
+		const FOOT_CARD_POLL_MS = 3e4;
+		/** localStorage key holding the collapsed flag ('1' = collapsed strip). */
+		const FOOT_CARD_COLLAPSED_KEY = "dsh-usage.foot-card.collapsed";
+		/** At most this many provider balances render before a +N overflow marker. */
+		const BALANCE_CAP = 2;
+		/** Read the persisted collapsed flag (absent = expanded). */
+		function readFootCardCollapsed() {
+			try {
+				return window.localStorage.getItem(FOOT_CARD_COLLAPSED_KEY) === "1";
+			} catch {
+				return false;
+			}
+		}
+		/** Persist the collapsed flag; storage failures keep the session state. */
+		function writeFootCardCollapsed(collapsed) {
+			try {
+				window.localStorage.setItem(FOOT_CARD_COLLAPSED_KEY, collapsed ? "1" : "0");
+			} catch {}
+		}
+		/** Inline gauge glyph, 14px beside the card title. */
+		function GaugeIcon() {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+				viewBox: "0 0 16 16",
+				width: "14",
+				height: "14",
+				fill: "none",
+				stroke: "currentColor",
+				strokeWidth: "1.3",
+				strokeLinecap: "round",
+				strokeLinejoin: "round",
+				"aria-hidden": "true",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "M2.5 12.5a7 7 0 0 1 11 -4.3" }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "M8 12.5V8.2l2.9-2.1" }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+						cx: "8",
+						cy: "12.5",
+						r: "1"
+					})
+				]
+			});
+		}
+		/** Disclosure chevrons: down collapses the expanded card, up expands the strip. */
+		function ChevronIcon(props) {
+			return props.collapsed ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
+				viewBox: "0 0 16 16",
+				width: "12",
+				height: "12",
+				fill: "none",
+				stroke: "currentColor",
+				strokeWidth: "1.4",
+				strokeLinecap: "round",
+				strokeLinejoin: "round",
+				"aria-hidden": "true",
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "m4 10 4-4 4 4" })
+			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
+				viewBox: "0 0 16 16",
+				width: "12",
+				height: "12",
+				fill: "none",
+				stroke: "currentColor",
+				strokeWidth: "1.4",
+				strokeLinecap: "round",
+				strokeLinejoin: "round",
+				"aria-hidden": "true",
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "m4 6 4 4 4-4" })
+			});
+		}
+		/** A provider row worth showing a balance for: configured, with a probed balance. */
+		function balanceRow(provider) {
+			const supported = provider.balanceSupported === true || provider.balanceSupported === void 0 && provider.supported;
+			return provider.credential !== "none" && supported && provider.balance !== void 0;
+		}
+		/** Currency-symbol prefix for the priced balances (CNY/USD), else the ISO code. */
+		function formatBalance(balance) {
+			const currency = balance.currency.toUpperCase();
+			if (currency === "CNY") return "¥" + balance.totalBalance;
+			if (currency === "USD") return "$" + balance.totalBalance;
+			return currency + " " + balance.totalBalance;
+		}
+		function formatClock(ms) {
+			try {
+				return new Date(ms).toLocaleTimeString([], {
+					hour: "2-digit",
+					minute: "2-digit"
+				});
+			} catch {
+				return "";
+			}
+		}
+		/**
+		* Display name of the provider owning today's priced spend: the day's highest
+		* cost row, else the current session route, resolved through the provider
+		* snapshot (an older host without the day rows falls back to the current
+		* route). Undefined when there is no route to name.
+		*/
+		function spendProvider(snapshot) {
+			let top;
+			for (const row of snapshot.usage.today.providers) {
+				if (row.totals.cost <= 0) continue;
+				if (top === void 0 || row.totals.cost > top.totals.cost) top = row;
+			}
+			const route = top?.provider ?? snapshot.current.provider;
+			if (route === void 0) return void 0;
+			return snapshot.providers.find((entry) => entry.provider === route)?.displayName ?? (route === snapshot.current.provider ? snapshot.current.displayName : void 0) ?? route;
+		}
+		/**
+		* The headline triple: today's priced spend, else today's tokens, else zero.
+		* tokenFallback tells the sub-line to keep only the call count instead of
+		* repeating the total the headline already shows; provider names the spender
+		* beside the collapsed cost headline.
+		*/
+		function headline(snapshot) {
+			const totals = snapshot.usage.today.totals;
+			if (totals.cost > 0) return {
+				label: t$2("usage.foot.cost"),
+				value: "¥" + totals.cost.toFixed(2),
+				tokenFallback: false,
+				provider: spendProvider(snapshot)
+			};
+			if (totals.calls > 0) return {
+				label: t$2("usage.today"),
+				value: formatTokens(totalTokens(totals)) + " tokens",
+				tokenFallback: true
+			};
+			return {
+				label: t$2("usage.foot.cost"),
+				value: "¥0.00",
+				tokenFallback: false
+			};
+		}
+		/** The tokens/calls sub-line under the headline; a quiet no-data line on an empty day. */
+		function usageLine(snapshot, tokenFallback) {
+			const totals = snapshot.usage.today.totals;
+			if (totals.calls === 0) return t$2("usage.foot.noData");
+			const calls = t$2("usage.calls", { n: totals.calls });
+			return tokenFallback ? calls : formatTokens(totalTokens(totals)) + " tokens · " + calls;
+		}
+		/** The balance line: up to BALANCE_CAP providers plus a +N overflow marker. */
+		function balanceLine(snapshot) {
+			const rows = snapshot.providers.filter(balanceRow);
+			if (rows.length === 0) return void 0;
+			return rows.slice(0, BALANCE_CAP).map((provider) => provider.displayName + " " + formatBalance(provider.balance)).join(" · ") + (rows.length > BALANCE_CAP ? " +" + String(rows.length - BALANCE_CAP) : "");
+		}
+		/** Card chrome classes for the current collapse state. */
+		function cardClass(collapsed) {
+			return collapsed ? usage_module_css_default.footCard + " " + usage_module_css_default.footCardCollapsed : usage_module_css_default.footCard;
+		}
+		/**
+		* Render the foot card content for the current store snapshot.
+		* @param props - store, poller, settings form and open callback from the mount.
+		* @returns the card, or null while disabled / host-off.
+		*/
+		function UsageFootCard(props) {
+			const { store, poll, onOpen, settings, locale } = props;
+			const ui = (0, react.useSyncExternalStore)(store.subscribe, store.getSnapshot);
+			const [, bump] = (0, react.useState)(0);
+			(0, react.useEffect)(() => settings.subscribe(() => bump((count) => count + 1)), [settings]);
+			(0, react.useEffect)(() => locale?.subscribe(() => bump((count) => count + 1)), [locale]);
+			const enabled = settings.getSnapshot().value?.enabled ?? true;
+			const [collapsed, setCollapsed] = (0, react.useState)(readFootCardCollapsed);
+			const toggleCollapsed = () => {
+				setCollapsed((current) => {
+					writeFootCardCollapsed(!current);
+					return !current;
+				});
+			};
+			(0, react.useEffect)(() => {
+				if (!enabled) return void 0;
+				poll();
+				let timer;
+				const start = () => {
+					if (timer === void 0 && document.visibilityState === "visible") timer = window.setInterval(poll, FOOT_CARD_POLL_MS);
+				};
+				const onVisibility = () => {
+					if (document.visibilityState === "visible") {
+						poll();
+						start();
+					} else if (timer !== void 0) {
+						window.clearInterval(timer);
+						timer = void 0;
+					}
+				};
+				start();
+				document.addEventListener("visibilitychange", onVisibility);
+				return () => {
+					if (timer !== void 0) window.clearInterval(timer);
+					document.removeEventListener("visibilitychange", onVisibility);
+				};
+			}, [poll, enabled]);
+			if (!enabled) return null;
+			const snapshot = ui.snapshot;
+			if (snapshot === null && ui.status === "error" && /failed: 404/.test(ui.error ?? "")) return null;
+			const toggle = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+				type: "button",
+				className: usage_module_css_default.footToggle,
+				"data-dsh-part": "foot-card-toggle",
+				"aria-label": t$2(collapsed ? "usage.foot.expand" : "usage.foot.collapse"),
+				title: t$2(collapsed ? "usage.foot.expand" : "usage.foot.collapse"),
+				onClick: toggleCollapsed,
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChevronIcon, { collapsed })
+			});
+			if (snapshot === null) {
+				const quiet = ui.status === "error" ? t$2("usage.error", { error: ui.error ?? "" }) : t$2("usage.loading");
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: cardClass(collapsed),
+					"data-dsh-plugin": "usage",
+					"data-dsh-part": "foot-card",
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+						type: "button",
+						className: usage_module_css_default.footMain,
+						"data-dsh-part": "foot-card-main",
+						"aria-label": t$2("usage.foot.open"),
+						title: t$2("usage.foot.open"),
+						onClick: onOpen,
+						children: collapsed ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+							className: usage_module_css_default.footStrip,
+							"data-dsh-part": "foot-card-strip",
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(GaugeIcon, {}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: usage_module_css_default.footStripValue,
+								children: "—"
+							})]
+						}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: usage_module_css_default.footHead,
+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+								className: usage_module_css_default.footTitle,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(GaugeIcon, {}), t$2("usage.title")]
+							})
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: usage_module_css_default.footLine,
+							children: quiet
+						})] })
+					}), toggle]
+				});
+			}
+			const head = headline(snapshot);
+			const balances = balanceLine(snapshot);
+			if (collapsed) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: cardClass(true),
+				"data-dsh-plugin": "usage",
+				"data-dsh-part": "foot-card",
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+					type: "button",
+					className: usage_module_css_default.footMain,
+					"data-dsh-part": "foot-card-main",
+					"aria-label": t$2("usage.foot.open"),
+					title: t$2("usage.foot.open"),
+					onClick: onOpen,
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+						className: usage_module_css_default.footStrip,
+						"data-dsh-part": "foot-card-strip",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(GaugeIcon, {}),
+							head.provider !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: usage_module_css_default.footStripProvider,
+								children: head.provider
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: usage_module_css_default.footStripLabel,
+								children: head.label
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: usage_module_css_default.footStripValue,
+								children: head.value
+							})
+						]
+					})
+				}), toggle]
+			});
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: cardClass(false),
+				"data-dsh-plugin": "usage",
+				"data-dsh-part": "foot-card",
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+					type: "button",
+					className: usage_module_css_default.footMain,
+					"data-dsh-part": "foot-card-main",
+					"aria-label": t$2("usage.foot.open"),
+					title: t$2("usage.foot.open"),
+					onClick: onOpen,
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+							className: usage_module_css_default.footHead,
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+								className: usage_module_css_default.footTitle,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(GaugeIcon, {}), head.label]
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: usage_module_css_default.footValue,
+								children: head.value
+							})]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: usage_module_css_default.footLine,
+							"data-dsh-part": "foot-card-usage",
+							children: usageLine(snapshot, head.tokenFallback)
+						}),
+						balances !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: usage_module_css_default.footLine,
+							"data-dsh-part": "foot-card-balances",
+							children: balances
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: usage_module_css_default.footMeta,
+							children: t$2("usage.updated", { time: formatClock(snapshot.updatedAt) })
+						})
+					]
+				}), toggle]
+			});
+		}
+		/** The shell sidebar's foot area (footer actions + the Settings row), when mounted. */
+		function footArea() {
+			return document.querySelector("[data-pane=\"sidebar\"], [class*=\"sidebarCol\"]")?.querySelector("[class*=\"footArea\"]") ?? void 0;
+		}
+		/**
+		* Open the settings panel on the usage section. The shell owns the panel's
+		* open state and exposes no service for it, so the card replays the user's
+		* own path: activate the sidebar Settings trigger, then pick the nav row
+		* carrying the section's (localized) label. Every step degrades silently —
+		* with the panel already open only the nav pick runs, and a missing row
+		* leaves the panel on its default section.
+		* @param label - the usage section's nav label in the active locale.
+		*/
+		function openUsageSettings(label) {
+			/** Click the nav row carrying the usage label inside the open panel. */
+			const pick = (panel) => {
+				const wanted = label();
+				for (const row of panel.querySelectorAll("nav button")) if (row.textContent !== null && row.textContent.includes(wanted)) {
+					row.click();
+					return;
+				}
+			};
+			const open = document.querySelector("[role=\"dialog\"]");
+			if (open !== null) {
+				pick(open);
+				return;
+			}
+			(document.querySelector("[data-pane=\"sidebar\"], [class*=\"sidebarCol\"]")?.querySelector("[class*=\"settingsArea\"] button"))?.click();
+			let tries = 0;
+			const attempt = () => {
+				const panel = document.querySelector("[role=\"dialog\"]");
+				if (panel !== null) {
+					pick(panel);
+					return;
+				}
+				tries += 1;
+				if (tries <= 20) window.setTimeout(attempt, 50);
+			};
+			window.setTimeout(attempt, 0);
+		}
+		/**
+		* Mount the sidebar foot card directly above the Settings row.
+		* @param props - the store/poll/settings/open inputs of the apply body.
+		* @returns disposer removing the container and its observers.
+		*/
+		function mountUsageFootCard(props) {
+			if (typeof document !== "undefined" && document.querySelector("[data-dsh-usage-foot-card]") !== null) return () => {};
+			const container = document.createElement("div");
+			container.setAttribute("data-dsh-usage-foot-card", "");
+			const root = (0, react_dom_client.createRoot)(container);
+			root.render((0, react.createElement)(UsageFootCard, props));
+			/** Keep the container directly above the Settings seat inside the foot area. */
+			const place = () => {
+				const foot = footArea();
+				if (foot === void 0) return;
+				const settings = foot.querySelector("[class*=\"settingsArea\"]");
+				if (settings !== null) {
+					if (container.nextElementSibling !== settings) foot.insertBefore(container, settings);
+					return;
+				}
+				if (foot.lastElementChild !== container) foot.append(container);
+			};
+			place();
+			const unsubscribeBody = subscribeBodyInvalidations$1(place);
+			return () => {
+				unsubscribeBody();
+				root.unmount();
+				container.remove();
+			};
+		}
+		//#endregion
 		//#region ../dsh-usage/src/client/index.ts
 		var client_exports$3 = /* @__PURE__ */ __exportAll({
 			apply: () => apply$4,
@@ -50782,6 +45055,20 @@ window.__ModuleLoader__.load({
 				refresh,
 				settings: settingsForm
 			});
+			const disposeFootCard = mountUsageFootCard({
+				store,
+				poll,
+				settings: settingsForm,
+				onOpen: () => {
+					openUsageSettings(() => t$2("usage.title"));
+				},
+				locale: ctx.locale
+			});
+			ctx.effect(() => () => {
+				try {
+					disposeFootCard();
+				} catch {}
+			}, "dsh-usage: sidebar foot card");
 			ctx.slots.inject("settings.section", () => {
 				try {
 					const unregister = ctx.slots.register({
@@ -55037,50 +49324,42 @@ window.__ModuleLoader__.load({
 		const clientChildren = [
 			{
 				name: "@linxin666/dsh-client-ui-web-ui-settings",
-				module: client_exports$15
-			},
-			{
-				name: "@linxin666/dsh-client-ui-plugin-manager",
-				module: client_exports$14
-			},
-			{
-				name: "@linxin666/dsh-client-ui-market",
 				module: client_exports$13
 			},
 			{
-				name: "@linxin666/dsh-client-ui-task-board",
+				name: "@linxin666/dsh-client-ui-plugin-manager",
 				module: client_exports$12
 			},
 			{
-				name: "@linxin666/dsh-client-ui-git-graph",
+				name: "@linxin666/dsh-client-ui-market",
 				module: client_exports$11
 			},
 			{
-				name: "@linxin666/dsh-remote-web-ui",
+				name: "@linxin666/dsh-client-ui-task-board",
 				module: client_exports$10
 			},
 			{
-				name: "@linxin666/dsh-pet",
+				name: "@linxin666/dsh-client-ui-git-graph",
 				module: client_exports$9
 			},
 			{
-				name: "@linxin666/dsh-ssh",
+				name: "@linxin666/dsh-remote-web-ui",
 				module: client_exports$8
 			},
 			{
-				name: "@linxin666/dsh-tool-describe-image",
+				name: "@linxin666/dsh-pet",
 				module: client_exports$7
 			},
 			{
-				name: "@linxin666/dsh-liangshen",
+				name: "@linxin666/dsh-ssh",
 				module: client_exports$6
 			},
 			{
-				name: "@linxin666/dsh-client-ui-skill-explorer",
+				name: "@linxin666/dsh-liangshen",
 				module: client_exports$5
 			},
 			{
-				name: "@linxin666/dsh-doctor",
+				name: "@linxin666/dsh-client-ui-skill-explorer",
 				module: client_exports$4
 			},
 			{
@@ -55291,14 +49570,36 @@ window.__ModuleLoader__.load({
 		/** Stable hooks consumed by the responsive compat layer (never text/hash selectors). */
 		const RESPONSIVE_CSS = `
 [data-dsh-frame] { min-height: 0; }
+/* Viewport lock for installs with no active visual. The identical lock lives in
+   the skin-center shell-rendering stylesheet, but that stylesheet is inert
+   unless a catalog skin, custom theme or wallpaper is active, so a stock
+   install keeps html/body at their inherited "overflow: visible". Every
+   conversation disclosure control (the tool/step-process collapse bar carrying
+   the step summary, and the whole-turn process bar) calls focus() on itself
+   when toggled; a focused element below any document overflow scrolls the page
+   down by that overflow, which reads as the page being stretched downward with
+   the titlebar and sidebar top pushed out of the viewport: issue #1135's
+   symptom, reachable here with no skin active. Locking only the scrolling root
+   (never the app root element, whose own lock clipped content in
+   #1222/#1225) removes the overflow scroll target without touching the frame's
+   box in any state. Scoped through :has() so the rule stays inert until the
+   shell frame exists. */
+html:has([data-dsh-frame]),
+html:has([data-dsh-frame]) > body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
 [data-dsh-frame] [data-dsh-responsive-part="composer"],
 [data-dsh-frame] [data-dsh-responsive-part="sidebar-toggle"],
   [data-dsh-frame] [data-dsh-responsive-part="menu"] { touch-action: manipulation; }
 @media (max-width: 768px) {
   [data-dsh-frame] [data-dsh-responsive-part="sidebar-toggle"] { min-width: 44px; min-height: 44px; }
   [data-dsh-frame] {
+    box-sizing: border-box;
     height: 100dvh;
     min-height: 100dvh;
+    max-height: 100dvh;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: 100%;
     padding-bottom: env(safe-area-inset-bottom);

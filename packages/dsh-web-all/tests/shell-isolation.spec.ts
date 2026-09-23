@@ -4,8 +4,10 @@
  * built shell artifact (lib/index.js). The contract: a family patch row that
  * mounts @linxin666/dsh-web-all with `config.plugin` degrades alone when the
  * real plugin fails to import or start, while healthy siblings mount and
- * provide services as usual. The control proves today's direct-mount shape
- * still kills the whole boot, anchoring why the shell exists.
+ * provide services as usual. The control pins the alpha.2 native floor: the
+ * host boot itself now isolates a direct-mount failing plugin (FAILED entry,
+ * siblings ACTIVE), and the shell adds the audit-friendly ACTIVE state plus
+ * the degraded ledger and health routes on top of it.
  *
  * The installed host is an optional peer: when dsh-app-boot is not resolvable
  * (clean CI checkout without the host face), the suite skips with a note — the
@@ -178,14 +180,25 @@ describe('dsh-web-all fault-isolation shell (real boot)', () => {
     expect(facts.goodSvc).toEqual({ ok: true })
   })
 
-  dshIt('control: direct-mount failing plugin still kills the boot (today\'s behavior)', () => {
+  dshIt('control: the alpha.2 native boot isolates a direct-mount failing plugin', () => {
+    // Behavior change anchored 2026-09-23: before alpha.2 a direct-mount
+    // start-failing plugin rejected boot() ('failed to apply loader entry
+    // include') and killed the whole process — the fault-isolation shell's
+    // raison d'être. The alpha.2 host (cordis 4.0.4) isolates the fault
+    // natively: boot resolves, the failing entry stays FAILED(3), and healthy
+    // siblings mount and serve. The shell still earns its keep on top of the
+    // native floor: it keeps family rows ACTIVE for the boot audit and owns
+    // the degraded ledger plus the /api/dsh-web-all/degraded|/rows routes.
     const result = runBootScenario([
       { insert: [{ id: 'bad-direct', name: '__DIR__/bad.mjs' }] },
       { insert: [{ id: 'good-entry-c', name: '__DIR__/good.mjs' }] },
     ])
-    const facts = JSON.parse(result.output || '{}') as { ok: boolean; error?: string }
-    expect(facts.ok).toBe(false)
-    expect(facts.error).toContain('failed to apply loader entry include')
+    expect(result.error).toBeUndefined()
+    const facts = JSON.parse(result.output || '{}') as { ok: boolean; entries: Array<{ id: string; state: number }>; goodSvc: unknown }
+    expect(facts.ok).toBe(true)
+    expect(facts.entries.find(e => e.id === 'bad-direct')?.state).toBe(3) // FAILED — isolated, not fatal
+    expect(facts.entries.find(e => e.id === 'good-entry-c')?.state).toBe(2) // ACTIVE
+    expect(facts.goodSvc).toEqual({ ok: true })
   })
 
   dshIt('a late-provided webServer still gets both health routes (boot ordering)', () => {

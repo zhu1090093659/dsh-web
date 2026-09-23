@@ -4,14 +4,15 @@
 
 DSH Web UI 全家桶聚合插件：一键安装家族的全部功能插件（任务看板 / Git 图谱 / 宠物 / 移动端远程 / SSH / 模型能力 / 会话归档 / 皮肤 / 设置区 / 社区插件，完整清单以本包 `aggregate.yml` 为准）。compat 桥接层已并入本包（`src/client`），因此无需独立的 compat npm 包。
 
-> 注（alpha 分支，2026-09-17）：本分支不内置任何外部右侧面板插件。`dsh-better-sidebar@0.19.1` 的全部 `@deepseek-ai/dsh-*` peer 声明为 `^0.1.5-rc.1`，本分支构建所依据的 `0.1.7-alpha.1` cohort 不满足该区间，因此它既不是依赖、也不挂行；需要右侧面板时按需安装（`dsh plugin --profile web add dsh-better-sidebar@latest`）。稳定线 `dev` 仍以 0.19.1 内置。`@mlgbnb/dsh-archive-manager` 两条线都排除：其最新上游构建（1.0.7）仍 import 已移除面，保留会导致 `dsh web` 启动失败。
+> 注（alpha 分支，2026-09-17）：本分支不内置任何外部右侧面板插件。`dsh-better-sidebar@0.19.1` 的全部 `@deepseek-ai/dsh-*` peer 声明为 `^0.1.5-rc.1`，本分支构建所依据的 `0.1.7-alpha.2` cohort 不满足该区间，因此它既不是依赖、也不挂行；需要右侧面板时按需安装（`dsh plugin --profile web add dsh-better-sidebar@latest`）。稳定线 `dev` 仍以 0.19.1 内置。`@mlgbnb/dsh-archive-manager` 两条线都排除：其最新上游构建（1.0.7）仍 import 已移除面，保留会导致 `dsh web` 启动失败。
 
 ## 是什么
 
 - **一次安装、全部到位**：其 dependencies 引入家族的全部子插件包（任务看板 / Git 图谱 / 宠物 / 移动端远程 / SSH / 模型能力 / 皮肤 / 设置区 / 社区插件 等，完整清单以 `aggregate.yml` 为准），且本分支不内置任何外部 npm 插件（右侧面板改为按需安装）。`@mlgbnb/dsh-archive-manager`（社区归档管理：按项目分组、搜索筛选、预览对话、一键恢复与删除）未内置——其上游构建仍 import 已移除的 `@deepseek-ai/dsh-client-runtime` 面。
 - **聚合载具**：`cordis.patch.yml` 汇总各子插件的 `insert` 行与外部插件行，经 dsh 插件 profile 机制挂载。外部 profile bundle 由生成器展开：其 patch 行变成可导入的聚合行，bundle 自身的 harness-row patch 原样保留；标记了 `"inactive": true` 的外部行会在产物之后统一追加 `disabled: true` 覆盖行，未主动启用前不会挂载。
 - **故障隔离（shell 壳）**：DSH loader 把全部 patch 行作为一个事务组挂载——任何一个插件 import 或启动失败都会回滚整组并中止 `dsh web`。因此聚合包让每个家族插件都挂在永不失败的 shell 模块（本包 main 入口）之后：行 `name` 指向按家族划分的子路径导出 `@linxin666/dsh-web-all/<family>`，行 `config` 携带真插件包名。子路径即官方插件列表（设置 → 插件列表）展示的名称——每行一个独立的 `web-all/<family>` 标题（与宿主自带 `web-app/startup` 行的多条目惯例一致），而全部子路径都解析到同一个共享 shell 再导出模块，隔离语义完全不变。坏插件现在只降级自身（记录日志，并可经仅限 loopback 的健康路由 `GET /api/dsh-web-all/degraded` 查询），其余插件照常挂载。外部行（家族之外的 npm 包）仍直接挂载；`dsh-i18n` 直挂（宿主半区为空）。
-- **按需开启行**：低频家族插件在聚合包中出厂默认关闭（目前是 SSH、describe-image、liangshen、skill-explorer、doctor，即 `aggregate.yml` 的 `inactive` 清单）。它们不加载、设置入口也不出现，需要时在 设置 → 插件 → 插件管理 中按行开启；独立包安装不受影响。聚合行还可携带与独立包默认值不同的播种配置（`patches` 清单），用户改动设置后以设置为准。
+- **插件列表里的自有图标**：本包内置 `icon.svg` 并在 `package.json` 顶层声明 `icon`——官方插件列表（设置 → 插件列表）读取的展示元信息字段，因此已安装卡片与详情页在明暗两种主题下都显示家族鲸鱼，而不是默认插画；家族每个包都带同一份素材，单独安装某一个也会显示。该字段按模块 specifier 解析：聚合自身导出了 `package.json`，家族子路径行没有，因此那些行保持默认插画与 `web-all/<family>` 标题。
+- **按需开启行**：低频家族插件在聚合包中出厂默认关闭（目前是 SSH、liangshen、skill-explorer，即 `aggregate.yml` 的 `inactive` 清单）。它们不加载、设置入口也不出现，需要时在 设置 → 插件 → 插件管理 中按行开启；独立包安装不受影响。聚合行还可携带与独立包默认值不同的播种配置（`patches` 清单），用户改动设置后以设置为准。
 - **逐行管理**：每个家族插件都可单独启停——设置 → 插件 → 插件管理 中本包行展开为子插件列表，逐行开关即时写入 profile 覆盖层；宿主半经 `GET /api/dsh-web-all/rows` 告知浏览器半哪些行活跃，被停用的行连设置入口一并消失（路由不可达时失败放行、全部照常挂载）。停用即不再加载，代码仍随全家桶更新；需要独立版本管理的插件可另行安装独立包（双挂载保护下独立安装优先）。
 - **右侧面板**：本分支不内置右侧面板插件。需要时按需安装 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)（`dsh plugin --profile web add dsh-better-sidebar@latest`），其偏好在它自身的设置区管理。
 

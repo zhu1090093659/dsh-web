@@ -73,13 +73,6 @@
       config:
         plugin: '@linxin666/dsh-ssh'
 
-# from ../dsh-tool-describe-image
-- insert:
-    - id: web-ui-describe-image
-      name: '@linxin666/dsh-web-all/describe-image'
-      config:
-        plugin: '@linxin666/dsh-tool-describe-image'
-
 # from ../dsh-liangshen
 - insert:
     - id: web-ui-liangshen
@@ -93,13 +86,6 @@
       name: '@linxin666/dsh-web-all/skill-explorer'
       config:
         plugin: '@linxin666/dsh-client-ui-skill-explorer'
-
-# from ../dsh-doctor
-- insert:
-    - id: web-ui-doctor
-      name: '@linxin666/dsh-web-all/doctor'
-      config:
-        plugin: '@linxin666/dsh-doctor'
 
 # from ../dsh-usage
 - insert:
@@ -143,17 +129,7 @@
 # plugin manager, whose enable writes a user-layer "disabled: false" override that wins.
 - id: web-ui-ssh
   disabled: true
-- id: web-ui-describe-image
-  disabled: true
 - id: web-ui-liangshen
   disabled: true
 - id: web-ui-skill-explorer
-  disabled: true
-- id: web-ui-doctor
-  disabled: true
-
-# superseded foreign rows: this aggregate replaces these rows from another bundle with
-# its own entry, so the composition does not show two near-identical first-level entries.
-# A user-layer "disabled: false" override still wins.
-- id: ui-settings-unarchive-sessions
   disabled: true

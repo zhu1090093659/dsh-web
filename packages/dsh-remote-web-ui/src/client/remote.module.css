@@ -784,6 +784,44 @@
   gap: 4px;
 }
 
+/* ── Wide foot row ─────────────────────────────────────────────────────────
+
+   The official Settings trigger owns a whole row while the footer actions
+   stack above it, so the trigger's right half sits empty. On the wide column
+   the two share one line (the Settings trigger, then the update and remote
+   triggers) and every other foot
+   child (the usage glance card, another plugin's block) keeps a full row of
+   its own above them. The rail (data-sidebar-collapsed on the frame) keeps
+   the shell's stacked foot, where the circles stack by design. The shell owns
+   the container classes; the semantic suffixes survive its rebuilds. */
+:global([data-dsh-frame]:not([data-sidebar-collapsed])) [class*='footArea'] {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+:global([data-dsh-frame]:not([data-sidebar-collapsed])) [class*='footArea'] > :not([class*='settingsArea']):not([class*='footerActions']) {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+:global([data-dsh-frame]:not([data-sidebar-collapsed])) [class*='settingsArea'] {
+  order: 1;
+  /* Content-sized basis: the trigger's own width forces it onto the line after
+     a full-width sibling, then flex-shrink gives the actions their space. */
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+:global([data-dsh-frame]:not([data-sidebar-collapsed])) [class*='footerActions'] {
+  order: 2;
+  flex: none;
+  width: auto;
+  min-width: 0;
+  align-items: center;
+}
+
 /* ── update panel extras ─────────────────────────────────────────────── */
 
 .updateStatus {

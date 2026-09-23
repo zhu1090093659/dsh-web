@@ -170,10 +170,14 @@ describe('session fold → overview', () => {
 
 describe('probes and per-fact errors', () => {
   it('probes the balance and reports the snapshot on the overview', async () => {
-    stubFetch((url) => url.includes('api.deepseek.com') ? jsonResponse(BALANCE_BODY) : jsonResponse({}, 404))
+    const fetchMock = stubFetch((url) => url.includes('api.deepseek.com') ? jsonResponse(BALANCE_BODY) : jsonResponse({}, 404))
     const { ctx } = makeCtx({ llm: LLM_DEEPSEEK, credentials: CREDENTIALS_ENV })
     const service = new UsageService(ctx, OPTIONS)
     await service.refresh()
+
+    // The alpha.2 host fetch drops decompression, so the probe must request identity.
+    const probeInit = (fetchMock.mock.calls[0] as unknown as [string, RequestInit | undefined])?.[1]
+    expect(new Headers(probeInit?.headers).get('accept-encoding')).toBe('identity')
 
     const provider = service.overview().providers[0]
     expect(provider).toMatchObject({

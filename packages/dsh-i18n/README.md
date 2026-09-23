@@ -17,7 +17,6 @@ The plugin is a pure browser bundle (the host half intentionally has no behavior
 
 | Namespace | Source package |
 | --- | --- |
-| `doctor` | dsh-doctor |
 | `git-graph` | dsh-git-graph |
 | `dsh-web-ui-market` | dsh-market |
 | `pet` | dsh-pet |
@@ -28,7 +27,6 @@ The plugin is a pure browser bundle (the host half intentionally has no behavior
 | `dsh-skill-explorer` | dsh-skill-explorer |
 | `dsh-ssh` | dsh-ssh |
 | `task-board` | dsh-task-board |
-| `describe-image` | dsh-tool-describe-image |
 | `dsh-web-ui-usage` | dsh-usage |
 | `web-ui-plugins` | dsh-web-settings |
 

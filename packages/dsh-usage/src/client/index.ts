@@ -1,8 +1,10 @@
 /**
  * dsh-usage browser half — seats the first-level 使用统计 settings section
- * (below the Workshop entry) and polls the host overview only while the
- * section is open. All provider probing and credential handling happens in
- * the host half; this bundle only renders the overview document.
+ * (below the Workshop entry) plus the compact usage glance card below the
+ * sidebar's Settings row. The section polls the host overview only while it
+ * is open; the foot card runs its own relaxed loop because the sidebar foot
+ * is permanently mounted. All provider probing and credential handling
+ * happens in the host half; this bundle only renders the overview document.
  * @module @linxin666/dsh-usage/client
  */
 
@@ -17,7 +19,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { createUsageStore, type UsageStoreInstance } from './usage-store.ts'
 import { UsageSectionCard, type UsageSectionFace, type UsageSettings } from './UsageSectionCard.tsx'
-import { NS, en, zh } from './locales.ts'
+import { mountUsageFootCard, openUsageSettings } from './foot-card-mount.tsx'
+import { NS, en, zh, t } from './locales.ts'
 import type { UsageOverviewView } from '../core/types.ts'
 
 /** The host usage API as the browser sees it (same-origin JSON endpoints). */
@@ -141,6 +144,25 @@ export function apply(ctx: ClientContext): void {
   }
 
   const face = (): UsageSectionFace => ({ store, poll, refresh, settings: settingsForm })
+
+  // Sidebar foot card: the compact usage glance seated below the shell's
+  // Settings row. It shares the section's store and poll path (the sequence
+  // guard absorbs interleaved calls), runs its own relaxed poll loop, and
+  // opens the settings panel on the usage section when clicked.
+  const disposeFootCard = mountUsageFootCard({
+    store,
+    poll,
+    settings: settingsForm,
+    onOpen: () => { openUsageSettings(() => t('usage.title')) },
+    locale: ctx.locale,
+  })
+  ctx.effect(() => () => {
+    try {
+      disposeFootCard()
+    } catch {
+      // Card container already gone (teardown race).
+    }
+  }, 'dsh-usage: sidebar foot card')
 
   ctx.slots.inject('settings.section', () => {
     try {

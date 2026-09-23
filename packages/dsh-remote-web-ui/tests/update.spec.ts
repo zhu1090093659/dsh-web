@@ -232,7 +232,9 @@ describe("release notes", () => {
     let requested = ""
     const notes = await fetchGitHubReleaseNotes("0.1.11", async (url, init) => {
       requested = url
-      expect(init?.headers).toMatchObject({ accept: "application/vnd.github+json" })
+      const headers = new Headers(init?.headers)
+      expect(headers.get("accept")).toBe("application/vnd.github+json")
+      expect(headers.get("accept-encoding")).toBe("identity")
       return {
         ok: true,
         json: async () => ({ body: "### 新功能\n- Add feature\n" }),
@@ -1019,6 +1021,7 @@ describe('fetchLatestVersion', () => {
     const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit | undefined]
     expect(String(url)).toContain('/latest')
     expect(init?.signal).toBeInstanceOf(AbortSignal)
+    expect(new Headers(init?.headers).get('accept-encoding')).toBe('identity')
   })
 
   it('returns undefined when the registry probe rejects', async () => {

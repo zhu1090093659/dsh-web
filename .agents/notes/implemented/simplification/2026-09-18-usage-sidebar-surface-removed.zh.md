@@ -4,6 +4,8 @@ Status: implemented
 
 取代 [用量侧栏控件落位入口行](2026-09-17-usage-sidebar-controls-on-entry-row.md) 与 [issue 批次 1587-1600](2026-09-16-issue-batch-1587-1600-fixes.md) 中记录的 #1592 侧栏面：用量侧栏入口、其可折叠面板，以及专为它建立的 entry-core 机制全部移除。用量仍可从设置页一级分区访问。
 
+被 [用量侧栏底部速览卡](../feature/2026-09-23-usage-sidebar-foot-card.md) 部分取代：一张紧凑速览卡应用户明确要求回归到侧栏「设置」行下方；入口行、可折叠面板与 entry-core `actions` API 保持移除。
+
 ## 问题
 
 侧栏用量面从未挣得自己的位置。它长期占据一个导航席位——在新会话按钮下方的窄条里与家族插件入口、工作区浏览器争位——只为重复设置分区已经完整渲染的一份 overview。用户对已上线行的判决就是「可以直接移除了」。继续保留它还有超出自身文件的成本：共享 entry core 为承载这一行的刷新与折叠控件，长出了 `actions` 数组、复合容器/主按钮结构、`entryAction`/`entryMain` 样式契约与 `data-dsh-entry-action` 钩子。
@@ -30,7 +32,7 @@ Status: implemented
 
 - 侧栏在宽栏与 56px 轨道中都不再有「用量」行；此前「移到设置上方」的改动随之回退。
 - 家族行（dsh-task-board、dsh-ssh、dsh-skill-explorer）保留它们现在共享的面板行几何：shell 的 2px 内缩、12px 圆角、8px 内容内边距、36px 行高、14/22 字号、主墨色，以及 16px 图标盒（折叠轨道 18px）。无 `actions` 的行本来就逐字节一致，因此本次移除不改变它们的渲染。
-- 用量 overview 轮询现在只由设置分区的挂载周期驱动；该分区关闭时不再有任何轮询。宠物的用量气泡此前已与该面解耦（见 [宠物解耦记录](../simplification/2026-09-17-usage-pet-decoupling-collapsed-summary.md)），不受影响。
+- 用量 overview 轮询由设置分区的挂载周期与侧栏速览卡的 30 秒可见标签页轮询共同驱动（后者为后续新增——见 [速览卡记录](../feature/2026-09-23-usage-sidebar-foot-card.md)）。宠物的用量气泡此前已与该面解耦（见 [宠物解耦记录](../simplification/2026-09-17-usage-pet-decoupling-collapsed-summary.md)），不受影响。
 - `dsh-usage.sidebar.collapsed` 不再被读写；遗留的 `localStorage` 值成为惰性数据。
 
 ## 测试

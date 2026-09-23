@@ -568,10 +568,16 @@ body[data-ds-dark-theme] [data-slot="main.conversation"] [data-turn-process] {
    nested element whose class carries the same substring (`X_panelBody`). A
    bare `[class*="panel"]` therefore plated the panel and its body, and two
    0.75 fills stack to an effective 0.94 (issue #1573). Exclude the body; the
-   slot host above is display:contents, so the panel itself still matches. */
+   slot host above is display:contents, so the panel itself still matches.
+
+   Since dsh 0.1.7 the right panel shell is an always-mounted, always-visible
+   positioning box (only its inner dockkit surfaces hide while closed), so an
+   ungated paint covers the conversation area with a phantom plate whenever the
+   panel is closed. Gate every right-panel paint on [data-sidebar-right-open];
+   the attribute exists on the open panel in both the old and the new shell. */
 [data-slot="main.conversation"] header,
-[data-slot="rightbar.session"] > *,
-[class*="rightbarCol"] [class*="panel"]:not([class*="panelBody"]) {
+[data-slot="rightbar.session"] > [data-sidebar-right-open],
+[class*="rightbarCol"] [class*="panel"][data-sidebar-right-open]:not([class*="panelBody"]) {
   background: var(--dsw-specific-sidebar-fill);
 }
 
@@ -580,8 +586,8 @@ body[data-ds-dark-theme] [data-slot="main.conversation"] [data-turn-process] {
 }
 
 body[data-ds-dark-theme] [data-slot="main.conversation"] header,
-body[data-ds-dark-theme] [data-slot="rightbar.session"] > *,
-body[data-ds-dark-theme] [class*="rightbarCol"] [class*="panel"]:not([class*="panelBody"]) {
+body[data-ds-dark-theme] [data-slot="rightbar.session"] > [data-sidebar-right-open],
+body[data-ds-dark-theme] [class*="rightbarCol"] [class*="panel"][data-sidebar-right-open]:not([class*="panelBody"]) {
   background: var(--dsw-specific-sidebar-fill);
 }
 
@@ -590,7 +596,7 @@ body[data-ds-dark-theme] [class*="rightbarCol"] [class*="panel"]:not([class*="pa
    --dsw-alias-border-l4, so the two vertical rules sat one rung apart
    (issue #1573). Match the left spine here instead of remapping l4, which
    every other l4 consumer shares. */
-[class*="rightbarCol"] [class*="panel"]:not([class*="panelBody"]) {
+[class*="rightbarCol"] [class*="panel"][data-sidebar-right-open]:not([class*="panelBody"]) {
   border-left-color: var(--dsw-alias-border-l3);
 }
 

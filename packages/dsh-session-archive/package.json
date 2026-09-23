@@ -1,6 +1,7 @@
 {
   "name": "@linxin666/dsh-session-archive",
   "version": "0.3.24",
+  "icon": "icon.svg",
   "description": "Session archive management for DSH Web: centralized inventory, batch archive/restore, physical delete with family cascade, and optional auto-archive / auto-cleanup policies.",
   "type": "module",
   "main": "lib/index.js",
@@ -12,7 +13,7 @@
   "license": "Apache-2.0",
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.7-alpha.1"
+      "dsh": ">=0.1.7-alpha.2"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -46,7 +47,8 @@
     "lib/**/*.d.ts",
     "lib/**/*.d.ts.map",
     "src",
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "icon.svg"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsdown",
@@ -59,21 +61,22 @@
     "schemastery": "^3.18.0"
   },
   "peerDependencies": {
+    "@deepseek-ai/dsh": ">=0.1.7-alpha.2",
     "react": "^18.2.0"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.3",
-    "@deepseek-ai/dsh-api-session-controller": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-connection": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-locale": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-store": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-session": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-settings": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-workspace": "^0.1.7-alpha.1",
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/dsh-api-session-controller": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-connection": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-locale": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-store": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-session": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-settings": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-workspace": "^0.1.7-alpha.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^22.20.0",

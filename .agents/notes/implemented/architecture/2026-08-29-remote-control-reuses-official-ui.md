@@ -2,6 +2,8 @@
 
 Status: implemented
 
+Extended by [remote control adapts the wide desktop foot row](2026-09-23-remote-desktop-foot-row.md): the adaptation layer also lays out the wide desktop foot row.
+
 ## Problem
 
 dsh-remote-web-ui shipped its own mobile UI: a standalone `/m/` surface (views, markdown renderer, mux bridge, theme, PWA shell, the `/m/api` allowlist proxy, and a paired model-catalog) served beside the official desktop GUI. Every official client change had to be re-implemented by hand on the phone surface, and the two surfaces drifted by design: the phone saw a thinner product (no settings, no plugin cards, no deliverables) while the desktop saw the real one. The reference implementation [dsh-LAN](https://github.com/MrMu666/dsh-LAN) solved the same problem the other way — since its v48 it deletes its own surface and injects a portrait-touch adaptation over the official UI — and this repository adopted that direction.

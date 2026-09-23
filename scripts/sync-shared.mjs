@@ -27,7 +27,7 @@ export const REPO_ROOT = resolve(SCRIPT_DIR, '..')
  * live exactly once under shared/; consumers import the committed copy.
  */
 // Consumers of the settings card trio: one list, three derivations below.
-const SETTINGS_CONSUMERS = ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-tool-describe-image','dsh-doctor', 'dsh-market', 'dsh-liangshen']
+const SETTINGS_CONSUMERS = ['dsh-pet', 'dsh-task-board', 'dsh-remote-web-ui', 'dsh-market', 'dsh-liangshen']
 const SETTINGS_CARD_CONSUMERS = [...SETTINGS_CONSUMERS]
 
 const MANIFEST = [
@@ -56,8 +56,6 @@ const MANIFEST = [
     targets: [
       'packages/dsh-remote-web-ui/src/client/plugin-card-seat.ts',
       'packages/dsh-task-board/src/client/plugin-card-seat.ts',
-      'packages/dsh-tool-describe-image/src/client/plugin-card-seat.ts',
-      'packages/dsh-doctor/src/client/plugin-card-seat.ts',
       'packages/dsh-liangshen/src/client/plugin-card-seat.ts',
     ],
   },
@@ -109,7 +107,6 @@ const MANIFEST = [
     source: 'shared/host/legacy-migration.ts',
     targets: [
       'packages/dsh-plugin-manager/src/host/legacy-migration.ts',
-      'packages/dsh-doctor/src/agent/legacy-migration.ts',
     ],
   },
   {
@@ -125,9 +122,7 @@ const MANIFEST = [
       'packages/dsh-community-plugins/src/mount-once.ts',
       'packages/dsh-plugin-manager/src/mount-once.ts',
       'packages/dsh-web-settings/src/mount-once.ts',
-      'packages/dsh-tool-describe-image/src/mount-once.ts',
       'packages/dsh-skill-explorer/src/mount-once.ts',
-      'packages/dsh-doctor/src/mount-once.ts',
       'packages/skins/skin-center/src/mount-once.ts',
       'packages/dsh-market/src/mount-once.ts',
       'packages/dsh-usage/src/mount-once.ts',
@@ -144,7 +139,6 @@ const MANIFEST = [
       'packages/dsh-market/src/client/telemetry.ts',
       'packages/dsh-pet/src/client/telemetry.ts',
       'packages/skins/skin-center/src/client/telemetry.ts',
-      'packages/dsh-doctor/src/client/telemetry.ts',
       'packages/dsh-git-graph/src/client/telemetry.ts',
       'packages/dsh-plugin-manager/src/client/telemetry.ts',
       'packages/dsh-remote-web-ui/src/client/telemetry.ts',
@@ -152,7 +146,6 @@ const MANIFEST = [
       'packages/dsh-skill-explorer/src/client/telemetry.ts',
       'packages/dsh-ssh/src/client/telemetry.ts',
       'packages/dsh-task-board/src/client/telemetry.ts',
-      'packages/dsh-tool-describe-image/src/client/telemetry.ts',
       'packages/dsh-web-settings/src/client/telemetry.ts',
     ],
   },
@@ -173,7 +166,6 @@ const MANIFEST = [
       'packages/dsh-task-board/src/client/main-session.ts',
       'packages/dsh-session-id/src/client/main-session.ts',
       'packages/dsh-liangshen/src/client/main-session.ts',
-      'packages/dsh-doctor/src/client/main-session.ts',
       'packages/dsh-git-graph/src/client/main-session.ts',
       'packages/dsh-session-archive/src/client/main-session.ts',
     ],
@@ -186,7 +178,7 @@ const MANIFEST = [
   {
     file: 'loopback.ts',
     source: 'shared/host/loopback.ts',
-    targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-git-graph/src/host/loopback.ts', 'packages/dsh-remote-web-ui/src/loopback.ts', 'packages/dsh-task-board/src/loopback.ts', 'packages/dsh-skill-explorer/src/loopback.ts', 'packages/dsh-pet/src/loopback.ts', 'packages/dsh-plugin-manager/src/host/loopback.ts', 'packages/dsh-tool-describe-image/src/loopback.ts', 'packages/dsh-doctor/src/host/loopback.ts', 'packages/dsh-market/src/loopback.ts', 'packages/dsh-usage/src/host/loopback.ts', 'packages/dsh-session-archive/src/host/loopback.ts', 'packages/dsh-preset-center/src/loopback.ts'],
+    targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-git-graph/src/host/loopback.ts', 'packages/dsh-remote-web-ui/src/loopback.ts', 'packages/dsh-task-board/src/loopback.ts', 'packages/dsh-skill-explorer/src/loopback.ts', 'packages/dsh-pet/src/loopback.ts', 'packages/dsh-plugin-manager/src/host/loopback.ts', 'packages/dsh-market/src/loopback.ts', 'packages/dsh-usage/src/host/loopback.ts', 'packages/dsh-session-archive/src/host/loopback.ts', 'packages/dsh-preset-center/src/loopback.ts'],
   },
   {
     file: 'http.ts',
@@ -196,8 +188,6 @@ const MANIFEST = [
       'packages/dsh-market/src/http.ts',
       'packages/dsh-skill-explorer/src/http.ts',
       'packages/dsh-web-settings/src/http.ts',
-      'packages/dsh-tool-describe-image/src/http.ts',
-      'packages/dsh-doctor/src/host/http.ts',
       'packages/dsh-git-graph/src/host/http.ts',
       'packages/dsh-ssh/src/http.ts',
       'packages/dsh-plugin-manager/src/host/http.ts',
@@ -214,7 +204,6 @@ const MANIFEST = [
     source: 'shared/vitest.setup.ts',
     targets: [
       'packages/dsh-web-settings/vitest.setup.ts',
-      'packages/dsh-tool-describe-image/vitest.setup.ts',
       'packages/dsh-remote-web-ui/vitest.setup.ts',
     ],
   },
@@ -229,6 +218,7 @@ const MANIFEST = [
       'packages/dsh-task-board/src/client/body-mutations.ts',
       'packages/dsh-skill-explorer/src/client/body-mutations.ts',
       'packages/dsh-web-all/src/client/body-mutations.ts',
+      'packages/dsh-usage/src/client/body-mutations.ts',
     ],
   },
   {

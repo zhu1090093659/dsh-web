@@ -40,11 +40,6 @@
     "source": "packages/dsh-ssh/src/client/index.ts"
   },
   {
-    "name": "@linxin666/dsh-tool-describe-image",
-    "specifier": "@linxin666/dsh-tool-describe-image/client",
-    "source": "packages/dsh-tool-describe-image/src/client/index.ts"
-  },
-  {
     "name": "@linxin666/dsh-liangshen",
     "specifier": "@linxin666/dsh-liangshen/client",
     "source": "packages/dsh-liangshen/src/client/index.ts"
@@ -53,11 +48,6 @@
     "name": "@linxin666/dsh-client-ui-skill-explorer",
     "specifier": "@linxin666/dsh-client-ui-skill-explorer/client",
     "source": "packages/dsh-skill-explorer/src/client/index.ts"
-  },
-  {
-    "name": "@linxin666/dsh-doctor",
-    "specifier": "@linxin666/dsh-doctor/client",
-    "source": "packages/dsh-doctor/src/client/index.ts"
   },
   {
     "name": "@linxin666/dsh-usage",

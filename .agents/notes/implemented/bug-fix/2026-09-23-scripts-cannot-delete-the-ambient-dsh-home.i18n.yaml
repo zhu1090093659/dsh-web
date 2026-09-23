@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-09-23-scripts-cannot-delete-the-ambient-dsh-home.md: b6bc6b66ea1b82d107183fdf3b872ec5d9c3823b
+2026-09-23-scripts-cannot-delete-the-ambient-dsh-home.zh.md: 6d625cbd0f56dabc32698b83c01cf55111f0745f

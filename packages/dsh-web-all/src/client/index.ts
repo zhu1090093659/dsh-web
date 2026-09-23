@@ -28,14 +28,36 @@ const COLUMN_SHIMS: ReadonlyArray<readonly [selector: string, attribute: string]
 /** Stable hooks consumed by the responsive compat layer (never text/hash selectors). */
 export const RESPONSIVE_CSS = `
 [data-dsh-frame] { min-height: 0; }
+/* Viewport lock for installs with no active visual. The identical lock lives in
+   the skin-center shell-rendering stylesheet, but that stylesheet is inert
+   unless a catalog skin, custom theme or wallpaper is active, so a stock
+   install keeps html/body at their inherited "overflow: visible". Every
+   conversation disclosure control (the tool/step-process collapse bar carrying
+   the step summary, and the whole-turn process bar) calls focus() on itself
+   when toggled; a focused element below any document overflow scrolls the page
+   down by that overflow, which reads as the page being stretched downward with
+   the titlebar and sidebar top pushed out of the viewport: issue #1135's
+   symptom, reachable here with no skin active. Locking only the scrolling root
+   (never the app root element, whose own lock clipped content in
+   #1222/#1225) removes the overflow scroll target without touching the frame's
+   box in any state. Scoped through :has() so the rule stays inert until the
+   shell frame exists. */
+html:has([data-dsh-frame]),
+html:has([data-dsh-frame]) > body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
 [data-dsh-frame] [data-dsh-responsive-part="composer"],
 [data-dsh-frame] [data-dsh-responsive-part="sidebar-toggle"],
   [data-dsh-frame] [data-dsh-responsive-part="menu"] { touch-action: manipulation; }
 @media (max-width: 768px) {
   [data-dsh-frame] [data-dsh-responsive-part="sidebar-toggle"] { min-width: 44px; min-height: 44px; }
   [data-dsh-frame] {
+    box-sizing: border-box;
     height: 100dvh;
     min-height: 100dvh;
+    max-height: 100dvh;
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: 100%;
     padding-bottom: env(safe-area-inset-bottom);

@@ -828,10 +828,11 @@ function resolveEntries(pkgDir, entries, section, errors) {
 
 /**
  * Rebuild the aggregate package.json so every manifest deps entry becomes a
- * "workspace:*" dependency; other fields are preserved, and any leftover
- * peerDependencies field is removed. The loader resolves patch rows from the
- * profile root, and pnpm installs these children as normal dependencies
- * (hoisting them to the top level in the default layout).
+ * "workspace:*" dependency; other fields are preserved. The loader resolves
+ * patch rows from the profile root, and pnpm installs these children as normal
+ * dependencies (hoisting them to the top level in the default layout), so the
+ * only peer the aggregate keeps is the `@deepseek-ai/dsh` host peer: every
+ * other entry is a leftover child-plugin declaration and is dropped.
  *
  * The exports map is generator-owned for the family subpath keys: every
  * shell-wrapped row's `./<sub>` key is added pointing at the shared shell
@@ -848,7 +849,9 @@ function renderPackageJson(pkgPath, resolvedDeps, shellSubpaths) {
   }
   if (Object.keys(next).length) pkg.dependencies = next
   else delete pkg.dependencies
-  delete pkg.peerDependencies
+  const hostPeer = pkg.peerDependencies?.['@deepseek-ai/dsh']
+  if (hostPeer !== undefined) pkg.peerDependencies = { '@deepseek-ai/dsh': hostPeer }
+  else delete pkg.peerDependencies
   if (shellSubpaths.length > 0) {
     const exports = { ...pkg.exports }
     for (const key of Object.keys(exports)) {

@@ -22,10 +22,8 @@ patchFrom:
   - ../dsh-remote-web-ui
   - ../dsh-pet
   - ../dsh-ssh
-  - ../dsh-tool-describe-image
   - ../dsh-liangshen
   - ../dsh-skill-explorer
-  - ../dsh-doctor
   - ../dsh-usage
   - ../dsh-session-archive
   - ../dsh-model-capabilities
@@ -47,10 +45,8 @@ deps:
   - ../dsh-pet
   - ../dsh-remote-web-ui
   - ../dsh-ssh
-  - ../dsh-tool-describe-image
   - ../dsh-liangshen
   - ../dsh-skill-explorer
-  - ../dsh-doctor
   - ../dsh-usage
   - ../dsh-session-archive
   - ../dsh-model-capabilities
@@ -60,7 +56,7 @@ deps:
   - ../dsh-i18n
 # 外部 npm 插件段：alpha 分支（2026-09-17 决策）不内置 dsh-better-sidebar。
 # 该插件 0.19.1 的全部 @deepseek-ai/dsh-* peer 声明为 ^0.1.5-rc.1，按 semver
-# 不覆盖本分支的 0.1.7-alpha.1 cohort（预发布版本只匹配同 [major,minor,patch]
+# 不覆盖本分支的 0.1.7-alpha.2 cohort（预发布版本只匹配同 [major,minor,patch]
 # 元的区间），因此 alpha 实验环境不再挂载这个右侧面板插件：聚合包不依赖它、
 # profile 里也不出现它的行。需要右侧面板时按需安装
 # （dsh plugin --profile <name> add dsh-better-sidebar@latest）。
@@ -78,18 +74,18 @@ deps:
 # 锁定的核心行（compat/settings/plugin-manager）不可列入本清单。
 inactive:
   - web-ui-ssh
-  - web-ui-describe-image
   - web-ui-liangshen
   - web-ui-skill-explorer
-  - web-ui-doctor
-# 被本聚合取代的官方行（2026-09-15 原生优先决策）：官方 web-app 常量挂载
-# ui-settings-unarchive-sessions（settings.section id archived-sessions、order 25），
-# dsh-session-archive 现在用同一个 section id 接管该入口，把「原生恢复列表 +
-# 家族批量归档/删除/自动策略」放在同一页。这里关闭官方行，设置界面只保留一条
-# 「已归档会话」一级入口，不再出现两个近似入口。用户层 disabled:false 覆盖仍然优先。
-retire:
-  - ui-settings-unarchive-sessions
+# 归档设置入口（2026-09-15 原生优先决策）：dsh-session-archive 注册官方 section id
+# archived-sessions 与 order 25 接管该入口，把「原生恢复列表 + 家族批量归档/删除/
+# 自动策略」放在同一页。>=0.1.7-alpha.2 的官方 dsh-web-app 不再挂载
+# ui-settings-unarchive-sessions 行，所以这里没有 retire 目标：对不存在的行写
+# disabled 覆盖只会让 loader 每次启动都报 "patch: entry ... not found"。加回 retire
+# 目标前必须先在当前 cohort 上用 dsh --profile <name> --dump-config 确认该外部行存在。
 # 兼容退役子插件导出：避免老用户 profile 残留旧条目时 Node.js 抛出 ERR_PACKAGE_PATH_NOT_EXPORTED
+# 2026-09-23：describe-image 与 doctor 两个插件自家族移除，同样保留空壳导出。
 tombstones:
   - desktop-launcher
   - dsh-perf
+  - describe-image
+  - doctor

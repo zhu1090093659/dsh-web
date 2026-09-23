@@ -32,7 +32,7 @@
 
 import { execFileSync, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve, sep } from 'node:path'
@@ -154,7 +154,11 @@ export function officialMinimalPresetPatch() {
     try {
       // The `dsh` shim is the only handle on the harness install: resolve the
       // CLI package beside it, then the bundle package inside that install.
-      const fromShim = createRequire(shim)
+      // alpha.2 note: createRequire derives module paths from the literal
+      // filename without resolving symlinks, so from the PATH shim
+      // (/opt/homebrew/bin/dsh) the lookup walks bin/node_modules and never
+      // reaches the install tree; realpath first lands inside the package.
+      const fromShim = createRequire(realpathSync(shim))
       const cliPackage = fromShim.resolve('@deepseek-ai/dsh/package.json')
       const patch = createRequire(cliPackage).resolve(relative)
       if (existsSync(patch)) return patch
@@ -164,6 +168,11 @@ export function officialMinimalPresetPatch() {
   }
   throw new Error('benchmark: the official Minimal preset is unavailable'
     + (tried.length === 0 ? ' (no dsh command on PATH)' : `; tried ${tried.join(' | ')}`))
+}
+
+/** Whether any `dsh` command is on PATH (the preset reference tests gate on it). */
+export function harnessInstallAvailable() {
+  return dshCommands().length > 0
 }
 
 /** Every `dsh` command the platform's PATH lookup reports. */

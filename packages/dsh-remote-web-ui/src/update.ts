@@ -13,6 +13,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { createOutputCapture } from './console-output.ts'
+import { withIdentityEncoding } from './http.ts'
 
 /** npm registry base used for version probes. */
 export const NPM_REGISTRY = 'https://registry.npmjs.org'
@@ -322,7 +323,7 @@ export async function fetchLatestVersion(
     const controller = new AbortController()
     const timer = setTimeout(() => { controller.abort() }, timeoutMs)
     try {
-      const response = await fetchImpl(NPM_REGISTRY + '/' + name.replace('/', '%2F') + '/latest', { signal: controller.signal })
+      const response = await fetchImpl(NPM_REGISTRY + '/' + name.replace('/', '%2F') + '/latest', withIdentityEncoding({ signal: controller.signal }))
       if (!response.ok) return undefined
       const body = await response.json()
       if (typeof body !== 'object' || body === null) return undefined
@@ -405,10 +406,10 @@ export async function fetchGitHubReleaseNotes(
   try {
     const response = await fetchImpl(
       `https://api.github.com/repos/${UPDATE_RELEASE_REPO}/releases/tags/v${version}`,
-      {
+      withIdentityEncoding({
         headers: { accept: 'application/vnd.github+json', 'user-agent': 'dsh-web-update' },
         signal: controller.signal,
-      },
+      }),
     )
     if (!response.ok) return undefined
     const body = await response.json()

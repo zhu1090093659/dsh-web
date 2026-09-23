@@ -19,14 +19,12 @@ import * as child4 from '@linxin666/dsh-client-ui-git-graph/client'
 import * as child5 from '@linxin666/dsh-remote-web-ui/client'
 import * as child6 from '@linxin666/dsh-pet/client'
 import * as child7 from '@linxin666/dsh-ssh/client'
-import * as child8 from '@linxin666/dsh-tool-describe-image/client'
-import * as child9 from '@linxin666/dsh-liangshen/client'
-import * as child10 from '@linxin666/dsh-client-ui-skill-explorer/client'
-import * as child11 from '@linxin666/dsh-doctor/client'
-import * as child12 from '@linxin666/dsh-usage/client'
-import * as child13 from '@linxin666/dsh-session-archive/client'
-import * as child14 from '@linxin666/dsh-client-ui-model-capabilities/client'
-import * as child15 from '@linxin666/dsh-client-ui-preset-center/client'
+import * as child8 from '@linxin666/dsh-liangshen/client'
+import * as child9 from '@linxin666/dsh-client-ui-skill-explorer/client'
+import * as child10 from '@linxin666/dsh-usage/client'
+import * as child11 from '@linxin666/dsh-session-archive/client'
+import * as child12 from '@linxin666/dsh-client-ui-model-capabilities/client'
+import * as child13 from '@linxin666/dsh-client-ui-preset-center/client'
 
 /** The loose shape every child client module must expose at runtime. */
 export interface ClientChildModule {
@@ -51,12 +49,10 @@ export const clientChildren: readonly ClientChild[] = [
   { name: '@linxin666/dsh-remote-web-ui', module: child5 },
   { name: '@linxin666/dsh-pet', module: child6 },
   { name: '@linxin666/dsh-ssh', module: child7 },
-  { name: '@linxin666/dsh-tool-describe-image', module: child8 },
-  { name: '@linxin666/dsh-liangshen', module: child9 },
-  { name: '@linxin666/dsh-client-ui-skill-explorer', module: child10 },
-  { name: '@linxin666/dsh-doctor', module: child11 },
-  { name: '@linxin666/dsh-usage', module: child12 },
-  { name: '@linxin666/dsh-session-archive', module: child13 },
-  { name: '@linxin666/dsh-client-ui-model-capabilities', module: child14 },
-  { name: '@linxin666/dsh-client-ui-preset-center', module: child15 },
+  { name: '@linxin666/dsh-liangshen', module: child8 },
+  { name: '@linxin666/dsh-client-ui-skill-explorer', module: child9 },
+  { name: '@linxin666/dsh-usage', module: child10 },
+  { name: '@linxin666/dsh-session-archive', module: child11 },
+  { name: '@linxin666/dsh-client-ui-model-capabilities', module: child12 },
+  { name: '@linxin666/dsh-client-ui-preset-center', module: child13 },
 ]

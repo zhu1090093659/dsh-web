@@ -37,6 +37,7 @@ import {
   inlineComposition,
   loadTaskFile,
   materializePreset,
+  harnessInstallAvailable,
   officialMinimalPresetPatch,
   priceRun,
   routePrices,
@@ -107,7 +108,10 @@ describe('benchmark variant materialization', () => {
     expect(text).toMatch(/^\s*presentation: 'native'$/m)
   })
 
-  it('operator evaluates the official Minimal preset for the reference group', () => {
+  // The reference group mirrors the LIVE official bundle, so it needs a real
+  // harness install on PATH; clean CI runners carry none (the shell-isolation
+  // suite gates on the resolvable host the same way).
+  it.runIf(harnessInstallAvailable())('operator evaluates the official Minimal preset for the reference group', () => {
     // Given the harness install this machine runs, When the operator resolves
     // the official Minimal preset, Then it is the bundle's own declaration and
     // the reference variant materializes exactly that patch.
@@ -141,7 +145,7 @@ describe('benchmark variant materialization', () => {
     expect(text).toContain('preset: "B"')
   })
 
-  it('operator keeps the reference variant an overlay over the official row', () => {
+  it.runIf(harnessInstallAvailable())('operator keeps the reference variant an overlay over the official row', () => {
     // Given the reference variant, When the operator builds its patch, Then it
     // only selects the official id and declares no second preset for the run.
     const { text } = variantPatch('M')

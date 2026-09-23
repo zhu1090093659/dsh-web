@@ -14,6 +14,10 @@
   `type: module`，阻止 client 模块扫描器的 nearest-package 走查到达包根（否则
   与 compat 行构成同包多来源，扫描器 reconcile 直接抛错）。子路径 exports 键由
   生成器维护，勿手改。
+- 包根 `icon.svg` + `package.json` 顶层 `icon` 是官方插件列表的卡片图标（官方
+  展示元信息字段，见 [Agent Note](../../.agents/notes/implemented/feature/2026-09-23-family-plugin-icons.md)）；
+  家族每个包都带同名素材（独立安装时各自生效），读取方按 `<specifier>/package.json`
+  走 exports 表，所以子路径行仍是默认插画。该资源必须留在 npm `files` 白名单内。
 - `aggregate.yml` 是唯一手写清单：`patchFrom` 贡献 insert 行（嵌套聚合递归展开、
   按顺序、带源注释），`deps` 解析各子包 name 写入 dependencies。
 - `patches:` 段（单行 JSON flow mapping）对本聚合自插入行做整对象 config 覆写：

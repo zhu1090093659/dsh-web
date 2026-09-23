@@ -381,3 +381,191 @@
   outline: none;
   box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 45%, transparent);
 }
+
+
+/* ---------------------------------------------------------------------------
+   Sidebar foot card: the compact usage glance the mount seats as the shell
+   foot area's last child, directly below the Settings row. The chrome is an
+   outer div; the content is one transparent main button (the whole card opens
+   the usage settings section) with a sibling corner chevron toggling the
+   collapsed strip — sibling buttons, since nesting buttons is invalid HTML.
+   Quiet card on the same currentColor mixes as the section cards; hidden in
+   the 56px rail (the frame carries data-sidebar-collapsed).
+   --------------------------------------------------------------------------- */
+
+/* Seated above the Settings row as a native sidebar row: the shell's row
+   radius and hover fill, with none of the card chrome that made it read as a
+   pill pasted onto the foot. Only the expanded body keeps a faint surface to
+   hold its four lines together; the collapsed strip is a plain 36px row. */
+.footCard {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 2px 0 4px;
+  border: none;
+  border-radius: 12px;
+  background: color-mix(in srgb, currentColor 4%, transparent);
+  color: inherit;
+  transition: background-color 120ms ease;
+}
+
+.footCard:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.footCardCollapsed {
+  background: transparent;
+}
+
+.footMain {
+  appearance: none;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.footMain:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.footToggle {
+  appearance: none;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+
+.footCard:hover .footToggle {
+  opacity: 0.8;
+}
+
+.footToggle:hover {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.footToggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.footToggle svg {
+  display: block;
+}
+
+.footHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.footTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+.footTitle svg {
+  display: block;
+  flex: none;
+}
+
+/* The headline value leaves room for the corner toggle. */
+.footValue {
+  margin-right: 18px;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.footLine {
+  font-size: 11px;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footMeta {
+  font-size: 10px;
+  opacity: 0.5;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Collapsed strip: tighter chrome, one horizontal line, room for the toggle. */
+.footCardCollapsed .footMain {
+  min-height: 36px;
+  padding: 7px 8px;
+}
+
+.footStrip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 20px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.footStrip svg {
+  display: block;
+  flex: none;
+  opacity: 0.65;
+}
+
+.footStripProvider {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.footStripLabel {
+  opacity: 0.65;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.footStripValue {
+  margin-left: auto;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+:global([data-dsh-frame][data-sidebar-collapsed]) .footCard,
+:global([data-sidebar-collapsed]) .footCard {
+  display: none;
+}

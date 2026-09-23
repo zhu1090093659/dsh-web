@@ -14,6 +14,7 @@ import { credentialKey, credentialRef } from '@deepseek-ai/dsh-credentials'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { TokenUsage } from '@deepseek-ai/dsh-llm'
 import { dshHome } from '../dsh-home.ts'
+import { withIdentityEncoding } from './http.ts'
 import { adapterFor, isDeepSeekProviderRoute, providerErrorMessage } from '../core/adapters.ts'
 import type { BalanceParse, PlanParse } from '../core/adapters.ts'
 import { foldAliasRoutes } from '../core/provider-routes.ts'
@@ -597,7 +598,10 @@ export class UsageService {
       if (half === undefined) return undefined
       try {
         const spec = half.build({ apiKey: credential.key as string, ...(credential.accountId !== undefined ? { accountId: credential.accountId } : {}) })
-        const response = await fetch(spec.url, { headers: spec.headers, signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) })
+        const response = await fetch(spec.url, withIdentityEncoding({
+          headers: spec.headers,
+          signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+        }))
         const body: unknown = await response.json().catch(() => undefined)
         if (!response.ok) throw new Error(providerErrorMessage(response.status, body))
         const parsed = half.parse(response.status, body)

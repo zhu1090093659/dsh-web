@@ -21,7 +21,7 @@ Status: implemented
 
 ## Consequences
 
-插件列表里每个家族插件一张独立的 `web-all/<family>` 卡片，展开卡片不再是识别插件的唯一方式。代价：命名链现在横跨三个工件（行名 → exports 键 → 共享再导出 + 标记），全靠生成器门禁与测试而非单一文件强制；`lib/` 内随包发布一个嵌套 package.json（对 npm/pnpm 惰性，但把嵌套 manifest 当 workspace 包的工具必须继续忽略它）；家族子路径必须保持"仅显示"定位——把挂载语义放进子路径模块会分叉 shell 拥有的隔离契约。
+插件列表里每个家族插件一张独立的 `web-all/<family>` 卡片，展开卡片不再是识别插件的唯一方式。代价：命名链现在横跨三个工件（行名 → exports 键 → 共享再导出 + 标记），全靠生成器门禁与测试而非单一文件强制；`lib/` 内随包发布一个嵌套 package.json（对 npm/pnpm 惰性，但把嵌套 manifest 当 workspace 包的工具必须继续忽略它）；家族子路径必须保持"仅显示"定位——把挂载语义放进子路径模块会分叉 shell 拥有的隔离契约。家族每个包自己的卡片素材现在走上游展示元信息字段（[Family plugin icons through the DSH display-metadata icon field](../feature/2026-09-23-family-plugin-icons.md)）：它按 specifier 解析，因此包自己的卡片显示图标，而上面的子路径行保持默认插画、标签仍是它们唯一的逐行展示字段。
 
 ## Testing
 

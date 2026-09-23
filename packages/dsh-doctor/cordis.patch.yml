@@ -1,6 +1,0 @@
-# dsh-doctor bundle patch. The Host half exposes the loopback recovery API
-# and reports health to the out-of-process Supervisor; the dsh.client manifest
-# loads the recovery console and browser failure probe on the web platform.
-- insert:
-    - id: doctor
-      name: '@linxin666/dsh-doctor'

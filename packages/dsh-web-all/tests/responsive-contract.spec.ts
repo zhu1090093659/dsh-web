@@ -44,6 +44,36 @@ describe('aggregate responsive compat contract', () => {
     }
   })
 
+  it('user toggling a conversation disclosure bar keeps the page inside the viewport', () => {
+    // Every conversation disclosure bar calls focus() on itself when toggled
+    // (ui-chat ChatGroupSeat's ProcessGroupHeader, TurnProcessNodeView). A
+    // focused element below document overflow scrolls the page down by that
+    // overflow, which reads as the page being stretched downward. The
+    // skin-center copy of this lock is inert with no active visual, so the
+    // aggregate owns the unconditional one.
+    // Given the aggregate responsive stylesheet, when the shell frame is up,
+    // then the scrolling root is locked so focus() has no overflow to scroll.
+    const lock = RESPONSIVE_CSS.match(/html:has\(\[data-dsh-frame\]\)[^{]*\{([^}]*)\}/)?.[1] ?? ''
+    expect(lock).toContain('overflow: hidden')
+    expect(lock).toContain('height: 100%')
+    // Scoped to the frame so it stays inert before the shell mounts.
+    expect(RESPONSIVE_CSS).toContain('html:has([data-dsh-frame]) > body')
+    // Never lock the app root: its own lock clipped content (#1222/#1225).
+    expect(RESPONSIVE_CSS).not.toContain('[id="root"]')
+    expect(RESPONSIVE_CSS).not.toMatch(/#root\b/)
+  })
+
+  it('user on a phone with a home indicator keeps the frame inside the viewport', () => {
+    // Given env(safe-area-inset-bottom) is content-box padding by default, when
+    // it is non-zero, then 100dvh of CONTENT plus the inset would overflow the
+    // viewport and stretch the page downward by the inset.
+    const mobile = RESPONSIVE_CSS.match(/@media \(max-width: 768px\) \{\s*\[data-dsh-frame\] \[data-dsh-responsive-part="sidebar-toggle"\][^@]*?\[data-dsh-frame\] \{([^}]*)\}/s)?.[1] ?? ''
+    expect(mobile).toContain('box-sizing: border-box')
+    expect(mobile).toContain('height: 100dvh')
+    expect(mobile).toContain('max-height: 100dvh')
+    expect(mobile).toContain('padding-bottom: env(safe-area-inset-bottom)')
+  })
+
   it('uses stable semantic hooks and a bounded mobile breakpoint', () => {
     expect(RESPONSIVE_CSS).toContain('[data-dsh-frame]')
     expect(RESPONSIVE_CSS).toContain('[data-pane="sidebar"]')

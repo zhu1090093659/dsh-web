@@ -26,10 +26,10 @@
 | --- | --- | --- |
 | `root` | shell | 应用根出口；`[data-slot="root"]` |
 | `sidebar` | shell | 左导航列；`[data-slot="sidebar"]`（列容器本体上游缝落地前经适配器） |
-| `conversation` | shell | 中栏主区；`[data-slot="conversation"]` |
+| `conversation` | shell | 中栏主区；`[data-slot="conversation"]`（旧 shell）/ `[class*="centerCol"]`（dsh 0.1.7 起中栏无 data 钩子，以 CSS-module 后缀锚定） |
 | `session-header` | shell | 会话头；`[data-slot="conversation.session.header"]` |
 | `composer` | shell | 输入区；`[data-slot="conversation.composer"]` |
-| `details` | shell | 右详情列；`[data-slot="details"]` |
+| `details` | shell | 右详情列；`[data-slot="details"]`（旧 shell）/ `[data-rightbar-col]`（dsh 0.1.7 起官方钩子，收起时 0 宽、打标不产生绘制） |
 | `settings` | shell | 设置模态；`[role="dialog"]` 内含 `[data-slot="settings.section"]` 组合判定 |
 | `overlay` | shell | 帧级浮层；`[data-shell-overlay]` / `[data-slot="shell.overlay"]` |
 
@@ -54,7 +54,7 @@ shell 区域（owner: shell）：
 | `message-row` | 聊天流条目；`[data-chat-flow-kind]` |
 | `message-body` | 助手消息正文；`[data-streaming]` 根 |
 | `scrollport` | 会话滚动口；`[data-conversation-scroll]` |
-| `composer-input` | 输入 textarea；`textarea[data-phase]` |
+| `composer-input` | 输入框；`textarea[data-phase]`（旧 shell）/ `[data-composer-input]`（现行 Lexical contenteditable 输入框） |
 | `composer-chip` | 输入引用 chip；`[data-decoration="chip"]` |
 | `queue-dock` | 排队条；`[data-queue-dock]` |
 | `turn-tail` | turn 尾行；`[data-turn-tail]` |
@@ -97,16 +97,6 @@ family / 插件区域：
 | `tab-bar` / `tab` | skill-explorer | 技能中心页签条/页签；`[data-dsh-plugin="skill-explorer"] [data-dsh-part="tab-bar"]` / `[data-dsh-plugin="skill-explorer"] [data-dsh-part="tab"]` |
 | `skill-row` | skill-explorer | 技能卡行；`[data-dsh-plugin="skill-explorer"] [data-dsh-part="skill-row"]` |
 | `filter-bar` | skill-explorer | 技能列表筛选条（搜索框 + 工作区选择）；`[data-dsh-plugin="skill-explorer"] [data-dsh-part="filter-bar"]` |
-| `header` | doctor | 救助控制台头部；`[data-dsh-plugin="doctor"] [data-dsh-part="header"]` |
-| `enable` | doctor | 救助模式启用行 |
-| `status` | doctor | 系统状态卡 |
-| `profiles` | doctor | 受保护 profile 列表 |
-| `incidents` | doctor | 故障事件列表 |
-| `probe` | doctor | 客户端故障探针列表 |
-| `plugin-row-actions` | doctor | 失败插件行「复制错误 / 禁用并重启」动作组 |
-| `actions` | doctor | 诊断/修复动作组 |
-| `boundary` | doctor | 错误边界回退提示；`role="alert"` |
-| `harness-target` | doctor | “发送给 Harness” 对话框内的目标会话行 |
 | `entry` | session-id | 侧栏 footer 触发器；`button[data-dsh-part="entry"]`（`[data-dsh-plugin="session-id"]` 容器内） |
 | `panel` | session-id | 会话 ID 模态面板；`[role="dialog"]` 根（`[data-dsh-part="panel"]`） |
 | `row` | session-id | 会话列表行；面板内行容器（`[data-dsh-part="row"]`） |
@@ -128,6 +118,10 @@ family / 插件区域：
 | `plan-card` / `plan-window` | usage | 套餐卡 / 套餐窗口行（个人套餐页签）；`[data-dsh-part="plan-card"]` 内窗口行 |
 | `bank-card` | usage | Token 银行卡（鲸元券，无官方用量时为空状态）；`[data-dsh-part="bank-card"]` |
 | `voucher-preview` | usage | 票面 canvas 容器；bank-card 内 `[data-dsh-part="voucher-preview"]` |
+| `foot-card` | usage | 侧栏底部用量速览卡（Settings 行下方，栏轨态隐藏；可折叠为单行摘要条）；`[data-dsh-plugin="usage"] [data-dsh-part="foot-card"]`，挂载容器 `[data-dsh-usage-foot-card]` |
+| `foot-card-main` / `foot-card-toggle` | usage | 速览卡主体按钮（整卡点击打开设置分区）/ 右上角收起-展开切换钮；foot-card 内裸值 button |
+| `foot-card-strip` | usage | 折叠态单行摘要条（标签 + 头条值）；折叠时 foot-card-main 内裸值 span |
+| `foot-card-usage` / `foot-card-balances` | usage | 展开态的 tokens/调用行 / 余额行；foot-card 内裸值 span |
 | `panel` | model-capabilities | 提供方卡片能力扩展区根；`[data-dsh-plugin="model-capabilities"][data-dsh-part="panel"]` |
 | `toggle` | model-capabilities | 扩展区折叠头按钮；panel 内 `button[data-dsh-part="toggle"]` |
 | `model-row` / `model-toggle` | model-capabilities | 逐模型能力行与其展开按钮；panel 内 `li[data-dsh-part="model-row"]` 及其中 `button[data-dsh-part="model-toggle"]` |
@@ -142,7 +136,7 @@ family / 插件区域：
 | `lever-burst` | liangshen | 拨下命中后的中奖特效浮层（闪光 / 冲击环 / 火花 / 横幅）；`[data-dsh-part="lever-burst"]`，`prefers-reduced-motion` 下退化为淡出 |
 | `lever-banner` | liangshen | 特效中的梁神横幅（模式名 + 文言文/二进制/摩斯三行）；burst 内 `[data-dsh-part="lever-banner"]` |
 
-## plugin 组（15 个）
+## plugin 组（13 个）
 
 | data-dsh-plugin | owner | 锚定方式 |
 | --- | --- | --- |
@@ -153,11 +147,10 @@ family / 插件区域：
 | `remote-web-ui` | dsh-remote-web-ui | slot entry id `remote-web-ui` |
 | `web-ui-settings` | dsh-web-settings | settings.section id `web-ui-plugins` |
 | `skill-explorer` | dsh-skill-explorer | `[data-dsh-skill-explorer-view]` / `[data-dsh-skill-explorer-entry]` |
-| `doctor` | dsh-doctor | web-ui.plugin.item 槽 entry id `doctor`（设置 → Web 插件 → Doctor 卡片）；卡片内 `[data-dsh-plugin="doctor"]` |
 | `dsh-web-ui-market` | dsh-market | 创意工坊商店一级页（settings.section id `dsh-web-ui-market`），商店卡与目录条目容器 |
 | `skin-center` | skins/skin-center | 一级设置分区 settings.section id `skin-center`（列已安装皮肤，属内置源时显式标记） |
 | `session-id` | dsh-session-id | footer action slot entry id `session-id`；`[data-dsh-plugin="session-id"]`（面板 overlay 根 + 入口触发器） |
-| `usage` | dsh-usage | 一级设置分区 settings.section id `dsh-usage`（创意工坊下方）；`[data-dsh-plugin="usage"]`；侧栏入口 `[data-dsh-usage-entry]` 与面板根 `[data-dsh-usage-view]` |
+| `usage` | dsh-usage | 一级设置分区 settings.section id `dsh-usage`（创意工坊下方）；`[data-dsh-plugin="usage"]`；侧栏底部速览卡容器 `[data-dsh-usage-foot-card]` |
 | `model-capabilities` | dsh-model-capabilities | Models 页 `settings.models.provider-card` keyed 槽 key `llm-pi-ai`（提供方卡片扩展区）+ `settings.models.footer` 槽 entry id `ui-model-capabilities`（存档区）；`[data-dsh-plugin="model-capabilities"]` |
 | `preset-center` | dsh-preset-center | 创意工坊卡片的「预设」标签页面板（`dsh-workshop.panel` keyed 槽 key `preset`）；`[data-dsh-plugin="preset-center"]` |
 | `liangshen` | dsh-liangshen | 首页输入框内的梁神模式拨杆；`[data-dsh-plugin="liangshen"][data-dsh-part="lever"]`，slot entry id `liangshen-lever` |

@@ -59,6 +59,11 @@ export const zh = {
   'usage.bank.save': '保存图片',
   'usage.bank.share': '分享',
   'usage.bank.drawError': '票券生成失败：{error}',
+  'usage.foot.cost': '今日消费',
+  'usage.foot.noData': '今日暂无用量',
+  'usage.foot.open': '打开使用统计设置',
+  'usage.foot.collapse': '收起用量卡片',
+  'usage.foot.expand': '展开用量卡片',
 }
 
 /** English mirror; every zh key present. */
@@ -113,6 +118,11 @@ export const en: Record<UsageKey, string> = {
   'usage.bank.save': 'Save image',
   'usage.bank.share': 'Share',
   'usage.bank.drawError': 'Failed to render the voucher: {error}',
+  'usage.foot.cost': 'Today spend',
+  'usage.foot.noData': 'No usage yet today',
+  'usage.foot.open': 'Open usage statistics settings',
+  'usage.foot.collapse': 'Collapse the usage card',
+  'usage.foot.expand': 'Expand the usage card',
 }
 
 export type UsageKey = keyof typeof zh

@@ -64,7 +64,7 @@ const AGGREGATE = [
   '# inactive by default (opt-in rows)',
   '- id: web-ui-ssh',
   '  disabled: true',
-  '- id: web-ui-doctor',
+  '- id: web-ui-liangshen',
   '  disabled: true',
   '',
 ].join('\n')
@@ -73,7 +73,7 @@ describe('rowDefaultEnabledOf', () => {
   it('reads the bundle inactive-by-default rows and leaves undeclared ids absent', () => {
     const defaults = rowDefaultEnabledOf(AGGREGATE)
     expect(defaults.get('web-ui-ssh')).toBe(false)
-    expect(defaults.get('web-ui-doctor')).toBe(false)
+    expect(defaults.get('web-ui-liangshen')).toBe(false)
     // A row the bundle never mentions carries no opinion, not "enabled".
     expect(defaults.has('web-ui-skin-center')).toBe(false)
   })

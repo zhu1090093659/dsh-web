@@ -1,10 +1,10 @@
 /**
  * Section-identity contract for the 2026-09-15 native-first decision: the
- * plugin takes over the OFFICIAL archived-sessions settings section (the id
- * and order that @deepseek-ai/dsh-client-ui-settings-unarchive-sessions seats)
- * instead of registering a parallel first-level entry, and dsh-web-all retires
- * the official row. A regression here puts two near-identical archive entries
- * back into Settings.
+ * plugin owns the OFFICIAL archived-sessions settings section (the id and
+ * order `@deepseek-ai/dsh-client-ui-settings-unarchive-sessions` seated before
+ * DSH 0.1.7-alpha.2 stopped mounting that page) instead of registering a
+ * parallel first-level entry. A regression here puts two near-identical
+ * archive entries back into Settings.
  */
 import { describe, expect, it } from 'vitest'
 import { apply } from '../src/client/index.ts'

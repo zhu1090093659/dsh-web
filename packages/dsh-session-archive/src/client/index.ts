@@ -1,14 +1,14 @@
 /**
- * dsh-session-archive browser half — takes over the official
- * `archived-sessions` settings section instead of seating a parallel
- * first-level entry. The official
- * `@deepseek-ai/dsh-client-ui-settings-unarchive-sessions` page owns that
- * section id at order 25, and `dsh-web-all` retires its row, so exactly one
- * 「已归档会话」 nav entry remains and it carries both the native restore
- * behaviour (the section opens on the archived view) and this plugin's batch,
- * delete and retention surfaces. All session enumeration and mutation happens
- * in the host half over loopback-fenced routes; this bundle renders the
- * inventory document and drives the batch pipelines.
+ * dsh-session-archive browser half — owns the `archived-sessions` settings
+ * section (the official id, at nav order 25) instead of seating a parallel
+ * first-level entry. DSH 0.1.7-alpha.2 no longer mounts the official
+ * `@deepseek-ai/dsh-client-ui-settings-unarchive-sessions` page that used to
+ * own that id, so this section is the only 「已归档会话」 nav entry and it
+ * carries both the native restore behaviour (the section opens on the archived
+ * view) and this plugin's batch, delete and retention surfaces. All session
+ * enumeration and mutation happens in the host half over loopback-fenced
+ * routes; this bundle renders the inventory document and drives the batch
+ * pipelines.
  * @module @linxin666/dsh-session-archive/client
  */
 

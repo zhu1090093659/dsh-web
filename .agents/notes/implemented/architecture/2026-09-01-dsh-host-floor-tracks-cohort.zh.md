@@ -8,22 +8,23 @@ Status: implemented
 
 ## 决策
 
-家族声明的宿主版本门槛就是家族当前适配的 cohort，三处用户可见面声明同一个版本。dsh-web 的最新发布线始终跟随宿主的最新 npm 版本，因此门槛随每次 cohort 提升一起移动。具体到 alpha.3 cohort：
+家族声明的宿主版本门槛就是家族当前适配的 cohort，各声明面使用同一个版本。dsh-web 的最新发布线始终跟随宿主的最新 npm 版本，因此门槛随每次 cohort 提升一起移动。具体到 alpha.3 cohort：
 
 - 全部家族包与插件模板声明 `dsh.engines.dsh >=0.1.2-alpha.3`；插件管理器在安装/更新检查时读取该门槛，对更老的宿主提示或拦截。
 - 根 README 徽章（中英两份）改为静态表述要求——shields 静态徽章渲染 `DSH >=0.1.2-alpha.3`，仍链接到 npm 包——替换原先的实时 dist-tag 徽章。
 - CI 与 release 挂载冒烟道钉住 `@deepseek-ai/dsh@0.1.2-alpha.3`：冒烟道挂载的正是要求用户运行的宿主版本，docs/publish-prep.md 陈述同一事实。
 - 插件模板的 `@deepseek-ai/*` devDependencies 对齐 `^0.1.2-alpha.3`，使新插件脚手架落在已适配的 cohort 上。
+- 全部家族包与插件模板还把宿主声明为 peer 依赖——`peerDependencies["@deepseek-ai/dsh"]`，取同一个 `>=0.1.2-alpha.3` 字面量——让按 npm 元数据解析的消费方不必询问插件管理器就能读到该要求。
 
-因此 cohort 提升契约是：一次提升同时移动清单 devDependency 区间、engines 门槛、README 徽章与 CI 挂载 pin。cohort 机制见 [sdk-cohort-0.1.2-alpha.2-upgrade](2026-08-30-sdk-cohort-0.1.2-alpha.2-upgrade.zh.md)；门槛必须声明的规则在 docs/plugins.md。
+因此 cohort 提升契约是：一次提升同时移动清单 devDependency 区间、engines 门槛、宿主 peer、README 徽章与 CI 挂载 pin。cohort 机制见 [sdk-cohort-0.1.2-alpha.2-upgrade](2026-08-30-sdk-cohort-0.1.2-alpha.2-upgrade.zh.md)；门槛必须声明的规则在 docs/plugins.md。
 
 ## 备选方案
 
-保留实时 `alpha` dist-tag 徽章被否决：它展示的是宿主最新发布版，不是家族的要求，且会宣传家族尚未适配的版本。有界区间（`^0.1.2-alpha.3`）被否决：插件管理器契约只支持 `>=<semver>` 形式，且上限会拦截同一条线上家族随后适配的未来宿主。把门槛留在 `>=0.1.2-alpha.1` 以保住老宿主可安装被否决：家族发布在 alpha cohort 线上，老宿主正是用户必须离开的版本，插件管理器也只会提示它拿到的门槛。
+保留实时 `alpha` dist-tag 徽章被否决：它展示的是宿主最新发布版，不是家族的要求，且会宣传家族尚未适配的版本。有界区间（`^0.1.2-alpha.3`）被否决：插件管理器契约只支持 `>=<semver>` 形式，且上限会拦截同一条线上家族随后适配的未来宿主。把门槛留在 `>=0.1.2-alpha.1` 以保住老宿主可安装被否决：家族发布在 alpha cohort 线上，老宿主正是用户必须离开的版本，插件管理器也只会提示它拿到的门槛。只依赖 engines 门槛也被否决：读它的只有我们自己的插件管理器，按 npm 元数据解析的消费方看不到该要求，因此宿主同时声明为 peer 依赖。
 
 ## 后果
 
-宿主老于 0.1.2-alpha.3 的用户在安装或更新任何家族包时会撞上插件管理器的门槛检查，README 对要求的表述不会再跑到适配 cohort 之前或之后。今后每次 cohort 提升在既有的 devDependency 区间与门槛移动之外，新增两处必动点（徽章与 CI pin）。提及更早 cohort 的历史叙述（包 README 里的 alpha.2 说明、release notes、归档记录）保持历史原貌，不随每次提升重写。
+宿主老于 0.1.2-alpha.3 的用户在安装或更新任何家族包时会撞上插件管理器的门槛检查，README 对要求的表述不会再跑到适配 cohort 之前或之后。今后每次 cohort 提升在既有的 devDependency 区间与 engines 门槛移动之外，新增三处必动点（徽章、CI pin 与宿主 peer）。提及更早 cohort 的历史叙述（包 README 里的 alpha.2 说明、release notes、归档记录）保持历史原貌，不随每次提升重写。
 
 ## 测试
 

@@ -130,7 +130,7 @@ dsh plugin --profile web remove @linxin666/dsh-liangshen
 - preset 与 shell 访问具有相同信任等级，安装前可自行审阅 `presets/liangshen/`；
 - 插件不发起网络请求，也不增加遥测；
 - 不要在已经产生内容的会话中途切换 preset；
-- 需要 DSH 0.1.7-alpha.1+（preset 机制、`system-prompt/assemble` 瀑布、persona 的 `prefix` schema，以及 PTC 呈现 API）。
+- 需要 DSH 0.1.7-alpha.2+（preset 机制、`system-prompt/assemble` 瀑布、persona 的 `prefix` schema，以及 PTC 呈现 API）。
 
 ## 许可
 

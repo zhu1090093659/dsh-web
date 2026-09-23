@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto'
 import { mkdtempSync, existsSync, readFileSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { brotliCompressSync } from 'node:zlib'
 import {
   FILE_MAX_BYTES,
   MANIFEST_MAX_BYTES,
@@ -127,6 +128,33 @@ describe('installAsset', () => {
     expect(result.files).toBe(3)
     expect(result.dest).toBe(targetDir(home, 'skin', 'whale-song'))
     expect(readFileSync(join(home, 'skins', 'whale-song', 'skin.json'), 'utf8')).toBe('data-skin.json')
+    expect(readFileSync(join(home, 'skins', 'whale-song', 'assets', 'whale-art.webp'), 'utf8')).toBe('data-whale-art.webp')
+  })
+
+  it('user installs a skin while the host fetch cannot decode compressed bodies', async () => {
+    const home = tmpHome()
+    // Given the alpha.2 host has imported npm undici, so its built-in fetch
+    // hands back compressed bytes with no content-encoding header; this mock
+    // mirrors that by answering raw brotli to any request that did not ask for
+    // identity.
+    // When the installer requests the manifest and every asset.
+    // Then the install succeeds, because each request carried
+    // accept-encoding: identity and the written bytes are the origin's.
+    const compressed = (text: string) => brotliCompressSync(Buffer.from(text))
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (new Headers(init?.headers).get('accept-encoding') !== 'identity') {
+        return new Response(compressed(url.endsWith('skins.json') ? JSON.stringify(manifest.skins) : 'data-compressed'), { status: 200 })
+      }
+      const m = url.match(/\/manifest\/(skins|pets|presets)\.json$/)
+      if (m) return new Response(JSON.stringify(manifest[m[1] as 'skins' | 'pets' | 'presets']), { status: 200 })
+      return new Response('data-' + (url.split('/').pop() ?? ''), { status: 200 })
+    }) as typeof fetch
+
+    const result = await installAsset('skin', 'whale-song', { dshHome: home, fetchImpl })
+
+    expect(result.ok).toBe(true)
+    expect(readFileSync(join(home, 'skins', 'whale-song', 'skin.css'), 'utf8')).toBe('data-skin.css')
     expect(readFileSync(join(home, 'skins', 'whale-song', 'assets', 'whale-art.webp'), 'utf8')).toBe('data-whale-art.webp')
   })
 

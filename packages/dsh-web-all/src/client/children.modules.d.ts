@@ -44,22 +44,12 @@ declare module '@linxin666/dsh-ssh/client' {
   export const inject: readonly string[] | undefined
 }
 
-declare module '@linxin666/dsh-tool-describe-image/client' {
-  export const apply: unknown
-  export const inject: readonly string[] | undefined
-}
-
 declare module '@linxin666/dsh-liangshen/client' {
   export const apply: unknown
   export const inject: readonly string[] | undefined
 }
 
 declare module '@linxin666/dsh-client-ui-skill-explorer/client' {
-  export const apply: unknown
-  export const inject: readonly string[] | undefined
-}
-
-declare module '@linxin666/dsh-doctor/client' {
   export const apply: unknown
   export const inject: readonly string[] | undefined
 }

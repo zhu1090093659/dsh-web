@@ -3,7 +3,6 @@
   "metrics": ["lines","statements","functions","branches"],
   "packages": {
     "dsh-community-plugins": { "lines": 100, "statements": 100, "functions": 100, "branches": 100 },
-    "dsh-doctor": { "lines": 80.86, "statements": 75.29, "functions": 65.46, "branches": 66.52 },
     "dsh-git-graph": { "lines": 79.19, "statements": 74.98, "functions": 76.06, "branches": 66.88 },
     "dsh-i18n": { "lines": 100, "statements": 100, "functions": 100, "branches": 100 },
     "dsh-liangshen": { "lines": 74.45, "statements": 74.45, "functions": 91.57, "branches": 81.29 },
@@ -18,7 +17,6 @@
     "dsh-skill-explorer": { "lines": 51.75, "statements": 51.75, "functions": 73.5, "branches": 78.16 },
     "dsh-ssh": { "lines": 37.03, "statements": 37.03, "functions": 72.43, "branches": 76.8 },
     "dsh-task-board": { "lines": 41.22, "statements": 41.22, "functions": 73.51, "branches": 82.06 },
-    "dsh-tool-describe-image": { "lines": 28.93, "statements": 28.93, "functions": 70.77, "branches": 82.69 },
     "dsh-usage": { "lines": 84.08, "statements": 78.63, "functions": 77.27, "branches": 72.02 },
     "dsh-web-all": { "lines": 92.53, "statements": 87.22, "functions": 80, "branches": 71.84 },
     "dsh-web-settings": { "lines": 70.77, "statements": 67.81, "functions": 63.07, "branches": 65.22 },

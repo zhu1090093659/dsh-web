@@ -41,10 +41,18 @@ export const SEMANTIC_RULES_V1: readonly SemanticRule[] = [
   // ---- surfaces (official shell) ----
   { selector: '[data-slot="root"]', attrs: [['data-dsh-surface', 'root']], note: 'ui-renderer root outlet' },
   { selector: '[data-slot="sidebar"]', attrs: [['data-dsh-surface', 'sidebar']], note: 'layout sidebar outlet' },
-  { selector: '[data-slot="conversation"]', attrs: [['data-dsh-surface', 'conversation']], note: 'layout conversation outlet' },
+  {
+    selector: '[data-slot="conversation"], [class*="centerCol"]',
+    attrs: [['data-dsh-surface', 'conversation']],
+    note: 'conversation column: legacy conversation outlet; since dsh 0.1.7 the column carries no data hook, so the css-module suffix (hash prefix varies, suffix stable) is the anchor',
+  },
   { selector: '[data-slot="conversation.session.header"]', attrs: [['data-dsh-surface', 'session-header']], note: 'conversation header outlet' },
   { selector: '[data-slot="conversation.composer"]', attrs: [['data-dsh-surface', 'composer']], note: 'composer chain outlet' },
-  { selector: '[data-slot="details"]', attrs: [['data-dsh-surface', 'details']], note: 'layout details outlet' },
+  {
+    selector: '[data-slot="details"], [data-rightbar-col]',
+    attrs: [['data-dsh-surface', 'details']],
+    note: 'details column: legacy details outlet; since dsh 0.1.7 the right sidebar column carries the official data-rightbar-col hook (0-width while collapsed, so stamping it paints nothing when closed)',
+  },
   { selector: '[data-shell-overlay]', attrs: [['data-dsh-surface', 'overlay']], note: 'frame overlay attribute' },
   { selector: '[data-slot="shell.overlay"]', attrs: [['data-dsh-surface', 'overlay']], note: 'shell overlay outlet' },
   {
@@ -56,7 +64,11 @@ export const SEMANTIC_RULES_V1: readonly SemanticRule[] = [
   { selector: '[data-chat-flow-kind]', attrs: [['data-dsh-part', 'message-row']], note: 'chat flow item' },
   { selector: '[data-streaming]', attrs: [['data-dsh-part', 'message-body']], note: 'assistant markdown root' },
   { selector: '[data-conversation-scroll]', attrs: [['data-dsh-part', 'scrollport']], note: 'conversation scrollport' },
-  { selector: 'textarea[data-phase]', attrs: [['data-dsh-part', 'composer-input']], note: 'composer textarea' },
+  {
+    selector: 'textarea[data-phase], [data-composer-input]',
+    attrs: [['data-dsh-part', 'composer-input']],
+    note: 'composer input: legacy textarea; current shells render a Lexical contenteditable carrying data-composer-input',
+  },
   { selector: '[data-decoration="chip"]', attrs: [['data-dsh-part', 'composer-chip']], note: 'composer reference chip' },
   { selector: '[data-queue-dock]', attrs: [['data-dsh-part', 'queue-dock']], note: 'queued turns dock' },
   { selector: '[data-turn-tail]', attrs: [['data-dsh-part', 'turn-tail']], note: 'turn tail row' },

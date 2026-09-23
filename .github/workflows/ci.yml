@@ -151,7 +151,7 @@ jobs:
       # Pin the DSH CLI the lane mounts into; the profile's bundle stack
       # (dsh-base / dsh-web-app) resolves from this installation.
       - name: Install dsh CLI (pinned)
-        run: npm install -g @deepseek-ai/dsh@0.1.7-alpha.1
+        run: npm install -g @deepseek-ai/dsh@0.1.7-alpha.2
 
       # lib/ bundles are committed for the consistency checks, but the
       # aggregate tarball must be produced from a fresh build.
@@ -174,8 +174,23 @@ jobs:
         timeout-minutes: 10
         run: pnpm exec playwright install chromium
 
+      # Pack every family package from THIS checkout and smoke those builds
+      # (FAMILY_TGZS_DIR full override): the published registry artifacts can
+      # lag a freshly pinned host cohort — their bundled clients were built
+      # for the previous one, so the registry path would test stale bits, not
+      # this commit (0.1.7-alpha.2 transition turned this lane red on exactly
+      # that skew). The release workflow keeps the registry consumer assertion.
+      - name: Pack family tarballs from this checkout
+        run: |
+          mkdir -p "$RUNNER_TEMP/family-tgzs"
+          for dir in packages/dsh-* packages/skins/skin-center; do
+            (cd "$dir" && pnpm pack --pack-destination "$RUNNER_TEMP/family-tgzs" >/dev/null)
+          done
+
       - name: Mount + headless-render smoke
         run: bash scripts/e2e-mount.sh
+        env:
+          FAMILY_TGZS_DIR: ${{ runner.temp }}/family-tgzs
 
       - name: Upload Playwright report on failure
         if: failure()

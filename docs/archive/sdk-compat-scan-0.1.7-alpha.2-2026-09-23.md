@@ -77,15 +77,15 @@ alpha.2 壳产物 `@deepseek-ai/dsh-web-frontend/dist/assets/index-bRoh_x8K.js` 
 | 契约 token | 278 |
 | alpha.1 `dsh-client-ui-theme` 非 static token | 288 |
 | alpha.2 `dsh-client-ui-theme` + 官方壳 CSS 并集 | 293 |
-| alpha.2 新增（alpha.1 无） | 5 |
+| alpha.2 新增（alpha.1 无） | 2 |
 | alpha.2 存在但契约未收录 | 15 |
 | 契约有而 alpha.2 没有 | 0 |
 
-alpha.2 真正新增的 5 个：`--dsw-alias-bg-layer-4`、`--dsw-alias-code-diff-added`、`--dsw-alias-code-diff-deleted`、`--dsw-alias-label-error`、`--dsw-hovercard-bg`。
+alpha.2 真正新增的 2 个：`--dsw-alias-code-diff-added`、`--dsw-alias-code-diff-deleted`（alpha.1 同口径并集 291 → alpha.2 293）。`--dsw-alias-bg-layer-4`、`--dsw-alias-label-error`、`--dsw-hovercard-bg` 是只出现在官方壳 CSS、不在 `dsh-client-ui-theme` 的 3 个 token，alpha.1 已存在，属契约来源不全的既有缺口。
 
 其中 `--dsw-alias-code-diff-added` / `--dsw-alias-code-diff-deleted` 正是 alpha.2 重写 `DiffBlock.module.css` 后新增的 diff 增删底色，皮肤若要跟随官方 diff 配色必须能引用它们。
 
-未被收录的另外 10 个（如 `--dsw-alias-bg-document-preview`、`--dsw-alias-label-document-preview`、`--dsw-alias-link`、`--dsw-alias-state-idle-primary`、`--dsw-corner-shape`、`--dsw-elevation-*`、`--dsw-menu-backdrop-filter`）在 alpha.1 就已存在，属**生成来源不全导致的既有缺口**，不是 alpha.2 引入的问题：`scripts/official-tokens-snapshot.mjs` 默认只扫 `@deepseek-ai/dsh-web-frontend/dist/assets/*.css`，而权威集合分散在 `@deepseek-ai/dsh-client-ui-theme/lib/client.js` 与各 `dsh-client-ui-*` 包中。
+未被收录的另外 13 个（如 `--dsw-alias-bg-document-preview`、`--dsw-alias-label-document-preview`、`--dsw-alias-link`、`--dsw-alias-state-idle-primary`、`--dsw-corner-shape`、`--dsw-elevation-*`、`--dsw-menu-backdrop-filter`）在 alpha.1 就已存在，属**生成来源不全导致的既有缺口**，不是 alpha.2 引入的问题：`scripts/official-tokens-snapshot.mjs` 默认只扫 `@deepseek-ai/dsh-web-frontend/dist/assets/*.css`，而权威集合分散在 `@deepseek-ai/dsh-client-ui-theme/lib/client.js` 与各 `dsh-client-ui-*` 包中。15 个缺口里只有 code-diff 两个属 alpha.2 新增，其余 13 个是契约一直漏收的。
 
 该脚本在当前仓库无法直接跑默认路径——仓库 `node_modules` 里没有 `@deepseek-ai/dsh-web-frontend`。它支持显式传入 CSS 路径，可指向 alpha.2 安装。
 
@@ -117,7 +117,7 @@ alpha.2 真正新增的 5 个：`--dsw-alias-bg-layer-4`、`--dsw-alias-code-dif
 - **GUI 证据缺失。** 运行中宿主的启动 token 由 `dsh-client-connection` 的 `processLaunchToken()` 用 `randomBytes` 在进程内生成、不落盘，`~/.dsh/logs` 里 2026-09-10 的旧 token 已失效。以该 token 访问 `/`、`/index.html`、`/api/health`、`/api/status` 全部返回 401，因此本次无法对该 GUI 做无头截图验收。补救方式二选一：用户重启 `dsh web` 并提供打印出的 tokenized URL，或授权 `scripts/e2e-mount.sh` 的 scratch profile E2E lane（自建 DSH_HOME 与随机端口，不触碰当前服务）。
 - 本次无 UI 代码改动，故 GUI 验收在流程上并非必需项，但它是唯一能把「alpha.2 宿主 + 仓库构建产物」的真实渲染坐实的证据，故列为残留。
 - 皮肤死探针的清理属独立议题，需要单独立项判断每条的意图，不在本次范围。
-- `--dsw-hovercard-bg` 等 5 个 alpha.2 新 token 是否应进入皮肤可用集，取决于 cohort 决策。
+- `--dsw-hovercard-bg` 等 15 个此前未收录 token 的皮肤可用性，取决于 cohort 决策；按 cohort 推进一并落地（见下节）。
 
 ## 复现命令
 
@@ -151,3 +151,14 @@ node -e "const{readFileSync}=require('fs');const scan=f=>[...readFileSync(f,'utf
 - `desktop/runtime/host/package.json`、`.github/workflows/ci.yml`、`.github/workflows/release.yml`
 - `packages/skins/skin-center/contracts/official-tokens-v1.json`、`scripts/official-tokens-snapshot.mjs`
 - `shared/web-platform.ts`、`shared/tsdown.client.ts`
+
+## 后续进展（同日落地，本文档的「未实施」结论已被取代）
+
+用户当日决定把仓库 cohort 推进到 `0.1.7-alpha.2`，并在隔离工作树 `sdk/0.1.7-alpha.2` 内执行：
+
+- 「需要决策的推进项」四项全部落地：全部 workspace 清单与 `pnpm-workspace.yaml` 的 `minimumReleaseAgeExclude`、`desktop/runtime/host` 的宿主载荷与 `pnpm-lock.yaml`、`.github/workflows/{ci,release}.yml` 的 E2E 宿主版本、以及 `engines.dsh` 下限统一到 `0.1.7-alpha.2`。
+- token 契约按下文的重建口径修复：`scripts/official-tokens-snapshot.mjs` 改为双来源（`dsh-client-ui-theme` 的 `lib/` + `dsh-web-frontend` 的 `dist/assets/`），`official-tokens-v1.json` 与 `official-tokens.generated.ts` 重新生成为 293 个 token，契约缺口的 15 个 token 全部纳入；根 `package.json` 增加 `@deepseek-ai/dsh-web-frontend` devDependency 以使该来源可复现（因此本节之前的「仓库 `node_modules` 里没有 `@deepseek-ai/dsh-web-frontend`」不再成立）。
+- 本节的 cohort 差异结论（仓库 `node_modules` 停在 alpha.1）在推进完成后失效：根 lockfile 与宿主 lockfile 均解析到 `0.1.7-alpha.2`。
+- 皮肤探测失效项、`desktop/runtime/profile-web` 的 `@linxin666/dsh-web-all` 版本落后这两项仍留在范围内外，未在本次处理。
+
+决策记录见 `.agents/notes/implemented/architecture/2026-09-23-sdk-cohort-0.1.7-alpha.2.md`。

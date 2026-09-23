@@ -188,7 +188,7 @@ function hasVisibleAlpha(value: string): boolean {
 function isExcludedWallpaperSurface(el: HTMLElement, zIndex: string): boolean {
   const semanticOverlay = typeof el.closest === 'function'
     && el.closest(
-      '[data-dsh-wallpaper-layer], dialog, [role="dialog"], [aria-modal="true"], [data-shell-overlay], [data-slot="shell.overlay"], [data-dsh-plugin], [data-slot="sidebar"], [data-dsh-surface="sidebar"], [data-slot="sidebar.workspaces"], [data-pane="sidebar"], aside, [data-slot="details"], [data-dsh-surface="details"], [data-pane="details"], [class*="detailsCol"], .aionui-root, [data-aionui-explorer-col], [data-aionui-preview-col], [data-dsh-better-sidebar], [data-dsh-panel-host]',
+      '[data-dsh-wallpaper-layer], dialog, [role="dialog"], [aria-modal="true"], [data-shell-overlay], [data-slot="shell.overlay"], [data-dsh-plugin], [data-slot="sidebar"], [data-dsh-surface="sidebar"], [data-slot="sidebar.workspaces"], [data-pane="sidebar"], aside, [data-slot="details"], [data-dsh-surface="details"], [data-pane="details"], [class*="detailsCol"], [data-rightbar-col], [data-sidebar-right-panel], .aionui-root, [data-aionui-explorer-col], [data-aionui-preview-col], [data-dsh-better-sidebar], [data-dsh-panel-host]',
     ) !== null
   if (semanticOverlay) return true
   const numericZIndex = Number.parseFloat(zIndex)

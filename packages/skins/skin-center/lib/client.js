@@ -564,7 +564,7 @@ window.__ModuleLoader__.load({
 		}
 		/** Exclude owned layers plus modal/plugin/sidebar/details surfaces that must retain their paint. */
 		function isExcludedWallpaperSurface(el, zIndex) {
-			if (typeof el.closest === "function" && el.closest("[data-dsh-wallpaper-layer], dialog, [role=\"dialog\"], [aria-modal=\"true\"], [data-shell-overlay], [data-slot=\"shell.overlay\"], [data-dsh-plugin], [data-slot=\"sidebar\"], [data-dsh-surface=\"sidebar\"], [data-slot=\"sidebar.workspaces\"], [data-pane=\"sidebar\"], aside, [data-slot=\"details\"], [data-dsh-surface=\"details\"], [data-pane=\"details\"], [class*=\"detailsCol\"], .aionui-root, [data-aionui-explorer-col], [data-aionui-preview-col], [data-dsh-better-sidebar], [data-dsh-panel-host]") !== null) return true;
+			if (typeof el.closest === "function" && el.closest("[data-dsh-wallpaper-layer], dialog, [role=\"dialog\"], [aria-modal=\"true\"], [data-shell-overlay], [data-slot=\"shell.overlay\"], [data-dsh-plugin], [data-slot=\"sidebar\"], [data-dsh-surface=\"sidebar\"], [data-slot=\"sidebar.workspaces\"], [data-pane=\"sidebar\"], aside, [data-slot=\"details\"], [data-dsh-surface=\"details\"], [data-pane=\"details\"], [class*=\"detailsCol\"], [data-rightbar-col], [data-sidebar-right-panel], .aionui-root, [data-aionui-explorer-col], [data-aionui-preview-col], [data-dsh-better-sidebar], [data-dsh-panel-host]") !== null) return true;
 			const numericZIndex = Number.parseFloat(zIndex);
 			return Number.isFinite(numericZIndex) && numericZIndex > MAX_SURFACE_OVERLAY_Z_INDEX;
 		}
@@ -3905,9 +3905,9 @@ window.__ModuleLoader__.load({
 				note: "layout sidebar outlet"
 			},
 			{
-				selector: "[data-slot=\"conversation\"]",
+				selector: "[data-slot=\"conversation\"], [class*=\"centerCol\"]",
 				attrs: [["data-dsh-surface", "conversation"]],
-				note: "layout conversation outlet"
+				note: "conversation column: legacy conversation outlet; since dsh 0.1.7 the column carries no data hook, so the css-module suffix (hash prefix varies, suffix stable) is the anchor"
 			},
 			{
 				selector: "[data-slot=\"conversation.session.header\"]",
@@ -3920,9 +3920,9 @@ window.__ModuleLoader__.load({
 				note: "composer chain outlet"
 			},
 			{
-				selector: "[data-slot=\"details\"]",
+				selector: "[data-slot=\"details\"], [data-rightbar-col]",
 				attrs: [["data-dsh-surface", "details"]],
-				note: "layout details outlet"
+				note: "details column: legacy details outlet; since dsh 0.1.7 the right sidebar column carries the official data-rightbar-col hook (0-width while collapsed, so stamping it paints nothing when closed)"
 			},
 			{
 				selector: "[data-shell-overlay]",
@@ -3955,9 +3955,9 @@ window.__ModuleLoader__.load({
 				note: "conversation scrollport"
 			},
 			{
-				selector: "textarea[data-phase]",
+				selector: "textarea[data-phase], [data-composer-input]",
 				attrs: [["data-dsh-part", "composer-input"]],
-				note: "composer textarea"
+				note: "composer input: legacy textarea; current shells render a Lexical contenteditable carrying data-composer-input"
 			},
 			{
 				selector: "[data-decoration=\"chip\"]",
@@ -4205,6 +4205,21 @@ window.__ModuleLoader__.load({
     ${scoped("[data-conversation-scroll] [class*=\"_contextRow\"]")},
     ${scoped("[data-conversation-scroll] [class*=\"_turnErrorRow\"]")} {
       scroll-margin-bottom: var(--dsh-composer-height, 100px) !important;
+    }
+    /* dsh 0.1.7 turned the right sidebar panel shell into an always-mounted,
+       always-visible positioning box (only its inner dockkit surfaces hide
+       while the panel is closed). Skin rules written for the older shell plate
+       that shell element and, with the panel closed, cover the conversation
+       area with a phantom column. Strip paint from the closed shell whatever
+       the active skin; an open panel ([data-sidebar-right-open]) keeps every
+       skin paint. The attribute predates the layout change, so the rule is a
+       no-op on older shells. */
+    ${scoped("[data-slot=\"rightbar.session\"] > [data-sidebar-right-panel]:not([data-sidebar-right-open])")} {
+      background: none !important;
+      background-color: transparent !important;
+      background-image: none !important;
+      border-color: transparent !important;
+      box-shadow: none !important;
     }
     /* #1117: The upstream recommended badge pairs two background-fill tokens
        as bg + text — in dark mode, skins like Blue Fantasy collapse them to

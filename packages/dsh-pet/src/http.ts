@@ -2,7 +2,9 @@
 /**
  * Shared JSON body/response helpers for the host route families: one strict
  * bounded body reader, one lenient bounded body reader, one JSON object
- * narrow, and one JSON writer. Previously these were copy-pasted across the
+ * narrow, one JSON writer, and the outbound request-init helper that keeps a
+ * host fetch body decodable (withIdentityEncoding). Previously the readers
+ * were copy-pasted across the
  * package route files (routes.ts, update-routes.ts, mobile-api.ts, and each
  * family's route module) with drifting contracts: body caps ranging 4 KiB to
  * 1 MiB and four distinct overflow behaviors (reject, undefined, null, throw).
@@ -86,6 +88,26 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
 /** Narrow a value to a JSON object, or undefined when it is not one. */
 export function asJsonObject(value: unknown): Record<string, unknown> | undefined {
   return isJsonObject(value) ? value : undefined
+}
+
+/**
+ * Request init that asks a remote origin for an uncompressed body.
+ *
+ * The DSH host boots `@deepseek-ai/dsh-http-proxy`, whose top-level import of
+ * the npm `undici` copy replaces the legacy `undici.globalDispatcher.1` slot
+ * Node's built-in `fetch()` reads. That cross-major wrapper drops the
+ * `content-encoding` header and automatic decompression, so a plain fetch
+ * resolves to raw gzip/brotli/zstd bytes — compressed noise no JSON or text
+ * consumer can read. Every host fetch that parses a remote body must request
+ * identity encoding. Caller headers survive; `accept-encoding` is forced to
+ * `identity` because a caller value has no decoder behind it in this host.
+ * @param init - the caller's request init (signal, headers, method, ...).
+ * @returns a copy with `accept-encoding: identity` merged in.
+ */
+export function withIdentityEncoding(init: RequestInit = {}): RequestInit {
+  const headers = new Headers(init.headers)
+  headers.set('accept-encoding', 'identity')
+  return { ...init, headers }
 }
 
 /**

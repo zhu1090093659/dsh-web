@@ -84,6 +84,31 @@ describe('gateway update route', () => {
     expect(update).toHaveBeenCalledWith('dsh-memoir', '1.1.0')
   })
 
+  it('user update check asks npm for an uncompressed registry manifest', async () => {
+    const { facts, dir } = profile('^1.0.0')
+    tempDirs.push(dir)
+    // Given the alpha.2 host fetch cannot decode a compressed body, so the
+    // default registry probe (no injected fetchManifest) must ask for identity.
+    const calls: Array<RequestInit | undefined> = []
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+      calls.push(init)
+      return new Response(JSON.stringify({ version: '1.1.0' }), { status: 200 })
+    }))
+    try {
+      const gateway = { update: vi.fn(() => ({ jobId: 'job-1' })), migrate: vi.fn(() => ({ jobId: 'job-1' })), withMutationLock: async <T>(task: () => Promise<T>) => await task() } as unknown as CliGateway
+      const handler = makeGatewayRoutes({ facts, gateway, cliAvailable: () => true, dshVersion: async () => undefined })
+        .find(route => route.path === '/api/plugin-manager/update')!.handler
+      const captured = response()
+      // When the update route resolves the latest version.
+      await handler(request({ id: 'dsh-memoir' }), captured.res)
+      // Then the probe requested identity encoding and the update proceeded.
+      expect(new Headers(calls[0]?.headers).get('accept-encoding')).toBe('identity')
+      expect(captured.status()).toBe(200)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('starts a migration job for the legacy aggregate', async () => {
     const { facts, dir } = profile('^0.3.2', '@linxin666/dsh-web-ui-all', '0.3.2')
     tempDirs.push(dir)

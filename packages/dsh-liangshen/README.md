@@ -130,7 +130,7 @@ All fields are editable in the web settings surface (plugin config) or through t
 - The preset carries the same trust level as shell access — review `presets/liangshen/` before installing;
 - The plugin makes no network requests and adds no telemetry;
 - Do not switch presets mid-conversation;
-- Requires DSH 0.1.7-alpha.1+ (preset mechanism, the `system-prompt/assemble` waterfall, the persona `prefix` schema, and the PTC presentation API).
+- Requires DSH 0.1.7-alpha.2+ (preset mechanism, the `system-prompt/assemble` waterfall, the persona `prefix` schema, and the PTC presentation API).
 
 ## License
 

@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest'
 
 import { SkinCssSafetyError, transformSkinCss } from '../src/core/css-safety/transform.ts'
 import { auditTokenContract } from '../src/core/css-safety/token-audit.ts'
+import { OFFICIAL_TOKENS } from '../src/core/css-safety/official-tokens.generated.ts'
 
 const ID = 'harbor'
 const SCOPE = 'html[data-dsh-skin="harbor"]'
@@ -46,6 +47,33 @@ describe('transformSkinCss scoping', () => {
     expect(code).not.toContain('--dsw-alias-state-error-primary:')
     expect(code).not.toContain('--dsw-alias-button-primary-fill:')
     expect(code).not.toContain('--dsw-alias-bg-mask-1:')
+  })
+
+  it('user sees an official state color stay untinted when the name carries no state prefix', () => {
+    // Given a skin that remaps the base, layer-1 and label anchors
+    const css = [
+      ':root {',
+      '  --dsw-alias-bg-base: #141a2e;',
+      '  --dsw-alias-bg-layer-1: #181f36;',
+      '  --dsw-alias-label-primary: #fff5ec;',
+      '}',
+    ].join('\n')
+    // When fallback derivation runs over the official token contract
+    const { code } = transformSkinCss(css, { skinId: ID, filename: 'skin.css', deriveFallbacks: true })
+    // Then --dsw-alias-label-error matches the -label- group and
+    // --dsw-alias-interactive-bg-hover-danger matches -bg-/-interactive-, but
+    // both are state colors: tinting them would recolor an error or a danger
+    // affordance with the skin's own accent.
+    expect(code).not.toContain('--dsw-alias-label-error:')
+    expect(code).not.toContain('--dsw-alias-interactive-bg-hover-danger:')
+    // The guard stays narrow: ordinary alpha.2 surfaces keep their tint.
+    expect(code).toContain('--dsw-alias-bg-layer-4: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 65%, transparent);')
+    expect(code).toContain(
+      '--dsw-alias-bg-document-preview: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 65%, transparent);',
+    )
+    expect(code).toContain(
+      '--dsw-alias-label-document-preview: color-mix(in srgb, var(--dsw-alias-label-primary) 70%, transparent);',
+    )
   })
 
   it('derives nothing without a defined anchor and stays off by default', () => {
@@ -355,5 +383,43 @@ describe('token audit traversal', () => {
     expect(result.warnings.every((warning) => !warning.includes('"button-primary-fill" is not defined')))
       .toBe(true)
     expect(result.warnings.every((warning) => !warning.includes('primary action contrast'))).toBe(true)
+  })
+})
+
+describe('official token contract', () => {
+  const contract = JSON.parse(
+    readFileSync(new URL('../contracts/official-tokens-v1.json', import.meta.url), 'utf8'),
+  ) as { contractVersion: number; count: number; excludedPrefix: string; tokens: string[] }
+
+  it('user gets the published token contract and the generated registry in agreement', () => {
+    // Given the contract json and the generated registry shipped side by side
+    // scripts/official-tokens-snapshot.mjs writes both artifacts; a partial
+    // regeneration (json without the ts, or vice versa) would silently change
+    // the derivation universe, so the registry is the contract.
+    // When the contract is compared with the registry module
+    expect(contract.contractVersion).toBe(1)
+    // Then every token list, count and prefix invariant matches
+    expect(contract.count).toBe(contract.tokens.length)
+    expect(contract.tokens).toEqual([...OFFICIAL_TOKENS])
+    expect(contract.tokens.filter((token) => token.startsWith(contract.excludedPrefix))).toEqual([])
+    expect(contract.tokens.every((token) => token.startsWith('--dsw-'))).toBe(true)
+  })
+
+  it('user gets both the alpha.2 token additions and the older tokens the shell-only snapshot missed', () => {
+    // Given the registry regenerated from the theme and shell surfaces
+    // When the two alpha.2 additions and two long-standing gaps are looked up
+    // Then each one is present in the shipped registry
+    for (const token of [
+      // genuinely new in alpha.2 (alpha.1 union 291 -> alpha.2 union 293)
+      '--dsw-alias-code-diff-added',
+      '--dsw-alias-code-diff-deleted',
+      // present since alpha.1 but never captured by the retired shell-only scan
+      '--dsw-alias-bg-document-preview',
+      '--dsw-alias-label-document-preview',
+      '--dsw-alias-bg-layer-4',
+      '--dsw-alias-label-error',
+    ]) {
+      expect(OFFICIAL_TOKENS).toContain(token)
+    }
   })
 })

@@ -17,7 +17,6 @@ dsh Web GUI 的语言包插件：向 Web GUI 语言目录注册 Русский�
 
 | 命名空间 | 来源包 |
 | --- | --- |
-| `doctor` | dsh-doctor |
 | `git-graph` | dsh-git-graph |
 | `dsh-web-ui-market` | dsh-market |
 | `pet` | dsh-pet |
@@ -28,7 +27,6 @@ dsh Web GUI 的语言包插件：向 Web GUI 语言目录注册 Русский�
 | `dsh-skill-explorer` | dsh-skill-explorer |
 | `dsh-ssh` | dsh-ssh |
 | `task-board` | dsh-task-board |
-| `describe-image` | dsh-tool-describe-image |
 | `dsh-web-ui-usage` | dsh-usage |
 | `web-ui-plugins` | dsh-web-settings |
 

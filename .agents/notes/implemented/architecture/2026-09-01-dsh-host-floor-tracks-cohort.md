@@ -8,22 +8,23 @@ Users installing the family had no authoritative answer to "which DSH host versi
 
 ## Decision
 
-The family's declared host floor is the cohort the family currently adapts to, and the three user-facing surfaces name that same version. dsh-web's latest release line always tracks the host's latest npm version, so the floor moves with every cohort bump. Concretely, at the alpha.3 cohort:
+The family's declared host floor is the cohort the family currently adapts to, and its surfaces name that same version. dsh-web's latest release line always tracks the host's latest npm version, so the floor moves with every cohort bump. Concretely, at the alpha.3 cohort:
 
 - Every family package and the plugin scaffold declare `dsh.engines.dsh >=0.1.2-alpha.3`; the plugin manager reads this floor at install/update checks and prompts or blocks older hosts.
 - The root README badge (Chinese and English) states the requirement statically — a shields static badge rendering `DSH >=0.1.2-alpha.3`, still linking to the npm package — replacing the live dist-tag badge.
 - The CI and release mount-smoke lanes pin `@deepseek-ai/dsh@0.1.2-alpha.3`: the lanes mount into the host version users are required to run, and docs/publish-prep.md states the same fact.
 - The plugin scaffold's `@deepseek-ai/*` devDependencies align to `^0.1.2-alpha.3`, so new plugins scaffold on the adapted cohort.
+- Every family package and the plugin scaffold also declare the host as a peer dependency — `peerDependencies["@deepseek-ai/dsh"]` at the same `>=0.1.2-alpha.3` literal — so an npm-resolution consumer reads the requirement without asking the plugin manager.
 
-The cohort-bump contract is therefore: one bump moves the manifest devDependency ranges, the engines floors, the README badge, and the CI mount pin together. The cohort mechanics live in [sdk-cohort-0.1.2-alpha.2-upgrade](2026-08-30-sdk-cohort-0.1.2-alpha.2-upgrade.md); the floor-must-declare rule lives in docs/plugins.md.
+The cohort-bump contract is therefore: one bump moves the manifest devDependency ranges, the engines floors, the host peers, the README badge, and the CI mount pin together. The cohort mechanics live in [sdk-cohort-0.1.2-alpha.2-upgrade](2026-08-30-sdk-cohort-0.1.2-alpha.2-upgrade.md); the floor-must-declare rule lives in docs/plugins.md.
 
 ## Alternatives considered
 
-Keeping the live `alpha` dist-tag badge was rejected: it shows the host's newest publish, not the family's requirement, and advertises versions the family has not adapted to yet. A bounded range (`^0.1.2-alpha.3`) was rejected: the plugin-manager contract only supports the `>=<semver>` form, and an upper bound would block future hosts the family adapts to on the same line. Leaving the floor at `>=0.1.2-alpha.1` to keep older hosts installable was rejected: the family ships on the alpha cohort line, older hosts are exactly what users must leave behind, and the manager only surfaces the floor it is given.
+Keeping the live `alpha` dist-tag badge was rejected: it shows the host's newest publish, not the family's requirement, and advertises versions the family has not adapted to yet. A bounded range (`^0.1.2-alpha.3`) was rejected: the plugin-manager contract only supports the `>=<semver>` form, and an upper bound would block future hosts the family adapts to on the same line. Leaving the floor at `>=0.1.2-alpha.1` to keep older hosts installable was rejected: the family ships on the alpha cohort line, older hosts are exactly what users must leave behind, and the manager only surfaces the floor it is given. Relying on the engines floor alone was rejected too: only our own plugin manager reads it, so an npm-resolution consumer never saw the requirement; the host is therefore declared as a peer dependency as well.
 
 ## Consequences
 
-Users on hosts older than 0.1.2-alpha.3 now hit the plugin-manager floor check when installing or updating any family package, and the README states the requirement without drifting ahead of or behind the adapted cohort. Every future cohort bump gains two mandatory moves (the badge and the CI pin) alongside the existing devDependency-range and floor moves. Historical narratives that mention earlier cohorts (alpha.2 notes in package READMEs, release notes, archived records) stay as history and are not rewritten per bump.
+Users on hosts older than 0.1.2-alpha.3 now hit the plugin-manager floor check when installing or updating any family package, and the README states the requirement without drifting ahead of or behind the adapted cohort. Every future cohort bump gains three mandatory moves (the badge, the CI pin, and the host peer) alongside the existing devDependency-range and engines-floor moves. Historical narratives that mention earlier cohorts (alpha.2 notes in package READMEs, release notes, archived records) stay as history and are not rewritten per bump.
 
 ## Testing
 

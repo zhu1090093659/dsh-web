@@ -113,6 +113,24 @@ describe('semantic adapter', () => {
     adapter.stop()
   })
 
+  it('user on dsh 0.1.7 gets conversation, details and composer-input anchors stamped', () => {
+    // Given a 0.1.7 shell that exposes only the CSS-module centerCol class, the
+    // official rightbar-col attribute, and a Lexical composer input
+    document.body.innerHTML = `
+      <div class="pI_x6G_centerCol"></div>
+      <div data-rightbar-col="true"></div>
+      <div data-composer-input="true" contenteditable="true"></div>
+    `
+    // When the semantic adapter starts
+    const adapter = createSemanticAdapter(document)
+    adapter.start()
+    // Then each 0.1.7 anchor lands on its skin-center surface or part
+    expect(document.querySelector('[class*="centerCol"]')!.getAttribute('data-dsh-surface')).toBe('conversation')
+    expect(document.querySelector('[data-rightbar-col]')!.getAttribute('data-dsh-surface')).toBe('details')
+    expect(document.querySelector('[data-composer-input]')!.getAttribute('data-dsh-part')).toBe('composer-input')
+    adapter.stop()
+  })
+
   it('reports unmatched rules as diagnostics without throwing', () => {
     document.body.innerHTML = '<div></div>'
     const adapter = createSemanticAdapter(document)
@@ -179,6 +197,18 @@ describe('shared shell rendering adapter (#954)', () => {
     expect(css).toMatch(/\[data-queue-dock\][^{]*\{[^}]*box-shadow: none !important;/s)
     expect(css).toMatch(/\[data-queue-dock\][^{]*\{[^}]*backdrop-filter: none !important;/s)
     expect(css).not.toContain('[data-queue-dock] > *')
+  })
+
+  it('user with the right sidebar closed sees no painted panel shell (dsh 0.1.7 phantom column)', () => {
+    // Given the shared shell-rendering stylesheet
+    const css = shellRenderingCss()
+    // When the 0.1.7 host keeps the right panel shell mounted while closed
+    // Then the guard strips its paint so no phantom column covers the skin art
+    expect(css).toContain('[data-slot="rightbar.session"] > [data-sidebar-right-panel]:not([data-sidebar-right-open])')
+    expect(css).toMatch(/\[data-sidebar-right-panel\]:not\(\[data-sidebar-right-open\]\)[^{]*\{[^}]*background-color: transparent !important;/s)
+    expect(css).toMatch(/\[data-sidebar-right-panel\]:not\(\[data-sidebar-right-open\]\)[^{]*\{[^}]*box-shadow: none !important;/s)
+    // the guard must stay scoped under the active-visual selectors (inert for the stock look)
+    expect(css).toContain('html[data-dsh-skin] [data-slot="rightbar.session"] > [data-sidebar-right-panel]')
   })
 
   it('keeps composer geometry intact while retaining scroll clearance (#978, #1133)', () => {

@@ -10,7 +10,7 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
-import { readJsonBody, writeJson } from './http.ts'
+import { readJsonBody, withIdentityEncoding, writeJson } from './http.ts'
 import { isLoopbackRequest } from './loopback.ts'
 import { detectOfficialChannels, findDshBinary, spawnDsh, unsafeSpecReason, type CliGateway } from './gateway.ts'
 import { dshRequirementOf, meetsMinimumDsh, parseDshVersion } from '../core/version.ts'
@@ -84,9 +84,9 @@ function captureProbe(chunk: Buffer, buffer: OutputCapture): void {
  */
 async function fetchRegistryManifest(name: string): Promise<RegistryVersionManifest | undefined> {
   const encoded = name.startsWith('@') ? name.replace('/', '%2F') : name
-  const response = await fetch(`https://registry.npmjs.org/${encoded}/latest`, {
+  const response = await fetch(`https://registry.npmjs.org/${encoded}/latest`, withIdentityEncoding({
     signal: AbortSignal.timeout(REGISTRY_TIMEOUT_MS),
-  })
+  }))
   if (!response.ok) return undefined
   const body = await response.json() as { version?: unknown; dsh?: unknown; engines?: unknown }
   if (typeof body.version !== 'string') return undefined

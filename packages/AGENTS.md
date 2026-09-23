@@ -24,7 +24,9 @@
 ## SDK 与构建约束
 
 - **只基于官方 NPM SDK**：类型来自 `@deepseek-ai/*` devDependencies（node_modules
-  解析）；peerDependencies 声明运行时注入的服务；禁止 tsconfig 指向任何 DSH 源码
+  解析）；peerDependencies 声明运行时注入的服务，其中宿主本体固定声明
+  `"@deepseek-ai/dsh": ">=<cohort>"`，与 `dsh.engines.dsh` 下限同源、随 cohort 同步
+  （门禁 `scripts/family-dsh-engines.test.mjs`）；禁止 tsconfig 指向任何 DSH 源码
   checkout。
 - **共享构建预设**：所有 tsdown 包 import `shared/tsdown.client.ts`，禁止复制到
   包内；tsconfig 分层（solution + host/client 各自 program，参照

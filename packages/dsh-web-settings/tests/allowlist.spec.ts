@@ -89,7 +89,6 @@ describe('resolveNamespaceEntry', () => {
     expect(resolveNamespaceEntry('skin-custom-theme')).toBe('skin-custom-theme')
     expect(resolveNamespaceEntry('skin-wallpaper')).toBe('skin-wallpaper')
     expect(resolveNamespaceEntry('usage')).toBe('usage')
-    expect(resolveNamespaceEntry('doctor')).toBe('doctor')
     expect(resolveNamespaceEntry('liangshen')).toBe('liangshen')
     expect(resolveNamespaceEntry('session-archive')).toBe('session-archive')
   })

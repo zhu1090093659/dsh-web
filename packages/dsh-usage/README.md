@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Usage statistics plugin for the dsh web GUI: per-provider balance and coding-plan quota detection plus a live token usage ledger.
+Usage statistics plugin for the dsh web GUI: per-provider balance and coding-plan quota detection plus a live token usage ledger, with a compact price glance card above the sidebar's Settings row.
 
 ## What it does
 
@@ -11,6 +11,7 @@ The plugin runs a host-side service and a first-level settings section (使用�
 - **Usage tab (用量)**: today's token totals per bucket (input / output / cache read / cache write, disjoint as the provider reports them) with per-provider and per-model breakdown, the last 30 days as a horizontal provider/model bar chart, and the balance of every configured provider (one row per adapter family: a dormant catalog alias shadowed by the family's live route no longer renders its own balance row). For the official DeepSeek family the tab also shows the current peak/off-peak pricing period (Beijing weekdays 09:00-12:00 and 14:00-18:00 are peak, billed at double) and today's estimated spend in CNY. The ledger folds live `session/event` streams (`request/header` route attribution plus `assistant/message` usage) into `$DSH_HOME/dsh-usage/usage-ledger.json` with day-based retention; counting starts when the plugin is first enabled.
 - **Plans tab (个人套餐)**: coding-plan quota windows for every configured provider that exposes one — used percent and reset time per window (Kimi For Coding 5h/week, GLM Coding Plan 5h/week/month, OpenCode Go rolling/weekly/monthly, MiniMax 5h/week, Codex / ChatGPT subscription 5h/week). Providers without a real plan or subscription (DeepSeek, ZenMux, Moonshot, OpenRouter, SiliconFlow) never appear on this tab; their balance shows on the usage tab instead.
 - **Token Bank tab (Token 银行)**: the whale-yuan voucher (鲸元券) minted from the official DeepSeek family's ledger at an anti-inflation exchange rate of 1,000,000 tokens per whale yuan. The tab sums the family's retained-ledger tokens (the `deepseek` catalog alias and the live `deepseek-official` route combined), stamps the minted face value onto the banknote artwork with a serial line carrying the minting window, and offers a save-image button plus a native share button when the browser supports sharing files. The spend line shows the real CNY total observed from the official balance once available — balance decreases accrue as spend, top-ups never count — and falls back to the fold-time estimate before the first observation. The minted total prefers the host's whole-ledger aggregate and falls back to the last 30 days on an older host; with no official DeepSeek usage the tab shows its empty state. The on-note text is locale-neutral (digits, latin captions, ISO dates) and the export is rendered locally in the browser.
+- **Sidebar foot card**: a compact glance seated above the sidebar's Settings row — today's estimated spend as the headline (today's tokens when nothing priced is recorded yet), the tokens/calls line, and up to two configured-provider balances with a +N overflow. The whole card is one button that opens the usage settings section, so detail stays in one place, and the corner chevron folds it into a one-line strip (the spending provider's name, the label, and the headline value), a choice persisted across reloads. It polls at a relaxed 30 s cadence while the tab is visible, hides in the collapsed 56 px rail, and disappears while the plugin is disabled.
 - Probes run entirely host-side on a poll cycle (default 60 s, manual refresh button); API keys are resolved through the harness credential seam (`llm-pi-ai` records, `apiKeyEnv` references) and never reach the browser.
 
 Supported balance endpoints: DeepSeek (the official live route `deepseek-official` and the catalog alias `deepseek` both resolve), Moonshot (CN/international), OpenRouter, SiliconFlow (CN/international), ZenMux. Supported plan endpoints: Kimi For Coding, GLM Coding Plan (CN via open.bigmodel.cn, international via api.z.ai — the `zai` route the pi-ai catalog registers, plus the `zai-coding` / `zai-coding-cn` aliases; 5-hour, weekly and monthly windows, token-metered and credit-metered plans), OpenCode Go, MiniMax, Codex / ChatGPT subscription (OAuth access token from the pi-ai grant; a stale token shows an error until the harness next refreshes it). Providers without a programmatic endpoint (Qwen token plans, OpenCode Zen PAYG, Anthropic, OpenAI) are listed without facts.
@@ -23,7 +24,7 @@ It covers the official DeepSeek routes only — relay traffic billed elsewhere (
 
 ## Install
 
-Requires DSH 0.1.7-alpha.1 or later: the plugin is developed against the 0.1.7-alpha.1 DSH cohort (its settings page is the Host-generated page of the plugin's own Config schema) and its `@deepseek-ai/*` runtime imports are provided by the host itself.
+Requires DSH 0.1.7-alpha.2 or later: the plugin is developed against the 0.1.7-alpha.2 DSH cohort (its settings page is the Host-generated page of the plugin's own Config schema) and its `@deepseek-ai/*` runtime imports are provided by the host itself.
 
 In your profile (e.g. `~/.dsh/profiles/web`):
 

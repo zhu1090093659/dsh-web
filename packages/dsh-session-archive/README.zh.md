@@ -26,9 +26,9 @@ pnpm add @linxin666/dsh-session-archive
 dsh plugin --profile web add link:/path/to/dsh-web/packages/dsh-session-archive
 ```
 
-重启 `dsh web` 后，插件**接管官方的「已归档会话」设置入口**，不再新增并行的一级入口：注册的 `settings.section` id（`archived-sessions`）与导航 order（25）都与 `@deepseek-ai/dsh-client-ui-settings-unarchive-sessions` 一致，聚合包会关闭官方那一行，因此设置里只有一条归档入口，同时承载官方恢复行为（打开即已归档视图）与本插件的管理面。
+重启 `dsh web` 后，插件**接管「已归档会话」设置入口**，不新增并行的一级入口：注册的 `settings.section` id（`archived-sessions`）与导航 order（25）沿用官方口径，因此设置里只有一条归档入口，同时承载原生恢复行为（打开即已归档视图）与本插件的管理面。DSH `0.1.7-alpha.2` 起官方不再挂载曾占用该 id 的 `@deepseek-ai/dsh-client-ui-settings-unarchive-sessions` 页面，因此无需组合层退役。
 
-使用聚合包时该合并自动生效。若单独安装且官方页面同时存在，会出现两个入口，请在「插件」里停用其中之一，只保留一条归档入口。
+单独安装同样只挂载这一条入口：在受支持的 cohort 上，该 section id 没有其他注册方。
 
 ## 配置
 

@@ -36,6 +36,7 @@ import { isHttpUrl, tunnelPlanOf } from './tunnel-plan.ts'
 import { loadRelayIdentity, RelayRegistrar, type RelayState } from './relay-registry.ts'
 import { desiredBindHost, desiredBindPort, firewallActionNeeded, pendingRestartOf, type AppliedFirewallState, type StartupFacts } from './lan-bind-plan.ts'
 import { createInnerAuth } from './inner-auth.ts'
+import { withIdentityEncoding } from './http.ts'
 import { TunnelManager, type TunnelInfo } from './tunnel.ts'
 import { PublicBaseKeeper } from './public-base.ts'
 import {
@@ -597,9 +598,9 @@ function applyImpl(ctx: Context, config?: Config): void {
     if (appShellCache !== undefined && Date.now() - appShellCache.at < APP_SHELL_TTL_MS) return appShellCache.html
     const cookie = await innerAuth.ready()
     try {
-      const response = await fetch(`http://127.0.0.1:${String(ctx.webServer.port)}/`, {
+      const response = await fetch(`http://127.0.0.1:${String(ctx.webServer.port)}/`, withIdentityEncoding({
         headers: cookie !== undefined ? { cookie } : undefined,
-      })
+      }))
       if (!response.ok) {
         // A stale credential (secret rotation, 30-day TTL) must not wedge every
         // later landing: drop it so the next attempt re-redeems, exactly as the

@@ -2,6 +2,7 @@
   "name": "@linxin666/dsh-client-ui-model-capabilities",
   "description": "Per-model capability declarations (image input and reasoning efforts) for custom pi-ai providers, edited in place on the Models settings cards; writes the official llm-pi-ai settings namespace, no DSH source changes.",
   "version": "0.3.24",
+  "icon": "icon.svg",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -19,7 +20,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.7-alpha.1"
+      "dsh": ">=0.1.7-alpha.2"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -42,42 +43,44 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
+    "@deepseek-ai/dsh": ">=0.1.7-alpha.2",
     "react": "^18.2.0"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "^3.18.3"
+    "@deepseek-ai/schemastery": "^3.18.4"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.3",
-    "@deepseek-ai/dsh-api-remotes": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-api-settings-controller": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-connection": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-locale": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-ui-settings-models": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-settings": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-typert-protocol": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-util-values": "^0.1.7-alpha.1",
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/dsh-api-remotes": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-api-settings-controller": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-connection": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-locale": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-ui-settings-models": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-settings": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-typert-protocol": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-util-values": "^0.1.7-alpha.2",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",
     "@types/react-dom": "^18.3.5",
-    "@vitest/coverage-v8": "^3.2.7",
+    "@vitest/coverage-v8": "^4.1.11",
     "jsdom": "^25.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tsdown": "0.22.2",
     "typescript": "~5.7.2",
     "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.11"
   },
   "files": [
     "lib",
     "cordis.patch.yml",
     "README.md",
     "README.zh.md",
-    "README.i18n.yaml"
+    "README.i18n.yaml",
+    "icon.svg"
   ],
   "license": "Apache-2.0",
   "repository": {

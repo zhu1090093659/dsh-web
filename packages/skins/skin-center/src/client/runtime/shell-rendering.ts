@@ -124,6 +124,21 @@ export function shellRenderingCss(): string {
     ${scoped('[data-conversation-scroll] [class*="_turnErrorRow"]')} {
       scroll-margin-bottom: var(--dsh-composer-height, ${DEFAULT_COMPOSER_CLEARANCE_PX}px) !important;
     }
+    /* dsh 0.1.7 turned the right sidebar panel shell into an always-mounted,
+       always-visible positioning box (only its inner dockkit surfaces hide
+       while the panel is closed). Skin rules written for the older shell plate
+       that shell element and, with the panel closed, cover the conversation
+       area with a phantom column. Strip paint from the closed shell whatever
+       the active skin; an open panel ([data-sidebar-right-open]) keeps every
+       skin paint. The attribute predates the layout change, so the rule is a
+       no-op on older shells. */
+    ${scoped('[data-slot="rightbar.session"] > [data-sidebar-right-panel]:not([data-sidebar-right-open])')} {
+      background: none !important;
+      background-color: transparent !important;
+      background-image: none !important;
+      border-color: transparent !important;
+      box-shadow: none !important;
+    }
     /* #1117: The upstream recommended badge pairs two background-fill tokens
        as bg + text — in dark mode, skins like Blue Fantasy collapse them to
        near-identical dark navy values (contrast ~1:1). Override the text

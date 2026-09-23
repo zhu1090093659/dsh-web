@@ -2,6 +2,7 @@
   "name": "@linxin666/dsh-client-ui-web-ui-settings",
   "description": "Web UI plugin group for the dsh settings page: one first-level settings section that hosts the dsh-web family plugins' enable switches and configuration forms.",
   "version": "0.3.24",
+  "icon": "icon.svg",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -12,7 +13,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.1.7-alpha.1"
+      "dsh": ">=0.1.7-alpha.2"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -37,6 +38,7 @@
   },
   "license": "Apache-2.0",
   "peerDependencies": {
+    "@deepseek-ai/dsh": ">=0.1.7-alpha.2",
     "react": "^18.2.0"
   },
   "dependencies": {
@@ -44,16 +46,16 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.3",
-    "@deepseek-ai/dsh-api-remotes": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-connection": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-locale": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-store": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.7-alpha.1",
-    "@deepseek-ai/dsh-settings": "^0.1.7-alpha.1",
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/dsh-api-remotes": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-connection": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-locale": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-store": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.7-alpha.2",
+    "@deepseek-ai/dsh-settings": "^0.1.7-alpha.2",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",
@@ -67,7 +69,8 @@
   },
   "files": [
     "lib",
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "icon.svg"
   ],
   "repository": {
     "type": "git",

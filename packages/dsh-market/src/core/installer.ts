@@ -32,6 +32,7 @@
 import { createHash } from 'node:crypto'
 import { mkdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, sep } from 'node:path'
+import { withIdentityEncoding } from '../http.ts'
 
 export const MARKET_ORIGIN = 'https://dsh-market.com'
 
@@ -199,7 +200,10 @@ async function fetchWithTimeout(
   timeoutMs: number,
 ): Promise<Response> {
   try {
-    return await fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs) })
+    // The host's built-in fetch loses content-encoding decompression once npm
+    // undici loads; withIdentityEncoding keeps the market origin from
+    // compressing at all (full rationale in shared/host/http.ts).
+    return await fetchImpl(url, withIdentityEncoding({ signal: AbortSignal.timeout(timeoutMs) }))
   } catch (err) {
     if (isAbortError(err)) {
       throw new MarketInstallError(code, `fetch timed out after ${timeoutMs}ms: ${url}`)

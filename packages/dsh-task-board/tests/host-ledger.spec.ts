@@ -591,7 +591,7 @@ describe('HostTaskLedger', () => {
     const root = tempRoot()
     const ledger = new HostTaskLedger(root, () => NOW)
     const enospcError = Object.assign(new Error('no space left on device'), { code: 'ENOSPC' })
-    vi.spyOn(ledger as never, 'writeSchedulerSidecar').mockImplementationOnce(() => {
+    vi.spyOn(ledger as unknown as { writeSchedulerSidecar: () => void }, 'writeSchedulerSidecar').mockImplementationOnce(() => {
       throw enospcError
     })
     expect(() => {
@@ -788,4 +788,3 @@ describe('win32StartTimeMs', () => {
     expect(invocations).toBe(0)
   })
 })
-

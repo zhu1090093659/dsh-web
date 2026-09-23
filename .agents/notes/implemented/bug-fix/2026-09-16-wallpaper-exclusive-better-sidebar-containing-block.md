@@ -28,7 +28,7 @@ The invariant for this skin and for any skin that paints glass over plugin chrom
 
 The other skins that reference these hosts (maid-atelier, phoebe-atelier, orca-link) only set CSS custom properties on them and inherit no collapse, so no further change was needed.
 
-Named coverage gap: nothing in the gate set catches this class of defect. The review of PR #1601 recorded it as a follow-up, together with two smaller items - the new [data-dsh-taskboard-view] input rule is broader than its comment (it also re-fills task-form and schedule inputs and type=checkbox) and the PR evidence images sit in docs/pr-evidence rather than docs/archive/pr-evidence. The review and its measurements are recorded in [PR #1601 review record](../../../../docs/archive/pr-review-1601-wallpaper-exclusive-workbench.md).
+Named coverage gap: nothing in the gate set catches this class of defect. The review of PR #1601 recorded it as a follow-up, together with two smaller items - the new [data-dsh-taskboard-view] input rule is broader than its comment (it also re-fills task-form and schedule inputs and type=checkbox) and the PR evidence images are filed in docs/archive/pr-evidence, the home for one-off validation records. The review and its measurements are recorded in [PR #1601 review record](../../../../docs/archive/pr-review-1601-wallpaper-exclusive-workbench.md).
 
 ## Testing
 

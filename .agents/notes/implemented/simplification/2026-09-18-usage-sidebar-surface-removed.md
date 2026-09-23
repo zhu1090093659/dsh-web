@@ -4,6 +4,8 @@ Status: implemented
 
 Supersedes [usage sidebar controls seat on the entry row](2026-09-17-usage-sidebar-controls-on-entry-row.md) and the #1592 sidebar surface recorded in [issue batch 1587-1600](2026-09-16-issue-batch-1587-1600-fixes.md): the sidebar usage entry, its collapsible panel, and the entry-core machinery built only for it are gone. Usage stays reachable through its first-level settings section.
 
+Partially superseded by [usage sidebar foot card](../feature/2026-09-23-usage-sidebar-foot-card.md): a compact glance card below the sidebar's Settings row returns at the user's explicit request; the entry row, the collapsible panel, and the entry-core `actions` API stay removed.
+
 ## Problem
 
 The sidebar usage surface never earned its place. It occupied a permanent navigation slot — competing with the family plugin entries and the workspace browser for the narrow strip under New Session — to duplicate an overview the settings section already renders in full. The user's own verdict on the shipped row was that it could simply be removed. Keeping it also carried a standing cost beyond its own files: the shared entry core had grown an `actions` array, a composite container/main-button structure, an `entryAction`/`entryMain` CSS contract, and a `data-dsh-entry-action` hook, all of which existed to seat this one row's refresh and collapse controls.
@@ -30,7 +32,7 @@ The removed surface went through one control-layout revision whose reasoning is 
 
 - The sidebar no longer carries a 用量 row in either the wide column or the collapsed rail; the previous change to seat it above Settings is reverted with it.
 - The family rows (dsh-task-board, dsh-ssh, dsh-skill-explorer) keep the panel-row geometry they now share: the shell's 2px inset, 12px radius, 8px content padding, 36px row, 14/22 type, primary ink, and a 16px glyph box (18px in the collapsed rail). Rows without `actions` were already byte-identical, so this removal does not change their rendering.
-- Usage overview polling is now driven solely by the settings section's mount cycle; nothing polls while that section is closed. The pet's usage bubble was already decoupled from this surface (see [the pet-decoupling note](../simplification/2026-09-17-usage-pet-decoupling-collapsed-summary.md)) and is unaffected.
+- Usage overview polling is driven by the settings section's mount cycle and by the sidebar foot card's 30 s visible-tab loop (added later — see [the foot-card note](../feature/2026-09-23-usage-sidebar-foot-card.md)). The pet's usage bubble was already decoupled from this surface (see [the pet-decoupling note](../simplification/2026-09-17-usage-pet-decoupling-collapsed-summary.md)) and is unaffected.
 - `dsh-usage.sidebar.collapsed` is no longer read or written; a stale `localStorage` value is inert.
 
 ## Testing

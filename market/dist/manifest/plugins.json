@@ -1527,6 +1527,17 @@
       "npm": "dsh-claude-style",
       "category": "ui",
       "subcategory": "render"
+    },
+    {
+      "id": "dsh-deepseek-launcher",
+      "name": "DeepSeekLauncher",
+      "rank": 120,
+      "nameEn": "DeepSeekLauncher",
+      "author": "wangzhuoyuan229-source",
+      "description": "macOS 桌面启动器：复用或启动本地 dsh Web 服务，固定使用 Google Chrome 打开，附透明人物与对话框图标及安装技能。",
+      "descriptionEn": "A macOS desktop launcher that reuses or starts the local dsh Web service and opens it in Google Chrome, with a transparent character-and-speech-bubble icon and an installation skill.",
+      "repo": "https://github.com/wangzhuoyuan229-source/DeepSeekLauncher",
+      "category": "utility"
     }
   ]
 }

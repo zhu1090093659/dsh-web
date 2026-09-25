@@ -240,19 +240,44 @@ export function effectiveTaskPermission(task: TaskRecord): TaskRecord['permissio
  * card is runnable while a subtask's own unconfirmed binding stays gated.
  */
 /**
+ * FNV-1a (32-bit) rendered as eight lower-case hex characters. A pure,
+ * dependency-free digest keeps this module inside the browser program, which
+ * may not import `node:crypto`; the name only needs a stable, well-spread
+ * discriminator, not a cryptographic one.
+ * @param value - the string to digest.
+ * @returns eight lower-case hex characters.
+ */
+function shortHash(value: string): string {
+  let hash = 0x811c9dc5
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash.toString(16).padStart(8, '0')
+}
+
+/**
  * The immutable teammate name for one team-mode member. Teammate names are
- * lower-kebab-case and must stay unique for the lifetime of the Team, so the
- * run-group token is appended: two runs of the same tree never collide. A title
- * with no ASCII word characters (a CJK title, for example) keeps a stable
- * generic prefix and is still distinguished by the token.
+ * lower-kebab-case, at most 64 characters and unique for the lifetime of the
+ * Team, so BOTH discriminators are appended:
+ *
+ * - the run-group token, so two runs of the same tree never collide;
+ * - a digest of the member's own identity, so two members of the SAME run never
+ *   collide. A title with no ASCII word characters (a CJK title, for example)
+ *   slugs to the empty string, and every such title would otherwise share the
+ *   one generic prefix inside its run — the second spawn is then refused with
+ *   `TEAM_MEMBER_NAME_TAKEN`. Two members may also share a title outright, so
+ *   the discriminator is derived from the member identity rather than the title.
+ *
  * @param title - the member task's title.
  * @param token - the run group id (the task id when no group is recorded).
+ * @param memberId - the member's stable identity: its task id.
  * @returns the teammate name handed to the Agent Teams service.
  */
-export function teammateName(title: string, token: string): string {
+export function teammateName(title: string, token: string, memberId: string): string {
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32).replace(/-+$/g, '')
   const suffix = token.replace(/[^a-z0-9]/gi, '').slice(0, 8).toLowerCase()
-  return `${slug === '' ? 'subtask' : slug}-${suffix === '' ? 'run' : suffix}`
+  return `${slug === '' ? 'subtask' : slug}-${suffix === '' ? 'run' : suffix}-${shortHash(memberId)}`
 }
 
 export function resolveExecutionTargets(

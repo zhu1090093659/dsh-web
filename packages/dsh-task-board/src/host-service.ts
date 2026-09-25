@@ -194,7 +194,7 @@ export class TaskBoardHostService {
         peers: others.map(other => ({
           id: other.task.id,
           title: other.task.title,
-          ...(team ? { name: teammateName(other.task.title, other.execution.runGroupId ?? other.task.id) } : {}),
+          ...(team ? { name: teammateName(other.task.title, other.execution.runGroupId ?? other.task.id, other.task.id) } : {}),
         })),
         ...(team ? { team: true } : {}),
       }
@@ -234,7 +234,7 @@ export class TaskBoardHostService {
     try {
       const member = await team.spawn({
         leadSessionId,
-        name: teammateName(opened.task.title, opened.execution.runGroupId ?? opened.task.id),
+        name: teammateName(opened.task.title, opened.execution.runGroupId ?? opened.task.id, opened.task.id),
         description: opened.task.title,
         prompt: promptText(opened.task),
       })

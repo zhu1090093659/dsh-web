@@ -26,7 +26,7 @@ Status: implemented
 ### Agent Team 执行（opt-in）
 
 - 任务级 `teamRun` 开关把一次级联从「每个参与者一个会话」切换为「一个 Lead 会话 + 每个参与者一个 teammate」。Host 只启动根任务，随后借助可选的 Agent Teams 服务——用 `ctx.agents.get(sessionId)` 取到 live Lead，调 `ctx.agentTeams.spawnTeammate(leadAgent, { name, description, prompt, context, provider, signal })`——为其余每个成员派生 teammate，并把 teammate 的会话 id 挂到该成员的 execution 上。结算路径不变：既有会话监视器检查挂上的会话，父任务仍折叠自己的直接子任务。
-- 子树在这个模式下被压平成同一个 Team，因为只有 Lead 能派生；teammate 名字取「成员标题 slug + run group token」，保证在同一 Team 内跨多次执行唯一。团队执行总是新建 Lead 会话（同一 Team 内名字不可变，复用旧会话会冲突），provider 来自配置项 `teamProvider`（默认 `spawn`）。
+- 子树在这个模式下被压平成同一个 Team，因为只有 Lead 能派生；teammate 名字取「成员标题 slug + run group token + 成员 task id 摘要」。两个区分量各解决一类冲突：token 区分同一棵树的多次执行，成员摘要区分**同一次执行**内的不同成员。摘要必不可少，因为纯中文标题 slug 后为空串，同一次执行里每个这样的成员都会共用同一个通用前缀，第二个派生会被 `TEAM_MEMBER_NAME_TAKEN` 拒绝；标题完全相同的两个成员也由它区分。名字保持 lower-kebab-case 且不超过服务的 64 字符上限。团队执行总是新建 Lead 会话（同一 Team 内名字不可变，复用旧会话会冲突），provider 来自配置项 `teamProvider`（默认 `spawn`）。
 - 该模式 fail closed 而不降级：未提供 `agentTeams` 服务的部署会对手动团队执行明确拒绝（计划执行则记录原因）；成员**自己**的绑定高于会话默认值时也会被拒绝，因为 teammate 运行在 Lead 会话内、无法承载该钉住值。继承来的绑定属于 Lead，按 Lead 自己的确认门判定。
 - 两种模式都会在启动的提示词里说明本次运行的形态：级联列出它会开启的各个独立会话，团队模式说明本会话是 Lead，并按名字列出每个 teammate 与团队工具。
 

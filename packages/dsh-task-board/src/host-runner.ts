@@ -147,7 +147,7 @@ function peerPromptPreamble(context: PromptContext): string | undefined {
   const peers = context.peers ?? []
   if (peers.length === 0) return undefined
   if (context.team === true) {
-    const lines = peers.map(peer => `- ${escapeProvenanceDelimiter(peer.title)}（teammate: ${peer.name ?? teammateName(peer.title, peer.id)}）`)
+    const lines = peers.map(peer => `- ${escapeProvenanceDelimiter(peer.title)}（teammate: ${peer.name ?? teammateName(peer.title, peer.id, peer.id)}）`)
     return `本任务是 Agent Team 的 Lead：本次运行不额外开启独立会话，以下 ${peers.length} 个子任务成员已在本会话中作为 teammate 启动。用 list_agents / send_message / wait_agent 协调它们，用任务看板工具读写它们在看板上的卡片：\n${lines.join('\n')}`
   }
   const lines = peers.map(peer => `- ${escapeProvenanceDelimiter(peer.title)}（任务 ${peer.id}）`)

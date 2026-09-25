@@ -366,9 +366,35 @@ describe('Agent Team runs', () => {
     // Given CJK, mixed-case and short titles with two different run tokens
     // When the names are derived
     // Then each is an ASCII kebab-case name carrying its run token
-    expect(teammateName('收集 公开混凝土数据!', 'a1b2c3d4-ffff')).toBe('subtask-a1b2c3d4')
-    expect(teammateName('Collect Carbon Factors', 'a1b2c3d4-ffff')).toBe('collect-carbon-factors-a1b2c3d4')
-    expect(teammateName('b', 'zzzz')).not.toBe(teammateName('b', 'yyyy'))
+    expect(teammateName('收集 公开混凝土数据!', 'a1b2c3d4-ffff', 'task-a')).toMatch(/^subtask-a1b2c3d4-[0-9a-f]{8}$/)
+    expect(teammateName('Collect Carbon Factors', 'a1b2c3d4-ffff', 'task-a')).toMatch(/^collect-carbon-factors-a1b2c3d4-[0-9a-f]{8}$/)
+    expect(teammateName('b', 'zzzz', 'task-a')).not.toBe(teammateName('b', 'yyyy', 'task-a'))
+    // The same member and run always render the same name, so a re-derivation
+    // (the Lead prompt, then the spawn) agrees with itself.
+    expect(teammateName('b', 'zzzz', 'task-a')).toBe(teammateName('b', 'zzzz', 'task-a'))
+    // Two different members with the SAME title in one run stay distinct.
+    expect(teammateName('b', 'zzzz', 'task-a')).not.toBe(teammateName('b', 'zzzz', 'task-b'))
+  })
+
+  it('operator two CJK titles in one run never collide on a teammate name', () => {
+    // Given two CJK-only titles that both slug to the generic prefix, in the
+    // same run group — the shape that refused the second spawn in production
+    // When the names are derived
+    // Then the member identity keeps them distinct
+    const group = 'e048c604-da23-4ad1-97f4-56913036f820'
+    const first = teammateName('多学科术语内容建设', group, 'task-a')
+    const second = teammateName('后续内容与平台发展', group, 'task-b')
+
+    // Then neither collides, and both satisfy the service's name contract
+    expect(first).not.toBe(second)
+    // The name depends on the member identity, not on which title it carries:
+    // the title only supplies the prefix, so the same member cannot drift.
+    expect(teammateName('后续内容与平台发展', group, 'task-b')).toBe(second)
+    for (const name of [first, second]) {
+      expect(name).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/)
+      expect(name.length).toBeLessThanOrEqual(64)
+      expect(name).not.toBe('lead')
+    }
   })
 
   it('operator cron on a team card refuses when a subtask pins a permission', () => {

@@ -134,14 +134,100 @@ describe('team-run dispatch', () => {
     expect(prompts).toHaveLength(1)
     expect(spawns.map(input => input.leadSessionId)).toEqual(['session-lead', 'session-lead'])
     expect(spawns.map(input => input.name)).toEqual([
-      expect.stringMatching(/^collect-carbon-[0-9a-f]{8}$/),
-      expect.stringMatching(/^model-[0-9a-f]{8}$/),
+      expect.stringMatching(/^collect-carbon-[0-9a-f]{8}-[0-9a-f]{8}$/),
+      expect.stringMatching(/^model-[0-9a-f]{8}-[0-9a-f]{8}$/),
     ])
     expect(spawns[0].prompt).toContain('collect')
     const tasks = ledger.state().tasks
     expect(tasks.find(task => task.id === 'root')?.executions.at(-1)?.sessionId).toBe('session-lead')
     expect(tasks.find(task => task.id === 'a')?.executions.at(-1)?.sessionId).toBe('member-' + spawns[0].name)
     expect(tasks.find(task => task.id === 'b')?.executions.at(-1)?.sessionId).toBe('member-' + spawns[1].name)
+  })
+
+  it('operator with CJK-titled subtasks gets one distinct teammate per member', async () => {
+    // Given a team-mode root whose two subtasks have CJK-only titles, which
+    // slug to the same empty prefix inside one run group
+    const now = new Date(2026, 7, 16, 10, 0, 0).getTime()
+    const ledger = new HostTaskLedger(root(), () => now)
+    ledger.applyRequest('seed-root', {
+      kind: 'create', id: 'root', input: { title: 'root', description: '', prompt: 'root', teamRun: true },
+    })
+    ledger.applyRequest('seed-a', { kind: 'create', id: 'a', input: { title: '多学科术语内容建设', description: '', prompt: 'a', parentId: 'root' } })
+    ledger.applyRequest('seed-b', { kind: 'create', id: 'b', input: { title: '后续内容与平台发展', description: '', prompt: 'b', parentId: 'root' } })
+    const spawns: TeamSpawnInput[] = []
+    const { gateway } = sessionGateway('session-lead')
+    const service = new TaskBoardHostService(gateway, {
+      ledger,
+      power: new PowerInhibitor({ platform: 'linux' }),
+      now: () => now,
+      team: {
+        async spawn(input) {
+          spawns.push(input)
+          return { sessionId: 'member-' + input.name }
+        },
+      },
+    })
+
+    // When the user runs the root
+    service.apply('run-1', { kind: 'run', taskId: 'root' })
+    await settleMicrotasks()
+
+    // Then each member is spawned under its own valid, non-colliding name, so
+    // no spawn is refused as an already-used teammate name
+    expect(spawns).toHaveLength(2)
+    const names = spawns.map(input => input.name)
+    expect(new Set(names).size).toBe(2)
+    for (const name of names) {
+      expect(name).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/)
+      expect(name.length).toBeLessThanOrEqual(64)
+      expect(name).not.toBe('lead')
+    }
+  })
+
+  it('user running a CJK team card settles the whole cascade instead of deadlocking', async () => {
+    // Given a team-mode root with two CJK-only subtasks — the shape whose second
+    // spawn was refused as an already-used teammate name, leaving the group open
+    const now = new Date(2026, 7, 16, 10, 0, 0).getTime()
+    const ledger = new HostTaskLedger(root(), () => now)
+    ledger.applyRequest('seed-root', {
+      kind: 'create', id: 'root', input: { title: 'root', description: '', prompt: 'root', teamRun: true },
+    })
+    ledger.applyRequest('seed-a', { kind: 'create', id: 'a', input: { title: '多学科术语内容建设', description: '', prompt: 'a', parentId: 'root' } })
+    ledger.applyRequest('seed-b', { kind: 'create', id: 'b', input: { title: '后续内容与平台发展', description: '', prompt: 'b', parentId: 'root' } })
+    const spawns: TeamSpawnInput[] = []
+    const { gateway } = sessionGateway('session-lead')
+    const service = new TaskBoardHostService(gateway, {
+      ledger,
+      power: new PowerInhibitor({ platform: 'linux' }),
+      now: () => now,
+      team: {
+        async spawn(input) {
+          spawns.push(input)
+          return { sessionId: 'member-' + input.name }
+        },
+      },
+    })
+
+    // When the run opens and every member settles after the Lead's own turn
+    service.apply('run-1', { kind: 'run', taskId: 'root' })
+    await settleMicrotasks()
+    for (const taskId of ['a', 'b']) {
+      const execution = ledger.state().tasks.find(task => task.id === taskId)?.executions.at(-1)
+      if (execution === undefined) throw new Error('no member execution for ' + taskId)
+      ledger.settle(taskId, execution.id, 'succeeded')
+    }
+    const lead = ledger.state().tasks.find(task => task.id === 'root')?.executions.at(-1)
+    if (lead === undefined) throw new Error('no Lead execution')
+    ledger.settle('root', lead.id, 'succeeded')
+
+    // Then both members really were spawned and the cascade reached a terminal state
+    expect(spawns).toHaveLength(2)
+    expect(new Set(spawns.map(input => input.name)).size).toBe(2)
+    const tasks = ledger.state().tasks
+    expect(tasks.find(task => task.id === 'a')?.status).toBe('done')
+    expect(tasks.find(task => task.id === 'b')?.status).toBe('done')
+    expect(tasks.find(task => task.id === 'root')?.status).toBe('done')
+    expect(ledger.runtimeView().openExecutions).toHaveLength(0)
   })
 
   it('user running a team card in a deployment without Agent Teams is refused before anything opens', () => {

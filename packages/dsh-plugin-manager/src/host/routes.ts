@@ -14,7 +14,7 @@ import { readJsonBody, withIdentityEncoding, writeJson } from './http.ts'
 import { isLoopbackRequest } from './loopback.ts'
 import { detectOfficialChannels, findDshBinary, spawnDsh, unsafeSpecReason, type CliGateway } from './gateway.ts'
 import { dshRequirementOf, meetsMinimumDsh, parseDshVersion } from '../core/version.ts'
-import { readPatchText, readProfileManifest, type ProfileFacts } from './profile.ts'
+import { readManifestVersion, readPatchText, readProfileManifest, type ProfileFacts } from './profile.ts'
 import { legacyMigrationFor, targetSpecForLegacy } from './legacy-migration.ts'
 import { setRowEnabled, writePatchAtomic } from './rows.ts'
 import { runDetached } from './detached-work.ts'
@@ -58,8 +58,18 @@ export interface GatewayRouteDeps {
   /** Registry fetch seam for update checks (test seam); the default reads the
    * `/<name>/latest` manifest including the `dsh` / `engines` metadata. */
   fetchManifest?: (name: string) => Promise<RegistryVersionManifest | undefined>
-  /** Running DSH host version seam (test seam); the default probes `dsh --version`. */
+  /**
+   * Running DSH host version seam (test seam). The default reads the version of
+   * the running installation in process, then falls back to `dsh --version`.
+   */
   dshVersion?: () => Promise<string | undefined>
+  /**
+   * The running installation's own `@deepseek-ai/dsh` package.json, when the
+   * launcher published one. It is the primary version source: the file belongs
+   * to the runtime this process booted, so reading it needs no subprocess and no
+   * PATH — which a packaged Desktop host does not have (issue #1819).
+   */
+  installAnchor?: string
   /** Official-channel detection seam (test seam); defaults to the boot dump probe. */
   officialChannels?: () => Promise<boolean>
   /** Launch-fact seam for the restart route (test seam); defaults to this process. */
@@ -104,11 +114,35 @@ async function fetchRegistryManifest(name: string): Promise<RegistryVersionManif
 }
 
 /**
- * Read the running DSH host version through `dsh --version` (the CLI is the
- * gateway's write path already; this package has no in-process source).
- * Returns undefined when the binary is unavailable or the output is not a
- * plain semver; callers treat an unknown host version as a fail-closed
- * verdict for declared requirements (issue #754).
+ * Read the running DSH host version out of the installation's own manifest.
+ *
+ * The launcher publishes the `@deepseek-ai/dsh` package.json it booted from on
+ * `profileContext.installAnchor`; that manifest's `version` is by construction
+ * the version of the DSH this host is running. It is the primary source because
+ * it is the only one a packaged Desktop install can answer: there the CLI is not
+ * on PATH, every `.bin` shim is stripped from the installer, and the private
+ * host package ships no `lib/bin.js` to run (issue #1819). A runtime that
+ * publishes no anchor (or one whose manifest cannot be read) falls through to
+ * {@link probeDshVersion}.
+ * @param installAnchor - the published anchor path, when there is one.
+ * @returns the running version, or undefined when it cannot be read.
+ */
+function readInstalledDshVersion(installAnchor: string | undefined): string | undefined {
+  if (installAnchor === undefined) return undefined
+  return readManifestVersion(installAnchor)
+}
+
+/**
+ * Read the running DSH host version through `dsh --version`.
+ *
+ * This is the FALLBACK source, used only when the installation's own manifest
+ * could not be read. It costs a subprocess and needs a CLI this host can reach,
+ * which a packaged Desktop host cannot: the launcher puts only `node` on its
+ * PATH, the installer strips every `node_modules/.bin`, and the private host
+ * package ships no `lib/bin.js` (issue #1819). Returns undefined when the
+ * binary is unavailable or the output is not a plain semver; callers treat an
+ * unknown host version as a fail-closed verdict for declared requirements
+ * (issue #754).
  */
 async function probeDshVersion(cliAvailable: () => boolean): Promise<string | undefined> {
   if (!cliAvailable()) return undefined
@@ -174,16 +208,24 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
   const { facts, gateway } = deps
   const fetchManifest = deps.fetchManifest ?? fetchRegistryManifest
   /**
-   * Cached `dsh --version`: successful verdicts refresh after a TTL (the CLI
-   * update path is the gateway itself, so a stale success is wrong long-term),
-   * failed probes are retried after a cooldown instead of being cached forever,
-   * and concurrent requests share one in-flight probe.
+   * Cached host version: successful verdicts refresh after a TTL (the CLI update
+   * path is the gateway itself, so a stale success is wrong long-term), failed
+   * probes are retried after a cooldown instead of being cached forever, and
+   * concurrent requests share one in-flight probe.
+   *
+   * The running installation's own manifest is read first. That is a local file
+   * read with no process to spawn and nothing to fall out of date mid-run, so it
+   * is re-read per resolution and never cached: a packaged Desktop host, where
+   * the CLI fallback is unreachable, would otherwise spend its first request on
+   * a probe that cannot succeed.
    */
   let dshVersion: string | undefined
   let dshVersionAt = 0
   let dshVersionPending: Promise<string | undefined> | undefined
   const resolveDshVersion = (): Promise<string | undefined> => {
     if (deps.dshVersion !== undefined) return deps.dshVersion()
+    const installed = readInstalledDshVersion(deps.installAnchor)
+    if (installed !== undefined) return Promise.resolve(installed)
     const now = Date.now()
     if (dshVersion !== undefined && now - dshVersionAt < VERSION_PROBE_TTL_MS) return Promise.resolve(dshVersion)
     if (dshVersionAt !== 0 && now - dshVersionAt < VERSION_PROBE_COOLDOWN_MS) return Promise.resolve(undefined)
@@ -315,7 +357,7 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
             return {
               status: 412,
               error: hostVersion === undefined
-                ? `plugin-manager: cannot verify the DSH version for ${migration.to} (dsh --version failed); upgrade DSH before migrating`
+                ? `plugin-manager: cannot verify the running DSH version for ${migration.to}; check the DSH runtime before migrating`
                 : `plugin-manager: ${migration.to} requires DSH ${requiresDsh} (current DSH ${hostVersion}); upgrade DSH before migrating`,
             }
           }
@@ -339,7 +381,7 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
           return {
             status: 412,
             error: hostVersion === undefined
-              ? `plugin-manager: cannot verify the DSH version for ${target} (dsh --version failed); upgrade DSH before updating`
+              ? `plugin-manager: cannot verify the running DSH version for ${target}; check the DSH runtime before updating`
               : `plugin-manager: ${target} requires DSH ${requiresDsh} (current DSH ${hostVersion}); upgrade DSH before updating`,
           }
         }
@@ -498,7 +540,7 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
   const checkUpdatesHandler = async (_req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const patchText = await readPatchText(facts.patchPath)
     const snapshot = await snapshotGateway(facts, patchText)
-    const updates: Array<{ id: string; current: string; latest: string; kind?: 'update' | 'migrate'; target?: string; targetVersion?: string; requiresDsh?: string; compatible?: boolean }> = []
+    const updates: Array<{ id: string; current: string; latest: string; kind?: 'update' | 'migrate'; target?: string; targetVersion?: string; requiresDsh?: string; compatible?: boolean; hostVersion?: string }> = []
     for (const plugin of snapshot.plugins) {
       const migration = legacyMigrationFor(plugin.id)
       if (migration !== undefined) {
@@ -513,6 +555,7 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
           targetVersion: string
           requiresDsh?: string
           compatible?: boolean
+          hostVersion?: string
         } = {
           id: plugin.id,
           current: plugin.version,
@@ -524,7 +567,13 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
         const requiresDsh = dshRequirementOf(targetManifest)
         if (requiresDsh !== undefined) {
           update.requiresDsh = requiresDsh
-          update.compatible = (await compatibleVerdict(requiresDsh)).compatible
+          const verdict = await compatibleVerdict(requiresDsh)
+          update.compatible = verdict.compatible
+          // An unknown host version is reported as such instead of being
+          // flattened into "incompatible": the row is equally blocked, but the
+          // user is told to check the runtime rather than to upgrade a DSH that
+          // may already satisfy the requirement (issue #1819).
+          if (verdict.hostVersion !== undefined) update.hostVersion = verdict.hostVersion
         }
         updates.push(update)
         continue
@@ -532,12 +581,14 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
       if (plugin.source.kind !== 'npm' || !isDirectRegistrySpec(plugin.source.spec)) continue
       const manifest = await fetchManifest(plugin.id).catch(() => undefined)
       if (manifest === undefined || manifest.version === plugin.version) continue
-      const update: { id: string; current: string; latest: string; requiresDsh?: string; compatible?: boolean } =
+      const update: { id: string; current: string; latest: string; requiresDsh?: string; compatible?: boolean; hostVersion?: string } =
         { id: plugin.id, current: plugin.version, latest: manifest.version }
       const requiresDsh = dshRequirementOf(manifest)
       if (requiresDsh !== undefined) {
         update.requiresDsh = requiresDsh
-        update.compatible = (await compatibleVerdict(requiresDsh)).compatible
+        const verdict = await compatibleVerdict(requiresDsh)
+        update.compatible = verdict.compatible
+        if (verdict.hostVersion !== undefined) update.hostVersion = verdict.hostVersion
       }
       updates.push(update)
     }

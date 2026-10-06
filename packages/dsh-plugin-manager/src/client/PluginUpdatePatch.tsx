@@ -192,6 +192,12 @@ export function PluginUpdatePatch(props: PluginUpdatePatchProps) {
 
   const requiresDsh = found?.requiresDsh
   const blocked = found?.compatible === false
+  // "Blocked" has two causes and they need different words. The host reports
+  // hostVersion exactly when it managed to read the running DSH version, so a
+  // blocked row WITHOUT one was never judged — telling that user to upgrade DSH
+  // would send them after a fix the host could not even confirm was needed
+  // (issue #1819).
+  const unverified = blocked && found?.hostVersion === undefined
 
   return (
     <section className={css.section} data-update-patch aria-busy={busy !== undefined}>
@@ -212,10 +218,16 @@ export function PluginUpdatePatch(props: PluginUpdatePatchProps) {
           <span className={css.latest} data-update-latest={found.latest}>{t('latest', { version: found.latest })}</span>
         )}
         {found !== undefined && requiresDsh !== undefined && (
-          <span className={blocked ? css.compatBlocked : css.compatHint} data-update-compat={blocked ? 'blocked' : 'ok'}>
-            {blocked
-              ? t('updateBlockedDsh', { min: displayMinimumVersion(requiresDsh) })
-              : t('updateRequiresDsh', { min: displayMinimumVersion(requiresDsh) })}
+          <span
+            className={blocked ? css.compatBlocked : css.compatHint}
+            data-update-compat={blocked ? 'blocked' : 'ok'}
+            data-update-compat-reason={blocked ? (unverified ? 'unverified' : 'below-minimum') : undefined}
+          >
+            {!blocked
+              ? t('updateRequiresDsh', { min: displayMinimumVersion(requiresDsh) })
+              : unverified
+                ? t('updateUnverifiedDsh', { min: displayMinimumVersion(requiresDsh) })
+                : t('updateBlockedDsh', { min: displayMinimumVersion(requiresDsh) })}
           </span>
         )}
         {found !== undefined && (

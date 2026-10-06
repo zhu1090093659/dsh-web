@@ -85,12 +85,67 @@ export interface GatewayJob {
   error?: string
 }
 
+/**
+ * The Electron resource roots a packaged Desktop install may carry, as
+ * absolute directories. Two independent launcher facts name them, and either
+ * alone is enough:
+ *
+ * - `process.resourcesPath` is Electron's own answer for the directory holding
+ *   `app.asar` and the bundled runtime (the Desktop host runs as an Electron
+ *   Node-mode child, so it always has one);
+ * - the running host entry script sits INSIDE that tree
+ *   (`<resources>/app.asar/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/index.js`),
+ *   so the first ancestor directory named `resources` is the same location even
+ *   when the process is not Electron.
+ *
+ * A root is only ever used to build a candidate path that must then exist, so
+ * an unrelated `resources` directory elsewhere in the tree resolves to nothing.
+ * @param hostEntryPath - the running host's entry script.
+ * @param resourcesPath - Electron's resource directory, when the host has one.
+ * @param pathApi - platform path semantics.
+ * @returns candidate resource roots, in probe order.
+ */
+function desktopResourceRoots(
+  hostEntryPath: string | undefined,
+  resourcesPath: string | undefined,
+  pathApi: typeof win32,
+): string[] {
+  const roots: string[] = []
+  if (resourcesPath !== undefined && resourcesPath !== '') roots.push(resourcesPath)
+  if (hostEntryPath !== undefined && hostEntryPath !== '') {
+    let current = pathApi.dirname(hostEntryPath)
+    for (let depth = 0; depth < 12; depth += 1) {
+      const parent = pathApi.dirname(current)
+      if (parent === current) break
+      current = parent
+      // macOS spells the directory `Resources`; the match is case-insensitive
+      // because a false positive only ever yields a candidate that must exist.
+      if (pathApi.basename(current).toLowerCase() === 'resources') {
+        roots.push(current)
+        break
+      }
+    }
+  }
+  return roots
+}
+
+/**
+ * Electron's resource directory when this process is an Electron child, read
+ * defensively: the type is not in `@types/node`, and a plain Node host has no
+ * such property at all.
+ */
+function processResourcesPath(): string | undefined {
+  const value = (process as unknown as { resourcesPath?: unknown }).resourcesPath
+  return typeof value === 'string' && value !== '' ? value : undefined
+}
+
 /** The binary search roots for the dsh CLI. */
 export function findDshBinary(
   env: NodeJS.ProcessEnv = process.env,
   platform: string = process.platform,
   exists: (path: string) => boolean = existsSync,
   hostEntryPath: string | undefined = process.argv[1],
+  resourcesPath: string | undefined = processResourcesPath(),
 ): string | null {
   const candidates: string[] = []
   const separator = platform === 'win32' ? ';' : ':'
@@ -131,6 +186,23 @@ export function findDshBinary(
     const entryDir = pathApi.dirname(hostEntryPath)
     const packageRoot = pathApi.dirname(entryDir)
     candidates.push(pathApi.join(packageRoot, 'lib', 'bin.js'))
+  }
+  // The packaged Desktop installer puts the CLI nowhere near the running host:
+  // the private host package ships only lib/index.js and lib/cli.js (no
+  // lib/bin.js), every node_modules/.bin directory is stripped, and the CLI
+  // launcher lives in a sibling resource tree
+  // (<resources>/runtime/cli/bin/dsh.cmd on Windows, .../dsh elsewhere) that
+  // the launcher never adds to the host's PATH — it prepends only
+  // <resources>/runtime/bin, which carries node alone. Without this candidate
+  // the packaged Desktop has no CLI at all, and every version probe and
+  // CLI-backed write fails closed (#1819, following #1588).
+  for (const root of desktopResourceRoots(hostEntryPath, resourcesPath, pathApi)) {
+    const cliBin = pathApi.join(root, 'runtime', 'cli', 'bin')
+    if (platform === 'win32') {
+      candidates.push(pathApi.join(cliBin, 'dsh.cmd'), pathApi.join(cliBin, 'dsh.exe'))
+    } else {
+      candidates.push(pathApi.join(cliBin, 'dsh'))
+    }
   }
   for (const candidate of candidates) {
     if (exists(candidate)) return candidate

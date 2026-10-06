@@ -258,7 +258,11 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
                   <span className={css.panelName}>{row.id}</span>
                   <span className={css.panelVersion}>{row.current} → {row.latest}</span>
                   {row.compatible === false && row.requiresDsh !== undefined && (
-                    <span className={css.compatBlocked}>{t('updateBlockedDsh', { min: displayMinimumVersion(row.requiresDsh) })}</span>
+                    <span className={css.compatBlocked} data-update-row-compat-reason={row.hostVersion === undefined ? 'unverified' : 'below-minimum'}>
+                      {row.hostVersion === undefined
+                        ? t('updateUnverifiedDsh', { min: displayMinimumVersion(row.requiresDsh) })
+                        : t('updateBlockedDsh', { min: displayMinimumVersion(row.requiresDsh) })}
+                    </span>
                   )}
                 </li>
               ))}

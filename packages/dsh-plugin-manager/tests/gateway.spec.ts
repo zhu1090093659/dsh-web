@@ -55,6 +55,74 @@ describe('findDshBinary', () => {
     )).toBe(binJs)
   })
 
+  it('operator gets the packaged Desktop CLI found in its own resource tree when the host is inside app.asar (issue #1819)', () => {
+    // Given the packaged Desktop layout: the host entry lives inside
+    // resources/app.asar/dsh, the private host package ships no lib/bin.js,
+    // every .bin directory is stripped, and PATH carries only the runtime's
+    // node — while the CLI launcher sits in the sibling runtime/cli/bin tree
+    const resources = 'C:\\Users\\u\\AppData\\Local\\Programs\\DeepSeek Harness\\resources'
+    const hostEntry = `${resources}\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-desktop-host\\lib\\index.js`
+    const cli = `${resources}\\runtime\\cli\\bin\\dsh.cmd`
+
+    // When the CLI is resolved from those launcher facts
+    const found = findDshBinary(
+      { PATH: `${resources}\\runtime\\bin;C:\\Windows\\System32` },
+      'win32',
+      exists([cli]),
+      hostEntry,
+      resources,
+    )
+
+    // Then the bundled launcher is reported, so version probes and writes work
+    expect(found).toBe(cli)
+  })
+
+  it('operator gets the packaged Desktop CLI from the host entry alone, with no Electron resource fact', () => {
+    // Given the same tree on a host that reports no resourcesPath, including
+    // macOS's capitalized Resources directory
+    const resources = '/Applications/DeepSeek Harness.app/Contents/Resources'
+    const hostEntry = `${resources}/app.asar/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/index.js`
+    const cli = `${resources}/runtime/cli/bin/dsh`
+
+    // When the entry script is the only launcher fact
+    const found = findDshBinary({ PATH: '/usr/bin' }, 'darwin', exists([cli]), hostEntry, undefined)
+
+    // Then the resource root is still derived from the entry's own ancestors
+    expect(found).toBe(cli)
+  })
+
+  it('operator keeps a PATH dsh ahead of the packaged Desktop CLI', () => {
+    // Given a user-installed dsh on PATH beside a packaged Desktop install
+    const resources = 'C:\\Program Files\\DeepSeek Harness\\resources'
+    const hostEntry = `${resources}\\app.asar\\dsh\\node_modules\\@deepseek-ai\\dsh-desktop-host\\lib\\index.js`
+    const pathBinary = 'C:\\tools\\dsh.cmd'
+    const desktopCli = `${resources}\\runtime\\cli\\bin\\dsh.cmd`
+
+    // When the CLI is resolved
+    const found = findDshBinary(
+      { PATH: 'C:\\tools' },
+      'win32',
+      exists([pathBinary, desktopCli]),
+      hostEntry,
+      resources,
+    )
+
+    // Then the user's own installation still wins, as it always has
+    expect(found).toBe(pathBinary)
+  })
+
+  it('operator gets no CLI invented from an unrelated resources directory', () => {
+    // Given a host whose entry happens to sit under a directory named
+    // resources but which carries no bundled runtime
+    const hostEntry = '/srv/app/resources/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/index.js'
+
+    // When the CLI is resolved
+    const found = findDshBinary({ PATH: '/usr/bin' }, 'linux', exists([]), hostEntry, undefined)
+
+    // Then nothing is reported, so the caller keeps its fail-closed verdict
+    expect(found).toBeNull()
+  })
+
   it('prefers a .bin shim over the sibling package bin.js when both exist', () => {
     const shim = 'D:\\APP\\DSH\\node_modules\\.bin\\dsh.cmd'
     const hostEntry = 'D:\\APP\\DSH\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js'

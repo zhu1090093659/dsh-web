@@ -967,6 +967,7 @@ window.__ModuleLoader__.load({
 			});
 			const requiresDsh = found?.requiresDsh;
 			const blocked = found?.compatible === false;
+			const unverified = blocked && found?.hostVersion === void 0;
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 				className: plugin_manager_module_css_default.section,
 				"data-update-patch": true,
@@ -998,7 +999,8 @@ window.__ModuleLoader__.load({
 							found !== void 0 && requiresDsh !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								className: blocked ? plugin_manager_module_css_default.compatBlocked : plugin_manager_module_css_default.compatHint,
 								"data-update-compat": blocked ? "blocked" : "ok",
-								children: blocked ? t("updateBlockedDsh", { min: displayMinimumVersion(requiresDsh) }) : t("updateRequiresDsh", { min: displayMinimumVersion(requiresDsh) })
+								"data-update-compat-reason": blocked ? unverified ? "unverified" : "below-minimum" : void 0,
+								children: !blocked ? t("updateRequiresDsh", { min: displayMinimumVersion(requiresDsh) }) : unverified ? t("updateUnverifiedDsh", { min: displayMinimumVersion(requiresDsh) }) : t("updateBlockedDsh", { min: displayMinimumVersion(requiresDsh) })
 							}),
 							found !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
@@ -1401,7 +1403,8 @@ window.__ModuleLoader__.load({
 										}),
 										row.compatible === false && row.requiresDsh !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 											className: plugin_manager_module_css_default.compatBlocked,
-											children: t("updateBlockedDsh", { min: displayMinimumVersion(row.requiresDsh) })
+											"data-update-row-compat-reason": row.hostVersion === void 0 ? "unverified" : "below-minimum",
+											children: row.hostVersion === void 0 ? t("updateUnverifiedDsh", { min: displayMinimumVersion(row.requiresDsh) }) : t("updateBlockedDsh", { min: displayMinimumVersion(row.requiresDsh) })
 										})
 									]
 								}, row.id))
@@ -1540,6 +1543,7 @@ window.__ModuleLoader__.load({
 			"latest": "最新 {version}",
 			"updateRequiresDsh": "需要 DSH ≥ {min}",
 			"updateBlockedDsh": "需要 DSH ≥ {min}，请先升级 DSH 再更新",
+			"updateUnverifiedDsh": "无法确认本机 DSH 版本（需要 DSH ≥ {min}），已暂停更新",
 			"restartHint": "插件变更将在重启应用后生效。",
 			"updatesAvailable": "{count} 个可更新",
 			"updateAll": "全部更新（{count}）",
@@ -1578,6 +1582,7 @@ window.__ModuleLoader__.load({
 			"latest": "Latest {version}",
 			"updateRequiresDsh": "Requires DSH >= {min}",
 			"updateBlockedDsh": "Requires DSH >= {min}; upgrade DSH before updating",
+			"updateUnverifiedDsh": "Cannot confirm the local DSH version (this update needs DSH >= {min}); update paused",
 			"restartHint": "Plugin changes take effect after restarting the application.",
 			"updatesAvailable": "{count} updates available",
 			"updateAll": "Update all ({count})",
@@ -1706,6 +1711,10 @@ window.__ModuleLoader__.load({
 				if (update.compatible !== void 0) {
 					if (typeof update.compatible !== "boolean") throw new Error(`plugin-manager: update row ${String(index)} is invalid`);
 					row.compatible = update.compatible;
+				}
+				if (update.hostVersion !== void 0) {
+					if (!isString(update.hostVersion)) throw new Error(`plugin-manager: update row ${String(index)} is invalid`);
+					row.hostVersion = update.hostVersion;
 				}
 				return row;
 			});

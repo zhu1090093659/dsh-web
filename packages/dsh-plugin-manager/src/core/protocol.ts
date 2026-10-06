@@ -76,6 +76,12 @@ export interface PluginUpdateItem {
   requiresDsh?: string
   /** Whether the running DSH host satisfies requiresDsh; absent when unknown. */
   compatible?: boolean
+  /**
+   * The running DSH version the verdict was made from, when the host could read
+   * it. Its absence is what separates "this host is too old" from "this host
+   * could not be asked" — different problems, with different copy (issue #1819).
+   */
+  hostVersion?: string
 }
 
 /** One recorded plugin boot failure served by the host. */
@@ -228,6 +234,12 @@ export function parseUpdateList(value: unknown): PluginUpdateItem[] {
         throw new Error(`plugin-manager: update row ${String(index)} is invalid`)
       }
       row.compatible = update.compatible
+    }
+    if (update.hostVersion !== undefined) {
+      if (!isString(update.hostVersion)) {
+        throw new Error(`plugin-manager: update row ${String(index)} is invalid`)
+      }
+      row.hostVersion = update.hostVersion
     }
     return row
   })

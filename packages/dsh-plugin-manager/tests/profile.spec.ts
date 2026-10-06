@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { desktopSelectedProfile, resolveProfile } from '../src/host/profile.ts'
+import { desktopSelectedProfile, launchedInstallAnchor, readManifestVersion, resolveProfile } from '../src/host/profile.ts'
 
 describe('resolveProfile', () => {
   const env = { DSH_HOME: '/tmp/dsh-home' } as NodeJS.ProcessEnv
@@ -59,6 +59,83 @@ describe('resolveProfile', () => {
   it('rejects profile names with path separators or traversal', () => {
     for (const bad of ['../../etc', 'a/b', 'a\\b', '..']) {
       expect(() => resolveProfile(['node', 'bin.js', '--profile', bad], env), bad).toThrow(/invalid profile name/)
+    }
+  })
+})
+
+describe('launchedInstallAnchor and readManifestVersion (issue #1819)', () => {
+  it('operator gets the published install anchor when it is a safe absolute path', () => {
+    // Given the launcher published the running installation's manifest path
+    const anchor = join('/opt', 'dsh', 'node_modules', '@deepseek-ai', 'dsh', 'package.json')
+
+    // When the anchor is read off the published profile facts
+    const value = launchedInstallAnchor({ name: 'desktop', dir: '/opt/dsh/profiles/desktop', installAnchor: anchor })
+
+    // Then the running installation's own manifest path is accepted
+    expect(value).toBe(anchor)
+  })
+
+  it('operator gets no anchor from a published value that is missing, relative, or traversing', () => {
+    // Given published facts whose anchor is unusable in each way it can be
+    const cases: Array<Record<string, unknown>> = [
+      {},
+      { installAnchor: '' },
+      { installAnchor: '   ' },
+      { installAnchor: 42 },
+      { installAnchor: 'node_modules/@deepseek-ai/dsh/package.json' },
+      { installAnchor: '/opt/dsh/../../etc/package.json' },
+    ]
+
+    // When each published value is read
+    const values = cases.map(facts => launchedInstallAnchor(facts))
+
+    // Then none of them is accepted, so no version is read from a path the
+    // host did not actually name
+    expect(values).toEqual([undefined, undefined, undefined, undefined, undefined, undefined])
+    expect(launchedInstallAnchor(undefined)).toBeUndefined()
+  })
+
+  it('operator gets the running version read from the installation manifest', () => {
+    // Given an installation whose own manifest declares its version
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-install-anchor-'))
+    try {
+      const manifest = join(dir, 'package.json')
+      writeFileSync(manifest, JSON.stringify({ name: '@deepseek-ai/dsh', version: '0.2.0-rc.2' }), 'utf8')
+
+      // When its version is read
+      const version = readManifestVersion(manifest)
+
+      // Then the declared version comes back, which is the running DSH
+      expect(version).toBe('0.2.0-rc.2')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('operator gets no version when the manifest is absent, malformed, or declares none', () => {
+    // Given manifests that cannot answer the question
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-install-anchor-bad-'))
+    try {
+      const malformed = join(dir, 'malformed.json')
+      writeFileSync(malformed, '{ not json', 'utf8')
+      const versionless = join(dir, 'versionless.json')
+      writeFileSync(versionless, JSON.stringify({ name: '@deepseek-ai/dsh' }), 'utf8')
+      const blank = join(dir, 'blank.json')
+      writeFileSync(blank, JSON.stringify({ version: '  ' }), 'utf8')
+
+      // When each is read
+      const values = [
+        readManifestVersion(join(dir, 'absent.json')),
+        readManifestVersion(malformed),
+        readManifestVersion(versionless),
+        readManifestVersion(blank),
+      ]
+
+      // Then each reads as "no version" so the caller falls back instead of
+      // reporting something nobody declared
+      expect(values).toEqual([undefined, undefined, undefined, undefined])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
     }
   })
 })

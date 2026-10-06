@@ -28,6 +28,14 @@ export interface LaunchedProfile {
   name?: unknown
   dir?: unknown
   patchPath?: unknown
+  /**
+   * Absolute path of the running installation's own `@deepseek-ai/dsh`
+   * package.json — the launcher's install anchor. Its `version` IS the version
+   * of the DSH this process booted, so it answers the compatibility question
+   * without spawning anything; on a packaged Desktop install it is the only
+   * source that does, because no `dsh` reaches that host's PATH (issue #1819).
+   */
+  installAnchor?: unknown
 }
 
 /** Resolved locations of one profile's writable surface. */
@@ -71,6 +79,42 @@ export function desktopSelectedProfile(env: NodeJS.ProcessEnv = process.env): st
     }
   }
   return undefined
+}
+
+/**
+ * The running installation's own `@deepseek-ai/dsh` package.json, as the
+ * launcher published it on `profileContext`, or undefined when the host
+ * publishes none (or publishes something unusable). This is a READ-ONLY
+ * fact — unlike the profile directory and the patch path it is never a write
+ * target — but it still arrives from outside this package, so it must be an
+ * absolute, traversal-free path before anything reads a version out of it.
+ * @param launched - the profile facts the Host published, when available.
+ * @returns the validated anchor path, or undefined.
+ */
+export function launchedInstallAnchor(launched: LaunchedProfile | undefined): string | undefined {
+  const anchor = launched === undefined || typeof launched.installAnchor !== 'string'
+    ? ''
+    : launched.installAnchor.trim()
+  if (anchor === '') return undefined
+  if (!isAbsolute(anchor) || anchor.split(/[\/\\]/).includes('..')) return undefined
+  return anchor
+}
+
+/**
+ * Read the `version` field of one package manifest, tolerating every failure:
+ * a missing file, an unreadable one (a stripped asar entry), malformed JSON, or
+ * a non-string version all read as "no version". Callers fall back to their next
+ * source rather than reporting a version nobody declared.
+ * @param manifestPath - absolute path of a package.json.
+ * @returns the declared version, or undefined.
+ */
+export function readManifestVersion(manifestPath: string): string | undefined {
+  try {
+    const parsed = JSON.parse(stripBom(readFileSync(manifestPath, 'utf8'))) as { version?: unknown }
+    return typeof parsed.version === 'string' && parsed.version.trim() !== '' ? parsed.version.trim() : undefined
+  } catch {
+    return undefined
+  }
 }
 
 /**

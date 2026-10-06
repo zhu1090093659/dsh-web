@@ -38,6 +38,7 @@ export const ru: Record<string, string> = {
   'update': 'Обновить',
   'updateBlockedDsh': 'Требуется DSH ≥ {min}; сначала обновите DSH, затем повторите попытку.',
   'updateRequiresDsh': 'Требуется DSH ≥ {min}',
+  'updateUnverifiedDsh': 'Не удалось определить версию DSH на этом компьютере (требуется DSH ≥ {min}); обновление приостановлено',
   'updateSection': 'Обновление',
   'updating': 'Обновление…',
   'writing': 'Запись конфигурации…',

@@ -185,9 +185,9 @@ describe('update application', () => {
   })
 
   it('user cannot apply a release whose declared DSH minimum this host misses', async () => {
-    // Given the release declares a DSH minimum this host does not satisfy
+    // Given the release declares a DSH minimum this host read and did not satisfy
     renderPatch(face({
-      checkUpdates: async () => [{ ...updateItem, requiresDsh: '>=0.2.0', compatible: false }],
+      checkUpdates: async () => [{ ...updateItem, requiresDsh: '>=0.2.0', compatible: false, hostVersion: '0.1.0-rc.7' }],
     }))
     fireEvent.click(screen.getByRole('button', { name: t('checkUpdates') }))
     await waitFor(() => { expect(document.querySelector('[data-update-compat]')?.getAttribute('data-update-compat')).toBe('blocked') })
@@ -195,9 +195,32 @@ describe('update application', () => {
     // When the user looks at the update action
     const action = updateAction()
 
-    // Then it is disabled and the section names the requirement
+    // Then it is disabled, the section names the requirement, and it says to
+    // upgrade DSH — the host proved that is what is missing
     expect(action.disabled).toBe(true)
     expect(action.closest('[data-update-patch]')?.textContent).toContain(t('updateBlockedDsh', { min: '0.2.0' }))
+    expect(document.querySelector('[data-update-compat]')?.getAttribute('data-update-compat-reason')).toBe('below-minimum')
+  })
+
+  it('user is told the host version could not be confirmed instead of being sent to upgrade DSH', async () => {
+    // Given a release whose requirement the host could not check, so no host
+    // version came back with the verdict
+    renderPatch(face({
+      checkUpdates: async () => [{ ...updateItem, requiresDsh: '>=0.2.0', compatible: false }],
+    }))
+    fireEvent.click(screen.getByRole('button', { name: t('checkUpdates') }))
+    await waitFor(() => { expect(document.querySelector('[data-update-compat]')?.getAttribute('data-update-compat')).toBe('blocked') })
+
+    // When the user reads the section
+    const action = updateAction()
+
+    // Then the update is still held back, but the copy says the version could
+    // not be confirmed rather than asserting the running DSH is too old
+    expect(action.disabled).toBe(true)
+    const section = action.closest('[data-update-patch]')
+    expect(section?.textContent).toContain(t('updateUnverifiedDsh', { min: '0.2.0' }))
+    expect(section?.textContent).not.toContain(t('updateBlockedDsh', { min: '0.2.0' }))
+    expect(document.querySelector('[data-update-compat]')?.getAttribute('data-update-compat-reason')).toBe('unverified')
   })
 
   it('user keeps an update failure inside the section instead of losing the page', async () => {

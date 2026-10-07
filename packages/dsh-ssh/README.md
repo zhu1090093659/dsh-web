@@ -40,6 +40,7 @@ The panel loads its contents on first open. Closing and reopening it preserves t
 - ssh-agent auth stores only the agent socket path (or the special value `pageant`); it never reads or stores private-key material.
 - Tunnels only listen on `127.0.0.1`.
 - Deleting a host or changing its connection fields (host / port / user / auth / proxyJump / proxyCommand) immediately closes that alias's pooled connection and tunnels; later operations reconnect with the new configuration and never reuse a connection authenticated with the old credentials.
+- When the SSH connection behind a tunnel drops, the tunnel retires itself: the local port stops accepting, the tunnel leaves the list, and the connection that arrives during the drop is closed without traffic instead of interrupting the host process.
 - A `proxyCommand` value is a shell command executed by the DSH host process with its privileges — exactly the trust `ssh(1)` gives the same line in `~/.ssh/config`. It can only come from the user's own 0600 store file: the Agent cannot create or edit hosts, and `ssh_list` reports only whether a host has one, never the command text.
 - Before the Agent uses a tool, the host must first be configured in the GUI (or imported from ~/.ssh/config).
 - `ssh_upload` / `ssh_download` read/write arbitrary local paths on this machine with host-process privileges (not through the bash sandbox) — same host-local-path semantics as ssh-skill, be aware of that permission surface.

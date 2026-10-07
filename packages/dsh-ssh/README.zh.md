@@ -40,6 +40,7 @@
 - ssh-agent 认证仅保存 agent socket 路径（或 `pageant` 特殊值），不读取也不保存任何私钥材料。
 - 隧道只监听 `127.0.0.1`。
 - 删除主机或修改其连接字段（host / port / user / auth / proxyJump / proxyCommand）会立即断开该别名的池化连接与隧道，后续操作按新配置重新建连，不会复用旧凭据的已认证连接。
+- 隧道背后的 SSH 连接一旦断开，隧道会自行退役：本地端口不再接受连接，隧道从列表中消失；断开期间到达的连接被直接关闭且没有流量，不会打断宿主进程。
 - `proxyCommand` 是一条由 DSH 宿主进程以其自身权限执行的 shell 命令——与 `ssh(1)` 执行 `~/.ssh/config` 里同一行的信任模型一致。它只能来自用户自己的 0600 配置文件：Agent 无法创建或修改主机，`ssh_list` 只报告该主机是否配置了 ProxyCommand，不返回命令原文。
 - Agent 使用工具前，主机需先在 GUI 中配置（或从 ~/.ssh/config 导入）。
 - `ssh_upload` / `ssh_download` 以宿主进程权限直接读写本机任意路径（不经 bash 沙箱）——与 ssh-skill 的宿主本地路径语义一致，注意该权限面。

@@ -16,12 +16,30 @@ export interface TunnelRecord {
   /** The pooled connection this tunnel pins; siblings on one alias may share it. */
   record: PoolRecord
   sockets: Set<Socket>
+  /** Detach the link-death hook startTunnel installs on the pooled client. */
+  detachLink?: () => void
 }
 
 /** The engine slice the tunnel module needs (adds the tunnel registry). */
 export interface TunnelEngine extends PoolEngine {
   readonly tunnels: Map<string, TunnelRecord>
   nextTunnelId: number
+}
+
+/** Destroy one socket or channel stream, tolerating an already-dead peer. */
+function destroyQuietly(target: { destroy(): void }): void {
+  try { target.destroy() } catch { /* already closed */ }
+}
+
+/**
+ * Tear down one tunnel because the SSH link behind it is gone. Idempotent: the
+ * tunnel registry is the guard, so a socket callback or a link-death hook that
+ * arrives after a manual stop does nothing instead of tearing down twice, and
+ * no teardown error can escape into the net connection handler — an exception
+ * there terminates the whole host process.
+ */
+function abortTunnel(engine: TunnelEngine, id: string): void {
+  try { stopTunnel(engine, id) } catch { /* teardown already in progress */ }
 }
 
 /** Start a local port-forward tunnel (listens on 127.0.0.1 only). */
@@ -58,26 +76,47 @@ export async function startTunnel(
   const record = engine.pool.get(alias) ?? (await acquire(engine, alias))
   const client = record.client
   const sockets = new Set<Socket>()
+  // A tunnel whose SSH link died can only refuse what it is handed, so every
+  // path that learns the link is gone tears the tunnel down as well instead
+  // of leaving a listener alive on a connection that forwards nothing.
+  const onLinkClosed = (): void => { abortTunnel(engine, id) }
+  const detachLink = (): void => { client.off('close', onLinkClosed) }
   const server = createServer((socket) => {
     sockets.add(socket)
     socket.on('close', () => { sockets.delete(socket) })
-    client.forwardOut('127.0.0.1', 0, remoteHost, options.remotePort, (error, stream) => {
-      if (error !== undefined) {
-        socket.destroy()
-        return
-      }
-      // Both ends of the pipe can die independently; destroy the pair so an
-      // unhandled 'error' event can never crash the host process.
-      const destroy = (): void => {
-        try { socket.destroy() } catch { /* gone */ }
-        try { stream.close() } catch { /* gone */ }
-      }
-      stream.on('error', destroy)
-      socket.on('error', destroy)
-      stream.on('close', destroy)
-      socket.on('close', destroy)
-      stream.pipe(socket).pipe(stream)
-    })
+    // The link can die between taking the record above and this connection.
+    if (record.broken) {
+      destroyQuietly(socket)
+      abortTunnel(engine, id)
+      return
+    }
+    try {
+      client.forwardOut('127.0.0.1', 0, remoteHost, options.remotePort, (error, stream) => {
+        if (error !== undefined) {
+          // A refused remote channel is the remote service's answer, not a
+          // dead SSH link: the tunnel itself stays up for the next attempt.
+          socket.destroy()
+          return
+        }
+        // Both ends of the pipe can die independently; destroy the pair so an
+        // unhandled 'error' event can never crash the host process.
+        const destroy = (): void => {
+          destroyQuietly(socket)
+          try { stream.close() } catch { /* gone */ }
+        }
+        stream.on('error', destroy)
+        socket.on('error', destroy)
+        stream.on('close', destroy)
+        socket.on('close', destroy)
+        stream.pipe(socket).pipe(stream)
+      })
+    } catch {
+      // ssh2 reports 'Not connected' by throwing out of forwardOut rather than
+      // through the callback; an exception escaping this connection handler
+      // is an uncaught exception that takes the host process down with it.
+      destroyQuietly(socket)
+      abortTunnel(engine, id)
+    }
   })
   try {
     await new Promise<void>((resolve, reject) => {
@@ -96,7 +135,14 @@ export async function startTunnel(
   const address = server.address()
   info.localPort = typeof address === 'object' && address !== null ? address.port : 0
   info.state = 'forwarding'
-  engine.tunnels.set(id, { info, server, alias, record, sockets })
+  engine.tunnels.set(id, { info, server, alias, record, sockets, detachLink })
+  // A dead link must not keep a listener alive: without this hook the tunnel
+  // outlives its connection and every later local connection hits the dead
+  // forwardOut path above.
+  client.once('close', onLinkClosed)
+  // A link that died while the listener was binding already emitted 'close',
+  // so the pool's broken flag is the only signal left for that window.
+  if (record.broken) abortTunnel(engine, id)
   return info
 }
 
@@ -110,9 +156,12 @@ export function stopTunnel(engine: TunnelEngine, id: string): boolean {
   const tunnel = engine.tunnels.get(id)
   if (tunnel === undefined) return false
   engine.tunnels.delete(id)
+  // Drop the link-death hook first: a stop is never the link's death, and a
+  // long-lived pooled client outlives many tunnels.
+  try { tunnel.detachLink?.() } catch { /* already detached */ }
   try { tunnel.server.close() } catch { /* already closed */ }
   for (const socket of tunnel.sockets) {
-    try { socket.destroy() } catch { /* already closed */ }
+    destroyQuietly(socket)
   }
   tunnel.sockets.clear()
   // Sibling tunnels on the same alias share the pinned connection: release it

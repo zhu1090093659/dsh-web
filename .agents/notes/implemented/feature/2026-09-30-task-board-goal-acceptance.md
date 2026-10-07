@@ -134,6 +134,20 @@ verifier's default acceptance ALGORITHM rather than the verifier.
   cycle the gate already closed settles from its recorded reason without waiting
   for another inspection, and a run that never became a goal run or is a team
   member is explicitly NOT enforced rather than implied to be verified.
+- **A gate that never opened is not a quality verdict (issue #1837).** The
+  settlement rule separates "the judge ran and the work did not pass" from "the
+  judge never ran once": `core/verification.ts` exposes
+  `verificationNeverInvoked` (enforced, zero recorded attempts, no closed cycle)
+  and the Host settles that case with its own `NEVER_INVOKED_VERIFICATION_REASON`,
+  naming the missing `update_goal(action: complete)` call and stating that nothing
+  was judged, while any recorded attempt — quality, anomaly or budget stop —
+  keeps `NO_MATCHING_PASS_VERIFICATION_REASON`. A session that narrates
+  completion in prose can burn a hundred continuation rounds before the run is
+  aborted, and that failure has a different owner (tool adherence, or the
+  harness's own goal-round driver) than a rejected delivery, so the card's
+  terminal reason must not send the reader to the wrong one. No column, status
+  or UI enum is added: the distinction lives in the Host reason and in the pure
+  predicate that reads the persisted block.
 - **Team runs.** Acceptance applies to the Lead execution, whose session
   evidence is the team summary; a teammate execution is recorded as a
   `team-member` and is not independently accepted.
@@ -218,6 +232,11 @@ verifier's default acceptance ALGORITHM rather than the verifier.
 
 ## Consequences
 
+- A run that never calls `update_goal(action: complete)` still burns
+  continuation rounds until the harness's goal-round cap or a manual abort, and
+  the board cannot shorten that loop: the driver lives in the official harness,
+  not in this package. What the board does own is the terminal reason, and it now
+  says the gate never opened instead of implying the judge rejected the work.
 - A card whose acceptance environment is unusable is now stuck open rather than
   failed: the agent's completion claim is refused with an explanation naming the
   reset action, the report shows the anomalies, and the run ends only when the
@@ -285,7 +304,7 @@ verifier's default acceptance ALGORITHM rather than the verifier.
   route produce a real pass, the reset refused on an execution that only holds a
   quality verdict, a budget stop that opens no judge call and spends no budget,
   and the configured per-call ceiling ending the acceptance as a bounded anomaly.
-- `tests/goal-verification-service.spec.ts` (17 scenarios): the contract
+- `tests/goal-verification-service.spec.ts` (23 scenarios): the contract
   frozen and bound before the prompt, the switch off, `goalRun: false`, a
   refused `/goal`, an explicit route with an unsupported level, a scheduled
   run, the resolved options route, and the settlement rules (completed goal
@@ -296,7 +315,16 @@ verifier's default acceptance ALGORITHM rather than the verifier.
   reuse carries a new execution's own contract), plus the per-card opt-out: a
   checked card freezing an off contract with its own `skipped` reason, an
   unchecked card still enforced, and a skipped execution settling on the
-  historical verdict.
+  historical verdict. Issue #1837 adds: a completed goal with zero recorded
+  attempts settling with `NEVER_INVOKED_VERIFICATION_REASON`, a failed quality
+  verdict and an anomaly-only cycle each settling with
+  `NO_MATCHING_PASS_VERIFICATION_REASON` instead, and the two reasons proven to
+  name opposite investigation directions.
+- `tests/verification-core.spec.ts` (7 scenarios): the pure predicates over a
+  persisted block — an enforced execution with no attempts is both required to
+  pass and never invoked, while a quality verdict, an anomaly, a budget stop, a
+  recorded closed cycle, the four ungated applicability values and a missing
+  block are not.
 - `tests/verification-runner.spec.ts`: the two budget boundaries at the runner
   itself — an acceptance whose remaining time cannot hold a single judge call
   opens none and records the `budget` stage, while a live budget with a shorter

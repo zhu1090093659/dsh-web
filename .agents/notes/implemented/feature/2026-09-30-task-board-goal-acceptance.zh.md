@@ -24,6 +24,7 @@ Status: implemented
 - **时间预算（issue #1828）。** 两个行级配置项 `goalVerificationCallTimeoutSeconds`（30..600，默认 150）与 `goalVerificationBudgetSeconds`（120..1800，默认 1200），归一化逻辑放在 `src/core/verification-budget.ts`，与既有 `core/poll-cadence.ts` 的先例一致；两者实时读取而**不**冻结进契约——调大上限必须能在不重载插件的前提下解开卡片。总预算默认值由单次上限 × 一次验收所需的六次裁判调用再加两次重试推导，因为小于六倍单次上限的总预算保证任何验收都跑不完。每次裁判调用先按 deadline 准入：剩余时间装不下自己的上限时，调用在开启之前就被拒绝，慢路由因此无法把总预算全花在注定被外层中断的调用上。外层 abort 若由预算耗尽造成，归类为 `budget` 而非 `aborted`，并记为第三种尝试阶段（`budget`），不计入任何额度——它既不是判定也不是环境异常——所以既不会消耗额度也不会收口卡片。单次调用超时仍是 `timeout` 异常；只有外层 deadline 才是预算耗尽。
 - **冻结。** `HostExecutionRunner.launch` 汇报 `/goal` 是否武装成功，服务在 Prompt 入队之前冻结契约：由实时设置对照宿主模型目录默认路由解析出的裁判路由（`session/modelCatalog`；「继承宿主」绝不等于卡片钉住的执行模型）、本次运行的适用性（`enforced`/`goal-unavailable`/`disabled`/`team-member`）与阈值。显式配置的推理强度只有目标模型 adapter 声明支持时才传参，否则丢弃该不兼容值、改用该模型自身默认档位，并记录与展示回退。
 - **结算。** 适用性为 `enforced` 时，结算为 `succeeded` 必须有匹配的通过记录。于是旧回退路径再也无法让 goal 执行通过：完成的回合、暂停的 goal、读取失败的 projection、人工强制结算，在没有通过记录时一律判失败；门禁已收口的周期直接按其记录原因结算，不必再等一次巡检；从未成为 goal 执行的运行与 teammate 成员则明确「不受门禁」，而不是被暗示已验收。
+- **从未打开的门禁不是质量判负（issue #1837）。** 结算规则区分「裁判跑过且工作没通过」与「裁判一次都没跑」：`core/verification.ts` 提供纯函数 `verificationNeverInvoked`（适用性 enforced、零条已记录尝试、没有已收口周期），Host 对该形态使用独立终态常量 `NEVER_INVOKED_VERIFICATION_REASON`，文案点名缺失的 `update_goal(action= complete)` 调用并说明交付从未被判定；只要有任意一条已记录尝试（质量判定、异常或预算耗尽），仍使用 `NO_MATCHING_PASS_VERIFICATION_REASON`。一个只在散文里宣告完成的会话可能先烧掉上百个续跑回合才被中止，而这种失败的归属（工具遵从，或官方 harness 自己的 goal 轮次驱动）与「交付被验收否决」完全不同，卡片终态不能把读者指错方向。不新增卡片状态列、不改 UI 枚举：区分只落在 Host 的终态原因与读取持久化块的纯谓词上。
 - **团队执行。** 验收作用于 Lead 的 execution，其会话证据就是团队汇总；teammate 的 execution 记为 `team-member`，不单独验收。
 - **界面。** 设置卡新增任务验收分区（默认开启的开关、裁判模型、推理强度与解析后的配置），运行列显示「执行中 / 验收中 / 验收未通过修复中」，每条 execution 记录携带绑定该 execution 的报告。`GET /api/task-board/verification` 在看板既有 loopback / 认证代理门禁后提供解析后的选项与宿主模型目录。
 
@@ -40,6 +41,7 @@ Status: implemented
 
 ## Consequences
 
+- 从不调用 `update_goal(action= complete)` 的运行仍会一直烧续跑回合，直到 harness 的 goal 轮次上限或人工中止；看板无法缩短这个循环，驱动属于官方 harness 而不属于本包。看板能拥有的是终态原因，现在它说的是门禁从未打开，而不是暗示裁判否决了工作。
 - 验收环境不可用的卡片现在是「卡住」而不是「判死」：完成声明被拒绝并在文案里点名重置动作，报告展示这些异常，execution 只有在用户 `settle` 或重跑时才会结束。这是有意的取舍——由时钟产生的判定比一张诚实的卡住的卡片更糟——但代价是用户必须清除异常（或重跑），而不是读到一条失败。
 - 强制验收既是质量决定也是成本决定：一次验收是 3 项判据 × 2 轮（6 次裁判请求），而一个 execution 最多验收两次，因此需要修复一次的 goal 周期最多多花 12 次请求。开关默认开启，设置文案与 README 均明确说明。
 - 不提供模型目录的部署无法解析裁判路由：开启验收时完成声明会被拒绝并记为异常，而不是静默通过。这是 fail closed 的选择，异常有界因而不会活锁。
@@ -53,4 +55,5 @@ Status: implemented
 - `tests/goal-verification-gate.spec.ts`（27 个场景）：首次验收通过、失败后修复通过、第二次失败收口并冻结额度、并发完成共享一次验收、重跑获得新额度、额度跨宿主重启保留、无法解析回答与裁判路由抛错分别记异常且各自有界、goal 不可用与 teammate 成员不受门禁、实时设置变更后仍由冻结契约判定、两轮交换与取平均、会话复用证据隔离、强度回退、路由不可解析、调用已取消、已结算 execution，损坏的存储块、宿主工作区变更证据进入裁判、该证据在对比读取失败时降级、部署不记录变更时的纯轨迹提示词，仅在存在宿主证据时才出现参考上下文块，第三方插件把公开 `llm.stream` 替换成其 waterfall 监听器签名后验收仍能得出判定，以及运行时没有 `prepareCall` 时保留公开方法回退。issue #1828 新增：异常额度用尽后保持打开而不是收口卡片（不写 `failedReason`、不 block goal，且第三次调用在不发起裁判调用的情况下被拒）、显式重置清零并让修好的路由产生真实通过、只有质量判定时重置被拒、预算耗尽不发起裁判调用且不消耗额度、以及配置的单次上限以有界异常结束验收。
 - `tests/verification-runner.spec.ts`：runner 自身的两条预算边界——剩余时间装不下一次裁判调用时不发起任何调用并记为 `budget` 阶段；总预算仍在但单次上限更短时，记为指名该配置上限（而非外层预算）的 `timeout` 异常。
 - `tests/host-ledger.spec.ts` 与 `tests/agent-tools.spec.ts` 覆盖重置动作本身：清零后所有已记录判定仍在、第二次重置因无可清而拒绝，以及两种按真实原因给出的拒绝（无未结算 execution、无验收门禁）——账本层与模型工具层各一次。
-- `tests/goal-verification-service.spec.ts`（17 个场景）：契约在 Prompt 之前冻结并绑定、开关关闭、`goalRun: false`、`/goal` 被拒、显式路由配不支持档位、定时运行、解析后的选项路由，以及结算规则（goal 完成但无通过记录判失败、暂停 goal 判失败、projection 读取失败判失败、通过记录结算为完成、已收口周期无需再巡检即结算、单回合任务按历史判定、v5 之前的 execution 不被追溯、开关只影响之后的执行、会话复用携带新 execution 自己的契约）。
+- `tests/goal-verification-service.spec.ts`（23 个场景）：契约在 Prompt 之前冻结并绑定、开关关闭、`goalRun: false`、`/goal` 被拒、显式路由配不支持档位、定时运行、解析后的选项路由，以及结算规则（goal 完成但无通过记录判失败、暂停 goal 判失败、projection 读取失败判失败、通过记录结算为完成、已收口周期无需再巡检即结算、单回合任务按历史判定、v5 之前的 execution 不被追溯、开关只影响之后的执行、会话复用携带新 execution 自己的契约）。issue #1837 新增：零条已记录尝试的 goal 完成按 `NEVER_INVOKED_VERIFICATION_REASON` 结算，质量判定判负与只有异常的周期各自仍按 `NO_MATCHING_PASS_VERIFICATION_REASON` 结算，以及两条文案被证明指向相反的排查方向。
+- `tests/verification-core.spec.ts`（7 个场景）：纯函数在持久化块上的判定——enforced 且零尝试的执行既要通过记录、也被判为从未触发；而质量判定、异常、预算耗尽、已记录的收口原因、四种不受门禁的适用性以及缺失的块都不是。

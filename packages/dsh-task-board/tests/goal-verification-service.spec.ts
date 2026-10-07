@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import type { TypertGateway } from '@deepseek-ai/dsh-api-gateway'
 import { afterEach, describe, expect, it } from 'vitest'
 import { HostTaskLedger } from '../src/host-ledger.ts'
-import { TaskBoardHostService } from '../src/host-service.ts'
+import { NEVER_INVOKED_VERIFICATION_REASON, NO_MATCHING_PASS_VERIFICATION_REASON, TaskBoardHostService } from '../src/host-service.ts'
 import { PowerInhibitor } from '../src/power-inhibitor.ts'
 import { resolveContract, type ModelCatalogView, type VerificationSettings } from '../src/core/verification.ts'
 
@@ -353,8 +353,8 @@ describe('goal acceptance at execution start', () => {
 })
 
 describe('goal acceptance at settlement', () => {
-  it('user whose goal completed without a matching acceptance pass sees the card fail', async () => {
-    // Given: a running goal execution with no pass record
+  it('user whose goal completed without the acceptance gate ever running sees the never-invoked reason', async () => {
+    // Given: a running goal execution whose acceptance recorded nothing
     const h = harness()
     seed(h.ledger)
     h.service.apply('run-1', { kind: 'run', taskId: 'task-a' })
@@ -364,11 +364,107 @@ describe('goal acceptance at settlement', () => {
     // When: the roster poll observes a completed turn
     await h.timer.poll()
 
-    // Then: the succeeded verdict is refused and the card settles failed.
+    // Then: the succeeded verdict is refused, and the reason names the missing
+    // completion call rather than a delivery the judge rejected.
     const execution = executionOf(h)
     expect(execution.result).toBe('failed')
-    expect(execution.error).toContain('没有匹配的验收通过记录')
+    expect(execution.error).toBe(NEVER_INVOKED_VERIFICATION_REASON)
     expect(h.ledger.getTask('task-a')?.status).toBe('failed')
+  })
+
+  it('user reading a failed card is told which of the two directions to investigate', () => {
+    // Given the two terminal reasons the board can settle a goal execution with
+    const neverInvoked = NEVER_INVOKED_VERIFICATION_REASON
+    const judged = NO_MATCHING_PASS_VERIFICATION_REASON
+
+    // When the card error text is read
+    const blamed = [neverInvoked.includes('update_goal'), judged.includes('update_goal')]
+
+    // Then each names its own cause: a missing completion call (a tool-adherence
+    // problem, explicitly not a quality verdict) versus a judged delivery, and
+    // neither text can be mistaken for the other.
+    expect(blamed).toEqual([true, false])
+    expect(neverInvoked).toContain('这不是质量判负')
+    expect(judged).toContain('没有匹配的验收通过记录')
+  })
+
+  it('user whose judge rejected the work sees the no-matching-pass reason instead', async () => {
+    // Given: a running goal execution holding a quality verdict that failed
+    const h = harness()
+    seed(h.ledger)
+    h.service.apply('run-1', { kind: 'run', taskId: 'task-a' })
+    await settleMicrotasks()
+    const execution = executionOf(h)
+    const contract = execution.verification!.contract
+    h.ledger.setVerification('task-a', execution.id, {
+      contract,
+      attempts: [{
+        index: 1,
+        at: NOW + 50,
+        stage: 'quality',
+        passed: false,
+        score: 0.3,
+        baseline: 0.1,
+        criteria: [],
+        findings: ['the patch was never applied'],
+        usage: { calls: 6, inputTokens: 100, outputTokens: 20, reasoningTokens: 5 },
+        evidence: { chars: 10, omittedCharacters: 0, entries: 1, hash: 'h' },
+        route: contract.route!,
+        channel: 'explicit-tag',
+        rounds: 2,
+      }],
+      applicability: 'enforced',
+    })
+    h.goals.phase = 'complete'
+
+    // When: the poll observes the completed goal with the judged cycle on record
+    await h.timer.poll()
+
+    // Then: the judge ran and refused, so the card fails with the judged-work
+    // reason and never blames a missing completion call.
+    const settled = executionOf(h)
+    expect(settled.result).toBe('failed')
+    expect(settled.error).toBe(NO_MATCHING_PASS_VERIFICATION_REASON)
+    expect(settled.error).not.toContain('update_goal')
+  })
+
+  it('user whose judge route only produced anomalies sees the no-matching-pass reason', async () => {
+    // Given: the #1828 shape — the gate opened and every attempt was an anomaly
+    const h = harness()
+    seed(h.ledger)
+    h.service.apply('run-1', { kind: 'run', taskId: 'task-a' })
+    await settleMicrotasks()
+    const execution = executionOf(h)
+    const contract = execution.verification!.contract
+    h.ledger.setVerification('task-a', execution.id, {
+      contract,
+      attempts: [{
+        index: 1,
+        at: NOW + 50,
+        stage: 'exception',
+        passed: false,
+        score: 0,
+        baseline: 0,
+        criteria: [],
+        findings: [],
+        usage: { calls: 1, inputTokens: 0, outputTokens: 0, reasoningTokens: 0 },
+        evidence: { chars: 0, omittedCharacters: 0, entries: 0, hash: '' },
+        route: contract.route!,
+        channel: 'explicit-tag',
+        rounds: 0,
+        error: 'judge request timed out after 150 s',
+      }],
+      applicability: 'enforced',
+    })
+    h.goals.phase = 'complete'
+
+    // When: the poll settles the run
+    await h.timer.poll()
+
+    // Then: the judge was reached, so this is not a never-invoked gate.
+    const settled = executionOf(h)
+    expect(settled.result).toBe('failed')
+    expect(settled.error).toBe(NO_MATCHING_PASS_VERIFICATION_REASON)
   })
 
   it('user whose goal was paused before acceptance sees it fail rather than pass', async () => {
@@ -382,9 +478,10 @@ describe('goal acceptance at settlement', () => {
     // When: the poll reads the paused goal with a completed turn
     await h.timer.poll()
 
-    // Then: paused is not a pass: the card fails without a matching record.
+    // Then: paused is not a pass: the card fails, and since the judge never ran
+    // the reason is the never-invoked one.
     expect(executionOf(h).result).toBe('failed')
-    expect(executionOf(h).error).toContain('没有匹配的验收通过记录')
+    expect(executionOf(h).error).toBe(NEVER_INVOKED_VERIFICATION_REASON)
   })
 
   it('user whose goal projection cannot be read is not settled as verified', async () => {
@@ -403,9 +500,10 @@ describe('goal acceptance at settlement', () => {
     await h.timer.poll()
 
     // Then: the old fallback path does not turn an unreadable projection into a
-    // pass: the execution is refused and the card fails.
+    // pass: the execution is refused and the card fails, naming the acceptance
+    // that never ran.
     expect(executionOf(h).result).toBe('failed')
-    expect(executionOf(h).error).toContain('没有匹配的验收通过记录')
+    expect(executionOf(h).error).toBe(NEVER_INVOKED_VERIFICATION_REASON)
     expect(h.ledger.getTask('task-a')?.status).toBe('failed')
   })
 

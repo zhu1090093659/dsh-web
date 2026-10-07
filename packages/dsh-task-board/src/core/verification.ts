@@ -449,6 +449,23 @@ export function verificationRequired(verification: ExecutionVerification | undef
   return verification !== undefined && verification.applicability === 'enforced'
 }
 
+/**
+ * Whether this execution's acceptance gate was never opened: acceptance was
+ * enforced, the judge recorded nothing at all, and no cycle ever closed. Zero
+ * attempts is therefore a fact about the RUN, not a verdict about the work — a
+ * session that narrated completion instead of calling
+ * `update_goal(action: complete)` produces exactly this shape, and its failure
+ * reason must stay distinguishable from a quality verdict (issue #1837).
+ * @param verification - the execution's persisted acceptance state.
+ * @returns true when no acceptance attempt ever ran.
+ */
+export function verificationNeverInvoked(verification: ExecutionVerification | undefined): boolean {
+  return verification !== undefined
+    && verification.applicability === 'enforced'
+    && verification.attempts.length === 0
+    && verification.failedReason === undefined
+}
+
 /** Whether this cycle still has quality budget left. */
 export function hasQualityBudget(verification: ExecutionVerification | undefined): boolean {
   return qualityAttempts(verification).length < MAX_QUALITY_ATTEMPTS

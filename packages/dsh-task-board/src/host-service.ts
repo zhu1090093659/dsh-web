@@ -11,7 +11,7 @@ import { TASK_BOARD_SCHEMA_VERSION, type TaskBoardAction, type TaskBoardEventPay
 import { TaskBoardExtensionRegistry } from './host/extension-registry.ts'
 import type { TaskBoardExtension } from './core/extension.ts'
 import type { ExecutionOutcome, TaskRecord, TaskStatus } from './core/tasks.ts'
-import { passedAttempt, resolveContract, verificationRequired, type ExecutionVerification, type ModelCatalogView, type VerificationContract, type VerificationSettings } from './core/verification.ts'
+import { passedAttempt, resolveContract, verificationNeverInvoked, verificationRequired, type ExecutionVerification, type ModelCatalogView, type VerificationContract, type VerificationSettings } from './core/verification.ts'
 import type { TaskPermission } from './core/handover.ts'
 
 /** One teammate the Host asks the Agent Teams service to spawn for a team run. */
@@ -65,6 +65,22 @@ const MAX_TIMER_DELAY_MS = 2_147_483_647
  * out of the running column, which nothing else can rescue.
  */
 const UNREADABLE_SETTLE_POLLS = 24
+
+/**
+ * Why an enforced goal execution settled failed while its acceptance DID run:
+ * attempts were recorded and none of them passed. The judge answered about the
+ * work and the work did not pass.
+ */
+export const NO_MATCHING_PASS_VERIFICATION_REASON = 'goal 验收：本次执行没有匹配的验收通过记录（验收未运行、未通过或报告来自其他执行），按未验收判失败。'
+/**
+ * Why an enforced goal execution settled failed with ZERO acceptance records:
+ * the gate was never opened, so the judge never ran and nothing was ever judged
+ * (issue #1837). The root cause is a session that declared completion in prose
+ * instead of calling `update_goal(action: complete)` — a tool-adherence problem,
+ * NOT a quality verdict on the delivery — so this reason says so and keeps the
+ * two investigation directions apart.
+ */
+export const NEVER_INVOKED_VERIFICATION_REASON = 'goal 验收未触发：本次执行没有任何验收记录，验收门从未打开——执行会话没有调用 update_goal(action: complete) 来完成目标（常见于只在回复里宣告完成）。这不是质量判负：交付从未被裁判评估。'
 
 /**
  * Provenance of one cron-triggered cascade: when the rule fired and the zone
@@ -659,11 +675,18 @@ export class TaskBoardHostService {
         // be mistaken for a verified success. Only a matching pass record
         // settles this execution as succeeded.
         if (result.outcome === 'succeeded' && verificationRequired(verification) && passedAttempt(verification) === undefined) {
+          // Two different failures share this branch, and they send the reader
+          // in opposite directions: attempts on record mean the judge ran and
+          // the work did not pass, while zero attempts mean the gate never
+          // opened at all (issue #1837) — the session narrated completion
+          // instead of calling `update_goal(action: complete)`.
           this.settleAndNotify(
             execution.taskId,
             execution.executionId,
             'failed',
-            'goal 验收：本次执行没有匹配的验收通过记录（验收未运行、未通过或报告来自其他执行），按未验收判失败。',
+            verificationNeverInvoked(verification)
+              ? NEVER_INVOKED_VERIFICATION_REASON
+              : NO_MATCHING_PASS_VERIFICATION_REASON,
           )
           continue
         }

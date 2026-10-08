@@ -95,7 +95,7 @@ export async function startTunnel(
         if (error !== undefined) {
           // A refused remote channel is the remote service's answer, not a
           // dead SSH link: the tunnel itself stays up for the next attempt.
-          socket.destroy()
+          destroyQuietly(socket)
           return
         }
         // Both ends of the pipe can die independently; destroy the pair so an
@@ -140,9 +140,15 @@ export async function startTunnel(
   // outlives its connection and every later local connection hits the dead
   // forwardOut path above.
   client.once('close', onLinkClosed)
-  // A link that died while the listener was binding already emitted 'close',
-  // so the pool's broken flag is the only signal left for that window.
-  if (record.broken) abortTunnel(engine, id)
+  if (record.broken) {
+    // A link that died while the listener was binding already emitted 'close',
+    // so the pool's broken flag is the only signal left for that window. The
+    // tunnel retires right away, and the start reports that instead of
+    // handing the caller a forwarding tunnel that no longer exists.
+    info.state = 'failed'
+    info.error = 'ssh link closed while the tunnel was starting'
+    abortTunnel(engine, id)
+  }
   return info
 }
 

@@ -15,11 +15,11 @@ The next local connection to that port called `client.forwardOut(...)` on a clie
 - **The connection handler refuses a dead link before opening a channel.** `record.broken` (the pool's own liveness flag) destroys the socket and retires the tunnel, which covers the window between taking the record and the local connection arriving, where the link can die while `startTunnel` is still running.
 - **`forwardOut` is called inside try/catch.** Its synchronous throw is the reported crash; the catch destroys the socket and retires the tunnel through the same idempotent helper, so no exception can escape the `net` connection handler again. `abortTunnel` wraps `stopTunnel` so a teardown error stays contained too.
 - **A remote channel error is not a dead link.** `forwardOut` calling back with an error (remote service refused, channels busy) still only destroys that one socket; the tunnel stays up, as before.
-- **A link that dies while the listener binds is caught by a second flag check** right after registration, because that window emitted `close` before the hook existed. `startTunnel` still resolves — the tunnel simply never appears in the list, which is the behavior the reporter asked for.
+- **A link that dies while the listener binds is caught by a second flag check** right after registration, because that window emitted `close` before the hook existed. `startTunnel` still resolves, but it reports the tunnel as `failed` with the reason rather than as `forwarding`, so neither the panel nor the agent tool announces a tunnel that is already gone.
 
 ## Testing
 
-`packages/dsh-ssh/tests/tunnel-dead-link.test.ts` drives a fake ssh2 client through the real listener: a synchronous `Not connected` throw, a link already marked broken at connect time, a `close` after a healthy forward, sibling tunnels over one link, and a healthy forward followed by a manual stop. Against the pre-fix source the suite fails 4 of its 5 cases and reports the exact uncaught exception from the issue (`Error: Not connected` at `Server.<anonymous> src/engine/tunnel.ts`), so the regression coverage is the reproduction itself.
+`packages/dsh-ssh/tests/tunnel-dead-link.test.ts` drives a fake ssh2 client through the real listener: a synchronous `Not connected` throw, a link already marked broken at connect time, a `close` after a healthy forward, sibling tunnels over one link, a refused remote channel that must not retire the tunnel, a link that dies while the listener binds, and a healthy forward followed by a manual stop. The two shapes this change had to keep intact (a refused channel, a shared record ended once) are covered too, because the fix re-indents that callback and reworks the teardown they ride on. Against the pre-fix source the suite fails and reports the exact uncaught exception from the issue (`Error: Not connected` at `Server.<anonymous> src/engine/tunnel.ts`), so the regression coverage is the reproduction itself.
 
 ## Alternatives considered
 
@@ -32,5 +32,6 @@ The next local connection to that port called `client.forwardOut(...)` on a clie
 ## Consequences
 
 - After a link drop, the tunnel leaves the registry at once and its local port stops accepting, so the operator sees it disappear on the next list refresh (five seconds) and starts a new one; the connection that arrived during the drop is closed with no traffic. Before this change the same connection terminated the host process.
+- A tunnel that never really came up (its link died while the listener was binding) resolves as `failed` with a reason, so `POST /api/dsh-ssh/tunnels` and the `ssh_tunnel` tool no longer answer with a `forwarding` tunnel that is already retired.
 - Host deletion and connection-field edits behave exactly as before: they close the alias's tunnels through the same stop path.
 - The pinned connection of the last tunnel is still ended exactly once, and a shared record is ended by the last sibling tunnel that retires.

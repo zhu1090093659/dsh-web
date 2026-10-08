@@ -15,11 +15,11 @@ Status: implemented
 - **连接回调在开通道前先拒绝死链路。** `record.broken`（连接池自己的存活标志）为真时销毁 socket 并退役隧道，覆盖了取到 record 与本地连接到达之间 `startTunnel` 仍在运行时链路断裂的窗口。
 - **`forwardOut` 包在 try/catch 中。** 它的同步抛出正是报告中的崩溃；catch 中销毁 socket 并通过同一个幂等助手退役隧道，使异常不再可能逃出 `net` 连接回调。`abortTunnel` 又包了一层 `stopTunnel`，连拆卸过程的报错也被兜住。
 - **远端通道报错不等于链路死亡。** `forwardOut` 以回调报错返回（远端服务拒绝、通道忙）时，仍然只销毁该 socket，隧道照旧存活。
-- **监听绑定期间死掉的链路由登记后的第二次标志检查兜住**——那个窗口的 `close` 发生在钩子挂上之前。`startTunnel` 仍然正常 resolve，隧道只是不会出现在列表里，这正是报告者期望的行为。
+- **监听绑定期间死掉的链路由登记后的第二次标志检查兜住**——那个窗口的 `close` 发生在钩子挂上之前。`startTunnel` 仍然正常 resolve，但会把隧道报告为 `failed` 并带上原因，而不是 `forwarding`，这样面板与 Agent 工具都不会宣告一条已经退役的隧道。
 
 ## Testing
 
-`packages/dsh-ssh/tests/tunnel-dead-link.test.ts` 用一个假的 ssh2 client 驱动真实监听器：同步抛出 `Not connected`、连接到达时已被标记 broken、健康转发后 client 关闭、同一连接上的兄弟隧道、健康转发后手动停止。对修复前的源码，该套件 5 个用例中有 4 个失败，并复现 issue 中完全相同的 uncaught exception（`Error: Not connected` 位于 `Server.<anonymous> src/engine/tunnel.ts`），因此回归覆盖本身就是复现。
+`packages/dsh-ssh/tests/tunnel-dead-link.test.ts` 用一个假的 ssh2 client 驱动真实监听器：同步抛出 `Not connected`、连接到达时已被标记 broken、健康转发后 client 关闭、同一连接上的兄弟隧道、不得导致隧道退役的远端通道拒绝、监听绑定期间死掉的链路，以及健康转发后手动停止。本次改动必须保持原样的两种形态（远端通道拒绝、共享 record 只 end 一次）同样有覆盖，因为修复重排了那个回调的缩进，也重写了它们所依附的拆卸路径。对修复前的源码，该套件失败并复现 issue 中完全相同的 uncaught exception（`Error: Not connected` 位于 `Server.<anonymous> src/engine/tunnel.ts`），因此回归覆盖本身就是复现。
 
 ## Alternatives considered
 
@@ -32,5 +32,6 @@ Status: implemented
 ## Consequences
 
 - 链路断开后，隧道立即离开注册表，本地端口不再接受连接：操作者在下次列表刷新（五秒）时看到它消失并重新建立；断线期间到达的那次连接会被关闭且没有流量。修复前，同一次连接会终结 Host 进程。
+- 根本没建起来的隧道（链路在监听绑定期间就断了）以 `failed` 加原因返回，`POST /api/dsh-ssh/tunnels` 与 `ssh_tunnel` 工具不再答复一条其实已经退役的 `forwarding` 隧道。
 - 删除主机与修改连接字段的行为不变：它们通过同一条停止路径关闭该别名的隧道。
 - 最后一条隧道仍只会被 end 一次；共享 record 由最后退役的兄弟隧道释放。

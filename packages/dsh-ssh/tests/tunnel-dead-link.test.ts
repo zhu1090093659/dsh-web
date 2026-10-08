@@ -15,7 +15,7 @@ import { EventEmitter } from 'node:events'
 import { describe, expect, it } from 'vitest'
 import type { Client } from 'ssh2'
 import { DEFAULTS, type PoolRecord } from '../src/engine/connection-pool.ts'
-import { listTunnels, startTunnel, stopTunnel, type TunnelEngine } from '../src/engine/tunnel.ts'
+import { listTunnels, startTunnel, stopTunnel, type TunnelEngine, type TunnelRecord } from '../src/engine/tunnel.ts'
 import type { HostStore } from '../src/store.ts'
 
 const ALIAS = 'db-host'
@@ -26,6 +26,8 @@ type LinkMode =
   | 'healthy'
   /** ssh2 1.17 behaviour on a dead link: forwardOut throws synchronously. */
   | 'throw'
+  /** The remote service refuses the channel: the callback reports an error. */
+  | 'refused'
 
 /**
  * Stand-in for one ssh2 Client. It is an EventEmitter because the tunnel
@@ -39,10 +41,13 @@ class FakeClient extends EventEmitter {
   readonly forwarded: string[] = []
   /** Channels this client was asked to end. */
   ended = 0
+  /** Switchable, so one tunnel can be seen refusing and then forwarding. */
+  mode: LinkMode
   private readonly waiting: Array<(payload: string) => void> = []
 
-  constructor(private readonly mode: LinkMode) {
+  constructor(mode: LinkMode) {
     super()
+    this.mode = mode
   }
 
   forwardOut(
@@ -54,6 +59,10 @@ class FakeClient extends EventEmitter {
   ): void {
     this.channelRequests.push({ remoteHost, remotePort })
     if (this.mode === 'throw') throw new Error('Not connected')
+    if (this.mode === 'refused') {
+      cb(new Error('connect failed: Connection refused'))
+      return
+    }
     cb(undefined, this.remoteChannel())
   }
 
@@ -82,15 +91,31 @@ class FakeClient extends EventEmitter {
   }
 }
 
+/**
+ * The tunnel registry with a hook on registration, the only deterministic way
+ * to act in the window between the listener binding and startTunnel writing
+ * the tunnel into the registry.
+ */
+class HookedTunnels extends Map<string, TunnelRecord> {
+  constructor(private readonly onRegister: () => void) {
+    super()
+  }
+
+  override set(key: string, value: TunnelRecord): this {
+    this.onRegister()
+    return super.set(key, value)
+  }
+}
+
 /** A TunnelEngine with one pre-pooled fake link, so no SSH handshake runs. */
-function tunnelEngine(client: FakeClient): { engine: TunnelEngine; record: PoolRecord } {
+function tunnelEngine(client: FakeClient, onRegister?: () => void): { engine: TunnelEngine; record: PoolRecord } {
   const record: PoolRecord = { client: client as unknown as Client, hops: [], idleAt: 0, pinned: false, broken: false, inFlight: 0 }
   const engine: TunnelEngine = {
     store: { find: () => ({ alias: ALIAS }) } as unknown as HostStore,
     opts: { ...DEFAULTS },
     pool: new Map([[ALIAS, record]]),
     acquireQueue: new Map(),
-    tunnels: new Map(),
+    tunnels: new HookedTunnels(onRegister ?? (() => { /* no hook */ })),
     nextTunnelId: 1,
   }
   return { engine, record }
@@ -180,6 +205,41 @@ describe('tunnel dead link', () => {
 
     expect(listTunnels(engine)).toHaveLength(0)
     expect(client.ended).toBe(1)
+  })
+
+  it('operator: a refused remote channel drops one connection and leaves the tunnel forwarding', async () => {
+    // Given a live link whose remote service refuses the channel, When the
+    // operator connects, Then that one connection is dropped, the tunnel stays
+    // in the registry, and the next connection forwards again.
+    const client = new FakeClient('refused')
+    const { engine } = tunnelEngine(client)
+    const tunnel = await startTunnel(engine, ALIAS, { remotePort: 5432 })
+
+    expect(await probeLocalPort(tunnel.localPort, 'select 1')).toEqual({ received: '', settled: 'closed' })
+    expect(listTunnels(engine)).toEqual([expect.objectContaining({ id: tunnel.id, state: 'forwarding' })])
+
+    client.mode = 'healthy'
+    const socket = connect(tunnel.localPort, '127.0.0.1')
+    socket.on('error', () => { /* the channel sink never fails */ })
+    socket.on('connect', () => { socket.write('select 2') })
+    expect(await client.nextForwarded()).toBe('select 2')
+    socket.destroy()
+    expect(listTunnels(engine)).toHaveLength(1)
+  })
+
+  it('operator: a link that dies while the listener binds reports a failed start', async () => {
+    // Given a link that dies in the window between binding the local listener
+    // and registering the tunnel, When the operator starts the tunnel, Then the
+    // start reports the failure and no tunnel is left behind.
+    const client = new FakeClient('healthy')
+    const { engine, record } = tunnelEngine(client, () => { record.broken = true })
+
+    const tunnel = await startTunnel(engine, ALIAS, { remotePort: 5432 })
+
+    expect(tunnel.state).toBe('failed')
+    expect(tunnel.error).toContain('ssh link closed')
+    expect(listTunnels(engine)).toHaveLength(0)
+    expect(engine.pool.has(ALIAS)).toBe(false)
   })
 
   it('operator: a healthy tunnel keeps forwarding and a manual stop leaves no link hook behind', async () => {

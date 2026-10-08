@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-.agents/notes/implemented/bug-fix/2026-10-08-ssh-tunnel-dead-link-retirement.md: 04282c66b294b19703258254a69d2d5cf68a4f95
-.agents/notes/implemented/bug-fix/2026-10-08-ssh-tunnel-dead-link-retirement.zh.md: 19142730d9f763af0767c5da3f8505b761ee3709
+.agents/notes/implemented/bug-fix/2026-10-08-ssh-tunnel-dead-link-retirement.md: ef320cc5226dc5dede46a0c84739c35d9408a39b
+.agents/notes/implemented/bug-fix/2026-10-08-ssh-tunnel-dead-link-retirement.zh.md: ce23b90710c68784c4bb356528573222d0234e00

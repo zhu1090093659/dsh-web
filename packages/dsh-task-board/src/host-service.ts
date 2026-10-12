@@ -105,10 +105,18 @@ export interface ScheduledRunContext {
 }
 
 /**
- * Actions that can move an armed trigger. Only these re-arm the native timer;
- * an unrelated card edit leaves the pending fire untouched.
+ * Actions that can change the instant the schedule timer is armed at. Only
+ * these re-arm the native timer; an unrelated card edit leaves the pending fire
+ * untouched.
+ *
+ * The set is the write surface of a rule itself rather than a guess at the UI
+ * flows that reach it: `create` and `import` land a card that already carries
+ * an enabled rule (the new-task dialog and the one-time browser import),
+ * `set-schedule` edits one, and `delete`/`archive` drop one. `update` is
+ * deliberately absent — the update patch cannot carry a schedule — and neither
+ * can the run, move, lineage, permission, verification or label actions.
  */
-const SCHEDULE_WRITE_ACTIONS: ReadonlySet<TaskBoardAction['kind']> = new Set(['set-schedule', 'delete', 'archive'])
+const SCHEDULE_WRITE_ACTIONS: ReadonlySet<TaskBoardAction['kind']> = new Set(['create', 'import', 'set-schedule', 'delete', 'archive'])
 
 /**
  * The native timer face the Host arms through. The cordis `timer` service
@@ -427,9 +435,11 @@ export class TaskBoardHostService {
     }
     const result = this.ledger.applyRequest(requestId, this.withInheritedWorkspace(action, initiator), initiator)
     if (result.runs !== undefined) this.dispatchRuns(result.runs)
-    // A committed schedule write (create / update / toggle / delete) moves the
-    // nearest trigger; re-arm on every action so a newly enabled schedule fires
-    // at its own instant without waiting for the previous target to elapse.
+    // A committed write that can move a rule moves the nearest trigger;
+    // re-arm from the ledger so a created or edited schedule fires at its own
+    // instant instead of waiting out whatever target was armed before it. The
+    // re-arm is derived from the ledger, so a write that moved nothing leaves
+    // the pending fire exactly as it was.
     if (SCHEDULE_WRITE_ACTIONS.has(action.kind)) this.refreshSchedule()
     this.emitStatusChanges(before, initiator)
     if (action.kind === 'delete') this.extensions.emitTaskDeleted({ taskId: action.taskId })
@@ -574,6 +584,11 @@ export class TaskBoardHostService {
       // run, and a launch that DID reach a session, are never refunded.
       if (schedule !== undefined && attached === undefined && launchedSession === undefined) {
         this.ledger.refundScheduledOccurrence(opened.task.id, this.now())
+        // The refund runs after the fire already armed the next target, and a
+        // refunded occurrence can restore one the fire had just cleared (a rule
+        // that spent its last run). Re-arm so the restored occurrence is served
+        // at its own instant rather than lost until some unrelated write.
+        this.refreshSchedule()
       }
       this.settleAndNotify(opened.task.id, opened.execution.id, 'failed', error instanceof Error ? error.message : String(error))
     }

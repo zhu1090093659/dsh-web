@@ -14,7 +14,7 @@
  * @module @linxin666/dsh-client-ui-plugin-manager/host
  */
 
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { closeSync, existsSync, openSync, readSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join, posix, win32 } from 'node:path'
@@ -325,6 +325,51 @@ export function dshSpawnCommand(
   return { command: localNodeExists(localNode) ? localNode : process.execPath, argsPrefix: [binJs] }
 }
 
+/** The Windows directory used when the environment names no system root at all. */
+const WINDOWS_ROOT_FALLBACK = 'C:\\Windows'
+
+/**
+ * Read one environment variable by name, case-insensitively, ignoring blank
+ * values. Windows spells the same variable `ComSpec` and `comspec` depending on
+ * who wrote it (a launcher, a service, the user's own shell), and a plain
+ * object seam carries whatever spelling the caller built.
+ * @param env - the environment to read.
+ * @param name - the variable name, matched without regard to case.
+ * @returns the first non-blank value, or undefined.
+ */
+function envValue(env: NodeJS.ProcessEnv, name: string): string | undefined {
+  const wanted = name.toUpperCase()
+  for (const [key, value] of Object.entries(env)) {
+    if (typeof value !== 'string' || value.trim() === '') continue
+    if (key.toUpperCase() === wanted) return value
+  }
+  return undefined
+}
+
+/**
+ * Absolute path of the Windows command processor, resolved from an environment
+ * rather than from PATH.
+ *
+ * Every `.cmd` shim still has to be executed through cmd.exe, and a bare
+ * `cmd.exe` spawn resolves through the host PATH: a GUI-launched host whose PATH
+ * carries no `%SystemRoot%\system32` (a packaged Desktop launch, a service, a
+ * stripped environment) gets ENOENT for a name that is present on disk, and the
+ * whole feature fails with it (issue #1857). ComSpec is the variable Windows
+ * itself uses for this and names the real binary, so it is preferred; otherwise
+ * the system root is read from `SystemRoot` or `windir`, with the conventional
+ * `C:\Windows` as the last resort.
+ *
+ * Only the Windows branch needs it — a POSIX host spawns the CLI directly.
+ * @param env - the environment to resolve from.
+ * @returns the absolute cmd.exe path.
+ */
+export function windowsCmdPath(env: NodeJS.ProcessEnv = process.env): string {
+  const comSpec = envValue(env, 'ComSpec')
+  if (comSpec !== undefined) return comSpec
+  const root = envValue(env, 'SystemRoot') ?? envValue(env, 'windir') ?? WINDOWS_ROOT_FALLBACK
+  return win32.join(root, 'System32', 'cmd.exe')
+}
+
 /** Build the exact cmd.exe command line required to execute a trusted .cmd shim. */
 export function windowsCmdShimArgs(binary: string, args: readonly string[]): string[] {
   const unsafe = /[&|<>"'`%!\n\r\0]/
@@ -363,6 +408,120 @@ export function withPrependedPath(
 }
 
 /**
+ * Exit code reported for a child that never became a process. Node delivers a
+ * failed spawn as an `error` event whose `close` may never follow, and every
+ * consumer of a spawned child waits for `close` alone.
+ */
+export const SPAWN_FAILURE_EXIT_CODE = -1
+
+/** The spawn failure recorded on a guarded child, read by {@link awaitChildExit}. */
+const SPAWN_FAILURE = new WeakMap<ChildProcess, string>()
+
+/**
+ * Whether an emitted error is a spawn failure rather than a later lifecycle
+ * failure (a kill that did not land, a closed stdio pipe). Only a spawn failure
+ * means the child will never close on its own.
+ * @param error - the emitted error.
+ * @returns true when no process was ever created.
+ */
+function isSpawnFailure(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+  const syscall = (error as { syscall?: unknown }).syscall
+  return typeof syscall === 'string' && syscall.startsWith('spawn')
+}
+
+/**
+ * The operator-facing text of one spawn failure.
+ * @param error - the emitted error.
+ * @returns a readable one-line reason.
+ */
+function spawnFailureText(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+  return 'plugin-manager: 无法启动子进程（' + message + '）'
+}
+
+/**
+ * Attach the error fallback every spawn outlet needs.
+ *
+ * A ChildProcess without an `error` listener turns a spawn failure into an
+ * unhandled `error` event, which is an uncaught exception: the failure of one
+ * CLI call took the whole dsh host process down with it. This records the
+ * reason and, when the child never closed, settles it as a failed exit so a
+ * caller that only waits for `close` neither hangs nor crashes (issue #1857).
+ * @param child - the spawned child.
+ * @returns the same child, guarded.
+ */
+export function guardSpawnFailure(child: ChildProcess): ChildProcess {
+  let closed = false
+  child.on('close', () => { closed = true })
+  child.on('error', (error: unknown) => {
+    if (!isSpawnFailure(error)) return
+    SPAWN_FAILURE.set(child, spawnFailureText(error))
+    if (closed) return
+    closed = true
+    child.emit('close', SPAWN_FAILURE_EXIT_CODE, null)
+  })
+  return child
+}
+
+/** One spawned child's exit verdict. */
+export interface ChildExit {
+  /** The process exit code, or {@link SPAWN_FAILURE_EXIT_CODE} when it never started. */
+  code: number | null
+  /** The spawn failure reason, present only when no process was created. */
+  spawnError?: string
+}
+
+/**
+ * Wait for a spawned child to close, settling on a spawn failure as well.
+ *
+ * The listener pair is attached to every child this package waits on, so the
+ * wait is safe for a child that arrived through a seam ({@link guardSpawnFailure}
+ * guards the real spawn outlets, an injected one may skip it).
+ * @param child - the spawned child.
+ * @returns the exit verdict.
+ */
+export async function awaitChildExit(child: ChildProcess): Promise<ChildExit> {
+  return new Promise<ChildExit>(resolve => {
+    let settled = false
+    const finish = (code: number | null): void => {
+      if (settled) return
+      settled = true
+      const spawnError = SPAWN_FAILURE.get(child)
+      resolve(spawnError === undefined ? { code } : { code, spawnError })
+    }
+    child.on('close', (code: number | null) => { finish(code) })
+    child.on('error', () => { finish(SPAWN_FAILURE_EXIT_CODE) })
+  })
+}
+
+/**
+ * Wait for one spawned CLI child, folding a spawn failure into its output.
+ *
+ * Every caller already reports a non-zero exit through the captured output, so
+ * a process that never started is reported the same readable way instead of as
+ * a silent failure or a hang.
+ * @param child - the spawned child.
+ * @param output - the bounded capture the failure text is appended to.
+ * @param timeoutMs - kill the child after this long; omitted for no deadline.
+ * @returns the exit code, or null when a signal ended the child.
+ */
+export async function awaitCliExit(
+  child: ChildProcess,
+  output: OutputCapture,
+  timeoutMs?: number,
+): Promise<number | null> {
+  const timer = timeoutMs === undefined ? undefined : setTimeout(() => { child.kill() }, timeoutMs)
+  try {
+    const exit = await awaitChildExit(child)
+    if (exit.spawnError !== undefined) capture(Buffer.from(exit.spawnError + '\n'), output)
+    return exit.code
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
+
+/**
  * Spawn the dsh CLI with piped stdio and no shell parsing (see
  * {@link dshSpawnCommand}).
  *
@@ -372,6 +531,9 @@ export function withPrependedPath(
  * `dsh plugin` to pnpm, so without this the update would start and then fail on
  * a missing pnpm instead. This mirrors the packaged Desktop launcher, which
  * prepends its bundled runtime bin to the host it spawns.
+ *
+ * Every child leaves here guarded ({@link guardSpawnFailure}), so a spawn that
+ * fails settles as a non-zero exit instead of raising an unhandled error.
  * @param binary - the resolved dsh CLI path.
  * @param args - arguments after the interpreter/script prefix.
  * @param env - the host environment.
@@ -382,16 +544,18 @@ export function spawnDsh(binary: string, args: string[], env: NodeJS.ProcessEnv)
   const pathApi = process.platform === 'win32' ? win32 : posix
   const childEnv = withPrependedPath(env, pathApi.dirname(binary))
   if (process.platform === 'win32' && command.toLowerCase().endsWith('.cmd')) {
-    return spawn('cmd.exe', windowsCmdShimArgs(command, args), {
+    // cmd.exe by bare name resolves through the host PATH, which a GUI-launched
+    // host need not carry the system directories in (issue #1857).
+    return guardSpawnFailure(spawn(windowsCmdPath(env), windowsCmdShimArgs(command, args), {
       env: childEnv,
       windowsVerbatimArguments: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-    })
+    }))
   }
-  return spawn(command, [...argsPrefix, ...args], {
+  return guardSpawnFailure(spawn(command, [...argsPrefix, ...args], {
     env: command === process.execPath ? { ...childEnv, ELECTRON_RUN_AS_NODE: '1' } : childEnv,
     stdio: ['ignore', 'pipe', 'pipe'],
-  })
+  }))
 }
 
 /**
@@ -423,7 +587,7 @@ export async function detectOfficialChannels(
   const child = spawnImpl(binary, ['--profile', profileName, '--dump-config'], env)
   child.stdout?.on('data', (chunk: Buffer) => { capture(chunk, output) })
   child.stderr?.on('data', (chunk: Buffer) => { capture(chunk, output) })
-  const code = await new Promise<number | null>(resolve => { child.on('close', resolve) })
+  const code = await awaitCliExit(child, output)
   if (code !== 0) return false
   return OFFICIAL_INSTALLER_PATTERN.test(output.read())
 }
@@ -605,9 +769,7 @@ export class CliGateway {
     const child = this.spawnCli(binary, args)
     child.stdout?.on('data', (chunk: Buffer) => { capture(chunk, output) })
     child.stderr?.on('data', (chunk: Buffer) => { capture(chunk, output) })
-    const timer = setTimeout(() => { child.kill() }, timeoutMs)
-    const code = await new Promise<number | null>(resolve => { child.on('close', resolve) })
-    clearTimeout(timer)
+    const code = await awaitCliExit(child, output, timeoutMs)
     return { code, output: output.read().trim() }
   }
 
@@ -1160,11 +1322,7 @@ export class CliGateway {
     const child = this.spawnCli(binary, args)
     child.stdout?.on('data', (chunk: Buffer) => { capture(chunk, output) })
     child.stderr?.on('data', (chunk: Buffer) => { capture(chunk, output) })
-    const timer = setTimeout(() => { child.kill() }, timeoutMs)
-    const code = await new Promise<number | null>(resolve => {
-      child.on('close', resolve)
-    })
-    clearTimeout(timer)
+    const code = await awaitCliExit(child, output, timeoutMs)
     if (code !== 0) {
       job.phase = 'error'
       const tail = output.read().trim()
@@ -1295,9 +1453,7 @@ export class CliGateway {
       const child = this.spawnCli(binary, ['plugin', '--profile', this.facts.profileName, 'remove', name])
       child.stdout?.on('data', (chunk: Buffer) => { capture(chunk, output) })
       child.stderr?.on('data', (chunk: Buffer) => { capture(chunk, output) })
-      const timer = setTimeout(() => { child.kill() }, REMOVE_TIMEOUT_MS)
-      const code = await new Promise<number | null>(resolve => { child.on('close', resolve) })
-      clearTimeout(timer)
+      const code = await awaitCliExit(child, output, REMOVE_TIMEOUT_MS)
       rolledBack = code === 0
       tail = output.read().trim()
     }
@@ -1376,11 +1532,7 @@ export class CliGateway {
     const child = this.spawnCli(binary, ['--profile', this.facts.profileName, '--dump-config'])
     child.stdout?.on('data', (chunk: Buffer) => { capture(chunk, verifyOutput) })
     child.stderr?.on('data', (chunk: Buffer) => { capture(chunk, verifyOutput) })
-    const timer = setTimeout(() => { child.kill() }, 90_000)
-    const code = await new Promise<number | null>(resolve => {
-      child.on('close', resolve)
-    })
-    clearTimeout(timer)
+    const code = await awaitCliExit(child, verifyOutput, 90_000)
     if (code === 0) return
     const tail = verifyOutput.read().trim()
     if (name === undefined) {

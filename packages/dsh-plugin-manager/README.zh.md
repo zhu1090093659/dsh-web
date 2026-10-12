@@ -81,7 +81,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-plugin-manager
 
 - 信任边界是 loopback 门禁：每条网关路由都要求 loopback socket 地址、loopback Host 头与非跨站来源（socket + Host + Origin + `sec-fetch-site` 四重），与官方安装器通道同一权威。远程来源的浏览器没有可达路径；被拒请求返回 HTTP 403 与 `{ ok: false, error: "forbidden: loopback-only" }`。
 - 变更类路由（install / update / remove / set-enabled / restart）不带 token：loopback 权威即本机用户，与官方通道同模型。重启路由是唯一作用在进程层面的路由：它绝不臆造命令行（只重放本进程自身的 `execPath` + argv，并剔除 inspector 开关），对无法确认为终端启动的宿主拒绝重拉，在打包桌面应用下只让本进程退出而把后续交给外壳。因此任何本机进程都能驱动插件安装与卸载，且 npm 安装会执行包的 install 脚本——请将本网关视为「设计上即本机代码执行」，绝不暴露到 loopback 之外。
-- 安装 spec 与包 id 含命令行展开字符或控制字符时一律拒绝。Windows 下，npm shim 会解析为 `node.exe` 加包内 `bin.js`；DSH Desktop 打包 shim 附近没有 npm 布局，因此通过带完整预引用、逐字参数封套的 `cmd.exe /d /s /c` 执行。桌面 profile 从打包启动器环境值或持久化的 profile 选择中读取；应用自有 profile 的安装、更新与卸载由 host 半区直接调用宿主挂载的官方 `pluginManager` 服务（与官方插件页经自身 RPC 面驱动的是同一个写入器），其权威同样是 loopback 门禁加用户点击。
+- 安装 spec 与包 id 含命令行展开字符或控制字符时一律拒绝。Windows 下，npm shim 会解析为 `node.exe` 加包内 `bin.js`；DSH Desktop 打包 shim 附近没有 npm 布局，因此通过带完整预引用、逐字参数封套的 `cmd.exe /d /s /c` 执行；该命令解释器按绝对路径定位（`ComSpec`，其次 `%SystemRoot%\System32\cmd.exe`）而不再依赖裸名的 PATH 查找，因此 PATH 缺系统目录的宿主仍能执行 shim；若 spawn 仍失败，则该次作业以失败结算并带出原因，绝不带走 dsh 宿主进程。桌面 profile 从打包启动器环境值或持久化的 profile 选择中读取；应用自有 profile 的安装、更新与卸载由 host 半区直接调用宿主挂载的官方 `pluginManager` 服务（与官方插件页经自身 RPC 面驱动的是同一个写入器），其权威同样是 loopback 门禁加用户点击。
 - 变更经同一队列串行，并发任务的 before/after profile 快照绝不交错。安装只有在依赖真实落入 profile 后才判 done（卸载以依赖消失为准），绝不轻信成功退出码。
 - 启停操作会在该变更队列内重新读取最新 profile 清单，并在写入前以 `404` 拒绝过期或未知的包 id，因此卸载后遗留在面板里的旧行不会制造孤儿 `disabled` 覆盖。
 - 冲突处置是 owner-aware 的：重复入口 id 或引用不可解析包的 insert 行会经官方 remove 路径回滚**新**包；网关绝不对共享 id 写 `disabled` 行（那既阻止不了 loader 的重复检查，又会误伤现有插件）。

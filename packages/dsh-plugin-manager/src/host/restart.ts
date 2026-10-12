@@ -132,11 +132,13 @@ const launch = (attempt) => {
   const child = cp.spawn(job.execPath, job.argv, { cwd: job.cwd, env: process.env, detached: true, stdio: ['ignore', fd, fd] });
   child.unref();
   let code = null;
+  let spawnError = null;
   child.on('exit', (value) => { code = value; });
+  child.on('error', (err) => { spawnError = err; log('relaunch spawn error: ' + err.message); });
   setTimeout(() => {
-    if (code === null) { log('relaunch started (pid ' + child.pid + ')'); fs.closeSync(fd); return; }
-    if (attempt < 4) { log('relaunch exited with ' + code + '; retrying'); launch(attempt + 1); return; }
-    log('relaunch gave up after exit ' + code);
+    if (code === null && spawnError === null) { log('relaunch started (pid ' + child.pid + ')'); fs.closeSync(fd); return; }
+    if (attempt < 4) { log('relaunch failed (' + (spawnError === null ? 'exit ' + code : spawnError.message) + '); retrying'); launch(attempt + 1); return; }
+    log('relaunch gave up after ' + (spawnError === null ? 'exit ' + code : spawnError.message));
     fs.closeSync(fd);
   }, 3000);
 };
@@ -183,6 +185,17 @@ export function startRelaunchHelper(command: RelaunchCommand, logPath: string = 
       stdio: 'ignore',
     })
     helper.unref()
+    // A spawn that fails after the call returns is an unhandled `error` event,
+    // which is an uncaught exception and would take the dsh host down with it.
+    // Journal it instead: the exit this helper was going to replace simply does
+    // not happen, and the journal says why.
+    helper.on('error', (error: Error) => {
+      try {
+        appendFileSync(logPath, new Date().toISOString() + ' helper spawn error: ' + error.message + '\n')
+      } catch {
+        // A missing log is not worth failing the restart over.
+      }
+    })
     return helper.pid !== undefined
   } catch (error) {
     try {

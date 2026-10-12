@@ -398,22 +398,48 @@ describe('SkillPanel pathless rows (#1842)', () => {
     mount_.dispose()
   })
 
-  it('user sees no toggle, edit or delete on either pathless row', async () => {
+  it('user sees an enable switch on the provider row but no file controls on either row', async () => {
     // Given the same two pathless rows
     const api = fakeApi([async () => pathlessPayload])
     const mount_ = mount(api)
     await flush()
 
     // When the rows render
-    for (const name of ['provider-skill', 'virtual-skill']) {
-      const element = row(mount_.container, name)
-      // Then neither offers a control the write routes would refuse: the
-      // classification is display-only and never grants a writable identity
-      expect(element.querySelector('[role="switch"]')).toBeNull()
+    const providerRow = row(mount_.container, 'provider-skill')
+    const virtualRow = row(mount_.container, 'virtual-skill')
+
+    // Then the plugin-provided file carries the switch (#1854): the host
+    // records it in the panel's own store, which needs no writable path
+    const providerSwitch = providerRow.querySelector('[role="switch"]')
+    expect(providerSwitch?.getAttribute('aria-checked')).toBe('true')
+    // And the truly fileless registration still has nothing to switch
+    expect(virtualRow.querySelector('[role="switch"]')).toBeNull()
+    // Neither offers a file control the write routes would refuse
+    for (const element of [providerRow, virtualRow]) {
       const labels = Array.from(element.querySelectorAll('button')).map(b => b.textContent?.trim())
       expect(labels).not.toContain('编辑')
       expect(labels).not.toContain('删除')
     }
+    mount_.dispose()
+  })
+
+  it('user switching off a plugin-provided skill certifies its provider identity instead of a path', async () => {
+    // Given a panel listing one plugin-provided skill
+    const setProviderEnabled = vi.fn(async () => ({ ok: true as const, name: 'provider-skill', provider: 'orca', disabled: true }))
+    const setEnabled = vi.fn(async () => ({ name: '', enabled: false }))
+    const api = fakeApi([async () => pathlessPayload], { setProviderEnabled, setEnabled })
+    const mount_ = mount(api)
+    await flush()
+
+    // When the user flips that row's enable switch
+    const toggle = row(mount_.container, 'provider-skill').querySelector('[role="switch"]') as HTMLButtonElement
+    await act(async () => { toggle.click() })
+    await flush()
+
+    // Then the host receives the (provider, name) pair and no path
+    expect(setProviderEnabled).toHaveBeenCalledWith('provider-skill', 'orca', false)
+    // And the row's own file toggle was never used
+    expect(setEnabled).not.toHaveBeenCalled()
     mount_.dispose()
   })
 })

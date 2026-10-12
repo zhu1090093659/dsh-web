@@ -19,11 +19,26 @@ function providerLabel(provider: string): string {
 }
 
 /**
+ * Whether this row carries an enable switch.
+ *
+ * A row with a writable path switches by rewriting its own SKILL.md
+ * frontmatter. A plugin-provided file (issue #1854) has no such path, so its
+ * switch is recorded in the panel's own store; a truly fileless registration
+ * has nothing to switch and still shows none.
+ * @param skill - the row's entry.
+ * @returns whether the row offers the switch.
+ */
+function canToggle(skill: SkillEntry): boolean {
+  return skill.path !== undefined || skill.fileState === 'provider-file'
+}
+
+/**
  * The local-file badge for a row that the write routes cannot serve.
  *
  * A skill with a plugin-supplied file and a skill with no file at all are
  * different facts (issue #1842): the first is "Provided by plugin", only the
- * second is "No local file". Both are pathless, so neither offers controls.
+ * second is "No local file". Both are pathless, so neither offers file
+ * controls.
  * @param skill - the row's entry.
  * @returns the badge copy and its tooltip.
  */
@@ -55,14 +70,16 @@ function SkillRow({ skill, api, onChanged, onEdit }: { skill: SkillEntry; api: S
   const busyRef = useRef(false)
 
   const toggle = async (): Promise<void> => {
-    if (busyRef.current) return
-    const path = skill.path
-    if (path === undefined) return
+    if (busyRef.current || !canToggle(skill)) return
     busyRef.current = true
     setBusy(true)
     setError(undefined)
     try {
-      await api.setEnabled(skill.name, path, !skill.modelInvocable)
+      // Two identities, one switch: a row with a file certifies the path the
+      // write routes re-scan, a plugin-provided row certifies the
+      // (provider, name) pair the host records in the panel's own store.
+      if (skill.path !== undefined) await api.setEnabled(skill.name, skill.path, !skill.modelInvocable)
+      else await api.setProviderEnabled(skill.name, skill.provider, !skill.modelInvocable)
       onChanged()
     } catch (err) {
       setError(tt('list.toggleFailed', { error: err instanceof Error ? err.message : String(err) }))
@@ -121,7 +138,7 @@ function SkillRow({ skill, api, onChanged, onEdit }: { skill: SkillEntry; api: S
             {tt('list.invokable', { marks: invokableMarks(skill) })}
           </span>
         )}
-        {skill.path !== undefined && (
+        {canToggle(skill) && (
           <button
             type="button"
             className={css.switch}

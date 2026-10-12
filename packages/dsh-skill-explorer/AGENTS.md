@@ -9,8 +9,10 @@ DSH Web GUI 的**技能中心**插件：侧边栏「技能中心」入口打开�
 ## 本包要点
 
 - host 半区（`src/index.ts` + `src/routes.ts` + `src/access.ts` +
-  `src/collect.ts` + `src/frontmatter.ts`）提供 `/api/dsh-skill-explorer/*`
-  路由族（list / set-enabled / create / delete / health），默认 loopback
+  `src/collect.ts` + `src/frontmatter.ts` + `src/provider-toggles.ts`）提供
+  `/api/dsh-skill-explorer/*`
+  路由族（list / set-enabled / set-provider-enabled / create / delete /
+  health），默认 loopback
   围栏，已配对设备 cookie 为额外放行路径（不硬依赖 remote-web-ui）；数据来自
   文件系统扫描（官方根约定）+ `ctx.skills` 注册表合并。
 - **自定义根有两个来源**：本插件 config 的 `customSkillDirs`，以及在用
@@ -19,6 +21,13 @@ DSH Web GUI 的**技能中心**插件：侧边栏「技能中心」入口打开�
   派生逻辑是 `collect.ts` 的 `customSkillDirsFromLoader` + `normalizeSkillRoots`，
   由 `index.ts` 合成一个解析函数传给路由；写路由与 list 路由必须用同一个
   `panelCwd` 解析工作区，否则跨工作区会 409。改这里时保持两半一致。
+- **插件提供技能（provider-file）的开关是面板本地状态**：`provider-toggles.ts`
+  把 `(provider, 技能名)` 组合写入
+  `$DSH_HOME/dsh-skill-explorer/provider-toggles.json`（原子写），`collect.ts`
+  的 `applyProviderToggles` 在收集末尾据此把该行的 `modelInvocable` 置
+  false。停用要求最新收集仍能解析出 provider-file 行；启用只删记录、无条件
+  放行。它只改变面板的可调用视图，宿主注册表照旧加载该技能——文案与 README
+  必须如实说明，不要写成「模型收不到」。
 - client 半区（`src/client/`）经官方槽位注册**原生中栏面板**：`native-panel.tsx`
   往 shell 自己的面板列表（`sidebar.panellist`）贡献一行、往布局的 keyed
   `main` 槽贡献页面（`src/client/panel/`，`SkillPanel.tsx` 壳 + 技能/创建

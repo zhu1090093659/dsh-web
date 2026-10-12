@@ -31,7 +31,9 @@ A visual Skill Explorer for DeepSeek Harness (DSH) Web GUI and desktop client: b
   first; Escape clears it) and stacks with the workspace picker. Each row shows
   description, when-to-use, invocation marks, an enable/disable switch
   (rewrites `disable-model-invocation` in the SKILL.md frontmatter,
-  hot-refreshed by the model catalog), an edit action and a delete button
+  hot-refreshed by the model catalog; a plugin-provided file has no such path,
+  so its switch is recorded in the panel's own store instead), an edit action
+  and a delete button
   (moves the file into `.trash`, recoverable). The refresh control hides while
   a load runs.
 - **Create tab**: a form to create a new skill under the user root
@@ -54,7 +56,11 @@ A visual Skill Explorer for DeepSeek Harness (DSH) Web GUI and desktop client: b
   listed as **"Provided by plugin"** — the file exists, it just sits outside
   the skill roots this panel scans. Only a registration that reports no file
   at all is listed as **"No local file"**. Both stay pathless, so neither row
-  offers a toggle, edit, or delete control that would answer 404.
+  offers an edit or delete control that would answer 404. A **"Provided by
+  plugin"** row does carry the enable switch (#1854): because the file belongs
+  to the provider, the host records the switch in the panel's own store and
+  the row reads as switched off (see the known limitations). Only a
+  **"No local file"** row has no switch at all.
 - A skill is listed only when the official provider would load it: its
   SKILL.md declares a non-empty `name` and `description`, and the name
   satisfies the official skill-name grammar. A file the official provider
@@ -93,6 +99,7 @@ sidebar.
 | `/api/dsh-skill-explorer/list` | GET | Grouped skill list |
 | `/api/dsh-skill-explorer/read` | GET | One skill's editable fields and body (`?name=&path=`) |
 | `/api/dsh-skill-explorer/set-enabled` | POST | Enable/disable (rewrites frontmatter) |
+| `/api/dsh-skill-explorer/set-provider-enabled` | POST | Enable/disable a plugin-provided skill (recorded in the panel's own store) |
 | `/api/dsh-skill-explorer/create` | POST | Create a skill (user/project root) |
 | `/api/dsh-skill-explorer/update` | POST | Edit an existing skill in place (name and location unchanged) |
 | `/api/dsh-skill-explorer/delete` | POST | Delete (move into .trash) |
@@ -120,6 +127,16 @@ sidebar.
   skill name or location; it carries the current `disable-model-invocation`
   value over, so an edit can never silently re-enable a disabled skill. Linked
   skills are refused here for the same reason deletion is (see below).
+- The plugin-provided switch route stores one `(provider, skill name)` pair
+  per record in `$DSH_HOME/dsh-skill-explorer/provider-toggles.json`
+  (atomic temp file + fsync + rename; a corrupt, foreign, or oversized
+  document degrades to "nothing switched off"). It never receives or writes a
+  path: the client sends the identity, never a location. Disabling requires a
+  fresh collection to still resolve that pair to a `provider-file` row, so
+  the store can only ever hold identities this panel actually showed; enabling
+  only removes a record, so it is allowed unconditionally and a stored record
+  stays removable after its plugin is gone. Both directions are idempotent, so
+  a double click or a retried request cannot stack duplicates.
 - Skill content is user-authored markdown; the create form caps content at
   64KB, and the edit route enforces the same cap.
 - The panel renders skill descriptions with text nodes only (no HTML
@@ -159,6 +176,11 @@ sidebar.
   viewing scope. A skill absent from the panel is therefore not necessarily
   absent from the model: the official `skill` tool catalog is the authority on
   what a session can load.
+- The switch on a **"Provided by plugin"** row is a panel-local view
+  decision: it changes what this panel lists as invocable, not what the host
+  registry loads, so the model still receives the skill. Taking such a skill
+  away from the model for real means removing or disabling it where its
+  provider gets it.
 - Linked skills cannot be deleted (see the security model); enable/disable works
   normally on them (rewriting the target's `SKILL.md` frontmatter). Both
   directory and single-file links list normally; a single-file link (pointing

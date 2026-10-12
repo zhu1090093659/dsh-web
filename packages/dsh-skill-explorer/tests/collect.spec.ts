@@ -426,6 +426,79 @@ describe('provider file vs virtual classification (#1842)', () => {
   })
 })
 
+describe('panel switches for plugin-provided skills (#1854)', () => {
+  /** Collect the shared fixture registry over the shared roots, plus a store. */
+  const collectWithStore = async (providerDisabledSkills: Array<{ name: string; provider: string }>) => {
+    const { skills } = await collectSkills({
+      cwd: PROJ,
+      projectRoots: [PROJ],
+      customSkillDirs: [CUSTOM],
+      dshHome: HOME,
+      agentsHome: AGENTS,
+      registry,
+      providerDisabledSkills,
+    })
+    return Object.fromEntries(skills.map((s) => [s.name, s]))
+  }
+
+  it('operator sees a switched-off plugin-provided skill reported as not model invocable', async () => {
+    // Given the panel store holding the provider skill the user switched off
+    const byName = await collectWithStore([{ name: 'computer-use', provider: 'orca' }])
+
+    // When the collection is served
+    // Then the row reads as switched off, exactly like a skill whose own
+    // frontmatter disables model invocation, and it keeps its own classification
+    expect(byName['computer-use'].modelInvocable).toBe(false)
+    expect(byName['computer-use'].fileState).toBe('provider-file')
+    // And the provider's own user-invocable policy is untouched
+    expect(byName['computer-use'].userInvocable).toBe(false)
+    // Meanwhile the rows with no record stay invocable
+    expect(byName['embedded-hello'].modelInvocable).toBe(true)
+    expect(byName['poc-first'].modelInvocable).toBe(true)
+  })
+
+  it('operator sees a store record never reach a skill that has its own file', async () => {
+    // Given a store record naming a scanned skill (whose own switch rewrites
+    // the SKILL.md frontmatter instead)
+    const byName = await collectWithStore([{ name: 'user-tool', provider: 'filesystem' }])
+
+    // When the collection is served
+    // Then the scanned row is untouched: the store speaks only for provider rows
+    expect(byName['user-tool'].modelInvocable).toBe(true)
+    expect(byName['user-tool'].fileState).toBe('editable')
+    expect(byName['user-tool'].path).toBe(join(HOME, 'skills', 'user-tool', 'SKILL.md'))
+  })
+
+  it('operator sees a store record naming a virtual registration change nothing', async () => {
+    // Given a store record for a registration that reports no file at all
+    const byName = await collectWithStore([{ name: 'embedded-hello', provider: 'runtime' }])
+
+    // When the collection is served
+    // Then it stays as the registry reported it
+    expect(byName['embedded-hello'].modelInvocable).toBe(true)
+    expect(byName['embedded-hello'].fileState).toBe('virtual')
+  })
+
+  it('operator sees a store record naming a skill the panel does not list change nothing', async () => {
+    // Given a stale record for a plugin that is no longer installed
+    const byName = await collectWithStore([{ name: 'gone-skill', provider: 'orca' }])
+
+    // When the collection is served
+    // Then no listed row is affected, including the same-named one
+    expect(byName['computer-use'].modelInvocable).toBe(true)
+    expect(byName['gone-skill']).toBeUndefined()
+  })
+
+  it('operator sees a store record from a different provider leave the row alone', async () => {
+    // Given a record for the same skill name but another provider
+    const byName = await collectWithStore([{ name: 'computer-use', provider: 'other-plugin' }])
+
+    // When the collection is served
+    // Then the identity is the pair, so the listed row keeps its state
+    expect(byName['computer-use'].modelInvocable).toBe(true)
+  })
+})
+
 describe('official acceptance and precedence (aligned with dsh-skill)', () => {
   it('operator sees a file the official provider discards left out of the panel', async () => {
     // Given project roots holding one valid skill, one file without

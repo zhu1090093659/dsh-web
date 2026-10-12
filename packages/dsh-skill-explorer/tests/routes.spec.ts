@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 import { ROUTES, makeRoutes } from '../src/routes.ts'
+import { providerToggleFile } from '../src/provider-toggles.ts'
 
 const TMP = mkdtempSync(join(tmpdir(), 'skill-explorer-routes-'))
 const HOME = join(TMP, 'home')
@@ -852,3 +853,223 @@ describe('set-enabled json body failure contract (128 KiB object-only reader)', 
     expect(res.headers()['referrer-policy']).toBe('no-referrer')
   })
 })
+
+describe('plugin-provided skill switch (#1854)', () => {
+  /**
+   * Isolated host whose registry contributes one plugin-provided skill — a
+   * provider reports a real instruction file the panel's scan cannot resolve —
+   * while a scanned project skill keeps its own writable path, so the two
+   * switches can be told apart.
+   */
+  function providerFixture(): {
+    root: string
+    home: string
+    /** Mount the route family over the fixture home (again, as a restart does). */
+    mount(): ReturnType<typeof makeRoutes>
+  } {
+    const root = mkdtempSync(join(tmpdir(), 'skill-explorer-provider-'))
+    const home = join(root, 'home')
+    const project = join(root, 'project')
+    mkdirSync(join(project, '.git'), { recursive: true })
+    mkdirSync(join(project, '.dsh', 'skills', 'scanned-skill'), { recursive: true })
+    writeFileSync(
+      join(project, '.dsh', 'skills', 'scanned-skill', 'SKILL.md'),
+      '---\nname: scanned-skill\ndescription: project skill\n---\n',
+      'utf8',
+    )
+    return {
+      root,
+      home,
+      mount: () => makeRoutes(emptyCtx, {
+        ...deps,
+        dshHome: home,
+        agentsHome: join(root, 'agents'),
+        customSkillDirs: [],
+        activeSessionCwds: () => [project],
+        registry: {
+          snapshot: async () => ({
+            complete: true,
+            skills: [{
+              name: 'computer-use',
+              description: 'plugin-provided skill',
+              provider: 'orca',
+              source: 'bundled',
+              path: join(root, 'bundled', 'computer-use', 'SKILL.md'),
+            }],
+          }),
+        },
+      }),
+    }
+  }
+
+  /** Post one switch request through a route set. */
+  async function switchSkill(
+    routes: ReturnType<typeof makeRoutes>,
+    body: Record<string, unknown>,
+  ): Promise<{ status: number; payload: { error?: string; ok?: boolean; disabled?: boolean } }> {
+    const captured = response()
+    await routes.find(route => route.path === ROUTES.setProviderEnabled)!.handler(
+      request(ROUTES.setProviderEnabled, 'POST', { body }),
+      captured.res,
+    )
+    return { status: captured.status(), payload: JSON.parse(captured.body()) }
+  }
+
+  /** Serve the panel's list request and return one row of it. */
+  async function listedRow(routes: ReturnType<typeof makeRoutes>, name: string) {
+    const captured = response()
+    await routes.find(route => route.path === ROUTES.list)!.handler(request(ROUTES.list, 'GET'), captured.res)
+    expect(captured.status()).toBe(200)
+    const payload = JSON.parse(captured.body())
+    return payload.groups
+      .flatMap((group: { skills: Array<{ name: string }> }) => group.skills)
+      .find((skill: { name: string }) => skill.name === name)
+  }
+
+  it('user switching off a plugin-provided skill sees it as not model invocable in the next list', async () => {
+    // Given a panel that listed the plugin-provided skill as model invocable
+    const fixture = providerFixture()
+    try {
+      const routes = fixture.mount()
+      expect((await listedRow(routes, 'computer-use')).modelInvocable).toBe(true)
+
+      // When the user flips that row's switch
+      const switched = await switchSkill(routes, { name: 'computer-use', provider: 'orca', enabled: false })
+
+      // Then the route confirms the stored state
+      expect(switched.status).toBe(200)
+      expect(switched.payload).toEqual({ ok: true, name: 'computer-use', provider: 'orca', disabled: true })
+      // And the next list shows the row as switched off, still pathless
+      const row = await listedRow(routes, 'computer-use')
+      expect(row.modelInvocable).toBe(false)
+      expect(row.userInvocable).toBe(true)
+      expect(row.fileState).toBe('provider-file')
+      expect(row.path).toBeUndefined()
+      // And the scanned skill keeps its own switch untouched
+      const scanned = await listedRow(routes, 'scanned-skill')
+      expect(scanned.modelInvocable).toBe(true)
+      expect(scanned.path).toBe(join(fixture.root, 'project', '.dsh', 'skills', 'scanned-skill', 'SKILL.md'))
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('user switching the same plugin-provided skill off twice stores one record', async () => {
+    // Given the same skill already recorded as switched off
+    const fixture = providerFixture()
+    try {
+      const routes = fixture.mount()
+      await switchSkill(routes, { name: 'computer-use', provider: 'orca', enabled: false })
+
+      // When the user flips the switch again (a double click, a retried request)
+      const repeated = await switchSkill(routes, { name: 'computer-use', provider: 'orca', enabled: false })
+
+      // Then the record is not duplicated
+      expect(repeated.status).toBe(200)
+      const stored = JSON.parse(readFileSync(providerToggleFile(fixture.home), 'utf8'))
+      expect(stored.disabled).toEqual([{ name: 'computer-use', provider: 'orca' }])
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('user whose host restarts still sees the plugin-provided skill switched off', async () => {
+    // Given a host that recorded the switch and went away
+    const fixture = providerFixture()
+    try {
+      await switchSkill(fixture.mount(), { name: 'computer-use', provider: 'orca', enabled: false })
+
+      // When the routes are mounted again over the same home (a restart)
+      const restarted = await listedRow(fixture.mount(), 'computer-use')
+
+      // Then the stored switch is still honored
+      expect(restarted.modelInvocable).toBe(false)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('user switching the plugin-provided skill back on restores its invocable view', async () => {
+    // Given a plugin-provided skill the user switched off
+    const fixture = providerFixture()
+    try {
+      const routes = fixture.mount()
+      await switchSkill(routes, { name: 'computer-use', provider: 'orca', enabled: false })
+
+      // When the user flips the switch back
+      const restored = await switchSkill(routes, { name: 'computer-use', provider: 'orca', enabled: true })
+
+      // Then the record is gone and the row is invocable again
+      expect(restored.payload.disabled).toBe(false)
+      expect(JSON.parse(readFileSync(providerToggleFile(fixture.home), 'utf8')).disabled).toEqual([])
+      expect((await listedRow(routes, 'computer-use')).modelInvocable).toBe(true)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('user switching off a skill the panel does not list as plugin-provided is refused', async () => {
+    // Given two identities the panel never showed as plugin-provided: a name no
+    // registry reports, and a scanned skill that has its own writable path
+    const fixture = providerFixture()
+    try {
+      const routes = fixture.mount()
+
+      // When the user posts a switch for either of them
+      const unknown = await switchSkill(routes, { name: 'ghost-skill', provider: 'orca', enabled: false })
+      const scanned = await switchSkill(routes, { name: 'scanned-skill', provider: 'filesystem', enabled: false })
+
+      // Then both are refused, exactly like a write route addressing a stale row
+      expect(unknown.status).toBe(404)
+      expect(scanned.status).toBe(404)
+      expect(scanned.payload.error).toContain('scanned-skill')
+      // And the store is never created by a refused request
+      expect(existsSync(providerToggleFile(fixture.home))).toBe(false)
+      // And the scanned row still reads as invocable
+      expect((await listedRow(routes, 'scanned-skill')).modelInvocable).toBe(true)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('user switching a skill back on is allowed even for a skill the panel no longer lists', async () => {
+    // Given no store at all — a plugin can be uninstalled while its record is gone
+    const fixture = providerFixture()
+    try {
+      const routes = fixture.mount()
+
+      // When the user posts an enable for a name the panel does not list
+      const restored = await switchSkill(routes, { name: 'ghost-skill', provider: 'orca', enabled: true })
+
+      // Then it succeeds: removing a record can never widen anything
+      expect(restored.status).toBe(200)
+      expect(restored.payload.disabled).toBe(false)
+      expect(existsSync(providerToggleFile(fixture.home))).toBe(false)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('user posting a malformed switch request gets 400 and writes nothing', async () => {
+    // Given requests missing the state, carrying an ungrammatical name, and
+    // carrying a provider id no provider could have
+    const fixture = providerFixture()
+    try {
+      const routes = fixture.mount()
+
+      // When each one reaches the route
+      const missingState = await switchSkill(routes, { name: 'computer-use', provider: 'orca' })
+      const badName = await switchSkill(routes, { name: 'Not_A_Skill', provider: 'orca', enabled: false })
+      const badProvider = await switchSkill(routes, { name: 'computer-use', provider: 'p'.repeat(201), enabled: false })
+
+      // Then each is refused before any store is touched
+      expect(missingState.status).toBe(400)
+      expect(badName.status).toBe(400)
+      expect(badProvider.status).toBe(400)
+      expect(existsSync(providerToggleFile(fixture.home))).toBe(false)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+})
+

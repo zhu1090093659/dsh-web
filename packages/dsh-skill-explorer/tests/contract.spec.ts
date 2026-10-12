@@ -25,7 +25,7 @@ describe('host plugin contract', () => {
       .sort()
     const hostPaths = [...new Set(Object.values(ROUTES))].sort()
     // The client mirrors the business routes; health is host-only.
-    expect(clientPaths).toEqual(['/api/dsh-skill-explorer/create', '/api/dsh-skill-explorer/delete', '/api/dsh-skill-explorer/list', '/api/dsh-skill-explorer/read', '/api/dsh-skill-explorer/set-enabled', '/api/dsh-skill-explorer/update'])
+    expect(clientPaths).toEqual(['/api/dsh-skill-explorer/create', '/api/dsh-skill-explorer/delete', '/api/dsh-skill-explorer/list', '/api/dsh-skill-explorer/read', '/api/dsh-skill-explorer/set-enabled', '/api/dsh-skill-explorer/set-provider-enabled', '/api/dsh-skill-explorer/update'])
     for (const path of clientPaths) expect(hostPaths).toContain(path)
     expect(hostPaths).toContain('/api/dsh-skill-explorer/health')
     // And the client never reintroduces a root-absolute route.

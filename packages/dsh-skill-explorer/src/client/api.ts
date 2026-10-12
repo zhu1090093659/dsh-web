@@ -16,6 +16,7 @@ const API = {
   list: 'api/dsh-skill-explorer/list',
   read: 'api/dsh-skill-explorer/read',
   setEnabled: 'api/dsh-skill-explorer/set-enabled',
+  setProviderEnabled: 'api/dsh-skill-explorer/set-provider-enabled',
   create: 'api/dsh-skill-explorer/create',
   update: 'api/dsh-skill-explorer/update',
   delete: 'api/dsh-skill-explorer/delete',
@@ -27,7 +28,8 @@ const API = {
  * - `editable`: a filesystem scan resolved the SKILL.md; `path` is writable.
  * - `provider-file`: a plugin provider reports a real instruction file the
  *   panel's scan did not resolve. The file exists, but the write routes do not
- *   trust this path, so the row offers no controls.
+ *   trust this path, so the row offers no file controls — it does carry the
+ *   enable switch, which the host records in the panel's own store (#1854).
  * - `virtual`: no instruction file exists; "no local file" is accurate.
  */
 export type SkillFileState = 'editable' | 'provider-file' | 'virtual'
@@ -94,6 +96,19 @@ export class SkillApi {
   /** Enable or disable a skill (rewrites disable-model-invocation). */
   async setEnabled(name: string, path: string, enabled: boolean): Promise<{ name: string; enabled: boolean; modelInvocable: boolean; path?: string }> {
     return this.request(API.setEnabled, { method: 'POST', body: { name, path, enabled } })
+  }
+
+  /**
+   * Switch a plugin-provided skill off/on in this panel.
+   *
+   * There is no path to certify: the row's file belongs to the provider and
+   * sits outside the roots this panel scans, so the host records the
+   * (provider, name) pair in the panel's own store instead of rewriting a
+   * SKILL.md the panel does not own. The host answers with the stored state;
+   * the invocable view itself comes from the next list call.
+   */
+  async setProviderEnabled(name: string, provider: string | undefined, enabled: boolean): Promise<{ ok: true; name: string; provider: string; disabled: boolean }> {
+    return this.request(API.setProviderEnabled, { method: 'POST', body: { name, provider, enabled } })
   }
 
   /** Create a skill file under the user or project root. */

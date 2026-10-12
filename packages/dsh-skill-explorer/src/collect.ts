@@ -16,6 +16,9 @@ import { existsSync } from 'node:fs'
 import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, resolve, sep } from 'node:path'
 import { parseFrontmatter } from './frontmatter.ts'
+// Type-only: the store owns the identity type, so importing it cannot pull
+// the persistence module (which imports isSkillName back from here) into a cycle.
+import type { ProviderSkillIdentity } from './provider-toggles.ts'
 
 /** Display order and copy for each source level. */
 export interface SourceGroup {
@@ -156,6 +159,12 @@ export interface CollectOptions {
   agentsHome: string
   /** ctx.skills registry (snapshot). */
   registry: { snapshot(options: { cwd: string }): Promise<{ skills: RegistrySkill[]; complete: boolean }> }
+  /**
+   * Plugin-provided skills the panel has switched off (see
+   * provider-toggles.ts). Honored for `provider-file` rows only; absent means
+   * no switch was ever used.
+   */
+  providerDisabledSkills?: readonly ProviderSkillIdentity[]
 }
 
 /** Result of a collection pass. */
@@ -407,6 +416,33 @@ function serializeRegistry(skill: RegistrySkill): SkillEntry {
   }
 }
 
+/**
+ * Apply the panel's provider-skill switches to a finished collection.
+ *
+ * Only a `provider-file` row can carry such a switch: an `editable` row's
+ * switch rewrites the SKILL.md frontmatter (and is therefore already reflected
+ * by the scan), and a `virtual` row has no file at all, so both are left
+ * exactly as the scan and registry reported them. Like the frontmatter field
+ * the local switch rewrites, this clears `modelInvocable` only — the provider's
+ * own `userInvocable` policy is not the model's automatic-call decision and
+ * stays as registered.
+ *
+ * It is deliberately the LAST step of the collection: the registry merge can
+ * replace a scanned entry with the registry's own (pathless) one, so applying
+ * the store earlier would let merge order decide whether a row is switchable.
+ * @param skills - collected entries, mutated in place as the merge does.
+ * @param disabled - identities the panel switched off.
+ */
+export function applyProviderToggles(skills: Iterable<SkillEntry>, disabled: readonly ProviderSkillIdentity[]): void {
+  if (disabled.length === 0) return
+  const keys = new Set(disabled.map((identity) => JSON.stringify([identity.provider, identity.name])))
+  for (const skill of skills) {
+    if (skill.fileState !== 'provider-file') continue
+    if (!keys.has(JSON.stringify([skill.provider ?? '', skill.name]))) continue
+    skill.modelInvocable = false
+  }
+}
+
 /** Group by level, ordered by SOURCE_GROUPS then leftovers, sorted by name inside each group. */
 export function buildPayload(skills: SkillEntry[], complete: boolean, cwd: string, projectRoots: string[]): ListPayload {
   const byLevel = new Map<string, SkillEntry[]>()
@@ -517,6 +553,10 @@ export async function collectSkills(options: CollectOptions): Promise<CollectRes
       complete = false
     }
   }
+  // The panel's own provider-skill switches close the collection: a row the
+  // user switched off reads as not model invocable here, exactly like a
+  // skill whose own frontmatter disables model invocation.
+  applyProviderToggles(byName.values(), options.providerDisabledSkills ?? [])
   return { skills: [...byName.values()], complete }
 }
 

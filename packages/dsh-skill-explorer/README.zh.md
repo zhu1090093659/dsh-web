@@ -28,8 +28,9 @@ DSH Web GUI 与官方桌面客户端的**技能中心**：按来源分级浏览�
   `~/.agents/skills` / 运行时注册），顶部搜索框按技能名或描述即时过滤
   （名称命中排在前面，Esc 清空），并与工作区选择叠加生效；
   每行显示描述、适用场景、可调用标记、启用/禁用开关（改写 SKILL.md
-  frontmatter 的 `disable-model-invocation`，模型目录热刷新）、编辑入口与删除
-  按钮（文件移入 `.trash`，可恢复）；加载进行中隐藏刷新按钮。
+  frontmatter 的 `disable-model-invocation`，模型目录热刷新；插件提供的文件
+  没有这条可写路径，其开关改由面板自己的存储记录）、编辑入口与删除按钮
+  （文件移入 `.trash`，可恢复）；加载进行中隐藏刷新按钮。
 - **创建 tab**：表单创建新技能，可写入用户根（`~/.dsh/skills`）或项目根
   （`.dsh/skills`），生成标准 SKILL.md。
 - **编辑 tab**：从行内编辑入口打开，先经宿主读取该技能（列表只带元数据），
@@ -43,7 +44,9 @@ DSH Web GUI 与官方桌面客户端的**技能中心**：按来源分级浏览�
   插件 provider 报告了真实指令文件（官方 `SkillSummary.path`）的技能显示为
   **「由插件提供」**——文件确实存在，只是不在本面板扫描的技能根目录下；
   只有完全没有文件的注册项才显示为 **「无本地文件」**。两者都不带可写路径，
-  因此都不会出现必然 404 的启停/编辑/删除控件。
+  因此都不会出现必然 404 的编辑/删除控件。**「由插件提供」**的行带有启用/
+  禁用开关（#1854）：文件属于 provider，因此宿主把开关记在面板自己的存储里，
+  该行显示为已停用（见「已知限制」）；只有**「无本地文件」**的行完全没有开关。
 - 只有官方 provider 会加载的技能才被列出：SKILL.md 必须声明非空的 `name`
   与 `description`，且 name 满足官方技能名文法。被官方 provider 丢弃的文件
   在面板里同样不出现，面板不会展示模型收不到的技能。
@@ -79,6 +82,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
 | `/api/dsh-skill-explorer/list` | GET | 分级技能列表 |
 | `/api/dsh-skill-explorer/read` | GET | 单个技能的可编辑字段与正文（`?name=&path=`） |
 | `/api/dsh-skill-explorer/set-enabled` | POST | 启用/禁用（改写 frontmatter） |
+| `/api/dsh-skill-explorer/set-provider-enabled` | POST | 启用/禁用插件提供的技能（记入面板自己的存储） |
 | `/api/dsh-skill-explorer/create` | POST | 创建技能（user/project 根） |
 | `/api/dsh-skill-explorer/update` | POST | 原地修改已有技能（名称与位置不变） |
 | `/api/dsh-skill-explorer/delete` | POST | 删除（移入 .trash） |
@@ -101,6 +105,13 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
 - update 路由原地改写已有 SKILL.md，不改技能名与位置，并原样保留当前的
   `disable-model-invocation` 值，因此编辑不会静默把已禁用的技能重新启用。
   与删除同理，链接技能在该路由上被拒绝（见下）。
+- 插件技能开关路由把每条记录以 `(provider, 技能名)` 组合写入
+  `$DSH_HOME/dsh-skill-explorer/provider-toggles.json`（临时文件 + fsync +
+  rename 原子落盘；损坏、异构或超限的文档降级为「什么都没停用」）。该路由
+  既不接收也不写入路径：客户端只发送身份，不发送位置。停用要求最新一次收集
+  仍能把该组合解析为 `provider-file` 行，因此存储里只可能出现面板确实展示过
+  的身份；启用只做删除记录，故无条件放行——插件卸载后残留的记录仍可清除。
+  两个方向都是幂等的，重复点击或重试不会堆出重复记录。
 - 技能内容是用户自写的 markdown；创建表单限制内容 64KB，编辑路由同样执行
   该上限。
 - 面板用文本节点渲染技能描述（无 HTML 注入）。
@@ -128,6 +139,10 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
   `customSkillDirs` 或 preset 作用域提供方到达 agent 的技能不在此覆盖范围内，
   因为面板读取注册表时不带 viewing scope。因此面板里没有的技能，不一定模型也没有：
   会话能加载什么，以官方 `skill` 工具目录为准。
+- **「由插件提供」**行的开关是**仅本面板生效**的视图决定：它改变的是本面板
+  列出的可调用状态，宿主注册表照旧加载该技能，模型仍会收到它。要真正让这类
+  技能不再进入模型，需要在它的 provider 获取它的位置（插件配置或随包文件）
+  移除或停用它。
 - 链接技能不可删除、不可编辑（见安全模型）；启用/禁用对链接技能正常（改写目标
   `SKILL.md` frontmatter）。目录型与「单文件」链接都能正常列出；「单文件」
   符号链接（指向单个 `.md`）在原子改写（rename）时会被替换为一个普通文件

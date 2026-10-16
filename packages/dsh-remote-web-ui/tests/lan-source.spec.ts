@@ -15,12 +15,20 @@ const HOP: LanSourceHop = {
   grant: 'grant-1',
 }
 
-/** The script body without its `<script>` wrapper (the injection contract). */
+/**
+ * The script body without its `<script>` wrapper (the injection contract). Sliced
+ * by the wrapper's exact length rather than matched by a tag regex: the query
+ * that guards tag-stripping regexes flags the pattern, and the builder's own
+ * wrapper is a fixed string.
+ */
 function scriptBody(hop: LanSourceHop = HOP): string {
   const wrapped = appShellLanSwitchScript(hop)
-  const body = /^<script>([\s\S]*)<\/script>$/.exec(wrapped)
-  if (body === null) throw new Error('switch script is not one bare script element')
-  return body[1] as string
+  const open = '<script>'
+  const close = '</script>'
+  if (!wrapped.startsWith(open) || !wrapped.endsWith(close)) {
+    throw new Error('switch script is not one bare script element')
+  }
+  return wrapped.slice(open.length, -close.length)
 }
 
 interface Harness {

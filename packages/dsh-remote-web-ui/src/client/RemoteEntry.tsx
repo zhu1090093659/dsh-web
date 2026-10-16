@@ -73,10 +73,10 @@ export function RemoteEntry({ wide, t }: RemoteEntryProps) {
     eventSource.current = undefined
   }, [])
 
-  const mint = useCallback(async (address?: string): Promise<PanelState> => {
+  const mint = useCallback(async (): Promise<PanelState> => {
     let result: IssueResponse
     try {
-      result = await issuePair(address)
+      result = await issuePair()
     } catch {
       // Fetch/network failure: show an explicit state instead of silently
       // leaving the panel on its initial banner.
@@ -104,10 +104,6 @@ export function RemoteEntry({ wide, t }: RemoteEntryProps) {
       // Whether this QR is built on the configured public (tunneled) base.
       public: publicBaseUrl !== undefined && result.url.startsWith(publicBaseUrl),
       ...(publicBaseUrl !== undefined ? { publicBaseUrl } : {}),
-      // The issued URL names the requested (or default first) literal; the
-      // public link has no LAN literal, so no radio row is selected then.
-      address: address ?? result.lanAddresses[0] ?? '',
-      lanAddresses: result.lanAddresses,
     }
   }, [])
 
@@ -203,16 +199,6 @@ export function RemoteEntry({ wide, t }: RemoteEntryProps) {
     void mint().then(setState)
   }, [mint])
 
-  /** Re-mint against another LAN literal (multi-homed machines). */
-  const handlePickAddress = useCallback((address: string) => {
-    void mint(address).then(setState)
-  }, [mint])
-
-  /** Re-mint against the configured public (tunneled) base. */
-  const handlePickPublic = useCallback(() => {
-    void mint().then(setState)
-  }, [mint])
-
   const handleCopy = useCallback((url: string) => {
     void copyText(url).then((ok) => {
       if (!ok) return
@@ -247,8 +233,6 @@ export function RemoteEntry({ wide, t }: RemoteEntryProps) {
             onRefresh={handleRefresh}
             onCopy={handleCopy}
             onCopyToken={handleCopyToken}
-            onPickAddress={handlePickAddress}
-            onPickPublic={handlePickPublic}
             onRevoke={handleRevoke}
           />
         </div>

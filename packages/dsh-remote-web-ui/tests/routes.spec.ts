@@ -6,6 +6,7 @@ import type { Server } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { PairingService } from '../src/pairing.ts'
 import { APP_DEVICE_STORAGE_KEY, MAX_DYNAMIC_TRUSTED_HOSTS, acceptLimitKey, addBounded, isTrustedHost, makeRoutes, patchAppShell, PAIR_PATHS } from '../src/routes.ts'
+import { LAN_SOURCE_STORAGE_KEY } from '../src/lan-source.ts'
 import { createPairGrantStore, type PairGrantStore } from '../src/pair-grant.ts'
 import { REMOTE_HOST_GRANT_GLOBAL } from '../src/remote-channel-rules.ts'
 
@@ -400,6 +401,131 @@ describe('/api/pair routes', () => {
       expect(stranger.raw).toContain('This pairing has expired or the link is no longer valid.')
       expect(stranger.raw).not.toContain(APP_DEVICE_STORAGE_KEY)
       expect(stranger.raw).not.toContain('<body>official</body>')
+    } finally {
+      await close()
+    }
+  })
+
+  it('operator: the QR link names the public base and the landing is handed the LAN hop', async () => {
+    // Given a host with both a public base and two LAN literals, when the
+    // desktop issues a link, then the QR names the public base — the only one a
+    // phone anywhere can dial — and the landing for that link carries the LAN
+    // candidates with a fresh one-time grant for the hop.
+    const service = makeService()
+    service.setLanBases([
+      { address: '192.168.1.5', base: 'http://192.168.1.5:3080' },
+      { address: '10.0.0.3', base: 'http://10.0.0.3:3080' },
+    ])
+    service.setPublicBaseUrl('https://relay.example.com')
+    const { port, close } = await serve(makeRoutes({
+      service,
+      indexDocument: async () => '<html><head><title>shell</title></head><body>official</body></html>',
+      grants: makeGrants(),
+    }))
+    try {
+      const issued = await call(port, 'POST', '/api/pair/issue', { body: {} })
+      expect(issued.body.url).toBe('https://relay.example.com/pair-accept?pair=tok-1')
+      service.issue()
+      const accept = await call(port, 'GET', '/pair-accept?pair=tok-1', { host: 'relay.example.com', headers: { 'x-forwarded-proto': 'https' } })
+      expect(accept.status).toBe(303)
+      expect(accept.location).toBe('https://relay.example.com/pair-app?grant=grant-1')
+      const app = await call(port, 'GET', '/pair-app?grant=grant-1', { host: 'relay.example.com' })
+      expect(app.status).toBe(200)
+      expect(app.raw).toContain(LAN_SOURCE_STORAGE_KEY)
+      expect(app.raw).toContain('http://192.168.1.5:3080')
+      expect(app.raw).toContain('http://10.0.0.3:3080')
+      expect(app.raw).toContain(PAIR_PATHS.ping)
+    } finally {
+      await close()
+    }
+  })
+
+  it('operator: a landing already on the LAN origin carries no hop', async () => {
+    // Given the manual `lan` override, which serves the QR from a LAN literal so
+    // the phone is on the very origin the probe would have chosen.
+    const service = makeService()
+    const { port, close } = await serve(makeRoutes({
+      service,
+      pairingSource: () => 'lan',
+      indexDocument: async () => '<html><head><title>shell</title></head><body>official</body></html>',
+      grants: makeGrants(),
+    }))
+    try {
+      const issued = await call(port, 'POST', '/api/pair/issue', { body: {} })
+      expect(issued.body.url).toBe('http://192.168.1.5:3080/pair-accept?pair=tok-1')
+      service.issue()
+      await call(port, 'GET', '/pair-accept?pair=tok-1', { host: '192.168.1.5:3080' })
+      // When the link is opened and its landing served, then no hop rides along:
+      // the phone is already where the probe would have sent it.
+      const app = await call(port, 'GET', '/pair-app?grant=grant-1', { host: '192.168.1.5:3080' })
+      expect(app.raw).toContain(APP_DEVICE_STORAGE_KEY)
+      expect(app.raw).not.toContain(LAN_SOURCE_STORAGE_KEY)
+    } finally {
+      await close()
+    }
+  })
+
+  it('operator: the public override ships no probe even with LAN candidates', async () => {
+    // Given the same host under the manual `public` override,
+    const service = makeService()
+    service.setLanBases([
+      { address: '192.168.1.5', base: 'http://192.168.1.5:3080' },
+      { address: '10.0.0.3', base: 'http://10.0.0.3:3080' },
+    ])
+    service.setPublicBaseUrl('https://relay.example.com')
+    const { port, close } = await serve(makeRoutes({
+      service,
+      pairingSource: () => 'public',
+      indexDocument: async () => '<html><head><title>shell</title></head><body>official</body></html>',
+      grants: makeGrants(),
+    }))
+    try {
+      // When a landing is served for it, then the device capture rides alone: the
+      // operator asked for the public source and the phone is given no probe.
+      service.issue()
+      await call(port, 'GET', '/pair-accept?pair=tok-1', { host: 'relay.example.com' })
+      const app = await call(port, 'GET', '/pair-app?grant=grant-1', { host: 'relay.example.com' })
+      expect(app.status).toBe(200)
+      expect(app.raw).toContain(APP_DEVICE_STORAGE_KEY)
+      expect(app.raw).not.toContain(LAN_SOURCE_STORAGE_KEY)
+    } finally {
+      await close()
+    }
+  })
+
+  it('operator: pinning to a public base that is not configured refuses to issue', async () => {
+    // Given a host with LAN literals only, under the manual `public` override,
+    const service = makeService()
+    const { port, close } = await serve(makeRoutes({ service, pairingSource: () => 'public' }))
+    try {
+      // When the desktop asks for a link, then the refusal is reported: the
+      // override is unsatisfiable, and saying so beats silently advertising the
+      // LAN literal it excluded.
+      const issued = await call(port, 'POST', '/api/pair/issue', { body: {} })
+      expect(issued.status as number).toBe(409)
+    } finally {
+      await close()
+    }
+  })
+
+  it('guest: the LAN reachability beacon answers our authorities and refuses a foreign host', async () => {
+    // Given the beacon the landing probes, our own LAN authority, a foreign
+    // authority, and the cross-site marker shape the probe itself produces,
+    const service = makeService()
+    const { port, close } = await serve(makeRoutes({ service }))
+    try {
+      // When each asks, then our authority answers 204 (the marker check is
+      // deliberately not applied, or every probe would read as a refusal) and the
+      // foreign Host is refused.
+      const mine = await call(port, 'GET', PAIR_PATHS.ping, { host: '192.168.1.5:3080' })
+      expect(mine.status).toBe(204)
+      expect(mine.cacheControl).toBe('no-store')
+      // A cross-site probe is the only shape the landing can produce; it must
+      // still read as "this origin answers", not as the fence's refusal.
+      const probe = await call(port, 'GET', PAIR_PATHS.ping, { host: '192.168.1.5:3080', headers: { origin: 'https://relay.example.com', 'sec-fetch-site': 'cross-site' } })
+      expect(probe.status).toBe(204)
+      const foreign = await call(port, 'GET', PAIR_PATHS.ping, { host: 'evil.example.com' })
+      expect(foreign.status).toBe(403)
     } finally {
       await close()
     }

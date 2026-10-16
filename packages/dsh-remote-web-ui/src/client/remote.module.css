@@ -573,53 +573,8 @@
   line-height: 1.55;
 }
 
-/* Multi-homed address picker: one radio per constructible LAN literal. */
-.addresses {
-  margin: 12px 0 0;
-  padding: 0;
-  border: none;
-}
-
-.addresses legend {
-  padding: 0;
-  color: var(--dsw-alias-label-secondary);
-  font-size: 13px;
-}
-
-.address {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  padding: 4px 6px;
-  border-radius: 6px;
-  color: var(--dsw-alias-label-primary);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-
-.address:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-}
-
-.address input:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--dsw-alias-bg-layer-2), 0 0 0 4px var(--dsw-alias-brand-primary);
-  border-radius: 50%;
-}
-
-.addressValue {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--dsw-alias-label-secondary);
-  font-size: 12px;
-}
-
+/* Which network source the current QR link carries. Not a control: the landing
+   page decides the source at connect time, so the panel only states the fact. */
 .addressHint {
   margin: 6px 0 0;
   color: var(--dsw-alias-label-tertiary);
@@ -728,7 +683,6 @@
   .trigger,
   .close,
   .action,
-  .address,
   .deviceRevoke {
     transition: none;
   }

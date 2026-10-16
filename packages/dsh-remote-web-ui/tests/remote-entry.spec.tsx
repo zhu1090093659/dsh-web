@@ -229,28 +229,37 @@ describe('RemoteEntry', () => {
     expect(FakeEventSource.instances).toHaveLength(0)
   })
 
-  it('renders the address picker on multi-homed hosts and re-mints on switch', async () => {
-    const { fetch } = mount({ ok: true, url: 'http://192.168.1.5:3080/pair-accept?pair=tok-1', token: 'tok-1', expiresAt: Date.now() + 60_000, lanAddresses: ['192.168.1.5', '10.0.0.3'] })
-    fireEvent.click(screen.getByRole('button', { name: 'Remote access' }))
-    await waitFor(() => expect(screen.getByText('Network the QR code points to')).toBeTruthy())
-    expect(screen.getByLabelText('192.168.1.5')).toBeTruthy()
-    expect(screen.getByLabelText('10.0.0.3')).toBeTruthy()
-    // Switching re-mints with the chosen literal; the first interface stays
-    // the default selection.
-    fireEvent.click(screen.getByLabelText('10.0.0.3'))
-    await waitFor(() => {
-      const calls = fetch.mock.calls.filter(call => call[0] === 'api/pair/issue')
-      expect(calls).toHaveLength(2)
-      const body = JSON.parse(String((calls[1]?.[1] as RequestInit).body))
-      expect(body).toEqual({ address: '10.0.0.3' })
+  it('operator: a public link states the automatic source instead of offering a choice', async () => {
+    // Given a link built on the configured public base, when the panel opens,
+    // then it reports the automatic choice and renders no picker: the landing
+    // page decides at connect time.
+    const { fetch } = mount({
+      ok: true,
+      url: 'https://relay.example.com/pair-accept?pair=tok-1',
+      token: 'tok-1',
+      expiresAt: Date.now() + 60_000,
+      publicBaseUrl: 'https://relay.example.com',
     })
-  })
-
-  it('hides the address picker with a single constructible literal', async () => {
-    mount()
     fireEvent.click(screen.getByRole('button', { name: 'Remote access' }))
     await waitFor(() => expect(screen.getByText('Waiting for a device')).toBeTruthy())
-    expect(screen.queryByText('Network the QR code points to')).toBeNull()
+    expect(screen.getByText(/switches to the LAN address by itself/)).toBeTruthy()
+    expect(screen.queryAllByRole('radio')).toHaveLength(0)
+    // The whole issue flow is one request: nothing re-mints behind the user.
+    expect(fetch.mock.calls.filter(call => call[0] === 'api/pair/issue')).toHaveLength(1)
+  })
+
+  it('operator: a link built on a LAN literal states the pinned LAN source', async () => {
+    mount({
+      ok: true,
+      url: 'http://192.168.1.5:3080/pair-accept?pair=tok-1',
+      token: 'tok-1',
+      expiresAt: Date.now() + 60_000,
+      lanAddresses: ['192.168.1.5', '10.0.0.3'],
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Remote access' }))
+    await waitFor(() => expect(screen.getByText('Waiting for a device')).toBeTruthy())
+    expect(screen.getByText('The QR code points at a LAN address.')).toBeTruthy()
+    expect(screen.queryAllByRole('radio')).toHaveLength(0)
   })
 
   it('reflects live status frames: connected and back to offline', async () => {

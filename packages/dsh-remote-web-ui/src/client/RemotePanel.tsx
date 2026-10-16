@@ -1,7 +1,10 @@
 /**
  * The mobile remote-control panel body: status card (state text + badge),
- * the QR code, the open-on-phone hint with the link text, and the three
- * actions (stop / refresh / copy). Pure presentation — all state and
+ * the QR code, the open-on-phone hint with the link text, and the two
+ * actions (stop / refresh / copy). The advertised network is not a choice:
+ * the QR names the public base and the landing page decides at connect time
+ * whether to move to a LAN origin (lan-source.ts), so the panel only states
+ * which source the current link carries. Pure presentation — all state and
  * actions arrive through props from the entry's behavior component.
  */
 import clsx from 'clsx'
@@ -47,10 +50,6 @@ export type PanelState =
       onlineCount: number
       /** Authorized devices for the roster under the QR card. */
       devices: DeviceFrame[]
-      /** The LAN literal the current QR was built from. */
-      address: string
-      /** Every constructible LAN literal (interface order). */
-      lanAddresses: string[]
       /** The active pairing token itself (useful in Docker/reverse proxy topologies). */
       token?: string
       /** Whether this QR is built on the configured public (tunneled) base. */
@@ -76,10 +75,6 @@ export interface RemotePanelProps {
   onRefresh(): void
   onCopy(url: string): void
   onCopyToken?(token: string): void
-  /** Re-mint the QR against a different LAN address. */
-  onPickAddress(address: string): void
-  /** Re-mint the QR against the configured public (tunneled) base. */
-  onPickPublic(): void
   /** Revoke one paired device. */
   onRevoke(deviceId: string): void
 }
@@ -113,8 +108,6 @@ export function RemotePanel({
   onRefresh,
   onCopy,
   onCopyToken,
-  onPickAddress,
-  onPickPublic,
   onRevoke,
 }: RemotePanelProps) {
   return (
@@ -221,37 +214,10 @@ export function RemotePanel({
             </p>
           )}
 
-          {(state.publicBaseUrl !== undefined || state.lanAddresses.length > 1) && (
-            <fieldset className={css.addresses}>
-              <legend>{t('address.label')}</legend>
-              {state.publicBaseUrl !== undefined && (
-                <label key="public" className={css.address}>
-                  <input
-                    type="radio"
-                    name="lan-address"
-                    aria-label={t('address.public')}
-                    checked={state.public}
-                    onChange={onPickPublic}
-                  />
-                  <span>{t('address.public')}</span>
-                  <code className={css.addressValue}>{state.publicBaseUrl}</code>
-                </label>
-              )}
-              {state.lanAddresses.map(address => (
-                <label key={address} className={css.address}>
-                  <input
-                    type="radio"
-                    name="lan-address"
-                    aria-label={address}
-                    checked={!state.public && address === state.address}
-                    onChange={() => onPickAddress(address)}
-                  />
-                  <span>{t('address.lan')}</span>
-                  <code className={css.addressValue}>{address}</code>
-                </label>
-              ))}
-              <p className={css.addressHint}>{t('address.hint')}</p>
-            </fieldset>
+          {(state.publicBaseUrl !== undefined || !state.public) && (
+            <p className={css.addressHint}>
+              {state.public ? t('address.auto') : t('address.pinnedLan')}
+            </p>
           )}
 
           <div className={css.actions}>

@@ -24,7 +24,7 @@ import { DEFAULT_IDLE_EXPIRE_MS, PairingService, type PairingConfig } from './pa
 import { dshHome } from './dsh-home.ts'
 import { isPairedDeviceRequest, makeGateListener } from './gate.ts'
 import { RemoteWebUiPairing } from './pairing-access.ts'
-import { isTrustedApiRequest, makeRoutes } from './routes.ts'
+import { isTrustedApiRequest, makeRoutes, PAIRING_SOURCE_OPTIONS, type PairingSourcePreference } from './routes.ts'
 import { makeRemoteApiRoutes, makeRemoteApiUpgradeRoutes } from './remote-api.ts'
 import { startRemotePresencePet, type PresencePetSeam } from './remote-presence-pet.ts'
 import { claimPostureKey, postureTargets, probePosture, releasePostureKey } from './posture.ts'
@@ -207,6 +207,16 @@ export interface Config {
   profile?: string
   /** Master switch for the plugin (browser half + host pairing surfaces). */
   enabled?: boolean
+  /**
+   * The manual override of the automatic pairing-network choice, for the case
+   * where the phone's own probe misjudges (see `PairingSourcePreference` in
+   * routes.ts). `auto` (default) names the public base in the QR link and lets
+   * the landing page switch to a LAN origin when one answers; `public` pins the
+   * public base and disables the probe; `lan` pins the first LAN literal and
+   * skips the public hop entirely. Set through the profile patch — the settings
+   * card carries no control for it, so a save from that card leaves it alone.
+   */
+  pairingSource?: PairingSourcePreference
 }
 
 /**
@@ -245,6 +255,7 @@ export const Config = z.object({
   lanBind: z.boolean().volatile(),
   profile: z.string().pattern(/^[A-Za-z0-9][A-Za-z0-9._-]*$/),
   enabled: z.boolean().default(true).volatile(),
+  pairingSource: z.union([...PAIRING_SOURCE_OPTIONS]).default('auto').volatile(),
 })
 
 /** Presence sweep cadence (a stale device flips to disconnected within two sweeps). */
@@ -294,6 +305,7 @@ export interface ResolvedConfigFields {
   lanBind?: ConfigField<boolean>
   profile?: ConfigField<string>
   enabled?: ConfigField<boolean>
+  pairingSource?: ConfigField<PairingSourcePreference>
 }
 
 /** Read one resolved config field, following the live reference the schema produces. */
@@ -360,6 +372,7 @@ const DEFAULTS: ResolvedConfig = {
   lanBind: undefined,
   profile: resolveManagedProfile(undefined, undefined, process.env.DSH_PROFILE),
   enabled: true,
+  pairingSource: 'auto',
 }
 
 /**
@@ -406,6 +419,7 @@ function applyImpl(ctx: Context, config?: ResolvedConfigFields): void {
     lanBind: readOptionalConfigField(config?.lanBind),
     profile: resolveManagedProfile(readOptionalConfigField(config?.profile), launchedProfileName(ctx), process.env.DSH_PROFILE),
     enabled: readConfigField(config?.enabled, DEFAULTS.enabled),
+    pairingSource: readConfigField(config?.pairingSource, DEFAULTS.pairingSource),
   })
   const service = new PairingService(pairingConfigOf(resolve()))
 
@@ -616,6 +630,7 @@ function applyImpl(ctx: Context, config?: ResolvedConfigFields): void {
     ...makeRoutes({
       service,
       requirePairingForLan: () => resolve().requirePairingForLan,
+      pairingSource: () => resolve().pairingSource,
       lanBindStatus,
       indexDocument: fetchAppShell,
       trustedHosts: () => {

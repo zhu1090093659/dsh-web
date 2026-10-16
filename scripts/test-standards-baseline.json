@@ -81,7 +81,7 @@
     "packages/dsh-remote-web-ui/tests/remote-channel-boot.spec.ts": {"no-arbitrary-sleep":2,"bdd-title":18,"given-when-then":18,"tautological-assertion":2},
     "packages/dsh-remote-web-ui/tests/remote-channel.spec.ts": {"bdd-title":15,"given-when-then":15,"tautological-assertion":2},
     "packages/dsh-remote-web-ui/tests/remote-contract.spec.ts": {"bdd-title":1,"given-when-then":1,"tautological-assertion":1},
-    "packages/dsh-remote-web-ui/tests/remote-entry.spec.tsx": {"no-arbitrary-sleep":1,"bdd-title":15,"given-when-then":15,"tautological-assertion":31},
+    "packages/dsh-remote-web-ui/tests/remote-entry.spec.tsx": {"no-arbitrary-sleep":1,"bdd-title":13,"given-when-then":14,"tautological-assertion":31},
     "packages/dsh-remote-web-ui/tests/remote-presence-pet.spec.ts": {"no-arbitrary-sleep":1,"bdd-title":5,"given-when-then":5},
     "packages/dsh-remote-web-ui/tests/remote-upgrade.spec.ts": {"no-arbitrary-sleep":1,"bdd-title":4,"given-when-then":4,"tautological-assertion":2},
     "packages/dsh-remote-web-ui/tests/routes.spec.ts": {"no-ad-hoc-mock":1,"bdd-title":28,"given-when-then":28},

@@ -9,7 +9,7 @@ Status: implemented
 ## 决策
 
 - **dsh-market worker 增加中继注册表**：`PUT /api/relay/register` 把每个安装的 id 映射到实例当前的快速隧道地址；`POST /api/relay/unregister` 删除映射；通配子域名 `<id>.dsh-market.com` 向已注册目标反向代理（HTTP + WebSocket 透传；未知或过期 id 返回明确的双语离线页）。表 `relay_registrations` + `relay_rate_limit`（迁移 0007）；cron GC 清理过期行与旧限流窗口。
-- **插件在自动隧道运行时自动注册**（中继默认开启）：每个 profile 首次运行铸造 id + 256 位密钥（`$DSH_HOME/remote-web-ui-registry/<profile>.json`，0600），并经既有的隧道 phase 监听器在每次隧道启动时重新上报当前地址——失败按上限退避重试，`invalid-params` 失败会重新认领一次 id（注册表行丢失）。二维码/公网基址优先使用固定源；注册失败期间回退裸快速隧道地址。开关关闭时销毁注册器并注销该行；进程退出与模式切换保留两者。
+- **插件在自动隧道运行时自动注册**（中继默认开启）：每个 profile 首次运行铸造 id + 256 位密钥（`$DSH_HOME/remote-web-ui-registry/<profile>.json`，0600），并经既有的隧道 phase 监听器在每次隧道启动时重新上报当前地址——失败按上限退避重试，`invalid-params` 失败会重新认领一次 id（注册表行丢失）。二维码/公网基址优先使用固定源；注册失败期间回退裸快速隧道地址。与本机同网的手机随后由落地页移出该源：落地页探测对外广告的局域网字面量，无一应答时留在公网源（[2026-10-16-pairing-auto-lan-source.zh.md](2026-10-16-pairing-auto-lan-source.zh.md)）。开关关闭时销毁注册器并注销该行；进程退出与模式切换保留两者。
 - **配置与界面**：`relay`（默认 true）在设置卡片呈现为「固定域名中继」；配对快照新增 `relay` 状态帧，面板据其渲染注册中/失败提示。命名隧道模式保持不变（自带域名的替代路径）。
 - **滥用面**：密钥只存哈希（SHA-256）、目标限定 `*.trycloudflare.com`、注册按 IP 与 id 限流、行空闲 90 天 GC、所有中继响应 `noindex`。
 - **带内容哈希的构建产物在本跳被永久缓存。** 隧道后的实例对 `/assets/**` 不发任何 `Cache-Control`、`ETag` 或 `Last-Modified`，而原样透传让手机手里没有任何可缓存依据：每次加载都重下整个外壳——实测每请求 237502 B、经中继 TTFB 1.3–2.3 秒、字节每次都完全相同。代理现在只对 `GET`/`HEAD` 且路径为 `/assets/` 下带内容哈希的构建产物的 200 响应盖上 `public, max-age=31536000, immutable`；其余路径（`/api/*`、文档、未哈希名、WebSocket 升级、非 200）一律保留源站自己的响应头。

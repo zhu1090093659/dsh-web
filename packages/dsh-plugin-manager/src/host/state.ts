@@ -16,19 +16,22 @@ import { readProfileManifest, stripBom, type ProfileFacts } from './profile.ts'
 
 /**
  * Entry rows that must never carry a disabled override: the manager tab
- * itself (the UI performing the write), the family settings surface the tab
- * injects into, and the aggregate compat face (disabling it unmounts the
- * whole folded client bundle while host rows keep running — a half-dead
- * page). Covers both the standalone and the aggregate row ids. The standalone
- * id is this package's own `cordis.patch.yml` insert id, never the official
- * `ui-plugin-manager` row the DSH web-app bundle already claims.
+ * itself (the UI performing the write) and the family settings surface the
+ * tab injects into. Covers both the standalone and the aggregate row ids. The
+ * standalone id is this package's own `cordis.patch.yml` insert id, never the
+ * official `ui-plugin-manager` row the DSH web-app bundle already claims.
+ *
+ * `web-ui-compat` is deliberately NOT locked (issue #1901). It used to be:
+ * the compat row carried the inlined browser half of every family, so
+ * disabling it blanked the whole page while the host rows kept running. Family
+ * rows mount their own packages now, and the compat row is the optional
+ * compatibility patch layer the issue asks users to be able to turn off.
  */
 export const LOCKED_ENTRY_IDS: ReadonlySet<string> = new Set([
   'ui-plugin-manager-update-check',
   'web-ui-plugin-manager',
   'ui-web-ui-settings',
   'web-ui-settings',
-  'web-ui-compat',
 ])
 
 /** The listing result: plugin rows plus the raw layer snapshot for diffs. */

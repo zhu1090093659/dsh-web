@@ -222,16 +222,17 @@ describe('set-enabled id space', () => {
   })
 
   it('keeps the locked rows mounted when disabling an aggregate package', async () => {
-    // web-ui-compat must stay enabled too: it serves the folded client
-    // bundle, so disabling it would unmount the manager tab itself and lock
-    // the user out of re-enabling anything from the GUI.
+    // The manager tab and the family settings surface stay mounted, or the
+    // user would lose the page that can switch anything back on. The compat
+    // row is NOT locked any more (issue #1901): it carries only the optional
+    // compatibility patches, and every family row brings its own browser half.
     const { facts, dir } = makeAggregateProfile()
     tempDirs.push(dir)
     const { res, body, status } = captureResponse()
     await setEnabledHandler(facts)(loopbackRequest({ id: '@linxin666/dsh-web-all', enabled: false }), res)
     expect(status()).toBe(200)
     const patch = readFileSync(facts.patchPath, 'utf8')
-    expect(patch).not.toContain('id: web-ui-compat')
+    expect(patch).toContain('id: web-ui-compat')
     expect(patch).toContain('id: web-ui-task-board')
     expect(patch).not.toContain('id: web-ui-plugin-manager')
     const parsed = JSON.parse(body()) as { plugin: { enabled: boolean } }
@@ -276,7 +277,7 @@ describe('set-enabled id space', () => {
     expect(parsed.plugin.id).toBe('@linxin666/dsh-web-all')
     expect(parsed.plugin.enabled).toBe(false)
     expect(parsed.plugin.children?.find(child => child.id === 'web-ui-task-board')?.enabled).toBe(false)
-    expect(parsed.plugin.children?.find(child => child.id === 'web-ui-compat')?.enabled).toBe(true)
+    expect(parsed.plugin.children?.find(child => child.id === 'web-ui-compat')?.locked).toBeUndefined()
     expect(parsed.plugin.children?.find(child => child.id === 'web-ui-plugin-manager')?.locked).toBe(true)
   })
 

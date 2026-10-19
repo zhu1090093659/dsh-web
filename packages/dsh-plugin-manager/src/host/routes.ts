@@ -14,7 +14,7 @@ import { readJsonBody, withIdentityEncoding, writeJson } from './http.ts'
 import { isLoopbackRequest } from './loopback.ts'
 import { detectOfficialChannels, findDshBinary, spawnDsh, unsafeSpecReason, type CliGateway } from './gateway.ts'
 import { dshRequirementOf, parseDshVersion } from '../core/version.ts'
-import { meetsMinimumDsh } from './dsh-compat.ts'
+import { evaluateDshCompatibility } from './dsh-compat.ts'
 import { readManifestVersion, readPatchText, readProfileManifest, type ProfileFacts } from './profile.ts'
 import { legacyMigrationFor, targetSpecForLegacy } from './legacy-migration.ts'
 import { setRowEnabled, writePatchAtomic } from './rows.ts'
@@ -247,15 +247,25 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
   }
 
   /**
-   * Compat verdict for one declared requirement. Unverified (unknown host,
-   * malformed host output, unsupported range) is incompatible so an update
-   * can never run against a runtime we cannot prove compatible (issue #754);
-   * only absent metadata keeps the update fail-open.
+   * Compat verdict for one declared requirement, plus the running version the
+   * verdict was made from. Unverified (unknown host, malformed host output, a
+   * range node-semver rejects) is incompatible so an update can never run
+   * against a runtime we cannot prove compatible (issue #754); only absent
+   * metadata keeps the update fail-open.
+   *
+   * `hostVersion` is reported only for a verdict that really compared the
+   * running version and lost it. Its absence is the wire's way of saying "this
+   * declaration could not be checked", which is what the browser reads to tell
+   * "your DSH is too old" from "we could not verify" (issues #1819 and #1899):
+   * a blocked row with no version must never be described as below the
+   * minimum, because nothing was compared.
    */
   const compatibleVerdict = async (requiresDsh: string): Promise<{ hostVersion?: string; compatible: boolean }> => {
     const hostVersion = await resolveDshVersion()
     if (hostVersion === undefined) return { compatible: false }
-    return { hostVersion, compatible: meetsMinimumDsh(hostVersion, requiresDsh) === true }
+    const compatibility = evaluateDshCompatibility(hostVersion, requiresDsh)
+    if (compatibility.verdict === 'unverifiable') return { compatible: false }
+    return { hostVersion, compatible: compatibility.verdict === 'satisfied' }
   }
 
   /** Wrap a handler with the loopback fence and JSON error reporting. */
@@ -358,7 +368,7 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
             return {
               status: 412,
               error: hostVersion === undefined
-                ? `plugin-manager: cannot verify the running DSH version for ${migration.to}; check the DSH runtime before migrating`
+                ? `plugin-manager: cannot verify the running DSH version for ${migration.to} against the declared requirement ${requiresDsh}; check the declaration and the DSH runtime before migrating`
                 : `plugin-manager: ${migration.to} requires DSH ${requiresDsh} (current DSH ${hostVersion}); upgrade DSH before migrating`,
             }
           }
@@ -382,7 +392,7 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
           return {
             status: 412,
             error: hostVersion === undefined
-              ? `plugin-manager: cannot verify the running DSH version for ${target}; check the DSH runtime before updating`
+              ? `plugin-manager: cannot verify the running DSH version for ${target} against the declared requirement ${requiresDsh}; check the declaration and the DSH runtime before updating`
               : `plugin-manager: ${target} requires DSH ${requiresDsh} (current DSH ${hostVersion}); upgrade DSH before updating`,
           }
         }
@@ -570,10 +580,11 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
           update.requiresDsh = requiresDsh
           const verdict = await compatibleVerdict(requiresDsh)
           update.compatible = verdict.compatible
-          // An unknown host version is reported as such instead of being
-          // flattened into "incompatible": the row is equally blocked, but the
-          // user is told to check the runtime rather than to upgrade a DSH that
-          // may already satisfy the requirement (issue #1819).
+          // A verdict that could not be made — no readable host version, or a
+          // declaration semver rejects — is reported as such instead of being
+          // flattened into "below the minimum": the row is equally blocked, but
+          // the user is told the declaration could not be checked rather than
+          // to upgrade a DSH that may already satisfy it (issues #1819, #1899).
           if (verdict.hostVersion !== undefined) update.hostVersion = verdict.hostVersion
         }
         updates.push(update)

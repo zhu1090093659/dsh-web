@@ -19,8 +19,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { PluginUpdateItem, RestartMode } from '../core/protocol.ts'
-import { applicableUpdates, isUpdateApplicable, thirdPartyUpdates } from '../core/updates.ts'
+import { applicableUpdates, thirdPartyUpdates } from '../core/updates.ts'
 import { displayMinimumVersion } from '../core/version.ts'
+import { dshGateOf } from './PluginUpdatePatch.tsx'
 import css from './plugin-manager.module.css'
 
 /** The operations the toolbar drives (the package's dual-channel face). */
@@ -253,19 +254,26 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
           {rows.length === 0 && applied.length === 0 && error === undefined && <p className={css.hint}>{t('noUpdates')}</p>}
           {rows.length > 0 && (
             <ul className={css.panelList}>
-              {rows.map(row => (
-                <li key={row.id} className={css.panelRow} data-update-row={row.id} data-compatible={isUpdateApplicable(row) ? 'yes' : 'no'}>
-                  <span className={css.panelName}>{row.id}</span>
-                  <span className={css.panelVersion}>{row.current} → {row.latest}</span>
-                  {row.compatible === false && row.requiresDsh !== undefined && (
-                    <span className={css.compatBlocked} data-update-row-compat-reason={row.hostVersion === undefined ? 'unverified' : 'below-minimum'}>
-                      {row.hostVersion === undefined
-                        ? t('updateUnverifiedDsh', { min: displayMinimumVersion(row.requiresDsh) })
-                        : t('updateBlockedDsh', { min: displayMinimumVersion(row.requiresDsh) })}
-                    </span>
-                  )}
-                </li>
-              ))}
+              {rows.map(row => {
+                // One verdict per row, read once: the badge, its copy and the
+                // bulk action's exclusion all come from the same answer.
+                const gate = dshGateOf(row)
+                return (
+                  <li key={row.id} className={css.panelRow} data-update-row={row.id} data-compatible={gate === 'open' ? 'yes' : 'no'}>
+                    <span className={css.panelName}>{row.id}</span>
+                    <span className={css.panelVersion}>{row.current} → {row.latest}</span>
+                    {gate === 'open' ? null : (
+                      <span className={css.compatBlocked} data-update-row-compat-reason={gate}>
+                        {row.requiresDsh !== undefined
+                          ? t(gate === 'unverified' ? 'updateUnverifiedDsh' : 'updateBlockedDsh', {
+                            min: displayMinimumVersion(row.requiresDsh),
+                          })
+                          : t('updateUnverifiedDshUnknownRange')}
+                      </span>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           )}
           <div className={css.panelActions}>

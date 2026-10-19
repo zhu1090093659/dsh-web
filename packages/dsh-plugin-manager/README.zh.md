@@ -23,7 +23,7 @@
 - 在该页 **已安装** 标题旁加一条列表级工具条。该标题是官方页面自己的 chrome，页面并未为它声明席位（扩展点是 `plugins.detail.*`、`plugins.item`、`plugins.bundle.config`、`plugins.row.config` 与 `plugins.bundle.activation`），因此工具条直接插入该元素，并靠家族共享的 body mutation hub 保持就位。一次点击检查全部已装插件；面板列出有新版本的第三方插件（当前运行时版本不够的行附上其声明的 DSH 最低版本）；「全部更新」逐条应用合格行并显示逐行进度，遇到第一个失败即停止并把其余行留在列表里；随后「立即重启」使更新生效（见「已知限制」中的重启说明）。官方 `@deepseek-ai/` 包绝不参与批量更新——它们的版本属于 DSH 安装本身。
 - 双通道传输：带官方安装器服务的运行时（DSHCode 与 1.0.4 checkout 版 web）走官方 `/plugin-installer`、`/plugin-control` loopback RPC 通道；npm 发布的官方 web 没有这些通道，本包的 host 半区挂载 loopback 门禁的 HTTP 网关——安装/卸载 spawn 官方 `dsh plugin` CLI（唯一写入器），启停写入 `disabled` 覆盖行。应用自有 profile（打包桌面启动）的安装、更新与卸载走第三种写入器：宿主挂载的官方进程内插件管理器，因为 CLI 完全拒绝写该 profile。
 - 检测旧聚合包 `@linxin666/dsh-web-ui-all`，把更新动作转换为到 `@linxin666/dsh-web-all` 的事务迁移；网关先移除旧包、安装精确版本的新包、恢复旧聚合包的层顺序，并在 `--dump-config` 通过后才报告成功。
-- 更新前校验 DSH 运行时兼容（issue #754）：更新检查读取最新版本清单声明的 DSH 最低版本（`dsh.engines.dsh`，兼容回退读顶层 `engines.dsh`），在更新动作旁显示要求，运行 DSH 低于要求时禁用它；host 更新路由在启动任何 CLI 任务前若无法核实时也会返回 412 并拒绝。
+- 更新前校验 DSH 运行时兼容（issue #754）：更新检查读取最新版本清单声明的 DSH 最低版本（`dsh.engines.dsh`，兼容回退读顶层 `engines.dsh`），按 node-semver 范围求值——用的正是官方启动门禁那一句 `semver.satisfies(host, range, { includePrerelease: true })`，因此 `||` 备选、`^` 与 `~`、空格分隔的多比较器与 x-range 在这里的判定与启动时完全一致——并在更新动作旁显示要求。运行 DSH 确实不满足要求时禁用更新并提示升级 DSH。宿主无法核验要求时（运行版本读不出来，或声明不是 node-semver 能解析的范围）是另一种结论，有独立文案：不预设原因，也绝不把用户推去升级一个从未参与比较的 DSH。两种结论都不放行更新，host 更新路由在两种情况下都会在启动任何 CLI 任务前返回 412。
 - npm 运行时保护下次启动：安装后网关校验依赖真实落盘、拒绝重复入口 id 认领与引用不可解析包的 insert 行，并用 CLI 的 `--dump-config` 做组合预检；冲突或失败的安装会经官方 remove 路径自动回滚，绝不触碰现有插件。
 
 ## 安装

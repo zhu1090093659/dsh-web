@@ -77,9 +77,11 @@ export interface PluginUpdateItem {
   /** Whether the running DSH host satisfies requiresDsh; absent when unknown. */
   compatible?: boolean
   /**
-   * The running DSH version the verdict was made from, when the host could read
-   * it. Its absence is what separates "this host is too old" from "this host
-   * could not be asked" — different problems, with different copy (issue #1819).
+   * The running DSH version the verdict was made from, present only when the
+   * host compared it and found it below the declaration. Its absence is what
+   * separates "this host is too old" from "we could not verify" — a host that
+   * could not be read, or a declaration that could not be parsed; different
+   * problems, with different copy (issues #1819 and #1899).
    */
   hostVersion?: string
 }

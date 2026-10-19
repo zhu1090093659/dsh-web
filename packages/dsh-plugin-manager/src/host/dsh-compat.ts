@@ -19,23 +19,43 @@
 import semver from 'semver'
 
 /**
- * Whether the running DSH host satisfies a declared requirement range.
+ * The verdict for one declared requirement, with its cause kept apart so
+ * callers can tell "this host is too old" from "we could not check".
+ *
+ * The distinction is user-visible: a `host-too-low` verdict is the only one
+ * that may tell the user to upgrade DSH, because it is the only one where a
+ * running version was actually compared and lost. An `unverifiable` verdict
+ * means the question was never answered — an absent declaration, a range
+ * node-semver rejects, or a host string that is not one valid version — so
+ * telling the user to upgrade would send them after a fix nobody confirmed was
+ * needed (issue #1819), and reporting it as "below the minimum" contradicts a
+ * declaration that may well be satisfied (issue #1899).
+ */
+export type DshCompatibility =
+  | { verdict: 'satisfied' }
+  | { verdict: 'host-too-low' }
+  | { verdict: 'unverifiable' }
+
+/**
+ * Decide whether the running DSH host satisfies a declared requirement range.
  * @param host - the running DSH host version.
  * @param range - the declared requirement, in any node-semver range form.
- * @returns true / false, or undefined when the verdict cannot be verified: an
- * empty or whitespace-only declaration, a range node-semver does not parse, or
- * a host string that is not one valid version. Callers treat undefined as
- * "cannot verify" and fail closed for a declared requirement (issue #754).
+ * @returns `satisfied` when the host satisfies the declaration,
+ * `host-too-low` when it was compared and does not, and `unverifiable` when
+ * no comparison could be made. Callers fail closed on the last two (issue
+ * #754) but must not describe them with the same words.
  */
-export function meetsMinimumDsh(host: string, range: string): boolean | undefined {
+export function evaluateDshCompatibility(host: string, range: string): DshCompatibility {
   // `semver.validRange('')` answers `'*'`, so an absent declaration would
   // otherwise read as an unconstrained range and become a satisfied verdict.
   // The official gate keeps the same `range.trim() !== ''` guard for the
   // same reason.
-  if (range.trim() === '') return undefined
-  if (semver.validRange(range) === null) return undefined
+  if (range.trim() === '') return { verdict: 'unverifiable' }
+  if (semver.validRange(range) === null) return { verdict: 'unverifiable' }
   // A host string that is not a single valid version is "cannot verify", not
   // "too old": `semver.satisfies` would silently answer false for it.
-  if (semver.valid(host) === null) return undefined
+  if (semver.valid(host) === null) return { verdict: 'unverifiable' }
   return semver.satisfies(host, range, { includePrerelease: true })
+    ? { verdict: 'satisfied' }
+    : { verdict: 'host-too-low' }
 }

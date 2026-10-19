@@ -101,6 +101,36 @@ function progressLabel(progress: InstallProgressItem, t: PluginUpdatePatchProps[
 }
 
 /**
+ * What the host's compatibility verdict amounts to for one update row.
+ *
+ * `compatible === false` on its own does not mean "this DSH is too old": the
+ * host leaves `hostVersion` off a blocked row whenever it could not read its
+ * own runtime version (issue #1819) and whenever it could not evaluate the
+ * declared range at all — an empty declaration, a range node-semver rejects, a
+ * host string that is not one version (issue #1899). Only a row that carries a
+ * host version was actually compared against that version, so only that row
+ * may send the user to upgrade DSH.
+ *
+ * The verdict is derived here once and shared by both surfaces that render it
+ * (this section and the list-level toolbar) so the two cannot drift apart:
+ * that drift is what left the "cannot verify" case telling users to upgrade a
+ * DSH the host never checked.
+ */
+export type DshGate = 'open' | 'below-minimum' | 'unverified'
+
+/**
+ * Read the gate state out of one wire row.
+ * @param item - the update row, or undefined when no check has answered yet.
+ * @returns `open` when nothing blocks the update, otherwise the reason it is
+ * held back: `below-minimum` only when the host compared a version it read,
+ * `unverified` when it could not make that comparison.
+ */
+export function dshGateOf(item: Pick<PluginUpdateItem, 'compatible' | 'hostVersion'> | undefined): DshGate {
+  if (item?.compatible !== false) return 'open'
+  return item.hostVersion === undefined ? 'unverified' : 'below-minimum'
+}
+
+/**
  * The update block on one official Plugins page: one check action, the verdict
  * for this page's bundle, and the update action it unlocks. The check is
  * explicit rather than automatic because one check reads every installed
@@ -191,13 +221,12 @@ export function PluginUpdatePatch(props: PluginUpdatePatchProps) {
   }
 
   const requiresDsh = found?.requiresDsh
-  const blocked = found?.compatible === false
-  // "Blocked" has two causes and they need different words. The host reports
-  // hostVersion exactly when it managed to read the running DSH version, so a
-  // blocked row WITHOUT one was never judged — telling that user to upgrade DSH
-  // would send them after a fix the host could not even confirm was needed
-  // (issue #1819).
-  const unverified = blocked && found?.hostVersion === undefined
+  const gate = dshGateOf(found)
+  const blocked = gate !== 'open'
+  // A requirement the host could not verify has two causes — the running DSH
+  // version could not be read, or the declared range could not be evaluated —
+  // and neither is "your DSH is too old". The copy therefore names no cause and
+  // sends nobody to upgrade DSH; see `dshGateOf`.
 
   return (
     <section className={css.section} data-update-patch aria-busy={busy !== undefined}>
@@ -217,17 +246,17 @@ export function PluginUpdatePatch(props: PluginUpdatePatchProps) {
         {found !== undefined && (
           <span className={css.latest} data-update-latest={found.latest}>{t('latest', { version: found.latest })}</span>
         )}
-        {found !== undefined && requiresDsh !== undefined && (
+        {found !== undefined && (requiresDsh !== undefined || blocked) && (
           <span
             className={blocked ? css.compatBlocked : css.compatHint}
             data-update-compat={blocked ? 'blocked' : 'ok'}
-            data-update-compat-reason={blocked ? (unverified ? 'unverified' : 'below-minimum') : undefined}
+            data-update-compat-reason={blocked ? gate : undefined}
           >
-            {!blocked
-              ? t('updateRequiresDsh', { min: displayMinimumVersion(requiresDsh) })
-              : unverified
-                ? t('updateUnverifiedDsh', { min: displayMinimumVersion(requiresDsh) })
-                : t('updateBlockedDsh', { min: displayMinimumVersion(requiresDsh) })}
+            {requiresDsh !== undefined
+              ? t(gate === 'open' ? 'updateRequiresDsh' : gate === 'unverified' ? 'updateUnverifiedDsh' : 'updateBlockedDsh', {
+                min: displayMinimumVersion(requiresDsh),
+              })
+              : t('updateUnverifiedDshUnknownRange')}
           </span>
         )}
         {found !== undefined && (

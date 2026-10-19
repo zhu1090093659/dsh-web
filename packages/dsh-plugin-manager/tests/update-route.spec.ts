@@ -274,6 +274,10 @@ describe('gateway update route', () => {
     expect(unknownResponse.body()).toMatchObject({ error: expect.stringContaining('cannot verify the running DSH version') })
     expect(unknownHost.update).not.toHaveBeenCalled()
 
+    // A readable host version does not make an unparsable declaration a
+    // "too old" verdict: nothing was compared, so the copy names the
+    // declaration instead of sending the user to upgrade a DSH that may
+    // already satisfy it (issue #1899).
     const unparsable = updateHandler(
       facts,
       async () => manifest('1.1.0', { dsh: { engines: { dsh: 'not-a-range' } } }),
@@ -282,6 +286,8 @@ describe('gateway update route', () => {
     const unparsableResponse = response()
     await unparsable.handler(request({ id: 'dsh-memoir' }), unparsableResponse.res)
     expect(unparsableResponse.status()).toBe(412)
+    expect(unparsableResponse.body()).toMatchObject({ error: expect.stringContaining('cannot verify the running DSH version') })
+    expect(unparsableResponse.body()).toMatchObject({ error: expect.stringContaining('not-a-range') })
     expect(unparsable.update).not.toHaveBeenCalled()
   })
 
@@ -448,6 +454,59 @@ describe('gateway check-updates route', () => {
     })
   })
 
+  it('operator gets a blocked row without a host version when the declaration cannot be parsed', async () => {
+    // Given a host that reads its own version fine and a release whose
+    // engines.dsh is not a node-semver range
+    const { facts, dir } = profile('^1.0.0')
+    tempDirs.push(dir)
+    const handler = checkUpdatesHandler(
+      facts,
+      async () => manifest('1.1.0', { dsh: { engines: { dsh: 'nonsense' } } }),
+      async () => '0.2.1-rc.2',
+    )
+    const captured = response()
+
+    // When the user checks for updates
+    await handler(request({}), captured.res)
+
+    // Then the row is blocked by the declaration it cannot read, and carries
+    // no hostVersion: that absence is exactly the signal the browser renders as
+    // "cannot verify", so the user is not told to upgrade a DSH the host never
+    // found to be too old (issue #1899)
+    expect(captured.body()).toEqual({
+      updates: [{
+        id: 'dsh-memoir', current: '1.0.0', latest: '1.1.0',
+        requiresDsh: 'nonsense', compatible: false,
+      }],
+    })
+  })
+
+  it('operator gets a blocked row without a host version when only part of a declaration parses', async () => {
+    // Given the same readable host and a declaration whose second alternative
+    // is garbage, so the whole range is unparsable
+    const { facts, dir } = profile('^1.0.0')
+    tempDirs.push(dir)
+    const declared = '>=0.1.0-rc.8 || garbage'
+    const handler = checkUpdatesHandler(
+      facts,
+      async () => manifest('1.1.0', { dsh: { engines: { dsh: declared } } }),
+      async () => '0.2.1-rc.2',
+    )
+    const captured = response()
+
+    // When the user checks for updates
+    await handler(request({}), captured.res)
+
+    // Then the raw declaration is passed through for display and the row is
+    // blocked without a hostVersion, exactly as for a wholly unparsable one
+    expect(captured.body()).toEqual({
+      updates: [{
+        id: 'dsh-memoir', current: '1.0.0', latest: '1.1.0',
+        requiresDsh: declared, compatible: false,
+      }],
+    })
+  })
+
   it('reports a migration update for the legacy aggregate', async () => {
     const { facts, dir } = profile('^0.3.2', '@linxin666/dsh-web-ui-all', '0.3.2')
     tempDirs.push(dir)
@@ -489,7 +548,7 @@ describe('gateway check-updates route', () => {
     expect(captured.body()).toEqual({ updates: [{ id: 'dsh-memoir', current: '1.0.0', latest: '1.1.0' }] })
   })
 
-  it('marks a declared requirement incompatible when the host version is unknown', async () => {
+  it('operator gets no host version on a blocked row when the running host cannot be read', async () => {
     const { facts, dir } = profile('^1.0.0')
     tempDirs.push(dir)
     const handler = checkUpdatesHandler(facts, async () => manifest('1.1.0', { dsh: { engines: { dsh: '>=0.1.0-rc.8' } } }), async () => undefined)

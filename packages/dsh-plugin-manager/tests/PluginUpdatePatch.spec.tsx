@@ -129,6 +129,19 @@ describe('update check', () => {
     await waitFor(() => { expect(document.querySelector('[data-update-latest]')?.getAttribute('data-update-latest')).toBe('0.5.0') })
   })
 
+  it('user sees no compatibility line for a release that declares no DSH requirement', async () => {
+    // Given a release whose manifest declares no DSH minimum at all
+    renderPatch(face({ checkUpdates: async () => [updateItem] }))
+
+    // When the user asks for a check
+    fireEvent.click(screen.getByRole('button', { name: t('checkUpdates') }))
+    await waitFor(() => { expect(updateAction().disabled).toBe(false) })
+
+    // Then nothing claims a compatibility verdict that was never asked for
+    expect(document.querySelector('[data-update-compat]')).toBeNull()
+    expect(document.querySelector('[data-update-patch]')?.textContent).not.toContain(t('updateUnverifiedDshUnknownRange'))
+  })
+
   it('user is told the installed version is current when the registry has nothing newer', async () => {
     // Given every plugin is already current
     const section = renderPatch(face({ checkUpdates: async () => [] }))
@@ -202,8 +215,8 @@ describe('update application', () => {
     expect(document.querySelector('[data-update-compat]')?.getAttribute('data-update-compat-reason')).toBe('below-minimum')
   })
 
-  it('user is told the host version could not be confirmed instead of being sent to upgrade DSH', async () => {
-    // Given a release whose requirement the host could not check, so no host
+  it('user is told the requirement could not be verified instead of being sent to upgrade DSH', async () => {
+    // Given a release whose requirement the host could not verify, so no host
     // version came back with the verdict
     renderPatch(face({
       checkUpdates: async () => [{ ...updateItem, requiresDsh: '>=0.2.0', compatible: false }],
@@ -214,13 +227,33 @@ describe('update application', () => {
     // When the user reads the section
     const action = updateAction()
 
-    // Then the update is still held back, but the copy says the version could
-    // not be confirmed rather than asserting the running DSH is too old
+    // Then the update is still held back, but the copy says the compatibility
+    // could not be verified rather than asserting the running DSH is too old
     expect(action.disabled).toBe(true)
     const section = action.closest('[data-update-patch]')
     expect(section?.textContent).toContain(t('updateUnverifiedDsh', { min: '0.2.0' }))
     expect(section?.textContent).not.toContain(t('updateBlockedDsh', { min: '0.2.0' }))
     expect(document.querySelector('[data-update-compat]')?.getAttribute('data-update-compat-reason')).toBe('unverified')
+  })
+
+  it('user sees why the action is disabled when a blocked row declares no readable range', async () => {
+    // Given a release the host could not evaluate at all: the row is blocked
+    // but carries neither a requirement to name nor a host version it compared
+    renderPatch(face({
+      checkUpdates: async () => [{ ...updateItem, compatible: false, hostVersion: '0.2.1-rc.2' }],
+    }))
+    fireEvent.click(screen.getByRole('button', { name: t('checkUpdates') }))
+    await waitFor(() => { expect(document.querySelector('[data-update-compat]')?.getAttribute('data-update-compat')).toBe('blocked') })
+
+    // When the user reads the section
+    const action = updateAction()
+
+    // Then the disabled action is explained in place instead of leaving the
+    // user with a dead button, and the copy claims no minimum to upgrade to
+    expect(action.disabled).toBe(true)
+    const section = action.closest('[data-update-patch]')
+    expect(section?.textContent).toContain(t('updateUnverifiedDshUnknownRange'))
+    expect(document.querySelector('[data-update-compat]')?.getAttribute('data-update-compat-reason')).toBe('below-minimum')
   })
 
   it('user keeps an update failure inside the section instead of losing the page', async () => {

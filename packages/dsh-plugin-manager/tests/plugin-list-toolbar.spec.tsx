@@ -159,6 +159,33 @@ describe('updating every third-party plugin', () => {
     expect(update).not.toHaveBeenCalled()
   })
 
+  it('user reads the same verdict on a row the host could not verify as on a row below the minimum', async () => {
+    // Given one row the host proved too old and one it could not verify, so
+    // only the second comes back without the running DSH version
+    const below: PluginUpdateItem = {
+      id: 'dsh-too-old', current: '1.0.0', latest: '2.0.0', requiresDsh: '>=9.0.0', compatible: false, hostVersion: '0.2.1-rc.2',
+    }
+    const unverified: PluginUpdateItem = {
+      id: 'dsh-unverified', current: '1.0.0', latest: '2.0.0', requiresDsh: '>=9.0.0', compatible: false,
+    }
+    renderToolbar(face({ checkUpdates: vi.fn(async () => [below, unverified]) }))
+    fireEvent.click(screen.getByRole('button', { name: t('checkUpdates') }))
+
+    // When the check settles
+    await waitFor(() => { expect(listedRows()).toEqual(['dsh-too-old', 'dsh-unverified']) })
+
+    // Then each row is named by its own verdict: only the compared one tells
+    // the user to upgrade DSH, and neither is offered to the bulk action
+    const belowRow = document.querySelector('[data-update-row="dsh-too-old"]')
+    const unverifiedRow = document.querySelector('[data-update-row="dsh-unverified"]')
+    expect(belowRow?.querySelector('[data-update-row-compat-reason]')?.getAttribute('data-update-row-compat-reason')).toBe('below-minimum')
+    expect(belowRow?.textContent).toContain(t('updateBlockedDsh', { min: '9.0.0' }))
+    expect(unverifiedRow?.querySelector('[data-update-row-compat-reason]')?.getAttribute('data-update-row-compat-reason')).toBe('unverified')
+    expect(unverifiedRow?.textContent).toContain(t('updateUnverifiedDsh', { min: '9.0.0' }))
+    expect(unverifiedRow?.textContent).not.toContain(t('updateBlockedDsh', { min: '9.0.0' }))
+    expect(document.querySelector('[data-update-all]')).toBeNull()
+  })
+
   it('user sees a failed update stop the run and keep the rest listed', async () => {
     // Given the first row cannot be installed
     const second: PluginUpdateItem = { id: 'dsh-weather', current: '1.0.0', latest: '1.1.0' }

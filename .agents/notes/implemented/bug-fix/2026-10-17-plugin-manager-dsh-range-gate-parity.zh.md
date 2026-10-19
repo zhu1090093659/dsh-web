@@ -34,13 +34,17 @@ undefined；`src/host/routes.ts` 的 `compatibleVerdict` 随后按 #754 的 fail
 
 1. 区间判定从 `core/version.ts` 移到新的 host-only 模块
    `packages/dsh-plugin-manager/src/host/dsh-compat.ts`，它导出
-   `meetsMinimumDsh(host, range): boolean | undefined`：
+   `evaluateDshCompatibility(host, range): DshCompatibility`——三分判定
+   （`satisfied` / `host-too-low` / `unverifiable`），使任何调用方都无法把
+   「我们没能核验」折叠成「你的 DSH 太旧」（issue #1899）：
 
 ```ts
-if (range.trim() === '') return undefined
-if (semver.validRange(range) === null) return undefined
-if (semver.valid(host) === null) return undefined
+if (range.trim() === '') return { verdict: 'unverifiable' }
+if (semver.validRange(range) === null) return { verdict: 'unverifiable' }
+if (semver.valid(host) === null) return { verdict: 'unverifiable' }
 return semver.satisfies(host, range, { includePrerelease: true })
+  ? { verdict: 'satisfied' }
+  : { verdict: 'host-too-low' }
 ```
 
    因此 `||`、`^`、`~`、空格分隔的比较符集合与 x-range 在这里的判定与启动时逐位相同，
@@ -54,8 +58,11 @@ return semver.satisfies(host, range, { includePrerelease: true })
    （`dsh.engines.dsh` > `engines.dsh` > `@deepseek-ai/dsh` peer），`routes.ts` 只从新模块引入
    判定本身。
 
-3. 返回契约不变：`boolean | undefined`，undefined 表示「无法核验」——空声明、node-semver
-   拒绝的区间，或不是一个合法版本的宿主字符串。`compatibleVerdict` 继续对 undefined fail closed。
+3. 返回契约携带原因而不是把原因折叠掉：空声明、node-semver 拒绝的区间，或不是一个合法版本的
+   宿主字符串给出 `unverifiable`；只有真的比较过运行版本且输了才给出 `host-too-low`。
+   `compatibleVerdict` 对两者都 fail closed，但只为 `host-too-low` 下发 `hostVersion`：
+   浏览器正是靠该字段区分「太旧」与「没能核验」，所以一条带 `hostVersion` 的 `unverifiable`
+   行会让用户看到「请先升级 DSH」，而那条声明根本没人求值过（issue #1899）。
 
 4. 空声明守卫必须显式，因为它无法委托：`semver.validRange('')` 返回 `'*'`，只查 `validRange`
    会把「没声明」变成「无约束且已满足」。官方门禁同样用 `range.trim() !== ''` 守卫。
@@ -92,6 +99,9 @@ return semver.satisfies(host, range, { includePrerelease: true })
   （`lib/client.js` 出现 semver 内部实现），而判定模块位于 host 目录本身就让这一点可被检查。
 - 「无法核验」的集合更窄也更明确：空声明、node-semver 拒绝的区间（`nonsense`、部分合法的
   `||` 链）、以及不是一个合法版本的宿主字符串。其余全部给出判定。
+- 线协议靠 `hostVersion` 的有无来携带原因，而不新增字段：被拦的行若点名了宿主版本，说明它真的
+  与该版本比较过，只有这种行才提示用户升级 DSH。详情区块与列表级工具条共用同一个 helper
+  （`dshGateOf`），两处不可能再对同一个判定给出不同文案（issue #1899）。
 - 多形态区间的显示串仍是原声明（`^0.1.0-rc.8`），因此无法缩短的文案读起来就是声明本身。
 - `packages/dsh-plugin-manager/package.json` 新增对 `semver` 的运行时依赖，由
   `pnpm runtime-deps:check` 对照产出的 host `lib/` 校验。
@@ -111,6 +121,12 @@ return semver.satisfies(host, range, { includePrerelease: true })
 - `packages/dsh-plugin-manager/tests/update-route.spec.ts`：「无法核验」用例改用不可解析区间，而不是
   `^0.1.0-rc.8`（如今它是合法且会被求值的区间）；新增用例把 `>=0.1.7-rc.2 || >=0.2.0-rc.2` 的发布
   走完整路由——在 `0.2.1-rc.2` 上放行，在 `0.1.0-rc.8` 上被拦并点名声明与运行版本。
+  宿主读得到、但声明解析不了（`nonsense`，以及部分合法的 `>=0.1.0-rc.8 || garbage` 链）时，
+  行为 `compatible: false` 且**完全不带** `hostVersion`，用 `toEqual` 全等断言，多出字段即失败；
+  同一输入下更新前的 412 说「cannot verify」并点名声明，而不是让用户去升级 DSH。
+- `packages/dsh-plugin-manager/tests/PluginUpdatePatch.spec.tsx` 与 `tests/plugin-list-toolbar.spec.tsx`：
+  两处界面都从「无 `hostVersion` 的行」渲染「无法核验」文案、从「有 `hostVersion` 的行」渲染升级文案，
+  且未声明 DSH 要求的普通发布完全不渲染兼容行。
 - 经新模块实测：`0.2.1-rc.2` 对两个真实声明均为 `true`；`0.3.0` 对 `dsh-llm-verifier` 为 `false`、
   对 `dsh-context` 为 `true`；`0.1.0-rc.8` 对两者均为 `false`。
 - 本次改动运行的检查：包级 `typecheck`、`build` 与 `vitest run`（0.4.7 基线上 366 个用例，上游的

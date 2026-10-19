@@ -229,23 +229,23 @@ test('web-ui-all ships the opt-in family rows disabled by default', () => {
   }
 })
 
-test('family shell rows keep the real plugin config at the row config root', () => {
-  // The Host settings surface edits an entry's OWN Config schema, so a
-  // shell-wrapped family row must present the family plugin's fields where a
-  // standalone install of that package keeps them: beside the shell's own
-  // `plugin` key, never nested under a second `config:` key (which the
-  // settings surface cannot address, and which left a shelled row silently
-  // unconfigurable while its card showed an editable form).
+test('family rows mount the real plugin package, never a shell subpath with a config block', () => {
+  // Issue #1901: a family row names its plugin package directly. That is what
+  // makes the loader serve the package's own browser half, so the row needs no
+  // shell wrapper and no `config.plugin` indirection — and the Host settings
+  // surface keeps editing that package's own Config schema, exactly as a
+  // standalone install of the same package does.
   const patch = readFileSync(join(ROOT, 'packages/dsh-web-all/cordis.patch.yml'), 'utf8')
   const lines = patch.split(/\r?\n/)
   let checked = 0
   for (let i = 0; i < lines.length; i++) {
-    const name = lines[i].match(/^      name: '@linxin666\/dsh-web-all\/(\S+)'$/)
-    if (!name) continue
-    assert.equal(lines[i + 1], '      config:', 'shell row ' + name[1] + ' must carry a config block')
-    assert.match(lines[i + 2] ?? '', /^        plugin: '@linxin666\/[^']+'$/, 'shell row ' + name[1] + ' must name the real plugin first')
-    for (let j = i + 3; j < lines.length && /^ {8}\S/.test(lines[j]); j++) {
-      assert.doesNotMatch(lines[j], /^ {8}config:/, 'shell row ' + name[1] + ' nests the family config one level too deep')
+    const id = lines[i].match(/^ {4}- id: (web-ui-[a-z0-9-]+)$/)
+    if (!id) continue
+    const name = (lines[i + 1] ?? '').match(/^ {6}name: '([^']+)'$/)
+    assert.ok(name, 'row ' + id[1] + ' must carry a name')
+    assert.doesNotMatch(name[1], /^@linxin666\/dsh-web-all\//u, 'row ' + id[1] + ' still mounts a shell subpath')
+    for (let j = i + 2; j < lines.length && /^ {6}\S/.test(lines[j]); j++) {
+      assert.doesNotMatch(lines[j], /^ {6}config:$/u, 'row ' + id[1] + ' still carries a shell config block')
     }
     checked += 1
   }
@@ -338,7 +338,7 @@ test('a host-only child row keeps its platform guard in the aggregate patch', ()
   const patch = readFileSync(join(ROOT, 'packages/dsh-web-all/cordis.patch.yml'), 'utf8')
   assert.match(
     patch,
-    /- id: web-ui-win-bash\n {6}name: '@linxin666\/dsh-web-all\/win-bash'\n {6}config:\n {8}plugin: '@linxin666\/dsh-win-bash'\n {6}disabled: !!js process\.platform !== 'win32'\n/u,
+    /- id: web-ui-win-bash\n {6}name: '@linxin666\/dsh-win-bash'\n {6}disabled: !!js process\.platform !== 'win32'\n/u,
     'the win-bash family row must carry the child platform guard verbatim',
   )
   const child = readFileSync(join(ROOT, 'packages/dsh-win-bash/cordis.patch.yml'), 'utf8')
@@ -369,8 +369,8 @@ test('the plugin-manager family row id and subpath survive its standalone row re
   const patch = readFileSync(join(ROOT, 'packages/dsh-web-all/cordis.patch.yml'), 'utf8')
   assert.match(
     patch,
-    /- id: web-ui-plugin-manager\n {6}name: '@linxin666\/dsh-web-all\/plugin-manager'\n {6}config:\n {8}plugin: '@linxin666\/dsh-client-ui-plugin-manager'/u,
-    'the plugin-manager family row must keep its id, subpath and real plugin name',
+    /- id: web-ui-plugin-manager\n {6}name: '@linxin666\/dsh-client-ui-plugin-manager'\n/u,
+    'the plugin-manager family row must keep its id and mount the real plugin package',
   )
   const pkg = JSON.parse(readFileSync(join(ROOT, 'packages/dsh-web-all/package.json'), 'utf8'))
   assert.equal(pkg.exports['./plugin-manager'], './lib/shells/shell.js', 'the family subpath export must stay resolvable')

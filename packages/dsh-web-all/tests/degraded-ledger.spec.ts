@@ -14,7 +14,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { _resetDegradedForTest, failureReason, listDegraded, recordDegraded } from '../src/degraded.ts'
 import { shellState } from '../src/state.ts'
 import { apply, _resetDegradedRouteForTest } from '../src/shell.ts'
-import { _resetActiveRowsForTest, listActiveRows } from '../src/rows.ts'
 
 /** Real module whose plugin body throws during start (the #1730 shape). */
 const THROWING_ROW = fileURLToPath(new URL('./fixtures/throwing-row.ts', import.meta.url))
@@ -22,7 +21,6 @@ const MISSING_SPEC = '@linxin666/dsh-web-all/definitely-missing-row'
 
 function resetAll(): void {
   _resetDegradedRouteForTest()
-  _resetActiveRowsForTest()
   _resetDegradedForTest()
 }
 
@@ -99,9 +97,7 @@ describe('a shell row that fails during apply is recorded as degraded', () => {
     // When the row applies and the plugin body throws
     await root.plugin(apply as never, { plugin: THROWING_ROW } as never)
 
-    // Then the row stays active (its UI entry must survive the failure)…
-    expect(listActiveRows()).toEqual([THROWING_ROW])
-    // …the ledger names the failure reason…
+    // Then the ledger names the failure reason…
     const [record] = listDegraded()
     expect(record.plugin).toBe(THROWING_ROW)
     expect(record.stage).toBe('start')

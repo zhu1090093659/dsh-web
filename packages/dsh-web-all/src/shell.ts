@@ -46,14 +46,11 @@
  * that (issue #1730): its row degrades when another DSH process holds the
  * ledger lock, and a bare 404 from /api/task-board/* cannot say so.
  *
- * Row-state surface: GET /api/dsh-web-all/rows answers the active family rows
- * (real plugin package names, see src/rows.ts) so the browser half can gate
- * which folded client children mount (#1372): a row disabled through a user
- * patch override never applies its shell entry, and its settings tabs stay
- * off the page. Unlike the degraded route this one is NOT loopback-fenced —
- * remote browsers (remote-web-ui) read it same-origin like every other family
- * /api route; it only leaks active family package names, which the served
- * client bundle already reveals.
+ * The shell no longer has a row-state surface. Family rows mount their real
+ * packages now (issue #1901), so the loader's own entry state is the answer to
+ * "is this family mounted", and the browser half has no inlined children left
+ * to gate: /api/dsh-web-all/rows and its ledger were removed with the
+ * subpath-row mount.
  */
 import type { Context, Volatile } from '@deepseek-ai/cordis'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -61,7 +58,6 @@ import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import z from '@deepseek-ai/schemastery'
 import { listDegraded, recordDegraded } from './degraded.ts'
 import { RETIRED_PLUGINS as RETIRED_PLUGINS_GENERATED } from './retired-plugins.generated.ts'
-import { listActiveRows, recordActiveRow, removeActiveRow } from './rows.ts'
 import { shellState } from './state.ts'
 
 /** Required services: none — the shell must activate before anything else. */
@@ -148,23 +144,6 @@ function makeDegradedRoute(): WebRoute {
   }
 }
 
-/**
- * Row-state route: answers the active family rows (real plugin package
- * names) for the browser half's mount gating (#1372). NOT loopback-fenced:
- * remote browsers read it same-origin like every other family /api route;
- * the payload (active family package names) is already public through the
- * served client bundle.
- */
-function makeRowsRoute(): WebRoute {
-  return {
-    kind: 'exact',
-    path: '/api/dsh-web-all/rows',
-    handler: async (_req: IncomingMessage, res: ServerResponse): Promise<void> => {
-      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' })
-      res.end(JSON.stringify({ ok: true, children: listActiveRows() }))
-    },
-  }
-}
 
 /**
  * Route registration state lives in the process-wide shared state
@@ -190,9 +169,9 @@ export function _resetDegradedRouteForTest(): void {
 }
 
 /**
- * Hold both health routes (degraded + rows) for this shell entry's lifetime.
- * Every shell entry calls this — including the config-less self row — so the
- * rows route stays up even when every family row is disabled.
+ * Hold the health route (degraded) for this shell entry's lifetime. Every
+ * shell entry calls this — including the config-less self row — so the route
+ * stays up even when every family row is disabled.
  *
  * The shell applies with inject=[] (it must activate before anything else),
  * which means it usually runs BEFORE the web app provides webServer. A direct
@@ -210,19 +189,8 @@ function holdHealthRoutes(ctx: Context): void {
     if (routes.count === 0) {
       try {
         const unregisterDegraded = webServer.register(makeDegradedRoute())
-        let unregisterRows: (() => void) | undefined
-        try {
-          unregisterRows = webServer.register(makeRowsRoute())
-        } catch (error) {
-          unregisterDegraded()
-          throw error
-        }
         routes.unregister = () => {
-          try {
-            unregisterRows?.()
-          } finally {
-            unregisterDegraded()
-          }
+          unregisterDegraded()
         }
       } catch (error) {
         // Defensive fallback: if another module already owns an exact route,
@@ -402,29 +370,14 @@ function recordDeferredStartFailure(spec: string, fiber: NestedFiber): void {
 export async function apply(ctx: Context, config: ShellConfigInput): Promise<void> {
   holdHealthRoutes(ctx)
   let mounted: MountedFamily | undefined
-  let activeRow: string | undefined
   /** Serializes config syncs: an update may land while a mount is still running. */
   let tail: Promise<void> = Promise.resolve()
-
-  /**
-   * Publish the family row this entry currently serves. Only a row the loader
-   * never applied (disabled) stays out of the ledger, so the browser half's
-   * mount gate keeps a row whose plugin degraded.
-   */
-  const publishRow = (spec: string | undefined): void => {
-    if (activeRow === spec) return
-    if (activeRow !== undefined) removeActiveRow(activeRow)
-    activeRow = spec
-    if (spec !== undefined) recordActiveRow(spec)
-  }
-  ctx.effect(() => () => { publishRow(undefined) }, 'dsh-web-all: active row ledger')
 
   /** Mount the real plugin the current row config names, replacing any previous mount. */
   const sync = async (): Promise<void> => {
     const raw = liveRowConfig(config)
     const row = isRowConfig(raw) ? raw : undefined
     if (row === undefined) {
-      publishRow(undefined)
       if (raw === undefined) return
       recordDegraded('(no plugin)', 'shape', new Error(`shell row config is not a mapping (row config: ${describeConfig(raw)}); the entry mounted empty`))
       return
@@ -443,14 +396,12 @@ export async function apply(ctx: Context, config: ShellConfigInput): Promise<voi
       //   hand-written tuning that drops the `plugin` key leaves this row
       //   with nothing to mount. Silence is the documented behavior for that
       //   shape; anything else still lands in the ledger for visibility.
-      publishRow(undefined)
       if (isOverrideShape(row)) return
       recordDegraded('(no plugin)', 'shape', new Error(`shell row config is missing the "plugin" package name (row config: ${describeConfig(row)}); the entry mounted empty`))
       return
     }
     if (RETIRED_PLUGINS.has(spec)) {
       // Stale row from an older profile whose plugin has been retired. Mount empty quietly.
-      publishRow(undefined)
       return
     }
     const family = familyConfigOf(row)
@@ -465,10 +416,6 @@ export async function apply(ctx: Context, config: ShellConfigInput): Promise<voi
         console.warn('[dsh-web-all] unmounting the previous family plugin failed:', error)
       }
     }
-    // Record the row active BEFORE importing the real plugin: a row whose
-    // plugin degrades (import/start failure captured below) is still an ACTIVE
-    // row and keeps its UI entry — the degraded surface is the honest signal.
-    publishRow(spec)
     let mod: unknown
     try {
       mod = await import(/* @vite-ignore */ spec)

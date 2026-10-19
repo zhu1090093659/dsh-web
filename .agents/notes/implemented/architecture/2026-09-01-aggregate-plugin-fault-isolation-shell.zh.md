@@ -2,6 +2,10 @@
 
 Status: implemented
 
+> 部分被取代：家族行不再挂 shell。[聚合家族行直挂真实包](2026-10-18-aggregate-family-rows-mount-real-packages.zh.md)记录了这次改动，
+> 以及本记录当初主张的故障隔离代价。shell 模块、它的降级账本，以及为改动前
+> 写下的 profile 保留的子路径导出都没有变化。
+
 ## Problem
 
 dsh-web 家族以一个聚合 bundle 发布，patch 行经 DSH loader 挂载约 20 个插件。loader 把全部行作为一个事务组处理（vendored cordis loader 的 `EntryGroup.update`）：任何一个 entry import 或启动失败都会回滚整组，boot 审计（`@deepseek-ai/dsh-app-boot` 的 `assertEntriesActivated`）随后中止整个 `dsh web` 进程。一个坏插件——SDK 漂移、坏版本、第三方 import——就能把所有插件拖死，与"一切皆插件"的组合前提相悖。家族已经为这个形态付过整次 boot 的代价（chatgpt-subscription 的 `CallId` import 崩溃，2026-08-28；宿主 SDK 漂移在 import 阶段杀死第三方插件）。

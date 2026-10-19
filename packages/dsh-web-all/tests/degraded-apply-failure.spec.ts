@@ -14,7 +14,6 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { _resetDegradedForTest, listDegraded } from '../src/degraded.ts'
 import { apply, _resetDegradedRouteForTest } from '../src/shell.ts'
-import { _resetActiveRowsForTest, listActiveRows } from '../src/rows.ts'
 
 /** Real module whose plugin body rejects during start, after an await. */
 const ASYNC_THROWING_ROW = fileURLToPath(new URL('./fixtures/async-throwing-row.ts', import.meta.url))
@@ -24,7 +23,6 @@ const OWNED_LOCK_REASON = 'task-board ledger is already owned by process 4242'
 
 function resetAll(): void {
   _resetDegradedRouteForTest()
-  _resetActiveRowsForTest()
   _resetDegradedForTest()
 }
 
@@ -79,9 +77,7 @@ describe('a family row that fails asynchronously during apply is recorded as deg
     // When the row applies and the plugin body rejects
     await root.plugin(apply as never, { plugin: ASYNC_THROWING_ROW } as never)
 
-    // Then the row stays active (its UI entry must survive the failure)…
-    expect(listActiveRows()).toEqual([ASYNC_THROWING_ROW])
-    // …the ledger names the failure…
+    // Then the ledger names the failure…
     const [record] = listDegraded()
     expect(record.plugin).toBe(ASYNC_THROWING_ROW)
     expect(record.stage).toBe('start')

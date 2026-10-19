@@ -2,6 +2,12 @@
 
 Status: implemented
 
+> Partially superseded: the family rows no longer mount the shell. They mount
+> their real packages since [aggregate family rows mount real packages](2026-10-18-aggregate-family-rows-mount-real-packages.md), which also records the
+> fault-isolation trade this note argued for. The shell module, its degraded
+> ledger and the subpath exports for profiles written before that change are
+> unchanged.
+
 ## Problem
 
 The dsh-web family ships as one aggregate bundle whose patch rows mount ~20 plugins through the DSH loader. The loader treats all rows as one transactional group (`EntryGroup.update` in the vendored cordis loader): any entry that fails to import or start rolls the whole group back, and the boot audit (`assertEntriesActivated` in `@deepseek-ai/dsh-app-boot`) then aborts the entire `dsh web` process. One broken plugin — an SDK drift, a bad release, a third-party import — took every plugin down, contradicting the "everything is a plugin" composition premise. The family had already lost whole boot sessions to this shape (chatgpt-subscription's `CallId` import crash, 2026-08-28; host SDK drift killing third-party plugins at import).

@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-09-01-aggregate-plugin-fault-isolation-shell.md: e2265aca201a7ef3aafe4c51f58405ba17c508ae
-2026-09-01-aggregate-plugin-fault-isolation-shell.zh.md: 2ab578e20c64b66bba0fcc621e6ba128f38a6a59
+2026-09-01-aggregate-plugin-fault-isolation-shell.md: 8fa68b92a60e772a89b5ec2b030724edfa2374fd
+2026-09-01-aggregate-plugin-fault-isolation-shell.zh.md: 2e3dd66bca20201638daf6e2a4288e5f96ce5c33

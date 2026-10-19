@@ -1,7 +1,9 @@
 # AGENTS.md — dsh-web-all
 
 全家桶聚合载具包：安装它 = 全部功能插件 + 皮肤全家桶一个包装齐。本包无自有插件
-逻辑（仅 compat shim），只是 child 插件 insert 行的汇总载体。
+逻辑，只有两件事：把 child 插件的 insert 行汇总成 `cordis.patch.yml`，以及提供
+可选的 compat 补丁层（`web-ui-compat` 行：语义 DOM 钩子 + 响应式契约 + 启动遮罩）。
+家族插件各自的界面由各自的加载器行下发，不经过本包。
 
 ## 聚合机制
 
@@ -11,8 +13,16 @@
   `rows:` 外部行：依赖写成显式 semver 范围，行 `name` 直接是真实包名（不经共享壳
   包装），浏览器半区由卫星自带的 loader entry 挂载、不再内联进本包 bundle。代价
   是这些行没有壳的 fault-isolation；收益是卫星客户端改动不再要求重建本包。
-- 家族行的 `name` 是按家族的子路径导出 `@linxin666/dsh-web-all/<family>`，全部子路径都指向共享
-  壳再导出模块 `lib/shells/shell.js`；子路径下必须有扫描器标记 manifest
+- **家族行直挂真实包**（issue #1901）：仓库内子插件的行 `name` 就是它自己的包名，
+  行 id 仍是 `web-ui-*`。官方 `dsh-client-modules` 只把浏览器半区挂在「`name` 等于
+  包名」的那一行上，所以裸行是「装哪个插件才下载哪个界面」的前提：旧做法让家族行指向
+  本包子路径，浏览器半区只能由 compat 的 `lib/client.js` 内联下发（单文件 2.9 MB，
+  远程转发下每个页面都要先下完整份副本）。
+  代价与收益见 [Agent Note](../../.agents/notes/implemented/architecture/2026-10-18-aggregate-family-rows-mount-real-packages.md)：
+  裸行不再有壳的启动期 fault-isolation，换来的是一行一插件、一行一开关。
+- **子路径导出只剩兼容壳**：`tombstones:` 里的每个家族子路径（含 `#1901` 之前的
+  12 个仓库内家族）都导出到共享壳 `lib/shells/shell.js`，供老 profile 里记录的
+  子路径行名继续解析；它们不再产出 patch 行。子路径下必须有扫描器标记 manifest
   （`src/shells/package.json`，构建复制到 `lib/shells/`）：无 `dsh` 声明 +
   `type: module`，阻止 client 模块扫描器的 nearest-package 走查到达包根（否则
   与 compat 行构成同包多来源，扫描器 reconcile 直接抛错）。子路径 exports 键由
@@ -38,10 +48,11 @@
   导出 `./package.json`），渲染在全部 `patchFrom` 行之后。行 id 仍走 `web-ui-*` 命名
   空间，与 `patchFrom` 时期逐字一致；外部包声明 `dsh.bundle.patch` 时展开它自己的
   patch 行（bundle-only 包不能被 loader 直接 import）。
-- `tombstones:` 段保留已退役或已迁出子路径的 exports 空壳（指向
+- `tombstones:` 段保留已退役、已迁出或已改为裸行的子路径 exports 空壳（指向
   `lib/shells/shell.js`），避免老 profile 残留旧行名时 Node 抛
   ERR_PACKAGE_PATH_NOT_EXPORTED。迁出为独立仓库的 `pet` / `skin-center` /
-  `community-plugins` 三个子路径必须留在本清单里。
+  `community-plugins` 三个子路径，以及 `#1901` 之前以子路径装配的 12 个仓库内
+  家族子路径，都必须留在本清单里。
 - `retiredPlugins:` 段（单行 JSON flow mapping，`{"family","plugin"}`）是壳的退役登记
   唯一事实源：生成器把它写进 `src/retired-plugins.generated.ts`（`RETIRED_FAMILIES` /
   `RETIRED_PLUGINS`），`src/shell.ts` 由生成模块派生。老 profile 里残留的家族行 `name`
@@ -58,15 +69,14 @@
   用于播种行级默认（如 enabled:false），渲染在全部 insert 之后；
   id 必须是本聚合已存在的行，settings 一经用户改动即优先于播种值。
 - `inactive:` 段（行 id 字符串清单）声明出厂默认关闭的自插入行：渲染为尾部
-  `disabled: true` 裸覆盖。新装用户该整行不加载、设置入口隐藏（rows 路由门控）；
-  用户在插件管理按行开启（写入用户层 disabled:false 覆盖，优先于本默认）。
-  锁定的核心行（compat/settings/plugin-manager）禁止列入。
+  `disabled: true` 裸覆盖。新装用户该整行不加载，其设置入口也不会出现（裸行不挂载
+  就没有浏览器半区）；用户在插件管理按行开启（写入用户层 disabled:false 覆盖，
+  优先于本默认）。锁定的核心行（settings/plugin-manager）禁止列入。
 - 宿主半双入口：本包经两个入口 artifact 加载（lib/index.js 走 self 行、
-  lib/shells/shell.js 走家族行），构建把共享代码拆成 chunk——每个入口持有自己的
-  模块拷贝，任何模块级可变状态都会静默分裂（2026-09-09 事故：路由重复注册告警 +
-  rows 路由伺服另一拷贝的空 ledger，门控据此隐藏了全部家族页签）。跨条目/跨拷贝
-  的状态一律走 `src/state.ts` 的 globalThis 注册表（Symbol.for 键），禁止模块级
-  可变单例。
+  lib/shells/shell.js 走老 profile 的子路径行），构建把共享代码拆成 chunk——每个
+  入口持有自己的模块拷贝，任何模块级可变状态都会静默分裂（2026-09-09 事故：路由
+  重复注册告警 + 健康路由伺服另一拷贝的空账本）。跨条目/跨拷贝的状态一律走
+  `src/state.ts` 的 globalThis 注册表（Symbol.for 键），禁止模块级可变单例。
 
 ## 新增 / 改动插件
 
@@ -84,8 +94,7 @@ node scripts/aggregate.mjs --check
 pnpm aggregate:check
 ```
 
-- 构建顺序：聚合客户端 bundle 内联**仓库内**子插件的 src/client 源码，任何这类
-  子插件客户端改动后必须重新构建本包（pnpm --filter @linxin666/dsh-web-all build），
-  否则 profile link 安装下宿主代码是新的、页面仍跑旧子插件 UI（2026-09-09
-  行级开关"重启后没变化"事故即此原因）。`pnpm dev:watch` 在开发期自动覆盖。
-  `rows:` 外部行不内联，卫星自身的客户端改动不需要重建本包。
+- 构建顺序：`#1901` 之后本包的客户端 bundle 只是 compat 补丁层，不再内联任何
+  子插件客户端源码——子插件改动只需重建该子包（`pnpm dev:watch` 在开发期自动覆盖）。
+  重新往本包内联家族代码会让每个页面重新承担整份副本，`scripts/client-bundle-contract.test.mjs`
+  对此设了门禁。`rows:` 外部行同样不内联。

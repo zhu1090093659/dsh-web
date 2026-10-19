@@ -167,6 +167,24 @@ tombstones:
   - preset-center
   - skin-center
   - community-plugins
+  # issue #1901：仓库内家族行改为直挂真实包名（加载器据此下发各自的浏览器半区，
+  # 不再由本包 compat 客户端内联整份副本）。旧 profile 记录的行名仍是这些 shell
+  # 子路径，必须继续可解析，否则那条老行会让整组 boot 抛
+  # ERR_PACKAGE_PATH_NOT_EXPORTED。tombstones 只保留 shell 导出，不再产出条目。
+  - settings
+  - plugin-manager
+  - market
+  - task-board
+  - task-board-github
+  - git-graph
+  - remote-web-ui
+  - update
+  - ssh
+  - liangshen
+  - skill-explorer
+  - usage
+  - session-archive
+  - win-bash
 
 # 退役插件登记（retiredPlugins）：每个已退役家族的真实包名，单行 JSON flow mapping（与
 # rows: / shellNotes: 同风格）。这是唯一事实源：生成器把它写进

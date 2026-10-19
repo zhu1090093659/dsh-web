@@ -47,10 +47,11 @@ describe('dsh-web-all fault-isolation shell (real boot)', () => {
     expect(existsSync(join(PACKAGE_DIR, 'lib/shell.js'))).toBe(true)
     const patch = await_import_patch()
     expect(patch).toContain("name: '@linxin666/dsh-web-all'")
-    // Family rows mount per-family subpath exports (distinct inventory
-    // titles) while still carrying the real plugin name in config...
-    expect(patch).toMatch(/- id: web-ui-usage\n      name: '@linxin666\/dsh-web-all\/usage'\n      config:\n        plugin: '@linxin666\/dsh-usage'/)
-    // ...and the built shells re-export exists for those specifiers.
+    // Family rows mount the real plugin package (issue #1901), so the loader
+    // serves that package's own browser half instead of one inlined copy...
+    expect(patch).toMatch(/- id: web-ui-usage\n      name: '@linxin666\/dsh-usage'\n/)
+    // ...and the built shells re-export still exists for the subpath names a
+    // pre-#1901 profile may record.
     expect(existsSync(join(PACKAGE_DIR, 'lib/shells/shell.js'))).toBe(true)
     // The exempted i18n row keeps its direct name.
     expect(patch).toMatch(/- id: web-ui-i18n\n      name: '@linxin666\/dsh-i18n'/)
@@ -153,7 +154,7 @@ describe('dsh-web-all fault-isolation shell (real boot)', () => {
     expect(facts.goodSvc).toEqual({ ok: true })
   })
 
-  dshIt('a late-provided webServer still gets both health routes (boot ordering)', () => {
+  dshIt('a late-provided webServer still gets the health route (boot ordering)', () => {
     // Real web boots: the shell applies with inject=[] BEFORE the web app
     // provides webServer, so the routes must register through the nested
     // inject fiber once the service appears — never stay absent. A sibling
@@ -167,7 +168,6 @@ describe('dsh-web-all fault-isolation shell (real boot)', () => {
     expect(facts.ok).toBe(true)
     expect(facts.entries.find(e => e.id === 'shell-late-web')?.state).toBe(2)
     expect(facts.regs).toContain('/api/dsh-web-all/degraded')
-    expect(facts.regs).toContain('/api/dsh-web-all/rows')
   })
 
   dshIt('shell without webServer still boots (optional degraded route skips)', () => {
@@ -231,27 +231,23 @@ describe('dsh-web-all fault-isolation shell (real boot)', () => {
       }
       for (const cb of pendingInject.splice(0)) cb(scoped)
 
-      // Both health routes were registered exactly once
-      expect(mockWebServer.register).toHaveBeenCalledTimes(2)
+      // The health route was registered exactly once for every entry
+      expect(mockWebServer.register).toHaveBeenCalledTimes(1)
       expect(routes.has('/api/dsh-web-all/degraded')).toBe(true)
-      expect(routes.has('/api/dsh-web-all/rows')).toBe(true)
 
-      // Each entry contributes two effects: the active-row ledger removal at
-      // apply time (indexes 0-16) and the shared route hold when webServer
-      // arrived (indexes 17-33). Release 16 of the 17 route holds: both
-      // routes must remain active.
+      // Each entry contributes one effect: the shared route hold when
+      // webServer arrived (indexes 0-16). Release 16 of the 17 holds: the
+      // route must remain active.
       for (let i = 0; i < 16; i++) {
-        effects[17 + i]?.()
+        effects[i]?.()
       }
       expect(routes.has('/api/dsh-web-all/degraded')).toBe(true)
-      expect(routes.has('/api/dsh-web-all/rows')).toBe(true)
       expect(unregisters).toBe(0)
 
-      // Final route-hold release: both routes are disposed
-      effects[33]?.()
+      // Final route-hold release: the route is disposed
+      effects[16]?.()
       expect(routes.has('/api/dsh-web-all/degraded')).toBe(false)
-      expect(routes.has('/api/dsh-web-all/rows')).toBe(false)
-      expect(unregisters).toBe(2)
+      expect(unregisters).toBe(1)
     } finally {
       _resetDegradedRouteForTest()
     }

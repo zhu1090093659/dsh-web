@@ -170,15 +170,14 @@ describe('satellite rows mount published npm packages', () => {
     expect(order.indexOf('web-ui-remote-web-ui')).toBeLessThan(order.indexOf('web-ui-pet'))
   })
 
-  it('operator no longer inlines the satellites as client children', () => {
+  it('operator mounts each satellite from its own loader entry, never from the aggregate bundle', () => {
     // Given the satellites ship their own loader client entry,
-    const children = JSON.parse(
-      readFileSync(join(PACKAGE_DIR, 'src/client/children.specifiers.json'), 'utf8'),
-    ) as { name: string }[]
-    // When the operator inspects the aggregate client mount list,
-    const inlined = new Set(children.map(child => child.name))
-    // Then none of them is inlined into the aggregate bundle any more.
-    const stillInlined = SATELLITES.filter(s => inlined.has(s.pkg)).map(s => s.pkg)
-    expect(stillInlined).toEqual([])
+    // When the operator inspects the aggregate's browser bundle,
+    const bundle = readFileSync(join(PACKAGE_DIR, 'lib/client.js'), 'utf8')
+    // Then no satellite client module is inlined into it: the bundle is the
+    // compat layer alone, so a page that never enabled a satellite never
+    // downloads its UI (issue #1901).
+    const inlined = SATELLITES.filter(s => bundle.includes(s.pkg)).map(s => s.pkg)
+    expect(inlined).toEqual([])
   })
 })

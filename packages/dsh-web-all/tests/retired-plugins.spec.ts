@@ -20,7 +20,6 @@ import { Context } from '@deepseek-ai/cordis'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { _resetDegradedForTest, listDegraded } from '../src/degraded.ts'
 import { RETIRED_FAMILIES, RETIRED_PLUGINS as GENERATED_RETIRED_PLUGINS } from '../src/retired-plugins.generated.ts'
-import { _resetActiveRowsForTest, listActiveRows } from '../src/rows.ts'
 import { apply, _resetDegradedRouteForTest } from '../src/shell.ts'
 
 const PACKAGE_DIR = resolve(fileURLToPath(new URL('.', import.meta.url)), '..')
@@ -99,7 +98,6 @@ function shellMetadataFamilies(): string[] {
 
 function resetAll(): void {
   _resetDegradedRouteForTest()
-  _resetActiveRowsForTest()
   _resetDegradedForTest()
 }
 
@@ -184,7 +182,6 @@ describe('a stale profile row for a retired plugin mounts as a silent no-op', ()
       // Then nothing is imported or started, so the ledger stays empty: the
       // retired row is skipped BEFORE the import that used to fail.
       expect(listDegraded(), 'retired plugin ' + spec + ' must not be recorded as degraded').toEqual([])
-      expect(listActiveRows(), 'retired plugin ' + spec + ' must not be published as an active row').toEqual([])
     }
   })
 })

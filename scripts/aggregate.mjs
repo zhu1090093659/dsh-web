@@ -133,26 +133,31 @@ const PATCH_HEADER = [
   '# This file is derived from the aggregate.yml manifest in this package;',
   '# edit aggregate.yml and rerun `node scripts/aggregate.mjs`.',
   '# Rows are namespaced web-ui-* so the bundle can coexist with standalone installs.',
-  '# Family rows mount the aggregate\'s per-family subpath exports so the',
-  '# official plugin inventory renders one distinct "web-all/<family>" title per row.',
+  '# Family rows mount the real plugin package: the loader then serves that package\'s',
+  '# own browser half, and one family switch is one loader switch.',
 ]
 
 /**
- * The fault-isolation shell: family insert rows mount a per-family subpath
- * export of @linxin666/dsh-web-all (this module never fails to import or
- * start) and carry the real plugin package name in the row config. The shell
- * imports the real module at start time and contains any import/activation
- * failure to that entry, so one broken plugin can no longer roll back the
- * whole boot group. The subpath spelling (`@linxin666/dsh-web-all/<family>`)
- * is what the official plugin inventory displays: titles render per family
- * ("web-all/usage", "web-all/pet", ...) instead of a wall of identical
- * "web-all" cards — the same multi-entry convention as the host's own
- * `@deepseek-ai/dsh-web-app/startup` row. All subpath exports resolve to the
- * shared shell re-export module; the row config contract is unchanged. Opt
- * out per source package with a `"shell": false` comment entry in
- * aggregate.yml (see SHELL_EXEMPT below). External rows (npm packages outside
- * the family) keep mounting directly: their owners manage their own failure
- * semantics.
+ * This package's own name. It is still the row the compat shim mounts (the
+ * `self` manifest entry) and the package the retirement registry and the
+ * family subpaths belong to, but it is no longer the mount point of the
+ * family rows themselves: those name their real packages (issue #1901).
+ *
+ * History that still explains the shell code: family rows used to mount a
+ * per-family subpath of this package and carry the real package in
+ * `config.plugin`, so that a family plugin failing to import could not roll
+ * back the whole boot group. That bought fault isolation at the cost of the
+ * family browser halves: the official client module scanner only mounts a
+ * client face on the entry whose name equals the package, so every family UI
+ * had to be inlined into this package's own ./client bundle — 13 plugins,
+ * 2.9 MB served to every page before any family surface could render. The
+ * rows now mount the real packages and the browser halves come from their
+ * own loader entries; the isolation trade is recorded in
+ * [aggregate family rows mount real packages]
+ * (.agents/notes/implemented/architecture/2026-10-18-aggregate-family-rows-mount-real-packages.md).
+ * The shell module itself stays: a profile written before this change still
+ * records `@linxin666/dsh-web-all/<family>` row names, and those subpath
+ * exports keep resolving to it.
  */
 const AGGREGATE_SHELL_PACKAGE = '@linxin666/dsh-web-all'
 
@@ -417,25 +422,31 @@ function shellSubpath(id) {
   return namespaceId(id).replace(/^web-ui-/, '')
 }
 
-/** Family subpaths of one aggregate, deduped and sorted for exports emission. */
-function collectShellSubpaths(blocks, tombstones = [], familyIds = {}) {
-  const subs = new Set(tombstones)
-  for (const block of blocks) {
-    if (block.entry === 'self' || SHELL_EXEMPT.has(block.entry)) continue
-    for (const row of block.rows) {
-      if (row.kind === 'patch') continue
-      subs.add(shellSubpath(familyIdOf(row.id, familyIds)))
-    }
-  }
-  return [...subs].sort()
+/**
+ * Family subpaths of one aggregate, deduped and sorted for exports emission.
+ *
+ * A family row mounts its child's REAL package now, so the child owns its
+ * inventory title and needs no subpath of ours. The subpaths that stay are the
+ * tombstoned ones: a profile written before the change records
+ * `@linxin666/dsh-web-all/<family>` as a row name, and dropping the export
+ * would turn that profile's boot into an ERR_PACKAGE_PATH_NOT_EXPORTED
+ * failure. Keeping it costs one file in the tarball.
+ */
+function collectShellSubpaths(tombstones = []) {
+  return [...new Set(tombstones)].sort()
 }
 
 /**
- * Source packages exempted from shell wrapping (relative patchFrom spellings).
- * - self: compat shim IS the shell package's own plugin;
+ * Source packages mounted as direct bare rows even though their patch row is
+ * not shell-wrapped (paths are relative patchFrom spellings):
+ * - self: compat shim IS this package's own plugin;
  * - dsh-i18n: host half is a no-op;
- * - skins/skin-center: carries the Config schema for background/custom-theme/wallpaper,
- *   which the DSH 0.1.7+ SettingsForms loader must inspect directly to permit volatile writes.
+ * - skins/skin-center: carried the Config schema for background/custom-theme/
+ *   wallpaper that the 0.1.7 SettingsForms loader had to inspect directly. It
+ *   is no longer an in-repo patchFrom source (the skin center became a
+ *   satellite npm row), so the entry is inert today; it stays because the
+ *   exemption list also decides which historical family subpaths keep their
+ *   compat export.
  */
 const SHELL_EXEMPT = new Set(['../dsh-i18n', '../skins/skin-center'])
 
@@ -761,21 +772,6 @@ function expandExternalRow(row, aggregateDir, errors, rel) {
   return { kind: 'bundle', name: row.name, dir, rows: parsePatchBlocks(patchPath, errors) }
 }
 
-/**
- * Render one insert row's shell config block: the real plugin name plus, at
- * the same level, the config the child's own patch row declared. A family
- * plugin's fields are its OWN Config fields, and the Host settings surface
- * edits an entry's Config schema — so the fields sit where a standalone
- * install of that package keeps them (the row config root), which is what
- * makes a shelled aggregate row configurable at all. The child's config lines
- * carry 6-space indentation (id/name level) in the source patch; they need no
- * shift to line up under the shell row's own `config:` key.
- */
-function pushShellConfig(lines, row) {
-  lines.push('      config:')
-  lines.push(`        plugin: '${row.name}'`)
-  for (const configLine of row.configLines ?? []) lines.push('  ' + configLine)
-}
 
 /** Render the aggregate cordis.patch.yml: header + per-source insert blocks, plus verbatim harness-row patches and own-row config overrides. */
 function renderPatch(blocks, externalRows, ownPatches, inactiveRows, retireRows, familyIds, errors, rel, aggregateDir) {
@@ -794,18 +790,19 @@ function renderPatch(blocks, externalRows, ownPatches, inactiveRows, retireRows,
         if (seen.has(id)) errors.push(`${rel}: duplicate aggregate row id after namespacing: ${id} (${row.name})`)
         seen.add(id)
         lines.push(`    - id: ${id}`)
-        // Shell-wrapped family rows mount the aggregate's per-family subpath
-        // export (a distinct inventory title per family) and carry the real
-        // plugin name in the row config, so one broken plugin degrades alone
-        // instead of rolling back the boot group. dsh-i18n (SHELL_EXEMPT)
-        // stays direct.
-        if (SHELL_EXEMPT.has(block.entry) || block.entry === 'self') {
-          lines.push(`      name: '${row.name}'`)
-          pushConfig(lines, row.configLines ?? [], 6)
-        } else {
-          lines.push(`      name: '${AGGREGATE_SHELL_PACKAGE}/${shellSubpath(id)}'`)
-          pushShellConfig(lines, row)
-        }
+        // Every family row mounts its child's REAL package name. That is what
+        // puts the child's browser half on the page: the official client module
+        // scanner only mounts a client face on the loader entry whose name equals
+        // the package, so a subpath-spelled row left the browser half to this
+        // package's own ./client bundle - one copy of every family UI inside a
+        // single 2.9 MB bundle that had to download in full before any family
+        // surface could render (issue #1901, remote/high-RTT forwarders). A real
+        // row also makes the row's own switch honest: the loader's `disabled` now
+        // decides the family, where it used to gate only a shell whose client half
+        // was then re-gated in the browser. The row id stays web-ui-* so profile
+        // overrides written before this change keep applying.
+        lines.push(`      name: '${row.name}'`)
+        pushConfig(lines, row.configLines ?? [], 6)
         // The child's own row options, verbatim and AFTER the name/config pair:
         // a host-only child ships a platform guard this way
         // (`disabled: !!js process.platform !== 'win32'`), and dropping it would
@@ -995,154 +992,6 @@ function renderPatch(blocks, externalRows, ownPatches, inactiveRows, retireRows,
   return lines.join('\n') + '\n'
 }
 
-/**
- * Index every workspace package name to its directory: packages/*, the same
- * root findAggregates scans. The shell's folded rows carry the real plugin
- * package name in `config.plugin`, and the client-children emission must
- * resolve those names back to directories to read each package's client face.
- */
-function packageIndex() {
-  const index = new Map()
-  for (const name of listSubdirs(join(REPO_ROOT, 'packages'))) {
-    const dir = join(REPO_ROOT, 'packages', name)
-    const pkgPath = join(dir, 'package.json')
-    if (!existsSync(pkgPath)) continue
-    try {
-      const manifest = JSON.parse(readFileSync(pkgPath, 'utf8'))
-      if (typeof manifest.name === 'string' && manifest.name !== '' && !index.has(manifest.name)) {
-        index.set(manifest.name, dir)
-      }
-    } catch {
-      // Unreadable package.json: not a client-children candidate.
-    }
-  }
-  return index
-}
-
-/**
- * Collect the aggregate's client children: the real plugin package of every
- * shell-wrapped insert row that ships a browser client face (dsh.client plus
- * an exports["./client"] entry, with a src/client/index.ts to compile from).
- * The client-side mount list mirrors the host shell — without it the folded
- * rows leave the children invisible to the client module scanner, which only
- * enumerates loader entries. Direct-mounted exemptions (SHELL_EXEMPT, self)
- * keep their own loader client entries and are not inlined.
- */
-function collectClientChildren(blocks, rel, errors, pkgDirsByName) {
-  const children = []
-  const seen = new Set()
-  for (const block of blocks) {
-    if (block.entry === 'self' || SHELL_EXEMPT.has(block.entry)) continue
-    for (const row of block.rows) {
-      if (row.kind === 'patch') continue
-      const pkgName = row.name
-      if (typeof pkgName !== 'string' || pkgName === AGGREGATE_SHELL_PACKAGE) continue
-      if (seen.has(pkgName)) continue
-      seen.add(pkgName)
-      const dir = pkgDirsByName.get(pkgName)
-      if (dir === undefined) {
-        errors.push(`${rel}: client child package not found in the workspace: ${pkgName}`)
-        continue
-      }
-      let pkg
-      try {
-        pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
-      } catch (e) {
-        errors.push(`${rel}: cannot read client child ${pkgName} package.json: ${e.message}`)
-        continue
-      }
-      const clientDecl = pkg.dsh?.client
-      if (clientDecl === undefined) continue // host-only or inert row: no browser half to mount
-      const srcEntry = join(dir, 'src', 'client', 'index.ts')
-      if (!existsSync(srcEntry)) {
-        errors.push(`${rel}: client child ${pkgName} declares dsh.client but has no src/client/index.ts (${srcEntry})`)
-        continue
-      }
-      if (pkg.exports?.['./client'] === undefined) {
-        errors.push(`${rel}: client child ${pkgName} declares dsh.client without an exports["./client"] entry`)
-        continue
-      }
-      children.push({
-        name: pkgName,
-        specifier: `${pkgName}/client`,
-        source: relative(REPO_ROOT, srcEntry).split('\\').join('/'),
-      })
-    }
-  }
-  return children
-}
-
-const CLIENT_CHILDREN_HEADER = [
-  '/* Generated by scripts/aggregate.mjs from the aggregate.yml manifest — do not edit.',
-  ' * Client-side mirror of the host fault-isolation shell: one entry per',
-  ' * shell-wrapped family child that ships a browser client face. The shell',
-  ' * folds every family row under this package, and the client module scanner',
-  ' * only enumerates loader entries, so without this list the children\'s',
-  ' * client bundles never reach the browser and every family surface',
-  ' * (settings sections, cards, docks) vanishes. The aggregate client bundle',
-  ' * inlines each child\'s client module (the tsdown config aliases these',
-  ' * specifiers to the child sources) and mounts them as nested client',
-  ' * plugins; children that carry their own loader client entry are skipped',
-  ' * at runtime (see mountClientChildren in src/client/index.ts).',
-  ' */',
-]
-
-function renderClientChildrenJson(children) {
-  return JSON.stringify(children, null, 2) + '\n'
-}
-
-function renderClientChildrenModule(children) {
-  const lines = [...CLIENT_CHILDREN_HEADER]
-  lines.push('')
-  children.forEach((child, index) => {
-    lines.push(`import * as child${index} from '${child.specifier}'`)
-  })
-  if (children.length > 0) lines.push('')
-  lines.push(
-    '/** The loose shape every child client module must expose at runtime. */',
-    'export interface ClientChildModule {',
-    '  apply?: unknown',
-    '  default?: unknown',
-    '  inject?: readonly string[]',
-    '}',
-    '',
-    'export interface ClientChild {',
-    '  /** Real plugin package name: the cordis plugin name and the key shared',
-    '   *  with the family mount-registry guards. */',
-    '  name: string',
-    '  module: ClientChildModule',
-    '}',
-    '',
-    'export const clientChildren: readonly ClientChild[] = [',
-  )
-  children.forEach((child, index) => {
-    lines.push(`  { name: '${child.name}', module: child${index} },`)
-  })
-  lines.push(']', '')
-  return lines.join('\n')
-}
-
-function renderClientChildrenAmbient(children) {
-  const lines = [
-    '/* Generated by scripts/aggregate.mjs — do not edit.',
-    ' * Ambient shapes for the generated child client imports: the built',
-    ' * ./client artifacts are loader factory files without type entry points,',
-    ' * so tsc must not resolve them; the bundle aliases these specifiers to',
-    ' * the child sources at build time (see the package tsdown.config.ts). */',
-    '',
-  ]
-  for (const child of children) {
-    lines.push(
-      `declare module '${child.specifier}' {`,
-      '  export const apply: unknown',
-      '  export const inject: readonly string[] | undefined',
-      '}',
-      '',
-    )
-  }
-  return lines.join('\n')
-}
-
 /** Resolve manifest entries to their package names (read from each child's package.json). */
 function resolveEntries(pkgDir, entries, section, errors) {
   const resolved = []
@@ -1313,30 +1162,18 @@ for (const { pkgDir, ymlPath } of aggregates) {
   if (manifest.patchFrom.length === 0 && !manifest.self) {
     console.log(`[aggregate] WARN ${rel}: aggregate.yml has no patchFrom entries (patch would be empty)`)
   }
-  const shellSubpaths = collectShellSubpaths(blocks, manifest.tombstones, manifest.familyIds)
+  const shellSubpaths = collectShellSubpaths(manifest.tombstones)
   if (shellSubpaths.length > 0) validateShellFiles(pkgDir, rel, errors)
   const shellNotes = resolveShellNotes(manifest.shellNotes, shellSubpaths, rel, errors)
   const patch = renderPatch(blocks, manifest.rows, manifest.patches ?? [], manifest.inactive ?? [], manifest.retire ?? [], manifest.familyIds, errors, rel, pkgDir)
   const resolvedDeps = resolveEntries(pkgDir, manifest.deps, 'deps', errors)
   const retiredPlugins = resolveRetiredPlugins(manifest.retiredPlugins, manifest.tombstones, resolvedDeps, rel, errors)
   const pkgJson = renderPackageJson(join(pkgDir, 'package.json'), resolvedDeps, shellSubpaths)
-  // The shell aggregate additionally emits the client-children mount list:
-  // the browser-side mirror of its host-side folded rows.
-  let clientChildren
   let ownName
   try {
     ownName = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8')).name
   } catch {
     ownName = undefined
-  }
-  if (ownName === AGGREGATE_SHELL_PACKAGE) {
-    const children = collectClientChildren(blocks, rel, errors, packageIndex())
-    clientChildren = {
-      json: renderClientChildrenJson(children),
-      module: renderClientChildrenModule(children),
-      ambient: renderClientChildrenAmbient(children),
-      count: children.length,
-    }
   }
   results.push({
     rel,
@@ -1344,7 +1181,6 @@ for (const { pkgDir, ymlPath } of aggregates) {
     patch,
     resolvedDeps,
     pkgJson,
-    clientChildren,
     // Only the shell aggregate generates the retirement registry: it is the
     // package whose shell module performs the no-op skip.
     retiredPluginsModule: ownName === AGGREGATE_SHELL_PACKAGE ? renderRetiredPlugins(retiredPlugins) : undefined,
@@ -1368,13 +1204,6 @@ if (failed) {
 for (const r of results) {
   const patchPath = join(REPO_ROOT, r.rel, 'cordis.patch.yml')
   const pkgPath = join(REPO_ROOT, r.rel, 'package.json')
-  const childFiles = r.clientChildren
-    ? [
-        ['children.specifiers.json', join(REPO_ROOT, r.rel, 'src', 'client', 'children.specifiers.json'), r.clientChildren.json],
-        ['children.generated.ts', join(REPO_ROOT, r.rel, 'src', 'client', 'children.generated.ts'), r.clientChildren.module],
-        ['children.modules.d.ts', join(REPO_ROOT, r.rel, 'src', 'client', 'children.modules.d.ts'), r.clientChildren.ambient],
-      ]
-    : []
   const metadataFiles = r.shellMetadata.map(({ path, content }) => [relative(REPO_ROOT, path), path, content])
   const retiredFile = r.retiredPluginsModule === undefined
     ? []
@@ -1383,7 +1212,7 @@ for (const r of results) {
     const diffs = []
     if (!existsSync(patchPath) || readFileSync(patchPath, 'utf8') !== r.patch) diffs.push(relative(REPO_ROOT, patchPath))
     if (!existsSync(pkgPath) || readFileSync(pkgPath, 'utf8') !== r.pkgJson) diffs.push(relative(REPO_ROOT, pkgPath))
-    for (const [, filePath, content] of [...childFiles, ...metadataFiles, ...retiredFile]) {
+    for (const [, filePath, content] of [...metadataFiles, ...retiredFile]) {
       if (!existsSync(filePath) || readFileSync(filePath, 'utf8') !== content) diffs.push(relative(REPO_ROOT, filePath))
     }
     // Symmetry with write mode: pruneShellMetadata deletes shell-metadata
@@ -1397,9 +1226,8 @@ for (const r of results) {
       failed = true
     } else {
       const rows = r.blocks.reduce((n, b) => n + b.rows.length, 0)
-      const childrenNote = r.clientChildren ? `, ${r.clientChildren.count} client child(ren)` : ''
       const retiredNote = r.retiredPluginsModule === undefined ? '' : `, ${r.retiredPluginCount} retired plugin(s)`
-      console.log(`[aggregate] check OK: ${r.rel} (${rows} row(s), ${r.resolvedDeps.length} dep(s)${childrenNote}${retiredNote})`)
+      console.log(`[aggregate] check OK: ${r.rel} (${rows} row(s), ${r.resolvedDeps.length} dep(s)${retiredNote})`)
     }
   } else {
     writeFileSync(patchPath, r.patch)
@@ -1408,7 +1236,7 @@ for (const r of results) {
     writeFileSync(pkgPath, r.pkgJson)
     console.log(`[aggregate] wrote ${relative(REPO_ROOT, pkgPath)} (${r.resolvedDeps.length} workspace dep(s))`)
     pruneShellMetadata(resolvePath(REPO_ROOT, r.rel), r.shellSubpaths)
-    for (const [label, filePath, content] of [...childFiles, ...metadataFiles, ...retiredFile]) {
+    for (const [label, filePath, content] of [...metadataFiles, ...retiredFile]) {
       mkdirSync(dirname(filePath), { recursive: true })
       writeFileSync(filePath, content)
       console.log(`[aggregate] wrote ${relative(REPO_ROOT, filePath)} (${label})`)

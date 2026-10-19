@@ -2,8 +2,8 @@
 # This file is derived from the aggregate.yml manifest in this package;
 # edit aggregate.yml and rerun `node scripts/aggregate.mjs`.
 # Rows are namespaced web-ui-* so the bundle can coexist with standalone installs.
-# Family rows mount the aggregate's per-family subpath exports so the
-# official plugin inventory renders one distinct "web-all/<family>" title per row.
+# Family rows mount the real plugin package: the loader then serves that package's
+# own browser half, and one family switch is one loader switch.
 
 # from self
 - insert:
@@ -13,100 +13,72 @@
 # from ../dsh-web-settings
 - insert:
     - id: web-ui-settings
-      name: '@linxin666/dsh-web-all/settings'
-      config:
-        plugin: '@linxin666/dsh-client-ui-web-ui-settings'
+      name: '@linxin666/dsh-client-ui-web-ui-settings'
 
 # from ../dsh-plugin-manager
 - insert:
     - id: web-ui-plugin-manager
-      name: '@linxin666/dsh-web-all/plugin-manager'
-      config:
-        plugin: '@linxin666/dsh-client-ui-plugin-manager'
+      name: '@linxin666/dsh-client-ui-plugin-manager'
 
 # from ../dsh-market
 - insert:
     - id: web-ui-market
-      name: '@linxin666/dsh-web-all/market'
-      config:
-        plugin: '@linxin666/dsh-client-ui-market'
+      name: '@linxin666/dsh-client-ui-market'
 
 # from ../dsh-task-board
 - insert:
     - id: web-ui-task-board
-      name: '@linxin666/dsh-web-all/task-board'
-      config:
-        plugin: '@linxin666/dsh-client-ui-task-board'
+      name: '@linxin666/dsh-client-ui-task-board'
 
 # from ../dsh-task-board-github
 - insert:
     - id: web-ui-task-board-github
-      name: '@linxin666/dsh-web-all/task-board-github'
-      config:
-        plugin: '@linxin666/dsh-client-ui-task-board-github'
+      name: '@linxin666/dsh-client-ui-task-board-github'
 
 # from ../dsh-git-graph
 - insert:
     - id: web-ui-git-graph
-      name: '@linxin666/dsh-web-all/git-graph'
-      config:
-        plugin: '@linxin666/dsh-client-ui-git-graph'
+      name: '@linxin666/dsh-client-ui-git-graph'
 
 # from ../dsh-remote-web-ui
 - insert:
     - id: web-ui-remote-web-ui
-      name: '@linxin666/dsh-web-all/remote-web-ui'
-      config:
-        plugin: '@linxin666/dsh-remote-web-ui'
+      name: '@linxin666/dsh-remote-web-ui'
 
 # from ../dsh-update
 - insert:
     - id: web-ui-update
-      name: '@linxin666/dsh-web-all/update'
-      config:
-        plugin: '@linxin666/dsh-update'
+      name: '@linxin666/dsh-update'
 
 # from ../dsh-ssh
 - insert:
     - id: web-ui-ssh
-      name: '@linxin666/dsh-web-all/ssh'
-      config:
-        plugin: '@linxin666/dsh-ssh'
+      name: '@linxin666/dsh-ssh'
 
 # from ../dsh-liangshen
 - insert:
     - id: web-ui-liangshen
-      name: '@linxin666/dsh-web-all/liangshen'
-      config:
-        plugin: '@linxin666/dsh-liangshen'
+      name: '@linxin666/dsh-liangshen'
 
 # from ../dsh-skill-explorer
 - insert:
     - id: web-ui-skill-explorer
-      name: '@linxin666/dsh-web-all/skill-explorer'
-      config:
-        plugin: '@linxin666/dsh-client-ui-skill-explorer'
+      name: '@linxin666/dsh-client-ui-skill-explorer'
 
 # from ../dsh-usage
 - insert:
     - id: web-ui-usage
-      name: '@linxin666/dsh-web-all/usage'
-      config:
-        plugin: '@linxin666/dsh-usage'
+      name: '@linxin666/dsh-usage'
 
 # from ../dsh-session-archive
 - insert:
     - id: web-ui-session-archive
-      name: '@linxin666/dsh-web-all/session-archive'
-      config:
-        plugin: '@linxin666/dsh-session-archive'
+      name: '@linxin666/dsh-session-archive'
 
 # from ../dsh-win-bash
 - insert:
     - id: web-ui-win-bash
-      name: '@linxin666/dsh-web-all/win-bash'
-      config:
-        plugin: '@linxin666/dsh-win-bash'
+      name: '@linxin666/dsh-win-bash'
       disabled: !!js process.platform !== 'win32'
 
 # from ../dsh-i18n

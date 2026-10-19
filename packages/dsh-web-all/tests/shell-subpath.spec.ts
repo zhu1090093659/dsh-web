@@ -64,7 +64,7 @@ function nearestPackage(startFile: string): { dir: string; manifest: Record<stri
   }
 }
 
-describe('family subpath display names', () => {
+describe('family rows and their subpath tombstones', () => {
   const patch = readFileSync(join(PACKAGE_DIR, 'cordis.patch.yml'), 'utf8')
   const manifest = JSON.parse(readFileSync(join(PACKAGE_DIR, 'package.json'), 'utf8')) as {
     name: string
@@ -72,29 +72,35 @@ describe('family subpath display names', () => {
     files?: string[]
   }
   const rows = parsePatchRows(patch)
-  const familyRows = rows.filter(row => row.plugin !== undefined)
+  const familyRows = rows.filter(row => row.id !== 'web-ui-compat')
 
-  it('every family row mounts its own subpath and keeps the config.plugin contract', () => {
-    expect(familyRows.length).toBeGreaterThan(0)
+  it('every family row mounts the real package name and carries no shell config', () => {
+    // Issue #1901: a row names its plugin package directly, which is what
+    // makes the loader serve that package's own browser half. The shell
+    // wrapper (subpath name + config.plugin) is gone from every family row.
+    expect(familyRows.length).toBeGreaterThan(10)
     for (const row of familyRows) {
-      expect(row.name).toBe(`${manifest.name}/${row.id.slice('web-ui-'.length)}`)
+      expect(row.name.startsWith(`${manifest.name}/`), `row ${row.id} still mounts a shell subpath`).toBe(false)
+      expect(row.plugin, `row ${row.id} still carries config.plugin`).toBeUndefined()
     }
     // The self row keeps the bare package name (it owns the client face).
     expect(rows.find(row => row.id === 'web-ui-compat')?.name).toBe(manifest.name)
-    // The exempted i18n row stays direct.
-    const i18n = rows.find(row => row.id === 'web-ui-i18n')
-    expect(i18n?.name).toBe('@linxin666/dsh-i18n')
-    expect(i18n?.plugin).toBeUndefined()
-    // Spot-check the forwarded real plugin of two rows.
-    expect(rows.find(row => row.id === 'web-ui-usage')).toMatchObject({
-      name: `${manifest.name}/usage`,
-      plugin: '@linxin666/dsh-usage',
-    })
+    // Spot-check two rows against their real packages.
+    expect(rows.find(row => row.id === 'web-ui-usage')?.name).toBe('@linxin666/dsh-usage')
+    expect(rows.find(row => row.id === 'web-ui-task-board')?.name).toBe('@linxin666/dsh-client-ui-task-board')
   })
 
-  it('every family subpath is an exports key resolving to the shared shell re-export', () => {
-    for (const row of familyRows) {
-      expect(manifest.exports[`.${row.name.slice(manifest.name.length)}`]).toBe('./lib/shells/shell.js')
+  it('every former family subpath stays exported so a pre-#1901 profile still boots', () => {
+    // A profile written before this change records
+    // `@linxin666/dsh-web-all/<family>` as the row NAME; dropping the export
+    // would turn that boot into ERR_PACKAGE_PATH_NOT_EXPORTED.
+    const formerSubpaths = [
+      'settings', 'plugin-manager', 'market', 'task-board', 'task-board-github',
+      'git-graph', 'remote-web-ui', 'update', 'ssh', 'liangshen',
+      'skill-explorer', 'usage', 'session-archive', 'win-bash',
+    ]
+    for (const sub of formerSubpaths) {
+      expect(manifest.exports[`./${sub}`], `missing compat export ./${sub}`).toBe('./lib/shells/shell.js')
     }
   })
 

@@ -895,40 +895,6 @@ const RETIRED_PLUGINS$1 = Object.freeze(Object.values({
 	"model-capabilities": "@linxin666/dsh-client-ui-model-capabilities"
 }).sort());
 //#endregion
-//#region src/rows.ts
-/**
-* Active-row ledger for the dsh-web-all fault-isolation shell. Each family
-* patch row runs one shell apply carrying the real plugin package name in
-* `config.plugin`; the shell records that name here when the row applies and
-* removes it when the entry disposes. The browser half reads the ledger
-* through GET /api/dsh-web-all/rows to gate which folded client children
-* mount: a row the loader never started (disabled by a user patch override)
-* has no shell apply, so its settings tabs and surfaces stay off the page
-* instead of rendering an entry that errors on click (#1372).
-*
-* Recording happens at apply start, not after the real plugin starts: a row
-* whose plugin degraded (import/start failure captured by the shell) is still
-* an ACTIVE row and keeps its UI entry — the degraded state is the honest
-* signal the user must see. Only a row the loader never applied (disabled)
-* drops out of the ledger.
-*
-* The ledger lives in the process-wide shared state (src/state.ts): the shell
-* loads through two entry artifacts whose bundler chunk split would otherwise
-* give each its own copy.
-*/
-/** Mark one family row active (its shell entry applied). */
-function recordActiveRow(plugin) {
-	shellState().activeRows.add(plugin);
-}
-/** Mark one family row inactive (its shell entry disposed). */
-function removeActiveRow(plugin) {
-	shellState().activeRows.delete(plugin);
-}
-/** Snapshot of the active real-plugin package names, in insertion order. */
-function listActiveRows() {
-	return [...shellState().activeRows];
-}
-//#endregion
 //#region src/shell.ts
 /** Required services: none — the shell must activate before anything else. */
 const inject = [];
@@ -992,29 +958,6 @@ function makeDegradedRoute() {
 	};
 }
 /**
-* Row-state route: answers the active family rows (real plugin package
-* names) for the browser half's mount gating (#1372). NOT loopback-fenced:
-* remote browsers read it same-origin like every other family /api route;
-* the payload (active family package names) is already public through the
-* served client bundle.
-*/
-function makeRowsRoute() {
-	return {
-		kind: "exact",
-		path: "/api/dsh-web-all/rows",
-		handler: async (_req, res) => {
-			res.writeHead(200, {
-				"content-type": "application/json",
-				"cache-control": "no-store"
-			});
-			res.end(JSON.stringify({
-				ok: true,
-				children: listActiveRows()
-			}));
-		}
-	};
-}
-/**
 * Route registration state lives in the process-wide shared state
 * (src/state.ts): multiple shell entries (the self row plus one per family
 * plugin) mount sequentially under the aggregate, AND the bundler splits the
@@ -1034,9 +977,9 @@ function _resetDegradedRouteForTest() {
 	routes.unregister = void 0;
 }
 /**
-* Hold both health routes (degraded + rows) for this shell entry's lifetime.
-* Every shell entry calls this — including the config-less self row — so the
-* rows route stays up even when every family row is disabled.
+* Hold the health route (degraded) for this shell entry's lifetime. Every
+* shell entry calls this — including the config-less self row — so the route
+* stays up even when every family row is disabled.
 *
 * The shell applies with inject=[] (it must activate before anything else),
 * which means it usually runs BEFORE the web app provides webServer. A direct
@@ -1053,19 +996,8 @@ function holdHealthRoutes(ctx) {
 		const routes = shellState().healthRoutes;
 		if (routes.count === 0) try {
 			const unregisterDegraded = webServer.register(makeDegradedRoute());
-			let unregisterRows;
-			try {
-				unregisterRows = webServer.register(makeRowsRoute());
-			} catch (error) {
-				unregisterDegraded();
-				throw error;
-			}
 			routes.unregister = () => {
-				try {
-					unregisterRows?.();
-				} finally {
-					unregisterDegraded();
-				}
+				unregisterDegraded();
 			};
 		} catch (error) {
 			console.warn("[dsh-web-all] failed to register health routes:", error);
@@ -1205,44 +1137,24 @@ function recordDeferredStartFailure(spec, fiber) {
 async function apply(ctx, config) {
 	holdHealthRoutes(ctx);
 	let mounted;
-	let activeRow;
 	/** Serializes config syncs: an update may land while a mount is still running. */
 	let tail = Promise.resolve();
-	/**
-	* Publish the family row this entry currently serves. Only a row the loader
-	* never applied (disabled) stays out of the ledger, so the browser half's
-	* mount gate keeps a row whose plugin degraded.
-	*/
-	const publishRow = (spec) => {
-		if (activeRow === spec) return;
-		if (activeRow !== void 0) removeActiveRow(activeRow);
-		activeRow = spec;
-		if (spec !== void 0) recordActiveRow(spec);
-	};
-	ctx.effect(() => () => {
-		publishRow(void 0);
-	}, "dsh-web-all: active row ledger");
 	/** Mount the real plugin the current row config names, replacing any previous mount. */
 	const sync = async () => {
 		const raw = liveRowConfig(config);
 		const row = isRowConfig(raw) ? raw : void 0;
 		if (row === void 0) {
-			publishRow(void 0);
 			if (raw === void 0) return;
 			recordDegraded("(no plugin)", "shape", /* @__PURE__ */ new Error(`shell row config is not a mapping (row config: ${describeConfig(raw)}); the entry mounted empty`));
 			return;
 		}
 		const spec = row.plugin;
 		if (typeof spec !== "string" || spec === "") {
-			publishRow(void 0);
 			if (isOverrideShape(row)) return;
 			recordDegraded("(no plugin)", "shape", /* @__PURE__ */ new Error(`shell row config is missing the "plugin" package name (row config: ${describeConfig(row)}); the entry mounted empty`));
 			return;
 		}
-		if (RETIRED_PLUGINS.has(spec)) {
-			publishRow(void 0);
-			return;
-		}
+		if (RETIRED_PLUGINS.has(spec)) return;
 		const family = familyConfigOf(row);
 		if (mounted !== void 0 && mounted.spec === spec && sameFamilyConfig(mounted.config, family)) return;
 		if (mounted !== void 0) {
@@ -1254,7 +1166,6 @@ async function apply(ctx, config) {
 				console.warn("[dsh-web-all] unmounting the previous family plugin failed:", error);
 			}
 		}
-		publishRow(spec);
 		let mod;
 		try {
 			mod = await import(
@@ -1302,4 +1213,4 @@ async function apply(ctx, config) {
 //#endregion
 export { inject as i, _resetDegradedRouteForTest as n, apply as r, Config as t };
 
-//# sourceMappingURL=shell-CJTAPpwH.js.map
+//# sourceMappingURL=shell-Cu4sKRi5.js.map

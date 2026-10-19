@@ -1,21 +1,22 @@
 /**
- * dsh-web compat shim, browser half (folded into the aggregate package).
+ * dsh-web compat shim, browser half: the optional compatibility layer.
  *
  * The current dsh web shell renders its grid columns without the legacy
  * `data-pane` / `data-dsh-frame` hooks (the columns carry css-module class
- * names such as `*_sidebarCol` / `*_centerCol` / `*_detailsCol`). The
- * dsh-web family plugins (task-board, ssh, several skins)
- * mount at the DOM level through those legacy selectors, so without them the
- * plugins stay silent even though they load.
+ * names such as `*_sidebarCol` / `*_centerCol` / `*_detailsCol`). Plugins that
+ * mount at the DOM level through those legacy selectors stay silent without
+ * them, so this layer stamps the expected attributes onto the real shell
+ * elements and re-applies them on any DOM mutation (React re-renders that
+ * re-create the columns). It only ever WRITES attributes; it never removes
+ * nodes and never disturbs React's reconciliation. It also carries the
+ * responsive contract (RESPONSIVE_CSS) and the boot splash dismissal.
  *
- * This shim stamps the expected attributes onto the real shell elements and
- * re-applies them on any DOM mutation (React re-renders that re-create the
- * columns), which restores every DOM-mounting plugin and the skins' column
- * selectors in one place. It only ever WRITES attributes; it never removes
- * nodes and never disturbs React's reconciliation.
+ * Scope: this bundle is the patch layer and nothing else. It carries no family
+ * plugin code — each family mounts through its own loader row and serves its
+ * own browser half — so a page that does not need the compat patches never
+ * pays for a family UI it did not enable (issue #1901).
  */
 import type { Context } from '@deepseek-ai/cordis'
-import { mountClientChildren } from './mount-children.ts'
 import { subscribeBodyInvalidations } from './body-mutations.ts'
 
 /** Column shims: element selector → attribute to stamp. */
@@ -468,14 +469,11 @@ export const inject = [] as const
  * @param ctx - client root context.
  */
 export function apply(ctx: Context): void {
-  // The family children ride this bundle (see mount-children.ts): the shell's
-  // folded rows leave them invisible to the client module scanner, so they
-  // mount here as nested client plugins. Fire-and-forget: the row-state fetch
-  // must not delay the DOM shims (boot splash dismissal is time-critical),
-  // and the mount is fail-open and self-contained — it never rejects.
-  void mountClientChildren(ctx).catch(error => {
-    console.error('[dsh-web-all] client children mount failed', error)
-  })
+  // This half is the compat layer only. Every family plugin mounts through its
+  // own loader row and brings its own browser half, so nothing is imported or
+  // mounted here: the bundle used to carry an inlined copy of all 13 family
+  // clients, which made the page download and evaluate 2.9 MB before any
+  // family surface could render (issue #1901).
   ctx.effect(() => {
     const responsiveStyle = ensureResponsiveStyle()
     const bootShield = installBootShield()

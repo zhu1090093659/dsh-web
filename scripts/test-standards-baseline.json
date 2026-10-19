@@ -1,186 +1,848 @@
 {
   "version": 1,
-  "rules": ["no-arbitrary-sleep","no-ad-hoc-mock","bdd-title","given-when-then","call-count-only-assertion","tautological-assertion"],
+  "rules": [
+    "no-arbitrary-sleep",
+    "no-ad-hoc-mock",
+    "bdd-title",
+    "given-when-then",
+    "call-count-only-assertion",
+    "tautological-assertion"
+  ],
   "files": {
-    "packages/dsh-git-graph/tests/access.spec.ts": {"bdd-title":4,"given-when-then":4},
-    "packages/dsh-git-graph/tests/auto-isolation.spec.ts": {"bdd-title":12,"given-when-then":11,"call-count-only-assertion":2},
-    "packages/dsh-git-graph/tests/client.spec.tsx": {"no-arbitrary-sleep":2,"bdd-title":32,"given-when-then":32,"tautological-assertion":12},
-    "packages/dsh-git-graph/tests/core.spec.ts": {"bdd-title":34,"given-when-then":34,"tautological-assertion":19},
-    "packages/dsh-git-graph/tests/create-worktree-session.spec.ts": {"bdd-title":4,"given-when-then":4},
-    "packages/dsh-git-graph/tests/git-runner.spec.ts": {"no-ad-hoc-mock":3,"bdd-title":7,"given-when-then":7},
-    "packages/dsh-git-graph/tests/git-service.spec.ts": {"bdd-title":30,"given-when-then":30,"tautological-assertion":4},
-    "packages/dsh-git-graph/tests/notice-contrast.spec.ts": {"bdd-title":3,"given-when-then":3},
-    "packages/dsh-git-graph/tests/poll-guard.spec.ts": {"no-arbitrary-sleep":2,"no-ad-hoc-mock":4,"bdd-title":4,"given-when-then":4},
-    "packages/dsh-git-graph/tests/routes.spec.ts": {"bdd-title":21,"given-when-then":21,"call-count-only-assertion":3,"tautological-assertion":1},
-    "packages/dsh-i18n/tests/i18n-apply.spec.ts": {"bdd-title":6,"given-when-then":6,"call-count-only-assertion":2},
-    "packages/dsh-i18n/tests/ru-dictionaries.spec.ts": {"bdd-title":4,"given-when-then":4},
-    "packages/dsh-liangshen/src/index.test.ts": {"bdd-title":6,"given-when-then":6},
-    "packages/dsh-liangshen/tests/analyze-session.test.ts": {"bdd-title":8,"given-when-then":8},
-    "packages/dsh-liangshen/tests/benchmark-live-run.test.ts": {"bdd-title":20,"given-when-then":20},
-    "packages/dsh-liangshen/tests/benchmark-report.test.ts": {"bdd-title":11,"given-when-then":11},
-    "packages/dsh-liangshen/tests/lever-control.spec.ts": {"no-arbitrary-sleep":1,"bdd-title":16,"given-when-then":16},
-    "packages/dsh-liangshen/tests/lever-ui.spec.tsx": {"bdd-title":12,"given-when-then":12,"tautological-assertion":7},
-    "packages/dsh-liangshen/tests/minimal-prompt.test.ts": {"bdd-title":59,"given-when-then":56,"tautological-assertion":3},
-    "packages/dsh-liangshen/tests/platform-guard.test.ts": {"bdd-title":6,"given-when-then":6},
-    "packages/dsh-liangshen/tests/preset-composition.test.ts": {"bdd-title":11,"given-when-then":11},
-    "packages/dsh-liangshen/tests/settings-card.spec.tsx": {"bdd-title":7,"given-when-then":7,"tautological-assertion":4},
-    "packages/dsh-liangshen/tests/tool-activate.test.ts": {"bdd-title":15,"given-when-then":15},
-    "packages/dsh-liangshen/tests/tool-catalog.test.ts": {"bdd-title":52,"given-when-then":52,"tautological-assertion":3},
-    "packages/dsh-liangshen/tests/tool-paging-registry.test.ts": {"bdd-title":11,"given-when-then":11,"tautological-assertion":10},
-    "packages/dsh-liangshen/tests/working-context.test.ts": {"bdd-title":14,"given-when-then":14,"tautological-assertion":2},
-    "packages/dsh-market/src/client/categories.test.ts": {"bdd-title":3,"given-when-then":3,"tautological-assertion":3},
-    "packages/dsh-market/src/client/filter.test.ts": {"bdd-title":4,"given-when-then":4},
-    "packages/dsh-market/src/client/install-source.test.ts": {"bdd-title":10,"given-when-then":10},
-    "packages/dsh-market/src/client/telemetry.test.ts": {"bdd-title":8,"given-when-then":8,"call-count-only-assertion":3},
-    "packages/dsh-market/src/core/installer.test.ts": {"bdd-title":21,"given-when-then":21},
-    "packages/dsh-market/tests/client-apply.spec.tsx": {"no-ad-hoc-mock":3,"bdd-title":2,"given-when-then":2},
-    "packages/dsh-market/tests/market-card.spec.tsx": {"no-ad-hoc-mock":3,"bdd-title":24,"given-when-then":24,"tautological-assertion":22},
-    "packages/dsh-market/tests/routes.spec.ts": {"bdd-title":5,"given-when-then":5},
-    "packages/dsh-plugin-manager/tests/body-contract.spec.ts": {"no-arbitrary-sleep":1,"bdd-title":5,"given-when-then":5},
-    "packages/dsh-plugin-manager/tests/bundle-guard.spec.ts": {"bdd-title":5,"given-when-then":5},
-    "packages/dsh-plugin-manager/tests/console-output.spec.ts": {"bdd-title":6,"given-when-then":6},
-    "packages/dsh-plugin-manager/tests/gateway-jobs.spec.ts": {"no-arbitrary-sleep":2,"bdd-title":23,"given-when-then":23,"tautological-assertion":2},
-    "packages/dsh-plugin-manager/tests/gateway.spec.ts": {"no-arbitrary-sleep":1,"bdd-title":22,"given-when-then":22,"tautological-assertion":1},
-    "packages/dsh-plugin-manager/tests/install-validation.spec.ts": {"no-arbitrary-sleep":1,"bdd-title":4,"given-when-then":4},
-    "packages/dsh-plugin-manager/tests/legacy-migration.spec.ts": {"bdd-title":3,"given-when-then":3},
-    "packages/dsh-plugin-manager/tests/mode.spec.ts": {"bdd-title":3,"given-when-then":3},
-    "packages/dsh-plugin-manager/tests/patch-diff.spec.ts": {"bdd-title":7,"given-when-then":7},
-    "packages/dsh-plugin-manager/tests/profile.spec.ts": {"bdd-title":9,"given-when-then":9},
-    "packages/dsh-plugin-manager/tests/protocol.spec.ts": {"bdd-title":20,"given-when-then":20},
-    "packages/dsh-plugin-manager/tests/rows.spec.ts": {"bdd-title":20,"given-when-then":20,"tautological-assertion":1},
-    "packages/dsh-plugin-manager/tests/set-enabled.spec.ts": {"bdd-title":14,"given-when-then":14},
-    "packages/dsh-plugin-manager/tests/update-route.spec.ts": {"bdd-title":16,"given-when-then":17},
-    "packages/dsh-plugin-manager/tests/version.spec.ts": {"bdd-title":13,"given-when-then":13},
-    "packages/dsh-remote-web-ui/src/pairing.persist.test.ts": {"bdd-title":10,"given-when-then":10},
-    "packages/dsh-remote-web-ui/tests/app-sw.spec.ts": {"bdd-title":8,"given-when-then":8,"call-count-only-assertion":1},
-    "packages/dsh-remote-web-ui/tests/deep-link.spec.ts": {"bdd-title":4,"given-when-then":4,"call-count-only-assertion":1},
-    "packages/dsh-remote-web-ui/tests/device-name.spec.ts": {"bdd-title":2,"given-when-then":2},
-    "packages/dsh-remote-web-ui/tests/docker-pairing.spec.ts": {"bdd-title":5,"given-when-then":5,"tautological-assertion":1},
-    "packages/dsh-remote-web-ui/tests/fence-css.spec.ts": {"bdd-title":2,"given-when-then":2},
-    "packages/dsh-remote-web-ui/tests/fence-notice.spec.tsx": {"bdd-title":5,"given-when-then":5,"tautological-assertion":1},
-    "packages/dsh-remote-web-ui/tests/firewall.spec.ts": {"bdd-title":9,"given-when-then":9,"tautological-assertion":1},
-    "packages/dsh-remote-web-ui/tests/footer-trigger-css.spec.ts": {"bdd-title":2,"given-when-then":2},
-    "packages/dsh-remote-web-ui/tests/gate.spec.ts": {"bdd-title":16,"given-when-then":16},
-    "packages/dsh-remote-web-ui/tests/inner-auth.spec.ts": {"bdd-title":4,"given-when-then":4},
-    "packages/dsh-remote-web-ui/tests/lan-bind-plan.spec.ts": {"bdd-title":6,"given-when-then":6},
-    "packages/dsh-remote-web-ui/tests/lan-bind.spec.ts": {"bdd-title":10,"given-when-then":10},
-    "packages/dsh-remote-web-ui/tests/loopback-proxy.spec.ts": {"no-arbitrary-sleep":3,"bdd-title":3,"given-when-then":3},
-    "packages/dsh-remote-web-ui/tests/mobile-adapt.spec.ts": {"no-ad-hoc-mock":2,"bdd-title":18,"given-when-then":17,"call-count-only-assertion":1,"tautological-assertion":8},
-    "packages/dsh-remote-web-ui/tests/pair-schema.spec.ts": {"bdd-title":4,"given-when-then":4},
-    "packages/dsh-remote-web-ui/tests/pairing.spec.ts": {"bdd-title":19,"given-when-then":19,"tautological-assertion":1},
-    "packages/dsh-remote-web-ui/tests/plugin-card-seat.spec.ts": {"no-ad-hoc-mock":1,"bdd-title":6,"given-when-then":6},
-    "packages/dsh-remote-web-ui/tests/posture.spec.ts": {"bdd-title":8,"given-when-then":8},
-    "packages/dsh-remote-web-ui/tests/public-base.spec.ts": {"bdd-title":5,"given-when-then":5},
-    "packages/dsh-remote-web-ui/tests/relay-registry.spec.ts": {"bdd-title":12,"given-when-then":12},
-    "packages/dsh-remote-web-ui/tests/remote-api.spec.ts": {"bdd-title":16,"given-when-then":16,"tautological-assertion":6},
-    "packages/dsh-remote-web-ui/tests/remote-channel-boot.spec.ts": {"no-arbitrary-sleep":2,"bdd-title":18,"given-when-then":18,"tautological-assertion":2},
-    "packages/dsh-remote-web-ui/tests/remote-channel.spec.ts": {"bdd-title":15,"given-when-then":15,"tautological-assertion":2},
-    "packages/dsh-remote-web-ui/tests/remote-contract.spec.ts": {"bdd-title":1,"given-when-then":1,"tautological-assertion":1},
-    "packages/dsh-remote-web-ui/tests/remote-entry.spec.tsx": {"no-arbitrary-sleep":1,"bdd-title":13,"given-when-then":14,"tautological-assertion":31},
-    "packages/dsh-remote-web-ui/tests/remote-presence-pet.spec.ts": {"no-arbitrary-sleep":1,"bdd-title":5,"given-when-then":5},
-    "packages/dsh-remote-web-ui/tests/remote-upgrade.spec.ts": {"no-arbitrary-sleep":1,"bdd-title":4,"given-when-then":4,"tautological-assertion":2},
-    "packages/dsh-remote-web-ui/tests/routes.spec.ts": {"no-ad-hoc-mock":1,"bdd-title":28,"given-when-then":28},
-    "packages/dsh-remote-web-ui/tests/tunnel-plan.spec.ts": {"bdd-title":6,"given-when-then":6},
-    "packages/dsh-remote-web-ui/tests/tunnel.spec.ts": {"bdd-title":23,"given-when-then":23,"call-count-only-assertion":1},
-    "packages/dsh-remote-web-ui/tests/uuid-polyfill.spec.ts": {"bdd-title":4,"given-when-then":4,"tautological-assertion":1},
-    "packages/dsh-session-archive/tests/auto-rules.spec.ts": {"bdd-title":10,"given-when-then":10},
-    "packages/dsh-session-archive/tests/cascade.spec.ts": {"bdd-title":10,"given-when-then":10},
-    "packages/dsh-session-archive/tests/controller.spec.ts": {"no-arbitrary-sleep":1,"bdd-title":7,"given-when-then":7},
-    "packages/dsh-session-archive/tests/dialogs-layout.spec.ts": {"no-ad-hoc-mock":2,"bdd-title":3,"given-when-then":3,"call-count-only-assertion":1},
-    "packages/dsh-session-archive/tests/inventory.spec.ts": {"bdd-title":12,"given-when-then":12,"tautological-assertion":1},
-    "packages/dsh-session-archive/tests/janitor.spec.ts": {"bdd-title":17,"given-when-then":17,"tautological-assertion":1},
-    "packages/dsh-session-archive/tests/ledger.spec.ts": {"bdd-title":5,"given-when-then":5},
-    "packages/dsh-session-archive/tests/routes.spec.ts": {"bdd-title":10,"given-when-then":10},
-    "packages/dsh-session-archive/tests/selection.spec.ts": {"bdd-title":10,"given-when-then":10},
-    "packages/dsh-session-id/tests/session-id-entry.spec.tsx": {"bdd-title":1,"given-when-then":1,"tautological-assertion":1},
-    "packages/dsh-session-id/tests/session-id-panel.spec.tsx": {"no-ad-hoc-mock":1,"bdd-title":13,"given-when-then":13,"tautological-assertion":20},
-    "packages/dsh-skill-explorer/tests/access.spec.ts": {"bdd-title":4,"given-when-then":4},
-    "packages/dsh-skill-explorer/tests/collect.spec.ts": {"bdd-title":12,"given-when-then":12,"tautological-assertion":2},
-    "packages/dsh-skill-explorer/tests/contract.spec.ts": {"bdd-title":2,"given-when-then":2},
-    "packages/dsh-skill-explorer/tests/frontmatter.spec.ts": {"bdd-title":9,"given-when-then":9},
-    "packages/dsh-skill-explorer/tests/host-apply.spec.ts": {"bdd-title":3,"given-when-then":3},
-    "packages/dsh-skill-explorer/tests/locales-runtime.spec.ts": {"bdd-title":3,"given-when-then":3},
-    "packages/dsh-skill-explorer/tests/panel.spec.tsx": {"no-ad-hoc-mock":1,"given-when-then":9},
-    "packages/dsh-skill-explorer/tests/routes.spec.ts": {"bdd-title":28,"given-when-then":28},
-    "packages/dsh-skill-explorer/tests/skill-filter.spec.ts": {"bdd-title":8,"given-when-then":8},
-    "packages/dsh-skill-explorer/tests/workspace-isolation.spec.ts": {"bdd-title":2,"given-when-then":2,"tautological-assertion":8},
-    "packages/dsh-ssh/tests/api-client-404.test.ts": {"bdd-title":2,"given-when-then":2},
-    "packages/dsh-ssh/tests/connection-pool.test.ts": {"no-ad-hoc-mock":1,"bdd-title":17,"given-when-then":17,"tautological-assertion":9},
-    "packages/dsh-ssh/tests/engine-cluster.test.ts": {"no-ad-hoc-mock":1,"bdd-title":4,"given-when-then":4},
-    "packages/dsh-ssh/tests/engine-modules.test.ts": {"bdd-title":9,"given-when-then":9},
-    "packages/dsh-ssh/tests/engine.test.ts": {"no-arbitrary-sleep":10,"no-ad-hoc-mock":1,"bdd-title":36,"given-when-then":36,"tautological-assertion":2},
-    "packages/dsh-ssh/tests/locales-runtime.spec.ts": {"bdd-title":3,"given-when-then":3},
-    "packages/dsh-ssh/tests/panel-hosts.test.tsx": {"bdd-title":8,"given-when-then":8,"call-count-only-assertion":2,"tautological-assertion":1},
-    "packages/dsh-ssh/tests/panel-shell.test.tsx": {"bdd-title":4,"given-when-then":4,"tautological-assertion":3},
-    "packages/dsh-ssh/tests/panel-terminal-font.test.tsx": {"no-ad-hoc-mock":2,"bdd-title":1,"given-when-then":1},
-    "packages/dsh-ssh/tests/panel-terminal.test.tsx": {"no-ad-hoc-mock":2,"bdd-title":5,"given-when-then":5,"tautological-assertion":3},
-    "packages/dsh-ssh/tests/panel-tunnels.test.tsx": {"no-ad-hoc-mock":1,"bdd-title":10,"given-when-then":10,"tautological-assertion":3},
-    "packages/dsh-ssh/tests/proxy-command.test.ts": {"no-arbitrary-sleep":1,"bdd-title":6,"given-when-then":6},
-    "packages/dsh-ssh/tests/routes.test.ts": {"no-arbitrary-sleep":7,"bdd-title":15,"given-when-then":15},
-    "packages/dsh-ssh/tests/ssh-config.test.ts": {"bdd-title":5,"given-when-then":5},
-    "packages/dsh-ssh/tests/store.test.ts": {"bdd-title":34,"given-when-then":34,"tautological-assertion":4},
-    "packages/dsh-ssh/tests/terminal-font.test.ts": {"bdd-title":6,"given-when-then":6},
-    "packages/dsh-ssh/tests/tools.test.ts": {"bdd-title":13,"given-when-then":13},
-    "packages/dsh-task-board/tests/ai-parse.spec.tsx": {"bdd-title":4,"given-when-then":4,"tautological-assertion":1},
-    "packages/dsh-task-board/tests/announce-default.spec.ts": {"bdd-title":2,"given-when-then":2},
-    "packages/dsh-task-board/tests/apply-guard.spec.ts": {"bdd-title":5,"given-when-then":5},
-    "packages/dsh-task-board/tests/archive-controller.spec.ts": {"bdd-title":3,"given-when-then":3},
-    "packages/dsh-task-board/tests/board-view.spec.tsx": {"bdd-title":5,"given-when-then":7,"tautological-assertion":9},
-    "packages/dsh-task-board/tests/claim-provenance.spec.ts": {"bdd-title":7,"given-when-then":7},
-    "packages/dsh-task-board/tests/claim-runner.spec.ts": {"bdd-title":4,"given-when-then":4},
-    "packages/dsh-task-board/tests/claim-ui.spec.tsx": {"bdd-title":1,"given-when-then":1,"tautological-assertion":1},
-    "packages/dsh-task-board/tests/continuation-card.spec.ts": {"no-arbitrary-sleep":5,"bdd-title":11,"given-when-then":11,"tautological-assertion":3},
-    "packages/dsh-task-board/tests/controller-use-cases.spec.ts": {"bdd-title":19,"given-when-then":19,"tautological-assertion":1},
-    "packages/dsh-task-board/tests/controller.spec.ts": {"no-arbitrary-sleep":1,"bdd-title":31,"given-when-then":31,"tautological-assertion":3},
-    "packages/dsh-task-board/tests/freeze-snapshot.spec.ts": {"bdd-title":19,"given-when-then":19},
-    "packages/dsh-task-board/tests/guidance.spec.ts": {"bdd-title":1,"given-when-then":1},
-    "packages/dsh-task-board/tests/handover-confirm.spec.ts": {"no-arbitrary-sleep":2,"bdd-title":16,"given-when-then":16,"tautological-assertion":3},
-    "packages/dsh-task-board/tests/handover-ui.spec.tsx": {"no-ad-hoc-mock":1,"bdd-title":4,"given-when-then":4,"tautological-assertion":3},
-    "packages/dsh-task-board/tests/host-ai.spec.ts": {"bdd-title":11,"given-when-then":11},
-    "packages/dsh-task-board/tests/host-api.spec.ts": {"bdd-title":17,"given-when-then":17},
-    "packages/dsh-task-board/tests/host-controller.spec.ts": {"bdd-title":8,"given-when-then":8},
-    "packages/dsh-task-board/tests/host-ledger.spec.ts": {"no-ad-hoc-mock":1,"bdd-title":34,"given-when-then":34,"tautological-assertion":9},
-    "packages/dsh-task-board/tests/host-routes.spec.ts": {"bdd-title":10,"given-when-then":10},
-    "packages/dsh-task-board/tests/host-runner.spec.ts": {"no-ad-hoc-mock":8,"bdd-title":17,"given-when-then":17},
-    "packages/dsh-task-board/tests/host-service.spec.ts": {"no-arbitrary-sleep":1,"no-ad-hoc-mock":4,"bdd-title":14,"given-when-then":14},
-    "packages/dsh-task-board/tests/locales-runtime.spec.ts": {"bdd-title":3,"given-when-then":3},
-    "packages/dsh-task-board/tests/model-options.spec.ts": {"bdd-title":1,"given-when-then":1},
-    "packages/dsh-task-board/tests/power-inhibitor.spec.ts": {"bdd-title":11,"given-when-then":11},
-    "packages/dsh-task-board/tests/power-native-smoke.spec.ts": {"no-arbitrary-sleep":1,"bdd-title":1,"given-when-then":1,"tautological-assertion":1},
-    "packages/dsh-task-board/tests/project-view.spec.tsx": {"bdd-title":6,"given-when-then":6,"tautological-assertion":3},
-    "packages/dsh-task-board/tests/protocol.spec.ts": {"bdd-title":7,"given-when-then":7,"tautological-assertion":1},
-    "packages/dsh-task-board/tests/responsive-css.spec.ts": {"bdd-title":8,"given-when-then":8},
-    "packages/dsh-task-board/tests/schedule-dst.spec.ts": {"bdd-title":3,"given-when-then":3},
-    "packages/dsh-task-board/tests/schedule.spec.ts": {"bdd-title":19,"given-when-then":19},
-    "packages/dsh-task-board/tests/session-reuse.spec.ts": {"bdd-title":8,"given-when-then":8},
-    "packages/dsh-task-board/tests/store.spec.ts": {"bdd-title":21,"given-when-then":21,"call-count-only-assertion":2},
-    "packages/dsh-task-board/tests/tag-view.spec.tsx": {"bdd-title":16,"given-when-then":16,"tautological-assertion":3},
-    "packages/dsh-task-board/tests/tags.spec.ts": {"bdd-title":19,"given-when-then":19},
-    "packages/dsh-task-board/tests/task-archive.spec.ts": {"bdd-title":8,"given-when-then":8},
-    "packages/dsh-task-board/tests/task-detail-edit.spec.tsx": {"bdd-title":8,"given-when-then":8,"tautological-assertion":5},
-    "packages/dsh-task-board/tests/task-duplicate.spec.ts": {"bdd-title":2,"given-when-then":2,"tautological-assertion":5},
-    "packages/dsh-task-board/tests/tasks.spec.ts": {"bdd-title":20,"given-when-then":20},
-    "packages/dsh-update/tests/update-entry.spec.tsx": {"no-ad-hoc-mock":1,"bdd-title":11,"given-when-then":11,"tautological-assertion":21},
-    "packages/dsh-update/tests/update.spec.ts": {"bdd-title":58,"given-when-then":57},
-    "packages/dsh-usage/tests/adapters.spec.ts": {"bdd-title":22,"given-when-then":22,"tautological-assertion":1},
-    "packages/dsh-usage/tests/apply.spec.ts": {"no-arbitrary-sleep":1,"bdd-title":5,"given-when-then":5},
-    "packages/dsh-usage/tests/ledger.spec.ts": {"bdd-title":11,"given-when-then":11,"tautological-assertion":3},
-    "packages/dsh-usage/tests/pricing.spec.ts": {"bdd-title":9,"given-when-then":9},
-    "packages/dsh-usage/tests/routes.spec.ts": {"bdd-title":7,"given-when-then":7},
-    "packages/dsh-usage/tests/section-card.spec.tsx": {"bdd-title":8,"given-when-then":8,"tautological-assertion":8},
-    "packages/dsh-usage/tests/usage-service.spec.ts": {"no-arbitrary-sleep":4,"bdd-title":14,"given-when-then":14,"tautological-assertion":3},
-    "packages/dsh-usage/tests/voucher.spec.ts": {"bdd-title":9,"given-when-then":9},
-    "packages/dsh-web-all/tests/responsive-contract.spec.ts": {"bdd-title":9,"given-when-then":9,"call-count-only-assertion":1,"tautological-assertion":5},
-    "packages/dsh-web-all/tests/shell-isolation.spec.ts": {"bdd-title":2,"given-when-then":2},
-    "packages/dsh-web-all/tests/shell-subpath.spec.ts": {"bdd-title":5,"given-when-then":5},
-    "packages/dsh-web-settings/tests/client-apply.spec.tsx": {"no-ad-hoc-mock":1,"bdd-title":1,"given-when-then":1,"tautological-assertion":1},
-    "packages/dsh-web-settings/tests/config.spec.ts": {"bdd-title":5,"given-when-then":5},
-    "packages/dsh-web-settings/tests/nav-icons.spec.ts": {"bdd-title":3,"given-when-then":3},
-    "packages/dsh-web-settings/tests/webui-section.spec.tsx": {"bdd-title":1,"given-when-then":1},
-    "shared/tests/body-mutations.spec.ts": {"no-arbitrary-sleep":3,"call-count-only-assertion":2},
-    "shared/tests/http.spec.ts": {"tautological-assertion":1},
-    "shared/tests/mount-once.spec.ts": {"call-count-only-assertion":2},
-    "shared/tests/run-guarded.spec.ts": {"no-arbitrary-sleep":2,"tautological-assertion":1},
-    "shared/tests/settings-form.spec.ts": {"no-ad-hoc-mock":1}
+    "packages/dsh-git-graph/tests/access.spec.ts": {
+      "bdd-title": 4,
+      "given-when-then": 4
+    },
+    "packages/dsh-git-graph/tests/auto-isolation.spec.ts": {
+      "bdd-title": 12,
+      "given-when-then": 11,
+      "call-count-only-assertion": 2
+    },
+    "packages/dsh-git-graph/tests/client.spec.tsx": {
+      "no-arbitrary-sleep": 2,
+      "bdd-title": 32,
+      "given-when-then": 32,
+      "tautological-assertion": 12
+    },
+    "packages/dsh-git-graph/tests/core.spec.ts": {
+      "bdd-title": 34,
+      "given-when-then": 34,
+      "tautological-assertion": 19
+    },
+    "packages/dsh-git-graph/tests/create-worktree-session.spec.ts": {
+      "bdd-title": 4,
+      "given-when-then": 4
+    },
+    "packages/dsh-git-graph/tests/git-runner.spec.ts": {
+      "no-ad-hoc-mock": 3,
+      "bdd-title": 7,
+      "given-when-then": 7
+    },
+    "packages/dsh-git-graph/tests/git-service.spec.ts": {
+      "bdd-title": 30,
+      "given-when-then": 30,
+      "tautological-assertion": 4
+    },
+    "packages/dsh-git-graph/tests/notice-contrast.spec.ts": {
+      "bdd-title": 3,
+      "given-when-then": 3
+    },
+    "packages/dsh-git-graph/tests/poll-guard.spec.ts": {
+      "no-arbitrary-sleep": 2,
+      "no-ad-hoc-mock": 4,
+      "bdd-title": 4,
+      "given-when-then": 4
+    },
+    "packages/dsh-git-graph/tests/routes.spec.ts": {
+      "bdd-title": 21,
+      "given-when-then": 21,
+      "call-count-only-assertion": 3,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-i18n/tests/i18n-apply.spec.ts": {
+      "bdd-title": 6,
+      "given-when-then": 6,
+      "call-count-only-assertion": 2
+    },
+    "packages/dsh-i18n/tests/ru-dictionaries.spec.ts": {
+      "bdd-title": 4,
+      "given-when-then": 4
+    },
+    "packages/dsh-liangshen/src/index.test.ts": {
+      "bdd-title": 6,
+      "given-when-then": 6
+    },
+    "packages/dsh-liangshen/tests/analyze-session.test.ts": {
+      "bdd-title": 8,
+      "given-when-then": 8
+    },
+    "packages/dsh-liangshen/tests/benchmark-live-run.test.ts": {
+      "bdd-title": 20,
+      "given-when-then": 20
+    },
+    "packages/dsh-liangshen/tests/benchmark-report.test.ts": {
+      "bdd-title": 11,
+      "given-when-then": 11
+    },
+    "packages/dsh-liangshen/tests/lever-control.spec.ts": {
+      "no-arbitrary-sleep": 1,
+      "bdd-title": 16,
+      "given-when-then": 16
+    },
+    "packages/dsh-liangshen/tests/lever-ui.spec.tsx": {
+      "bdd-title": 12,
+      "given-when-then": 12,
+      "tautological-assertion": 7
+    },
+    "packages/dsh-liangshen/tests/minimal-prompt.test.ts": {
+      "bdd-title": 59,
+      "given-when-then": 56,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-liangshen/tests/platform-guard.test.ts": {
+      "bdd-title": 6,
+      "given-when-then": 6
+    },
+    "packages/dsh-liangshen/tests/preset-composition.test.ts": {
+      "bdd-title": 11,
+      "given-when-then": 11
+    },
+    "packages/dsh-liangshen/tests/settings-card.spec.tsx": {
+      "bdd-title": 7,
+      "given-when-then": 7,
+      "tautological-assertion": 4
+    },
+    "packages/dsh-liangshen/tests/tool-activate.test.ts": {
+      "bdd-title": 15,
+      "given-when-then": 15
+    },
+    "packages/dsh-liangshen/tests/tool-catalog.test.ts": {
+      "bdd-title": 52,
+      "given-when-then": 52,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-liangshen/tests/tool-paging-registry.test.ts": {
+      "bdd-title": 11,
+      "given-when-then": 11,
+      "tautological-assertion": 10
+    },
+    "packages/dsh-liangshen/tests/working-context.test.ts": {
+      "bdd-title": 14,
+      "given-when-then": 14,
+      "tautological-assertion": 2
+    },
+    "packages/dsh-market/src/client/categories.test.ts": {
+      "bdd-title": 3,
+      "given-when-then": 3,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-market/src/client/filter.test.ts": {
+      "bdd-title": 4,
+      "given-when-then": 4
+    },
+    "packages/dsh-market/src/client/install-source.test.ts": {
+      "bdd-title": 10,
+      "given-when-then": 10
+    },
+    "packages/dsh-market/src/client/telemetry.test.ts": {
+      "bdd-title": 8,
+      "given-when-then": 8,
+      "call-count-only-assertion": 3
+    },
+    "packages/dsh-market/src/core/installer.test.ts": {
+      "bdd-title": 21,
+      "given-when-then": 21
+    },
+    "packages/dsh-market/tests/client-apply.spec.tsx": {
+      "no-ad-hoc-mock": 3,
+      "bdd-title": 2,
+      "given-when-then": 2
+    },
+    "packages/dsh-market/tests/market-card.spec.tsx": {
+      "no-ad-hoc-mock": 3,
+      "bdd-title": 24,
+      "given-when-then": 24,
+      "tautological-assertion": 22
+    },
+    "packages/dsh-market/tests/routes.spec.ts": {
+      "bdd-title": 5,
+      "given-when-then": 5
+    },
+    "packages/dsh-plugin-manager/tests/body-contract.spec.ts": {
+      "no-arbitrary-sleep": 1,
+      "bdd-title": 5,
+      "given-when-then": 5
+    },
+    "packages/dsh-plugin-manager/tests/bundle-guard.spec.ts": {
+      "bdd-title": 5,
+      "given-when-then": 5
+    },
+    "packages/dsh-plugin-manager/tests/console-output.spec.ts": {
+      "bdd-title": 6,
+      "given-when-then": 6
+    },
+    "packages/dsh-plugin-manager/tests/gateway-jobs.spec.ts": {
+      "no-arbitrary-sleep": 2,
+      "bdd-title": 23,
+      "given-when-then": 23,
+      "tautological-assertion": 2
+    },
+    "packages/dsh-plugin-manager/tests/gateway.spec.ts": {
+      "no-arbitrary-sleep": 1,
+      "bdd-title": 22,
+      "given-when-then": 22,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-plugin-manager/tests/install-validation.spec.ts": {
+      "no-arbitrary-sleep": 1,
+      "bdd-title": 4,
+      "given-when-then": 4
+    },
+    "packages/dsh-plugin-manager/tests/legacy-migration.spec.ts": {
+      "bdd-title": 3,
+      "given-when-then": 3
+    },
+    "packages/dsh-plugin-manager/tests/mode.spec.ts": {
+      "bdd-title": 3,
+      "given-when-then": 3
+    },
+    "packages/dsh-plugin-manager/tests/patch-diff.spec.ts": {
+      "bdd-title": 7,
+      "given-when-then": 7
+    },
+    "packages/dsh-plugin-manager/tests/profile.spec.ts": {
+      "bdd-title": 9,
+      "given-when-then": 9
+    },
+    "packages/dsh-plugin-manager/tests/protocol.spec.ts": {
+      "bdd-title": 20,
+      "given-when-then": 20
+    },
+    "packages/dsh-plugin-manager/tests/rows.spec.ts": {
+      "bdd-title": 20,
+      "given-when-then": 20,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-plugin-manager/tests/set-enabled.spec.ts": {
+      "bdd-title": 14,
+      "given-when-then": 14
+    },
+    "packages/dsh-plugin-manager/tests/update-route.spec.ts": {
+      "bdd-title": 17,
+      "given-when-then": 17
+    },
+    "packages/dsh-plugin-manager/tests/version.spec.ts": {
+      "bdd-title": 13,
+      "given-when-then": 13
+    },
+    "packages/dsh-remote-web-ui/src/pairing.persist.test.ts": {
+      "bdd-title": 10,
+      "given-when-then": 10
+    },
+    "packages/dsh-remote-web-ui/tests/app-sw.spec.ts": {
+      "bdd-title": 8,
+      "given-when-then": 8,
+      "call-count-only-assertion": 1
+    },
+    "packages/dsh-remote-web-ui/tests/deep-link.spec.ts": {
+      "bdd-title": 4,
+      "given-when-then": 4,
+      "call-count-only-assertion": 1
+    },
+    "packages/dsh-remote-web-ui/tests/device-name.spec.ts": {
+      "bdd-title": 2,
+      "given-when-then": 2
+    },
+    "packages/dsh-remote-web-ui/tests/docker-pairing.spec.ts": {
+      "bdd-title": 5,
+      "given-when-then": 5,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-remote-web-ui/tests/fence-css.spec.ts": {
+      "bdd-title": 2,
+      "given-when-then": 2
+    },
+    "packages/dsh-remote-web-ui/tests/fence-notice.spec.tsx": {
+      "bdd-title": 5,
+      "given-when-then": 5,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-remote-web-ui/tests/firewall.spec.ts": {
+      "bdd-title": 9,
+      "given-when-then": 9,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-remote-web-ui/tests/footer-trigger-css.spec.ts": {
+      "bdd-title": 2,
+      "given-when-then": 2
+    },
+    "packages/dsh-remote-web-ui/tests/gate.spec.ts": {
+      "bdd-title": 16,
+      "given-when-then": 16
+    },
+    "packages/dsh-remote-web-ui/tests/inner-auth.spec.ts": {
+      "bdd-title": 4,
+      "given-when-then": 4
+    },
+    "packages/dsh-remote-web-ui/tests/lan-bind-plan.spec.ts": {
+      "bdd-title": 9,
+      "given-when-then": 9
+    },
+    "packages/dsh-remote-web-ui/tests/lan-bind.spec.ts": {
+      "bdd-title": 10,
+      "given-when-then": 10
+    },
+    "packages/dsh-remote-web-ui/tests/loopback-proxy.spec.ts": {
+      "no-arbitrary-sleep": 3,
+      "bdd-title": 3,
+      "given-when-then": 3
+    },
+    "packages/dsh-remote-web-ui/tests/mobile-adapt.spec.ts": {
+      "no-ad-hoc-mock": 2,
+      "bdd-title": 18,
+      "given-when-then": 17,
+      "call-count-only-assertion": 1,
+      "tautological-assertion": 8
+    },
+    "packages/dsh-remote-web-ui/tests/pair-schema.spec.ts": {
+      "bdd-title": 4,
+      "given-when-then": 4
+    },
+    "packages/dsh-remote-web-ui/tests/pairing.spec.ts": {
+      "bdd-title": 19,
+      "given-when-then": 19,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-remote-web-ui/tests/plugin-card-seat.spec.ts": {
+      "no-ad-hoc-mock": 1,
+      "bdd-title": 6,
+      "given-when-then": 6
+    },
+    "packages/dsh-remote-web-ui/tests/posture.spec.ts": {
+      "bdd-title": 8,
+      "given-when-then": 8
+    },
+    "packages/dsh-remote-web-ui/tests/public-base.spec.ts": {
+      "bdd-title": 5,
+      "given-when-then": 5
+    },
+    "packages/dsh-remote-web-ui/tests/relay-registry.spec.ts": {
+      "bdd-title": 12,
+      "given-when-then": 12
+    },
+    "packages/dsh-remote-web-ui/tests/remote-api.spec.ts": {
+      "bdd-title": 16,
+      "given-when-then": 16,
+      "tautological-assertion": 6
+    },
+    "packages/dsh-remote-web-ui/tests/remote-channel-boot.spec.ts": {
+      "no-arbitrary-sleep": 2,
+      "bdd-title": 18,
+      "given-when-then": 18,
+      "tautological-assertion": 2
+    },
+    "packages/dsh-remote-web-ui/tests/remote-channel.spec.ts": {
+      "bdd-title": 15,
+      "given-when-then": 15,
+      "tautological-assertion": 2
+    },
+    "packages/dsh-remote-web-ui/tests/remote-contract.spec.ts": {
+      "bdd-title": 1,
+      "given-when-then": 1,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-remote-web-ui/tests/remote-entry.spec.tsx": {
+      "no-arbitrary-sleep": 1,
+      "bdd-title": 13,
+      "given-when-then": 14,
+      "tautological-assertion": 31
+    },
+    "packages/dsh-remote-web-ui/tests/remote-presence-pet.spec.ts": {
+      "no-arbitrary-sleep": 1,
+      "bdd-title": 5,
+      "given-when-then": 5
+    },
+    "packages/dsh-remote-web-ui/tests/remote-upgrade.spec.ts": {
+      "no-arbitrary-sleep": 1,
+      "bdd-title": 4,
+      "given-when-then": 4,
+      "tautological-assertion": 2
+    },
+    "packages/dsh-remote-web-ui/tests/routes.spec.ts": {
+      "no-ad-hoc-mock": 1,
+      "bdd-title": 28,
+      "given-when-then": 28
+    },
+    "packages/dsh-remote-web-ui/tests/tunnel-plan.spec.ts": {
+      "bdd-title": 6,
+      "given-when-then": 6
+    },
+    "packages/dsh-remote-web-ui/tests/tunnel.spec.ts": {
+      "bdd-title": 23,
+      "given-when-then": 23,
+      "call-count-only-assertion": 1
+    },
+    "packages/dsh-remote-web-ui/tests/uuid-polyfill.spec.ts": {
+      "bdd-title": 4,
+      "given-when-then": 4,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-session-archive/tests/auto-rules.spec.ts": {
+      "bdd-title": 10,
+      "given-when-then": 10
+    },
+    "packages/dsh-session-archive/tests/cascade.spec.ts": {
+      "bdd-title": 10,
+      "given-when-then": 10
+    },
+    "packages/dsh-session-archive/tests/controller.spec.ts": {
+      "no-arbitrary-sleep": 1,
+      "bdd-title": 7,
+      "given-when-then": 7
+    },
+    "packages/dsh-session-archive/tests/dialogs-layout.spec.ts": {
+      "no-ad-hoc-mock": 2,
+      "bdd-title": 3,
+      "given-when-then": 3,
+      "call-count-only-assertion": 1
+    },
+    "packages/dsh-session-archive/tests/inventory.spec.ts": {
+      "bdd-title": 12,
+      "given-when-then": 12,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-session-archive/tests/janitor.spec.ts": {
+      "bdd-title": 17,
+      "given-when-then": 17,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-session-archive/tests/ledger.spec.ts": {
+      "bdd-title": 5,
+      "given-when-then": 5
+    },
+    "packages/dsh-session-archive/tests/routes.spec.ts": {
+      "bdd-title": 10,
+      "given-when-then": 10
+    },
+    "packages/dsh-session-archive/tests/selection.spec.ts": {
+      "bdd-title": 10,
+      "given-when-then": 10
+    },
+    "packages/dsh-session-id/tests/session-id-entry.spec.tsx": {
+      "bdd-title": 1,
+      "given-when-then": 1,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-session-id/tests/session-id-panel.spec.tsx": {
+      "no-ad-hoc-mock": 1,
+      "bdd-title": 13,
+      "given-when-then": 13,
+      "tautological-assertion": 20
+    },
+    "packages/dsh-skill-explorer/tests/access.spec.ts": {
+      "bdd-title": 4,
+      "given-when-then": 4
+    },
+    "packages/dsh-skill-explorer/tests/collect.spec.ts": {
+      "bdd-title": 12,
+      "given-when-then": 12,
+      "tautological-assertion": 2
+    },
+    "packages/dsh-skill-explorer/tests/contract.spec.ts": {
+      "bdd-title": 2,
+      "given-when-then": 2
+    },
+    "packages/dsh-skill-explorer/tests/frontmatter.spec.ts": {
+      "bdd-title": 9,
+      "given-when-then": 9
+    },
+    "packages/dsh-skill-explorer/tests/host-apply.spec.ts": {
+      "bdd-title": 3,
+      "given-when-then": 3
+    },
+    "packages/dsh-skill-explorer/tests/locales-runtime.spec.ts": {
+      "bdd-title": 3,
+      "given-when-then": 3
+    },
+    "packages/dsh-skill-explorer/tests/panel.spec.tsx": {
+      "no-ad-hoc-mock": 1,
+      "given-when-then": 9
+    },
+    "packages/dsh-skill-explorer/tests/routes.spec.ts": {
+      "bdd-title": 28,
+      "given-when-then": 28
+    },
+    "packages/dsh-skill-explorer/tests/skill-filter.spec.ts": {
+      "bdd-title": 8,
+      "given-when-then": 8
+    },
+    "packages/dsh-skill-explorer/tests/workspace-isolation.spec.ts": {
+      "bdd-title": 2,
+      "given-when-then": 2,
+      "tautological-assertion": 8
+    },
+    "packages/dsh-ssh/tests/api-client-404.test.ts": {
+      "bdd-title": 2,
+      "given-when-then": 2
+    },
+    "packages/dsh-ssh/tests/connection-pool.test.ts": {
+      "no-ad-hoc-mock": 1,
+      "bdd-title": 17,
+      "given-when-then": 17,
+      "tautological-assertion": 9
+    },
+    "packages/dsh-ssh/tests/engine-cluster.test.ts": {
+      "no-ad-hoc-mock": 1,
+      "bdd-title": 4,
+      "given-when-then": 4
+    },
+    "packages/dsh-ssh/tests/engine-modules.test.ts": {
+      "bdd-title": 9,
+      "given-when-then": 9
+    },
+    "packages/dsh-ssh/tests/engine.test.ts": {
+      "no-arbitrary-sleep": 10,
+      "no-ad-hoc-mock": 1,
+      "bdd-title": 36,
+      "given-when-then": 36,
+      "tautological-assertion": 2
+    },
+    "packages/dsh-ssh/tests/locales-runtime.spec.ts": {
+      "bdd-title": 3,
+      "given-when-then": 3
+    },
+    "packages/dsh-ssh/tests/panel-hosts.test.tsx": {
+      "bdd-title": 8,
+      "given-when-then": 8,
+      "call-count-only-assertion": 2,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-ssh/tests/panel-shell.test.tsx": {
+      "bdd-title": 4,
+      "given-when-then": 4,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-ssh/tests/panel-terminal-font.test.tsx": {
+      "no-ad-hoc-mock": 2,
+      "bdd-title": 1,
+      "given-when-then": 1
+    },
+    "packages/dsh-ssh/tests/panel-terminal.test.tsx": {
+      "no-ad-hoc-mock": 2,
+      "bdd-title": 5,
+      "given-when-then": 5,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-ssh/tests/panel-tunnels.test.tsx": {
+      "no-ad-hoc-mock": 1,
+      "bdd-title": 10,
+      "given-when-then": 10,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-ssh/tests/proxy-command.test.ts": {
+      "no-arbitrary-sleep": 1,
+      "bdd-title": 6,
+      "given-when-then": 6
+    },
+    "packages/dsh-ssh/tests/routes.test.ts": {
+      "no-arbitrary-sleep": 7,
+      "bdd-title": 15,
+      "given-when-then": 15
+    },
+    "packages/dsh-ssh/tests/ssh-config.test.ts": {
+      "bdd-title": 5,
+      "given-when-then": 5
+    },
+    "packages/dsh-ssh/tests/store.test.ts": {
+      "bdd-title": 34,
+      "given-when-then": 34,
+      "tautological-assertion": 4
+    },
+    "packages/dsh-ssh/tests/terminal-font.test.ts": {
+      "bdd-title": 6,
+      "given-when-then": 6
+    },
+    "packages/dsh-ssh/tests/tools.test.ts": {
+      "bdd-title": 13,
+      "given-when-then": 13
+    },
+    "packages/dsh-task-board/tests/ai-parse.spec.tsx": {
+      "bdd-title": 4,
+      "given-when-then": 4,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-task-board/tests/announce-default.spec.ts": {
+      "bdd-title": 2,
+      "given-when-then": 2
+    },
+    "packages/dsh-task-board/tests/apply-guard.spec.ts": {
+      "bdd-title": 5,
+      "given-when-then": 5
+    },
+    "packages/dsh-task-board/tests/archive-controller.spec.ts": {
+      "bdd-title": 3,
+      "given-when-then": 3
+    },
+    "packages/dsh-task-board/tests/board-view.spec.tsx": {
+      "bdd-title": 5,
+      "given-when-then": 7,
+      "tautological-assertion": 9
+    },
+    "packages/dsh-task-board/tests/claim-provenance.spec.ts": {
+      "bdd-title": 7,
+      "given-when-then": 7
+    },
+    "packages/dsh-task-board/tests/claim-runner.spec.ts": {
+      "bdd-title": 4,
+      "given-when-then": 4
+    },
+    "packages/dsh-task-board/tests/claim-ui.spec.tsx": {
+      "bdd-title": 1,
+      "given-when-then": 1,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-task-board/tests/continuation-card.spec.ts": {
+      "no-arbitrary-sleep": 5,
+      "bdd-title": 11,
+      "given-when-then": 11,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-task-board/tests/controller-use-cases.spec.ts": {
+      "bdd-title": 19,
+      "given-when-then": 19,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-task-board/tests/controller.spec.ts": {
+      "no-arbitrary-sleep": 1,
+      "bdd-title": 31,
+      "given-when-then": 31,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-task-board/tests/freeze-snapshot.spec.ts": {
+      "bdd-title": 19,
+      "given-when-then": 19
+    },
+    "packages/dsh-task-board/tests/guidance.spec.ts": {
+      "bdd-title": 1,
+      "given-when-then": 1
+    },
+    "packages/dsh-task-board/tests/handover-confirm.spec.ts": {
+      "no-arbitrary-sleep": 2,
+      "bdd-title": 16,
+      "given-when-then": 16,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-task-board/tests/handover-ui.spec.tsx": {
+      "no-ad-hoc-mock": 1,
+      "bdd-title": 4,
+      "given-when-then": 4,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-task-board/tests/host-ai.spec.ts": {
+      "bdd-title": 11,
+      "given-when-then": 11
+    },
+    "packages/dsh-task-board/tests/host-api.spec.ts": {
+      "bdd-title": 17,
+      "given-when-then": 17
+    },
+    "packages/dsh-task-board/tests/host-controller.spec.ts": {
+      "bdd-title": 8,
+      "given-when-then": 8
+    },
+    "packages/dsh-task-board/tests/host-ledger.spec.ts": {
+      "no-ad-hoc-mock": 1,
+      "bdd-title": 34,
+      "given-when-then": 34,
+      "tautological-assertion": 9
+    },
+    "packages/dsh-task-board/tests/host-routes.spec.ts": {
+      "bdd-title": 10,
+      "given-when-then": 10
+    },
+    "packages/dsh-task-board/tests/host-runner.spec.ts": {
+      "no-ad-hoc-mock": 8,
+      "bdd-title": 17,
+      "given-when-then": 17
+    },
+    "packages/dsh-task-board/tests/host-service.spec.ts": {
+      "no-arbitrary-sleep": 1,
+      "no-ad-hoc-mock": 4,
+      "bdd-title": 14,
+      "given-when-then": 14
+    },
+    "packages/dsh-task-board/tests/locales-runtime.spec.ts": {
+      "bdd-title": 3,
+      "given-when-then": 3
+    },
+    "packages/dsh-task-board/tests/model-options.spec.ts": {
+      "bdd-title": 1,
+      "given-when-then": 1
+    },
+    "packages/dsh-task-board/tests/power-inhibitor.spec.ts": {
+      "bdd-title": 11,
+      "given-when-then": 11
+    },
+    "packages/dsh-task-board/tests/power-native-smoke.spec.ts": {
+      "no-arbitrary-sleep": 1,
+      "bdd-title": 1,
+      "given-when-then": 1,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-task-board/tests/project-view.spec.tsx": {
+      "bdd-title": 6,
+      "given-when-then": 6,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-task-board/tests/protocol.spec.ts": {
+      "bdd-title": 7,
+      "given-when-then": 7,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-task-board/tests/responsive-css.spec.ts": {
+      "bdd-title": 8,
+      "given-when-then": 8
+    },
+    "packages/dsh-task-board/tests/schedule-dst.spec.ts": {
+      "bdd-title": 3,
+      "given-when-then": 3
+    },
+    "packages/dsh-task-board/tests/schedule.spec.ts": {
+      "bdd-title": 19,
+      "given-when-then": 19
+    },
+    "packages/dsh-task-board/tests/session-reuse.spec.ts": {
+      "bdd-title": 8,
+      "given-when-then": 8
+    },
+    "packages/dsh-task-board/tests/store.spec.ts": {
+      "bdd-title": 21,
+      "given-when-then": 21,
+      "call-count-only-assertion": 2
+    },
+    "packages/dsh-task-board/tests/tag-view.spec.tsx": {
+      "bdd-title": 16,
+      "given-when-then": 16,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-task-board/tests/tags.spec.ts": {
+      "bdd-title": 19,
+      "given-when-then": 19
+    },
+    "packages/dsh-task-board/tests/task-archive.spec.ts": {
+      "bdd-title": 8,
+      "given-when-then": 8
+    },
+    "packages/dsh-task-board/tests/task-detail-edit.spec.tsx": {
+      "bdd-title": 8,
+      "given-when-then": 8,
+      "tautological-assertion": 5
+    },
+    "packages/dsh-task-board/tests/task-duplicate.spec.ts": {
+      "bdd-title": 2,
+      "given-when-then": 2,
+      "tautological-assertion": 5
+    },
+    "packages/dsh-task-board/tests/tasks.spec.ts": {
+      "bdd-title": 20,
+      "given-when-then": 20
+    },
+    "packages/dsh-update/tests/update-entry.spec.tsx": {
+      "no-ad-hoc-mock": 1,
+      "bdd-title": 11,
+      "given-when-then": 11,
+      "tautological-assertion": 21
+    },
+    "packages/dsh-update/tests/update.spec.ts": {
+      "bdd-title": 58,
+      "given-when-then": 57
+    },
+    "packages/dsh-usage/tests/adapters.spec.ts": {
+      "bdd-title": 22,
+      "given-when-then": 22,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-usage/tests/apply.spec.ts": {
+      "no-arbitrary-sleep": 1,
+      "bdd-title": 5,
+      "given-when-then": 5
+    },
+    "packages/dsh-usage/tests/ledger.spec.ts": {
+      "bdd-title": 11,
+      "given-when-then": 11,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-usage/tests/pricing.spec.ts": {
+      "bdd-title": 9,
+      "given-when-then": 9
+    },
+    "packages/dsh-usage/tests/routes.spec.ts": {
+      "bdd-title": 7,
+      "given-when-then": 7
+    },
+    "packages/dsh-usage/tests/section-card.spec.tsx": {
+      "bdd-title": 8,
+      "given-when-then": 8,
+      "tautological-assertion": 8
+    },
+    "packages/dsh-usage/tests/usage-service.spec.ts": {
+      "no-arbitrary-sleep": 4,
+      "bdd-title": 14,
+      "given-when-then": 14,
+      "tautological-assertion": 3
+    },
+    "packages/dsh-usage/tests/voucher.spec.ts": {
+      "bdd-title": 9,
+      "given-when-then": 9
+    },
+    "packages/dsh-web-all/tests/responsive-contract.spec.ts": {
+      "bdd-title": 9,
+      "given-when-then": 9,
+      "call-count-only-assertion": 1,
+      "tautological-assertion": 5
+    },
+    "packages/dsh-web-all/tests/shell-isolation.spec.ts": {
+      "bdd-title": 2,
+      "given-when-then": 2
+    },
+    "packages/dsh-web-all/tests/shell-subpath.spec.ts": {
+      "bdd-title": 5,
+      "given-when-then": 5
+    },
+    "packages/dsh-web-settings/tests/client-apply.spec.tsx": {
+      "no-ad-hoc-mock": 1,
+      "bdd-title": 1,
+      "given-when-then": 1,
+      "tautological-assertion": 1
+    },
+    "packages/dsh-web-settings/tests/config.spec.ts": {
+      "bdd-title": 5,
+      "given-when-then": 5
+    },
+    "packages/dsh-web-settings/tests/nav-icons.spec.ts": {
+      "bdd-title": 3,
+      "given-when-then": 3
+    },
+    "packages/dsh-web-settings/tests/webui-section.spec.tsx": {
+      "bdd-title": 1,
+      "given-when-then": 1
+    },
+    "shared/tests/body-mutations.spec.ts": {
+      "no-arbitrary-sleep": 3,
+      "call-count-only-assertion": 2
+    },
+    "shared/tests/http.spec.ts": {
+      "tautological-assertion": 1
+    },
+    "shared/tests/mount-once.spec.ts": {
+      "call-count-only-assertion": 2
+    },
+    "shared/tests/run-guarded.spec.ts": {
+      "no-arbitrary-sleep": 2,
+      "tautological-assertion": 1
+    },
+    "shared/tests/settings-form.spec.ts": {
+      "no-ad-hoc-mock": 1
+    }
   }
 }

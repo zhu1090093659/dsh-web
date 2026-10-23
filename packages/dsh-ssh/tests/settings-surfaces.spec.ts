@@ -139,6 +139,7 @@ describe('dsh-ssh host surfaces follow the plugin config', () => {
       ['announceToAgent', true],
       ['enabled', true],
       ['terminalFontFamily', true],
+      ['connectTimeoutMs', true],
     ])
   })
 

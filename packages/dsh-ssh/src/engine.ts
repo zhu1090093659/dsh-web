@@ -51,6 +51,16 @@ export class SshEngine {
     this.sweepTimer.unref?.()
   }
 
+  /**
+   * Change the pre-ready ceiling (TCP connect + key exchange + user
+   * authentication) for connections opened from now on. A pooled connection
+   * keeps serving until it reconnects, because the ceiling governs the
+   * connect path only.
+   */
+  setConnectTimeout(timeoutMs: number): void {
+    this.opts.connectTimeoutMs = timeoutMs
+  }
+
   // ---------------------------------------------------------------- config
 
   /** Secret-free host list (filtered by the optional query). */

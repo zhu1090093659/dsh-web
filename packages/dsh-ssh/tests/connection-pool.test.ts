@@ -10,7 +10,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { WINDOWS_AGENT_PIPE, buildConnectConfig, connectChain, connectClient, parseJumpSpec } from '../src/engine/connection-pool.ts'
+import { DEFAULTS, WINDOWS_AGENT_PIPE, buildConnectConfig, connectChain, connectClient, parseJumpSpec } from '../src/engine/connection-pool.ts'
 import type { SshHostEntry } from '../src/protocol.ts'
 import type { HostStore } from '../src/store.ts'
 
@@ -138,6 +138,15 @@ function defaultOpts(): Record<string, number> {
   }
 }
 
+describe('connection timeout (issue #1931)', () => {
+  it('operator gets a 30 s default pre-ready ceiling instead of the previous 15 s', () => {
+    // Given no engine option override
+    // When the engine applies its defaults
+    // Then slow PAM / LDAP password authentication has 30 s to finish
+    expect(DEFAULTS.connectTimeoutMs).toBe(30_000)
+  })
+})
+
 describe('connectClient', () => {
   beforeEach(() => {
     sshMock.instances.length = 0
@@ -168,6 +177,31 @@ describe('connectClient', () => {
     expect(client).toBeDefined()
     const instance = sshMock.instances[0]
     expect(instance.destroyCalls).toBe(0)
+  })
+
+  it('operator reads a user-authentication timeout when the key exchange already completed', async () => {
+    // Given a client whose key exchange completed
+    // When ssh2 reports its pre-ready timeout
+    // Then the rejection names user authentication and the shared budget
+    sshMock.behaviors.push((client) => {
+      client.emit('handshake')
+      client.emit('error', Object.assign(new Error('Timed out while waiting for handshake'), { level: 'client-timeout' }))
+    })
+    const config = buildConnectConfig(passwordEntry('slow-auth'), undefined, defaultOpts() as never)
+
+    await expect(connectClient(config)).rejects.toThrow('SSH authentication timed out after 7001 ms')
+  })
+
+  it('operator reads a connection or key-exchange timeout before the handshake completes', async () => {
+    // Given a client that has not completed the key exchange
+    // When ssh2 reports its pre-ready timeout
+    // Then the rejection names TCP connect or key exchange rather than authentication
+    sshMock.behaviors.push((client) => {
+      client.emit('error', Object.assign(new Error('Timed out while waiting for handshake'), { level: 'client-timeout' }))
+    })
+    const config = buildConnectConfig(passwordEntry('slow-connect'), undefined, defaultOpts() as never)
+
+    await expect(connectClient(config)).rejects.toThrow('SSH connection timed out after 7001 ms before key exchange completed')
   })
 
   it('threads EngineOptions timeouts into the ssh2 connect config', async () => {

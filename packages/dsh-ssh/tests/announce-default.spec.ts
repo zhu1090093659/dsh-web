@@ -19,10 +19,11 @@ describe('announcement default (issue #839)', () => {
     const value = Config({})
 
     // When the schema resolves it
-    // Then the announcement stays off, the plugin stays on, and the font defers to the CSS chain
+    // Then the announcement stays off, the plugin stays on, the font defers to the CSS chain, and slow authentication gets 30 s
     expect(value.announceToAgent.get()).toBe(false)
     expect(value.enabled.get()).toBe(true)
     expect(value.terminalFontFamily.get()).toBe('')
+    expect(value.connectTimeoutMs.get()).toBe(30_000)
   })
 
   it('operator keeps an explicit true override', () => {

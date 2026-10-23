@@ -69,7 +69,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-ssh
 
 ## 配置
 
-设置面板（插件配置）可开关 `announceToAgent`（是否向 Agent 宣告插件；默认关闭，保持系统提示词干净）与 `enabled`（总开关），并可设置 `terminalFontFamily`（Web 终端字体，留空则按 CSS 链解析：`--dsh-ssh-terminal-font` → 官方 `--ds-font-family-code` token → 内置 monospace 栈）。终端字体写死在 xterm 构造参数里，CSS 无法直接覆盖；要渲染 powerline / Nerd Font 图标，请在此填入对应 Nerd Font 栈（如 `"SauceCodePro Nerd Font", monospace`），修改对已打开的终端即时生效，无需重连。
+设置面板（插件配置）可开关 `announceToAgent`（是否向 Agent 宣告插件；默认关闭，保持系统提示词干净）与 `enabled`（总开关），设置 `terminalFontFamily`（Web 终端字体，留空则按 CSS 链解析：`--dsh-ssh-terminal-font` → 官方 `--ds-font-family-code` token → 内置 monospace 栈），并设置 `connectTimeoutMs`（TCP 连接、SSH 密钥交换与用户认证三个阶段共用的上限，默认 30000 毫秒，允许 1000-600000）。认证较慢的主机（例如 PAM 或 LDAP 位于较远的目录服务后面）应调大 `connectTimeoutMs`：`ssh_exec`、Web 终端、SFTP 传输、隧道与集群执行等所有连接入口都读取该值，而 `ssh_exec` / `ssh_cluster` 的 `timeoutMs` 只约束连接就绪后的远程命令。终端字体写死在 xterm 构造参数里，CSS 无法直接覆盖；要渲染 powerline / Nerd Font 图标，请在此填入对应 Nerd Font 栈（如 `"SauceCodePro Nerd Font", monospace`），修改对已打开的终端即时生效，无需重连；新的 `connectTimeoutMs` 对之后建立的连接生效，池化连接在重连前不受影响。
 
 ## 数据
 

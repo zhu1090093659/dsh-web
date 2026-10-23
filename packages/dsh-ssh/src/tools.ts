@@ -149,7 +149,7 @@ export function sshExecTool(engine: SshEngine) {
     parameters: {
       alias: { type: 'string', required: true, description: 'Host alias from ssh_list.' },
       command: { type: 'string', required: true, description: 'The shell command to run remotely.' },
-      timeoutMs: { type: 'integer', description: 'Timeout in milliseconds (default 60000).' },
+      timeoutMs: { type: 'integer', description: 'Remote command execution timeout in milliseconds (default 60000); it starts after the connection is ready. The connection and authentication ceiling is the dsh-ssh connectTimeoutMs setting, not this argument.' },
     },
     output: {
       schema: {
@@ -367,7 +367,7 @@ export function sshClusterTool(engine: SshEngine) {
       aliases: { type: 'array', items: { type: 'string' }, description: 'Optional alias filter; at least one of aliases, environment, or tags is required.' },
       environment: { type: 'string', description: 'Optional environment filter; at least one selector is required.' },
       tags: { type: 'array', items: { type: 'string' }, description: 'Optional ALL-tags filter; at least one selector is required.' },
-      timeoutMs: { type: 'integer', description: 'Per-host timeout in milliseconds.' },
+      timeoutMs: { type: 'integer', description: 'Per-host command execution timeout in milliseconds (default 60000); it does not extend the connection and authentication ceiling (the dsh-ssh connectTimeoutMs setting).' },
       maxWorkers: { type: 'integer', description: 'Concurrency cap (default 8).' },
     },
     output: {

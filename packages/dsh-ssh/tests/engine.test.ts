@@ -266,6 +266,16 @@ describe('connection pool', () => {
     expect(server.connectCount).toBe(before + 1)
   }, 10_000)
 
+  it('operator applies a settings edit to the connection ceiling of later connections', () => {
+    // Given an engine whose options are read when a connection is built
+    // When the loader commits a new connectTimeoutMs without a remount
+    engine.setConnectTimeout(45_000)
+
+    // Then connections opened afterwards read the new ceiling
+    expect(engine.opts.connectTimeoutMs).toBe(45_000)
+    engine.setConnectTimeout(5_000)
+  })
+
   it('dropAlias closes the pooled connection so the next exec reconnects', async () => {
     addHost('pool-drop')
     await engine.exec('pool-drop', 'true')

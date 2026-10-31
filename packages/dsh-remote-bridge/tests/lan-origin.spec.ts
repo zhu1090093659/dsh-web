@@ -94,10 +94,12 @@ describe('局域网兜底地址只来自真实监听', () => {
       expect(lanOriginOf(forwarder.snapshot())).toEqual({ address: '127.0.0.1', port: state.port })
       // And the pairing code names that listener, not a guess from the address list
       const body = tokenBodyOf(forwarder)
-      const origin = 'http://127.0.0.1:' + String(state.port)
-      expect(body.origin).toBe(origin)
+      const address = '127.0.0.1:' + String(state.port)
+      expect(body.origin).toBe('http://' + address)
       expect(body.originSource).toBe('lan')
-      expect(body.pairingUrl).toBe(origin + WS_PATH + '?token=' + String(body.token))
+      // The code a phone opens is a socket, so it carries the ws scheme rather
+      // than the plain-HTTP one the origin is reported with
+      expect(body.pairingUrl).toBe('ws://' + address + WS_PATH + '?token=' + String(body.token))
     } finally {
       await forwarder.stop()
     }

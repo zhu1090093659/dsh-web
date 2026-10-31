@@ -190,8 +190,8 @@ describe('the token response carries the address the route now reads', () => {
     expect(asked).toBe(1)
     expect(body.origin).toBe('https://edge.example.com')
     expect(body.originSource).toBe('realtime')
-    // And the one-scan link is built on it
-    expect(body.pairingUrl).toBe('https://edge.example.com/ios/v1?token=' + body.token)
+    // And the one-scan link is built on it, with the socket scheme the dial needs
+    expect(body.pairingUrl).toBe('wss://edge.example.com/ios/v1?token=' + body.token)
   })
 
   it('operator: the payload stays coherent whatever source answered', () => {
@@ -204,11 +204,12 @@ describe('the token response carries the address the route now reads', () => {
       lan: () => ({ address: '192.168.1.5', port: 3080 }),
     })(loopbackRequest(), response.asServerResponse())
     // When the loopback request is answered
-    // Then the link a phone dials is built on the origin the same answer named,
-    // and the keys the panel reads are unchanged
+    // Then the link a phone dials names the same host the same answer reported,
+    // with the socket scheme instead of the origin's own plain-HTTP one, so a LAN
+    // origin still hands the client something it can open a socket to
     const body = JSON.parse(response.body) as { token: string; url: string; origin: string; originSource: string; pairingUrl: string }
-    expect(body.pairingUrl.startsWith(body.origin)).toBe(true)
-    expect(body.pairingUrl.endsWith('/ios/v1?token=' + body.token)).toBe(true)
+    expect(body.origin).toBe('http://192.168.1.5:3080')
+    expect(body.pairingUrl).toBe('ws://192.168.1.5:3080/ios/v1?token=' + body.token)
     expect(body.url).toBe('ws://127.0.0.1:3000/ios/v1?token=' + body.token)
     expect(['realtime', 'env', 'lan']).toContain(body.originSource)
   })

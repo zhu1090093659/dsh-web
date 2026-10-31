@@ -42,6 +42,33 @@ function writeJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(text)
 }
 
+/** The schemes one discovered origin can carry, and the socket scheme it dials. */
+const DIAL_SCHEME: Readonly<Record<string, string>> = { 'https://': 'wss://', 'http://': 'ws://' }
+
+/**
+ * The WebSocket URL a phone dials for one one-shot ticket.
+ *
+ * `origin` names where this host is reachable (`https://<id>.dsh-market.com`,
+ * `http://192.168.1.5:3080`), but the handshake this URL opens is a WebSocket
+ * one: the scheme follows the transport, so https becomes wss and http becomes
+ * ws. Keeping the origin's own scheme would hand the client an HTTP URL and ask
+ * it to dial a socket with it.
+ * @param origin - the discovered origin, with or without the scheme.
+ * @param token - the one-shot ticket to carry in the query.
+ * @returns the URL the pairing QR encodes.
+ */
+export function pairingDialUrlOf(origin: string, token: string): string {
+  const base = origin.replace(/\/+$/, '')
+  let dial = base
+  for (const [scheme, socket] of Object.entries(DIAL_SCHEME)) {
+    if (base.startsWith(scheme)) {
+      dial = socket + base.slice(scheme.length)
+      break
+    }
+  }
+  return dial + WS_PATH + '?token=' + token
+}
+
 /**
  * Build the handler for `GET /remote-bridge/pair/token`.
  * @param deps - the pairing service that mints the token, plus the Host log.
@@ -70,14 +97,17 @@ export function makePairTokenHandler(deps: PairTokenRouteDeps): WebRoute['handle
     // origin. `pairingUrl` is what a QR should carry: the iOS client parses
     // `{token, url}` and adopts the origin from `url`, so one scan sets both.
     //
-    // 取值来源换成了实时优先的发现顺序（pair-origin.ts）：桥自己的 relay 租约或
-    // 隧道 running URL 先答，其次 DSH_REMOTE_PUBLIC_BASE_URL、registry 行，最后是
-    // 局域网字面量。响应结构与字段名一概不变，面板读到的还是那一份。
+    // The origin comes from the live-first discovery order (pair-origin.ts): this
+    // bridge's own relay lease or running tunnel first, then the configured base,
+    // then the LAN forwarder while it is listening. The response shape and the
+    // field names are unchanged.
     const discovered = (deps.pairOrigin ?? (() => discoverPairOrigin({
       ...(deps.realtime === undefined ? {} : { realtime: deps.realtime }),
       ...(deps.lan === undefined ? {} : { lan: deps.lan }),
     })))()
-    const pairingUrl = discovered === undefined ? undefined : `${discovered.origin}${WS_PATH}?token=${ticket.value}`
+    const pairingUrl = discovered === undefined
+      ? undefined
+      : pairingDialUrlOf(discovered.origin, ticket.value)
     deps.log(
       pairingUrl === undefined
         ? `pair a device with ${url}`

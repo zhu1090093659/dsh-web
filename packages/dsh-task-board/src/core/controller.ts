@@ -32,6 +32,7 @@ import type {
 } from '../protocol.ts'
 import type {
   TaskBoardExtensionActionRequest,
+  TaskBoardGroupingSelector,
   TaskBoardVisibilityPredicate,
 } from './extension.ts'
 
@@ -184,6 +185,8 @@ export interface ControllerSnapshot {
    * hand-built snapshot (tests, a shell-less composition) defaults to visible.
    */
   visibility?: readonly TaskBoardVisibilityPredicate[]
+  /** Provider source-group selectors, in registration order; browser-only functions. */
+  grouping?: readonly TaskBoardGroupingSelector[]
   /** Read-only summaries published by running extensions, keyed by extension id. */
   extensions?: Readonly<Record<string, unknown>>
 }
@@ -235,6 +238,8 @@ export class BoardController {
   private hostState: HostMirror | undefined
   /** Provider visibility predicates (immutable array; replaced on change). */
   private visibility: readonly TaskBoardVisibilityPredicate[] = []
+  /** Provider source-group selectors (immutable array; replaced on change). */
+  private grouping: readonly TaskBoardGroupingSelector[] = []
   private remoteSubscribed = false
   private remoteInitialization: Promise<boolean> | undefined
 
@@ -286,6 +291,7 @@ export class BoardController {
       ...(this.transportError === undefined ? {} : { transportError: this.transportError }),
       ...(this.hostState === undefined ? {} : { host: this.hostState }),
       visibility: this.visibility,
+      grouping: this.grouping,
       ...(this.hostState?.extensions === undefined ? {} : { extensions: this.hostState.extensions }),
     }
   }
@@ -301,6 +307,18 @@ export class BoardController {
       const next = this.visibility.filter(candidate => candidate !== predicate)
       if (next.length === this.visibility.length) return
       this.visibility = next
+      this.notify()
+    }
+  }
+
+  /** Register one source-group selector; registration order breaks ownership ties. */
+  registerGrouping(selector: TaskBoardGroupingSelector): () => void {
+    this.grouping = [...this.grouping, selector]
+    this.notify()
+    return () => {
+      const next = this.grouping.filter(candidate => candidate !== selector)
+      if (next.length === this.grouping.length) return
+      this.grouping = next
       this.notify()
     }
   }

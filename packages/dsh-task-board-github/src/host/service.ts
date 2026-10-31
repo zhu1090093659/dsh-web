@@ -36,6 +36,7 @@ import {
   isIssueIncluded,
   materializeTaskFromIssue,
   reconcileIssueWithTask,
+  reconcileRemoteClose,
 } from '../core/projection.ts'
 import { isPromptEdited, issueSourceHash, type IssuePromptSource } from '../core/prompt.ts'
 import { workspaceIdForRepository, type WorkspaceMatchCandidate } from '../core/workspace-match.ts'
@@ -555,9 +556,24 @@ export class GitHubSyncService {
    * the provider payload back.
    */
   private applyRecord(next: TaskRecord, previous: TaskRecord | undefined): void {
+    if (previous !== undefined) {
+      const remoteState = readTaskGitHubMetadata(next)?.remoteState
+      const payload = this.payloadOf(next)
+      if (remoteState !== undefined && payload !== undefined) {
+        const close = reconcileRemoteClose(previous, remoteState)
+        next = {
+          ...next,
+          status: close.status,
+          integrations: {
+            ...next.integrations,
+            github: { ...payload, remoteClose: close.remoteClose },
+          },
+        }
+      }
+    }
     // The raw payload is what carries the explicit undefineds a merge needs to
-    // clear a field (deactivated, lastSyncError); a normalized copy would drop
-    // the key altogether and leave the stale value in place.
+    // clear a field (deactivated, lastSyncError, remoteClose); a normalized
+    // copy would drop the key altogether and leave the stale value in place.
     const payload = this.payloadOf(next)
     const metadata = readTaskGitHubMetadata(next)
     if (previous === undefined) {
@@ -600,7 +616,27 @@ export class GitHubSyncService {
         // Frozen card: keep the local content.
       }
     }
-    if (payload !== undefined) this.host.integration.write(next.id, payload)
+    if (next.status !== previous.status) {
+      try {
+        const initiator = next.status === 'done' ? 'github:remote-close' : 'github:remote-reopen'
+        this.host.tasks.setStatus(next.id, next.status, initiator)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        this.writePayload(next.id, { lastSyncError: message })
+        return
+      }
+    }
+    try {
+      if (payload !== undefined) this.host.integration.write(next.id, payload)
+    } catch (error) {
+      // A status move without its provenance would look like a manual Done on
+      // the next pass. Roll it back when possible so the next sync can retry
+      // the whole transition instead of freezing that false provenance.
+      if (next.status !== previous.status) {
+        try { this.host.tasks.setStatus(next.id, previous.status, 'github:sync-rollback') } catch { /* the outer sync error remains authoritative */ }
+      }
+      throw error
+    }
     this.remember(next.id, metadata)
   }
 
@@ -976,6 +1012,11 @@ export class GitHubSyncService {
     const task = this.host.tasks.get(taskId)
     const gh = this.metadataOf(task)
     if (task === undefined || gh === undefined) return
+    if (gh.remoteClose?.state === 'deferred' && gh.remoteClose.executionId === execution.id) {
+      this.writePayload(taskId, {
+        remoteClose: { state: 'settled', executionId: execution.id, settledStatus: task.status },
+      })
+    }
     const config = this.findRepoConfig(gh.owner, gh.repository)
     if (config === undefined) return
 

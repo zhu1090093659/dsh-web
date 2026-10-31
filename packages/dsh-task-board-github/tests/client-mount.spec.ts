@@ -53,8 +53,9 @@ function form(initial: Record<string, unknown>) {
  * client face. `inject` runs the dependency callback the way cordis does once
  * the board serves its service, so the seats register into the recorded list.
  */
-function context(options: { enabled?: boolean; declarationFace?: boolean } = {}) {
+function context(options: { enabled?: boolean; declarationFace?: boolean; groupingFace?: boolean } = {}) {
   const registrations: Array<Record<string, unknown>> = []
+  const grouping: unknown[] = []
   const dictionaries: string[] = []
   /** Seat keys the section subscribed to through the declaration-tracking face. */
   const followedSeats: string[] = []
@@ -62,6 +63,12 @@ function context(options: { enabled?: boolean; declarationFace?: boolean } = {})
   const face = {
     dispatch: async () => true,
     registerVisibility: () => () => {},
+    ...(options.groupingFace === false ? {} : {
+      registerGrouping: (selector: unknown) => {
+        grouping.push(selector)
+        return () => { grouping.splice(grouping.indexOf(selector), 1) }
+      },
+    }),
     subscribe: () => () => {},
     snapshot: () => ({ enabled: true, tasks: [], extensions: {} }),
   }
@@ -110,7 +117,7 @@ function context(options: { enabled?: boolean; declarationFace?: boolean } = {})
       describe: () => ({ getSnapshot: () => ({ view: undefined }), subscribe: () => () => {} }),
     },
   }
-  return { ctx, registrations, dictionaries, followedSeats }
+  return { ctx, registrations, dictionaries, followedSeats, grouping }
 }
 
 describe('task-board GitHub extension browser half', () => {
@@ -179,5 +186,20 @@ describe('task-board GitHub extension browser half', () => {
     const seats = harness.registrations.filter(entry => entry.name === DETAIL_SECTION || entry.name === CARD_DECORATION)
     expect(seats).toHaveLength(2)
     for (const seat of seats) expect(seat.id).toBe('github')
+  })
+
+  it('operator gets repository grouping when offered and keeps the seats on an older board without it', () => {
+    // Given a current board and an older board without the optional method
+    const current = context({ enabled: true })
+    const older = context({ enabled: true, groupingFace: false })
+
+    // When the provider installs on both
+    apply(current.ctx as never)
+    expect(() => { apply(older.ctx as never) }).not.toThrow()
+
+    // Then the current board receives one selector and the older board keeps every seat
+    expect(current.grouping).toHaveLength(1)
+    expect(older.grouping).toHaveLength(0)
+    expect(older.registrations.map(entry => entry.name)).toEqual(expect.arrayContaining([DETAIL_SECTION, CARD_DECORATION]))
   })
 })

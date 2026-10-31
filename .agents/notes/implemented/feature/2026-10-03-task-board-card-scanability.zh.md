@@ -2,6 +2,8 @@
 
 Status: implemented
 
+提供方来源分组现在包裹本 Note 描述的时间分组；当前主列与归档布局见 [Task board source grouping](../architecture/2026-10-31-task-board-source-grouping.zh.md)。
+
 ## Problem
 
 接入 GitHub Issue 同步后，看板的「已完成」列有一百多张卡片，彼此几乎没有区别。每张卡片的摘要都以同样的 Issue 表单模板开头（查重勾选项、涉及插件字段、Issue 类型字段）。每张卡片都显示「更新于 4m」，因为每次同步都会刷新 `updatedAt`。最近一次执行失败、而 Issue 在上游已关闭的卡片，在「已完成」列里显示红色的「1 次执行」，看起来自相矛盾。提供方的 Issue 徽章横跨整张卡片：它是卡片纵向 flex 列的直接子元素，继承了 `align-items: stretch`。超过一天的时间标签用浏览器本地日期，而 tooltip 用 Host 时区。此外，卡片本身是一个 `<button>`，无法容纳自己的控件（打开会话、打开 Issue）。

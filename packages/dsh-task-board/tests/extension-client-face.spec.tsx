@@ -270,4 +270,40 @@ describe('client extension capability face', () => {
     off()
     controller.dispose()
   })
+
+  it('operator registering source groups before attach sees replay, first-match ownership and disposal', async () => {
+    // Given a provider source selector registered before any controller exists
+    const service = new TaskBoardClientService()
+    const offSource = service.registerGrouping(task => {
+      const source = (task.integrations?.fake as { source?: string } | undefined)?.source
+      return source === undefined ? undefined : { id: 'fake:' + source, label: source }
+    })
+    const channel = new FakeHostChannel([
+      card('linked', 'Linked card', { fake: { source: 'owner/repository' } }),
+      card('local', 'Local card'),
+    ], {})
+    const controller = new BoardController({ store: new InMemoryTaskStore(), sessions: new FakeSessions(), transport: channel, now: () => NOW })
+    controller.start()
+    await controller.retryHostSync()
+
+    // When the controller attaches and a second selector registers later
+    service.attach(controller)
+    const container = render(<TaskBoard controller={controller} />)
+    let offFallback: () => void = () => {}
+    act(() => {
+      offFallback = service.registerGrouping(task => task.id === 'linked' ? { id: 'fallback:' + task.id, label: 'fallback/source' } : undefined)
+    })
+
+    // Then the buffered selector wins and unclaimed cards use the local group
+    expect(textOf(container)).toContain('owner/repository')
+    expect(textOf(container)).toContain('本地任务')
+    expect(textOf(container)).not.toContain('fallback/source')
+
+    // When the first provider withdraws, the next selector takes ownership
+    act(() => { offSource() })
+    expect(textOf(container)).toContain('fallback/source')
+    act(() => { offFallback() })
+    expect(textOf(container)).toContain('本地任务')
+    controller.dispose()
+  })
 })

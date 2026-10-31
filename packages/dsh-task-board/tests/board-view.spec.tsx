@@ -7,7 +7,7 @@
  */
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { TaskBoardPanel } from '../src/client/native-panel.tsx'
 import { TaskBoard } from '../src/client/board/TaskBoard.tsx'
 import type { BoardController, ControllerSnapshot } from '../src/core/controller.ts'
@@ -17,12 +17,18 @@ import type { TaskRecord } from '../src/core/tasks.ts'
 
 const roots: Root[] = []
 
+beforeEach(() => {
+  // These legacy row/density cases inspect done cards, not source-fold defaults.
+  globalThis.localStorage?.setItem('dsh.taskBoard.sourceGroupFolds.v1', JSON.stringify({ 'done:local': false }))
+})
+
 afterEach(() => {
   for (const root of roots.splice(0)) {
     act(() => { root.unmount() })
   }
   document.body.replaceChildren()
   document.documentElement.removeAttribute('data-dsh-taskboard-active')
+  globalThis.localStorage?.removeItem('dsh.taskBoard.sourceGroupFolds.v1')
 })
 
 function task(overrides: Partial<TaskRecord> = {}): TaskRecord {
@@ -349,8 +355,8 @@ describe('TaskBoard settled-column density and recency groups', () => {
     // When the board renders
     // Then the done column starts compact, shows the recent group and folds the earlier one
     expect(cards().map(card => card.getAttribute('data-compact'))).toEqual(['true'])
-    expect([...done.querySelectorAll('[data-dsh-part="card-group"]')].map(group => group.getAttribute('data-group'))).toEqual(['today', 'earlier'])
-    const toggle = done.querySelector<HTMLButtonElement>('[data-dsh-part="card-group-toggle"]')!
+    expect([...done.querySelectorAll('[data-dsh-part="card-group"][data-group]')].map(group => group.getAttribute('data-group'))).toEqual(['today', 'earlier'])
+    const toggle = done.querySelector<HTMLButtonElement>('[data-group="earlier"] [data-dsh-part="card-group-toggle"]')!
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
 
     // When the operator expands the folded group and switches the column to full cards

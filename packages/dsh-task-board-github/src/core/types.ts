@@ -10,6 +10,7 @@
  * @module dsh-task-board-github/core/types
  */
 import { normalizeIssueAnalysis, type IssueAnalysis } from './prompt.ts'
+import type { TaskStatus } from './task-record.ts'
 
 /**
  * Stable extension id. It is the key this provider's payload is stored under in
@@ -55,6 +56,21 @@ export interface GitHubPullRequestMetadata {
   mergedAt?: number
 }
 
+/** Local synchronization state for one remote close cycle. */
+export interface GitHubRemoteCloseSync {
+  /**
+   * auto-done: this provider moved the card to done for the current close.
+   * overridden: a local move wins until the issue reopens and closes again.
+   * deferred: a running execution must settle before any close migration.
+   * settled: the deferred execution settled; the next sync may migrate it.
+   */
+  state: 'auto-done' | 'overridden' | 'deferred' | 'settled'
+  /** Open execution whose settlement the close migration waits for. */
+  executionId?: string
+  /** Column captured immediately after that execution settled. */
+  settledStatus?: TaskStatus
+}
+
 /** External provider metadata attached to a task synchronized with GitHub. */
 export interface GitHubTaskMetadata {
   provider: 'github'
@@ -74,6 +90,8 @@ export interface GitHubTaskMetadata {
   remoteBody?: string
   /** Remote issue state ('open' | 'closed'). */
   remoteState?: 'open' | 'closed'
+  /** Provenance and deferral state for the current remote close cycle. */
+  remoteClose?: GitHubRemoteCloseSync
   /**
    * Remote GitHub labels on the issue: separate from TaskTag,
    * not subject to 8-tag limit, never injected as promptPrefix.
@@ -263,6 +281,22 @@ export function isGitHubTaskMetadata(value: unknown): value is GitHubTaskMetadat
  * @param value - candidate payload.
  * @returns the repaired metadata, or undefined when it is not this shape.
  */
+function normalizeRemoteClose(value: unknown): GitHubTaskMetadata['remoteClose'] {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined
+  const candidate = value as Record<string, unknown>
+  const state = candidate.state
+  if (state !== 'auto-done' && state !== 'overridden' && state !== 'deferred' && state !== 'settled') return undefined
+  const executionId = typeof candidate.executionId === 'string' && candidate.executionId !== '' ? candidate.executionId : undefined
+  const status = candidate.settledStatus
+  const settledStatus = status === 'backlog' || status === 'todo' || status === 'running' || status === 'done' || status === 'failed' ? status : undefined
+  if (state === 'settled' && settledStatus === undefined) return undefined
+  return {
+    state,
+    ...(executionId === undefined ? {} : { executionId }),
+    ...(settledStatus === undefined ? {} : { settledStatus }),
+  }
+}
+
 export function normalizeGitHubMetadata(value: unknown): GitHubTaskMetadata | undefined {
   if (!isGitHubTaskMetadata(value)) return undefined
   const gh = value as GitHubTaskMetadata & Record<string, unknown>
@@ -281,6 +315,7 @@ export function normalizeGitHubMetadata(value: unknown): GitHubTaskMetadata | un
   }
 
   const analysis = normalizeStoredAnalysis(gh.analysis)
+  const remoteClose = normalizeRemoteClose(gh.remoteClose)
 
   return {
     provider: 'github',
@@ -293,6 +328,7 @@ export function normalizeGitHubMetadata(value: unknown): GitHubTaskMetadata | un
     ...(typeof gh.remoteTitle === 'string' ? { remoteTitle: gh.remoteTitle } : {}),
     ...(typeof gh.remoteBody === 'string' ? { remoteBody: gh.remoteBody } : {}),
     ...(gh.remoteState !== undefined ? { remoteState: gh.remoteState } : {}),
+    ...(remoteClose === undefined ? {} : { remoteClose }),
     ...(typeof gh.lastSyncedAt === 'number' && Number.isFinite(gh.lastSyncedAt) ? { lastSyncedAt: gh.lastSyncedAt } : {}),
     ...(typeof gh.lastRemoteUpdatedAt === 'number' && Number.isFinite(gh.lastRemoteUpdatedAt) ? { lastRemoteUpdatedAt: gh.lastRemoteUpdatedAt } : {}),
     ...(typeof gh.lastSyncError === 'string' && gh.lastSyncError !== '' ? { lastSyncError: gh.lastSyncError } : {}),

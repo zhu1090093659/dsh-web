@@ -14,9 +14,16 @@ import type {
   TaskBoardClientFace,
   TaskBoardClientMirror,
   TaskBoardExtensionActionRequest,
+  TaskBoardGroupingSelector,
   TaskBoardVisibilityPredicate,
 } from '../core/extension.ts'
 import type { TaskRecord } from '../core/tasks.ts'
+
+interface PendingGroupingRegistration {
+  selector: TaskBoardGroupingSelector
+  active: boolean
+  dispose?: () => void
+}
 
 export class TaskBoardClientService implements TaskBoardClientFace {
   private controller: BoardController | undefined
@@ -24,6 +31,8 @@ export class TaskBoardClientService implements TaskBoardClientFace {
   private unsubscribeController: (() => void) | undefined
   /** Predicates registered before the controller exists, replayed on attach. */
   private readonly pendingVisibility: TaskBoardVisibilityPredicate[] = []
+  /** Source selectors registered before the controller exists, replayed on attach. */
+  private readonly pendingGrouping: PendingGroupingRegistration[] = []
   private readonly listeners = new Set<(mirror: TaskBoardClientMirror) => void>()
 
   /** Bind the live board controller (called when the UI mounts). */
@@ -33,6 +42,9 @@ export class TaskBoardClientService implements TaskBoardClientFace {
     this.controller = controller
     this.unsubscribeController = controller.subscribe(() => { this.notify() })
     for (const predicate of this.pendingVisibility.splice(0)) controller.registerVisibility(predicate)
+    for (const registration of this.pendingGrouping.splice(0)) {
+      if (registration.active) registration.dispose = controller.registerGrouping(registration.selector)
+    }
     this.notify()
   }
 
@@ -63,6 +75,18 @@ export class TaskBoardClientService implements TaskBoardClientFace {
     return () => {
       const index = this.pendingVisibility.indexOf(predicate)
       if (index !== -1) this.pendingVisibility.splice(index, 1)
+    }
+  }
+
+  registerGrouping(selector: TaskBoardGroupingSelector): () => void {
+    if (this.controller !== undefined) return this.controller.registerGrouping(selector)
+    const registration: PendingGroupingRegistration = { selector, active: true }
+    this.pendingGrouping.push(registration)
+    return () => {
+      registration.active = false
+      registration.dispose?.()
+      const index = this.pendingGrouping.indexOf(registration)
+      if (index !== -1) this.pendingGrouping.splice(index, 1)
     }
   }
 

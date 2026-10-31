@@ -16,6 +16,7 @@ import { TagManagerModal } from './TagManagerModal.tsx'
 import { cardTimeline, groupByRecency, readCompactColumns, RECENCY_KEY, writeCompactColumns, type RecencyGroup } from './card-view.ts'
 import { TaskCard } from './TaskCard.tsx'
 import { TaskDetail } from './TaskDetail.tsx'
+import { groupTasksBySource, isSourceGroupFolded, readSourceGroupFolds, sourceGroupFoldKey, writeSourceGroupFolds, type SourceGroupView } from './source-group.ts'
 
 /** Sentinel option value of the project row's "register a new project" entry. */
 export const NEW_PROJECT_VALUE = '__dsh_new_project__'
@@ -140,6 +141,8 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
   // Density is a per-column browser preference: the long settled column starts
   // compact, and each column header toggles its own density.
   const [compactColumns, setCompactColumns] = useState<TaskStatus[]>(() => readCompactColumns(globalThis.localStorage))
+  // Source-group fold overrides persist per browser; done starts folded.
+  const [sourceFolds, setSourceFolds] = useState(() => readSourceGroupFolds(globalThis.localStorage))
   // Grouped columns whose folded "earlier" group the user expanded this visit.
   const [unfolded, setUnfolded] = useState<string[]>([])
   const [showNew, setShowNew] = useState(false)
@@ -250,15 +253,13 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
     />
   )
   /**
-   * Settled cards in recency groups, newest first. A column longer than the
-   * fold threshold folds its oldest group behind a disclosure, so a column of
-   * a hundred finished issues opens on what happened lately; a text or label
-   * search never folds, because a match hidden behind a fold reads as no match.
+   * Recency groups nested inside one source group. The fold key includes the
+   * source, so expanding one repository's earlier cards opens no other group's.
    */
-  const renderGrouped = (columnKey: string, tasks: TaskRecord[], compact: boolean, archived: boolean) => {
+  const renderRecencyGroups = (foldScope: string, tasks: TaskRecord[], compact: boolean, archived: boolean) => {
     const buckets = groupByRecency(tasks, task => cardTimeline(task, archived).at, now, timeZone)
     const foldable = !searchActive && tasks.length > COLUMN_FOLD_THRESHOLD && buckets.length > 1
-    const open = unfolded.includes(columnKey)
+    const open = unfolded.includes(foldScope)
     return buckets.map(bucket => {
       const folded = foldable && bucket.group === buckets[buckets.length - 1]!.group && !open
       return (
@@ -273,7 +274,7 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
                 data-dsh-part="card-group-toggle"
                 aria-expanded={!folded}
                 onClick={() => {
-                  setUnfolded(current => current.includes(columnKey) ? current.filter(entry => entry !== columnKey) : [...current, columnKey])
+                  setUnfolded(current => current.includes(foldScope) ? current.filter(entry => entry !== foldScope) : [...current, foldScope])
                 }}
               >
                 {folded ? t('board.group.expand', { count: String(bucket.items.length) }) : t('board.group.collapse')}
@@ -281,6 +282,43 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
             )}
           </div>
           {!folded && bucket.items.map(task => renderCard(task, compact))}
+        </div>
+      )
+    })
+  }
+
+  /** Every column and the archive first split by provider-owned source. */
+  const renderSourceGroups = (view: SourceGroupView, tasks: TaskRecord[], compact: boolean, archived: boolean) => {
+    const recency = archived || GROUPED_COLUMNS.includes(view as TaskStatus)
+    return groupTasksBySource(tasks, snapshot.grouping ?? []).map(bucket => {
+      const foldKey = sourceGroupFoldKey(view, bucket.id)
+      const folded = isSourceGroupFolded(sourceFolds, view, bucket.id, searchActive)
+      const label = bucket.local ? t('board.source.local') : bucket.label
+      return (
+        <div key={bucket.id} className={`${css.cardGroup} ${css.sourceGroup}`} data-dsh-part="card-group">
+          <div className={`${css.cardGroupHeader} ${css.sourceGroupHeader}`}>
+            <span className={css.sourceGroupLabel}>{label}</span>
+            <span className={css.cardGroupCount}>{bucket.items.length}</span>
+            <button
+              type="button"
+              className={css.linkButton}
+              data-dsh-part="card-group-toggle"
+              aria-expanded={!folded}
+              disabled={searchActive}
+              onClick={() => {
+                setSourceFolds(current => {
+                  const next = { ...current, [foldKey]: !isSourceGroupFolded(current, view, bucket.id, false) }
+                  writeSourceGroupFolds(globalThis.localStorage, next)
+                  return next
+                })
+              }}
+            >
+              {folded ? t('board.group.expand', { count: String(bucket.items.length) }) : t('board.group.collapse')}
+            </button>
+          </div>
+          {!folded && (recency
+            ? renderRecencyGroups(foldKey, bucket.items, compact, archived)
+            : bucket.items.map(task => renderCard(task, compact)))}
         </div>
       )
     })
@@ -472,7 +510,7 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
               <span className={css.columnCount}>{visible.length}</span>
             </header>
             <div className={css.cards}>
-              {renderGrouped(ARCHIVE_COLUMN, visible, false, true)}
+              {renderSourceGroups(ARCHIVE_COLUMN, visible, false, true)}
               {visible.length === 0 && (
                 <div className={css.columnEmpty}>{tagFilter.length > 0 ? t('board.tagEmpty') : t('archive.empty')}</div>
               )}
@@ -485,7 +523,6 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
             // never does, because only the runner opens an execution.
             const isManualDropTarget = MANUAL_STATUSES.includes(column.status)
             const compact = compactColumns.includes(column.status)
-            const grouped = GROUPED_COLUMNS.includes(column.status)
             return (
               <section
                 key={column.status}
@@ -524,7 +561,7 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
                   </button>
                 </header>
                 <div className={css.cards}>
-                  {grouped ? renderGrouped(column.status, tasks, compact, false) : tasks.map(task => renderCard(task, compact))}
+                  {renderSourceGroups(column.status, tasks, compact, false)}
                   {tasks.length === 0 && (
                     <div className={css.columnEmpty}>{tagFilter.length > 0 ? t('board.tagEmpty') : t('board.empty')}</div>
                   )}

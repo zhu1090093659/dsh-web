@@ -24,6 +24,7 @@ const NOW = 1_700_000_000_000
 afterEach(() => {
   for (const root of roots.splice(0)) act(() => { root.unmount() })
   document.body.replaceChildren()
+  globalThis.localStorage?.removeItem('dsh.taskBoard.sourceGroupFolds.v1')
 })
 
 function task(id: string, overrides: Partial<TaskRecord> = {}): TaskRecord {
@@ -430,6 +431,8 @@ describe('board subtask filter', () => {
     const done = task('child-done', { parentId: 'parent', status: 'done' })
     const failed = task('child-failed', { parentId: 'parent', status: 'failed' })
     const { controller } = fakeController([parent, done, failed])
+    // This case inspects the flat list, not the new done-source default fold.
+    globalThis.localStorage?.setItem('dsh.taskBoard.sourceGroupFolds.v1', JSON.stringify({ 'done:local': false }))
 
     // When the user opens the board
     const container = render(<TaskBoard controller={controller} />)

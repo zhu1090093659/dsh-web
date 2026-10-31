@@ -87,6 +87,8 @@ export class FakeBoard {
   readonly settlements: TaskBoardExecutionSettledEvent[] = []
   /** Every deletion the board emitted. */
   readonly deletions: TaskBoardTaskDeletedEvent[] = []
+  /** Fail one provider payload write to exercise transactional retry paths. */
+  failNextIntegrationWrite = false
   /** Names of every tool currently registered by a running provider. */
   readonly toolNames: string[] = []
   /** Ids of every tool the board ever registered, in order. */
@@ -241,7 +243,7 @@ export class FakeBoard {
         get: taskId => this.records.get(taskId),
         create: (draft, options) => this.createTask(id, draft, options),
         patchContent: (taskId, patch) => { this.patchContent(taskId, patch) },
-        setStatus: (taskId, status) => { this.setStatus(taskId, status) },
+        setStatus: (taskId, status, initiator) => { this.setStatus(taskId, status, initiator) },
         linked: () => this.linked(id),
       },
       integration: {
@@ -298,12 +300,12 @@ export class FakeBoard {
     this.records.set(taskId, { ...task, ...patch })
   }
 
-  private setStatus(taskId: string, status: TaskStatus): void {
+  private setStatus(taskId: string, status: TaskStatus, initiator?: string): void {
     const task = this.records.get(taskId)
     if (task === undefined) throw new Error(`no task with id ${taskId}`)
     const previous = task.status
     this.records.set(taskId, { ...task, status, updatedAt: this.now() })
-    this.emitStatusChanged({ taskId, status, previous })
+    this.emitStatusChanged({ taskId, status, previous, ...(initiator === undefined ? {} : { initiator }) })
   }
 
   private linked(extensionId: string): readonly TaskBoardLinkedTask[] {
@@ -317,6 +319,10 @@ export class FakeBoard {
   }
 
   private writeIntegration(extensionId: string, taskId: string, payload: TaskBoardExtensionPayload): void {
+    if (this.failNextIntegrationWrite) {
+      this.failNextIntegrationWrite = false
+      throw new Error('injected integration write failure')
+    }
     if (!isAcceptablePayload(payload)) throw new Error('integration payload must be a pure JSON object within the size limit')
     const task = this.records.get(taskId)
     if (task === undefined) throw new Error(`no task with id ${taskId}`)

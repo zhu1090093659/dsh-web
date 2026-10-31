@@ -95,6 +95,7 @@ export const ru: Record<string, string> = {
   'card.time.updated': 'Обновлена {time}',
   'board.density.compact': 'Компактные карточки',
   'board.density.comfortable': 'Полные карточки',
+  'board.source.local': 'Локальные задачи',
   'board.group.today': 'Сегодня',
   'board.group.week': 'Последние 7 дней',
   'board.group.earlier': 'Ранее',

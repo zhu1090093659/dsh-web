@@ -364,6 +364,17 @@ export interface TaskBoardClientMirror {
 /** Whether a task should be shown on the board; false hides it. */
 export type TaskBoardVisibilityPredicate = (task: TaskRecord) => boolean
 
+/** Generic source bucket a provider assigns to one card. */
+export interface TaskBoardSourceGroup {
+  /** Stable, provider-namespaced identity used for ordering and fold persistence. */
+  id: string
+  /** Full human-readable source label, such as an owner/repository pair. */
+  label: string
+}
+
+/** Return a card's source group, or undefined when this provider does not own it. */
+export type TaskBoardGroupingSelector = (task: TaskRecord) => TaskBoardSourceGroup | undefined
+
 /**
  * Client capability face the board's browser half provides. A provider's
  * browser half resolves it from the shared cordis service name; it never
@@ -374,6 +385,11 @@ export interface TaskBoardClientFace {
   dispatch(request: TaskBoardExtensionActionRequest): Promise<boolean>
   /** Register one card visibility predicate; the returned disposer removes it. */
   registerVisibility(predicate: TaskBoardVisibilityPredicate): () => void
+  /**
+   * Register one source-group selector; the first selector returning a group
+   * wins. Optional so an older board can serve the same API version.
+   */
+  registerGrouping?(selector: TaskBoardGroupingSelector): () => void
   /** Subscribe to the board mirror. */
   subscribe(callback: (mirror: TaskBoardClientMirror) => void): () => void
   /** Read the current board mirror. */

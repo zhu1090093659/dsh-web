@@ -2,6 +2,8 @@
 
 Status: implemented
 
+有界的入站关闭/重开扩展归 [GitHub remote close cycles](2026-10-31-task-board-github-remote-close.zh.md) 所有；它部分替代本 Note 此前只由本地决定列的选择，Issue 发现、标签、凭据与 PR 生命周期仍归本 Note。
+
 ## Problem
 
 外部研发团队通常在 GitHub Issues 上追踪需求与可交付物，但此前使用本地 DSH 智能体执行这些任务需要在不同浏览器标签页间手动复制 Prompt 文本并同步状态。若在 GitHub 与自主智能体之间引入无约束的双向同步，将带来严重的安全与稳定性风险：不可信的外部 Issue 文本可能实施 Prompt 注入或提权会话权限，API 限流或网络故障可能导致正在运行的本地智能体执行中断，而不加控制的标签同步可能会覆盖用户的自有标签或导致意外关闭 Issue。

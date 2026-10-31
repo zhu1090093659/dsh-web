@@ -564,6 +564,23 @@
   font-size: 12px;
 }
 
+/* Provider-owned source groups wrap recency groups without adding a new
+   semantic part. Long owner/repository labels wrap instead of pushing the
+   count and disclosure beyond a narrow column. */
+.sourceGroup {
+  gap: 8px;
+}
+
+.sourceGroupHeader {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.sourceGroupLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 /* Per-column density switch in the column header: one row slot, 44px pointer
    target from the same expansion the card's quick action uses. */
 .densityToggle {

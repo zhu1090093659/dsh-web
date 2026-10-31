@@ -25,6 +25,7 @@ import {
   readTaskGitHubMetadata,
   type GitHubIssuePayload,
   type GitHubPromptAnalysis,
+  type GitHubRemoteCloseSync,
   type ResolvedGitHubRepoConfig,
 } from './types.ts'
 
@@ -202,6 +203,53 @@ export function composeIssuePrompt(
   return { prompt, promptHash: fingerprint(prompt) }
 }
 
+/** Status and close-cycle provenance projected from the latest remote state. */
+export interface RemoteCloseTransition {
+  status: TaskStatus
+  remoteClose?: GitHubRemoteCloseSync
+}
+
+/**
+ * Reconcile one close cycle without touching the board. The stored provenance
+ * lets a later pass distinguish a local override from a status this provider
+ * wrote itself, and lets a deferred close settle without interrupting a run.
+ */
+export function reconcileRemoteClose(
+  existing: TaskRecord,
+  remoteState: 'open' | 'closed',
+): RemoteCloseTransition {
+  const previous = readTaskGitHubMetadata(existing)?.remoteClose
+  if (remoteState === 'open') {
+    const reopen = previous?.state === 'auto-done' && existing.status === 'done' && existing.archivedAt === undefined
+    return { status: reopen ? 'todo' : existing.status, remoteClose: undefined }
+  }
+  if (existing.archivedAt !== undefined) return { status: existing.status, ...(previous === undefined ? {} : { remoteClose: previous }) }
+  if (previous?.state === 'overridden') return { status: existing.status, remoteClose: previous }
+  if (previous?.state === 'auto-done') {
+    if (existing.status === 'done') return { status: 'done', remoteClose: previous }
+    return { status: existing.status, remoteClose: { state: 'overridden' } }
+  }
+  if (previous?.state === 'deferred') {
+    if (existing.status === 'running') return { status: 'running', remoteClose: previous }
+    return { status: existing.status, remoteClose: { state: 'overridden' } }
+  }
+  if (previous?.state === 'settled') {
+    if (previous.settledStatus !== undefined && existing.status === previous.settledStatus) {
+      return { status: 'done', remoteClose: { state: 'auto-done' } }
+    }
+    return { status: existing.status, remoteClose: { state: 'overridden' } }
+  }
+  if (existing.status === 'done') return { status: 'done', remoteClose: undefined }
+  if (existing.status === 'running') {
+    const execution = existing.executions.find(candidate => candidate.result === undefined)
+    return {
+      status: 'running',
+      remoteClose: { state: 'deferred', ...(execution === undefined ? {} : { executionId: execution.id }) },
+    }
+  }
+  return { status: 'done', remoteClose: { state: 'auto-done' } }
+}
+
 /**
  * Reconcile a remote GitHub issue with an existing local task record.
  *
@@ -260,6 +308,7 @@ export function reconcileIssueWithTask(
         remoteTitle,
         remoteBody,
         remoteState: issue.state === 'closed' ? 'closed' : 'open',
+        remoteClose: previous?.remoteClose,
         remoteLabels,
         lastSyncedAt: now,
         lastRemoteUpdatedAt: Number.isFinite(remoteUpdatedAt) ? remoteUpdatedAt : undefined,
@@ -313,6 +362,7 @@ export function materializeTaskFromIssue(
         remoteTitle,
         remoteBody,
         remoteState: issue.state === 'closed' ? 'closed' : 'open',
+        ...(issue.state === 'closed' ? { remoteClose: { state: 'auto-done' as const } } : {}),
         remoteLabels,
         lastSyncedAt: now,
         lastRemoteUpdatedAt: Number.isFinite(remoteUpdatedAt) ? remoteUpdatedAt : undefined,

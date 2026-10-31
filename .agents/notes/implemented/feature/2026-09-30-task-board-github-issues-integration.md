@@ -2,6 +2,8 @@
 
 Status: implemented
 
+The bounded inbound close/reopen extension is owned by [GitHub remote close cycles](2026-10-31-task-board-github-remote-close.md), which partially supersedes this note's earlier local-column-only choice while leaving discovery, labels, credentials and PR lifecycle here.
+
 ## Problem
 
 External development teams track epics and deliverables on GitHub Issues, but executing them with local DSH agents previously required manual copy-pasting of prompt text and status reconciliation across browser tabs. Direct bidirectional synchronization between GitHub and an autonomous agent creates substantial security and stability risks: untrusted external issue text could attempt prompt injection or escalate session permissions, API rate limits or network outages could halt ongoing local agent work, and uncontrolled label synchronization could overwrite user labels or trigger unintended issue closures.

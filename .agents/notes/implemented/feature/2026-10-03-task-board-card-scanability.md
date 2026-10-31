@@ -2,6 +2,8 @@
 
 Status: implemented
 
+Provider source grouping now wraps the recency groups described here; see [Task board source grouping](../architecture/2026-10-31-task-board-source-grouping.md) for the current column and archive layout.
+
 ## Problem
 
 A board fed by GitHub issue sync held a Done column of more than a hundred cards that all read alike. Every excerpt began with the same issue-form boilerplate (a duplicate-search checkbox, a plugin field, an issue-type field). Every card read "updated 4m" because each sync touched `updatedAt`. A card in Done showed a red "1 run" whenever its latest run had failed and the issue was closed upstream, which looked like a contradiction. The provider's issue badge stretched across the full card width: it was a direct child of the card's vertical flex column and inherited `align-items: stretch`. The day-old time label used the browser's local date while the tooltip used the Host zone. Finally, the card was itself a `<button>`, so it could not host its own controls (open the session, open the issue).

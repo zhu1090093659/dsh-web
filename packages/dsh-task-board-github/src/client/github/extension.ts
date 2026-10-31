@@ -33,6 +33,7 @@ import { GITHUB_EXTENSION_ID } from '../../core/types.ts'
 import { GitHubCardDecoration, GitHubDetailSection } from './sections.tsx'
 import { acceptPublishedSummaries, clearSummary } from './summary.ts'
 import { isGitHubTaskVisible } from './visibility.ts'
+import { gitHubSourceGroup } from './grouping.ts'
 
 /** Locale namespace the seats bind to. */
 const LOCALE_NS = 'task-board-github'
@@ -219,6 +220,7 @@ function installSeats(ctx: ClientContext): () => void {
   }
 
   const disposeVisibility = face.registerVisibility(isGitHubTaskVisible)
+  const disposeGrouping = face.registerGrouping?.(gitHubSourceGroup)
   const unsubscribe = face.subscribe(mirror => {
     if (mirror.enabled) ensure()
     else release()
@@ -233,6 +235,7 @@ function installSeats(ctx: ClientContext): () => void {
   return () => {
     unsubscribe()
     disposeVisibility()
+    disposeGrouping?.()
     release()
   }
 }

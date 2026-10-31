@@ -29,12 +29,14 @@ import { modelOptionsFromCatalog, modelOptionsFromDiscoveredModels } from './boa
 import { presetOptionsFromRoster, readPresetRoster, type PresetRemote } from './board/preset-roster.ts'
 import { mainViewSessionId } from './main-session.ts'
 import { LocalStorageTaskStore } from '../core/store.ts'
+import { hasOpenExecution } from '../core/tasks.ts'
 import { claimTaskboardApply, releaseTaskboardApply } from './apply-guard.ts'
 import { registerTaskBoardPanel } from './native-panel.tsx'
 import { createScheduleRowGuard } from './suppress-schedule-row.ts'
 import { TaskBoardSettingsCard, TaskBoardSettingsCardController, type TaskBoardSettings } from './TaskBoardSettingsCard.tsx'
 import { en, zh, setRuntimeTranslate, type TaskBoardKey } from './locales.ts'
 import { HttpTaskBoardHostTransport } from './host-api.ts'
+import { startPendingVerification } from './pending-verify.ts'
 import { reportDailyHeartbeat } from './telemetry.ts'
 import { installPluginCard } from './plugin-card-seat.ts'
 import { createServedEntryForm } from './settings-entry-form.ts'
@@ -297,6 +299,15 @@ export function apply(ctx: ClientContext): void {
     // which serves the settings card whether or not the view is mounted.
     liveController = controller
     if (presetRoster !== undefined) controller.setExecutionOptions({ presets: presetRoster })
+    // While the mirror shows work in flight it verifies that state itself: the
+    // pushed frame is unverifiable from the browser (a stream can stay open and
+    // silent), and a settled card would otherwise keep rendering as running for
+    // as long as the tab stays open. Nothing is read once nothing is in flight.
+    disposers.push(startPendingVerification({
+      pending: () => controller.getSnapshot().tasks.some(hasOpenExecution),
+      refresh: () => { controller.refreshHostState() },
+      subscribe: listener => controller.subscribe(listener),
+    }))
 
     // The new-card defaults are written through the very settings form this
     // plugin binds (that is the card's save), and the Host republishes its

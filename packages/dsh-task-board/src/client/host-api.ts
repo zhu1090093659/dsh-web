@@ -380,6 +380,13 @@ export class HttpTaskBoardHostTransport implements TaskBoardHostTransport {
         listener()
       }
     }
+    // Every connect and every reconnect is a resynchronization point: the route
+    // pushes one frame when it accepts a stream, but a frame whose revision
+    // already matches the mirrored one is what the panel applies without a
+    // read, so the connection itself asks for the snapshot. Without this, a
+    // stream that came back after an outage would only catch up if some later
+    // Host write happened to move the revision past the mirror.
+    events.onopen = (): void => { listener() }
     // A stream that cannot connect at all (unmounted route, refused socket) is
     // how a Host half that never mounted looks from the browser; nudge the
     // panel into one state read so the failure becomes visible (#1528).

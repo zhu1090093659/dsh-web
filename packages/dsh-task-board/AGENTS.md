@@ -19,6 +19,12 @@ dsh Web GUI 的 Host 权威多列任务看板。任务通过真实 DSH 会话执
 
 - 思考档位的模型绑定、清空与继承以[思考强度决策](../../.agents/notes/implemented/feature/2026-10-11-task-board-reasoning-effort.md)为准。
 
+## 浏览器镜像与推送
+
+- SSE 只提示 `revision` / `scheduler` / `power`，不携带任务。镜像的重读入口只有四个：变更帧（revision 前进）、连接建立或重建（`EventSource.onopen`）、页面恢复可见、以及镜像里仍有未结算执行时的一次有界校验读取（`src/client/pending-verify.ts`，`PENDING_VERIFICATION_MS` 15 秒）。无未结算执行的空闲看板一次都不读，符合「空闲看板不轮询」。
+- 流必须能被判定为失效：`/api/task-board/events` 的写失败（Node 只在写回调里报告，返回值是背压而非错误）与响应 `error` 事件都立刻清心跳、注销订阅并 `destroy` 响应，浏览器因此看到连接关闭、`EventSource.onerror` 触发重读。心跳是 SSE 注释帧，浏览器不把它交给面板，所以它只负责在链路上保活，不是数据帧，也不得被当作数据帧使用。
+- 为什么必须有校验读取：帧是唯一无法从浏览器验证的信号——连接可以保持打开却不再投递（半开套接字、停读的中转），此时既没有 `onerror` 也没有帧，镜像会一直显示「进行中」，而账本早已写入 sessionId 并结算。
+
 ## 卡片附件（issue #1979）
 
 - 账本只存附件**元数据**（`src/core/attachment.ts` 的 `TaskAttachment`）：类型、存储标识、名称、字节数、媒体类型、精确字节的 sha256，以及图片的宽高。绝不写字节、base64、data URL 或上传时间。`TaskRecord.attachments?` 与 `NewTaskInput.attachments` 都是增量字段，旧卡片没有它们时行为完全不变；严格加载归一化逐条修复（丢弃不可用条目，应用数量 8 / 单件 10 MiB / 合计 32 MiB 上限），旧卡片默认为空。

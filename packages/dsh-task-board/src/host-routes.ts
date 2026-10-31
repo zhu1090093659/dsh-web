@@ -27,7 +27,12 @@ import {
 
 const ACTION_LIMIT = 64 * 1024
 const IMPORT_LIMIT = 2 * 1024 * 1024
-const HEARTBEAT_MS = 15_000
+/**
+ * Comment-frame cadence on the event stream. It keeps the connection alive
+ * through intermediaries that would close an idle one; it is not a frame the
+ * browser reports to the panel (an SSE comment is invisible to EventSource).
+ */
+export const HEARTBEAT_MS = 15_000
 
 /** Header replaced by an authenticated same-host reverse proxy. */
 export const TASK_BOARD_PROXY_TOKEN_HEADER = 'x-dsh-task-board-proxy-token'
@@ -334,18 +339,48 @@ export function makeTaskBoardRoutes(
         'cache-control': 'no-cache',
         connection: 'keep-alive',
       })
+      // The stream is the board's only live signal, so it also has to be able to
+      // STOP being one. A connection can stop accepting bytes while neither end
+      // has closed it (a half-open socket, an intermediary that stopped
+      // reading); from then on every frame is written into nothing, the browser's
+      // EventSource sees an open stream that never speaks, and the panel keeps
+      // the snapshot it last applied with no error to react to. A failed write is
+      // the one report of that state, so it ends the connection here: the browser
+      // then reports the closed stream, and a closed stream makes the panel read
+      // the state again.
+      let heartbeat: ReturnType<typeof setInterval> | undefined
+      let release: (() => void) | undefined
+      const stop = (): void => {
+        if (heartbeat !== undefined) {
+          clearInterval(heartbeat)
+          heartbeat = undefined
+        }
+        const unsubscribe = release
+        release = undefined
+        unsubscribe?.()
+      }
+      const drop = (): void => {
+        if (release === undefined) return
+        stop()
+        res.destroy()
+      }
+      const write = (chunk: string): void => {
+        if (release === undefined || res.writableEnded || res.destroyed) return
+        // The callback is the only place Node reports a write that never landed;
+        // its result (backpressure) is not an error and is ignored.
+        res.write(chunk, (error) => { if (error !== null && error !== undefined) drop() })
+      }
       const push = (): void => {
-        const payload = service.eventPayload()
-        res.write(`data: ${JSON.stringify(payload)}\n\n`)
+        write(`data: ${JSON.stringify(service.eventPayload())}\n\n`)
       }
-      const unsubscribe = service.subscribe(push)
-      const heartbeat = setInterval(() => { res.write(': ping\n\n') }, HEARTBEAT_MS)
-      const close = (): void => {
-        clearInterval(heartbeat)
-        unsubscribe()
-      }
-      req.once('close', close)
-      res.once('close', close)
+      release = service.subscribe(push)
+      heartbeat = setInterval(() => { write(': ping\n\n') }, HEARTBEAT_MS)
+      req.once('close', stop)
+      res.once('close', stop)
+      // A reset socket reports the same fact as a failed write. Without this
+      // listener Node treats a response error as unhandled, so the connection is
+      // released here instead of being left behind.
+      res.on('error', () => { drop() })
       push()
     },
   }

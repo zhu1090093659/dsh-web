@@ -1,6 +1,6 @@
 import { createServer, request, type Server } from 'node:http'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { makeTaskBoardRoutes } from '../src/host-routes.ts'
+import { HEARTBEAT_MS, makeTaskBoardRoutes } from '../src/host-routes.ts'
 import type { TaskBoardHostService } from '../src/host-service.ts'
 import type { TaskBoardSnapshot } from '../src/protocol.ts'
 
@@ -312,3 +312,99 @@ describe('task-board parse route (#1540)', () => {
   })
 })
 
+
+/**
+ * A pushed frame is the panel's normal way of learning that the Host moved, and
+ * it is only useful if it arrives. These cases pin the two ways a stream stops
+ * being useful while neither end closes it: a write that fails, and an error
+ * event on the response. Either must release the connection so the browser's
+ * EventSource reports an error — that error is the panel's cue to read state.
+ */
+describe('task-board event stream health', () => {
+  /** One stream response: records every write and never closes on its own. */
+  class FakeStreamResponse {
+    readonly written: string[] = []
+    readonly listeners = new Map<string, Array<(argument?: unknown) => void>>()
+    writableEnded = false
+    destroyed = false
+    lastWriteCallback: ((error?: Error | null) => void) | undefined
+    writeHead(): this { return this }
+    once(event: string, listener: (argument?: unknown) => void): this { return this.on(event, listener) }
+    on(event: string, listener: (argument?: unknown) => void): this {
+      const existing = this.listeners.get(event)
+      if (existing === undefined) this.listeners.set(event, [listener])
+      else existing.push(listener)
+      return this
+    }
+    write(chunk: unknown, callback?: (error?: Error | null) => void): boolean {
+      this.written.push(String(chunk))
+      this.lastWriteCallback = callback
+      return true
+    }
+    emit(event: string, argument?: unknown): void {
+      for (const listener of [...(this.listeners.get(event) ?? [])]) listener(argument)
+    }
+    end(): void { this.writableEnded = true }
+    destroy(): void { this.destroyed = true }
+  }
+
+  /** The request half of one stream: a direct browser on this machine. */
+  class FakeStreamRequest {
+    readonly method = 'GET'
+    readonly headers = { 'sec-fetch-site': 'same-origin', host: '127.0.0.1:63500' }
+    readonly socket = { remoteAddress: '127.0.0.1' }
+    readonly listeners = new Map<string, Array<(argument?: unknown) => void>>()
+    once(event: string, listener: (argument?: unknown) => void): this {
+      const existing = this.listeners.get(event)
+      if (existing === undefined) this.listeners.set(event, [listener])
+      else existing.push(listener)
+      return this
+    }
+    emit(event: string, argument?: unknown): void {
+      for (const listener of [...(this.listeners.get(event) ?? [])]) listener(argument)
+    }
+  }
+
+  function openStream(): { response: FakeStreamResponse; unsubscribe: ReturnType<typeof vi.fn> } {
+    const response = new FakeStreamResponse()
+    const unsubscribe = vi.fn()
+    const service = {
+      eventPayload: () => ({ revision: 1, scheduler: { timeZone: 'UTC' }, power: snapshot.power }),
+      subscribe: () => unsubscribe,
+    } as unknown as TaskBoardHostService
+    const route = makeTaskBoardRoutes(service).find(candidate => candidate.path === '/api/task-board/events')
+    if (route === undefined) throw new Error('the events route is not registered')
+    const handler = route.handler as unknown as (req: unknown, res: unknown) => void
+    handler(new FakeStreamRequest(), response)
+    return { response, unsubscribe }
+  }
+
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it("operator's stream ends when its write fails instead of writing into a dead connection", () => {
+    // Given a stream that stopped accepting bytes while neither end closed it,
+    const { response, unsubscribe } = openStream()
+    expect(response.written).toHaveLength(1)
+    // When that failure comes back to the route,
+    expect(typeof response.lastWriteCallback).toBe('function')
+    response.lastWriteCallback?.(new Error('write EPIPE'))
+    // Then the connection is destroyed and released rather than kept silently,
+    expect(response.destroyed).toBe(true)
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+    // and the heartbeat stops writing into it.
+    const writes = response.written.length
+    vi.advanceTimersByTime(HEARTBEAT_MS * 3)
+    expect(response.written).toHaveLength(writes)
+  })
+
+  it("operator's stream is released when the response errors after it started", () => {
+    // Given a started stream,
+    const { response, unsubscribe } = openStream()
+    // When the response reports an error (the socket died without a close),
+    response.emit('error', new Error('read ECONNRESET'))
+    // Then the subscription and the response are released.
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+    expect(response.destroyed).toBe(true)
+  })
+})

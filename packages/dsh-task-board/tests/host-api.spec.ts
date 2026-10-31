@@ -318,6 +318,7 @@ describe('HttpTaskBoardHostTransport task parsing (#1540)', () => {
 describe('HttpTaskBoardHostTransport SSE subscription', () => {
   class FakeEventSource {
     static instances: FakeEventSource[] = []
+    onopen: (() => void) | null = null
     onmessage: ((message: MessageEvent<string>) => void) | null = null
     onerror: (() => void) | null = null
     closed = false
@@ -372,6 +373,25 @@ describe('HttpTaskBoardHostTransport SSE subscription', () => {
     // Repeated reconnect errors must not turn into a request per retry.
     source.onerror?.()
     expect(calls).toEqual([undefined])
+  })
+
+  it('operator sees the panel re-read the snapshot whenever the stream opens or reconnects', () => {
+    // A (re)connected stream is the documented resynchronization point. The
+    // frame the route sends on connect only causes a read when its revision
+    // moved past the mirrored one, so the connection itself has to ask.
+    // Given a subscribed panel transport,
+    const transport = new HttpTaskBoardHostTransport(new MemoryStorage())
+    const calls: Array<TaskBoardEventPayload | undefined> = []
+    transport.subscribe(event => { calls.push(event) })
+    const source = FakeEventSource.instances.at(-1)
+    if (source === undefined) throw new Error('EventSource was not constructed')
+    // When the stream opens,
+    source.onopen?.()
+    // Then the panel asks for the snapshot instead of trusting the connect frame,
+    expect(calls).toEqual([undefined])
+    // and a later reconnect resynchronizes the same way.
+    source.onopen?.()
+    expect(calls).toEqual([undefined, undefined])
   })
 
   it('calls the listener on visibilitychange while the tab is visible', () => {

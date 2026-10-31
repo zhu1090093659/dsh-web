@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-10-31-desktop-host-home-first-diagnostics.md: 273b9370d43e9f07019ac00da2780f24e264729f
+2026-10-31-desktop-host-home-first-diagnostics.zh.md: 59ca374ec394895b5a89d5d370b5aed06fc12d1c

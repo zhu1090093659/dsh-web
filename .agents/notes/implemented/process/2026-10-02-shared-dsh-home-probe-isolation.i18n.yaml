@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-10-02-shared-dsh-home-probe-isolation.md: ec001fb1ceba44dd348b834361856b61324770bc
-2026-10-02-shared-dsh-home-probe-isolation.zh.md: 3fc852e7c816c65cd05634f96efb039764b14083
+2026-10-02-shared-dsh-home-probe-isolation.md: bd421a98321ac6181cf3fad00d4ae699fe680df4
+2026-10-02-shared-dsh-home-probe-isolation.zh.md: 001fe515f9441338314f74fcb774798a367805e6

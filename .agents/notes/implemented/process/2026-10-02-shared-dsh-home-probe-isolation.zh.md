@@ -10,6 +10,8 @@ Status: implemented
 
 **一个辅助命令的清理动作删掉了仓库根清单。** 为了读取运行中 DSH 的版本，探针执行了 `npx --yes @electron/asar extract-file <app.asar> 'dsh/package.json' && python3 -c "..." ; rm -f package.json`，而工具调用的默认工作目录就是仓库根目录。`extract-file` 会把归档成员以自身 basename 写到当前目录，于是该命令把一个外来的清单物化成仓库的 `package.json`，紧随其后的 `rm -f package.json` 便删掉了仓库自己的根清单。该文件声明了 `dsh.bundle.patch`，整个安装层因此不再解析：插件管理器拒绝一个「declares no dsh.bundle」的路径安装，app-boot 对已声明的 profile bundle 抛同样的错。症状在很久之后、以另一种形式才到达用户——一次家族插件安装被拒。
 
+**第二个辅助命令替换而不是删除了清单。** 2026-10-31，同样的命令形态在排查运行中的桌面应用时再次出现：`npx --yes asar extract-file "<app>.asar" package.json` 以检出目录作为工作目录运行，把该应用自己的清单写到了仓库的 `package.json` 上。写入的那一刻没有任何报错——文件照样可解析，只是身份变了（`dsh-trading-desktop` 取代了 `dsh-web`，且没有 `dsh.bundle`），于是工作区只显示出一个被修改的文件，读起来像一次有意的编辑。用户在从检出路径安装家族插件时，撞上了同一个插件管理器拒绝：`dsh-trading-desktop declares no dsh.bundle`。
+
 ## Decision
 
 对共享 DSH home 的探测使用自己的 home，并停掉自己启动的一切。
@@ -47,4 +49,5 @@ Status: implemented
 - 临时 home 会安装自己的 profile 依赖，因此探针为一棵私有目录付出网络与磁盘成本。这个成本是不共享 profile、session 与账本的价格。
 - 任务看板的拒绝路径本就指名占用者 pid，并由 degraded-reason 与账本锁用例覆盖；本决策不改任何运行时代码。它的归属是 [task-board host failure diagnostics](../bug-fix/2026-09-13-task-board-host-failure-diagnostics.md)。
 - 未暂存即被删除的工作区文件用 `git checkout -- <path>` 恢复；根清单对 `dsh.bundle.patch` 的声明，正是它缺失会让安装致命而非表面问题的原因。
+- 被替换的文件用同样方式恢复，但只有读 `git status --porcelain` 与 diff 才会被发现：被覆盖的清单照样可解析，照样像有意的编辑。这道检查只花一条命令，因此在任何没有在临时目录里运行的辅助命令之后都执行一次，再继续依赖该检出的工作。
 - 本决策的验证即修复证据：终止三个可归因的孤儿实例后，共享 home 的账本锁被释放；恢复后的清单重新可作为 bundle 解析（`readProfileManifest`、`resolveBundleDir` 与 `evaluatePluginCompatibility` 均接受该检出）。未新增测试；所检验的行为归属宿主，而非本仓库代码。

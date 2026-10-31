@@ -33,13 +33,16 @@ update:  phase=error  profile dependency=0.7.3  node_modules version=0.7.3
 
 `job.error` 就是 pnpm 的输出尾部，连 `[ERR_PNPM_IGNORED_BUILDS]` 那行都在。更新插件的人被告知失败，而新版本其实在磁盘上，那些本该拦下这份状态的校验一次都没跑过。
 
+容忍随后打开了相反方向的缺陷。它重跑的落地读取只看 `dependencies`，而 pnpm 在门禁结束这次运行**之前**就写下了那一行，于是声明 bundle 的包首次安装会在一个 `dsh.profile.bundles` 从未得到该行的 profile 上结算成 `done`：装上了、没挂载，却被报成成功。2026-10-31 在隔离的 `DSH_HOME=/tmp/dsh-fix2-0413` 上、用同一个 CLI 与同一个 pnpm，经 `CliGateway.install` 在干净 profile 上装 `@linxin666/dsh-web-all@0.4.13` 实测：任务结算为 `phase=done`，pnpm 的输出尾部作为警告挂在任务上，而 `dependencies` 带着聚合包、`dsh.profile.bundles` 只有两个官方 bundle、`--dump-config` 以 exit 0 结束且 `web-ui-*` 行 id 去重后为 **0** 条（已挂载的安装是 **25** 条）。组合从不挂载的依赖不是一次安装，任何退出码都说不出来这件事。
+
 ## Decision
 
 1. **只有一种 pnpm 条件可以被重新读取，且只有 profile 能推翻它。** `reportsIgnoredBuilds(output)` 识别一次运行所捕获输出里的 `[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: …` 行。带这行的运行是被*容忍*的：任务执行器继续往下走，而不是按退出码结算。其他任何非零退出都保持今天的结算语义——`phase = 'error'`、`job.error` 设为输出尾部、不再继续校验——因此 `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`、真正的解析失败、spawn 失败与超时，报的都和以前一模一样。
-2. **决定权在本来就有的落地检查手里。** 被容忍的运行走那条未改动的链路，每个动作自己的读取就是判决：安装没有新增依赖、更新后的已装版本不是路由解析出的版本、卸载后依赖仍留在 profile 中，三者依然失败，且都发生在任何预检之前，理由就是 pnpm 的输出尾部——正是提前 return 会给出的那段文案。
+2. **决定权在本来就有的落地检查手里。** 被容忍的运行走那条未改动的链路，每个动作自己的读取就是判决：安装没有新增依赖、更新后的已装版本不是路由解析出的版本、卸载后依赖仍留在 profile 中，三者依然失败，且都发生在任何预检之前，理由就是 pnpm 的输出尾部——正是提前 return 会给出的那段文案。依赖行本身不是这个判决，所以安装与更新的读取还要看选择状态：`bundleSelectionMissing` 问 `declaresBundle`——已装包自己 manifest 里的 `dsh.bundle`，也就是 CLI 回写时据以选择的那一个事实——并在一个声明了 bundle、却不在任何 `dsh.profile.bundles` 条目里的包上给出「是」。安装必须带上选择状态；替换必须保住它找到的那一个，而由 patch 行挂载的包从来没有被选择过，所以它的缺席是这次运行看到的状态，不是它造成的丢失。选择状态读的是 CLI 写下的那份状态，在条目 3 的重复挂载剥离**之前**：那次剥离是本网关的纠正，不是这次运行落地内容的证据。
 3. **容忍退出码不多买任何东西。** B9、B5、B6、组合预检、精确版本门与失效覆盖清理全部照跑，也照样能把任务判成失败，因此一次「落地了但落出启动级坏状态」的被容忍运行会被拒绝，与成功退出时完全一样。
 4. **pnpm 的话留在任务上。** 通过全部校验的被容忍运行结算成 `done`，并把该次运行的输出放进 `GatewayJob.warnings`，宿主再以 `console.warn` 记一笔。它不进 `job.notices`：那个台账的行形状 `{id, name, from, to}` 记的是控制状态迁移，而构建脚本诊断既不是一行也不是一个状态。`warnings` 与 `restartRequired` 用的是同一个可选的字符串数组事实通道，因此它随 `/status` 送到调用方，而不是在结算处被丢掉。
 5. **迁移的安装步骤是同一次 pnpm 调用，同样处理。** `runMigration` 以相同方式容忍该退出，并保留原有兜底：目标没有出现在 profile 里就回滚迁移并报 pnpm 的输出尾部。回滚辅助函数自己的装回安装（`rollbackMigration`）刻意不动——它运行在迁移已经失败之后，它的报告讲的是回滚，不是警告。
+6. **半挂载判失败，不自愈。** 选择状态没落地的运行结算成 `error`，profile 就停在 CLI 写下的样子。文案点名那个包、由[首次安装限制记录](2026-10-26-fresh-install-allowbuilds-limitation.md)所有的 `allowBuilds` 审批，以及修复这一行的 remove 后 add——这是实测唯一有效的顺序：补上审批之后重跑同一条 add 以 exit 0 结束且仍不写这一行（CLI 只回写本次运行新加的依赖），而 remove 之后 add 能把它落下来（2026-10-31，同一个隔离 home，`dsh.profile.bundles` 得到聚合包，`--dump-config` 随后列出 25 个家族行 id）。
 
 ## Alternatives considered
 
@@ -57,9 +60,16 @@ update:  phase=error  profile dependency=0.7.3  node_modules version=0.7.3
 
 **把被容忍的退出结算成 `done` 且不留记录。** 否决：一个没被构建的可选依赖，正是下一次启动会报成「原生模块缺失」的东西，而一个没有记录的任务留不下任何可归因的线索。
 
+**只看 `dependencies`，把依赖行当成挂载。** 否决：那一行写在门禁决定退出码之前，所以在首次安装上它点名的恰恰是 CLI 从未回写的那份状态。于是 profile 组合起来时这个包一行都没有，而本网关做的每一项校验都通过——这是给一个从不挂载的插件出具的成功报告。
+
+**把选择状态的读取放在重复挂载剥离之后而不是之前。** 否决：那次剥离刻意移除「组合已经通过 patch 行挂载」的包的新增条目，所以剥离之后再读，会把守卫自己的纠正报成丢失的选择状态，从而把一个正确的安装判成失败。CLI 写下的状态才是证据，紧随其后的纠正不是。
+
+**回滚半挂载，而不是带着修法判失败。** 否决：这些包正是使用者要的，而那一行不需要重新下载就能恢复——批准构建脚本后重新 add 就能把挂载补回来。回滚会把一个有诊断的状态换成下一次尝试时对这 51 个包的静默重新抓取。
+
 ## Consequences
 
 - 安装、更新、卸载或迁移只要包真的落地，就以它本来的成功面貌被报告，pnpm 的输出尾部挂在任务上，而不是被报成一次同时跳过全部校验的失败。
+- 一个作为依赖落地、却没有 bundle 选择状态的包，被报成它本来的样子——半挂载，连同理由、pnpm 的输出尾部与两步修法——而不是报成组合里没有它任何一行的一次成功。在同一份半挂载 profile 上，这次读取正是 `phase=done` 与 `phase=error` 的差别。
 - 这个条件是 pnpm 的，不是这次发版的：决定它的是「profile 是否新增了一个带构建脚本的依赖」，因此下一个带构建脚本的包无需在这里改代码就有同样的行为。
 - 浏览器半区暂时不读 `warnings`。`src/client/index.ts` 里的 `GatewayJobWire` 读的是 `phase`、`plugin`、`error` 与 `restartRequired`，而 notice 台账自「插件管理」Tab 移除后就没有渲染方，因此更新区块显示的是它正常的成功路径（重启提示），输出尾部可以在 `/status` 与宿主日志里拿到，直到有人为任务警告做出客户端界面。把这件事写在这里是刻意的：警告被记录下来了、没有被吞掉，但它还没有出现在屏幕上。
 - 被跳过的构建脚本仍然是跳过状态。网关只是不再把这次运行叫失败；批准构建脚本仍然要使用者自己去跑 `pnpm approve-builds`，记录下来的输出里写着这件事。
@@ -69,4 +79,8 @@ update:  phase=error  profile dependency=0.7.3  node_modules version=0.7.3
 
 `tests/gateway-jobs.spec.ts` 用脚本化的 CLI 从两侧覆盖这个决策，夹具就是真实 CLI 产出的那段 pnpm 输出。被容忍的安装与被容忍的更新都结算成 `done`，`plugin` 有值，`warnings` 等于输出尾部，并断言它们的 `--dump-config` 探测确实跑过——那是链路的最后一道门。什么也没新增的被容忍安装、以及把旧版本留在原地的被容忍更新，仍然是 `error` 且带 pnpm 的输出尾部，并且一次探测都没到过。一次落地了却带着 `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` 的更新仍然是 `error`，文案就是那段输出。插入项指向不可解析包的被容忍安装被 B6 回滚，且没有任何预检；组合无法启动的被容忍更新在预检处失败。依赖已消失的被容忍卸载、以及安装步骤已落地的被容忍迁移，都结算成 `done` 并带上警告。把 `reportsIgnoredBuilds` 关掉会让其中六个测试失败，因此它们钉住的是决策本身，而不是仅钉住结果。
 
-实测：上面那个两段式场景在隔离 `DSH_HOME` 里经由 `CliGateway` 对着真实 CLI 与真实 pnpm 跑，两段都报 `phase=done`，`plugin.version` 等于磁盘上的版本，`warnings` 带着 `[ERR_PNPM_IGNORED_BUILDS]`；包测试套件（451 个测试）全绿。
+`bundleSelectionMissing` 从两侧钉住。bundle 行从未落地的被容忍安装——夹具写下依赖、把选择状态原样留着，正是真实 CLI 留下的那份状态——仍然是 `error`，带半挂载理由与 pnpm 的输出尾部，且一次组合探测都没到过；同一个聚合包真的落地了选择状态的被容忍安装结算成 `done`，探测跑过一次；丢掉 profile 原有选择状态的被容忍更新以同样方式失败；而由 patch 行挂载、从未被选择过（因此没有可丢的东西）的声明 bundle 的包，其被容忍更新仍然结算成 `done`；安装步骤写下了依赖却没有写那一行的被容忍迁移，回滚到旧聚合包并报同一个半挂载。把这道门关掉（`bundleSelectionMissing` 一律答 false）恰恰只让这三个半挂载测试失败，报 `expected 'done' to be 'error'`。`tests/bundle-guard.spec.ts` 在声明了 bundle 的包、普通原生依赖、以及不在磁盘上的包三种情况下钉住 `declaresBundle`。
+
+实测：上面那个两段式场景在隔离 `DSH_HOME` 里经由 `CliGateway` 对着真实 CLI 与真实 pnpm 跑，两段都报 `phase=done`，`plugin.version` 等于磁盘上的版本，`warnings` 带着 `[ERR_PNPM_IGNORED_BUILDS]`；包测试套件（457 个测试）全绿。
+
+半挂载实测：同一个隔离 `DSH_HOME=/tmp/dsh-fix2-0413`、DSH 0.2.1-rc.5 加其内置 pnpm 11.9.0，经 `CliGateway.install` 在干净 profile 上装 `@linxin666/dsh-web-all@0.4.13`，同一份半挂载状态在这次读取之前报 `phase=done`、之后报 `phase=error`，而 `--dump-config` 的 `web-ui-*` 行 id 是 0 条，对照已挂载安装的 25 条。补上审批后重跑同一条 add 以 exit 0 结束且仍不写这一行；remove 之后 add 才写进去。

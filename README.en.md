@@ -315,7 +315,16 @@ Architecture and mounting details are documented in [docs/plugins.md](docs/plugi
 
 > **Missing Sub-package Errors under Isolated pnpm**: In strict isolated mode, pnpm may hoist only the aggregate package while placing sub-packages in nested directories, causing errors like `Cannot find package '@linxin666/dsh-...'`. Add `nodeLinker: hoisted` (or `public-hoist-pattern: ['@linxin666/*']`) to your profile's `pnpm-workspace.yaml` and reinstall.
 
-> **Blocked Build Scripts (ERR_PNPM_IGNORED_BUILDS)**: approve `cloudflared`, `cpu-features`, `ssh2` before the first add: reset the profile (`--from-default-profile web`) or use a fresh one, put them under `allowBuilds` in `<profile>/pnpm-workspace.yaml`, then add. Approving later and re-running exits 0 but adds no `dsh.profile.bundles` row - a silent half-mount re-runs cannot repair. Existing approved profiles upgrade unaffected.
+> **Blocked Build Scripts (ERR_PNPM_IGNORED_BUILDS)**: approve `cloudflared`, `cpu-features`, `ssh2` before the first add: reset the profile (`--from-default-profile web`) or use a fresh one, write the three as a mapping in `<profile>/pnpm-workspace.yaml`, then add:
+>
+> ```yaml
+> allowBuilds:
+>   cloudflared: true
+>   cpu-features: true
+>   ssh2: true
+> ```
+>
+> The mapping form is required: pnpm rewrites a list into placeholder entries such as `'0': cloudflared`, and the retry then rolls resolved packages back (`Packages: -10`). Approving later and re-running exits 0 but adds no `dsh.profile.bundles` row - a silent half-mount re-runs cannot repair, which takes a remove followed by an add. Existing approved profiles upgrade unaffected.
 
 > **pnpm 11 Release Age Restrictions**: For newly published versions, pnpm 11's default security window (`minimumReleaseAge`) may pull older package revisions. Exclude the namespace in `pnpm-workspace.yaml` to ensure timely updates:
 >

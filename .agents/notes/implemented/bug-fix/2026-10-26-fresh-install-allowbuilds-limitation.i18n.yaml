@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-10-26-fresh-install-allowbuilds-limitation.md: b7e2af07ef6ece7c303f385d9d196fae37e9d404
-2026-10-26-fresh-install-allowbuilds-limitation.zh.md: 6208abc1f82d639ac995f455d6637f20f481f59c
+2026-10-26-fresh-install-allowbuilds-limitation.md: 97e21e18c87b3d24667709ec97e954c5c052ff56
+2026-10-26-fresh-install-allowbuilds-limitation.zh.md: 0d5752f1ffa98e5e56379f5d31cf800b51a7335c

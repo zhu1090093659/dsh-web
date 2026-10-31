@@ -17,7 +17,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { isMap } from 'yaml'
 import { bareRowEnabled, bareRowName, insertRowsOf, parsePatch, type InsertRow } from './rows.ts'
-import type { ProfileFacts } from './profile.ts'
+import { stripBom, type ProfileFacts } from './profile.ts'
 
 /** The before-state composition facts the guard reads. */
 export interface GuardSnapshot {
@@ -110,4 +110,30 @@ export async function duplicateMountBundles(
   if (added.length === 0) return []
   const mounted = await rowMountedPackageNames(facts, before)
   return added.filter(name => mounted.has(name))
+}
+
+/**
+ * Whether an installed dependency declares its own bundle patch (`dsh.bundle`
+ * in its package.json) — the fact the official CLI's reconciliation selects a
+ * dependency on. A package that declares none is a plain dependency of some
+ * mounted bundle and never enters the selection.
+ * @param facts - resolved profile locations.
+ * @param name - dependency name (possibly scoped).
+ * @returns whether the installed package declares `dsh.bundle`; a package that
+ *   cannot be read proves nothing and answers false.
+ */
+export async function declaresBundle(facts: ProfileFacts, name: string): Promise<boolean> {
+  let text: string
+  try {
+    text = await readFile(join(facts.profileDir, 'node_modules', ...name.split('/'), 'package.json'), 'utf8')
+  } catch {
+    return false
+  }
+  try {
+    const parsed = JSON.parse(stripBom(text)) as { dsh?: { bundle?: unknown } }
+    const bundle = parsed.dsh?.bundle
+    return typeof bundle === 'object' && bundle !== null
+  } catch {
+    return false
+  }
 }

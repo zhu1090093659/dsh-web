@@ -315,7 +315,16 @@ dsh plugin --profile web add @linxin666/dsh-i18n@latest                         
 
 > **pnpm 严格依赖隔离导致模块找不到**：pnpm 的 isolated 模式默认仅将聚合包放置在顶层，部分子包可能被嵌套收敛，导致 `dsh web` 启动时报错 `Cannot find package '@linxin666/dsh-...'`。若遇到此情况，可在 profile 目录的 `pnpm-workspace.yaml` 中添加配置 `nodeLinker: hoisted`（或 `public-hoist-pattern: ['@linxin666/*']`）后重新安装。
 
-> **构建脚本被拦截 (ERR_PNPM_IGNORED_BUILDS)**：这三项审批必须在首次 add 之前就位。正确顺序是重置 profile（官方 `--from-default-profile web`）或换新 profile，把 `cloudflared`、`cpu-features`、`ssh2` 写进 `<profile>/pnpm-workspace.yaml` 的 `allowBuilds`，再执行 add。装失败后补审批重跑会 exit 0，但 `dsh.profile.bundles` 仍无该行：静默半挂载，重跑修不回来。已带审批的存量 profile 升级不受影响。
+> **构建脚本被拦截 (ERR_PNPM_IGNORED_BUILDS)**：这三项审批必须在首次 add 之前就位。正确顺序是重置 profile（官方 `--from-default-profile web`）或换新 profile，在 `<profile>/pnpm-workspace.yaml` 里把三项写成映射，再执行 add：
+>
+> ```yaml
+> allowBuilds:
+>   cloudflared: true
+>   cpu-features: true
+>   ssh2: true
+> ```
+>
+> 必须写成上面的映射形式：列表形式会被 pnpm 改写成 `'0': cloudflared` 之类的占位条目，重跑时还会回退已解析的包（`Packages: -10`）。装失败后补审批重跑会 exit 0，但 `dsh.profile.bundles` 仍无该行：静默半挂载，重跑修不回来，需要先 remove 再 add。已带审批的存量 profile 升级不受影响。
 
 > **pnpm 11 发布时间门禁问题**：在包版本发布后的短时间内，pnpm 11 的默认安全策略（`minimumReleaseAge`）可能会尝试回退拉取旧版本。建议在 profile 目录的 `pnpm-workspace.yaml` 中排除相关命名空间以确保获取最新版本：
 >

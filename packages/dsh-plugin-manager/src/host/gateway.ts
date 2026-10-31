@@ -21,7 +21,7 @@ import { join, posix, win32 } from 'node:path'
 import type { InstalledPluginItem } from '../core/protocol.ts'
 import type { ControlChange } from '../core/conflict.ts'
 import { diffLayer, overlappingIds, significantChanges, type LayerChange, type LayerSnapshot } from '../core/patch-diff.ts'
-import { duplicateMountBundles } from './bundle-guard.ts'
+import { declaresBundle, duplicateMountBundles } from './bundle-guard.ts'
 import { readProfileManifest, reorderProfileBundle, stripProfileBundles, type ProfileFacts } from './profile.ts'
 import { declaredRowIds, insertRowsOf, parsePatch, bareRowEnabled, bareRowId, pruneOrphanRowOverrides, repairStaleRowNames, writePatchAtomic, type PrunedOverrides, type RepairedRowNames } from './rows.ts'
 import { buildPluginRow, claimedEntryIdsOf } from './state.ts'
@@ -1013,6 +1013,17 @@ export class CliGateway {
         : `plugin-manager: 迁移安装 ${targetSpec} 失败${tolerated.output === '' ? '' : `：\n${tolerated.output}`}`
       return
     }
+    // The migration's install step is the same pnpm call and the same
+    // reconcile, so a target it wrote without selecting mounts nothing.
+    if (shouldAddTarget && await this.bundleSelectionMissing(
+      targetId,
+      after.bundles,
+      !targetPreviouslyInstalled || before.bundles.includes(targetId),
+    )) {
+      await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
+      job.error = this.halfMountError(targetId, '迁移安装只写入了依赖，', tolerated)
+      return
+    }
     const stripped = await this.stripDuplicateMounts(job, before, after)
     if (stripped === undefined) {
       await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
@@ -1720,6 +1731,10 @@ export class CliGateway {
       return
     }
     let after = await this.capture()
+    // The selection the CLI's own run left behind. Read here, before the
+    // duplicate-mount strip below removes any of its entries back out: that
+    // strip is this gateway's correction, not evidence of what the run landed.
+    const reconciledBundles = after.bundles
     // B9: the CLI's bundle reconciliation re-adds every bundle-declaring
     // dependency to dsh.profile.bundles — including packages the composition
     // already mounts through a patch row (the aggregate's better-sidebar
@@ -1740,6 +1755,13 @@ export class CliGateway {
         // install landed.
         job.phase = 'error'
         job.error = tolerated?.output ?? 'plugin-manager: dsh plugin add 报告成功，但 profile 未新增任何依赖（安装未生效）'
+        return
+      }
+      // B10: a dependency written without its bundle selection is a half mount,
+      // and the tolerance for pnpm's exit changes nothing about that.
+      if (await this.bundleSelectionMissing(name, reconciledBundles)) {
+        job.phase = 'error'
+        job.error = this.halfMountError(name, 'dsh plugin add 只写入了依赖，', tolerated)
         return
       }
       // B5: a duplicate entry id is boot-blocking. Never write disabled rows
@@ -1772,6 +1794,14 @@ export class CliGateway {
       if (updated.version !== targetVersion) {
         job.phase = 'error'
         job.error = tolerated?.output ?? `plugin-manager: dsh plugin add 报告成功，但 ${targetId} 仍为 ${updated.version}，预期 ${targetVersion}（更新未生效）`
+        return
+      }
+      // B10 (update): the replacement must not drop the selection it found. A
+      // package the profile mounts through a patch row was never selected, so
+      // its absence is the state the run found, not a loss.
+      if (await this.bundleSelectionMissing(targetId, reconciledBundles, before.bundles.includes(targetId))) {
+        job.phase = 'error'
+        job.error = this.halfMountError(targetId, 'dsh plugin add 更新了版本，但 ', tolerated)
         return
       }
       job.plugin = updated
@@ -2136,6 +2166,52 @@ export class CliGateway {
   /** The new dependency of an install, when one exists. */
   private newDependency(before: CapturedState, after: CapturedState): string | undefined {
     return after.dependencies.find(name => !before.dependencies.includes(name))
+  }
+
+  /**
+   * Whether a run wrote a package that declares its own bundle without the
+   * profile selecting it.
+   *
+   * The landing reads in {@link runInner} look at `dependencies` alone, and
+   * pnpm writes that line before the build-script gate decides the exit: a
+   * dependency is not a mount. A package declaring `dsh.bundle` is only
+   * reachable through `dsh.profile.bundles`, so a selection that never landed
+   * (a fresh install) or left with the run (a replacement of a selected
+   * package) is a half mount: the composition carries not one row of it while
+   * every other check passes.
+   * @param name - the dependency the run added or targeted.
+   * @param bundles - the selection the CLI's own run left behind, read before
+   *   the duplicate-mount strip can correct its entries.
+   * @param required - whether the selection has to be present: always for a
+   *   fresh install, and for a replacement only when the profile already
+   *   selected the package (a patch-row mount was never selected to lose).
+   * @returns whether a bundle-declaring package ended up unselected.
+   */
+  private async bundleSelectionMissing(
+    name: string,
+    bundles: readonly string[],
+    required = true,
+  ): Promise<boolean> {
+    if (!required || bundles.includes(name)) return false
+    return declaresBundle(this.facts, name)
+  }
+
+  /**
+   * The diagnostic for {@link bundleSelectionMissing}: which package the
+   * composition does not mount, and the two steps that repair it. Repeating the
+   * same command cannot — the CLI reconciles only the dependencies it newly
+   * added — so the remedy is an approval followed by remove and add.
+   * @param name - the dependency left unselected.
+   * @param lead - the run's own prefix for the sentence.
+   * @param tolerated - the accepted non-zero exit, whose pnpm tail names the
+   *   build scripts it skipped.
+   * @returns the error text.
+   */
+  private halfMountError(name: string, lead: string, tolerated: TolerableExit | undefined): string {
+    const reason = `${lead}${name} 未进入 dsh.profile.bundles（半挂载：该组合不会挂载它）。请先在 ${join(this.facts.profileDir, 'pnpm-workspace.yaml')} 的 allowBuilds 里把要批准的包键写成 \`<包名>: true\` 的映射形式（写成列表会被 pnpm 改写成占位条目），再 dsh plugin --profile ${this.facts.profileName} remove ${name} 后重新 add`
+    return tolerated === undefined
+      ? `plugin-manager: ${reason}`
+      : `plugin-manager: ${reason}：\n${tolerated.output}`
   }
 
   /** The claimed entry ids of one installed dependency (its own bundle patch, or its name). */

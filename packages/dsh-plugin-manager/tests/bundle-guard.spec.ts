@@ -8,7 +8,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { duplicateMountBundles, newlyAddedBundles, rowMountedPackageNames, type GuardSnapshot } from '../src/host/bundle-guard.ts'
+import { declaresBundle, duplicateMountBundles, newlyAddedBundles, rowMountedPackageNames, type GuardSnapshot } from '../src/host/bundle-guard.ts'
 import type { ProfileFacts } from '../src/host/profile.ts'
 
 const tempDirs: string[] = []
@@ -47,6 +47,32 @@ describe('newlyAddedBundles', () => {
   })
 })
 
+/** Write one installed package's manifest. */
+function writePackageManifest(facts: ProfileFacts, name: string, manifest: Record<string, unknown>): void {
+  const moduleDir = join(facts.profileDir, 'node_modules', ...name.split('/'))
+  mkdirSync(moduleDir, { recursive: true })
+  writeFileSync(join(moduleDir, 'package.json'), JSON.stringify(manifest))
+}
+
+describe('declaresBundle', () => {
+  it('operator: reads which installed dependencies declare a bundle patch', async () => {
+    // Given a bundle-declaring aggregate, a plain native dependency, and a
+    // dependency whose manifest is not on disk
+    const { facts } = profileWith({})
+    writePackageManifest(facts, '@linxin666/dsh-web-all', { name: '@linxin666/dsh-web-all', dsh: { bundle: { patch: './cordis.patch.yml' } } })
+    writePackageManifest(facts, 'cpu-features', { name: 'cpu-features' })
+
+    // When each dependency is read for its declaration
+    const answers = [
+      await declaresBundle(facts, '@linxin666/dsh-web-all'),
+      await declaresBundle(facts, 'cpu-features'),
+      await declaresBundle(facts, 'dsh-not-on-disk'),
+    ]
+
+    // Then only the package that declares dsh.bundle is a mount candidate
+    expect(answers).toEqual([true, false, false])
+  })
+})
 describe('rowMountedPackageNames', () => {
   it('collects insert-entry names from every before-state dependency patch', async () => {
     const { facts } = profileWith({

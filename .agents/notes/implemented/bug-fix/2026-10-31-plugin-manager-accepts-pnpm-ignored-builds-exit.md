@@ -52,6 +52,19 @@ update:  phase=error  profile dependency=0.7.3  node_modules version=0.7.3
 updating a plugin was told it failed while the new version was on disk, and the
 state those checks would have rejected was never examined.
 
+The tolerance then opened the opposite defect. The landing reads it re-ran look
+at `dependencies`, and pnpm writes that line *before* the gate ends the run, so a
+first install of a bundle-declaring package settled `done` on a profile whose
+`dsh.profile.bundles` never gained the row: installed, unmounted, and reported as
+a success. Measured 2026-10-31 in the isolated `DSH_HOME=/tmp/dsh-fix2-0413`
+against the same CLI and pnpm, through `CliGateway.install` for
+`@linxin666/dsh-web-all@0.4.13` on a fresh profile: the job settled
+`phase=done` with pnpm's tail as a warning, while `dependencies` carried the
+aggregate, `dsh.profile.bundles` held only the two official bundles, and
+`--dump-config` exited 0 with **0** `web-ui-*` row ids against **25** for a
+mounted install. A dependency that the composition never mounts is not an
+install, and no exit code can say so.
+
 ## Decision
 
 1. **Only one pnpm condition may be re-read, and only the profile may overrule
@@ -68,7 +81,17 @@ state those checks would have rejected was never examined.
    the verdict: an install that added no dependency, an update whose installed
    version is not the one the route resolved, and a remove that left the
    dependency in the profile all still fail, before any preflight, with pnpm's
-   tail as the reason — the text the early return produced.
+   tail as the reason — the text the early return produced. A dependency line is
+   not that verdict on its own, so the install and update reads also consult the
+   selection: `bundleSelectionMissing` asks `declaresBundle` — `dsh.bundle` in the
+   installed package's own manifest, the fact the CLI's reconcile selects on —
+   and answers a package that declares a bundle but sits in no
+   `dsh.profile.bundles` entry. An install must carry the selection; a
+   replacement must keep the one it found, and a package the profile mounts
+   through a patch row was never selected, so its absence is the state the run
+   found rather than a loss. The selection is read from the state the CLI wrote,
+   *before* the duplicate-mount strip of item 3 removes entries from it: that
+   strip is this gateway's correction, not evidence of what the run landed.
 3. **Tolerating the exit buys nothing else.** B9, B5, B6, the composition
    preflight, the exact-version gate and the orphan-override prune run in full
    and can still fail the job, so a tolerated run that landed a boot-breaking
@@ -87,6 +110,16 @@ state those checks would have rejected was never examined.
    install (`rollbackMigration`) is deliberately untouched — it runs when the
    migration has already failed, and its report names the rollback, not a
    warning.
+6. **A half mount fails; it is not repaired.** A run whose selection did not land
+   settles `error` and leaves the profile exactly as the CLI wrote it. The
+   message names the package, the `allowBuilds` approval that
+   [the fresh-install limitation note](2026-10-26-fresh-install-allowbuilds-limitation.md)
+   owns, and the remove-then-add that repairs the row — the only
+   sequence measured to work: with the approvals patched in, re-running the same
+   add exits 0 and still writes no row, because the CLI reconciles only the
+   dependencies the run newly added, while remove followed by add lands it
+   (2026-10-31, same isolated home, `dsh.profile.bundles` gaining the aggregate
+   and `--dump-config` then carrying the 25 family row ids).
 
 ## Alternatives considered
 
@@ -127,11 +160,34 @@ question that matters.
 optional dependency is exactly what a later boot reports as a missing native
 module, and a job with no record leaves nothing to attribute it to.
 
+**Read `dependencies` alone and call the dependency line the mount.** Rejected:
+that line is written before the gate decides the exit, so on a first install it
+names exactly the state the CLI never reconciled. The profile then composes
+without a single row of the package while every check this gateway performs
+passes, which is a success report for a plugin that never mounts.
+
+**Read the selection after the duplicate-mount strip instead of before.** Rejected:
+the strip deliberately removes the newly added entries of packages the composition
+already mounts through a patch row, so a post-strip read would report the guard's
+own correction as a lost mount and fail a correct install. The state the CLI wrote
+is the evidence; the correction that follows is not.
+
+**Roll a half mount back instead of failing with the repair.** Rejected: the
+packages are the ones the person asked for, and the row is recoverable without a
+re-download — approving the build scripts and re-adding restores the mount. A
+rollback would turn a diagnosable state into a silent fetch of the same 51
+packages on the next attempt.
+
 ## Consequences
 
 - An install, update, removal or migration whose packages landed is reported as
   the success it is, with pnpm's tail on the job, instead of as a failure that
   also skipped every guard.
+- A package that landed as a dependency without its bundle selection is reported
+  as the half mount it is — with the reason, pnpm's tail and the two steps that
+  repair it — instead of as a success whose composition carries no row of it. On
+  the same half-mounted profile this read is the difference between `phase=done`
+  and `phase=error`.
 - The condition is pnpm's, not this release's: whether a profile gains a
   dependency with a build script decides it, so the next package that adds one
   behaves the same way without a code change here.
@@ -169,7 +225,30 @@ migration whose install step landed both settle `done` with the warning.
 Disabling `reportsIgnoredBuilds` fails six of those tests, so they are pinned to
 the decision rather than to the outcome alone.
 
+`bundleSelectionMissing` is pinned from both sides. A tolerated install whose
+bundle row never landed — the fixture writes the dependency and leaves the
+selection alone, which is the state the real CLI leaves — stays `error` with the
+half-mount reason and pnpm's tail, and never reaches the composition probe; a
+tolerated install of the same aggregate that did land its selection settles
+`done` with the probe run; a tolerated update that dropped a selection the
+profile had fails the same way; and an update of a bundle-declaring package the
+profile mounts through a patch row — never selected, so nothing to lose — still
+settles `done`; and a tolerated migration whose install step wrote the dependency
+without the row rolls back to the legacy aggregate and reports the same half
+mount. Disabling the gate (`bundleSelectionMissing` answering false) fails
+exactly those three half-mount tests with `expected 'done' to be 'error'`.
+`tests/bundle-guard.spec.ts` pins `declaresBundle` on a declaring package, a
+plain native dependency and a package that is not on disk.
+
 Live: the same two-stage scenario above, run through `CliGateway` in the isolated
 `DSH_HOME` against the real CLI and real pnpm, reports `phase=done` with
 `plugin.version` equal to the version on disk and `warnings` carrying
-`[ERR_PNPM_IGNORED_BUILDS]` for both stages; the package suite (451 tests) passes.
+`[ERR_PNPM_IGNORED_BUILDS]` for both stages; the package suite (457 tests) passes.
+
+Live half mount, same isolated `DSH_HOME=/tmp/dsh-fix2-0413`, DSH 0.2.1-rc.5 with
+its bundled pnpm 11.9.0: through `CliGateway.install` for
+`@linxin666/dsh-web-all@0.4.13` on a fresh profile, one and the same
+half-mounted state reports `phase=done` before this read and `phase=error` after
+it, and `--dump-config` shows 0 `web-ui-*` row ids against 25 for a mounted
+install. Approving the builds and re-running the same add then exits 0 and still
+writes no row; remove followed by add writes it.

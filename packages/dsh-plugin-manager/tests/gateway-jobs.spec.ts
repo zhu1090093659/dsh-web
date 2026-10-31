@@ -76,8 +76,8 @@ function readManifest(profileDir: string): { dependencies: Record<string, string
   return JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8')) as never
 }
 
-/** Simulate the official CLI's add: dependency line + package files. */
-function installPackage(profileDir: string, name: string, dep: { patch?: string; version?: string; bundle?: boolean }): void {
+/** Write one installed package's own files: its manifest and optional bundle patch. */
+function writePackageFiles(profileDir: string, name: string, dep: { patch?: string; version?: string; bundle?: boolean }): void {
   const moduleDir = join(profileDir, 'node_modules', ...name.split('/'))
   mkdirSync(moduleDir, { recursive: true })
   writeFileSync(join(moduleDir, 'package.json'), JSON.stringify({
@@ -86,12 +86,29 @@ function installPackage(profileDir: string, name: string, dep: { patch?: string;
     ...(dep.bundle === true ? { dsh: { bundle: { patch: './cordis.patch.yml' } } } : {}),
   }))
   if (dep.patch !== undefined) writeFileSync(join(moduleDir, 'cordis.patch.yml'), dep.patch)
+}
+
+/** Simulate the official CLI's successful add: package files, dependency line, bundles row. */
+function installPackage(profileDir: string, name: string, dep: { patch?: string; version?: string; bundle?: boolean }): void {
+  writePackageFiles(profileDir, name, dep)
   const manifest = readManifest(profileDir)
-  if (manifest.dependencies[name] === undefined) {
-    manifest.dependencies[name] = '1.0.0'
-    manifest.dsh.profile.bundles.push(name)
-    writePackageJson(profileDir, manifest.dependencies, manifest.dsh.profile.bundles)
-  }
+  if (manifest.dependencies[name] !== undefined) return
+  writePackageJson(profileDir, { ...manifest.dependencies, [name]: '1.0.0' }, [...manifest.dsh.profile.bundles, name])
+}
+
+/**
+ * Simulate the CLI's add when pnpm's build-script gate ends the run: the
+ * dependency line lands in the profile manifest, and the reconcile that appends
+ * the `dsh.profile.bundles` row never runs. Measured 2026-10-31 on DSH
+ * 0.2.1-rc.5 with its bundled pnpm 11.9.0: `dsh plugin --profile web add` for a
+ * 51-package aggregate exits 1 on ERR_PNPM_IGNORED_BUILDS with the dependency
+ * written and the bundles row absent.
+ */
+function installPackageWithoutBundle(profileDir: string, name: string, dep: { patch?: string; version?: string; bundle?: boolean }): void {
+  writePackageFiles(profileDir, name, dep)
+  const manifest = readManifest(profileDir)
+  if (manifest.dependencies[name] !== undefined) return
+  writePackageJson(profileDir, { ...manifest.dependencies, [name]: '1.0.0' }, manifest.dsh.profile.bundles)
 }
 
 /** Simulate the official CLI's remove: drop the dependency line. */
@@ -621,6 +638,9 @@ const IGNORED_BUILDS_OUTPUT = [
   'dsh: plugin command failed; diagnostics: /tmp/profiles/web/.plugin-manager/logs/operation-EXAMPLE/pnpm.log',
 ].join('\n')
 
+/** The aggregate package the half mount was measured on (51 dependencies, 3 native builds). */
+const AGGREGATE = '@linxin666/dsh-web-all'
+
 /** A refusal pnpm reports for a run it did not carry out. */
 const RELEASE_AGE_OUTPUT = [
   '[ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION] cpu-features@0.0.10 is not older than 7 days on the registry',
@@ -867,6 +887,161 @@ describe('CliGateway non-zero exit the profile overrules (pnpm build-script gate
     expect(job.plugin).toMatchObject({ id: current, version: '0.3.3' })
     expect(job.warnings).toEqual([IGNORED_BUILDS_OUTPUT])
     expect(readManifest(facts.profileDir).dependencies[legacy]).toBeUndefined()
+  })
+
+  it('operator: keeps a tolerated install whose bundle row never landed a failure', async () => {
+    // Given an install pnpm fails on the build-script gate after the CLI wrote
+    // the dependency but before its reconcile appended the bundles row
+    const { facts, dir } = makeProfile({})
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 0 }
+      if (args[3] === 'add') {
+        installPackageWithoutBundle(facts.profileDir, AGGREGATE, { version: '0.4.13', bundle: true })
+        return ignoredBuildsExit()
+      }
+      return { code: 0 }
+    }, calls)
+
+    // When the tolerated install runs to settlement
+    const { jobId } = gateway.install(`${AGGREGATE}@0.4.13`)
+    const job = await settle(gateway, jobId)
+
+    // Then the half mount is the verdict, not the dependency line: nothing is
+    // reported as installed, pnpm's own words survive, and the composition
+    // preflight is never reached
+    expect(job.phase).toBe('error')
+    expect(job.error).toContain('半挂载')
+    expect(job.error).toContain(AGGREGATE)
+    expect(job.error).toContain('[ERR_PNPM_IGNORED_BUILDS]')
+    expect(job.plugin).toBeUndefined()
+    expect(job.warnings).toBeUndefined()
+    expect(calls.filter(isDumpConfig)).toHaveLength(0)
+  })
+
+  it('operator: completes a tolerated install of a bundle-declaring package the profile selected', async () => {
+    // Given an install pnpm fails on the build-script gate whose packages
+    // landed and whose bundles row the CLI's reconcile appended
+    const { facts, dir } = makeProfile({})
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 0 }
+      if (args[3] === 'add') {
+        installPackage(facts.profileDir, AGGREGATE, { version: '0.4.13', bundle: true })
+        return ignoredBuildsExit()
+      }
+      return { code: 0 }
+    }, calls)
+
+    // When the tolerated install runs to settlement
+    const { jobId } = gateway.install(`${AGGREGATE}@0.4.13`)
+    const job = await settle(gateway, jobId)
+
+    // Then it is the success it is, with the selection the composition mounts
+    expect(job.phase).toBe('done')
+    expect(job.plugin).toMatchObject({ id: AGGREGATE, version: '0.4.13' })
+    expect(job.warnings).toEqual([IGNORED_BUILDS_OUTPUT])
+    expect(readManifest(facts.profileDir).dsh.profile.bundles).toContain(AGGREGATE)
+    expect(calls.filter(isDumpConfig)).toHaveLength(1)
+  })
+
+  it('operator: fails a tolerated update that dropped a selection the profile had', async () => {
+    // Given a selected bundle-declaring plugin whose replacement lands the new
+    // version while the bundles row disappears with the run
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0', bundle: true } })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 0 }
+      if (args[3] === 'add') {
+        installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0', bundle: true })
+        const manifest = readManifest(facts.profileDir)
+        writePackageJson(facts.profileDir, manifest.dependencies, manifest.dsh.profile.bundles.filter(name => name !== 'dsh-memoir'))
+        return ignoredBuildsExit()
+      }
+      return { code: 0 }
+    }, calls)
+
+    // When the tolerated update runs to settlement
+    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
+    const job = await settle(gateway, jobId)
+
+    // Then the lost selection fails the job before any preflight reports a
+    // version that nothing mounts
+    expect(job.phase).toBe('error')
+    expect(job.error).toContain('半挂载')
+    expect(job.error).toContain('dsh-memoir')
+    expect(job.plugin).toBeUndefined()
+    expect(calls.filter(isDumpConfig)).toHaveLength(0)
+  })
+
+  it('operator: completes a tolerated update of a bundle-declaring package the profile never selected', async () => {
+    // Given a plugin the profile mounts through a patch row instead of the
+    // bundles layer, so its name was never in dsh.profile.bundles
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0', bundle: true } }, { bundles: [] })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 0 }
+      if (args[3] === 'add') {
+        installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0', bundle: true })
+        return ignoredBuildsExit()
+      }
+      return { code: 0 }
+    }, calls)
+
+    // When the tolerated update runs to settlement
+    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
+    const job = await settle(gateway, jobId)
+
+    // Then an absence the run found is not a loss it caused, so it completes
+    expect(job.phase).toBe('done')
+    expect(job.plugin).toMatchObject({ id: 'dsh-memoir', version: '1.1.0' })
+    expect(job.warnings).toEqual([IGNORED_BUILDS_OUTPUT])
+    expect(readManifest(facts.profileDir).dsh.profile.bundles).toEqual([])
+    expect(calls.filter(isDumpConfig)).toHaveLength(1)
+  })
+
+  it('operator: rolls back a migration whose install step wrote no bundle row', async () => {
+    // Given a legacy aggregate whose replacement lands as a dependency while
+    // the bundles row its reconcile appends never arrives
+    const legacy = '@linxin666/dsh-web-ui-all'
+    const { facts, dir } = makeProfile({ [legacy]: { version: '0.3.2', bundle: true } }, { bundles: [legacy] })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 0 }
+      if (args[3] === 'remove' && args[4] === legacy) {
+        removePackage(facts.profileDir, legacy)
+        return { code: 0 }
+      }
+      if (args[3] === 'add' && args[4] === `${AGGREGATE}@0.3.3`) {
+        installPackageWithoutBundle(facts.profileDir, AGGREGATE, { version: '0.3.3', bundle: true })
+        return ignoredBuildsExit()
+      }
+      if (args[3] === 'add' && (args[4] ?? '').startsWith(legacy)) {
+        installPackage(facts.profileDir, legacy, { version: '0.3.2', bundle: true })
+        return { code: 0 }
+      }
+      return { code: 0 }
+    }, calls)
+
+    // When the tolerated migration runs to settlement
+    const { jobId } = gateway.migrate(legacy, AGGREGATE, '0.3.3', `${AGGREGATE}@0.3.3`)
+    const job = await settle(gateway, jobId)
+
+    // Then the half mount fails the migration, the legacy aggregate is put
+    // back, and no composition probe reports the missing mount as healthy
+    expect(job.phase).toBe('error')
+    expect(job.error).toContain('半挂载')
+    expect(job.error).toContain(AGGREGATE)
+    expect(job.error).toContain('[ERR_PNPM_IGNORED_BUILDS]')
+    const manifest = readManifest(facts.profileDir)
+    expect(manifest.dependencies).toHaveProperty([legacy])
+    expect(manifest.dsh.profile.bundles).toContain(legacy)
+    expect(calls.filter(isDumpConfig)).toHaveLength(0)
   })
 })
 

@@ -51,7 +51,7 @@
 - **钉子失败即关闭**：工作区缺失、预设缺失或损坏、权限命令被拒绝时，任务 Prompt 不会发送。
 - **Host 调度器**：5 段 cron 支持 `*`、`*/n`、范围、逗号列表和周日 `0/7`。每条规则携带自己的 IANA 时区（默认跟随 Host 时区），日期/星期遵循 Vixie 语义：两个字段都受限时为 OR，其余组合为 AND。夏令时切换处的墙上时间空洞会被跳过，重复出现的歧义时刻只触发一次并取更早者。规则有两种计划：循环 cron（可设次数上限，支持不限、1、2 或任意正整数）或在未来某一时刻只执行一次的单次计划；Host 只统计它真正开启的执行，达到上限或单次已执行的规则会在账本里自行停止，而不是等被执行的工作去关掉它。
 - **确定性恢复**：已有 session id 的 running execution 在重启后继续观察；没有 session id 的启动中断会取消且不会重发。
-- **实时同步**：变更返回完整 revision snapshot；SSE 只提示 revision、scheduler 与 power 变化，重连和页面恢复可见时重新拉完整 snapshot。
+- **实时同步**：变更返回完整 revision snapshot；SSE 只提示 revision、scheduler 与 power 变化。镜像的重读入口共有五个：变更帧（revision 前进）、连接建立或重建（`EventSource.onopen`）、页面恢复可见、流报错（`EventSource.onerror`，按 `STREAM_ERROR_NOTIFY_MS` 节流）、以及镜像里仍有未结算执行时的一次有界校验读取（`src/client/pending-verify.ts`，`PENDING_VERIFICATION_MS` 15 秒，最后一条执行结算即停止）。连接可以保持打开却不再投递，此时既没有 `onerror` 也没有帧，所以帧无法从浏览器侧被验证。无未结算执行的空闲看板零读取。
 - **可选空闲睡眠保护**：默认关闭；开启后覆盖全部运行中的 DSH 会话、已启用且未归档的任务计划和未知会话状态。
 - **系统提示词注入**：Host 通过 `SystemPrompt.section` 注册 order 200 的 `plugin:task-board` 段；任务看板设置可单独关闭声明而不关闭看板。该提示也会提醒 agent 在最终回复前收尾可见的 `todo_write` 计划列表。
 - **Agent 工具**：每个会话都可使用八个面向模型的工具（`task_board_list`、`task_board_get`、`task_board_create`、`task_board_update`、`task_board_set_parent`、`task_board_run`、`task_board_manage`、`task_board_schedule`），它们驱动与浏览器完全相同的 Host 账本，因此 agent 可以在对话里列出看板、创建子任务、关联或解除关联、执行一张卡片、把卡片移到任意列（含不经执行直接声明完成、失败或进行中）、归档/恢复/删除卡片、对看板已无法观察的卡片强制结算，以及为卡片配置 cron 计划。

@@ -2,7 +2,7 @@
 
 中文 | [English](README.en.md)
 
-dsh-web 是面向 DeepSeek Harness（DSH）Web GUI、DeepSeek 网页版与官方桌面客户端（DeepSeek Desktop）的模块化插件生态与 AI 智能体开发工作台。全面支持 DeepSeek-V3 与 DeepSeek-R1 等前沿推理模型，为开发者与重度用户提供自主任务自动化看板（Cron 定时后台执行）、手机与跨设备远程访问控制、Web SSH 终端与 Linux 集群运维、Git 可视化提交图谱与多 Agent Worktree 隔离开发、全量会话检索与归档管理、Token 用量与成本监控（含 Token 银行），以及一站式主题皮肤与桌面宠物工坊。用户既可以通过官方 profile 机制将插件全家桶一键挂载至已有的 `dsh web` 实例，也可以直接在官方 DeepSeek Harness 桌面客户端中开箱即用。
+dsh-web 是面向 DeepSeek Harness（DSH）Web GUI、DeepSeek 网页版与官方桌面客户端（DeepSeek Desktop）的模块化插件生态与 AI 智能体开发工作台。全面支持 DeepSeek-V3 与 DeepSeek-R1 等前沿推理模型，为开发者与重度用户提供自主任务自动化看板（Cron 定时后台执行）、手机 App 远程访问、Web SSH 终端与 Linux 集群运维、Git 可视化提交图谱与多 Agent Worktree 隔离开发、全量会话检索与归档管理、Token 用量与成本监控（含 Token 银行），以及一站式主题皮肤与桌面宠物工坊。用户既可以通过官方 profile 机制将插件全家桶一键挂载至已有的 `dsh web` 实例，也可以直接在官方 DeepSeek Harness 桌面客户端中开箱即用。
 
 <p align="center">
   <img src="docs/dsh-web-banner.zh.jpg" alt="dsh-web — DeepSeek Harness (DSH) Web GUI 插件全家桶与 AI 智能体工作台架构图（任务看板、手机远程、SSH 运维、Git Worktree、Token 统计、主题皮肤）" width="100%">
@@ -30,7 +30,7 @@ dsh-web 是面向 DeepSeek Harness（DSH）Web GUI、DeepSeek 网页版与官方
 
 <p align="center">
   <strong>DeepSeek Harness（DSH）Web 插件生态 · 模块化智能体工作台</strong><br>
-  <em>全功能 Web UI · 任务自动化看板 · 移动端远程控制 · Web SSH 运维 · Git 图谱与 Worktree · Token 成本统计 · 视觉工坊</em>
+  <em>全功能 Web UI · 任务自动化看板 · 手机 App 远程访问 · Web SSH 运维 · Git 图谱与 Worktree · Token 成本统计 · 视觉工坊</em>
 </p>
 
 <div align="center">
@@ -44,7 +44,7 @@ dsh-web 是面向 DeepSeek Harness（DSH）Web GUI、DeepSeek 网页版与官方
 原生 DeepSeek Harness Web 提供了核心的对话交互与工具调用能力，但在多任务并发调度、长程后台执行、移动端协同以及工程化开发运维方面仍有扩展空间。
 
 dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方源码，为用户提供完整的模块化扩展体系：
-- **工程运维与协同插件**：涵盖长程自动化任务看板（多 Agent 级联/Teams 编排、对抗验收质检与定时调度）、梁神模式（极简 Persona、PTC 代码运行传输与敏捷调度纪律）、移动端与跨设备远程控制、SSH 终端传输、Git 图谱与 worktree 隔离、全量会话归档管理以及模型能力声明编辑器；
+- **工程运维与协同插件**：涵盖长程自动化任务看板（多 Agent 级联/Teams 编排、对抗验收质检与定时调度）、梁神模式（极简 Persona、PTC 代码运行传输与敏捷调度纪律）、手机 App 远程访问、SSH 终端传输、Git 图谱与 worktree 隔离、全量会话归档管理以及模型能力声明编辑器；
 - **视觉主题与资产解耦**：功能插件与样式资产完全分离。皮肤插件负责底层渲染，多样化的主题皮肤（含样式、贴图与动态特效）以及桌面宠物可通过 [DSH 创意工坊](#创意工坊dsh-marketcom)自由安装；
 - **全家桶聚合与按需组合**：既支持通过 `@linxin666/dsh-web-all` 聚合包一键安装完整功能，也支持按需单独安装特定插件。聚合包预集成家族全部功能插件，详见[插件全家桶使用指南](packages/dsh-web-all/README.zh.md)。
 
@@ -55,7 +55,7 @@ dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方�
 | Agent 预设与执行纪律 | 仅官方标准预设（Standard / Minimal 等），静态上下文开销大 | 官方预设 + 创意工坊社区预设 + 梁神模式（极简 Persona 约束、PTC 程序化工具传输、MCP 温和分页、关键事实登记簿与老虎机拨杆） |
 | 自定义模型能力 | 无法可视化修改模型属性 | 逐模型可视化声明 Vision 图片多模态支持与 DeepSeek-R1 推理思考强度档位，支持供应商快速启闭 |
 | 自动化任务看板 | 无 | Host 权威 5 列看板 + 多 Agent 树状级联/原生 Teams 编排 + 裁判模型双盲验收门控 + 离线 Cron 定时与防休眠电源保护 + GitHub Issue 自动提 PR 闭环 + 8 项模型原生工具面 |
-| 移动端与跨设备控制 | 仅限本机浏览器 | 手机扫码直连（iOS / Android）、跨设备 PC 浏览器访问、WebSocket 实时流式响应与专属移动端触控优化 |
+| 手机 App 远程访问 | 仅限本机浏览器 | 手机 App 扫码直连、协议 v1 WebSocket 实时流式交互、公网中继/隧道与局域网接入 |
 | 远程服务器运维 | 无 | 网页版 SSH 终端 (xterm.js)、SFTP 文件传输、端口转发隧道与集群批量命令 |
 | Token 用量与成本监控 | 无 | 每日 Token 消耗明细、多供应商余额查询预警、套餐使用进度与 Token 银行鲸元券 |
 | Git 可视化与多任务开发 | 仅终端 git 命令 | 可视化分支与提交图谱 + Git Worktree 自动创建独立隔离物理工作区防止多 Agent 代码冲突 |
@@ -68,7 +68,7 @@ dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方�
 | --- | --- | --- |
 | 打造 24/7 无人值守 AI 研发流水线，通过 Cron 定时巡检、多 Agent 团队级联协作、Issue 自动修复提 PR 或长程目标闭环 | 任务看板：Host 权威后台调度、多 Agent 级联/Teams 编排、对抗式裁判验收质检、GitHub Issue-to-PR 闭环、防休眠电源守护 | [任务看板与 cron 定时执行](packages/dsh-task-board/README.zh.md) |
 | 追求极致编码推理效率与超低上下文开销，需要极简 Prompt、程序化工具调用（PTC）与严苛 Agent 调度/工作纪律 | 梁神模式：极简 Persona、run_code 程序化传输、MCP 温和分页、关键事实登记簿与老虎机拨杆开关 | [梁神模式预设与 PTC 传输](packages/dsh-liangshen/README.zh.md) |
-| 在手机、平板或终端上通过协议 v1 远程访问与控制 DeepSeek Harness | 远程桥接：原生客户端 WebSocket、会话流式响应、入站网关与公网/局域网接入 | [协议 v1 远程桥接](packages/dsh-remote-bridge/README.zh.md) |
+| 在手机上通过协议 v1 远程访问与控制 DeepSeek Harness | 手机 App 远程访问：协议 v1 WebSocket、会话流式响应、入站网关与公网/局域网接入 | [手机 App 远程访问](packages/dsh-remote-bridge/README.zh.md) |
 | 委派 AI 智能体执行远程 Linux 服务器运维、SFTP 文件传输、SSH 终端交互或排查线上服务 | SSH 运维面板：Web 终端 (xterm.js)、可视化 SFTP 传输、端口转发隧道、集群批量命令 | [SSH 终端、文件传输与隧道](packages/dsh-ssh/README.zh.md) |
 | 监控 DeepSeek API 及主流大模型 Token 消耗明细、查询供应商账户余额预警或套餐进度 | 使用统计：每日消耗明细、余额查询、账单估算、套餐追踪与 Token 银行鲸元券 | [用量统计与 Token 银行](packages/dsh-usage/README.zh.md) |
 | 多 AI Agent 并行编码容易产生代码覆盖冲突，需要分支与物理工作区彻底隔离 | Git 图谱与 Worktree：可视化提交图谱、自动为会话创建专属 worktree 分支与物理目录 | [Git 可视化与 Worktree 隔离](packages/dsh-git-graph/README.zh.md) |
@@ -128,21 +128,13 @@ dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方�
 
 详细机制、评测数据与高级配置参数见 [dsh-liangshen README](packages/dsh-liangshen/README.zh.md)。
 
-### 移动端远程控制（Mobile Remote · 手机访问与跨设备触控优化）
+### 手机 App 远程访问（Mobile Remote · 原生手机 App 接入）
 
-通过侧边栏底部的手机图标打开设备配对面板。使用手机扫码或复制链接配对后，手机浏览器将直接载入官方 Web GUI，并自动激活移动端触控交互层：轻触鲸鱼图标唤出侧边栏、支持手势左滑收起与右滑展开、长按会话项目呼出操作菜单、软键盘 Enter 键仅用于换行、输入框采用 16px 字体防止页面聚焦缩放。适合桌面屏幕的扩展面板（如 SSH 终端、任务看板、Git 图谱等）在手机端自动隐藏，聚焦于会话管理、模型切换、思考强度调整与消息收发，多端实时共享完整上下文状态。
+在 profile 中安装 `@linxin666/dsh-remote-bridge` 插件并重启服务后，点击侧边栏底部的二维码图标（aria-label 为「配对手机（协议 v1）」）打开配对面板。使用手机 App 扫码即可直接开始使用。
 
-同一配对通道同样支持另一台 PC 浏览器接入：在远程电脑访问配对链接即可运行完整的桌面版 Web GUI。所有远程通信均受配对门控保护（走 `/remote/api` 路径），未经验证的访问将被拦截并仅显示提示横幅。配对令牌具备单次使用与超时失效机制，点击“停止”可立即吊销所有已连接设备。二维码默认基于局域网通信，搭配 cloudflared 等隧道工具可实现安全的公网跨网络访问。为确保安全性，使用隧道时建议走配对通道，不建议为隧道域名配置 `--trusted-host` 参数，避免绕过设备验证门控（详见[协议 v1 远程桥接说明](packages/dsh-remote-bridge/README.zh.md)；原浏览器远程控制插件 `dsh-remote-web-ui` 已进入弃用期并从聚合包移出）。
+配对面板具备本地安全保护，令牌路由（`/remote-bridge/pair/token`）带有回环门控，仅允许在本机浏览器中访问（非本机访问返回 403）。面板生成的配对码为一次性凭据，有效期为 30 秒，点击「重新取码」将作废上一张配对码。二维码编码包含服务地址与令牌的文档（URL 形如 `wss://<origin>/ios/v1?token=...`），手机 App 扫码后即可同时获取服务地址与鉴权令牌。
 
-![DeepSeek Harness 手机端与桌面端 Web 界面实时协同与扫码配对](docs/assets/phone-and-web.png)
-
-> **实时消息与隧道**：移动端的流式输出走官方 WebSocket 通道（配对后经门控的 `/remote` 代理转发），Cloudflare 快速隧道、命名隧道与 dsh-market 固定域名中继都能转发该连接。远程访问把广域网往返延迟叠加到每次更新上，固定域名中继比裸隧道多一跳；对延迟敏感时可在设置卡片关闭该中继。
-
-| 移动端主页（鲸鱼入口） | 会话列表 |
-| --- | --- |
-| ![DeepSeek Harness 移动端主页 — 手机浏览器专属触控导航与轻量界面](docs/screenshots/20-mobile-home.png) | ![DeepSeek 手机端会话列表 — 跨设备多端实时上下文同步](docs/screenshots/21-mobile-sessions.png) |
-| 聊天（思考与工具调用） | 模型选择（底部弹层） |
-| ![DeepSeek 移动端对话界面 — WebSocket 流式输出与思考过程折叠](docs/screenshots/22-mobile-chat.png) | ![DeepSeek 手机端模型切换弹层 — 多供应商与思考档位快速选择](docs/screenshots/23-mobile-model-sheet.png) |
+网络接入协议面仅暴露 `/ios/v1` 一个 WebSocket 端点，隧道与局域网转发均指向仅放行该路径的入站闸门，公网无法直接访问 Web GUI 路由。服务地址按实时状态（中继租约或运行中的隧道）、环境变量 `DSH_REMOTE_PUBLIC_BASE_URL` 以及局域网转发器实际监听地址的顺序解析。默认配置下公网可用（中继默认开启、隧道默认关闭、局域网转发默认关闭）；若需在局域网内直连，需在插件配置中开启局域网转发。原浏览器远程控制插件 `dsh-remote-web-ui` 已退役，接入栈能力已迁入本包。
 
 ### 远程连接（SSH Ops · Web 终端、SFTP 传输与集群运维）
 
@@ -287,7 +279,7 @@ dsh plugin --profile web add @linxin666/dsh-i18n@latest                         
 | [@linxin666/dsh-client-ui-task-board](https://www.npmjs.com/package/@linxin666/dsh-client-ui-task-board) | 任务看板：Host 权威长程后台自动化、多 Agent 级联/Teams 编排、对抗质检与 Cron 定时调度 |
 | [@linxin666/dsh-client-ui-task-board-github](https://www.npmjs.com/package/@linxin666/dsh-client-ui-task-board-github) | 任务看板扩展：GitHub Issues 同步（默认开启，设置可关） |
 | [@linxin666/dsh-liangshen](https://www.npmjs.com/package/@linxin666/dsh-liangshen) | 梁神模式：极简系统提示词、PTC 工具调用、MCP 分页与调度者敏捷工作纪律 |
-| [@linxin666/dsh-remote-bridge](https://www.npmjs.com/package/@linxin666/dsh-remote-bridge) | 远程桥接：协议 v1 宿主适配、原生客户端 WebSocket、入站网关与公网/局域网接入 |
+| [@linxin666/dsh-remote-bridge](https://www.npmjs.com/package/@linxin666/dsh-remote-bridge) | 手机 App 远程访问：协议 v1 宿主适配、原生客户端 WebSocket、入站网关与公网/局域网接入 |
 | [@linxin666/dsh-ssh](https://www.npmjs.com/package/@linxin666/dsh-ssh) | 远程运维面板：Web 终端、SFTP 传输、端口转发与集群执行 |
 | [@linxin666/dsh-usage](https://www.npmjs.com/package/@linxin666/dsh-usage) | 用量统计：Token 消耗、余额估算、套餐追踪与 Token 银行 |
 | [@linxin666/dsh-pet](https://www.npmjs.com/package/@linxin666/dsh-pet) | 桌面宠物：注册表驱动的桌面交互悬浮挂件 |
@@ -364,9 +356,9 @@ dsh-web 针对主流操作系统、现代化浏览器及网络拓扑进行了深
 </details>
 
 <details>
-<summary><strong>手机端配对后为何没有收到流式推送？</strong></summary>
+<summary><strong>手机 App 配对后为何没有收到流式推送？</strong></summary>
 
-流式推送走官方 WebSocket 通道，配对后经门控的 `/remote` 代理转发。隧道中断期间更新暂停，通道恢复后继续，无需重新配对；更新节奏的差异来自远程链路的广域网往返延迟。
+手机 App 通过协议 v1 的 WebSocket 通道与宿主通信。隧道或中继中断期间流式更新暂停，网络恢复后连接会自动重连；更新节奏的差异主要来自广域网往返延迟。
 
 </details>
 
@@ -393,9 +385,9 @@ dsh-web 针对主流操作系统、现代化浏览器及网络拓扑进行了深
 
 
 <details>
-<summary><strong>如何通过手机或平板远程访问 DeepSeek Harness？是否必须在同一 Wi-Fi 下？</strong></summary>
+<summary><strong>如何通过手机 App 远程访问 DeepSeek Harness？是否必须在同一 Wi-Fi 下？</strong></summary>
 
-手机远程访问基于配对令牌安全门控。若手机与运行 DSH 的电脑处于同一局域网（Wi-Fi），电脑端点击侧边栏手机图标弹出二维码，手机直接扫码即可打开完整的移动端交互界面。若需要公网跨网络访问（例如在户外使用移动蜂窝网络访问家中电脑），可搭配 Cloudflare Tunnel（例如 cloudflared）或 Tailscale 将 DSH 端口穿透至公网，手机打开公网链接配对访问即可，通信全程走鉴权通道，未配对请求将被严格拦截。
+手机远程访问由协议 v1 支撑，不要求必须处于同一 Wi-Fi。默认配置下插件已开启公网中继服务，在电脑端点击侧栏底部的二维码图标打开配对面板后，使用手机 App 扫码即可直接通过公网连接；亦可配置 Cloudflare 隧道。若希望在同一局域网内直连访问，需在插件配置中开启局域网转发并扫码配对。
 
 </details>
 
@@ -424,7 +416,7 @@ dsh-web 针对主流操作系统、现代化浏览器及网络拓扑进行了深
 
 - 任务看板由后端 Host 进程统一调度，关闭前端标签页不影响任务执行；但若宿主进程停止或操作系统关机睡眠，处于离线期间的触发点将直接跳过不补跑。可选的电源保护仅阻止系统闲置睡眠，无法阻止用户主动合盖、手动休眠或电源切断，技术细节见 [dsh-task-board README](packages/dsh-task-board/README.zh.md)。
 - SSH 凭据（密码与私钥口令）保存在本地 `~/.dsh/dsh-ssh.json` 文件中（文件权限为 0600）；在网络中断重连时可能重新发送非幂等命令，终端输出保持原样返回不执行脱敏，安全规范见 [dsh-ssh README](packages/dsh-ssh/README.zh.md)。
-- 移动端流式输出经隧道或固定域名中继转发，广域网往返延迟叠加在每次更新上；固定域名中继比裸快速隧道多一跳，两者都可用。
+- 手机 App 流式交互经隧道或中继转发，广域网往返延迟叠加在每次更新上；固定域名中继比裸快速隧道多一跳，两者均可使用。
 - 从源码构建全仓需要 Node.js >= 22 与 pnpm 工具链，直接从 npm 安装不受此限制。
 
 ## 社区
@@ -440,7 +432,7 @@ dsh-web 针对主流操作系统、现代化浏览器及网络拓扑进行了深
 
 ### 关键词索引（Keywords & Topics）
 
-`DeepSeek` · `DeepSeek Harness` · `DSH` · `DeepSeek Web` · `DeepSeek Web UI` · `DeepSeek 网页版` · `DeepSeek 桌面客户端` · `DeepSeek Desktop` · `DeepSeek-V3` · `DeepSeek-R1` · `DeepSeek 插件` · `DeepSeek 扩展` · `DeepSeek 任务看板` · `DeepSeek 定时任务` · `DeepSeek Cron 自动化` · `DeepSeek 手机版` · `DeepSeek 远程控制` · `DeepSeek 移动端触控` · `DeepSeek SSH 终端` · `DeepSeek 服务器运维` · `DeepSeek Token 统计` · `DeepSeek 余额查询` · `DeepSeek API 费用` · `Token 银行` · `DeepSeek 主题` · `DeepSeek 皮肤` · `DeepSeek 动态壁纸` · `Wallpaper Engine` · `DeepSeek 桌面宠物` · `DeepSeek Git 图谱` · `DeepSeek Worktree 隔离` · `DeepSeek 会话归档` · `多智能体协作` · `AI Agent 工作台` · `AI 编程助手` · `开源智能体`
+`DeepSeek` · `DeepSeek Harness` · `DSH` · `DeepSeek Web` · `DeepSeek Web UI` · `DeepSeek 网页版` · `DeepSeek 桌面客户端` · `DeepSeek Desktop` · `DeepSeek-V3` · `DeepSeek-R1` · `DeepSeek 插件` · `DeepSeek 扩展` · `DeepSeek 任务看板` · `DeepSeek 定时任务` · `DeepSeek Cron 自动化` · `DeepSeek 手机版` · `DeepSeek 远程控制` · `DeepSeek 手机 App` · `DeepSeek SSH 终端` · `DeepSeek 服务器运维` · `DeepSeek Token 统计` · `DeepSeek 余额查询` · `DeepSeek API 费用` · `Token 银行` · `DeepSeek 主题` · `DeepSeek 皮肤` · `DeepSeek 动态壁纸` · `Wallpaper Engine` · `DeepSeek 桌面宠物` · `DeepSeek Git 图谱` · `DeepSeek Worktree 隔离` · `DeepSeek 会话归档` · `多智能体协作` · `AI Agent 工作台` · `AI 编程助手` · `开源智能体`
 
 ### 友情链接
 

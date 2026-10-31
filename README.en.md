@@ -2,7 +2,7 @@
 
 [中文](README.md) | English
 
-dsh-web is an all-in-one modular plugin ecosystem and AI agent workbench for DeepSeek Harness (DSH) Web GUI, DeepSeek Web UI, and the official DeepSeek Desktop client. Built for DeepSeek-V3 and DeepSeek-R1 reasoning models, it equips developers and power users with autonomous task automation boards (cron background scheduling), mobile and cross-device remote access control, web-based SSH terminal operations and Linux cluster management, visual Git commit graphs with multi-agent worktree workspace isolation, full session search and archive management, token usage and API cost monitoring (including Token Bank), and a unified workshop for themes, skins, and desktop pets. Users can install the complete plugin bundle into an existing `dsh web` instance via the official profile mechanism, or install and run it directly in the official DeepSeek Harness desktop client.
+dsh-web is an all-in-one modular plugin ecosystem and AI agent workbench for DeepSeek Harness (DSH) Web GUI, DeepSeek Web UI, and the official DeepSeek Desktop client. Built for DeepSeek-V3 and DeepSeek-R1 reasoning models, it equips developers and power users with autonomous task automation boards (cron background scheduling), mobile phone app remote access, web-based SSH terminal operations and Linux cluster management, visual Git commit graphs with multi-agent worktree workspace isolation, full session search and archive management, token usage and API cost monitoring (including Token Bank), and a unified workshop for themes, skins, and desktop pets. Users can install the complete plugin bundle into an existing `dsh web` instance via the official profile mechanism, or install and run it directly in the official DeepSeek Harness desktop client.
 
 <p align="center">
   <img src="docs/dsh-web-banner.png" alt="dsh-web — Modular Plugin Ecosystem & Themes for DeepSeek Harness (DSH) Web GUI (Task Board, Mobile Remote, Web SSH, Git Worktree, Token Tracker, Themes & Skins)" width="100%">
@@ -30,7 +30,7 @@ dsh-web is an all-in-one modular plugin ecosystem and AI agent workbench for Dee
 
 <p align="center">
   <strong>DeepSeek Harness (DSH) Web Plugin Ecosystem · Modular AI Agent Workspace</strong><br>
-  <em>All-in-One Web GUI · Task Automation Board · Mobile Remote Access · Web SSH DevOps · Git Graph & Worktree · Token Cost Tracker · Themes & Skins Workshop</em>
+  <em>All-in-One Web GUI · Task Automation Board · Mobile Phone App Remote Access · Web SSH DevOps · Git Graph & Worktree · Token Cost Tracker · Themes & Skins Workshop</em>
 </p>
 
 <div align="center">
@@ -44,7 +44,7 @@ dsh-web is an all-in-one modular plugin ecosystem and AI agent workbench for Dee
 Stock DeepSeek Harness Web delivers fundamental chat interactions and tool execution capabilities. However, production workflows often require concurrent task scheduling, persistent background runs, remote collaboration, and developer-oriented tooling.
 
 dsh-web mounts directly into `dsh web` via official profiles without modifying DSH core source code, providing a comprehensive modular extension suite:
-- **Developer Operations & Collaboration Plugins**: Long-running autonomous task boards (multi-agent cascade/Teams orchestration, adversarial judge verification, and cron scheduling), LiangShen Mode (minimal persona, programmatic tool transport, dispatcher discipline), cross-device mobile remote control, SSH terminal operations and file transfers, Git history graphs with worktree isolation, full session archive management, and model capability declarations;
+- **Developer Operations & Collaboration Plugins**: Long-running autonomous task boards (multi-agent cascade/Teams orchestration, adversarial judge verification, and cron scheduling), LiangShen Mode (minimal persona, programmatic tool transport, dispatcher discipline), mobile phone app remote access, SSH terminal operations and file transfers, Git history graphs with worktree isolation, full session archive management, and model capability declarations;
 - **Decoupled Visual Themes & Assets**: Functional plugins and visual assets remain strictly separated. The skin loader handles stylesheet and dynamic effect rendering, while themes and animated desktop pets can be installed on demand from the [DSH Workshop](#workshop-dsh-marketcom);
 - **Bundled or Pick-and-Choose**: Install everything with one command via `@linxin666/dsh-web-all`, or install individual plugins independently. The aggregate pre-integrates every family plugin - see the [plugin bundle installation and configuration guide](packages/dsh-web-all/README.md).
 
@@ -55,7 +55,7 @@ dsh-web mounts directly into `dsh web` via official profiles without modifying D
 | Agent Presets & Disciplines | Stock presets only (Standard / Minimal, etc.), heavy context overhead | Stock presets + Workshop presets + LiangShen Mode (minimal persona, PTC program transport, gentle MCP paging, fact register, composer slot lever) |
 | Custom Model Capabilities | No visual configuration for model attributes | Visual declarations for multimodal vision image inputs and DeepSeek-R1 reasoning effort tiers, with instant provider toggles |
 | Autonomous Task Board | None | Host-authoritative 5-column board + multi-agent tree cascade/native Teams orchestration + double-blind judge quality gate + offline cron scheduling & sleep inhibition + GitHub Issue-to-PR automation + 8 model-callable tools |
-| Mobile & Remote Control | Localhost browser only | Instant QR pairing for iOS / Android mobile browsers, cross-device PC access, WebSocket token streaming & touch gestures |
+| Mobile Phone App Remote Access | Localhost browser only | Instant QR pairing for native phone apps, protocol v1 WebSocket streaming, public relay/tunnels & LAN ingress |
 | Remote Server Operations | None | Web-based SSH terminal (xterm.js), SFTP file transfer, tunnels & cluster commands |
 | Token Usage & Cost Monitor | None | Daily token consumption breakdowns, multi-provider balance tracking, plan quota reset monitoring & Token Bank |
 | Git Graph & Multi-Task Isolation | Terminal git commands only | Visual branch and commit graph + automated Git Worktree directories preventing concurrent agent code collisions |
@@ -68,7 +68,7 @@ dsh-web mounts directly into `dsh web` via official profiles without modifying D
 | --- | --- | --- |
 | Build 24/7 autonomous background AI engineering pipelines, scheduled code audits, multi-agent team orchestration, automatic GitHub issue-to-PR resolution, or goal-driven delivery | Task Board: host background scheduling, multi-agent cascade/Teams orchestration, adversarial judge verification, automated GitHub PR workflows, and sleep inhibition | [Task board and cron execution](packages/dsh-task-board/README.md) |
 | Maximize coding efficiency and minimize context waste with compact prompts, programmatic tool calling (PTC), and strict dispatcher discipline | LiangShen Mode: Minimal persona, run_code program transport, gentle MCP paging, fact register, and composer lever | [LiangShen Mode Preset & PTC](packages/dsh-liangshen/README.md) |
-| Remote access and control of DeepSeek Harness from mobile phones, tablets, or terminals via protocol v1 | Remote Bridge: native client WebSocket, session streaming, ingress gateway & WAN/LAN ingress | [Protocol v1 Remote Bridge](packages/dsh-remote-bridge/README.md) |
+| Remote access and control of DeepSeek Harness from mobile phone apps via protocol v1 | Mobile App Remote Access: protocol v1 WebSocket, session streaming, ingress gateway & WAN/LAN ingress | [Mobile App Remote Access](packages/dsh-remote-bridge/README.md) |
 | Delegate Linux server DevOps, SFTP file transfers, SSH terminal interactions, or incident response to AI agents | SSH Remote Ops: web terminal (xterm.js), visual SFTP transfers, port forwarding tunnels, cluster commands | [SSH terminal, file transfer, and tunnels](packages/dsh-ssh/README.md) |
 | Monitor DeepSeek API and LLM token usage metrics, query provider account balances, and track subscription quotas | Usage Statistics: daily token breakdown, balance queries, bill estimation & Token Bank | [Usage statistics and Token Bank](packages/dsh-usage/README.md) |
 | Multi-agent concurrent coding produces file collisions, requiring isolated Git branches and filesystem worktrees | Git Graph & Worktree: visual commit history, automatic dedicated worktree branches & directories | [Git visualization and worktree isolation](packages/dsh-git-graph/README.md) |
@@ -128,21 +128,13 @@ Toggle via the dedicated slot-machine lever in the composer on new-session scree
 
 For detailed architecture, benchmark evaluations, and configuration options, see the [dsh-liangshen README](packages/dsh-liangshen/README.md).
 
-### Mobile Remote Control（Mobile Remote · Mobile Access & Cross-Device Touch Optimization）
+### Mobile Phone App Remote Access（Mobile Remote · Native Phone App Access）
 
-Click the phone icon at the bottom of the sidebar to open the pairing modal. Scan the QR code or copy the link to access the full Web GUI on your mobile browser with dedicated touch adaptations: tap the whale floating button to toggle the sidebar, swipe horizontally to show or hide panels, long-press session items for context menus, press Enter for newlines, and interact with 16px inputs configured to prevent viewport auto-zooming. Desktop-heavy panels (such as SSH terminals, task boards, and Git graphs) automatically collapse on mobile screens, leaving a focused interface for message exchange, model switching, and reasoning adjustments in sync with the desktop state.
+After installing `@linxin666/dsh-remote-bridge` in your profile and restarting the server, click the QR code icon at the bottom of the sidebar (accessible label "Pair a phone (protocol v1)") to open the pairing panel. Scan the QR code with the mobile phone app to start using it immediately.
 
-The same pairing link works seamlessly on **secondary PC browsers**: open the desktop URL variant on another computer to launch the full Web GUI interface. All traffic passes through the authenticated `/remote/api` proxy route; unpaired devices encounter an access-denied banner. Pairing tokens are single-use and time-limited, and clicking "Stop" immediately revokes active device sessions. Communication defaults to the local network; pairing over wide-area networks is easily enabled using tunnel utilities like cloudflared. For security, route connections through the pairing gateway and avoid setting `--trusted-host` on tunnel domains, as that flag bypasses pairing checks (see [Protocol v1 Remote Bridge README](packages/dsh-remote-bridge/README.md); legacy browser remote control dsh-remote-web-ui has entered deprecation and was retired from the aggregate bundle).
+The pairing panel is protected by a loopback security gate on `/remote-bridge/pair/token` and can only be accessed from a browser running on localhost (remote access returns 403). Pairing codes are single-use credentials valid for 30 seconds; clicking "New code" voids the previous code. The QR code encodes a document containing the address and token (URL format `wss://<origin>/ios/v1?token=...`), allowing the mobile app to acquire both the host address and authentication token in one scan.
 
-![DeepSeek Harness mobile phone and desktop browser real-time interface synchronization](docs/assets/phone-and-web.png)
-
-> **Real-Time Streaming & Tunnels**: Mobile streaming rides the official WebSocket channel (relayed through the gated `/remote` proxy once paired), which Cloudflare quick tunnels, named tunnels, and the dsh-market stable-hostname relay all forward. Remote access adds a wide-area round trip to every update, and the relay costs one hop more than a bare tunnel; turn the relay off in the settings card when latency matters most.
-
-| Mobile Home (Whale toggle) | Session List |
-| --- | --- |
-| ![DeepSeek Harness Mobile Home — Touch-optimized interface and navigation drawer](docs/screenshots/20-mobile-home.png) | ![DeepSeek Mobile Session List — Cross-device synchronization across phones and PCs](docs/screenshots/21-mobile-sessions.png) |
-| Chat (Thinking & Tool execution) | Model Selection Sheet |
-| ![DeepSeek Mobile Chat — Real-time token streaming and reasoning process folding](docs/screenshots/22-mobile-chat.png) | ![DeepSeek Mobile Model Selector — Quick switching for LLM providers and reasoning effort](docs/screenshots/23-mobile-model-sheet.png) |
+The network protocol surface exposes only one WebSocket endpoint at `/ios/v1`. Both tunnels and the LAN forwarder route exclusively to an ingress gate that forwards this path, keeping Web GUI routes inaccessible from the public internet. Host dial addresses resolve in order from live runtime state (relay lease or running tunnel), to the `DSH_REMOTE_PUBLIC_BASE_URL` environment variable, to the active LAN forwarding address when listening. By default, public access is available out of the box (relay is enabled by default, tunnels are off, and LAN forwarding is off); for direct local network access, enable LAN forwarding in the plugin settings. The legacy browser remote control plugin `dsh-remote-web-ui` has retired, and its ingress capabilities have migrated into this package.
 
 ### SSH Remote Ops（SSH Remote Ops · Web Terminal, SFTP Transfer & Cluster Commands）
 
@@ -287,7 +279,7 @@ All plugins are published under the `@linxin666/dsh-*` npm scope:
 | [@linxin666/dsh-client-ui-task-board](https://www.npmjs.com/package/@linxin666/dsh-client-ui-task-board) | Task board: host-authoritative autonomous execution, multi-agent cascade/Teams orchestration, judge verification & cron scheduling |
 | [@linxin666/dsh-client-ui-task-board-github](https://www.npmjs.com/package/@linxin666/dsh-client-ui-task-board-github) | Task board extension: GitHub Issues sync, on by default and switchable off in settings |
 | [@linxin666/dsh-liangshen](https://www.npmjs.com/package/@linxin666/dsh-liangshen) | LiangShen Mode: Minimal system prompt, PTC tool dispatch, MCP paging, and dispatcher discipline |
-| [@linxin666/dsh-remote-bridge](https://www.npmjs.com/package/@linxin666/dsh-remote-bridge) | Remote bridge: protocol v1 host adaptor, native client WebSocket, ingress gate & WAN/LAN ingress |
+| [@linxin666/dsh-remote-bridge](https://www.npmjs.com/package/@linxin666/dsh-remote-bridge) | Mobile app remote access: protocol v1 host adaptor, native client WebSocket, ingress gate & WAN/LAN ingress |
 | [@linxin666/dsh-ssh](https://www.npmjs.com/package/@linxin666/dsh-ssh) | SSH operations: web terminal, SFTP transfers, tunnels, and cluster commands |
 | [@linxin666/dsh-usage](https://www.npmjs.com/package/@linxin666/dsh-usage) | Usage statistics: token consumption, balances, plan tracking, and Token Bank |
 | [@linxin666/dsh-pet](https://www.npmjs.com/package/@linxin666/dsh-pet) | Desktop pet: registry-driven interactive floating companions |
@@ -366,7 +358,7 @@ Scheduling runs directly on the `dsh web` host daemon without requiring browser 
 <details>
 <summary><strong>Why does mobile pairing fail to stream real-time updates?</strong></summary>
 
-Streaming rides the official WebSocket channel, relayed through the gated `/remote` proxy once paired. Updates pause while the tunnel is down and resume when the channel recovers, with no re-pairing needed; pacing differences come from the wide-area round trip of the remote link.
+The mobile app communicates with the host through the protocol v1 WebSocket channel. During tunnel or relay disruptions, streaming updates pause and will automatically reconnect once the network recovers; pacing differences are primarily caused by wide-area round-trip latency.
 
 </details>
 
@@ -393,9 +385,9 @@ Yes. Aggregate bundle entries use the `web-ui-` ID prefix (such as `web-ui-usage
 
 
 <details>
-<summary><strong>How do I access DeepSeek Harness from a mobile phone or tablet? Does it require the same local network?</strong></summary>
+<summary><strong>How do I access DeepSeek Harness from a mobile phone app? Does it require the same local network?</strong></summary>
 
-Mobile access is secured by one-time pairing tokens. If your mobile device and the computer running DSH share the same local Wi-Fi or LAN, click the mobile phone icon in the desktop sidebar to generate a QR code, then scan it with your phone camera to launch the mobile touch interface immediately. For remote wide-area access (e.g. accessing your home machine over cellular networks while away), route DSH through a secure tunnel like Cloudflare Tunnel (cloudflared) or Tailscale. All requests pass through authentication gates, and unauthorized visits are rejected.
+Mobile remote access is powered by protocol v1 and does not require sharing the same Wi-Fi network. By default, the plugin enables public relay access; click the QR code icon at the bottom of the desktop sidebar to open the pairing panel, then scan the QR code with the mobile phone app to connect over the internet. Cloudflare Tunnels can also be configured. To connect directly over a local network, enable LAN forwarding in the plugin settings before scanning the QR code.
 
 </details>
 
@@ -424,7 +416,7 @@ Running multiple autonomous agents in a single shared Git checkout often results
 
 - Task board scheduling runs on the backend host; closing browser tabs will not interrupt tasks, but stopping the host process or putting the machine to sleep will skip missed schedules without backfilling. Optional power management prevents idle sleep only and cannot bypass manual sleep, lid closure, or power shutdown (see [dsh-task-board README](packages/dsh-task-board/README.md)).
 - SSH credentials (passwords and private key passphrases) persist locally in `~/.dsh/dsh-ssh.json` with 0600 permissions; reconnecting during connection drops may replay non-idempotent commands, and remote outputs return without sanitization (see [dsh-ssh README](packages/dsh-ssh/README.md)).
-- Mobile streaming is relayed through a tunnel or the stable-hostname relay, so a wide-area round trip is added to every update; the relay costs one hop more than a bare quick tunnel, and both work.
+- Mobile app streaming is relayed through a tunnel or the stable-hostname relay, adding wide-area round-trip latency to each update; the relay costs one hop more than a bare quick tunnel, and both are available.
 - Full repository builds require Node.js >= 22 and pnpm; standard npm installations have no developer tool prerequisites.
 
 ## Community
@@ -440,7 +432,7 @@ You can also join our [Discord community](https://discord.gg/6v4gm9u4S), or subm
 
 ### Keywords and Topics Index
 
-`DeepSeek` · `DeepSeek Harness` · `DSH` · `DeepSeek Web` · `DeepSeek Web UI` · `DeepSeek Web GUI` · `DeepSeek Desktop Client` · `DeepSeek Desktop` · `DeepSeek-V3` · `DeepSeek-R1` · `DeepSeek Plugins` · `DeepSeek Extensions` · `DeepSeek Task Board` · `DeepSeek Cron Scheduling` · `DeepSeek Autonomous Automation` · `DeepSeek Mobile Remote` · `DeepSeek Phone Access` · `DeepSeek Mobile Touch UI` · `DeepSeek SSH Terminal` · `DeepSeek Server DevOps` · `DeepSeek Token Tracker` · `DeepSeek API Cost Monitor` · `Token Bank` · `DeepSeek Themes` · `DeepSeek Skins` · `DeepSeek Live Wallpapers` · `Wallpaper Engine` · `DeepSeek Desktop Pet` · `DeepSeek Git Graph` · `DeepSeek Worktree Isolation` · `DeepSeek Session Archive` · `Multi-Agent Collaboration` · `AI Agent Workspace` · `AI Coding Assistant` · `Open Source AI Agent`
+`DeepSeek` · `DeepSeek Harness` · `DSH` · `DeepSeek Web` · `DeepSeek Web UI` · `DeepSeek Web GUI` · `DeepSeek Desktop Client` · `DeepSeek Desktop` · `DeepSeek-V3` · `DeepSeek-R1` · `DeepSeek Plugins` · `DeepSeek Extensions` · `DeepSeek Task Board` · `DeepSeek Cron Scheduling` · `DeepSeek Autonomous Automation` · `DeepSeek Mobile Remote` · `DeepSeek Phone Access` · `DeepSeek Mobile App` · `DeepSeek SSH Terminal` · `DeepSeek Server DevOps` · `DeepSeek Token Tracker` · `DeepSeek API Cost Monitor` · `Token Bank` · `DeepSeek Themes` · `DeepSeek Skins` · `DeepSeek Live Wallpapers` · `Wallpaper Engine` · `DeepSeek Desktop Pet` · `DeepSeek Git Graph` · `DeepSeek Worktree Isolation` · `DeepSeek Session Archive` · `Multi-Agent Collaboration` · `AI Agent Workspace` · `AI Coding Assistant` · `Open Source AI Agent`
 
 ### Friendly Links
 

@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-> **弃用声明**：`@linxin666/dsh-remote-web-ui` 已弃用，后续由 [@linxin666/dsh-remote-bridge](../dsh-remote-bridge/README.zh.md) 承接。本插件已从 `@linxin666/dsh-web-all` 聚合包中摘除（老 profile 行通过 tombstone 导出与 `retiredPlugins` 登记静默跳过为 no-op），并计划在下一版本中正式删除。过渡期内独立安装（`dsh plugin --profile <name> add @linxin666/dsh-remote-web-ui`）仍可正常使用。
+> **弃用声明**：`@linxin666/dsh-remote-web-ui` 已弃用，后续由 [@linxin666/dsh-remote-bridge](../dsh-remote-bridge/README.zh.md) 承接。本插件已从 `@linxin666/dsh-web-all` 聚合包中摘除（老 profile 行通过 tombstone 导出与 `retiredPlugins` 登记静默跳过为 no-op），并计划在下一版本中正式删除。过渡期内独立安装（`dsh plugin --profile <name> add @linxin666/dsh-remote-web-ui`）仍可正常使用。浏览器远程控制能力已由手机 App（@linxin666/dsh-remote-bridge）取代，本包不再提供远程访问功能。
 >
 > - **已迁往 `@linxin666/dsh-remote-bridge` 的能力**：接入栈（中继身份登记、租约 claim/release 控制面、快速/命名双隧道连接器、Durable Object 会合点连接器、cloudflared 进程生命周期与孤儿进程清理、Cloudflare 命名隧道 ingress 端口同步、局域网转发器、宿主通配绑定探测与主机防火墙管理）。
 > - **随本插件一起下线的能力**：浏览器侧远程控制面（配对 cookie 门控、`/api/pair` 路由族、门控 `/remote` 代理通道以及手机浏览器竖屏触控适配层）。

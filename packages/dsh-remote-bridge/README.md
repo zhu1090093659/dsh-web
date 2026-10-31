@@ -10,9 +10,9 @@ English | [中文](README.zh.md)
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
 
-A host-side adaptor that publishes DeepSeek Harness (DSH) itself as protocol v1: one WebSocket surface at `/ios/v1` that a native client — a phone app, a tablet, a terminal — can drive without a browser, without the Web GUI bundle, and without a relay change.
+The sole remote access path in this repository: native phone apps connecting to the host via protocol v1. This host-side adaptor publishes DeepSeek Harness (DSH) itself as protocol v1 over a single WebSocket surface at `/ios/v1` that native phone apps can drive directly without a browser. Browser-based remote control has retired, and its WAN/LAN ingress capabilities have migrated into this package.
 
-Protocol v1 is deliberately a second, independent surface: this plugin owns its own ingress stack for public and local access, and contains no browser pairing surface (the pairing cookie gate and gated `/remote` proxy channel of the retired `dsh-remote-web-ui` are not included). It consumes the harness in-process instead — the Typert gateway for session work, the approval waterfall for permission requests — and mints its own one-time bootstrap token on a loopback-only route.
+The adaptor consumes the harness in-process — the Typert gateway for session work and the approval waterfall for permission requests — and mints its own one-time bootstrap token on a loopback-only route, backed by an independent public relay, Cloudflare tunnels, and LAN ingress stack.
 
 ## What it does
 
@@ -31,7 +31,7 @@ The package publishes one protocol and, beside it, one small browser surface. Wh
 - **A subscription, not a poll.** `session.snapshot` opens the harness follow stream and keeps it, so the baseline and every later increment arrive over the same socket.
 - **Approvals reach the client, and a reconnecting phone is handed the ones still waiting.** A tool that asks for permission arrives as an `approval.request` event and is answered with `approval.resolve`; a request nobody answers is rejected, and a connection that declared `approvals.v1` receives every unsettled approval again after its handshake.
 - **Pairing.** A one-time bootstrap token plus a P-256 challenge-response mint a revocable device token; an unpaired connection reaches three methods only.
-- **A pairing panel.** The same plugin row declares a `dsh.client` browser half: a sidebar-foot seat that opens the official modal holding one QR symbol, one status line, one address line and one action row, over the live one-time code.
+- **A pairing panel.** The same plugin row declares a `dsh.client` browser half: a QR code icon at the bottom of the sidebar (aria-label "Pair a phone (protocol v1)") that opens a modal displaying a 30 s single-use pairing QR code and a "New code" action.
 - **No relay change.** The protocol rides whatever origin the instance already publishes, and the relay hop forwards it exactly as it forwards everything else.
 
 ## Transport
@@ -181,14 +181,16 @@ The device token rides the WebSocket upgrade as `Authorization: Bearer <deviceTo
 
 ### Bootstrap token
 
-`GET /remote-bridge/pair/token` is an exact host route behind a two-condition loopback gate: the socket address must be `127.0.0.1`, `::1` or `::ffff:127.0.0.1`, and the `Host` header must name `127.0.0.1`, `localhost` or `[::1]` (its port is ignored). A tunneled request fails the second condition even though its tunnel client connects from this same machine, so the endpoint stays unreachable from the public origin; anything else gets 403. The token is held in memory, expires after 30 s, is spent by the first `pair.begin`, and the same link is printed to the host log while the code itself is rendered in the pairing panel, so a desktop operator can reach it either way.
+The pairing entry is a QR code icon at the bottom of the sidebar, with the accessible label "Pair a phone (protocol v1)". Clicking it opens the pairing panel. The panel is strictly available on localhost: its token route `GET /remote-bridge/pair/token` is guarded by a two-condition loopback gate where both the socket address and the `Host` header must name this machine (remote or tunneled requests return 403).
+
+The pairing code is single-use and valid for 30 seconds (`BOOTSTRAP_TOKEN_TTL_MS = 30_000`), consumed immediately upon the first `pair.begin`; clicking "New code" in the panel voids the previous code and mints a fresh one. There is no "Stop" button and no action to revoke all connected devices. The link is printed to the host log, while the code itself renders in the pairing panel for scanning.
 
 ```sh
 curl -s http://127.0.0.1:3080/remote-bridge/pair/token
 # {"token":"...","expiresAt":1760000030000,"url":"ws://127.0.0.1:3080/ios/v1?token=..."}
 ```
 
-When this machine can name its own public origin — either from live relay lease/tunnel state or `DSH_REMOTE_PUBLIC_BASE_URL` — the same answer carries the address half too:
+When this machine can determine a public or LAN origin — from live relay lease/tunnel state, `DSH_REMOTE_PUBLIC_BASE_URL`, or a listening LAN forwarder — the same answer carries the address half:
 
 ```json
 {
@@ -201,7 +203,7 @@ When this machine can name its own public origin — either from live relay leas
 }
 ```
 
-`pairingUrl` is what a pairing QR should carry: the iOS client parses `{token, url}` and adopts the origin from `url`, so one scan sets both the address and the one-shot token and the operator types nothing on the phone. With no discoverable origin those two fields are absent rather than guessed, the panel falls back to a bare-token code, and the phone keeps whatever origin it already has.
+The QR code encodes a `{token, url}` document where `url` takes the form `wss://<origin>/ios/v1?token=...` (derived via `pairingDialUrlOf`, converting https to wss and http to ws). Scanning with the mobile phone app acquires both the address and token at once without manual entry. With no discoverable origin those fields are absent rather than guessed, the panel falls back to a bare-token code, and the phone keeps whatever origin it already has.
 
 ### Device token
 
@@ -272,7 +274,7 @@ The plugin is configured through profile YAML (`cordis.patch.yml` or profile con
 
 ## Web GUI pairing panel
 
-The browser half exists so that an operator who never opens a terminal still has a way to start pairing. It follows the family's sidebar-foot convention: the trigger registers into the official `sidebar.footer.action` list slot (declared by ui-sidebar — the seat `dsh-remote-web-ui`'s phone trigger and `dsh-update`'s updater already share) and opens the official `Modal`, whose headless card this package fills. Every control it renders is a library primitive — the dialog, the three actions and their glyphs — so the mask, the card, the focus trap, Escape, focus restoration and each hover/focus/disabled state are the shell's behavior rather than a copy of it. It is delivered by the same plugin row: `exports["./client"]` is the artifact and `dsh.client` declares the client modules that must be live first.
+The browser half exists so that an operator who never opens a terminal still has a way to start pairing. It follows the family's sidebar-foot convention: the trigger registers into the official `sidebar.footer.action` list slot (declared by ui-sidebar, sharing this list slot with `dsh-update`'s updater) and opens the official `Modal`, whose headless card this package fills. Every control it renders is a library primitive — the dialog, the three actions and their glyphs — so the mask, the card, the focus trap, Escape, focus restoration and each hover/focus/disabled state are the shell's behavior rather than a copy of it. It is delivered by the same plugin row: `exports["./client"]` is the artifact and `dsh.client` declares the client modules that must be live first.
 
 The panel has one job — put the live one-time code in front of the operator, in one reading order:
 

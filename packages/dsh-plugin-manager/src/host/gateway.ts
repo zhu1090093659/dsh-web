@@ -55,6 +55,41 @@ export function unsafeSpecReason(spec: string): string | undefined {
     : undefined
 }
 
+/**
+ * The pnpm diagnostic for a dependency whose build script it skipped, as it
+ * appears in the CLI's captured output:
+ *
+ *     [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: cpu-features@0.0.10
+ *
+ * The code is bracketed and the package list is comma separated, so the bracket
+ * is part of the match, and it stops at the end of that line, so the \r a
+ * Windows console writes before the newline neither hides nor extends it.
+ */
+const IGNORED_BUILDS_PATTERN = /\[ERR_PNPM_IGNORED_BUILDS\][ \t]*Ignored build scripts:[^\n\r]*/
+
+/**
+ * Whether one CLI run's captured output carries the skipped-build-script
+ * condition.
+ *
+ * `dsh plugin` forwards to pnpm, so a non-zero exit is pnpm's own verdict —
+ * except this one, which pnpm prints *after* it has written the profile: a
+ * dependency that declares a build script is not built until it is approved, and
+ * the unapproved one fails the command while the package is already on disk and
+ * the profile already carries it. Measured 2026-10-31 against the CLI's bundled
+ * pnpm 11.9.0 and against pnpm 11.24.0: `dsh plugin --profile web add
+ * cpu-features` exits 1 with its dependency landed, and the family aggregate
+ * exits the same way naming cloudflared, cpu-features and ssh2.
+ *
+ * The condition is necessary and not sufficient: only the profile can say
+ * whether the change the caller asked for really landed. The job runner reads it
+ * and keeps the exit a failure when it did not.
+ * @param output - the captured stdout and stderr of one CLI run.
+ * @returns true when pnpm named the build scripts it skipped.
+ */
+export function reportsIgnoredBuilds(output: string): boolean {
+  return IGNORED_BUILDS_PATTERN.test(output)
+}
+
 /** One CLI-backed operation in flight or settled. */
 export interface GatewayJob {
   id: string
@@ -92,6 +127,16 @@ export interface GatewayJob {
    * reporting a clean in-place update.
    */
   restartRequired?: string[]
+  /**
+   * Conditions a settled run reported while still carrying its change out:
+   * pnpm's own words about a non-zero exit the gateway accepted because the
+   * profile really moved ({@link reportsIgnoredBuilds}). The job is `done` —
+   * the packages are installed — and this rides the same optional string-list
+   * fact channel as {@link GatewayJob.restartRequired}, because the `notices`
+   * ledger records row-state moves in the conflict-row shape and a build-script
+   * diagnostic is neither a row nor a state.
+   */
+  warnings?: string[]
   error?: string
 }
 
@@ -766,6 +811,20 @@ interface CapturedState {
 }
 
 /**
+ * A non-zero CLI exit the gateway may re-read from the profile instead of
+ * reporting outright: pnpm's skipped-build-script condition
+ * ({@link reportsIgnoredBuilds}), which it prints after the profile has been
+ * written. Both facts travel, because the warning a landed run records names the
+ * code as well as pnpm's text.
+ */
+interface TolerableExit {
+  /** The exit code the run ended on. */
+  code: number | null
+  /** The run's captured output: pnpm's reason plus the CLI's own trailer. */
+  output: string
+}
+
+/**
  * What one two-phase replacement produced: the failure to report, or the fact
  * that the target landed and only a restart loads it.
  */
@@ -929,13 +988,18 @@ export class CliGateway {
     const shouldAddTarget = targetPreviouslyInstalled
       ? !targetIsLocal
       : !after.dependencies.includes(targetId)
+    // The migration's install step is the same pnpm call an install makes, so it
+    // carries the same skipped-build-script exit (see {@link reportsIgnoredBuilds});
+    // here too only the profile decides whether that run landed.
+    let tolerated: TolerableExit | undefined
     if (shouldAddTarget) {
       const add = await this.runCli(
         binary,
         ['plugin', '--profile', this.facts.profileName, 'add', targetSpec],
         ADD_TIMEOUT_MS,
       )
-      if (add.code !== 0) {
+      if (add.code !== 0 && reportsIgnoredBuilds(add.output)) tolerated = { code: add.code, output: add.output }
+      if (add.code !== 0 && tolerated === undefined) {
         await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
         job.error = `plugin-manager: 迁移安装 ${targetSpec} 失败${add.output === '' ? '' : `：\n${add.output}`}`
         return
@@ -944,7 +1008,9 @@ export class CliGateway {
     }
     if (!after.dependencies.includes(targetId)) {
       await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
-      job.error = `plugin-manager: dsh plugin add 报告成功，但 ${targetId} 未出现在 profile 中`
+      job.error = tolerated === undefined
+        ? `plugin-manager: dsh plugin add 报告成功，但 ${targetId} 未出现在 profile 中`
+        : `plugin-manager: 迁移安装 ${targetSpec} 失败${tolerated.output === '' ? '' : `：\n${tolerated.output}`}`
       return
     }
     const stripped = await this.stripDuplicateMounts(job, before, after)
@@ -995,6 +1061,7 @@ export class CliGateway {
       from: change.from,
       to: change.to,
     }))
+    if (tolerated !== undefined) this.recordToleratedExit(job, tolerated)
     job.phase = 'done'
   }
 
@@ -1561,6 +1628,7 @@ export class CliGateway {
       conflicts: job.conflicts === undefined ? undefined : [...job.conflicts],
       notices: job.notices === undefined ? undefined : [...job.notices],
       restartRequired: job.restartRequired === undefined ? undefined : [...job.restartRequired],
+      warnings: job.warnings === undefined ? undefined : [...job.warnings],
     }
   }
 
@@ -1636,9 +1704,18 @@ export class CliGateway {
     child.stdout?.on('data', (chunk: Buffer) => { capture(chunk, output) })
     child.stderr?.on('data', (chunk: Buffer) => { capture(chunk, output) })
     const code = await awaitCliExit(child, output, timeoutMs)
-    if (code !== 0) {
+    const tail = output.read().trim()
+    // A non-zero exit is normally the whole verdict, and every other pnpm
+    // condition keeps that meaning. The skipped-build-script exit is the one
+    // exception: pnpm prints it after the profile has been written, so the
+    // exit is re-read from the profile instead of being trusted — and only the
+    // profile can say whether this run landed. The post-checks below are those
+    // reads, so a tolerated exit that landed nothing still fails, with pnpm's
+    // own tail as the reason.
+    const tolerated: TolerableExit | undefined =
+      code !== 0 && reportsIgnoredBuilds(tail) ? { code, output: tail } : undefined
+    if (code !== 0 && tolerated === undefined) {
       job.phase = 'error'
-      const tail = output.read().trim()
       job.error = tail === '' ? `plugin-manager: dsh plugin ${job.action} exited with code ${String(code)}` : tail
       return
     }
@@ -1659,9 +1736,10 @@ export class CliGateway {
     if (job.action === 'install') {
       const name = this.newDependency(before, after)
       if (name === undefined) {
-        // B8: a success exit code is not proof the install landed.
+        // B8: neither a success exit code nor a tolerated one is proof the
+        // install landed.
         job.phase = 'error'
-        job.error = 'plugin-manager: dsh plugin add 报告成功，但 profile 未新增任何依赖（安装未生效）'
+        job.error = tolerated?.output ?? 'plugin-manager: dsh plugin add 报告成功，但 profile 未新增任何依赖（安装未生效）'
         return
       }
       // B5: a duplicate entry id is boot-blocking. Never write disabled rows
@@ -1686,14 +1764,14 @@ export class CliGateway {
       const targetVersion = job.targetVersion
       if (targetId === undefined || targetVersion === undefined || !after.dependencies.includes(targetId)) {
         job.phase = 'error'
-        job.error = 'plugin-manager: dsh plugin add 报告成功，但目标插件未保留在 profile 中（更新未生效）'
+        job.error = tolerated?.output ?? 'plugin-manager: dsh plugin add 报告成功，但目标插件未保留在 profile 中（更新未生效）'
         return
       }
       const manifest = await readProfileManifest(this.facts.packageJsonPath)
       const updated = await buildPluginRow(this.facts, targetId, manifest.dependencies[targetId] ?? job.spec, after.layer.rows)
       if (updated.version !== targetVersion) {
         job.phase = 'error'
-        job.error = `plugin-manager: dsh plugin add 报告成功，但 ${targetId} 仍为 ${updated.version}，预期 ${targetVersion}（更新未生效）`
+        job.error = tolerated?.output ?? `plugin-manager: dsh plugin add 报告成功，但 ${targetId} 仍为 ${updated.version}，预期 ${targetVersion}（更新未生效）`
         return
       }
       job.plugin = updated
@@ -1705,11 +1783,12 @@ export class CliGateway {
       // nothing, which the loader warns about on every boot.
       if (await this.pruneOrphanOverrides(job, dump) === undefined) return
     } else {
-      // B8 (remove): a success exit code must mean the dependency is gone.
+      // B8 (remove): an exit code — success or tolerated — must mean the
+      // dependency is gone.
       const removed = before.dependencies.find(candidate => !after.dependencies.includes(candidate))
       if (removed === undefined) {
         job.phase = 'error'
-        job.error = 'plugin-manager: dsh plugin remove 报告成功，但依赖仍在 profile 中（卸载未生效）'
+        job.error = tolerated?.output ?? 'plugin-manager: dsh plugin remove 报告成功，但依赖仍在 profile 中（卸载未生效）'
         return
       }
     }
@@ -1722,7 +1801,25 @@ export class CliGateway {
     if (job.action === 'install' || job.action === 'remove') {
       job.plugin = await this.rowFor(job.action, job.spec, before, after)
     }
+    if (tolerated !== undefined) this.recordToleratedExit(job, tolerated)
     job.phase = 'done'
+  }
+
+  /**
+   * Carry an accepted non-zero exit to the caller and to the host log.
+   *
+   * Every post-check passed, so the change landed and the job settles `done`;
+   * the pnpm output is kept anyway, because it is the only record that a
+   * dependency was installed without its build script — a fact the next boot
+   * reports as a missing native module, with nothing left to attribute it to.
+   * @param job - the job the run settles.
+   * @param tolerated - the exit the profile overruled.
+   */
+  private recordToleratedExit(job: GatewayJob, tolerated: TolerableExit): void {
+    job.warnings = [...(job.warnings ?? []), tolerated.output]
+    console.warn(
+      `[plugin-manager] 退出码 ${String(tolerated.code)} 已按完成处理：profile 变更已落地，pnpm 只是跳过了构建脚本（可用 pnpm approve-builds 复核）：\n${tolerated.output}`,
+    )
   }
 
   /**

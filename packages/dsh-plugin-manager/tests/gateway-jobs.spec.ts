@@ -603,6 +603,273 @@ describe('CliGateway update verification', () => {
   })
 })
 
+/**
+ * pnpm 11's skipped-build-script exit, captured from the real CLI on 2026-10-31
+ * (`dsh plugin --profile web add cpu-features`): the dependency is written to the
+ * profile and the command still exits 1.
+ */
+const IGNORED_BUILDS_OUTPUT = [
+  'dependencies:',
+  '+ cpu-features ^0.0.10',
+  '',
+  'Packages: +3',
+  '+++',
+  'Progress: resolved 6, reused 3, downloaded 0, added 3, done',
+  '[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: cpu-features@0.0.10',
+  '',
+  'Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.',
+  'dsh: plugin command failed; diagnostics: /tmp/profiles/web/.plugin-manager/logs/operation-EXAMPLE/pnpm.log',
+].join('\n')
+
+/** A refusal pnpm reports for a run it did not carry out. */
+const RELEASE_AGE_OUTPUT = [
+  '[ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION] cpu-features@0.0.10 is not older than 7 days on the registry',
+].join('\n')
+
+/** Whether one fake CLI call was the read-only composition probe. */
+function isDumpConfig(args: string[]): boolean {
+  return args[0] === '--profile' && args[2] === '--dump-config'
+}
+
+/**
+ * The exit the CLI reports when the build-script gate fails a run it already
+ * carried out. The profile mutation is the caller's, so each test says whether
+ * the change landed.
+ */
+function ignoredBuildsExit(): { code: number; output: string } {
+  return { code: 1, output: IGNORED_BUILDS_OUTPUT }
+}
+
+describe('CliGateway non-zero exit the profile overrules (pnpm build-script gate)', () => {
+  it('operator: completes an install whose dependency landed although pnpm exited non-zero', async () => {
+    // Given an install pnpm fails after writing the profile
+    const { facts, dir } = makeProfile({})
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 0 }
+      if (args[3] === 'add') {
+        installPackage(facts.profileDir, args[4] ?? '', { version: '0.0.10' })
+        return ignoredBuildsExit()
+      }
+      return { code: 0 }
+    }, calls)
+
+    // When the install runs to settlement
+    const { jobId } = gateway.install('cpu-features')
+    const job = await settle(gateway, jobId)
+
+    // Then the landed install is done, carrying pnpm's own words, and the
+    // post-check chain ran to its last gate (the composition preflight).
+    expect(job.phase).toBe('done')
+    expect(job.plugin).toMatchObject({ id: 'cpu-features', version: '0.0.10' })
+    expect(job.warnings).toEqual([IGNORED_BUILDS_OUTPUT])
+    expect(job.error).toBeUndefined()
+    expect(calls.filter(isDumpConfig)).toHaveLength(1)
+  })
+
+  it('operator: keeps pnpm\'s reason when the tolerated exit landed nothing', async () => {
+    // Given an install pnpm fails and the profile never gains the package
+    const { facts, dir } = makeProfile({})
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, () => ignoredBuildsExit(), calls)
+
+    // When the install runs to settlement
+    const { jobId } = gateway.install('cpu-features')
+    const job = await settle(gateway, jobId)
+
+    // Then it stays an error with pnpm's output, and no post-check ran
+    expect(job.phase).toBe('error')
+    expect(job.error).toBe(IGNORED_BUILDS_OUTPUT)
+    expect(job.warnings).toBeUndefined()
+    expect(calls).toHaveLength(1)
+  })
+
+  it('operator: completes an update whose version landed although pnpm exited non-zero', async () => {
+    // Given an update pnpm fails after the new version is on disk
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 0 }
+      if (args[3] === 'add') {
+        installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
+        return ignoredBuildsExit()
+      }
+      return { code: 0 }
+    }, calls)
+
+    // When the update runs to settlement
+    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
+    const job = await settle(gateway, jobId)
+
+    // Then the version the route resolved is reported, and the preflight ran
+    expect(job.phase).toBe('done')
+    expect(job.plugin).toMatchObject({ id: 'dsh-memoir', version: '1.1.0' })
+    expect(job.warnings).toEqual([IGNORED_BUILDS_OUTPUT])
+    expect(calls.filter(isDumpConfig)).toHaveLength(1)
+  })
+
+  it('operator: keeps the failure when a tolerated exit left the old version in place', async () => {
+    // Given an update pnpm fails and which moves nothing
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, () => ignoredBuildsExit(), calls)
+
+    // When the update runs to settlement
+    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
+    const job = await settle(gateway, jobId)
+
+    // Then it stays an error with pnpm's output, before any preflight
+    expect(job.phase).toBe('error')
+    expect(job.error).toBe(IGNORED_BUILDS_OUTPUT)
+    expect(job.plugin).toBeUndefined()
+    expect(calls).toHaveLength(1)
+  })
+
+  it('operator: keeps a different pnpm refusal a failure even when the version moved', async () => {
+    // Given an update that lands while pnpm refuses for an unrelated reason
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 0 }
+      if (args[3] === 'add') {
+        installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
+        return { code: 1, output: RELEASE_AGE_OUTPUT }
+      }
+      return { code: 0 }
+    }, calls)
+
+    // When the update runs to settlement
+    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
+    const job = await settle(gateway, jobId)
+
+    // Then only the build-script condition is overruled: this stays an error
+    expect(job.phase).toBe('error')
+    expect(job.error).toBe(RELEASE_AGE_OUTPUT)
+    expect(job.warnings).toBeUndefined()
+    expect(calls).toHaveLength(1)
+  })
+
+  it('operator: still rolls back a tolerated install whose row names an unresolvable package', async () => {
+    // Given an install pnpm fails and whose insert entry resolves nowhere
+    const { facts, dir } = makeProfile({})
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 0 }
+      if (args[3] === 'add') {
+        installPackage(facts.profileDir, 'broken-pkg', {
+          patch: "- insert:\n    - id: broken\n      name: '@nonexistent/dsh-bundle-missing'\n",
+        })
+        return ignoredBuildsExit()
+      }
+      if (args[3] === 'remove') removePackage(facts.profileDir, args[4] ?? '')
+      return { code: 0 }
+    }, calls)
+
+    // When the tolerated install runs to settlement
+    const { jobId } = gateway.install('broken-pkg')
+    const job = await settle(gateway, jobId)
+
+    // Then B6 decides against the package that did land: it is rolled back and
+    // the preflight is never reached.
+    expect(job.phase).toBe('error')
+    expect(job.error).toContain('不可解析')
+    expect(calls.some(args => args[3] === 'remove' && args[4] === 'broken-pkg')).toBe(true)
+    expect(calls.some(isDumpConfig)).toBe(false)
+    expect(readManifest(facts.profileDir).dependencies['broken-pkg']).toBeUndefined()
+    expect(job.warnings).toBeUndefined()
+  })
+
+  it('operator: fails a tolerated run that the boot preflight rejects', async () => {
+    // Given an update that lands while the composition cannot boot
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 1, output: 'error: cannot resolve plugin ui-pet' }
+      if (args[3] === 'add') {
+        installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
+        return ignoredBuildsExit()
+      }
+      return { code: 0 }
+    }, calls)
+
+    // When the update runs to settlement
+    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
+    const job = await settle(gateway, jobId)
+
+    // Then the preflight still runs after the tolerated exit and fails the job
+    expect(job.phase).toBe('error')
+    expect(job.error).toContain('cannot resolve plugin ui-pet')
+    expect(calls.filter(isDumpConfig)).toHaveLength(1)
+    expect(job.warnings).toBeUndefined()
+  })
+
+  it('operator: completes a removal whose dependency is gone although pnpm exited non-zero', async () => {
+    // Given a removal pnpm fails after the dependency has left the profile
+    const { facts, dir } = makeProfile({ 'dsh-memoir': {} })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 0 }
+      if (args[3] === 'remove') {
+        removePackage(facts.profileDir, args[4] ?? '')
+        return ignoredBuildsExit()
+      }
+      return { code: 0 }
+    }, calls)
+
+    // When the removal runs to settlement
+    const { jobId } = gateway.remove('dsh-memoir')
+    const job = await settle(gateway, jobId)
+
+    // Then the gone dependency settles the job instead of the exit code
+    expect(job.phase).toBe('done')
+    expect(readManifest(facts.profileDir).dependencies['dsh-memoir']).toBeUndefined()
+    expect(job.warnings).toEqual([IGNORED_BUILDS_OUTPUT])
+  })
+
+  it('operator: completes a migration whose install step exited non-zero after landing', async () => {
+    // Given a legacy aggregate whose replacement install pnpm fails after
+    // writing it
+    const legacy = '@linxin666/dsh-web-ui-all'
+    const current = '@linxin666/dsh-web-all'
+    const { facts, dir } = makeProfile(
+      { [legacy]: { version: '0.3.2', bundle: true } },
+      { bundles: [legacy, '@omdsh-dev/dsh-annotation'] },
+    )
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 0 }
+      if (args[3] === 'remove' && args[4] === legacy) {
+        removePackage(facts.profileDir, legacy)
+        return { code: 0 }
+      }
+      if (args[3] === 'add' && args[4] === `${current}@0.3.3`) {
+        installPackage(facts.profileDir, current, { version: '0.3.3', bundle: true })
+        return ignoredBuildsExit()
+      }
+      return { code: 0 }
+    }, calls)
+
+    // When the migration runs to settlement
+    const { jobId } = gateway.migrate(legacy, current, '0.3.3', `${current}@0.3.3`)
+    const job = await settle(gateway, jobId)
+
+    // Then the migration is done on the version it landed, legacy removed
+    expect(job.phase).toBe('done')
+    expect(job.plugin).toMatchObject({ id: current, version: '0.3.3' })
+    expect(job.warnings).toEqual([IGNORED_BUILDS_OUTPUT])
+    expect(readManifest(facts.profileDir).dependencies[legacy]).toBeUndefined()
+  })
+})
+
 describe('CliGateway operations on an application-owned profile', () => {
   /** A profile fact set the packaged Desktop launcher produces. */
   function desktopFacts(facts: ProfileFacts): ProfileFacts {

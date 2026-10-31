@@ -894,14 +894,15 @@ test('total downloads badge sums the npm, npmmirror, and GitHub release channels
   }
   try {
     clearBadgeCaches()
-    const expected = formatTotal((25 * 100 + 25 * 200) * windows.length + 10) + ' total'
+    // The whitelist carries 24 family packages after dsh-remote-web-ui retired.
+    const expected = formatTotal((24 * 100 + 24 * 200) * windows.length + 10) + ' total'
     const first = await worker.fetch(new Request('https://dsh-market.com/api/npm-badge/total'), {}, context())
     const badge = await first.json()
     assert.equal(badge.schemaVersion, 1)
     assert.equal(badge.label, 'downloads')
     assert.equal(badge.message, expected)
-    assert.equal(calls.npm, 25 * windows.length)
-    assert.equal(calls.mirror, 25 * windows.length)
+    assert.equal(calls.npm, 24 * windows.length)
+    assert.equal(calls.mirror, 24 * windows.length)
     assert.equal(calls.github, 1)
     const snapshot = { ...calls }
     const second = await worker.fetch(new Request('https://dsh-market.com/api/npm-badge/total'), {}, context())
@@ -925,7 +926,7 @@ test('total downloads badge keeps serving when one channel fails', async () => {
     clearBadgeCaches()
     const response = await worker.fetch(new Request('https://dsh-market.com/api/npm-badge/total'), {}, context())
     const badge = await response.json()
-    assert.equal(badge.message, formatTotal(25 * 100 * windows.length) + ' total')
+    assert.equal(badge.message, formatTotal(24 * 100 * windows.length) + ' total')
     assert.equal(badge.color, 'blue')
   } finally {
     globalThis.fetch = originalFetch

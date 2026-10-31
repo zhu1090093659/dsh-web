@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-10-31-remote-bridge-owns-ingress-stack.md: 8d1b4e05d938db6440553a151f90fbd853c6448d
+2026-10-31-remote-bridge-owns-ingress-stack.zh.md: 16fdccc0a9483abbcfed485bffb8b6374199f0a1

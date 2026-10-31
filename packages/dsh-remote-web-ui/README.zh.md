@@ -2,8 +2,14 @@
 
 [English](README.md) | 中文
 
+> **弃用声明**：`@linxin666/dsh-remote-web-ui` 已弃用，后续由 [@linxin666/dsh-remote-bridge](../dsh-remote-bridge/README.zh.md) 承接。本插件已从 `@linxin666/dsh-web-all` 聚合包中摘除（老 profile 行通过 tombstone 导出与 `retiredPlugins` 登记静默跳过为 no-op），并计划在下一版本中正式删除。过渡期内独立安装（`dsh plugin --profile <name> add @linxin666/dsh-remote-web-ui`）仍可正常使用。
+>
+> - **已迁往 `@linxin666/dsh-remote-bridge` 的能力**：接入栈（中继身份登记、租约 claim/release 控制面、快速/命名双隧道连接器、Durable Object 会合点连接器、cloudflared 进程生命周期与孤儿进程清理、Cloudflare 命名隧道 ingress 端口同步、局域网转发器、宿主通配绑定探测与主机防火墙管理）。
+> - **随本插件一起下线的能力**：浏览器侧远程控制面（配对 cookie 门控、`/api/pair` 路由族、门控 `/remote` 代理通道以及手机浏览器竖屏触控适配层）。
+> - **并存已知风险**：若与 `@linxin666/dsh-remote-bridge` 在同一 profile 中并存，切勿同时开启两端的中继（两者按 profile 共用同一中继身份，两侧同时启用会竞争 Durable Object 会合点连接，且新桥以 `relay=false` 挂载时会主动撤销该身份的注册行并释放租约）。
+
 <p align="center">
-  <img src="https://img.shields.io/npm/v/@linxin666/dsh-client-ui-remote-web-ui?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/npm/v/@linxin666/dsh-remote-web-ui?style=flat-square" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.3-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;

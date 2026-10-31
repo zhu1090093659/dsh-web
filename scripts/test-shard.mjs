@@ -37,7 +37,6 @@ export const PACKAGE_WEIGHTS = Object.freeze({
   'shared': 11,
   'packages/dsh-ssh': 8,
   'packages/dsh-web-all': 7,
-  'packages/dsh-remote-web-ui': 7,
   'packages/dsh-plugin-manager': 7,
   'packages/dsh-task-board-github': 6,
   'packages/dsh-usage': 5,

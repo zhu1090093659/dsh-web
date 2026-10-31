@@ -38,11 +38,11 @@ function fakeRequest(options: { remoteAddress?: string; host?: string; method?: 
  * Call the handler once and report what it wrote.
  *
  * The origin seam defaults to "this machine knows nothing", so the assertions
- * never depend on the registry of the machine running the suite.
+ * never depend on the environment or the live face of the machine running the suite.
  */
 function callHandler(
   request: IncomingMessage,
-  pairOrigin: () => { origin: string; source: 'env' | 'registry' } | undefined = () => undefined,
+  pairOrigin: () => { origin: string; source: 'realtime' | 'env' | 'lan' } | undefined = () => undefined,
 ): RecordingResponse {
   const response = new RecordingResponse()
   makePairTokenHandler({ pairing: new PairingService(), log: () => undefined, pairOrigin })(
@@ -66,10 +66,10 @@ describe('bootstrap token endpoint', () => {
   })
 
   it('operator on a host that knows its public origin is handed the one-scan code', () => {
-    // Given a loopback request and a host that located its relay origin
+    // Given a loopback request and a host that located its live public face
     const response = callHandler(
       fakeRequest({ remoteAddress: '127.0.0.1', host: '127.0.0.1:3000' }),
-      () => ({ origin: 'wss://abc123.dsh-market.com', source: 'registry' }),
+      () => ({ origin: 'wss://abc123.dsh-market.com', source: 'realtime' }),
     )
     // When the handler answers
     const body = JSON.parse(response.body) as {
@@ -83,7 +83,7 @@ describe('bootstrap token endpoint', () => {
     // while the machine-local link keeps its loopback Host
     expect(response.status).toBe(200)
     expect(body.origin).toBe('wss://abc123.dsh-market.com')
-    expect(body.originSource).toBe('registry')
+    expect(body.originSource).toBe('realtime')
     expect(body.pairingUrl).toBe(`wss://abc123.dsh-market.com/ios/v1?token=${body.token}`)
     expect(body.url).toBe(`ws://127.0.0.1:3000/ios/v1?token=${body.token}`)
   })
@@ -158,5 +158,58 @@ describe('bootstrap token endpoint', () => {
     const denial = loopbackDenialOf(request)
     // Then an unnameable host is refused rather than assumed local
     expect(denial).toBe('the request names a Host that is not this machine')
+  })
+})
+
+/** A loopback request naming this machine, the only shape the route admits. */
+function loopbackRequest(): IncomingMessage {
+  return {
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: { host: '127.0.0.1:3000' },
+    method: 'GET',
+  } as unknown as IncomingMessage
+}
+
+describe('the token response carries the address the route now reads', () => {
+  it('operator: the live public face reaches the QR payload', () => {
+    // Given a bridge that knows its own live public face
+    let asked = 0
+    const response = new RecordingResponse()
+    makePairTokenHandler({
+      pairing: new PairingService(),
+      log: () => undefined,
+      realtime: () => {
+        asked += 1
+        return 'https://edge.example.com'
+      },
+      lan: () => ({ address: '192.168.1.5', port: 3080 }),
+    })(loopbackRequest(), response.asServerResponse())
+    // When the loopback request is answered
+    // Then the seam was consulted once, and the payload names that origin
+    const body = JSON.parse(response.body) as { token: string; origin?: string; originSource?: string; pairingUrl?: string }
+    expect(asked).toBe(1)
+    expect(body.origin).toBe('https://edge.example.com')
+    expect(body.originSource).toBe('realtime')
+    // And the one-scan link is built on it
+    expect(body.pairingUrl).toBe('https://edge.example.com/ios/v1?token=' + body.token)
+  })
+
+  it('operator: the payload stays coherent whatever source answered', () => {
+    // Given a host with no live face, so the later sources decide
+    const response = new RecordingResponse()
+    makePairTokenHandler({
+      pairing: new PairingService(),
+      log: () => undefined,
+      realtime: () => undefined,
+      lan: () => ({ address: '192.168.1.5', port: 3080 }),
+    })(loopbackRequest(), response.asServerResponse())
+    // When the loopback request is answered
+    // Then the link a phone dials is built on the origin the same answer named,
+    // and the keys the panel reads are unchanged
+    const body = JSON.parse(response.body) as { token: string; url: string; origin: string; originSource: string; pairingUrl: string }
+    expect(body.pairingUrl.startsWith(body.origin)).toBe(true)
+    expect(body.pairingUrl.endsWith('/ios/v1?token=' + body.token)).toBe(true)
+    expect(body.url).toBe('ws://127.0.0.1:3000/ios/v1?token=' + body.token)
+    expect(['realtime', 'env', 'lan']).toContain(body.originSource)
   })
 })

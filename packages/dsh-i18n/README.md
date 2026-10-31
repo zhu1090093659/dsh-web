@@ -36,7 +36,6 @@ The plugin is a pure browser bundle (the host half intentionally has no behavior
 | `pet` | dsh-pet |
 | `settings.pluginManager` | dsh-plugin-manager |
 | `dsh-web-ui-preset-center` | dsh-preset-center |
-| `remote` | dsh-remote-web-ui |
 | `session-id` | dsh-session-id |
 | `dsh-web-ui-session-archive` | dsh-session-archive |
 | `dsh-skill-explorer` | dsh-skill-explorer |

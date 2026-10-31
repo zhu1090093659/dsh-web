@@ -30,7 +30,7 @@ export const REPO_ROOT = resolve(SCRIPT_DIR, '..')
 // dsh-web-settings consumes the trio too: the family-wide telemetry switch is a
 // page-level setting, so it renders through the same card chrome (a static
 // header plus a trailing switch) instead of a section of its own.
-const SETTINGS_CONSUMERS = ['dsh-web-settings', 'dsh-task-board', 'dsh-task-board-github', 'dsh-remote-web-ui', 'dsh-market', 'dsh-liangshen', 'dsh-agents', 'dsh-usage', 'dsh-browser-view']
+const SETTINGS_CONSUMERS = ['dsh-web-settings', 'dsh-task-board', 'dsh-task-board-github', 'dsh-market', 'dsh-liangshen', 'dsh-agents', 'dsh-usage', 'dsh-browser-view']
 const SETTINGS_CARD_CONSUMERS = [...SETTINGS_CONSUMERS]
 // Consumers of the entry-bound form fallback: every package whose card binds a
 // family settings namespace through the shared forms service. It is a superset
@@ -93,7 +93,6 @@ const MANIFEST = [
     file: 'plugin-card-seat.ts',
     source: 'shared/client/settings/plugin-card-seat.ts',
     targets: [
-      'packages/dsh-remote-web-ui/src/client/plugin-card-seat.ts',
       'packages/dsh-task-board/src/client/plugin-card-seat.ts',
       'packages/dsh-liangshen/src/client/plugin-card-seat.ts',
       'packages/dsh-agents/src/client/plugin-card-seat.ts',
@@ -118,7 +117,6 @@ const MANIFEST = [
       'packages/dsh-liangshen/src/dsh-home.ts',
       'packages/dsh-task-board/src/dsh-home.ts',
       'packages/dsh-plugin-manager/src/host/dsh-home.ts',
-      'packages/dsh-remote-web-ui/src/dsh-home.ts',
       'packages/dsh-ssh/src/dsh-home.ts',
       'packages/dsh-web-settings/src/dsh-home.ts',
       'packages/dsh-market/src/dsh-home.ts',
@@ -146,7 +144,6 @@ const MANIFEST = [
     source: 'shared/host/mount-once.ts',
     targets: [
       'packages/dsh-ssh/src/mount-once.ts',
-      'packages/dsh-remote-web-ui/src/mount-once.ts',
       'packages/dsh-remote-bridge/src/mount-once.ts',
       'packages/dsh-liangshen/src/mount-once.ts',
       'packages/dsh-task-board/src/mount-once.ts',
@@ -170,7 +167,6 @@ const MANIFEST = [
       'packages/dsh-message-edit/src/client/telemetry.ts',
       'packages/dsh-git-graph/src/client/telemetry.ts',
       'packages/dsh-plugin-manager/src/client/telemetry.ts',
-      'packages/dsh-remote-web-ui/src/client/telemetry.ts',
       'packages/dsh-session-id/src/client/telemetry.ts',
       'packages/dsh-skill-explorer/src/client/telemetry.ts',
       'packages/dsh-ssh/src/client/telemetry.ts',
@@ -202,7 +198,7 @@ const MANIFEST = [
   {
     file: 'loopback.ts',
     source: 'shared/host/loopback.ts',
-    targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-git-graph/src/host/loopback.ts', 'packages/dsh-remote-web-ui/src/loopback.ts', 'packages/dsh-task-board/src/loopback.ts', 'packages/dsh-task-board-github/src/loopback.ts', 'packages/dsh-skill-explorer/src/loopback.ts', 'packages/dsh-plugin-manager/src/host/loopback.ts', 'packages/dsh-market/src/loopback.ts', 'packages/dsh-usage/src/host/loopback.ts', 'packages/dsh-session-archive/src/host/loopback.ts', 'packages/dsh-update/src/loopback.ts', 'packages/dsh-browser-view/src/host/loopback.ts'],
+    targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-git-graph/src/host/loopback.ts', 'packages/dsh-task-board/src/loopback.ts', 'packages/dsh-task-board-github/src/loopback.ts', 'packages/dsh-skill-explorer/src/loopback.ts', 'packages/dsh-plugin-manager/src/host/loopback.ts', 'packages/dsh-market/src/loopback.ts', 'packages/dsh-usage/src/host/loopback.ts', 'packages/dsh-session-archive/src/host/loopback.ts', 'packages/dsh-update/src/loopback.ts', 'packages/dsh-browser-view/src/host/loopback.ts'],
   },
   {
     file: 'http.ts',
@@ -214,7 +210,6 @@ const MANIFEST = [
       'packages/dsh-git-graph/src/host/http.ts',
       'packages/dsh-ssh/src/http.ts',
       'packages/dsh-plugin-manager/src/host/http.ts',
-      'packages/dsh-remote-web-ui/src/http.ts',
       'packages/dsh-task-board/src/http.ts',
       'packages/dsh-task-board-github/src/host/http.ts',
       'packages/dsh-usage/src/host/http.ts',
@@ -230,7 +225,6 @@ const MANIFEST = [
     source: 'shared/vitest.setup.ts',
     targets: [
       'packages/dsh-web-settings/vitest.setup.ts',
-      'packages/dsh-remote-web-ui/vitest.setup.ts',
       'packages/dsh-git-graph/vitest.setup.ts',
       'packages/dsh-task-board/vitest.setup.ts',
       'packages/dsh-task-board-github/vitest.setup.ts',
@@ -280,7 +274,6 @@ const MANIFEST = [
     file: 'detached-work.ts',
     source: 'shared/host/detached-work.ts',
     targets: [
-      'packages/dsh-remote-web-ui/src/detached-work.ts',
       'packages/dsh-plugin-manager/src/host/detached-work.ts',
     ],
   },

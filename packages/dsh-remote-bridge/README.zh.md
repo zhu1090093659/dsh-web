@@ -12,7 +12,7 @@
 
 把 DeepSeek Harness（DSH）本体发布成协议 v1 的宿主侧适配包：一个 `/ios/v1` 的 WebSocket 面，原生客户端（手机 App、平板、终端脚本）无需浏览器、无需 Web GUI 包体、也无需改动中继即可驱动它。
 
-协议 v1 是有意独立于浏览器路径的第二条面：配对设备 cookie 与受门禁的 `/remote` 通道属于 `dsh-remote-web-ui`，本包不回放那份凭据。它在同一进程内消费宿主——会话工作走 Typert gateway，权限请求走审批瀑布——并自行签发一次性 bootstrap token，不改动 `dsh-remote-web-ui` 的配对服务面。
+协议 v1 是有意独立于旧浏览器路径的第二条面：本包拥有独立的公网与局域网接入栈，不包含任何浏览器配对面（已退役插件 `dsh-remote-web-ui` 的配对 cookie 门控与 `/remote` 代理通道均不搬入本包）。它在同一进程内消费宿主——会话工作走 Typert gateway，权限请求走审批瀑布——并在仅回环路由上自行签发一次性 bootstrap token。
 
 ## 功能
 
@@ -185,7 +185,7 @@ curl -s http://127.0.0.1:3080/remote-bridge/pair/token
 # {"token":"...","expiresAt":1760000030000,"url":"ws://127.0.0.1:3080/ios/v1?token=..."}
 ```
 
-当这台机器能说出自己的公网地址时——先看 `DSH_REMOTE_PUBLIC_BASE_URL`，其次看 `dsh-remote-web-ui` 维护的中继注册表 `$DSH_HOME/remote-web-ui-registry/<profile>.json`——同一个响应里会多出地址那一半：
+当这台机器能说出自己的公网地址时——无论来自实时的中继租约/隧道状态还是 `DSH_REMOTE_PUBLIC_BASE_URL`——同一个响应里会多出地址那一半：
 
 ```json
 {
@@ -232,6 +232,41 @@ curl -s http://127.0.0.1:3080/remote-bridge/pair/token
 
 这一跳带来两条后果。它看得见请求 URL，所以用 `?token=` 连接等于把设备令牌交给中继、Cloudflare 边缘与 origin 访问日志——优先用 header。而 `GET /remote-bridge/pair/token` 会像其他路径一样被转发，但它的 loopback 门禁会拒掉这条转发请求，因此配对只能从本机发起。
 
+## 接入栈与安全模型
+
+`@linxin666/dsh-remote-bridge` 拥有完整的公网与局域网接入栈：
+- **中继身份与租约**：`relay-registry` 在 `$DSH_HOME/remote-web-ui-registry/<profile>.json` 下持久化中继身份（id 与 secret）；改 relay 配置会重挂载插件行，当以 `relay=false` 挂载且盘上存在身份时，挂载时撤销上一次留下的注册行并 `pair.release()` 释放租约各一次（失败各记一行；卸载时不释放也不撤行，保留手机收藏地址由服务端 GC 回收；`relay=false` 挂载绝不铸造新身份，盘上无身份时零副作用、不写盘）。
+- **中继连接器**：`relay-connector` 并行维护快速隧道与命名隧道连接器；`relay-bridge-connector` 经 WSS 连接 Cloudflare Durable Object 会合点，并将连接状态记录在 `$DSH_HOME/remote-web-ui-relay-bridge.json`（状态文件写入经行为级验证，缺省落到 `$DSH_HOME`，非源码文本断言）。
+- **隧道生命周期**：`tunnel`、`tunnel-plan` 与 `tunnel-orphan` 管理平台原生 `cloudflared` 子进程，具备指数退避重启机制并自动清理崩溃遗留的孤儿进程。
+- **命名隧道端口同步**：`ingress-sync` 在宿主监听端口变化时，把 Cloudflare 命名隧道的 ingress 规则原子收敛到本机闸门端口。
+- **局域网转发与防火墙**：`lan`、`lan-bind`、`lan-bind-plan`、`lan-forward`、`host-bind-capability` 与 `firewall` 管理局域网边缘转发器与操作系统防火墙规则（Windows Defender 与 Linux firewalld/ufw/iptables），宿主 webserver 本身始终严格保持回环绑定。
+
+本包的安全模型对所有外部接入入口实施严格的白名单隔离：
+- **入站网关（`src/host/ingress-gate.ts`）**：仅绑定 `127.0.0.1`，且仅将 `/ios/v1` 的 WebSocket 升级转发到本机协议端口，同时将 `Host` 头改写为回环权威。其余任何普通 HTTP 请求与非白名单升级一律直接返回 `404 {"error":"not-found"}` 并关闭连接，绝不建立上游连接。
+- **隧道的目标是入站网关而非 webServer 端口**：cloudflared 快速隧道与命名隧道的目标均指向 `ingress-gate` 的动态回环端口，绝不直连 `webServer` 端口。外界经隧道传入的请求无法触达 webServer 路由、内部 API 或其他插件。
+- **中继注册行与公网暴露面**：中继注册行只写入快速隧道的 URL，也就是入站闸门，公网因此只看得见 /ios/v1。计划为 quick 且隧道 running 时把闸门 URL 注册给中继 Worker（`<id>.dsh-market.com` 代理到本机）；卸载时只清本地引用不撤行。二维码公网地址由 `livePublicOriginOf` 裁定：bridge 或 named 租约优先稳定子域名；quick 租约在注册未成功时退回隧道 running URL；无租约用隧道 URL；皆无则无地址。其后退回 `DSH_REMOTE_PUBLIC_BASE_URL`，局域网兜底仅当局域网转发器真的在监听时才按实际绑定的 address 与 port 给出（不猜地址列表首项，转发器停止即无兜底；已彻底移除磁盘 registry 行作为兜底地址，消除了对老插件数据文件的最后一处依赖）。
+- **局域网转发器的目标同样是入站网关**：局域网转发器监听本机局域网 IPv4 地址，并将请求严格转发至 `ingress-gate` 端口，因此局域网入口的暴露面同样仅有 `/ios/v1`。
+- **中继桥会合点白名单**：`relay-bridge-connector.ts` 对 Durable Object 汇聚的入站流执行完全相同的白名单检查，非 `/ios/v1` 的 HTTP 流直接应答 `404 {"error":"not-found"}`，非白名单 WebSocket 升级直接回复 `ws-fail 404 {"error":"not-found"}`，两条路都不建立上游连接。
+- **身份目录沿用历史拼写与并存禁忌**：中继身份目录 `$DSH_HOME/remote-web-ui-registry/` 与状态文件 `remote-web-ui-relay-bridge.json` 有意沿用历史拼写，确保既有 profile 保持身份连续性，已配对设备升级后无需重新配对。**已知风险与并存禁忌**：同一 profile 切勿同时启用本插件与已弃用的 `dsh-remote-web-ui` 的中继——两者按 profile 共用同一份身份文件；若新桥以 `relay=false` 挂载，会撤销该身份下的注册行并释放租约，从而打断老插件正在使用的公网中继；若两侧 relay 同时开启，bridge 传输下两个连接器会拿同一凭据竞争同一个 Durable Object 连接互相顶掉，quick 传输下后注册者覆盖前者。该收尾行为是有意设计的。
+- **本插件不含浏览器配对面**：本包不包含配对 cookie 门控、`/api/pair` 路由族、`/remote` 代理通道以及手机浏览器竖屏触控适配层。
+
+## 配置
+
+本插件通过 profile YAML（如 `cordis.patch.yml` 或 profile 配置）进行配置，不提供设置界面。未配置的字段回退到内置默认值：
+
+| 配置项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `relay` | boolean | `true` | 是否申领 relay 租约。默认开启；无隧道时仍 claim 租约，因此默认配置下公网即可用。 |
+| `autoTunnel` | boolean | `false` | 是否启动指向入站网关的 Cloudflare 快速隧道。 |
+| `lanBind` | boolean | `undefined`（关） | 是否启动监听本机局域网 IPv4 地址的局域网转发器。 |
+| `tunnelToken` | string | `undefined` | 运行 Cloudflare 命名隧道所需的隧道令牌。 |
+| `publicBaseUrl` | string | `undefined` | 命名隧道的固定公网 HTTPS 基地址。 |
+| `ingressSync` | boolean | `false` | 是否自动将命名隧道 ingress 服务端口同步至 Cloudflare。 |
+| `cfApiToken` | string | `undefined` | 用于 ingress-sync 的 Cloudflare 账户级 API 令牌。 |
+| `cfAccountId` | string | `undefined` | 用于 ingress-sync 的 Cloudflare 账户 ID。 |
+| `cfTunnelId` | string | `undefined` | 用于 ingress-sync 的 Cloudflare 命名隧道 ID。 |
+| `profile` | string | `'desktop'` | 受管 profile 名称（缺省读取 `$DSH_PROFILE` 或 `'desktop'`）。 |
+
 ## Web GUI 配对面板
 
 浏览器半区存在的理由，是让从不开终端的操作者也有一条发起配对的路径。它沿用家族在侧栏底部的惯例：触发器注册进官方 `sidebar.footer.action` 列表槽位（由 ui-sidebar 声明——`dsh-remote-web-ui` 的手机触发器与 `dsh-update` 的更新器已经共用的那个座位），点开后是官方 `Modal`，这张无头卡片由本包填充。它渲染的每个控件都是库里已有的 primitive——弹窗、三个动作与它们的字形——因此遮罩、卡片、焦点圈定、Esc、焦点归还，以及每个 hover/focus/disabled 状态都是官方壳自己的行为，而不是本包的一份复制品。它由同一插件行承载：产物是 `exports["./client"]`，`dsh.client` 声明必须先就位的 client 模块。
@@ -247,7 +282,7 @@ curl -s http://127.0.0.1:3080/remote-bridge/pair/token
 
 开与关是同一段动效的两条腿：卡片保持挂载，把弹窗自己的进场淡入反向播完才卸载；reduced-motion 下这条生命周期换成一段短淡出，而不是干脆没有出场。几何在每种状态里都钉住——二维码的盒子、状态行、地址说明与复制标签都不改高度和宽度——所以倒计时、过期与复制确认都不会挪动它们旁边的元素。
 
-面板对原生路径而言只是显示层。它从不消耗配对码（`pair.begin` 始终是手机那一侧的动作），从不碰名册，也不新增任何 wire 面——信封、方法名、主题名与事件一律不动。`dsh-remote-web-ui` 的配对服务、名册与浏览器凭据同样不参与其中，因此两条远程面各自保留自己的访问控制。
+面板对原生路径而言只是显示层。它从不消耗配对码（`pair.begin` 始终是手机那一侧的动作），从不碰名册，也不新增任何 wire 面——信封、方法名、主题名与事件一律不动。本插件不提供任何浏览器配对面或 cookie 门控。
 
 ## 会话里的整页卡
 

@@ -36,7 +36,6 @@ dsh Web GUI 的语言包插件：向 Web GUI 语言目录注册 Русский�
 | `pet` | dsh-pet |
 | `settings.pluginManager` | dsh-plugin-manager |
 | `dsh-web-ui-preset-center` | dsh-preset-center |
-| `remote` | dsh-remote-web-ui |
 | `session-id` | dsh-session-id |
 | `dsh-web-ui-session-archive` | dsh-session-archive |
 | `dsh-skill-explorer` | dsh-skill-explorer |

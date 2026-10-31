@@ -35,6 +35,7 @@
 
 - alpha 分支的聚合包没有任何外部依赖：`dsh-better-sidebar@0.19.1`（2026-09-11 发布的稳定版本）的 peer 区间 `^0.1.5-rc.1` 不覆盖本分支的 `0.2.1-rc.3` cohort，故 `aggregate.yml` 不再声明该行、`package.json` 不再依赖它、锁定它的 `minimumReleaseAgeExclude` 条目也已删除；右侧面板改为按需安装。稳定线 `dev` 仍内置 0.19.1 并保留对应锁定条目。
 - 历史聚合包命名迁移：从 `@linxin666/dsh-web-ui-all` 向 `@linxin666/dsh-web-all` 的迁移已在 0.3.3 完成并弃用旧包名，当前统一发布 `@linxin666/dsh-web-all`。
+- 远程访问组件演进与弃用：`dsh-remote-web-ui`（`@linxin666/dsh-remote-web-ui`）已从聚合包 `dsh-web-all` 摘除并进入弃用期（以 tombstone 导出与 `retiredPlugins` 登记静默退役，计划下一版本删除），当前版本仍作为独立包发布供过渡期独立安装；公网与局域网接入栈（中继与隧道）已迁入 `@linxin666/dsh-remote-bridge`。
 
 ## 兼容性边界
 

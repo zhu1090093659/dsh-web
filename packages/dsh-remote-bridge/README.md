@@ -12,7 +12,7 @@ English | [中文](README.zh.md)
 
 A host-side adaptor that publishes DeepSeek Harness (DSH) itself as protocol v1: one WebSocket surface at `/ios/v1` that a native client — a phone app, a tablet, a terminal — can drive without a browser, without the Web GUI bundle, and without a relay change.
 
-Protocol v1 is deliberately a second, independent surface: the browser path (the paired-device cookie and the gated `/remote` channel) belongs to `dsh-remote-web-ui`, and the bridge does not replay that credential. It consumes the harness in-process instead — the Typert gateway for session work, the approval waterfall for permission requests — and mints its own one-time bootstrap token without changing `dsh-remote-web-ui`'s pairing service.
+Protocol v1 is deliberately a second, independent surface: this plugin owns its own ingress stack for public and local access, and contains no browser pairing surface (the pairing cookie gate and gated `/remote` proxy channel of the retired `dsh-remote-web-ui` are not included). It consumes the harness in-process instead — the Typert gateway for session work, the approval waterfall for permission requests — and mints its own one-time bootstrap token on a loopback-only route.
 
 ## What it does
 
@@ -188,7 +188,7 @@ curl -s http://127.0.0.1:3080/remote-bridge/pair/token
 # {"token":"...","expiresAt":1760000030000,"url":"ws://127.0.0.1:3080/ios/v1?token=..."}
 ```
 
-When this machine can name its own public origin — `DSH_REMOTE_PUBLIC_BASE_URL`, else the relay registry row `$DSH_HOME/remote-web-ui-registry/<profile>.json` that `dsh-remote-web-ui` keeps — the same answer carries the address half too:
+When this machine can name its own public origin — either from live relay lease/tunnel state or `DSH_REMOTE_PUBLIC_BASE_URL` — the same answer carries the address half too:
 
 ```json
 {
@@ -235,6 +235,41 @@ The relay that publishes a private instance on the public internet is a full rev
 
 Two consequences follow from that hop. It sees the request URL, so a `?token=` connection hands the device token to the relay, the Cloudflare edge and the origin access log — prefer the header. And `GET /remote-bridge/pair/token` is forwarded like any other path, but its loopback gate rejects the forwarded request, so pairing can only be started from the machine itself.
 
+## Ingress stack and security model
+
+`@linxin666/dsh-remote-bridge` owns the complete public and local network ingress stack for remote access:
+- **Relay identity and leases**: `relay-registry` persists the relay ID and secret under `$DSH_HOME/remote-web-ui-registry/<profile>.json`; changing relay config remounts the plugin row. When mounting with `relay=false` and an on-disk identity already exists, it unregisters the previous registration row and releases its lease once via `pair.release()` (best-effort, logging any errors; unmounting neither releases nor unregisters, preserving bookmarked origins for server-side GC; mounting with `relay=false` never mints a new identity and has zero side effects if no identity file exists).
+- **Relay connectors**: `relay-connector` manages quick and named tunnel connectors side by side, and `relay-bridge-connector` connects to the Cloudflare Durable Object meeting point over WSS, recording connection state in `$DSH_HOME/remote-web-ui-relay-bridge.json` (state file writing is verified behaviorally, defaulting to `$DSH_HOME` when unspecified, not checked via source text assertions).
+- **Tunnel lifecycle**: `tunnel`, `tunnel-plan`, and `tunnel-orphan` manage platform `cloudflared` child processes with exponential backoff and reap orphaned processes left behind by crashes.
+- **Ingress sync**: `ingress-sync` converges Cloudflare named tunnel ingress rules to the local gate port when the host listens on a different port.
+- **LAN forwarder and firewall**: `lan`, `lan-bind`, `lan-bind-plan`, `lan-forward`, `host-bind-capability`, and `firewall` manage the LAN-edge forwarder and OS firewall rules (Windows Defender and Linux firewalld/ufw/iptables) while keeping the host webserver bound strictly to loopback.
+
+The security model enforces strict whitelisting across all external ingress paths:
+- **Internal ingress gate (`src/host/ingress-gate.ts`)**: binds exclusively to `127.0.0.1` and forwards only WebSocket upgrades to `/ios/v1` to the host's own protocol port, rewriting the `Host` header to the loopback authority. Every other plain HTTP request and non-whitelisted upgrade is answered immediately with `404 {"error":"not-found"}` and closed without opening any upstream connection.
+- **Tunnel target is the ingress gate, not the webServer**: cloudflared quick and named tunnels target the dynamic loopback port bound by `ingress-gate`, never the harness `webServer` port. A request routed through the tunnel cannot reach webServer routes, internal APIs, or other plugins.
+- **Relay registration and public exposure**: the relay registration row only writes the quick tunnel URL, which points to the ingress gate, so the public internet still only sees /ios/v1. When the plan is quick and the tunnel is running, the gate URL is announced to the relay Worker (proxying `<id>.dsh-market.com` to this machine); plugin disposal clears local references without withdrawing the row. QR public address selection is decided by `livePublicOriginOf`: bridge or named leases prioritize the stable subdomain; quick leases fall back to the tunnel running URL while registration is unconfirmed; no lease uses the tunnel URL; none returns no address. Fallbacks then check `DSH_REMOTE_PUBLIC_BASE_URL`, and the LAN fallback provides an address only when the LAN forwarder is actually listening using its snapshot's bound address and port (never guessing the first IP in the address list, returning no address when stopped; the disk registry row fallback has been completely removed, eliminating the last data dependency on legacy data files).
+- **LAN forwarder target is the ingress gate**: the LAN forwarder listens on the machine's LAN IPv4 address and re-issues traffic exclusively to the `ingress-gate` port, so local network reachability is also constrained strictly to `/ios/v1`.
+- **Relay bridge connector whitelist**: the Durable Object multiplexer in `relay-bridge-connector.ts` applies the same whitelist. Non-`/ios/v1` HTTP streams receive `404 {"error":"not-found"}`, and non-whitelisted WebSocket upgrades return `ws-fail 404 {"error":"not-found"}`, establishing no upstream connection.
+- **Historical spelling retention and coexistence caveat**: the registry directory `$DSH_HOME/remote-web-ui-registry/` and state file `remote-web-ui-relay-bridge.json` intentionally retain their historical names so existing profiles maintain identity continuity and previously paired devices keep their credentials across upgrades. **Known risk and coexistence caveat**: never enable relay concurrently on both this plugin and the deprecated `dsh-remote-web-ui` in the same profile — both share the same identity file per profile; mounting the bridge with `relay=false` withdraws the registration row and releases the lease for that shared identity, breaking the legacy plugin's active relay, while running both with relay enabled causes bridge connectors to compete over the same Durable Object connection (or quick tunnel registrations to overwrite each other). This cleanup behavior is intentional.
+- **No browser pairing surface**: this package does not include browser pairing cookie gates, `/api/pair` endpoints, `/remote` proxy routes, or mobile web touch CSS adaptation layers.
+
+## Configuration
+
+The plugin is configured through profile YAML (`cordis.patch.yml` or profile configuration files); it provides no settings UI. Unconfigured fields fall back to their built-in defaults:
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `relay` | boolean | `true` | Whether to claim relay leases. Enabled by default; public availability works out of the box because leases are claimed even when no tunnel is running. |
+| `autoTunnel` | boolean | `false` | Whether to start a Cloudflare quick tunnel targeting the ingress gate. |
+| `lanBind` | boolean | `undefined` (off) | Whether to start the LAN-edge forwarder listening on the machine's local IPv4 address. |
+| `tunnelToken` | string | `undefined` | Cloudflare named tunnel token for running named tunnels. |
+| `publicBaseUrl` | string | `undefined` | Fixed public HTTPS base URL for named tunnels. |
+| `ingressSync` | boolean | `false` | Whether to sync named tunnel ingress service ports with Cloudflare. |
+| `cfApiToken` | string | `undefined` | Account-level Cloudflare API token for ingress sync. |
+| `cfAccountId` | string | `undefined` | Cloudflare account ID for ingress sync. |
+| `cfTunnelId` | string | `undefined` | Cloudflare named tunnel ID for ingress sync. |
+| `profile` | string | `'desktop'` | Managed profile name (defaults to `$DSH_PROFILE` or `'desktop'`). |
+
 ## Web GUI pairing panel
 
 The browser half exists so that an operator who never opens a terminal still has a way to start pairing. It follows the family's sidebar-foot convention: the trigger registers into the official `sidebar.footer.action` list slot (declared by ui-sidebar — the seat `dsh-remote-web-ui`'s phone trigger and `dsh-update`'s updater already share) and opens the official `Modal`, whose headless card this package fills. Every control it renders is a library primitive — the dialog, the three actions and their glyphs — so the mask, the card, the focus trap, Escape, focus restoration and each hover/focus/disabled state are the shell's behavior rather than a copy of it. It is delivered by the same plugin row: `exports["./client"]` is the artifact and `dsh.client` declares the client modules that must be live first.
@@ -250,7 +285,7 @@ The panel has one job — put the live one-time code in front of the operator, i
 
 Opening and closing are one motion in both directions: the card stays mounted and plays the dialog's own enter fade backwards, and the reduced-motion path keeps that lifecycle as one short opacity fade rather than dropping the exit. Geometry is held across every state — the symbol's box, the status row, the address line and the copy label keep their height and width — so a countdown, an expiry and a copy confirmation never move their neighbours.
 
-The panel is display-only for the native path. It never spends the token (`pair.begin` stays the phone's call), it never touches the roster, and it adds no wire surface — the envelope, the method names, the topic names and the events are unchanged. `dsh-remote-web-ui`'s pairing service, roster and browser credential are not involved either, so the two remote surfaces keep their own access controls.
+The panel is display-only for the native path. It never spends the token (`pair.begin` stays the phone's call), it never touches the roster, and it adds no wire surface — the envelope, the method names, the topic names and the events are unchanged. The package provides no browser pairing surface or cookie gate.
 
 ## Interactive cards in the transcript
 

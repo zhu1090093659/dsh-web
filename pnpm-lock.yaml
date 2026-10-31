@@ -704,9 +704,15 @@ importers:
 
   packages/dsh-remote-bridge:
     dependencies:
+      cloudflared:
+        specifier: ^0.7.3
+        version: 0.7.3
       qrcode.react:
         specifier: ^4.2.0
         version: 4.2.0(react@18.3.1)
+      yaml:
+        specifier: ^2.8.2
+        version: 2.9.1
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ^4.0.5
@@ -1630,9 +1636,6 @@ importers:
       '@linxin666/dsh-remote-bridge':
         specifier: workspace:*
         version: link:../dsh-remote-bridge
-      '@linxin666/dsh-remote-web-ui':
-        specifier: workspace:*
-        version: link:../dsh-remote-web-ui
       '@linxin666/dsh-session-archive':
         specifier: workspace:*
         version: link:../dsh-session-archive

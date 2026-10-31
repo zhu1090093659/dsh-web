@@ -145,9 +145,9 @@ describe('shell-metadata families map onto dependencies or the retirement regist
   })
 
   it('operator upgrading the aggregate finds a startup-safe tombstone for every family subpath it still exports', () => {
-    // Given the family subpaths the package still publishes (the retirement
-    // registry is empty, so every kept family is a compatibility shell for a
-    // row that moved to a real package name),
+    // Given the family subpaths the package still publishes (a compatibility
+    // shell for every family whose row moved to a real package name, plus the
+    // retired family a stale profile row may still name),
     const pkg = manifest()
     const families = [...familySubpaths()].sort()
     expect(families.length).toBeGreaterThan(0)
@@ -174,10 +174,10 @@ describe('the retirement skip is driven by the registry, never by a blanket catc
   afterEach(resetAll)
 
   it('operator upgrading from a profile that names an uninstalled package gets a degraded import record', async () => {
-    // Given a live host and an empty registry: every family it carried has been
-    // removed outright, so nothing is skipped by name any more
+    // Given a live host and a registry that only names the families the
+    // aggregate actually retired:
     const root = fakeHost()
-    expect(GENERATED_RETIRED_PLUGINS).toEqual([])
+    expect(GENERATED_RETIRED_PLUGINS).not.toContain('@linxin666/dsh-not-installed')
     // When the shell applies a row naming a package the workspace does not have
     await root.plugin(apply as never, { plugin: '@linxin666/dsh-not-installed' } as never)
     // Then the import IS attempted and its failure recorded: the no-op branch
@@ -187,13 +187,14 @@ describe('the retirement skip is driven by the registry, never by a blanket catc
   })
 
   it('operator upgrading from a profile that names a registered retired plugin gets a silent skip before any import', async () => {
-    // Given a retirement registry that names one plugin. The live aggregate
-    // carries none any more, so the skip branch has no sample of its own; the
-    // registry is injected for this test alone and the shell is re-imported
-    // against it.
-    expect(GENERATED_RETIRED_PLUGINS).toEqual([])
+    // Given a retirement registry that names one plugin. The live registry names
+    // a package the workspace still carries, whose import would succeed, so the
+    // skip-before-import property is only observable against a registry entry
+    // for a package that is not installed: that entry is injected for this test
+    // alone and the shell is re-imported against it.
+    expect(GENERATED_RETIRED_PLUGINS).not.toContain('@linxin666/dsh-not-installed')
     vi.resetModules()
-    vi.doMock('../src/retired-plugins.generated.ts', () => ({ // test-standards-allow: the retirement registry is generator-owned and currently empty, so the shell's skip branch has exactly one production seam — the generated module; a manifest fixture would invent a retired family together with its tombstone subpath and display metadata, which distorts the tree more than mocking the seam does.
+    vi.doMock('../src/retired-plugins.generated.ts', () => ({ // test-standards-allow: the retirement registry is generator-owned and only names installed packages, so the shell's skip branch has exactly one production seam — the generated module; a manifest fixture would invent a retired family together with its tombstone subpath and display metadata, which distorts the tree more than mocking the seam does.
       RETIRED_FAMILIES: { 'fake-family': '@linxin666/dsh-not-installed' },
       RETIRED_PLUGINS: ['@linxin666/dsh-not-installed'],
     }))
@@ -254,22 +255,27 @@ describe('the retirement registry only names plugins that really left the family
     expect(liveRows).toEqual([])
   })
 
-  it('operator finds the registry empty once every family it carried was removed outright', () => {
-    // Given the last family the registry carried was removed outright, so its
-    // tombstones subpath, display resources and exports key are gone too
-    // When the manifest section and the generated module are both read
+  it('operator finds the registry naming every family the aggregate retired, with its real package', () => {
+    // Given the aggregate retired remote-web-ui while its package stays in the
+    // workspace for standalone installs,
+    // When the manifest section and the generated module are both read,
     const yml = readFileSync(join(PACKAGE_DIR, 'aggregate.yml'), 'utf8')
     const generated = readFileSync(join(PACKAGE_DIR, 'src', 'retired-plugins.generated.ts'), 'utf8')
-    // Then the section header survives (the mechanism stays) while it declares
-    // no entry...
+    const declared = (yml.split(/^retiredPlugins:$/m)[1] ?? '')
+      .split(/\r?\n/)
+      .filter((line) => line.trim().startsWith('- '))
+      .map((line) => JSON.parse(line.trim().slice(2)) as { family: string; plugin: string })
+    // Then the section declares at least that family with its real package name
+    // and the generated module says the same thing in both shapes: pinning the
+    // mapping on both sides is what a bare non-empty loop cannot do.
     expect(yml).toMatch(/^retiredPlugins:$/m)
-    const declared = (yml.split(/^retiredPlugins:$/m)[1] ?? '').split(/\r?\n/).filter((line) => line.trim().startsWith('- '))
-    expect(declared).toEqual([])
-    // ...and the generated module says exactly the same thing in both shapes:
-    // pinning emptiness on both sides is what a bare empty loop cannot do.
-    expect(RETIRED_FAMILIES).toEqual({})
-    expect(GENERATED_RETIRED_PLUGINS).toEqual([])
-    expect([...generated.matchAll(/^ {2}'[^']+': '[^']+',$/gm)]).toHaveLength(0)
+    expect(declared.length).toBeGreaterThan(0)
+    for (const entry of declared) {
+      expect(RETIRED_FAMILIES[entry.family], entry.family + ' must stay registered as retired').toBe(entry.plugin)
+      expect(GENERATED_RETIRED_PLUGINS).toContain(entry.plugin)
+    }
+    expect(Object.keys(RETIRED_FAMILIES)).toHaveLength(declared.length)
+    expect([...generated.matchAll(/^ {2}'[^']+': '[^']+',$/gm)]).toHaveLength(declared.length)
     expect(generated).toContain('export const RETIRED_FAMILIES: Readonly<Record<string, string>> = {')
   })
 })

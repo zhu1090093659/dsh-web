@@ -23,10 +23,10 @@ describe('extractWebSettingsNamespaces', () => {
   it('reads a block map', () => {
     const text = [
       'web_settings_namespaces:',
-      '  dsh-remote-web-ui: true',
+      '  dsh-liangshen: true',
       '  dsh-pet: {}',
     ].join('\n')
-    expect(extractWebSettingsNamespaces(text)).toEqual(['dsh-remote-web-ui', 'dsh-pet'])
+    expect(extractWebSettingsNamespaces(text)).toEqual(['dsh-liangshen', 'dsh-pet'])
   })
 
   it('reads an inline flow list', () => {
@@ -56,9 +56,9 @@ describe('extractWebSettingsNamespaces', () => {
     const text = [
       'web_settings_namespaces:',
       '- dsh-ssh',
-      '- dsh-remote-web-ui',
+      '- dsh-pet',
     ].join('\n')
-    expect(extractWebSettingsNamespaces(text)).toEqual(['dsh-ssh', 'dsh-remote-web-ui'])
+    expect(extractWebSettingsNamespaces(text)).toEqual(['dsh-ssh', 'dsh-pet'])
   })
 
   it('returns the empty list when the key is absent or the file is empty', () => {
@@ -160,12 +160,14 @@ describe('composeAllowlist', () => {
   ]
 
   it('falls back to the family list when the user configured none', () => {
+    // The retired remote-web-ui family is out of the fallback list even though
+    // its namespace is still registered (standalone installs keep it): the
+    // bundle no longer mounts it, so nothing should surface its form by default.
     expect(composeAllowlist([], registered)).toEqual([
       'community-plugins',
       'dsh-ssh',
       'dsh-web-ui-market',
       'pet',
-      'remote-web-ui',
       'skin-background',
       'skin-custom-theme',
       'skin-wallpaper',

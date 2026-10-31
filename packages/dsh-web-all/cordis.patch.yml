@@ -54,11 +54,6 @@
     - id: web-ui-git-graph
       name: '@linxin666/dsh-client-ui-git-graph'
 
-# from ../dsh-remote-web-ui
-- insert:
-    - id: web-ui-remote-web-ui
-      name: '@linxin666/dsh-remote-web-ui'
-
 # from ../dsh-update
 - insert:
     - id: web-ui-update

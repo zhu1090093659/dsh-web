@@ -2,8 +2,14 @@
 
 English | [中文](README.zh.md)
 
+> **Deprecation notice**: `@linxin666/dsh-remote-web-ui` is deprecated in favor of [@linxin666/dsh-remote-bridge](../dsh-remote-bridge/README.md). It has been retired from the `@linxin666/dsh-web-all` aggregate bundle (where legacy profile rows mount silently as no-ops via tombstone exports and the `retiredPlugins` registry) and will be removed in the next release. Standalone installation (`dsh plugin --profile <name> add @linxin666/dsh-remote-web-ui`) remains functional during this transitional period.
+>
+> - **Capabilities migrated to `@linxin666/dsh-remote-bridge`**: Ingress stack (relay registry identity, lease control claim/release, quick and named tunnel connectors, Durable Object relay bridge connector, cloudflared lifecycle management and orphan process reaping, Cloudflare named tunnel ingress sync, LAN forwarder, host bind capability probe, and host firewall management).
+> - **Capabilities retired with this package**: Browser-facing remote web control (pairing cookie gate, `/api/pair` endpoints, `/remote` proxy channel, and the mobile browser touch adaptation layer).
+> - **Known coexistence risk**: if installed in the same profile alongside `@linxin666/dsh-remote-bridge`, do not enable relay on both plugins simultaneously (both share the same on-disk relay identity per profile; running both causes Durable Object connection contention, and mounting the bridge with `relay=false` withdraws the shared registration row and releases the lease).
+
 <p align="center">
-  <img src="https://img.shields.io/npm/v/@linxin666/dsh-client-ui-remote-web-ui?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/npm/v/@linxin666/dsh-remote-web-ui?style=flat-square" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.3-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;

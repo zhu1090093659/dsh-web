@@ -60,7 +60,9 @@
     "typecheck": "tsgo --noEmit && tsgo -p tsconfig.test.json --pretty false"
   },
   "dependencies": {
-    "qrcode.react": "^4.2.0"
+    "cloudflared": "^0.7.3",
+    "qrcode.react": "^4.2.0",
+    "yaml": "^2.8.2"
   },
   "peerDependencies": {
     "@deepseek-ai/dsh": ">=0.2.1-rc.3",

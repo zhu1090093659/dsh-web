@@ -14,9 +14,9 @@
  * 2. each satellite is resolvable from the aggregate and exports
  *    `./package.json` — the subpath `scripts/aggregate.mjs` resolves external
  *    rows through (without it the generator hard-fails);
- * 3. the ordering constraint that predates the split still holds: the family
- *    `remote-web-ui` row installs the paired remote channel before pet sends
- *    its first `/api/pet/*` request;
+ * 3. the retired `remote-web-ui` family leaves no row behind (the package keeps
+ *    its own standalone install), and the family's remaining remote face
+ *    (`remote-bridge`) still mounts ahead of the external satellite rows;
  * 4. the subpath exports the rows used to mount stay in the package exports as
  *    compat tombstones, so a profile that recorded
  *    `@linxin666/dsh-web-all/pet` still imports instead of throwing
@@ -160,14 +160,17 @@ describe('satellite rows mount published npm packages', () => {
     expect(resolved).toEqual(SATELLITES.map(s => [s.subpath, './lib/shells/shell.js']))
   })
 
-  it('operator keeps remote-web-ui before pet so the paired remote channel installs first', () => {
-    // Given pet calls the plugin API as soon as it starts,
+  it('operator mounts no remote-web-ui row and keeps the remaining remote face before pet', () => {
+    // Given the remote-web-ui family retired from this bundle (its package stays
+    // installable on its own, but the aggregate no longer mounts it),
     const rows = insertRows()
     // When the operator reads the mount order from the generated patch,
     const order = rows.map(row => row.id)
-    // Then the remote channel row is installed ahead of pet.
-    expect(order).toContain('web-ui-remote-web-ui')
-    expect(order.indexOf('web-ui-remote-web-ui')).toBeLessThan(order.indexOf('web-ui-pet'))
+    // Then no row seat is left for it, and the family's remaining remote face
+    // still installs ahead of the external satellite rows.
+    expect(order).not.toContain('web-ui-remote-web-ui')
+    expect(order).toContain('web-ui-remote-bridge')
+    expect(order.indexOf('web-ui-remote-bridge')).toBeLessThan(order.indexOf('web-ui-pet'))
   })
 
   it('operator mounts each satellite from its own loader entry, never from the aggregate bundle', () => {

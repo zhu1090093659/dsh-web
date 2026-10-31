@@ -927,7 +927,7 @@ function listDegraded() {
 }
 /** Every retired package name, sorted: what the shell skips without importing. Derived from
 *  RETIRED_FAMILIES so the two can never disagree. */
-const RETIRED_PLUGINS$1 = Object.freeze(Object.values({}).sort());
+const RETIRED_PLUGINS$1 = Object.freeze(Object.values({ "remote-web-ui": "@linxin666/dsh-remote-web-ui" }).sort());
 Schema.any().volatile();
 /**
 * Loopback-fenced degraded-state route (installed once per shell context).

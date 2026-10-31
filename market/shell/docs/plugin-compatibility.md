@@ -44,7 +44,7 @@ no amount of shimming changes that. The boot disables such a row, reports why,
 and starts without it rather than failing the whole app. The two seen in this
 roster:
 
-- **`@linxin666/dsh-remote-web-ui`** exposes the UI through a Cloudflare tunnel,
+- **`@linxin666/dsh-remote-bridge`** exposes the UI through a Cloudflare tunnel,
   which means downloading and running the `cloudflared` binary.
 - **`@linxin666/dsh-ssh`** needs raw TCP and Node's cipher suite for SSH.
 

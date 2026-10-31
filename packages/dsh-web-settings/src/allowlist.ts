@@ -17,7 +17,6 @@
 export const FAMILY_NAMESPACES = [
   'dsh-ssh',
   'task-board',
-  'remote-web-ui',
   'pet',
   'skin-background',
   'skin-custom-theme',
@@ -42,7 +41,6 @@ const NAMESPACE_ALIASES: Readonly<Record<string, string | null>> = {
   'dsh-client-ui-task-board': 'task-board',
   'dsh-task-board': 'task-board',
   'task-board': 'task-board',
-  'dsh-remote-web-ui': 'remote-web-ui',
   'remote-web-ui': 'remote-web-ui',
   'dsh-pet': 'pet',
   pet: 'pet',

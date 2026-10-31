@@ -33,7 +33,7 @@ const FAMILY_PACKAGES = [
   '@linxin666/dsh-client-ui-web-ui-settings', '@linxin666/dsh-desktop-launcher',
   '@linxin666/dsh-doctor', '@linxin666/dsh-i18n', '@linxin666/dsh-liangshen',
   '@linxin666/dsh-live-stats', '@linxin666/dsh-perf', '@linxin666/dsh-pet',
-  '@linxin666/dsh-remote-web-ui', '@linxin666/dsh-skins', '@linxin666/dsh-ssh',
+  '@linxin666/dsh-skins', '@linxin666/dsh-ssh',
   '@linxin666/dsh-tool-describe-image', '@linxin666/dsh-usage',
 ]
 /** Before the family's first publish (2026-08-13); both registries clamp a window's start to real data. */

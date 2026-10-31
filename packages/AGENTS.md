@@ -122,12 +122,12 @@
 
 ## 安全语义
 
-- 涉及密钥 / 凭据 / 远程执行 / 令牌撤销的包（如 `dsh-ssh`、`dsh-remote-web-ui`）
+- 涉及密钥 / 凭据 / 远程执行 / 令牌撤销的包（如 `dsh-ssh`、`dsh-remote-bridge`）
   修改安全语义时必须同步更新 README 与测试；安全模型说明放包 README 的
   `## 安全模型` 一节。
 
 ## 包级 AGENTS.md
 
 - 包有跨目录规则、复杂构建链或安全模型时，在该包写 `AGENTS.md`（参照
-  `dsh-git-graph/AGENTS.md`、`dsh-remote-web-ui/AGENTS.md` 的简洁风格）。
+  `dsh-git-graph/AGENTS.md`、`dsh-ssh/AGENTS.md` 的简洁风格）。
 - 包级 AGENTS.md 只写该包特有规则，不重复本文件与根文件内容。

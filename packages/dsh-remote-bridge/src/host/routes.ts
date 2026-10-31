@@ -19,7 +19,14 @@ import { discoverPairOrigin, type PairOriginFacts } from './pair-origin.ts'
 export interface PairTokenRouteDeps {
   readonly pairing: PairingService
   readonly log: (message: string) => void
-  /** Origin discovery seam; defaults to {@link discoverPairOrigin}. */
+  /**
+   * 桥自己此刻的公网入口（relay 租约的 hostname 或隧道的 running URL），由接线方
+   * 注入：本模块不认识隧道与租约，只按顺序问地址。返回实时快照，不缓存。
+   */
+  readonly realtime?: () => string | undefined
+  /** 无公网时的局域网兜底：本机地址与 webServer 端口。 */
+  readonly lan?: () => { address: string; port: number } | undefined
+  /** Origin discovery seam; defaults to {@link discoverPairOrigin} over the two seams above. */
   readonly pairOrigin?: () => PairOriginFacts | undefined
 }
 
@@ -62,7 +69,14 @@ export function makePairTokenHandler(deps: PairTokenRouteDeps): WebRoute['handle
     // The link the PHONE should dial, when this machine knows its own public
     // origin. `pairingUrl` is what a QR should carry: the iOS client parses
     // `{token, url}` and adopts the origin from `url`, so one scan sets both.
-    const discovered = (deps.pairOrigin ?? discoverPairOrigin)()
+    //
+    // 取值来源换成了实时优先的发现顺序（pair-origin.ts）：桥自己的 relay 租约或
+    // 隧道 running URL 先答，其次 DSH_REMOTE_PUBLIC_BASE_URL、registry 行，最后是
+    // 局域网字面量。响应结构与字段名一概不变，面板读到的还是那一份。
+    const discovered = (deps.pairOrigin ?? (() => discoverPairOrigin({
+      ...(deps.realtime === undefined ? {} : { realtime: deps.realtime }),
+      ...(deps.lan === undefined ? {} : { lan: deps.lan }),
+    })))()
     const pairingUrl = discovered === undefined ? undefined : `${discovered.origin}${WS_PATH}?token=${ticket.value}`
     deps.log(
       pairingUrl === undefined

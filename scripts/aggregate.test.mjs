@@ -459,18 +459,15 @@ function scalarEntriesOf(ymlPath, wantedSection) {
   return entries
 }
 
-test('web-ui-all retired plugins are tombstones, not dependencies, and match the generated registry', () => {
-  // The shell skips an import for every package listed in the generated
-  // retirement registry. Two facts make that skip safe and one keeps it
-  // honest, so the manifest section behind all three is gated here: the family
-  // must be a tombstone (its subpath export has to stay alive for older
-  // profiles), the plugin must not also be a dependency (a mounted package must
-  // never be swallowed by the no-op branch), and the generated module must be
-  // exactly what the manifest says.
+test('web-ui-all registers each retired plugin as a tombstone, not a dependency, and matches the generated registry pair for pair', () => {
+  // shell 会跳过生成登记表里每个包的 import，所以这条用例同时钉住三件事：退役家族
+  // 的子路径要留在 tombstones 里（旧 profile 仍按子路径 import 这个家族），退役包
+  // 名不能同时是依赖（已挂载的包不能被空操作分支吞掉），生成模块要与 manifest 逐
+  // 条一致。remote-web-ui 迁出为独立仓库后由聚合包静默退役，是这张登记表的第一次
+  // 真实登记，因此断言钉的是「登记了哪些」，而不是「必须为空」。
   const yml = 'packages/dsh-web-all/aggregate.yml'
   const retired = flowEntriesOf(yml, 'retiredPlugins')
-  // The section header stays even though it currently declares no entry: the
-  // mechanism is what a future retirement registers into.
+  // 段标题本身也要留着：登记机制在，未来的退役继续往这一段加条目。
   assert.match(readFileSync(join(ROOT, yml), 'utf8'), /^retiredPlugins:$/m, 'aggregate.yml must keep the retiredPlugins section header')
   const tombstones = new Set(scalarEntriesOf(yml, 'tombstones'))
   const pkg = JSON.parse(readFileSync(join(ROOT, 'packages/dsh-web-all/package.json'), 'utf8'))
@@ -489,15 +486,14 @@ test('web-ui-all retired plugins are tombstones, not dependencies, and match the
   for (const entry of retired) {
     assert.ok(generated.includes("'" + entry.family + "': '" + entry.plugin + "'"), 'generated registry is missing ' + entry.family + ' -> ' + entry.plugin)
   }
-  const generatedPluginCount = [...generated.matchAll(/^  '[^']+': '[^']+',$/gm)].length
-  assert.equal(generatedPluginCount, retired.length, 'generated registry must carry exactly the manifest entries')
-  // Every family this registry ever carried has since been removed outright
-  // (no tombstone, no display resources, no exports key), so the manifest
-  // declares no entry and the loop above is 0 === 0. The emptiness is pinned
-  // in BOTH directions here, because an empty loop on its own accepts any
-  // drift: the manifest must declare none, and the generated module must
-  // carry none. Re-adopting a retired family is a decision that updates this
-  // test, not something that slips in behind an empty set.
-  assert.equal(retired.length, 0, 'the retirement registry must stay empty while every family it carried is removed outright')
-  assert.equal(generatedPluginCount, 0, 'the generated registry must carry no entry while the manifest declares none')
+  // 生成模块从 manifest 派生，所以两个方向都要对得上：manifest 的每条都要出现在
+  // RETIRED_FAMILIES 里，RETIRED_FAMILIES 的每条也要回到 manifest。只比条数会放过
+  // 同条数的错配，这里比的是成对的 family -> plugin。
+  const generatedPairs = [...generated.matchAll(/^  '([^']+)': '([^']+)',$/gm)]
+    .map((match) => match[1] + ' -> ' + match[2])
+    .sort()
+  const declaredPairs = retired.map((entry) => entry.family + ' -> ' + entry.plugin).sort()
+  assert.deepEqual(generatedPairs, declaredPairs, 'the generated RETIRED_FAMILIES must carry exactly the manifest entries, pair for pair')
+  // RETIRED_PLUGINS 是 RETIRED_FAMILIES 的派生值，派生关系本身也是被钉住的事实。
+  assert.match(generated, /Object\.values\(RETIRED_FAMILIES\)\.sort\(\)/u, 'RETIRED_PLUGINS must stay derived from RETIRED_FAMILIES')
 })

@@ -91,7 +91,7 @@ flowchart LR
 flowchart TB
     S["Web 设置页"] --> G["settings.section：Web 扩展（id web-ui-plugins）"]
     G -- "webUiExtensions.registerPage → web-ui.extension keyed 子槽" --> E["按 order 动态生成的已注册页面 TAB"]
-    E -- "web-ui.plugin.item 子槽" --> C["task-board、remote-web-ui、liangshen 等插件卡"]
+    E -- "web-ui.plugin.item 子槽" --> C["task-board、liangshen、ssh 等插件卡"]
     E -- "dsh-workshop.panel 子槽" --> F["皮肤、宠物、插件、预设资产面板"]
     F -- "dsh-preset-center 注入" --> F1["Presets 面板"]
     S --> O["plugins.bundle.config：官方 bundle 配置卡（插件管理页）"]
@@ -183,7 +183,7 @@ flowchart LR
 | dsh-task-board-github | 任务看板外部提供方扩展：GitHub Issues 同步（默认开启，设置可关） |
 | dsh-git-graph | 空会话 git 分支选择器与提交图 |
 | dsh-ssh | 远程 SSH：PTY 终端、SFTP、端口转发与 agent 工具 |
-| dsh-remote-web-ui | 扫码配对远程访问与可撤销设备会话 |
+| dsh-remote-bridge | 协议 v1 宿主适配与公网/局域网接入栈（原生客户端与移动端网关） |
 | dsh-update | 家族自更新：探测 npm 上的新版本并在当前 profile 内就地执行更新 |
 | dsh-session-archive | 会话归档：批量归档恢复、级联删除、自动清理策略 |
 | dsh-session-id | 侧栏底部 Session ID 面板（纯浏览器半区） |

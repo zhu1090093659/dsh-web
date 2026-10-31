@@ -15,7 +15,6 @@
 - [ ] 任务看板 `packages/dsh-task-board`
 - [ ] Git 图谱 `packages/dsh-git-graph`
 - [ ] 右侧面板 `packages/dsh-aionui-panel`
-- [ ] 远程 Web UI `packages/dsh-remote-web-ui`
 - [ ] SSH 远程运维 `packages/dsh-ssh`
 - [ ] 宠物（[dsh-pet](https://github.com/zhu1090093659/dsh-pet) 仓）
 - [ ] 预设中心（[dsh-presets](https://github.com/zhu1090093659/dsh-presets) 仓）

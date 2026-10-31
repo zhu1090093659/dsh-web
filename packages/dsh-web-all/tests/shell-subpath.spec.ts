@@ -70,6 +70,7 @@ describe('family rows and their subpath tombstones', () => {
     name: string
     exports: Record<string, string>
     files?: string[]
+    dependencies?: Record<string, string>
   }
   const rows = parsePatchRows(patch)
   const familyRows = rows.filter(row => row.id !== 'web-ui-compat')
@@ -101,6 +102,27 @@ describe('family rows and their subpath tombstones', () => {
     ]
     for (const sub of formerSubpaths) {
       expect(manifest.exports[`./${sub}`], `missing compat export ./${sub}`).toBe('./lib/shells/shell.js')
+    }
+  })
+
+  it('operator finds a retired family both tombstoned and registered, with no row and no dependency', () => {
+    // Given the aggregate retired remote-web-ui while keeping its package
+    // installable on its own,
+    const yml = readFileSync(join(PACKAGE_DIR, 'aggregate.yml'), 'utf8')
+    const tombstoneSection = (yml.split(/^tombstones:$/m)[1] ?? '').split(/^retiredPlugins:$/m)[0] ?? ''
+    const registered = (yml.split(/^retiredPlugins:$/m)[1] ?? '')
+      .split(/\r?\n/)
+      .filter(line => line.trim().startsWith('- '))
+      .map(line => JSON.parse(line.trim().slice(2)) as { family: string; plugin: string })
+    // When each registered retirement is read against the generated manifest,
+    // Then it is a tombstone subpath whose export still resolves, and neither a
+    // mounted row nor a dependency survives for it.
+    expect(registered.length).toBeGreaterThan(0)
+    for (const entry of registered) {
+      expect(tombstoneSection.split(/\r?\n/).map(line => line.trim())).toContain(`- ${entry.family}`)
+      expect(manifest.exports[`./${entry.family}`]).toBe('./lib/shells/shell.js')
+      expect(rows.some(row => row.id === `web-ui-${entry.family}`), `${entry.family} must keep no mounted row`).toBe(false)
+      expect(manifest.dependencies?.[entry.plugin], `${entry.plugin} must not stay a dependency`).toBeUndefined()
     }
   })
 

@@ -41,7 +41,6 @@ area/plugin:
           - 'packages/dsh-git-graph/**'
           - 'packages/dsh-liangshen/**'
           - 'packages/dsh-plugin-manager/**'
-          - 'packages/dsh-remote-web-ui/**'
           - 'packages/dsh-ssh/**'
           - 'packages/dsh-task-board/**'
           - 'packages/dsh-usage/**'

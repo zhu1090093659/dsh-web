@@ -323,7 +323,7 @@ test(`本地验证值支持代码围栏与列表格式（不误判字段边界�
   // 回归：readField 曾把 "- xxx：yyy" 这类列表行误判为下一个字段标签，
   // 导致按模板填写（代码围栏 + 列表格式）的 PR 被误拒。
   const body = makeBody().body
-    .replace(`执行的命令：pnpm build`, `执行的命令：\n\n\u0060\u0060\u0060bash\npnpm install\npnpm --filter @linxin666/dsh-remote-web-ui test\n\u0060\u0060\u0060\n`)
+    .replace(`执行的命令：pnpm build`, `执行的命令：\n\n\u0060\u0060\u0060bash\npnpm install\npnpm --filter @linxin666/dsh-remote-bridge test\n\u0060\u0060\u0060\n`)
     .replace(`结果摘要：通过`, `结果摘要：\n\n- typecheck：通过。\n- test：157/158 通过。`)
   const pr = { body, author: { login: `someone` } }
   const f = checkTemplate(pr, `owner`)

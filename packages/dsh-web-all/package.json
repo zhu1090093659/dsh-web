@@ -1,6 +1,6 @@
 {
   "name": "@linxin666/dsh-web-all",
-  "description": "DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / git-graph / pet / remote-web-ui / web-ui-settings / skin-center / community-plugins / compat shim）。compat 桥接层已并入本包（src/client），无需独立 compat npm 包。",
+  "description": "DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / git-graph / pet / web-ui-settings / skin-center / community-plugins / compat shim）。compat 桥接层已并入本包（src/client），无需独立 compat npm 包。",
   "version": "0.4.12",
   "icon": "icon.svg",
   "type": "module",
@@ -21,7 +21,6 @@
     "./liangshen": "./lib/shells/shell.js",
     "./market": "./lib/shells/shell.js",
     "./pet": "./lib/shells/shell.js",
-    "./remote-web-ui": "./lib/shells/shell.js",
     "./session-archive": "./lib/shells/shell.js",
     "./settings": "./lib/shells/shell.js",
     "./ssh": "./lib/shells/shell.js",
@@ -52,9 +51,6 @@
     "./preset-center/icon": "./icon.svg",
     "./preset-center/locale/en.json": "./shell-metadata/preset-center/locale/en.json",
     "./preset-center/locale/zh.json": "./shell-metadata/preset-center/locale/zh.json",
-    "./remote-web-ui/icon": "./icon.svg",
-    "./remote-web-ui/locale/en.json": "./shell-metadata/remote-web-ui/locale/en.json",
-    "./remote-web-ui/locale/zh.json": "./shell-metadata/remote-web-ui/locale/zh.json",
     "./session-archive/icon": "./icon.svg",
     "./session-archive/locale/en.json": "./shell-metadata/session-archive/locale/en.json",
     "./session-archive/locale/zh.json": "./shell-metadata/session-archive/locale/zh.json",
@@ -92,7 +88,6 @@
     "./pet/locale/ru.json": "./shell-metadata/pet/locale/ru.json",
     "./plugin-manager/locale/ru.json": "./shell-metadata/plugin-manager/locale/ru.json",
     "./preset-center/locale/ru.json": "./shell-metadata/preset-center/locale/ru.json",
-    "./remote-web-ui/locale/ru.json": "./shell-metadata/remote-web-ui/locale/ru.json",
     "./session-archive/locale/ru.json": "./shell-metadata/session-archive/locale/ru.json",
     "./settings/locale/ru.json": "./shell-metadata/settings/locale/ru.json",
     "./skill-explorer/locale/ru.json": "./shell-metadata/skill-explorer/locale/ru.json",
@@ -102,7 +97,12 @@
     "./task-board-github/locale/ru.json": "./shell-metadata/task-board-github/locale/ru.json",
     "./update/locale/ru.json": "./shell-metadata/update/locale/ru.json",
     "./usage/locale/ru.json": "./shell-metadata/usage/locale/ru.json",
-    "./win-bash/locale/ru.json": "./shell-metadata/win-bash/locale/ru.json"
+    "./win-bash/locale/ru.json": "./shell-metadata/win-bash/locale/ru.json",
+    "./remote-web-ui": "./lib/shells/shell.js",
+    "./remote-web-ui/icon": "./icon.svg",
+    "./remote-web-ui/locale/en.json": "./shell-metadata/remote-web-ui/locale/en.json",
+    "./remote-web-ui/locale/ru.json": "./shell-metadata/remote-web-ui/locale/ru.json",
+    "./remote-web-ui/locale/zh.json": "./shell-metadata/remote-web-ui/locale/zh.json"
   },
   "dsh": {
     "engines": {
@@ -167,7 +167,6 @@
     "@linxin666/dsh-client-ui-task-board-team": "workspace:*",
     "@linxin666/dsh-agents": "workspace:*",
     "@linxin666/dsh-client-ui-git-graph": "workspace:*",
-    "@linxin666/dsh-remote-web-ui": "workspace:*",
     "@linxin666/dsh-update": "workspace:*",
     "@linxin666/dsh-remote-bridge": "workspace:*",
     "@linxin666/dsh-task-board-remote": "workspace:*",

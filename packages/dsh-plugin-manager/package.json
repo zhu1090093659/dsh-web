@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-plugin-manager",
   "description": "Update checking for the dsh web GUI's official Plugins page: compares installed plugins against the version their registry source serves, gates the update on the DSH runtime minimum the release declares, and drives the update through the official installer channel or this package's loopback CLI gateway.",
-  "version": "0.4.12",
+  "version": "0.4.13",
   "icon": "icon.svg",
   "type": "module",
   "main": "lib/index.js",

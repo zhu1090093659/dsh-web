@@ -1,6 +1,6 @@
 {
   "name": "dsh-web",
-  "version": "0.4.12",
+  "version": "0.4.13",
   "private": true,
   "description": "DeepSeek Harness Web GUI 插件全家桶。皮肤、宠物与社区插件索引已拆分为独立仓库（dsh-skins / dsh-pet / dsh-community-plugins），本仓通过 npm 包内置它们。",
   "dsh": {
@@ -14,7 +14,7 @@
     "locale"
   ],
   "dependencies": {
-    "@linxin666/dsh-web-all": "^0.4.12"
+    "@linxin666/dsh-web-all": "^0.4.13"
   },
   "scripts": {
     "build": "pnpm -r build",

@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-agents",
   "description": "Agent squads for the DSH Web GUI: reusable member definitions (agent preset, permission, model pin, reasoning effort, member brief) whose brief joins that member session system prompt, launched as real DSH sessions by the Host.",
-  "version": "0.4.12",
+  "version": "0.4.13",
   "icon": "icon.svg",
   "type": "module",
   "main": "lib/index.js",

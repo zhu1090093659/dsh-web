@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-liangshen",
   "description": "LiangShen (梁神) agent preset plus its composer lever for the dsh web GUI. The host half declares the bundled preset to the harness's agent-preset registry at activation (declare = enabled), so the preset is selectable for new sessions without writing anything into the harness home; the preset keeps a minimal persona with standing working discipline while the harness's own user-role agent-instructions injection delivers the workspace instructions (the optional `instructionSource: system-prompt` mode lifts them into the prompt instead), and declares one tool presentation for the session's whole lifetime: `ptc` by default (the wire collapses to `run_code` and every other tool is reached through the generated SDK), with `native` as the explicit assembled-roster option. High-fan-out tool families (default `mcp__*`) stay paged out of the wire until the preset's own `tool_activate` tool loads their namespace (LRU cap three, state replayed from the durable session event stream), and the tool catalog — exactly the reachable tools plus paged-out namespace summaries — and a one-line working-context projection travel as durable user messages republished only on change. The browser half adds a slot-machine lever left of the model selector on the new-session screen to toggle the mode. Hot-pluggable via cordis.patch.yml + profile symlink, no dsh source changes.",
-  "version": "0.4.12",
+  "version": "0.4.13",
   "icon": "icon.svg",
   "type": "module",
   "packageManager": "pnpm@11.7.0",

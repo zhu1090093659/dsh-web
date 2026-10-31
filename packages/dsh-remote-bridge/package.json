@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-remote-bridge",
   "description": "DSH remote bridge: the host half serves protocol v1 over one exact /ios/v1 WebSocket route — session roster, history baseline, prompting, live turn increments with tool activity, interrupt, and in-process agent approval — to a device paired by a one-shot bootstrap token and a P-256 challenge-response, with the token endpoint admitted only from this machine; the browser half adds one sidebar-foot panel that shows that same one-shot token as a QR symbol and draws an interactive card inside the tool row without answering it, and adds no wire surface",
-  "version": "0.4.12",
+  "version": "0.4.13",
   "icon": "./icon.svg",
   "type": "module",
   "packageManager": "pnpm@11.7.0",

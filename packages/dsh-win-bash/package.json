@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-win-bash",
   "description": "Pinned private bash for Windows x64 DSH sessions: one persistent bash process per session behind the win_bash tool, carrying a digested Git for Windows MinGit payload and no PATH fallback.",
-  "version": "0.4.12",
+  "version": "0.4.13",
   "icon": "icon.svg",
   "type": "module",
   "main": "lib/index.js",

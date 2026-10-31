@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-task-board-github",
   "description": "External provider extension for the dsh Web GUI task board that synchronizes GitHub Issues into the board; shipped as a dsh profile bundle with no DSH source changes.",
-  "version": "0.4.12",
+  "version": "0.4.13",
   "icon": "icon.svg",
   "type": "module",
   "engines": {

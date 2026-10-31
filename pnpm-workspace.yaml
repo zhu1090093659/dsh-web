@@ -155,10 +155,10 @@ minimumReleaseAgeExclude:
   # pin moves, so every pinned satellite version has to bypass the
   # minimum-release-age guard. Scoped to the exact version, so a later
   # satellite publish gets no cooldown bypass.
-  - '@linxin666/dsh-client-ui-community-plugins@0.4.12'
-  - '@linxin666/dsh-client-ui-skin-center@0.4.12'
-  - '@linxin666/dsh-pet@0.4.12'
-  - '@linxin666/dsh-client-ui-preset-center@0.4.12'
+  - '@linxin666/dsh-client-ui-community-plugins@0.4.13'
+  - '@linxin666/dsh-client-ui-skin-center@0.4.13'
+  - '@linxin666/dsh-pet@0.4.13'
+  - '@linxin666/dsh-client-ui-preset-center@0.4.13'
   - '@deepseek-ai/dsh-util-code-language@0.2.1-rc.3'
   - '@deepseek-ai/dsh-client-ui-layout@0.2.1-rc.3'
   - '@oxlint/binding-android-arm-eabi@1.88.0'

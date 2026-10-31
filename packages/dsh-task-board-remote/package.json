@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-task-board-remote",
   "description": "Puts the dsh Web GUI task board on the remote surface: the host half binds the board's capability face to the dsh-remote-bridge extension seam, so a paired phone reads the same ledger (snapshot, acceptance options, idempotent actions, revision events) through the host's own gates.",
-  "version": "0.4.12",
+  "version": "0.4.13",
   "icon": "icon.svg",
   "type": "module",
   "engines": {

@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-browser-view",
   "description": "Right-docked live browser view for the DSH Web GUI: a CDP-driven Chromium the agent operates, a screencast panel the user watches, and screenshots attached to every tool result.",
-  "version": "0.4.12",
+  "version": "0.4.13",
   "icon": "icon.svg",
   "type": "module",
   "main": "lib/index.js",

@@ -55,7 +55,9 @@
   background: transparent;
   color: var(--dsw-alias-label-secondary);
   cursor: pointer;
-  /* Ahead of the update/remote stack in the shared footer-action seat. */
+  /* Rail stack: the trigger leads the seat, which is where a centered 36px
+     column reads best. The wide seat places it on the trailing edge instead —
+     see the wide rule below. */
   order: -1;
   transition: background-color var(--ds-transition-duration) ease, color var(--ds-transition-duration) ease;
 }
@@ -86,6 +88,19 @@
 .trigger:focus-visible {
   outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: var(--pair-focus-offset);
+}
+
+/* Wide seat: the shell lays `sidebar.footer.action` out as a left-aligned row, so
+   a position in flow alone leaves this trigger at the row's leading edge. Ordering
+   it last and handing it the free space in front puts it on the trailing edge,
+   beside the seat's other occupants rather than ahead of them. Both halves are
+   needed: order alone would only place it next to the previous occupant. The
+   margin is scoped to the wide layout because the rail stacks the seat into a
+   centered column, where an auto inline margin would pull the icon off that
+   column's axis. */
+.trigger[data-wide='wide'] {
+  order: 1;
+  margin-inline-start: auto;
 }
 
 /* ── Rail seat geometry (official-shell compatibility) ──

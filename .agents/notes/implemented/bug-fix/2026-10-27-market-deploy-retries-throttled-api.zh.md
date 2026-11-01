@@ -16,9 +16,9 @@ Deploy Market 通道在 dev 上红了三次，每次都在 `node scripts/deploy-
 
 `scripts/deploy-market` 在受限的重试策略下运行每一次 `cf` 调用：`MAX_ATTEMPTS = 4`（第 48 行），即首次尝试加最多三次重试，重试之间是 `RETRY_BACKOFF_MS = [5000, 20000, 60000]`（第 51 行）。
 
-`classifyTransientFailure`（第 102 行）拿子进程的失败文本去匹配 `TRANSIENT_SIGNATURES`（第 72 行），认得 HTTP 429、两个 CLI 各自的 HTTP 5xx 打印形状、文本 `malformed response from the API`，以及 `ECONNRESET` / `ETIMEDOUT` / `EPIPE` / `socket hang up`。5xx 形状是 wrangler 的（`-> 503`、`HTTP 522`、`statusCode: 500`、`Status code: 503`）加上 cf 的类型化命令渲染，后者有两种形态：`<status> <text> · HTTP <path>`，以及 cf 的固定状态文案表没有该码条目时的 `<status>  · HTTP <path>`（双空格，520-527 这一类就渲染成空文案）。这两种形态的状态都不出现在行内别处——既没有 `HTTP 5xx`、也没有 `Status code:` 标记——所以 wrangler 形状的那条分支两种都抓不到，由一条锚定 cf ` · HTTP ` 分隔符的分支统一覆盖。一条都不匹配的失败走快速失败路径，报的仍是逐字节相同的那条消息（第 258 行）。
+`classifyTransientFailure`（第 112 行）拿子进程的失败文本去匹配 `TRANSIENT_SIGNATURES`（第 72 行），认得 HTTP 429、两个 CLI 各自的 HTTP 5xx 打印形状、文本 `malformed response from the API`，以及 `ECONNRESET` / `ETIMEDOUT` / `EPIPE` / `socket hang up`，加上 Node 网络层对同一个失败的文案：`fetch failed` / `FetchError: request to <url> failed`。前者正是 cf 打印的东西——undici 把没能完成的连接拒绝成一个 message 恰为 `fetch failed` 的 `TypeError`，而 cf 的错误框只打印这一句 message，因为点名 syscall 的 cause（`ECONNRESET`、`ENOTFOUND`、`UND_ERR_*`）只有在 cf 带 `DEBUG` 运行时才进日志；后者是 node-fetch 客户端对同一个失败的拼法。这两个 token 都不会出现在配置、鉴权、内容或迁移类失败里，所以这一对留在网络层，与上面 wrangler 的 socket 文案并列，报的是同一个 `socket-error` 原因。5xx 形状是 wrangler 的（`-> 503`、`HTTP 522`、`statusCode: 500`、`Status code: 503`）加上 cf 的类型化命令渲染，后者有两种形态：`<status> <text> · HTTP <path>`，以及 cf 的固定状态文案表没有该码条目时的 `<status>  · HTTP <path>`（双空格，520-527 这一类就渲染成空文案）。这两种形态的状态都不出现在行内别处——既没有 `HTTP 5xx`、也没有 `Status code:` 标记——所以 wrangler 形状的那条分支两种都抓不到，由一条锚定 cf ` · HTTP ` 分隔符的分支统一覆盖。一条都不匹配的失败走快速失败路径，报的仍是逐字节相同的那条消息（第 268 行）。
 
-预算用尽时，失败消息带上原因、尝试次数、响应里带的 Cloudflare Ray ID，以及被捕获输出的有界 200 行尾巴（`failureMessage`，第 240 行；`createTail`，第 122 行）。子进程的 stdout 与 stderr 经中继实时留在 job 日志里，同一份文本同时留在有界环形缓冲中（`spawnAttempt`，第 167 行），因此最终成功的那次重试之后，先前几次的日志仍然可读。
+预算用尽时，失败消息带上原因、尝试次数、响应里带的 Cloudflare Ray ID，以及被捕获输出的有界 200 行尾巴（`failureMessage`，第 250 行；`createTail`，第 132 行）。子进程的 stdout 与 stderr 经中继实时留在 job 日志里，同一份文本同时留在有界环形缓冲中（`spawnAttempt`，第 177 行），因此最终成功的那次重试之后，先前几次的日志仍然可读。
 
 通道里其余部分一律不动：`--cf` 选项、`TURNSTILE_SECRET` 与 `ASSET_ATTEST_SECRET` 的失败关闭闸门、siteverify 配对探针、`market-build --check` 预检、D1 迁移步骤以及每一个退出码，行为都与加重试之前一致。
 

@@ -51,6 +51,15 @@ export const PUSH_GLOBAL_PER_MINUTE = 30
 export const PUSH_WORKSPACE_LIMIT = 512
 /** The only deep-link form this channel emits. */
 export const PUSH_DEEP_LINK_PREFIX = 'whale://session/'
+/**
+ * The one category a delivery may name (§28.4).
+ *
+ * A banner draws a button only where a category it knows is named, so this is the
+ * identifier the client registered statically for the two approval answers. It is
+ * the client's name rather than this bridge's: the bridge writes it verbatim and
+ * holds no second opinion about what a button says.
+ */
+export const PUSH_APPROVAL_CATEGORY = 'dev.dsh.Whale.category.approval'
 
 /**
  * The status line each event carries.
@@ -87,6 +96,13 @@ export interface PushNotification {
   readonly aps: {
     readonly alert: { readonly title: string; readonly body: string }
     readonly sound: 'default'
+    /**
+     * The client's registered category, named only by an approval.
+     *
+     * Absent for every other event rather than empty: an absent key is a banner
+     * with no buttons, and an empty one would be a second way to say it.
+     */
+    readonly category?: string
   }
   /** Workspace short name; absent when this bridge cannot resolve one. */
   readonly w?: string
@@ -198,7 +214,9 @@ export interface PushNotifierOptions {
  *
  * Pure, and exported so the shape can be asserted without a sender: the keys
  * are the contract, and the absence of any body text is the property that
- * matters most.
+ * matters most. One key is conditional — an approval names the category the
+ * client registered, because naming it is the only thing that makes a banner
+ * draw a button, and every other event omits it so a banner stays buttonless.
  * @param event - what happened.
  * @param sessionId - the session it happened to.
  * @param labels - the name and workspace short name, when the bridge holds them.
@@ -210,6 +228,7 @@ export function buildPushNotification(event: PushEvent, sessionId: string, label
     aps: {
       alert: { title: named ? labels.title as string : PUSH_BODY[event], body: PUSH_BODY[event] },
       sound: 'default',
+      ...(event === 'approval' ? { category: PUSH_APPROVAL_CATEGORY } : {}),
     },
     ...(labels.workspace === undefined || labels.workspace === '' ? {} : { w: labels.workspace }),
     s: sessionId,

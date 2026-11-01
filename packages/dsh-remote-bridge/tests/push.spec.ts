@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { DeviceRoster, ROSTER_VERSION, type PushRegistration } from '../src/core/devices.ts'
 import { CAP_PUSH, MINOR } from '../src/core/protocol.ts'
 import {
+  PUSH_APPROVAL_CATEGORY,
   PUSH_DEDUPE_MS,
   PUSH_GLOBAL_PER_MINUTE,
   PUSH_SESSION_INTERVAL_MS,
@@ -565,6 +566,31 @@ describe('push channel: the payload carries no session content', () => {
     })
     // And a session with no name falls back to the fixed status line rather than to an empty string
     expect(buildPushNotification('approval', 'x').aps.alert.title).toBe('有待确认的审批')
+  })
+
+  it('operator names the approval category so a banner can draw its two buttons', () => {
+    // Given the identifier the client registered statically for an approval
+    expect(PUSH_APPROVAL_CATEGORY).toBe('dev.dsh.Whale.category.approval')
+    // When an approval is built
+    const approval = buildPushNotification('approval', 'session-abc', { title: 'Refactor the push channel', workspace: 'dsh-web' })
+    // Then it is the documented payload with that one category added inside aps
+    expect(approval).toEqual({
+      aps: {
+        alert: { title: 'Refactor the push channel', body: '有待确认的审批' },
+        sound: 'default',
+        category: 'dev.dsh.Whale.category.approval',
+      },
+      w: 'dsh-web',
+      s: 'session-abc',
+      st: 'approval',
+      url: 'whale://session/session-abc',
+    })
+    // And the category rides inside aps, so the top-level key set is untouched
+    expect(Object.keys(approval).sort()).toEqual(['aps', 's', 'st', 'url', 'w'])
+    // And every other event leaves the key out entirely — absent, never empty
+    for (const event of ['turn-end', 'turn-error', 'question'] as const) {
+      expect('category' in buildPushNotification(event, 'session-abc').aps).toBe(false)
+    }
   })
 
   it('user reads the turn-end state off the reason and never guesses', () => {

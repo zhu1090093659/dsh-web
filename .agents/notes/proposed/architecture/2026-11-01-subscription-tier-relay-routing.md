@@ -54,6 +54,8 @@ In the protocol v1 handshake, the host's `hello` response optionally appends `re
 
 At application launch, because the user's subscription tier is initially unknown, the client's initial dial always routes through `WhaleOrigin` / the deployment default (`dsh-market.com`), rather than immediately dialing the self-hosted address. The announced meeting point is committed to the origin ledger (`Remote/Sources/RemoteKit/OriginFailover.swift:30-72,104-118`) only after `GET /v1/me` confirms a Plus or Pro subscription tier. This routing update takes effect in the **subsequent connection epoch** (tapping Reconnect in settings applies it immediately); in that subsequent epoch, the client dials the announced self-hosted origin as its primary relay candidate and retains the same host ID on the Cloudflare domain as its secondary candidate.
 
+Within the cold-start window the client starts that epoch itself: once `GET /v1/me` confirms a paid tier within eight seconds of the first live link, a phone whose ledger already carries an announcement rebuilds its socket once per launch, so no manual Reconnect is needed. The decision lives in `RelayRelaunchSwitch` and never fires on the launch-argument lane, on a free tier, or after a prompt has been written.
+
 The secondary candidate exists only after an explicit announcement has been received and tier entitlement is confirmed. The local area network (LAN) direct connection path retains its existing location and priority, evaluated after both rendezvous meeting point candidates.
 
 ### Uninterrupted Sessions and Zero Re-Pairing

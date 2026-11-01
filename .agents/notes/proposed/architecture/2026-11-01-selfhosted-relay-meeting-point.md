@@ -41,11 +41,24 @@ The selected design implements an autonomous WebSocket rendezvous bridge daemon 
 
 ### Process and Port Topology
 
-The relay service is implemented as an independent command under `Server/go/cmd/relayservice`, compiled into a standalone binary `whale-relay` (`/opt/whale-go/relay/whale-relay`). It is supervised by a dedicated systemd unit `whale-relay.service` and listens exclusively on local loopback `127.0.0.1:18789`. It operates completely isolated from the existing account service (`whale-account-go.service`, listening on `127.0.0.1:18787`). Restarting or updating the account service never disrupts in-flight long-lived relay sessions or connector tunnels.
+The server side has been implemented and deployed per this design: the process runs as a standalone binary `whale-relay` (command `cmd/relayservice`, located under `Server/go` in the `iphone_remote_use_dsh` repository), supervised by the dedicated systemd unit `whale-relay-go.service`, listening on local loopback `127.0.0.1:18789`, with state persisting in an isolated SQLite database at `/var/lib/whale-go/relay.db`. It operates completely isolated from the existing account service (`whale-account-go.service`, listening on `127.0.0.1:18787`). Restarting or updating the account service never disrupts in-flight long-lived relay sessions or connector tunnels.
+
+### Server Environment Variable Contract
+
+The relay server observes the following environment variable contract:
+
+| Variable | Requirement / Default | Description |
+| --- | --- | --- |
+| `DATABASE_PATH` | Required | Absolute path to the SQLite lease database file (`/var/lib/whale-go/relay.db`). |
+| `HOST` | Default `127.0.0.1` | Local loopback bind address for the daemon. |
+| `PORT` | Default `18789` | Local TCP listening port for reverse-proxied traffic. |
+| `BUILD_REV` | Optional | Build revision or commit identifier of the deployed binary. |
+| `RELAY_PUBLIC_SUFFIX` | Default `.relay.chatwithai.icu` | Public domain suffix appended to instance identifiers. |
+| `RELAY_CONNECTOR_URL` | Default `wss://relay.chatwithai.icu/__relay/connector` | Upstream connector WebSocket rendezvous URL returned in claim responses. |
 
 ### Nginx Reverse Proxy and TLS Certificate
 
-A DNS-only (grey cloud) A record routes `relay.chatwithai.icu` and `*.relay.chatwithai.icu` directly to `43.153.135.11`. The Nginx virtual host terminates TLS on port 443 with a wildcard certificate whose Subject Alternative Name (SAN) contains both `relay.chatwithai.icu` and `*.relay.chatwithai.icu`. Nginx proxies both hostnames to `127.0.0.1:18789`:
+A DNS-only (grey cloud) A record routes `relay.chatwithai.icu` and `*.relay.chatwithai.icu` directly to `43.153.135.11`. The Nginx vhost sets `server_name` to `relay.chatwithai.icu` and `*.relay.chatwithai.icu`, with a certificate SAN containing both, terminating TLS on port 443. The upstream `Host` header is passed through verbatim (`proxy_set_header Host $host`), because the instance ID is extracted solely from the hostname. Nginx proxies both hostnames to `127.0.0.1:18789`:
 
 - Apex domain `relay.chatwithai.icu`: routes HTTP control plane requests (`/v1/relay/*`) and upstream connector WebSocket connections (`/__relay/connector`).
 - Wildcard subdomain `<id>.relay.chatwithai.icu`: routes downstream client WebSocket requests (`/ios/v1`). Subdomains are strictly required because `Remote/App/AppModel.swift:354-367` (`normalise()`) in the `iphone_remote_use_dsh` repository discards all URL paths and retains only scheme, host, and port.
@@ -151,6 +164,8 @@ The frame contract mirrors `market/worker/src/relay-bridge.js` verbatim across t
 - **Header filtering:** Hop-by-hop headers (`connection`, `keep-alive`, `transfer-encoding`, `upgrade`, `content-length`) are dropped from upstream responses before delivery to downstream clients.
 - **Transport marker:** Bridged responses inject `x-relay-transport: bridge`.
 
+The HTTP half of the frame contract (`req`, `res`, `fin`, and `fail` control frames, along with binary `kind = 1` payload chunks) has been implemented on the server side, but production routing exclusively permits WebSocket upgrades on `/ios/v1`, and no ingress entry point exists for HTTP passthrough. It is test-driven and reserved as a contract capability for future non-mobile clients rather than an existing live capability; this must be explicitly stated so readers do not assume that HTTP passthrough currently exists.
+
 ### Reconnect Semantics
 
 When a host restarts or reconnects with the same `id`:
@@ -197,7 +212,7 @@ Migration executes through an ordered sequence of isolated stages to eliminate a
 
 ### Cutover Order
 
-1. **Deploy relay daemon on VPS:** Compile `whale-relay`, install systemd unit `whale-relay.service`, initialize `/var/lib/whale-go/relay.db`, and configure Nginx vhost with wildcard certificate for `*.relay.chatwithai.icu`.
+1. **Deploy relay daemon on VPS:** Compile `whale-relay`, install systemd unit `whale-relay-go.service`, initialize `/var/lib/whale-go/relay.db`, and configure Nginx vhost with wildcard certificate for `*.relay.chatwithai.icu`.
 2. **Expose configuration options in host bridge:** Add `relayControlUrl` (default `https://dsh-market.com/api/relay`) and `relayPublicSuffix` (default `.dsh-market.com`) to `packages/dsh-remote-bridge/src/index.ts`.
 3. **Verify on independent probe instance:** Launch an isolated DSH probe host with dedicated `DSH_HOME=/tmp/dsh-verify-relay` pointing to `relay.chatwithai.icu`, verifying handshake, streaming, and approval waterfall.
 4. **Update production user profile:** Edit production profile configuration to set `relayControlUrl: https://relay.chatwithai.icu/v1/relay` and `relayPublicSuffix: .relay.chatwithai.icu`.

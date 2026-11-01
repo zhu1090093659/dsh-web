@@ -41,11 +41,24 @@ Status: proposed
 
 ### 进程与端口拓扑
 
-中继服务实现为 `Server/go/cmd/relayservice` 下的独立命令，编译为单独可执行文件 `whale-relay`（路径 `/opt/whale-go/relay/whale-relay`）。服务由独立 systemd 单元 `whale-relay.service` 托管，监听本地回环地址 `127.0.0.1:18789`。该服务与既有账号服务（`whale-account-go.service`，监听 `127.0.0.1:18787`）完全物理隔离，账号服务的发布或重启绝不影响中继长连接与隧道通信。
+服务端已按本设计实现并部署：进程为独立二进制 `whale-relay`（命令 `cmd/relayservice`，位于 `iphone_remote_use_dsh` 仓库 `Server/go`），由独立 systemd 单元 `whale-relay-go.service` 托管，监听本地回环地址 `127.0.0.1:18789`，状态落在独立 SQLite 数据库 `/var/lib/whale-go/relay.db`。该服务与既有账号服务（`whale-account-go.service`，监听 `127.0.0.1:18787`）完全物理隔离，账号服务的发布或重启绝不影响中继长连接与隧道通信。
+
+### 服务端环境变量契约
+
+服务端定义了以下环境变量契约：
+
+| 环境变量 | 必填 / 缺省值 | 说明 |
+| --- | --- | --- |
+| `DATABASE_PATH` | 必需 | SQLite 租约数据库文件的存储路径（`/var/lib/whale-go/relay.db`）。 |
+| `HOST` | 缺省 `127.0.0.1` | 服务进程绑定的本地监听地址。 |
+| `PORT` | 缺省 `18789` | 接收反代流量的本地 TCP 监听端口。 |
+| `BUILD_REV` | 可选 | 二进制文件的构建版本标识或提交 SHA。 |
+| `RELAY_PUBLIC_SUFFIX` | 缺省 `.relay.chatwithai.icu` | 拼接在中继实例标识后的公网域名后缀。 |
+| `RELAY_CONNECTOR_URL` | 缺省 `wss://relay.chatwithai.icu/__relay/connector` | 控制面在 claim 响应中返回给宿主连接器的出站 WebSocket 会合端点 URL。 |
 
 ### Nginx 反代与证书拓扑
 
-在域名解析中配置灰云（DNS only）A 记录，将 `relay.chatwithai.icu` 与 `*.relay.chatwithai.icu` 均解析至 `43.153.135.11`。Nginx vhost 在 443 端口统一切割并终止 TLS，证书 SAN 必须同时覆盖 `relay.chatwithai.icu` 与 `*.relay.chatwithai.icu`。Nginx 将所有匹配请求反代至 `127.0.0.1:18789`：
+在域名解析中配置灰云（DNS only）A 记录，将 `relay.chatwithai.icu` 与 `*.relay.chatwithai.icu` 均解析至 `43.153.135.11`。Nginx vhost 的 `server_name` 为 `relay.chatwithai.icu` 与 `*.relay.chatwithai.icu`，证书 SAN 同时包含两者，在 443 端口统一切割并终止 TLS。上游 Host 头原样透传（`proxy_set_header Host $host`），因为实例 ID 仅从主机名提取。Nginx 将所有匹配请求反代至 `127.0.0.1:18789`：
 
 - 顶层域名 `relay.chatwithai.icu`：承载 HTTP 控制面请求（`/v1/relay/*`）与宿主连接器出站拨号（`/__relay/connector`）。
 - 泛二级域名 `<id>.relay.chatwithai.icu`：承载手机客户端下行 WebSocket 连接（`/ios/v1`）。必须采用二级子域名，因为 `iphone_remote_use_dsh` 仓库的 `Remote/App/AppModel.swift:354-367`（`normalise()`）会丢弃一切路径前缀并固定追加 `/ios/v1`。
@@ -151,6 +164,8 @@ CREATE INDEX IF NOT EXISTS idx_relay_leases_claimed_at ON relay_leases(claimed_a
 - **响应头清洗：** 逐跳首部（`connection`、`keep-alive`、`transfer-encoding`、`upgrade`、`content-length`）在转发给客户端前全部剥离。
 - **传输标识：** 转发响应头部注入 `x-relay-transport: bridge`。
 
+帧契约里 HTTP 那一半（`req`、`res`、`fin`、`fail` 控制帧与二进制 `kind = 1` 载荷分块）在服务端已实现，但生产路由只放行 `/ios/v1` 的 WebSocket 升级，HTTP 直通没有入口——它由测试驱动，是给未来非手机客户端留的契约能力，不是现存能力。这条在此必须明确写出，避免读者误以为存在 HTTP 直通。
+
 ### 断线重连语义
 
 当宿主重启或网络闪断重连时：
@@ -197,7 +212,7 @@ CREATE INDEX IF NOT EXISTS idx_relay_leases_claimed_at ON relay_leases(claimed_a
 
 ### 切流步骤
 
-1. **VPS 部署中继守护进程：** 编译 `whale-relay`，安装 `whale-relay.service` 单元，初始化 `/var/lib/whale-go/relay.db`，并配置 Nginx 泛域名证书反代。
+1. **VPS 部署中继守护进程：** 编译 `whale-relay`，安装 `whale-relay-go.service` 单元，初始化 `/var/lib/whale-go/relay.db`，并配置 Nginx 泛域名证书反代。
 2. **宿主插件暴露配置字段：** 在 `packages/dsh-remote-bridge/src/index.ts` 中新增 `relayControlUrl`（默认 `https://dsh-market.com/api/relay`）与 `relayPublicSuffix`（默认 `.dsh-market.com`）。
 3. **独立探针宿主灰度验证：** 启动带独立环境变量 `DSH_HOME=/tmp/dsh-verify-relay` 的测试宿主，配置指向 `relay.chatwithai.icu`，全链路测试配对、流式会话与审批。
 4. **更新用户正式配置：** 在正式宿主 profile 配置中写入 `relayControlUrl: https://relay.chatwithai.icu/v1/relay` 与 `relayPublicSuffix: .relay.chatwithai.icu`。

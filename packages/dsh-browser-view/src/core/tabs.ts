@@ -27,6 +27,7 @@ import {
   type BrowserNetworkEntry,
   type BrowserTabView,
 } from './protocol.ts'
+import type { CdpScreenshotParams } from './screenshot.ts'
 
 /** One JPEG frame as the panel receives it. */
 export interface ScreencastFrame {
@@ -455,17 +456,29 @@ export class TabManager {
   }
 
   /**
-   * Capture one JPEG frame on demand.
+   * Capture one screenshot on demand.
+   *
+   * Without explicit parameters this is exactly the frame the screencast path
+   * has always asked for: a JPEG at the configured quality, bounded to the
+   * viewport. A caller that wants a clip or a scale plans it with
+   * `planScreenshot` and passes those parameters, so this method stays the
+   * single send point without deciding any of it.
    * @param tabId - target tab.
-   * @returns base64 JPEG without the `data:` prefix.
+   * @param params - CDP parameters from `planScreenshot`; omitted keeps the plain JPEG capture.
+   * @returns base64 payload without the `data:` prefix.
    */
-  async captureScreenshot(tabId: string): Promise<string> {
+  async captureScreenshot(tabId: string, params?: CdpScreenshotParams): Promise<string> {
     const record = this.requireRecord(tabId)
-    const result = await this.transport.send<{ data?: unknown }>('Page.captureScreenshot', {
+    const request: CdpScreenshotParams = params ?? {
       format: 'jpeg',
       quality: this.jpegQuality,
       captureBeyondViewport: false,
-    }, record.sessionId)
+    }
+    const result = await this.transport.send<{ data?: unknown }>(
+      'Page.captureScreenshot',
+      { ...request },
+      record.sessionId,
+    )
     if (typeof result.data !== 'string' || result.data === '') {
       throw new Error('the browser returned an empty screenshot')
     }
@@ -494,6 +507,23 @@ export class TabManager {
     }
     this.onFrame?.(frame)
     return frame
+  }
+
+  /**
+   * Report the CSS viewport a capture of this tab renders.
+   *
+   * A pinned tab answers from configuration, so this costs no protocol
+   * round-trip. A tab this host adopted from a real browser is never pinned —
+   * the page keeps whatever size its window has — so the real CSS layout
+   * viewport is read from the page instead. Screenshot planning needs exactly
+   * this number: clip bounds and the output budget are both expressed in the
+   * viewport the pixels are measured against.
+   * @param tabId - target tab.
+   * @returns the CSS viewport size in pixels.
+   */
+  async viewportOf(tabId: string): Promise<{ width: number; height: number }> {
+    const record = this.requireRecord(tabId)
+    return await this.frameViewport(record)
   }
 
   /** Read the real CSS viewport without changing it in external-browser mode. */

@@ -93,7 +93,7 @@ export function apply(ctx: Context, config?: RuntimeConfig): void {
 
   // Resolved per call, not at mount: the screenshot tool must see the
   // attachment service whenever the host happens to mount it.
-  const saveImage = async (input: { data: Uint8Array; mediaType: 'image/jpeg'; name?: string }): Promise<DurableImageRef> => {
+  const saveImage = async (input: { data: Uint8Array; mediaType: 'image/png' | 'image/jpeg'; name?: string }): Promise<DurableImageRef> => {
     const attachments = ctx.get('attachments') as AttachmentStoreLike | undefined
     if (attachments === undefined || typeof attachments.saveImage !== 'function') {
       throw new Error('browser_screenshot needs the host attachment service to store the image; this host mounts none')

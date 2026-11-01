@@ -25,6 +25,7 @@ import type { CdpTransport } from '../core/cdp.ts'
 import { ChromeProcess } from '../core/chrome.ts'
 import { TabManager, type ScreencastFrame } from '../core/tabs.ts'
 import { buildSnapshot, type SnapshotResult } from '../core/snapshot.ts'
+import { planScreenshot, type ScreenshotPlan, type ScreenshotRequest } from '../core/screenshot.ts'
 import { DOCUMENT_TEXT_EXPRESSION, isAuthChallengeText, isLoopbackTarget } from './auth.ts'
 import { fetchCdpVersion, parseCdpEndpoint, realBrowserConnectionError } from './cdp-endpoint.ts'
 import {
@@ -702,17 +703,54 @@ export class BrowserViewService implements BrowserViewBackend {
   }
 
   /**
-   * Capture one JPEG of the tab.
+   * Capture one image of the tab.
+   *
+   * The plan decides everything the caller is told about the bytes: the format
+   * becomes the media type the attachment service stores, and the scale turns
+   * one capture into a cropped render whose encoded size has to be reported
+   * rather than guessed from the viewport. Planning before the capture is what
+   * makes an impossible request fail here, with the numbers, instead of
+   * producing a truncated or silently downscaled image. The viewport it plans
+   * against is the tab's own: a pinned tab answers from configuration, and an
+   * adopted real-browser tab reports the page's real layout viewport.
    * @param sessionId - calling agent session.
    * @param tabId - explicit tab.
-   * @returns the tab and the base64 JPEG.
+   * @param request - format, clip, and scale; every field is optional.
+   * @returns the tab, the base64 payload, and the media type and encoded size the plan produced.
+   * @throws when the request cannot be honoured by this viewport or the size limits.
    */
-  async screenshot(sessionId: string | undefined, tabId?: string): Promise<{ tabId: string; url: string; title: string; data: string }> {
+  async screenshot(
+    sessionId: string | undefined,
+    tabId?: string,
+    request: ScreenshotRequest = {},
+  ): Promise<{
+    tabId: string
+    url: string
+    title: string
+    data: string
+    mediaType: ScreenshotPlan['mediaType']
+    width: number
+    height: number
+  }> {
     const tab = await this.tabFor(sessionId, tabId)
     const tabs = await this.requireTabs()
-    const data = await tabs.captureScreenshot(tab.id)
+    // Plan against the size this tab really renders at, not the configured one:
+    // a tab adopted from a real browser keeps its window's viewport, so a clip
+    // that fits the page would be refused and the reported pixel size would
+    // describe an image that was never produced.
+    const viewport = await tabs.viewportOf(tab.id)
+    const plan = planScreenshot(viewport, request, this.jpegQuality)
+    const data = await tabs.captureScreenshot(tab.id, plan.params)
     const current = tabs.list().find(candidate => candidate.id === tab.id) ?? tab
-    return { tabId: current.id, url: current.url, title: current.title, data }
+    return {
+      tabId: current.id,
+      url: current.url,
+      title: current.title,
+      data,
+      mediaType: plan.mediaType,
+      width: plan.width,
+      height: plan.height,
+    }
   }
 
   /**

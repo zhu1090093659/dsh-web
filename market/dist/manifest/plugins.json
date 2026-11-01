@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-31",
+  "generated": "2026-11-01",
   "items": [
     {
       "id": "dsh-quick-ask",
@@ -1893,6 +1893,32 @@
       "npm": "dsh-connect-minimaxcode",
       "category": "integration",
       "subcategory": "external-ai"
+    },
+    {
+      "id": "dsh-model-everything",
+      "name": "架构设计与代码的建模审查",
+      "rank": 149,
+      "nameEn": "Architecture Design & Code Modeling Review",
+      "author": "AmethystLuna",
+      "description": "面向架构设计的建模审查：Mermaid / PlantUML 源码直接画成架构图——分层布局、父子分组、结构预算、两版设计的包含关系比对、右栏白板；UML 图的读取与审查；状态机与协议的可执行判定；数据模型与迁移检查；有限词自动机判语言等价与包含并给出最短反例；并发声称挖掘后分派给能判定它的工具；依赖图审查；报告对比。同作者的 dsh-logicprobe 已被本插件取代：新工作从这里开始，旧插件只为既有安装保留。版本以 npm 字段为准，尚无社区使用数据。",
+      "descriptionEn": "Modeling review for architecture work: a Mermaid or PlantUML source drawn as an architecture diagram - layered layout, nested packages, structure budgets, a containment diff between two designs, and a sidebar whiteboard; UML diagrams read and reviewed; state machines and protocols decided as models; data models and migrations checked for coverage and rollback symmetry; finite-word automata deciding language equivalence and inclusion with the shortest witness; concurrency claims mined and routed to the checker that can decide them; dependency graphs audited; reports diffed. It supersedes the same author's dsh-logicprobe: start new work here, and the older plugin stays only for existing installs. The npm field carries the version; no community usage data yet.",
+      "repo": "https://github.com/AmethystLuna/dsh-model-everything",
+      "npm": "dsh-model-everything",
+      "category": "tools",
+      "subcategory": "dev"
+    },
+    {
+      "id": "dsh-composer-ease",
+      "name": "便捷输入框",
+      "rank": 150,
+      "nameEn": "Composer Ease",
+      "author": "mengge237",
+      "description": "给 DSH Web 输入框加补全与编辑：括号与引号自动配对、选中一段再打符号直接框住、跳闭符、空对一次删两侧；补全弹层给本文词、语言词表、工作区文件与模型名，中文候选来自词典（含领域词表、无写死长度上限），打满两个字符自动弹、Tab 接受、回车保持发送。中文输入法打出的全角括号默认换成半角 ()（菜单可关回全角）。标准 DSH bundle 插件：一条命令安装、零第三方运行时、不写文件、不改宿主源码；语言词表在服务端，改过需重启 dsh web。",
+      "descriptionEn": "Composer for the DeepSeek Harness Web GUI: bracket and quote pairing, wrap-on-selection, closer skipping, empty-pair backspace, and a completion popup over draft words, language tables, workspace files and model ids. Full-width brackets typed through a Chinese IME are converted to half-width ().",
+      "repo": "https://github.com/mengge237/dsh-composer-ease",
+      "npm": "dsh-composer-ease",
+      "category": "ui",
+      "subcategory": "chat"
     }
   ]
 }

@@ -30,12 +30,32 @@ export interface FakeBrowser {
   opens: () => number
 }
 
+/** What one fake browser session should behave like. */
+export interface FakeBrowserOptions {
+  /** Fail the launch with this error. */
+  failLaunch?: () => Error | undefined
+  /** Clock for action traces. @default () => 500 */
+  now?: () => number
+  /**
+   * Pin the emulated viewport, as the isolated session does.
+   * Set it to false to model a tab adopted from a real browser.
+   * @default true
+   */
+  pinViewport?: boolean
+  /**
+   * The CSS layout viewport the fake page reports when the viewport is not
+   * pinned; the isolated session never asks.
+   * @default { width: 1600, height: 1000 }
+   */
+  layoutViewport?: { width: number; height: number }
+}
+
 /**
  * Build a service wired to the scripted transport.
- * @param options - fail the launch, or override the clock.
+ * @param options - launch failure, clock, and whether the session pins its viewport.
  * @returns the service plus its test hooks.
  */
-export function createFakeBrowser(options: { failLaunch?: () => Error | undefined; now?: () => number } = {}): FakeBrowser {
+export function createFakeBrowser(options: FakeBrowserOptions = {}): FakeBrowser {
   const transport = new FakeTransport()
   let tabCounter = 0
   let opens = 0
@@ -44,6 +64,12 @@ export function createFakeBrowser(options: { failLaunch?: () => Error | undefine
   transport.responses.set('Target.createTarget', () => ({ targetId: `tab-${++tabCounter}` }))
   transport.responses.set('Target.attachToTarget', () => ({ sessionId: `session-${tabCounter}` }))
   transport.responses.set('Page.captureScreenshot', { data: 'JPEG-BYTES' })
+  // Only an unpinned (adopted real-browser) tab ever asks for this; the answer
+  // is the window-sized viewport the page really renders.
+  const layoutViewport = options.layoutViewport ?? { width: 1600, height: 1000 }
+  transport.responses.set('Page.getLayoutMetrics', {
+    cssLayoutViewport: { clientWidth: layoutViewport.width, clientHeight: layoutViewport.height },
+  })
   transport.responses.set('Runtime.evaluate', (params: Record<string, unknown>) => {
     const expression = String(params.expression ?? '')
     if (expression.includes('document.querySelector')) {
@@ -68,6 +94,9 @@ export function createFakeBrowser(options: { failLaunch?: () => Error | undefine
       if (failure !== undefined) throw failure
       const tabs = new TabManager({
         transport,
+        jpegQuality: opts.jpegQuality,
+        viewport: opts.viewport,
+        pinViewport: options.pinViewport ?? true,
         onFrame: opts.onFrame,
         onTabsChanged: opts.onTabsChanged,
       })

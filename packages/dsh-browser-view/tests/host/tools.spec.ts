@@ -9,7 +9,7 @@ import { assertSupportedJsonSchema, validateJsonSchemaValue } from '@deepseek-ai
 import type { ToolDefinition, ToolRunContext } from '@deepseek-ai/dsh-tools'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { BROWSER_TOOL_NAMES, createBrowserTools, type DurableImageRef } from '../../src/host/tools.ts'
-import { createFakeBrowser } from '../helpers/fake-browser.ts'
+import { createFakeBrowser, type FakeBrowser } from '../helpers/fake-browser.ts'
 
 /** The declared canonical-value type, read off the tool contract itself. */
 type Json = Parameters<ToolDefinition['output']['render']>[1]
@@ -34,28 +34,49 @@ function fakeExec(sessionId?: string): ToolRunContext {
   } as unknown as ToolRunContext
 }
 
-/** The reference the fake attachment store hands back. */
-const STORED: DurableImageRef = {
-  attachmentId: 'att-1',
-  mediaType: 'image/jpeg',
-  bytes: 10,
-  width: 1280,
-  height: 800,
-  name: 'browser-view-tab-1.jpg',
+/** Pixel size the fake attachment store reports for every stored image. */
+const STORED_SIZE = { width: 1280, height: 800 } as const
+
+/** One image the recording attachment store was handed. */
+type SavedImage = { data: Uint8Array; mediaType: 'image/png' | 'image/jpeg'; name?: string }
+
+/**
+ * The attachment store as the real one answers: it reports back the media type
+ * and name it was handed, plus the decoded byte length it actually stored.
+ */
+function store(saved: SavedImage[]) {
+  return async (input: SavedImage): Promise<DurableImageRef> => {
+    saved.push(input)
+    return {
+      attachmentId: 'att-1',
+      mediaType: input.mediaType,
+      bytes: input.data.byteLength,
+      width: STORED_SIZE.width,
+      height: STORED_SIZE.height,
+      ...input.name === undefined ? {} : { name: input.name },
+    }
+  }
+}
+
+/**
+ * How many `Page.captureScreenshot` commands the fake transport has recorded.
+ *
+ * Attaching a tab captures a frame of its own, so a test that cares about what
+ * the screenshot tool dispatched has to count from after that setup.
+ * @param browser - the fake browser.
+ * @returns the running capture count.
+ */
+function captureCount(browser: FakeBrowser): number {
+  return browser.transport.callsOf('Page.captureScreenshot').length
 }
 
 /** Build the tools over a fake browser plus a recording attachment store. */
 function build(options: { saveImage?: boolean } = {}) {
   const browser = createFakeBrowser()
-  const saved: Array<{ data: Uint8Array; mediaType: string; name?: string }> = []
+  const saved: SavedImage[] = []
   const tools = createBrowserTools({
     service: browser.service,
-    ...options.saveImage === false ? {} : {
-      saveImage: async (input: { data: Uint8Array; mediaType: 'image/jpeg'; name?: string }) => {
-        saved.push(input)
-        return { ...STORED, bytes: input.data.byteLength }
-      },
-    },
+    ...options.saveImage === false ? {} : { saveImage: store(saved) },
   })
   const byName = (name: string): ToolDefinition => {
     const found = tools.find(tool => tool.name === name)
@@ -117,36 +138,131 @@ describe('tool catalog', () => {
 })
 
 describe('browser_screenshot', () => {
-  it('operator calls browser_screenshot and receives an image block beside its envelope', async () => {
-    // Given an attachment store
-    // When browser_screenshot runs
-    // Then the saved bytes are the decoded JPEG, the value validates, and the blocks are one text plus one image with the stored id, size and name
-    const { byName, saved } = build()
+  it('operator calls browser_screenshot and receives a lossless PNG beside its envelope', async () => {
+    // Given the fake browser and an attachment store
+    // When browser_screenshot runs with no capture arguments
+    // Then one capture is dispatched as PNG with no clip and no quality, the store
+    //      is handed PNG bytes under a .png name, and the envelope and the block
+    //      name the same file
+    const { byName, saved, browser } = build()
     const tool = byName('browser_screenshot')
+    // Given: the page is already open, so the tab's own opening capture is not
+    // mistaken for the one this call dispatches.
+    await browser.service.ensureTab('session-a')
+    const before = captureCount(browser)
     const value = await tool.execute({}, fakeExec('session-a')) as { tabId: string; image: DurableImageRef }
 
     expect(validateJsonSchemaValue(tool.output.schema, asJson(value))).toEqual([])
+    // The payload that actually reached CDP, not a restatement of the caller's
+    // arguments: the default format and the absent clip are what the plan decided.
+    const captures = browser.transport.callsOf('Page.captureScreenshot').slice(before)
+    expect(captures).toHaveLength(1)
+    expect(captures[0]?.params).toEqual({ format: 'png', captureBeyondViewport: false })
+    expect(captures[0]?.params).not.toHaveProperty('clip')
+    expect(captures[0]?.params).not.toHaveProperty('quality')
     expect(saved).toHaveLength(1)
-    expect(saved[0]?.mediaType).toBe('image/jpeg')
-    expect(saved[0]?.data.byteLength).toBe(Buffer.from('JPEG-BYTES', 'base64').byteLength)
+    expect(saved[0]?.mediaType).toBe('image/png')
+    expect(saved[0]?.name).toBe('browser-view-tab-1.png')
+    // The tool hands the store decoded bytes, not the base64 the service returned.
+    expect(Buffer.from(saved[0]?.data ?? new Uint8Array())).toEqual(Buffer.from('JPEG-BYTES', 'base64'))
 
     const blocks = tool.output.render({}, asJson(value)) as ContentBlock[]
     expect(blocks).toHaveLength(2)
     expect(blocks[0]).toMatchObject({ type: 'text' })
-    expect((blocks[0] as { text: string }).text).toContain('image/jpeg screenshot, 1280x800 px')
-    // The fake store reports the stored byte length, so the block carries the
-    // decoded size rather than the base64 length.
+    const envelope = (blocks[0] as { text: string }).text
+    expect(envelope).toContain('<path>browser-view:screenshot/tab-1.png</path>')
+    expect(envelope).toContain('image/png screenshot, 1280x800 px')
+    // The store reports the stored byte length, so the block carries the decoded
+    // size rather than the base64 length.
     expect(blocks[1]).toEqual({
       type: 'image',
       attachment: {
         attachmentId: 'att-1',
-        mediaType: 'image/jpeg',
+        mediaType: 'image/png',
         bytes: Buffer.from('JPEG-BYTES', 'base64').byteLength,
         width: 1280,
         height: 800,
-        name: 'browser-view-tab-1.jpg',
+        name: 'browser-view-tab-1.png',
       },
     })
+  })
+
+  it('operator asks for one clipped region and the capture is a 2x PNG of exactly that box', async () => {
+    // Given the clip a caller took from a browser_snapshot box, and nothing else
+    // When browser_screenshot runs with only that clip
+    // Then the dispatched capture crops to the box at scale 2 and stays PNG,
+    //      so the omitted scale and format are the service defaults rather than
+    //      values the tool made up
+    const { byName, browser } = build()
+    const clip = { x: 40, y: 60, width: 200, height: 100 }
+    await browser.service.ensureTab('session-a')
+    const before = captureCount(browser)
+
+    await byName('browser_screenshot').execute({ clip }, fakeExec('session-a'))
+
+    const captures = browser.transport.callsOf('Page.captureScreenshot').slice(before)
+    expect(captures).toHaveLength(1)
+    expect(captures[0]?.params).toEqual({
+      format: 'png',
+      captureBeyondViewport: false,
+      clip: { x: 40, y: 60, width: 200, height: 100, scale: 2 },
+    })
+  })
+
+  it('operator asks for JPEG and the capture, the stored media type and the extension all follow it', async () => {
+    // Given the jpeg format
+    // When browser_screenshot runs
+    // Then CDP is asked for a quality-carrying JPEG, the store is handed
+    //      image/jpeg, and the envelope names a .jpg path
+    const { byName, saved, browser } = build()
+    const tool = byName('browser_screenshot')
+    await browser.service.ensureTab('session-a')
+    const before = captureCount(browser)
+    const value = await tool.execute({ format: 'jpeg' }, fakeExec('session-a')) as { image: DurableImageRef }
+
+    const captures = browser.transport.callsOf('Page.captureScreenshot').slice(before)
+    expect(captures).toHaveLength(1)
+    expect(captures[0]?.params).toEqual({ format: 'jpeg', quality: 70, captureBeyondViewport: false })
+
+    expect(saved[0]?.mediaType).toBe('image/jpeg')
+    expect(saved[0]?.name).toBe('browser-view-tab-1.jpg')
+    const envelope = ((tool.output.render({}, asJson(value)) as ContentBlock[])[0] as { text: string }).text
+    expect(envelope).toContain('<path>browser-view:screenshot/tab-1.jpg</path>')
+  })
+
+  it('operator reads the declared capture parameters and every one is optional', () => {
+    // Given the registered screenshot tool
+    // When its model-facing parameter schema and description are projected
+    // Then clip is an object, scale and format are enumerations, and the
+    //      description sends the model through browser_snapshot before a clip
+    const { byName } = build()
+    const tool = byName('browser_screenshot')
+    const parameters = tool.parameters as {
+      properties: Record<string, { type?: string; enum?: unknown[] }>
+      required?: string[]
+    }
+
+    expect(parameters.properties.clip?.type).toBe('object')
+    expect(parameters.properties.scale?.enum).toEqual([1, 2, 3])
+    expect(parameters.properties.format?.enum).toEqual(['png', 'jpeg'])
+    expect(parameters.required ?? []).toEqual([])
+    expect(tool.description).toContain('browser_snapshot')
+    expect(tool.description).toContain('clip')
+  })
+
+  it('operator clips a region outside the viewport and the call fails before any capture', async () => {
+    // Given a clip that reaches past the pinned viewport
+    // When browser_screenshot runs with it
+    // Then the call fails naming that viewport, nothing is captured, and no
+    //      image reaches the attachment store
+    const { byName, saved, browser } = build()
+    await browser.service.ensureTab('session-a')
+    const before = captureCount(browser)
+
+    await expect(byName('browser_screenshot').execute({ clip: { x: 1200, y: 700, width: 400, height: 400 } }, fakeExec('session-a')))
+      .rejects.toThrow(/must stay inside the 1280x800 viewport/)
+    expect(browser.transport.callsOf('Page.captureScreenshot')).toHaveLength(before)
+    expect(saved).toHaveLength(0)
   })
 
   it('operator calls browser_screenshot without an attachment service and the call refuses', async () => {

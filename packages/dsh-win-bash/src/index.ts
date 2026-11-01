@@ -13,6 +13,15 @@
  * and on a Windows host that is not x64, because no PATH bash is ever used as
  * a substitute.
  *
+ * Mount-time publication: the tree that is spawned is a verified copy under the
+ * DSH home, not the tree inside this package. A persistent shell holds its own
+ * executable open, and Windows refuses to rename a directory that holds a
+ * running executable, so a shell started inside node_modules makes pnpm's
+ * import of this package fail with ERR_PNPM_EPERM. Publishing the payload
+ * outside the package is what lets an update or uninstall run while sessions
+ * are live; a cache that cannot be written keeps the tool working from the
+ * packaged tree and logs that updates will need this host stopped.
+ *
  * Availability gate: win_bash serves sessions that run the LiangShen (梁神)
  * preset, so its registration follows that preset's DECLARATION in the
  * harness's agent-preset registry — declared means registered, undeclared
@@ -46,8 +55,8 @@ import type {} from '@deepseek-ai/dsh-tools'
 import { Config, resolveConfig, type WinBashConfig, type WinBashConfigInput } from './config.ts'
 import { startLiangShenGate, LIANGSHEN_PRESET_ID, type GateOptions, type GateOutcome } from './gate.ts'
 import { installPwshReplacement } from './pwsh-replacement.ts'
-import { resolveRuntime, type RuntimeReady, type HostPlatform } from './runtime.ts'
-import { ShellRegistry } from './shell.ts'
+import { prepareRuntime, type RuntimeReady, type HostPlatform } from './runtime.ts'
+import { ShellRegistry, sweepOrphanShellTempDirs } from './shell.ts'
 import { buildWinBashTool } from './tool.ts'
 
 export { BACKGROUND_JOB_KIND, startBackgroundJob } from './background.ts'
@@ -82,11 +91,16 @@ export {
 export { WIN_BASH_TOOL, renderResult, readJobRegistry, stripTerminalEscapes, truncationNotice } from './tool.ts'
 export type { RenderFacts } from './tool.ts'
 export {
+  SHELL_TEMP_PREFIX,
   ShellRegistry,
   ShellUnavailableError,
+  removeShellTempDir,
   shellArgv,
   shellEnvironment,
   shellTempDir,
+  sweepOrphanShellTempDirs,
+  type ShellTempSweep,
+  type ShellTempSweepOptions,
 } from './shell.ts'
 export { buildFrame, markerFor, parseFrame } from './protocol.ts'
 export {
@@ -107,12 +121,23 @@ export {
   type SettleStatus,
 } from './gate.ts'
 export {
+  CACHE_DIR_PARTS,
+  CACHE_STAGING_PREFIX,
+  bashIn,
   bashPath,
+  binIn,
+  cacheRoot,
   parseChecksums,
+  payloadKey,
+  prepareRuntime,
   resolveRuntime,
   runtimeRoot,
+  shIn,
   shPath,
   verifyPayload,
+  verifyPayloadRoot,
+  type CopyTree,
+  type PrepareRuntimeOptions,
 } from './runtime.ts'
 
 /** Cordis plugin name; also the loader row id this package mounts under. */
@@ -254,7 +279,14 @@ export async function mountWithGate(
  */
 export function apply(ctx: Context, config?: WinBashConfigInput): void {
   const host: HostPlatform = { platform: process.platform, arch: process.arch }
-  const runtime = resolveRuntime(host)
+  // The payload is published outside the package before the tool is built: a
+  // shell spawned from node_modules would make every later update or uninstall
+  // of this package fail with ERR_PNPM_EPERM while it runs. A cache that cannot
+  // be written keeps the tool working from the packaged tree and says so.
+  const runtime = prepareRuntime({
+    host,
+    warn: (message: string) => { ctx.logger?.warn?.('dsh-win-bash: ' + message) },
+  })
   if ('code' in runtime) {
     // Refusing the mount is the point: there is no fallback shell, and a
     // mounted tool that always errors is worse than an honest absence.
@@ -268,6 +300,27 @@ export function apply(ctx: Context, config?: WinBashConfigInput): void {
     ctx.logger?.error?.('dsh-win-bash: ' + (error instanceof Error ? error.message : String(error)))
     throw error
   }
+  // Every shell owns a private temp directory under the machine's temp root and
+  // deletes it when it stops. A crash or a hard kill ends this process first, and
+  // those directories are not small - whatever the commands wrote under TMP/TEMP
+  // is still in them. Their names carry the owning pid, so this start can tell
+  // which ones nobody owns any more; the sweep keeps the ones whose pid still
+  // runs. Detached like the mount continuation below, and self-contained, because
+  // an unreclaimed directory must never keep the plugin from mounting.
+  void sweepOrphanShellTempDirs().then((sweep) => {
+    if (sweep.removed.length > 0) {
+      ctx.logger?.info?.('dsh-win-bash: reclaimed ' + sweep.removed.length.toString()
+        + ' orphaned shell temp directories left by earlier runs')
+    }
+    if (sweep.failed.length > 0) {
+      ctx.logger?.warn?.('dsh-win-bash: ' + sweep.failed.length.toString()
+        + ' orphaned shell temp directories could not be reclaimed and will be retried on the next start: '
+        + sweep.failed.join(', '))
+    }
+  }, (error: unknown) => {
+    ctx.logger?.warn?.('dsh-win-bash: the orphaned shell temp directory sweep failed: '
+      + (error instanceof Error ? error.message : String(error)))
+  })
   // Deliberately detached (see mountWithGate), with a last-resort catch so no
   // defect above can surface as the unhandled rejection that kills the process.
   void mountWithGate(ctx, resolved, runtime).catch((error: unknown) => {

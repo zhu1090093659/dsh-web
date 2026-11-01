@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import type { BrowserViewEvent } from '../../src/core/protocol.ts'
+import { DEFAULT_JPEG_QUALITY, type BrowserViewEvent } from '../../src/core/protocol.ts'
 import type { BrowserViewSink } from '../../src/host/service.ts'
 import { createFakeBrowser } from '../helpers/fake-browser.ts'
 
@@ -416,6 +416,90 @@ describe('action traces', () => {
     const network = await browser.service.network('session-a', 10)
     expect(network.entries[0]?.url).toBe('https://a.test/x')
     expect(console_.tabId).toBe(tab.id)
+  })
+})
+
+describe('screenshot requests', () => {
+  it('operator screenshots a clip at scale 2 and the plan decides the payload and the reported size', async () => {
+    // Given one bound tab on the default viewport and JPEG quality
+    // When a JPEG clip of 100x50 at scale 2 is captured
+    // Then the page receives the planned parameters and the result reports the JPEG media type with the doubled pixel size
+    const browser = createFakeBrowser()
+    const tab = await browser.service.ensureTab('session-a')
+
+    const shot = await browser.service.screenshot('session-a', tab.id, {
+      format: 'jpeg',
+      clip: { x: 0, y: 0, width: 100, height: 50 },
+      scale: 2,
+    })
+
+    expect(browser.transport.lastCall('Page.captureScreenshot')?.params).toEqual({
+      format: 'jpeg',
+      quality: DEFAULT_JPEG_QUALITY,
+      captureBeyondViewport: false,
+      clip: { x: 0, y: 0, width: 100, height: 50, scale: 2 },
+    })
+    expect(shot.mediaType).toBe('image/jpeg')
+    expect(shot.width).toBe(200)
+    expect(shot.height).toBe(100)
+    expect(shot.tabId).toBe(tab.id)
+    expect(shot.data).toBe('JPEG-BYTES')
+  })
+
+  it('operator screenshots a clip at the pinned viewport edge and the page is never asked for its metrics', async () => {
+    // Given a tab pinned to the default 1280x800 viewport
+    // When a clip that reaches the bottom-right corner of that viewport is captured
+    // Then the clip is accepted against the pinned size and no layout-metrics call was made
+    const browser = createFakeBrowser()
+    const tab = await browser.service.ensureTab('session-a')
+
+    const shot = await browser.service.screenshot('session-a', tab.id, {
+      clip: { x: 1180, y: 700, width: 100, height: 100 },
+      scale: 1,
+    })
+
+    expect(browser.transport.callsOf('Page.getLayoutMetrics')).toHaveLength(0)
+    expect(shot.width).toBe(100)
+    expect(shot.height).toBe(100)
+  })
+
+  it('operator screenshots a clip past the configured viewport on a real 1600x1000 page and it is accepted', async () => {
+    // Given a tab adopted from a browser whose page really renders 1600x1000
+    // When a clip at x=1500, outside the configured 1280x800, is captured
+    // Then the plan uses the page size and the reported pixels match the clip
+    const browser = createFakeBrowser({
+      pinViewport: false,
+      layoutViewport: { width: 1600, height: 1000 },
+    })
+    const tab = await browser.service.ensureTab('session-a')
+
+    const shot = await browser.service.screenshot('session-a', tab.id, {
+      clip: { x: 1500, y: 900, width: 100, height: 100 },
+      scale: 1,
+    })
+
+    expect(browser.transport.lastCall('Page.captureScreenshot')?.params).toEqual({
+      format: 'png',
+      captureBeyondViewport: false,
+      clip: { x: 1500, y: 900, width: 100, height: 100, scale: 1 },
+    })
+    expect(shot.width).toBe(100)
+    expect(shot.height).toBe(100)
+  })
+
+  it('operator asks for a clip past the real page and the error quotes the page viewport', async () => {
+    // Given the same 1600x1000 page
+    // When a clip that ends at 1650 is captured
+    // Then it is refused and the message names the 1600x1000 viewport, not the configured one
+    const browser = createFakeBrowser({
+      pinViewport: false,
+      layoutViewport: { width: 1600, height: 1000 },
+    })
+    const tab = await browser.service.ensureTab('session-a')
+
+    await expect(browser.service.screenshot('session-a', tab.id, {
+      clip: { x: 1550, y: 0, width: 100, height: 100 },
+    })).rejects.toThrow(/screenshot clip must stay inside the 1600x1000 viewport/)
   })
 })
 

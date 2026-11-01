@@ -61,13 +61,20 @@ test('copies cover the settings trio for all consumers plus host and http helper
   // the slider bubble; it already carried the entry-bound form fallback.
   // dsh-remote-web-ui retired from the bundled family (the package stays
   // installable on its own), taking its five settings-card derivations and nine
-  // explicit targets with it: the three totals below are 133 / 73 / 45.
+  // explicit targets with it. dsh-win-bash adds one dsh-home.ts copy under src/:
+  // its runtime publishes the payload cache under $DSH_HOME, so it resolves the
+  // home through the same generated copy every other host half uses. The three
+  // totals below are 134 / 73 / 46.
   // dsh-browser-view's real-browser settings card adds seven client copies:
   // the card chrome, form primitives, stylesheet, entry fallback, card seat,
-  // segmented control and slider bubble.
-  assert.equal(entries.length, 133)
+  // segmented control and slider bubble. dsh-task-board-team fills the board's
+  // provider-settings seat with the same nested card, so it takes the five card
+  // derivations (chrome, form primitives, stylesheet, segmented control, slider
+  // bubble) and deliberately none of the entry-bound form fallback: its fields
+  // are written through the board, not a family settings namespace.
+  assert.equal(entries.length, 139)
   const clientTrio = entries.filter(entry => entry.target.includes('/src/client/'))
-  assert.equal(clientTrio.length, 73)
+  assert.equal(clientTrio.length, 78)
   const hostCopies = entries.filter(entry => entry.target.includes('/src/host/')
     || entry.target.includes('/src/dsh-home.ts')
     || entry.target.includes('/src/mount-once.ts')
@@ -75,7 +82,7 @@ test('copies cover the settings trio for all consumers plus host and http helper
     || entry.target.includes('/src/pair-access.ts')
     || entry.target.includes('/src/agent/')
     || entry.target.endsWith('/packages/dsh-task-board/src/http.ts'))
-  assert.equal(hostCopies.length, 45)
+  assert.equal(hostCopies.length, 46)
 })
 
 test('checkSync detects drift and applySync repairs it', async () => {

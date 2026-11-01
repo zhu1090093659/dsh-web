@@ -5,7 +5,8 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { EVENT_RING_SIZE } from '../../src/core/protocol.ts'
+import { DEFAULT_JPEG_QUALITY, DEFAULT_VIEWPORT, EVENT_RING_SIZE } from '../../src/core/protocol.ts'
+import { planScreenshot } from '../../src/core/screenshot.ts'
 import { TabManager, pushBounded, type ScreencastFrame } from '../../src/core/tabs.ts'
 import { FakeTransport } from '../helpers/fake-cdp.ts'
 
@@ -255,6 +256,40 @@ describe('tab bookkeeping', () => {
     await expect(manager.captureScreenshot('tab-1')).resolves.toBe('JPEG-BASE64')
   })
 
+  it('operator captures a screenshot without parameters and the page receives the same three fields as before', async () => {
+    // Given a tab and a manager on the default JPEG quality
+    // When a screenshot is captured with no parameters
+    // Then the page is asked for exactly the JPEG payload this call has always sent
+    const { transport, manager } = await openManager()
+    await manager.captureScreenshot('tab-1')
+    expect(transport.lastCall('Page.captureScreenshot')?.params).toEqual({
+      format: 'jpeg',
+      quality: DEFAULT_JPEG_QUALITY,
+      captureBeyondViewport: false,
+    })
+  })
+
+  it('operator captures a planned clip and the page receives exactly the planned parameters', async () => {
+    // Given a planned PNG clip of 300x200 at scale 2 on the default viewport
+    // When that plan is captured
+    // Then the page receives the plan parameters verbatim and the plan reports the doubled pixel size
+    const { transport, manager } = await openManager()
+    const viewport = { width: DEFAULT_VIEWPORT.width, height: DEFAULT_VIEWPORT.height }
+    const plan = planScreenshot(viewport, {
+      format: 'png',
+      clip: { x: 10, y: 20, width: 300, height: 200 },
+      scale: 2,
+    }, DEFAULT_JPEG_QUALITY)
+    await manager.captureScreenshot('tab-1', plan.params)
+    expect(transport.lastCall('Page.captureScreenshot')?.params).toEqual({
+      format: 'png',
+      captureBeyondViewport: false,
+      clip: { x: 10, y: 20, width: 300, height: 200, scale: 2 },
+    })
+    expect(plan.width).toBe(600)
+    expect(plan.height).toBe(400)
+  })
+
   it('operator uses a ref no snapshot produced and the error asks for browser_snapshot first', async () => {
     // Given a tab whose snapshot produced only ref 2
     // When ref 2 is resolved before a snapshot, then after one
@@ -290,6 +325,44 @@ describe('tab bookkeeping', () => {
     expect(manager.list()).toHaveLength(1)
   })
 })
+describe('viewport reporting', () => {
+  it('operator reads the viewport of a pinned tab and the configured size comes back with no metrics call', async () => {
+    // Given a tab this host pinned to the default viewport
+    // When its viewport is read
+    // Then the configured size comes back and the page was never asked
+    const { transport, manager } = await openManager()
+    await expect(manager.viewportOf('tab-1')).resolves.toEqual({
+      width: DEFAULT_VIEWPORT.width,
+      height: DEFAULT_VIEWPORT.height,
+    })
+    expect(transport.callsOf('Page.getLayoutMetrics')).toHaveLength(0)
+  })
+
+  it('operator reads the viewport of a tab this host does not pin and the real page size comes back', async () => {
+    // Given an adopted tab whose page really renders 1600x1000
+    // When its viewport is read
+    // Then the metrics from the page are reported instead of the configured size
+    const transport = new FakeTransport()
+    transport.responses.set('Target.createTarget', { targetId: 'tab-1' })
+    transport.responses.set('Target.attachToTarget', { sessionId: 'session-1' })
+    transport.responses.set('Page.getLayoutMetrics', {
+      cssLayoutViewport: { clientWidth: 1600, clientHeight: 1000 },
+    })
+    const manager = new TabManager({ transport, pinViewport: false })
+    await manager.createTab()
+
+    await expect(manager.viewportOf('tab-1')).resolves.toEqual({ width: 1600, height: 1000 })
+  })
+
+  it('operator reads the viewport of an unknown tab and the error asks for browser_tabs', async () => {
+    // Given a manager with one tab
+    // When the viewport of a tab that does not exist is read
+    // Then it rejects asking for browser_tabs
+    const { manager } = await openManager()
+    await expect(manager.viewportOf('nope')).rejects.toThrow(/call browser_tabs/)
+  })
+})
+
 describe('document replacement', () => {
   it('operator navigates to a second page and the console and network tables describe only that page', async () => {
     // Given one tab whose first page logged a line and issued a request

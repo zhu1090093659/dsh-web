@@ -1,4 +1,10 @@
-/* Team provider seats: one quiet block per surface, tokens only. */
+/* Team provider seats: tokens only.
+ *
+ * The settings block's chrome, rows and inputs belong to the shared family card
+ * slice (`settings-card.module.css`, generated); this file owns the detail
+ * block's own lines, the settings row controls the shared slice has no class for
+ * (the status word, the group headings and the action row) and the badge.
+ */
 
 .section {
   display: flex;
@@ -14,9 +20,13 @@
   margin: 0;
 }
 
+/* One label/value line: the label column sizes to its own text, so a long value
+   wraps inside the remaining width instead of squeezing the label into a
+   character-per-line column. */
 .row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
   gap: 8px;
 }
 
@@ -25,9 +35,18 @@
 }
 
 .value {
+  min-width: 0;
   color: var(--dsw-alias-label-primary);
   text-align: right;
   overflow-wrap: anywhere;
+}
+
+/* A status word that keeps its own line beside a label, never wrapping into it. */
+.status {
+  flex: none;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
 }
 
 .badge {
@@ -88,35 +107,87 @@
   color: var(--dsw-alias-label-secondary);
   border-left: 2px solid var(--dsw-alias-border-primary);
   padding-left: 6px;
+  margin: 12px 0 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
-.input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 4px 6px;
-  border: 1px solid var(--dsw-alias-border-secondary);
-  border-radius: 6px;
-  background: var(--dsw-alias-bg-primary);
-  color: var(--dsw-alias-label-primary);
-  font: inherit;
+/* A heading inside the card body that groups the rows under it. */
+.groupTitle {
+  margin: 18px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary);
 }
 
+/* The card's own action row, under the form it commits. */
 .actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
+  padding: 16px 0 4px;
 }
 
+/* The row's committing action: the primary-action token trio, so it stays
+   legible in every theme and under skins. Never brand-primary as a fill. */
+.primaryButton {
+  padding: 4px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--dsw-alias-button-primary-fill, var(--dsw-alias-label-primary));
+  color: var(--dsw-alias-label-primary-foreground, var(--dsw-alias-bg-layer-3));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--dsw-alias-button-primary-hover, var(--dsw-alias-button-primary-fill, var(--dsw-alias-label-primary)));
+}
+
+.primaryButton:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
+/* A secondary action of the same row: the card surface with a hairline. */
 .button {
-  padding: 2px 10px;
-  border: 1px solid var(--dsw-alias-border-secondary);
-  border-radius: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
   background: transparent;
   color: var(--dsw-alias-label-primary);
   font: inherit;
+  font-size: 13px;
+  line-height: 18px;
   cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
+.primaryButton:disabled,
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.saved {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
 }
 
 .empty {
   color: var(--dsw-alias-label-secondary);
+  padding-top: 12px;
+  margin: 0;
 }

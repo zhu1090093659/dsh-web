@@ -31,7 +31,12 @@ shell 必须持久，因为 shell 是有状态的：一条命令 `cd` 过、expo
 - 可选地把命令作为后台任务放进它自己的钉死 bash 进程，立即返回 job id，
   于是长构建或 watch 既不占住这次调用，也不会随会话 shell 一起死。见
   [后台命令](#后台命令)。
-- 工具注册之前先按 SHA256 清单校验随包载荷；摘要不匹配即拒绝挂载。
+- 给每个 shell 一份机器 temp 根下的私有目录（`TMPDIR`/`TMP`/`TEMP`），并在该
+  shell 结束时删除它——正常 `exit`、超时或中止、会话销毁、插件卸载，以及后台任务
+  结算时都在内。宿主被强杀、来不及删除的目录，会在下次启动时按目录名里的 pid 回收，
+  因此 temp 根不会每个 shell 攒一个目录。
+- 工具注册之前先按 SHA256 清单校验随包载荷，并把校验过的副本发布到 DSH home
+  下；摘要不匹配即拒绝挂载，且每个 shell 都从该副本启动，而不是从包目录启动。
 - `win_bash` 注册期间，把宿主自带的 `pwsh` 工具从会话的模型可见面上替换掉，
   使命令工作落到 bash，而不是落到模型本来就更熟的那个 shell。见
   [该用哪个 shell](#该用哪个-shell)。
@@ -197,6 +202,14 @@ shell、其 userland 以及精确的 DLL 闭包。同一 release 的两份资产
 [PROVENANCE.md](PROVENANCE.md) 记录两份来源资产的 URL 与摘要、裁剪规则、载荷清单与
 许可证对照表。
 
+真正运行的是副本，不是包内那棵树。Windows 不允许 rename 一个运行中的可执行文件
+所在的目录，而 pnpm 导入包正是用 rename 把 staging 目录换成目标目录，所以从
+`node_modules/@linxin666/dsh-win-bash` 里起的 shell，会让此后每次更新或卸载本包
+都报 `ERR_PNPM_EPERM`，直到它停下。副本发布在
+`<DSH_HOME>/win-bash/runtime/<载荷键>`，键由 checksums 清单导出：只改 JavaScript
+的发布会复用已有副本，字节与清单不符的副本会在运行之前被重建，独立的 `DSH_HOME`
+得到自己的缓存。副本写不出来时，改由校验过的包内树运行，并有一条警告说明这一点。
+
 ## 已知限制
 
 - 仅支持 Windows x64。载荷是 Windows MSYS2 构建，工具在任何其它平台或架构上都拒绝
@@ -209,6 +222,8 @@ shell、其 userland 以及精确的 DLL 闭包。同一 release 的两份资产
   字节，以及在 provider 留下 spill 文件时完整流在哪里。
 - 后台任务是「一个进程执行一条命令」：任务之间没有持久状态，也不能由正在跑的前台调用
   「升级」而来（前台调用到达 `timeoutMs` 时仍然会停掉它的 shell）。
+- 发布的载荷位于 `<DSH_HOME>/win-bash/runtime/`。每一份不同的载荷在那里保留一个
+  目录（约 16 MiB），DSH 停止时可以安全删除它：下一次挂载会重新发布。
 
 ## 后续工作
 

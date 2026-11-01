@@ -32,6 +32,15 @@ agent tool call ──► host half ──► CDP ──► its own Chromium, or
 
 In the default isolated mode the host half starts Chrome lazily on the first tool call, pins a viewport, and keeps a ring of console entries and network requests per tab so a verification can be read back without re-running the page. In CDP mode a tab listing or a panel attach opens the same kind of session against the configured endpoint and starts no process of its own. A top-level document replacement clears both rings; a same-document navigation (hash, query, SPA pushState) keeps them.
 
+## Screenshot fidelity
+
+`browser_screenshot` captures a lossless PNG by default: a screenshot is usually looked at more than once, and annotation, thin borders and small labels stay legible instead of turning into JPEG ringing. `format` switches to `jpeg` when a smaller result matters more than exact pixels.
+
+- **Capture a region, not the page**: `clip` takes `{ x, y, width, height }` in CSS pixels, the same coordinate space as a `browser_snapshot` box and the `x`/`y` of `browser_click`. A clipped capture is rendered at 2x unless `scale` says otherwise.
+- **`scale` is 1, 2 or 3**: an explicit value always wins over the clip default.
+- **Why the extra pixels**: on the model side one visual token cell covers roughly 42x42 px of the image, so a whole-viewport capture is already coarse. To read detail, take the box from `browser_snapshot` and capture only that region; at 2x the same element occupies several times the tokens it did in the full frame.
+- **Out of bounds fails loudly**: a `clip` that leaves the pinned viewport (isolated mode, 1280x800) or the tab's real layout viewport (real-browser mode), or an encoded image over the host's attachment budget, is an error naming the reason. No image comes back for a region that was never rendered.
+
 ## Interface seats
 
 | Seat | Kind | What lands there |
@@ -91,6 +100,7 @@ Sign in to the sites the agent should see inside that profile once; the plugin d
 - The token top-up only covers the site root, because DSH answers the challenge with a 303 to `./` for `GET /` alone.
 - One browser per host; tabs are isolated CDP targets, not separate profiles.
 - Chrome must be installed at a standard location (or named by `CHROME_PATH`) for the isolated mode, which is the only mode that launches a browser.
+- In the default isolated mode the viewport is pinned at 1280x800, so a `clip` must fall inside it: a region outside it is refused rather than scrolled into place. In real-browser mode the bound is the tab's own layout viewport.
 
 ## Install
 

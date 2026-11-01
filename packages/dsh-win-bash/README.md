@@ -41,8 +41,16 @@ session is what makes that true.
 - Optionally runs a command as a background job in its own pinned bash process
   and returns a job id at once, so a long build or watch does not hold the call
   open or die with the session's shell. See [Background commands](#background-commands).
-- Verifies the vendored payload against its SHA256 manifest before the tool is
-  registered at all; a mismatch refuses the mount.
+- Gives every shell its own private directory under the machine's temp root for
+  `TMPDIR`/`TMP`/`TEMP`, and deletes it when that shell ends — on `exit`, on
+  timeout or abort, on session disposal, on plugin unload, and when a background
+  job settles. Directories a killed host never got to delete are reclaimed on the
+  next start, by the pid in their name, so the temp root does not grow one
+  directory per shell.
+- Verifies the vendored payload against its SHA256 manifest and publishes a
+  verified copy under the DSH home before the tool is registered at all; a
+  mismatch refuses the mount, and every shell runs from that copy rather than
+  from the package directory.
 - Replaces the host's own `pwsh` tool on the session's model-facing surface
   while `win_bash` is registered, so command work goes to bash instead of to
   the shell a model already knows. See [Which shell to use](#which-shell-to-use).
@@ -237,6 +245,18 @@ same release's full `Git-2.56.0.2-64-bit.tar.bz2`. Every file is registered in
 text ships beside it. [PROVENANCE.md](PROVENANCE.md) records both source URLs and
 digests, the curation rules, the payload inventory and the license mapping.
 
+The tree that runs is a copy, not the packaged one. Windows refuses to rename a
+directory that holds a running executable, and pnpm imports a package by
+renaming a staging directory over it, so a shell started inside
+`node_modules/@linxin666/dsh-win-bash` makes every later update or uninstall of
+this package fail with `ERR_PNPM_EPERM` while it runs. The copy is published at
+`<DSH_HOME>/win-bash/runtime/<payload key>`, where the key comes from the
+checksums manifest: a release that changes only JavaScript reuses the copy
+already there, a copy whose bytes disagree with the manifest is rebuilt before
+anything runs, and an isolated `DSH_HOME` gets its own cache. When that copy
+cannot be written, the verified packaged tree runs instead and one warning line
+says so.
+
 ## Known limitations
 
 - Windows x64 only. The payload is a Windows MSYS2 build and the tool refuses
@@ -251,6 +271,10 @@ digests, the curation rules, the payload inventory and the license mapping.
 - A background job is one command in one process: it has no persistent state
   across jobs, and it cannot be promoted from a running foreground call
   (a foreground call that hits `timeoutMs` still stops its shell).
+- The published payload lives under `<DSH_HOME>/win-bash/runtime/`. Each
+  distinct payload keeps one directory there, about 16 MiB, and such a
+  directory can be deleted while DSH is stopped: the next mount publishes it
+  again.
 
 ## Follow-up work
 

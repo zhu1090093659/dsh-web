@@ -5,8 +5,8 @@
  * JSON, rendered as one pretty-printed text block: the model reads fields, not
  * prose, and the GUI can present the same value later. `browser_screenshot`
  * returns a real image part — an `ImageBlock` carrying a durable attachment
- * reference — because a JPEG smuggled in as base64 text is not an image to any
- * model that can see one.
+ * reference — because a screenshot smuggled in as base64 text is not an image to
+ * any model that can see one.
  *
  * The screenshot path therefore needs the host's attachment service: the bytes
  * are committed through it, and the block only carries the reference. The
@@ -24,6 +24,7 @@
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolDefinition, ToolRunContext } from '@deepseek-ai/dsh-tools'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
+import type { ScreenshotRequest } from '../core/screenshot.ts'
 import type { BrowserViewService } from './service.ts'
 
 /** A durable image reference as the attachment service returns it. */
@@ -42,18 +43,23 @@ export interface DurableImageRef {
   name?: string
 }
 
+/** File extension matching one screenshot media type. */
+function extensionOf(mediaType: string): 'png' | 'jpg' {
+  return mediaType === 'image/png' ? 'png' : 'jpg'
+}
+
 /** What the tools need from the host. */
 export interface BrowserToolDeps {
   /** The browser service every tool drives. */
   service: BrowserViewService
   /**
-   * Commit one JPEG to the host's durable attachment store.
+   * Commit one screenshot (PNG or JPEG) to the host's durable attachment store.
    *
    * Absent when the composing host mounts no attachment service; the screenshot
    * tool then refuses with an explanation instead of returning text pretending
    * to be an image.
    */
-  saveImage?: (input: { data: Uint8Array; mediaType: 'image/jpeg'; name?: string }) => Promise<DurableImageRef>
+  saveImage?: (input: { data: Uint8Array; mediaType: 'image/png' | 'image/jpeg'; name?: string }) => Promise<DurableImageRef>
 }
 
 /** One text block. */
@@ -349,11 +355,35 @@ export function createBrowserTools(deps: BrowserToolDeps): ToolDefinition[] {
 
   const screenshot = defineTool({
     name: 'browser_screenshot',
-    description: 'Capture the current tab as a JPEG and return the image itself, not a description of it. '
+    description: 'Capture the current tab as an image and return the image itself, not a description of it. '
       + 'Use it when the user should see the page, when layout or styling matters more than the DOM, or to check that something rendered correctly. '
-      + 'The image is the whole visible viewport; scroll first if the region you need is off-screen. '
-      + '中文触发词：截图、看一下现在的页面、画面。',
+      + 'The default is a lossless PNG of the whole visible viewport; scroll first if the region you need is off-screen. '
+      + 'The full viewport is coarse to read: one visual token cell on the model side covers roughly 42x42 px of the image. '
+      + 'To read detail, call browser_snapshot first, take the box of the node you care about, and capture just that region with clip (rendered at 2x unless scale says otherwise). '
+      + '中文触发词：截图、看一下现在的页面、画面、放大看细节。',
     parameters: {
+      clip: {
+        type: 'object',
+        additionalProperties: false,
+        description: 'Region to capture, in CSS pixels inside the fixed viewport: the same coordinate space as a browser_snapshot box and '
+          + 'the x/y of browser_click. Omit to capture the whole visible viewport.',
+        properties: {
+          x: { type: 'number', required: true, description: 'Left edge in CSS pixels.' },
+          y: { type: 'number', required: true, description: 'Top edge in CSS pixels.' },
+          width: { type: 'number', required: true, description: 'Region width in CSS pixels.' },
+          height: { type: 'number', required: true, description: 'Region height in CSS pixels.' },
+        },
+      },
+      scale: {
+        type: 'integer',
+        enum: [1, 2, 3],
+        description: 'Render multiplier. Defaults to 2 when clip is given and 1 otherwise.',
+      },
+      format: {
+        type: 'string',
+        enum: ['png', 'jpeg'],
+        description: "Encoded image format; 'png' is lossless and the default.",
+      },
       tab_id: TAB_ID_PARAM,
     },
     output: {
@@ -380,7 +410,7 @@ export function createBrowserTools(deps: BrowserToolDeps): ToolDefinition[] {
         },
       },
       render: (_args, value) => {
-        const envelope = `<path>browser-view:screenshot/${value.tabId}.jpg</path>
+        const envelope = `<path>browser-view:screenshot/${value.tabId}.${extensionOf(value.image.mediaType)}</path>
 <type>image</type>
 <content>
 ${value.image.mediaType} screenshot, ${value.image.width}x${value.image.height} px, ${value.image.bytes} bytes
@@ -400,11 +430,18 @@ title: ${value.title}
       if (saveImage === undefined) {
         throw new Error('browser_screenshot needs the host attachment service to store the image; this host mounts none')
       }
-      const shot = await service.screenshot(sessionIdOf(exec), args.tab_id)
+      // Only the keys the caller actually gave: an absent format or scale lets
+      // the service apply its own default, which is where "clip implies 2x" lives.
+      const request: ScreenshotRequest = {}
+      if (args.format !== undefined) request.format = args.format
+      if (args.clip !== undefined) request.clip = args.clip
+      if (args.scale !== undefined) request.scale = args.scale
+
+      const shot = await service.screenshot(sessionIdOf(exec), args.tab_id, request)
       const ref = await saveImage({
         data: Buffer.from(shot.data, 'base64'),
-        mediaType: 'image/jpeg',
-        name: `browser-view-${shot.tabId}.jpg`,
+        mediaType: shot.mediaType,
+        name: `browser-view-${shot.tabId}.${extensionOf(shot.mediaType)}`,
       })
       return {
         tabId: shot.tabId,

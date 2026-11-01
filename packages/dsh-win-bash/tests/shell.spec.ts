@@ -11,7 +11,7 @@
  * Skipped off Windows x64, where the payload cannot start.
  */
 import { spawn, type ChildProcess } from 'node:child_process'
-import { mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -93,6 +93,22 @@ function provider(): SubprocessRuntime {
     spawnTerminal: () => { throw new Error('win_bash never allocates a terminal') },
     get live(): ChildProcess | undefined { return live },
   } as unknown as SubprocessRuntime
+}
+
+/**
+ * The private temp directories this process's shells currently own, by the name
+ * each shell gives its own.
+ *
+ * The test reads the file system rather than the shell's own $TMP: MSYS rewrites
+ * that variable into its POSIX form, while what the user's disk sees is the
+ * Windows path named here.
+ * @returns absolute paths of live directories created for this process.
+ */
+function ownTempDirs(): string[] {
+  const stem = 'dsh-win-bash-' + process.pid.toString() + '-'
+  return readdirSync(tmpdir())
+    .filter(name => name.startsWith(stem))
+    .map(name => join(tmpdir(), name))
 }
 
 /** A fresh private temp directory for one shell, mirroring the registry's own. */
@@ -250,6 +266,39 @@ describe.skipIf(!RUNNABLE)('the persistent shell over the real payload', () => {
     // Then the registry holds nothing and the process range is gone.
     expect(shells.size).toBe(0)
     expect(shells.has(owner)).toBe(false)
+  })
+
+  it('user ending the shell with exit gets its private temp directory removed', async () => {
+    // Given a shell that owns a private temp directory and has written to it,
+    const shells = new ShellRegistry(provider())
+    const owner = {}
+    const before = ownTempDirs()
+    await shells.run(owner, { bash: bashPath(), bin: binDir() }, process.cwd(), 'echo "$TMP"; echo alive', BUDGET)
+    const added = ownTempDirs().filter(dir => !before.includes(dir))
+    expect(added).toHaveLength(1)
+    // When a command ends the shell the way a user's 'exit' does, without any
+    // disposal path running,
+    const exiting = await shells.run(owner, { bash: bashPath(), bin: binDir() }, process.cwd(), 'exit 0', BUDGET)
+    // Then the shell is gone AND the directory it owned is gone with it, so a
+    // session that exits and restarts many times leaves nothing behind.
+    expect(exiting.exitCode).toBe(0)
+    expect(existsSync(added[0] ?? '')).toBe(false)
+  })
+
+  it('operator disposing a session gets its shell\'s private temp directory removed', async () => {
+    // Given a session's shell holding what a command wrote under its TMP,
+    const shells = new ShellRegistry(provider())
+    const owner = {}
+    const before = ownTempDirs()
+    await shells.run(owner, { bash: bashPath(), bin: binDir() }, process.cwd(),
+      'echo payload > "$TMP/left-behind.bin"', BUDGET)
+    const added = ownTempDirs().filter(dir => !before.includes(dir))
+    expect(added).toHaveLength(1)
+    // When that session is disposed, as an ended or archived session is,
+    await shells.dispose(owner, 'the test disposed the session')
+    // Then the shell's private directory and the payload in it are reclaimed
+    // with the process.
+    expect(existsSync(added[0] ?? '')).toBe(false)
   })
 
   it('user running a command in a per-call workdir gets it resolved before the command', async () => {

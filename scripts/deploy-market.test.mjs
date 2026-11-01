@@ -300,6 +300,57 @@ test('the Ray ID is read from each shape Cloudflare prints it in', () => {
   assert.equal(rayIdFrom('workers api returned an unknown error'), null)
 })
 
+/** One captured child run that prints exactly this text, driven the way the deploy drives cf. */
+function capturedRun(text) {
+  return runWithRetries(
+    () => spawnAttempt(process.execPath, ['-e', 'process.stdout.write(' + JSON.stringify(text) + ')'], undefined, { capture: true }),
+    { wait: async () => {} },
+  )
+}
+
+test('a captured run exposes the whole output, not just the tail', async () => {
+  // Given a captured child that prints more lines than the evidence bound keeps
+  const lines = TAIL_LINES + 25
+  const script = 'for (let i = 1; i <= ' + String(lines) + '; i++) process.stdout.write("line-" + String(i) + "\\n")'
+  const result = await runWithRetries(
+    () => spawnAttempt(process.execPath, ['-e', script], undefined, { capture: true }),
+    { wait: async () => {} },
+  )
+
+  // When the finished run is inspected
+  // Then the output is complete -- it is what the binding check parses -- while
+  //      the tail stays the bounded buffer the failure evidence reads
+  assert.equal(result.ok, true)
+  assert.equal(result.status, 0)
+  assert.equal(result.output.split(String.fromCharCode(10)).length - 1, lines, 'every line the child printed is in the output')
+  assert.equal(result.output.split(String.fromCharCode(10))[0], 'line-1', 'the output starts where the child started')
+  assert.equal(result.tail.split(String.fromCharCode(10)).length, TAIL_LINES, 'the tail keeps its line bound')
+  assert.equal(result.tail.split(String.fromCharCode(10))[0], 'line-' + String(lines - TAIL_LINES + 1), 'and it dropped exactly the oldest lines')
+})
+
+test('the binding check fails on an empty list and passes on a list that carries the name', async () => {
+  // Given the two captured `cf workers secrets list` answers, driven through the
+  //       same runner and the same parse the deploy's binding check uses
+  const empty = await capturedRun('{"success":true,"errors":[],"result":[]}')
+  const carrying = await capturedRun(JSON.stringify({ result: [{ name: 'TURNSTILE_SECRET' }, { name: 'ASSET_ATTEST_SECRET' }] }))
+
+  // When each one is asked for the binding
+  const emptyNames = secretNamesFrom(empty.output)
+  const carryingNames = secretNamesFrom(carrying.output)
+
+  // Then the empty list fails on its own parse -- the captured output arrived
+  //      whole, it simply carries no name -- and a list with the name passes
+  assert.equal(empty.output, '{"success":true,"errors":[],"result":[]}', 'the captured run kept its whole output')
+  assert.equal(emptyNames, empty.output, 'an empty list yields no name: the text fallback is the raw answer')
+  assert.equal(emptyNames.includes('TURNSTILE_SECRET'), false, 'so the binding check fails, as it must')
+  assert.equal(carryingNames.includes('TURNSTILE_SECRET'), true, 'a binding present in the list passes')
+  assert.equal(carryingNames.includes('ASSET_ATTEST_SECRET'), true)
+  // And a dropped output reads as missing rather than as present, which is the
+  // fail-closed direction this check exists for -- and why the passing case
+  // above is what catches a run that stops carrying its output
+  assert.equal(secretNamesFrom(undefined).includes('TURNSTILE_SECRET'), false)
+})
+
 test('the child runner relays a real command and reports its exit status with the captured tail', async () => {
   // Given a command that writes to both streams and exits non-zero
   const script = 'console.log("stdout marker"); console.error("stderr marker"); process.exit(3)'

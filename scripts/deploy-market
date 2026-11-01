@@ -225,7 +225,12 @@ async function runWithRetries(runAttempt, options) {
   let last = null
   for (let attempt = 1; attempt <= attempts; attempt++) {
     const result = await runAttempt(attempt)
-    if (result.status === 0) return { ok: true, status: 0, attempts: attempt, tail: result.tail }
+    // The whole captured output rides back on success, not just the tail: the
+    // binding check parses it (`secretNames()` reads `output`), and the tail is a
+    // bounded evidence buffer that cannot stand in for it. The failure paths below
+    // deliberately keep only the tail -- nothing parses a failed run, and the bound
+    // is what keeps a whole deploy log out of memory.
+    if (result.status === 0) return { ok: true, status: 0, attempts: attempt, output: result.output, tail: result.tail }
     const tail = result.tail || ''
     last = { status: result.status, attempts: attempt, reason: classifyTransientFailure(tail), tail }
     // Only a transient failure earns another attempt, and only while the

@@ -32,6 +32,21 @@ const MAX_ITEMS = 64
 const TELEMETRY_BODY_MAX_BYTES = 16 * 1024
 /** Events older than this many days are pruned by the cron trigger. */
 const RETENTION_DAYS = 400
+/**
+ * Raw heartbeats are pruned on their own, much shorter window: they are 99.6%
+ * of the rows in `telemetry_events` and are read only to build a day's rollup,
+ * so a 400-day window over them is what grows the database toward its ceiling.
+ * Pageviews keep the full RETENTION_DAYS.
+ *
+ * Coupling premise: a day's raw heartbeats may only go once that day carries a
+ * rollup marker, because `rollupDayStatements` deletes the day's rollup and
+ * rebuilds it FROM the raw events -- a day pruned before its marker exists
+ * rolls up to zero. The prune enforces that in its own WHERE clause instead of
+ * trusting the clock: seven days is five days of margin over the two days the
+ * refresh rewrites every tick, and a deployment that was down longer keeps the
+ * raw rows of the days its backfill still owes.
+ */
+export const HEARTBEAT_RAW_RETENTION_DAYS = 7
 
 async function sha256(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
@@ -341,11 +356,21 @@ export async function refreshDailyRollups(env, options = {}) {
   return { rebuilt, skipped, pending: pending.length }
 }
 
-/** Retention prune; called by the cron trigger. */
+/**
+ * Retention prune; called by the cron trigger. Both event deletes ride one
+ * batch with the rollup cleanup: it is a single maintenance step, and D1
+ * commits it as one unit. The raw-heartbeat delete runs first, while the
+ * marker table still holds every day it consults (see
+ * HEARTBEAT_RAW_RETENTION_DAYS for why it consults it at all).
+ */
 export async function pruneOldEvents(env) {
   const cutoffDay = utcDay(Date.now() - RETENTION_DAYS * 86400000)
-  await env.DB.prepare('DELETE FROM telemetry_events WHERE day < ?1').bind(cutoffDay).run()
+  const heartbeatCutoffDay = utcDay(Date.now() - HEARTBEAT_RAW_RETENTION_DAYS * 86400000)
   await env.DB.batch([
+    env.DB.prepare(
+      "DELETE FROM telemetry_events WHERE kind = 'hb' AND day < ?1 AND day IN (SELECT day FROM telemetry_rollup_days)"
+    ).bind(heartbeatCutoffDay),
+    env.DB.prepare('DELETE FROM telemetry_events WHERE day < ?1').bind(cutoffDay),
     env.DB.prepare('DELETE FROM telemetry_rollup_days WHERE day < ?1').bind(cutoffDay),
     env.DB.prepare('DELETE FROM telemetry_rollup_daily WHERE day < ?1').bind(cutoffDay),
     env.DB.prepare('DELETE FROM telemetry_rollup_items WHERE day < ?1').bind(cutoffDay),

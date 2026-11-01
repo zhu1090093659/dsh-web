@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 
 import worker from '../market/worker/src/index.js'
 import { ATTEST_MAX_PATHS } from '../market/worker/src/asset-attest.js'
-import { ROLLUP_HISTORY_DAYS, refreshDailyRollups, rollupDayStatements } from '../market/worker/src/telemetry.js'
+import { HEARTBEAT_RAW_RETENTION_DAYS, ROLLUP_HISTORY_DAYS, refreshDailyRollups, rollupDayStatements } from '../market/worker/src/telemetry.js'
 import { clearBadgeCaches, formatTotal, rangeWindows } from '../market/worker/src/npm-badge.js'
 
 /** Statements in one day's rollup rebuild batch. */
@@ -502,6 +502,34 @@ test('telemetry rejects malformed submissions', async () => {
   assert.equal(db.batches.length, 0)
 })
 
+test('the cron prunes raw heartbeats on the short window while keeping pv on the long one', async () => {
+  // Given a worker whose telemetry tables hold rows of every age
+  const db = telemetryDb()
+
+  // When the cron tick prunes
+  await worker.scheduled({}, { DB: db })
+
+  // Then the raw-heartbeat delete and the whole-table delete ride one batch,
+  //      and each carries its own window
+  // The rollup rebuild also names kind = 'hb', so the prune batch is the one that
+  // deletes on it.
+  const prune = db.batches.find((statements) => statements.some((stmt) => stmt.sql.includes('DELETE FROM telemetry_events') && stmt.sql.includes("kind = 'hb'")))
+  assert.ok(prune, 'the heartbeat prune reaches D1')
+  const heartbeat = prune.find((stmt) => stmt.sql.includes('DELETE FROM telemetry_events') && stmt.sql.includes("kind = 'hb'"))
+  const wholeTable = prune.find((stmt) => stmt.sql.includes('DELETE FROM telemetry_events') && !stmt.sql.includes("kind = 'hb'"))
+  assert.ok(wholeTable, 'the whole-table delete shares the batch')
+  assert.equal(prune.indexOf(heartbeat) < prune.indexOf(wholeTable), true,
+    'the heartbeat delete consults the marker table before the same batch clears old markers')
+  assert.equal(HEARTBEAT_RAW_RETENTION_DAYS, 7, 'the short window is one explicit constant')
+  assert.equal(heartbeat.args[0], utcDayBack(HEARTBEAT_RAW_RETENTION_DAYS), 'heartbeats are cut at the short window')
+  assert.equal(wholeTable.args[0], utcDayBack(ROLLUP_HISTORY_DAYS), 'pageviews keep the long window')
+  assert.equal(heartbeat.sql.includes('telemetry_rollup_days'), true,
+    'a heartbeat day is pruned only once its rollup marker exists, which is what keeps a rebuild from reading an empty day')
+  assert.equal(prune.some((stmt) => stmt.sql.includes('DELETE FROM telemetry_rollup_daily')), true,
+    'the rollup cleanup is the same batch')
+  // And nothing prunes the events one statement at a time
+  assert.equal(db.runs.some((entry) => entry.sql.includes('DELETE FROM telemetry_events')), false)
+})
 test('telemetry summary returns aggregates without pruning old events', async () => {
   const db = telemetryDb({
     summary: [
@@ -788,7 +816,10 @@ test('cron refreshes badge, rolls up the finished days, pre-warms two windows, a
   assert.equal(pathsLimit(lightChunks[0]), 10, 'the first-paint window uses the 10-row pages')
   assert.equal(pathsLimit(lightChunks[1]), 20, 'the rotation window uses the default /data pages')
   assert.equal(db.runs.some((entry) => entry.sql.includes('INSERT INTO badge_cache')), true)
-  assert.equal(db.runs.some((entry) => entry.sql.includes('DELETE FROM telemetry_events')), true)
+  assert.equal(db.batches.some((statements) => statements.some((stmt) => stmt.sql.includes('DELETE FROM telemetry_events'))), true,
+    'the event prune rides a batch')
+  assert.equal(db.runs.some((entry) => entry.sql.includes('DELETE FROM telemetry_events')), false,
+    'not one statement at a time: the raw-heartbeat delete and the whole-table delete commit together')
   assert.equal(db.runs.some((entry) => entry.sql.includes('DELETE FROM telemetry_rollup_daily')), false,
     'day rollups are pruned in a batch, not one statement at a time')
 })

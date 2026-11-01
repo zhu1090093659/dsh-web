@@ -37,6 +37,10 @@
 - 配对：`connection open (device dev_g2ar7f-4dzSbKWps)`，探针设备名册落盘
 - 会话流式：手机上看到探针会话的实时增量、工具输出与进行中的工具行
 
+## 回滚实测
+
+配置在 13:44:59 删除，宿主 13:46:33 退出、13:46:41 起来，手机改回 `wss://8957f5eb13560cdc.dsh-market.com` 后连上，协议日志记到 `LINK dial ... ready=227ms` 与 `SEND hello`（capability 里含 `approvals.v1`）。端到端 1 分 42 秒里，宿主自身重启占 8 秒，其余是排的重启延时。
+
 ## 回滚与再切换
 
 回滚只动一个文件：`~/.dsh/profiles/desktop/cordis.patch.yml` 里 `web-ui-remote-bridge` 行的 `config:` 两行，删掉后重启宿主，手机连接地址改回 `wss://8957f5eb13560cdc.dsh-market.com`。

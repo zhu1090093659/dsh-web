@@ -17,9 +17,11 @@
 
 > dsh web GUI 家族自更新插件：侧边栏设置席位旁的下载触发器，探测 npm 上更新的 `@linxin666/dsh-web-*` 版本，并在当前 profile 内执行 `pnpm update --latest`。
 
+> **全家桶不包含本包。** `@linxin666/dsh-web-all` 不挂载更新行，也不依赖 `@linxin666/dsh-update`；需要自更新的 profile 单独安装本包。聚合包只保留 `update` 的 tombstone 子路径，因此仍记录 `@linxin666/dsh-web-all/update` 的 profile 也能解析该导出，只是不挂载任何东西。
+
 本仓库是 DeepSeek Harness（DSH）的外部插件包，双半区结构：host 半区挂载 `/api/update` 路由族，browser 半区渲染侧边栏触发器与更新面板。
 
-该能力刻意做成**独立插件行**（行 id `update`，聚合行 `web-ui-update`），而不是 `dsh-remote-web-ui` 的一个席位：关闭远程访问、甚至整体禁用远程访问插件，都不应该把更新入口一起带走。
+该能力刻意做成**独立插件行**（行 id `update`），而不是 `dsh-remote-web-ui` 的一个席位：关闭远程访问、甚至整体禁用远程访问插件，都不应该把更新入口一起带走；该行只属于本包。
 
 ## 功能
 
@@ -51,7 +53,7 @@ dsh plugin --profile <profile> add @linxin666/dsh-update
 dsh plugin --profile <profile> add link:<repo>/packages/dsh-update
 ```
 
-装在全家桶里时该行已经存在；若某个 profile 不需要自更新，在插件管理里按行关闭即可。
+安装本包即挂载该行；卸载本包、或在插件管理里按行关闭，即可让该 profile 不再提供自更新。
 
 ## 配置
 

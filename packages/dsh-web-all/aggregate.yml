@@ -32,13 +32,12 @@ patchFrom:
   # 行的席位，因此前后挪动不会改变谁先就位。
   - ../dsh-agents
   - ../dsh-git-graph
-  # dsh-update 的自更新行占侧栏 footer action 席位；此前它与 remote-web-ui 共用该席位
-  # 并排在其后，remote-web-ui 退役后这个位置上只剩自更新行。
-  - ../dsh-update
-  # dsh-remote-bridge 排在 dsh-update 之后：它是家族仅剩的远程面（原生手机端的协议
+  # dsh-update 已从本聚合退役（包目录保留、仍可独立安装）：聚合不再挂载它的自更新行，
+  # 侧栏 footer action 席位上不再有任何家族行。
+  # dsh-remote-bridge 排在 dsh-git-graph 之后：它是家族仅剩的远程面（原生手机端的协议
   # v1 通道），但 inject 只要官方的 typertGateway / webServer
   # （浏览器半区 inject 官方的 locale / renderer / sidebar），不依赖任何家族行的席位
-  # 或服务，位置只承担阅读归类，紧跟自更新行即可。
+  # 或服务，位置只承担阅读归类。
   # 行 id 派生为 web-ui-remote-bridge、行 name 就是真实包名
   # （#1901 之后家族行直挂真实包），与官方行名册和独立安装行 id（remote-bridge）
   # 都不相交，因此不需要 familyIds 覆盖。
@@ -80,8 +79,7 @@ deps:
   # 与 patchFrom 同序：dsh-agents 的行紧跟看板这一对之后（理由见上）。
   - ../dsh-agents
   - ../dsh-git-graph
-  - ../dsh-update
-  # 与 patchFrom 同序：桥的行紧跟在自更新行之后，两份清单可逐行对照。
+  # 与 patchFrom 同序：桥的行紧跟在 git-graph 之后，两份清单可逐行对照。
   - ../dsh-remote-bridge
   # 与 patchFrom 同序：看板的远程能力面行紧跟在桥之后（它绑桥的扩展缝）。
   - ../dsh-task-board-remote
@@ -226,6 +224,8 @@ tombstones:
   # 依赖它，但子路径导出必须留着，否则老 profile 里记录的行名在 import 阶段硬报错。
   # 壳按 retiredPlugins 的登记把它当静默 no-op，不 import、不记 degraded。
   - remote-web-ui
+  # update 同样已退役（包目录保留、仍可独立安装）：它与 remote-web-ui 走同一条
+  # tombstones + retiredPlugins 路径，老 profile 的子路径行名照旧可解析。
   - update
   - ssh
   - liangshen
@@ -245,7 +245,8 @@ tombstones:
 # 且不得同时出现在 deps 里（退役插件不能又是本包依赖）。新增退役家族时两段一起改。
 # 彻底移除的家族不进本段：壳与子路径导出都已消失，老 profile 的残留行名在 import 阶段就硬报错，
 # 不经过这里的静默 no-op，所以无需（也无法）登记。
-# 当前登记一个家族：remote-web-ui 的聚合行已退役，包本身仍在仓库里、仍可独立安装，
-# 所以老 profile 的家族行要走静默 no-op，而不是被当成损坏插件。
+# 当前登记两个家族：remote-web-ui 与 update 的聚合行都已退役，包本身仍在仓库里、
+# 仍可独立安装，所以老 profile 的家族行要走静默 no-op，而不是被当成损坏插件。
 retiredPlugins:
   - {"family": "remote-web-ui", "plugin": "@linxin666/dsh-remote-web-ui"}
+  - {"family": "update", "plugin": "@linxin666/dsh-update"}

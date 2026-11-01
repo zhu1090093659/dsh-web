@@ -2,13 +2,15 @@
 
 Status: implemented
 
+> Part of this decision is superseded: the aggregate no longer mounts the row and no longer depends on the package — see [The family aggregate retires the self-update row](2026-11-01-retire-dsh-update-from-aggregate.md). The package, its row id `update`, the host/browser split and the desktop/web seat split stand as decided here.
+
 ## Problem
 
 The dsh-web family self-update surface — the sidebar download trigger, its panel, and the `/api/update` routes — shipped inside `dsh-remote-web-ui`. The sidebar foot renders one trigger per plugin row, so the update entry's lifecycle was the remote-access plugin's lifecycle: turning remote access off (`enabled: false`) or disabling the `web-ui-remote-web-ui` row removed the update trigger too. That outcome is reachable without any intent to give up self-update — a profile that disables remote access for security reasons loses its only in-GUI way to update the family.
 
 ## Decision
 
-- **The capability owns its own package and row.** `packages/dsh-update` (`@linxin666/dsh-update`) declares row id `update`; the aggregate mounts it as `web-ui-update` / `@linxin666/dsh-web-all/update`, right after the remote-access row.
+- **The capability owns its own package and row.** `packages/dsh-update` (`@linxin666/dsh-update`) declares row id `update`; a profile mounts it by installing that package, and the aggregate no longer carries the `web-ui-update` row ([the aggregate retires the self-update row](2026-11-01-retire-dsh-update-from-aggregate.md)).
 - **The host half moved with it.** `update.ts` (registry probe, profile anchoring, verified `pnpm update --latest`) and `update-routes.ts` (`/api/update/status`, `/api/update/run`) live in that package; its entry mounts the two exact routes behind the shared `isLoopbackRequest` fence. The fallback anchor package is this package (`SELF_PACKAGE = '@linxin666/dsh-update'`); `@linxin666/dsh-web-all` stays the primary anchor.
 - **The browser half registers its own seat.** The trigger and panel register into the official `sidebar.footer.action` slot under entry id `update`, with the new `update` dictionary namespace and `data-dsh-plugin="update"` (`entry` / `panel` parts) on the DOM.
 - **`dsh-remote-web-ui` keeps only the channel facts about the path.** `/api/update/` stays in its gated-channel tables (the rewrite prefix and the physically-local list): a paired remote must not reach the endpoint, whichever package serves it.
@@ -30,7 +32,7 @@ The dsh-web family self-update surface — the sidebar download trigger, its pan
 ## Consequences
 
 - Disabling remote access (the setting or the whole row) keeps the update trigger; disabling `dsh-update` keeps remote access. Each row is toggled on its own in the plugin manager.
-- The aggregate gains a package and a row: profiles pinning `@linxin666/dsh-web-all` get `web-ui-update` on upgrade, and a standalone install needs `@linxin666/dsh-update`.
+- The row belongs to `@linxin666/dsh-update` alone: a profile gets the `update` row only by installing that package, and the aggregate's `web-ui-update` mount is retired ([the aggregate retires the self-update row](2026-11-01-retire-dsh-update-from-aggregate.md)).
 - A standalone `dsh-update` install anchors on its own package manifest when `@linxin666/dsh-web-all` is absent.
 - The ru dictionary, the sync manifest (console-output/http/loopback/mount-once/telemetry/vitest.setup copies) and the i18n audit package list each carry their new consumer row.
 - The semantic-attributes contract table in the dsh-skins repository needs a row for the `update` plugin and its `entry`/`panel` parts; that repository owns the table, so it is a cross-repo follow-up.

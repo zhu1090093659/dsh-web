@@ -185,7 +185,7 @@ Permanent deletions cannot be undone, and all operational routes bind strictly t
 
 - **Skill Explorer** (`dsh-client-ui-skill-explorer`): Inspect and manage loaded agent skills grouped by origin, featuring keyword filtering across names and descriptions, workspace scoping, and activation toggling.
 - **Plugin Manager** (`dsh-client-ui-plugin-manager`): Install plugins from npm or git repositories via official host interfaces, inspect statuses, and adjust configuration settings.
-- **Plugin Self-Update** (`dsh-update`): Automatically detects new releases on npm and provides release notes with one-click in-place upgrades right from the sidebar footer.
+- **Plugin Self-Update** (`dsh-update`, not in the bundle, install it separately): Automatically detects new releases on npm and provides release notes with one-click in-place upgrades right from the sidebar footer.
 - **Task Board GitHub Sync** (`dsh-client-ui-task-board-github`): Seamlessly connects GitHub Issues with task board cards, enabling autonomous AI Agent bug triage and automated PR delivery.
 - **Session ID Helper** (`dsh-client-ui-session-id`): Quick sidebar-footer access to copy full session IDs and search across active/archived sessions with zero host overhead.
 - **Internationalization Pack** (`dsh-i18n`): Registers Russian (Русский) localization and centrally carries multilingual dictionaries for all family plugin namespaces.
@@ -262,7 +262,7 @@ dsh plugin --profile web add @linxin666/dsh-ssh@latest                          
 dsh plugin --profile web add @linxin666/dsh-usage@latest                           # Usage Statistics
 dsh plugin --profile web add @linxin666/dsh-pet@latest                             # Desktop Pet
 dsh plugin --profile web add @linxin666/dsh-session-archive@latest                 # Session Archive Manager
-dsh plugin --profile web add @linxin666/dsh-update@latest                          # Plugin Self-Update
+dsh plugin --profile web add @linxin666/dsh-update@latest                          # Plugin Self-Update (not in the bundle)
 dsh plugin --profile web add @linxin666/dsh-client-ui-session-id@latest            # Session ID Helper
 dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest        # Skill Explorer
 dsh plugin --profile web add @linxin666/dsh-i18n@latest                            # Internationalization Pack
@@ -292,7 +292,7 @@ All plugins are published under the `@linxin666/dsh-*` npm scope:
 | [@linxin666/dsh-session-archive](https://www.npmjs.com/package/@linxin666/dsh-session-archive) | Session archive: search, batch restore, and cascade pruning |
 | [@linxin666/dsh-client-ui-community-plugins](https://www.npmjs.com/package/@linxin666/dsh-client-ui-community-plugins) | Community plugin source: authoritative index powering the Workshop |
 | [@linxin666/dsh-client-ui-web-ui-settings](https://www.npmjs.com/package/@linxin666/dsh-client-ui-web-ui-settings) | Preferences panel: global settings and UI configurations |
-| [@linxin666/dsh-update](https://www.npmjs.com/package/@linxin666/dsh-update) | Plugin Self-Update: Release detection, changelog panel, and one-click in-place upgrades |
+| [@linxin666/dsh-update](https://www.npmjs.com/package/@linxin666/dsh-update) | Plugin Self-Update (not in the bundle, install it separately): Release detection, changelog panel, and one-click in-place upgrades |
 | [@linxin666/dsh-client-ui-session-id](https://www.npmjs.com/package/@linxin666/dsh-client-ui-session-id) | Session ID Helper: Sidebar panel for quick full session ID viewing and copy |
 | [@linxin666/dsh-i18n](https://www.npmjs.com/package/@linxin666/dsh-i18n) | Internationalization Pack: Russian localization and multilingual dictionary provider |
 

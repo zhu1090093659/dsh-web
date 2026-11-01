@@ -1,4 +1,4 @@
-//#region ../../node_modules/.pnpm/@deepseek-ai+cosmokit@1.8.6/node_modules/@deepseek-ai/cosmokit/lib/index.js
+//#region ../../../../../../usr/local/lib/nodejs/node-v24.21.0-linux-x64/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cosmokit/lib/index.js
 /** Return true when a value is `null` or `undefined`. */
 function isNullable(value) {
 	return value === null || value === void 0;
@@ -252,7 +252,7 @@ var Time;
 	Time.template = template;
 })(Time || (Time = {}));
 //#endregion
-//#region ../../node_modules/.pnpm/@deepseek-ai+schemastery@3.18.5/node_modules/@deepseek-ai/schemastery/lib/index.mjs
+//#region ../../../../../../usr/local/lib/nodejs/node-v24.21.0-linux-x64/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/schemastery/lib/index.mjs
 const kSchema = Symbol.for("schemastery");
 const kValidationError = Symbol.for("ValidationError");
 globalThis.__schemastery_index__ ??= 0;
@@ -927,7 +927,10 @@ function listDegraded() {
 }
 /** Every retired package name, sorted: what the shell skips without importing. Derived from
 *  RETIRED_FAMILIES so the two can never disagree. */
-const RETIRED_PLUGINS$1 = Object.freeze(Object.values({ "remote-web-ui": "@linxin666/dsh-remote-web-ui" }).sort());
+const RETIRED_PLUGINS$1 = Object.freeze(Object.values({
+	"remote-web-ui": "@linxin666/dsh-remote-web-ui",
+	"update": "@linxin666/dsh-update"
+}).sort());
 Schema.any().volatile();
 /**
 * Loopback-fenced degraded-state route (installed once per shell context).

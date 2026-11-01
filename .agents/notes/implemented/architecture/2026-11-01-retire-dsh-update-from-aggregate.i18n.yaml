@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-11-01-retire-dsh-update-from-aggregate.md: 83ebb04758bf069d91b4593ebb54d52fbad4efbd
+2026-11-01-retire-dsh-update-from-aggregate.zh.md: 3fdd8723d569511315417307f4842d396fd807d1

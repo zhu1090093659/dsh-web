@@ -3,9 +3,9 @@
 DSH web GUI 插件 dsh-update（家族自更新）。包级规则：只写本包特有约定，不重复根
 AGENTS.md 与 packages/AGENTS.md 的全局/包级规则。
 
-- 本包是**独立行**（row id `update`，聚合行 `web-ui-update`）：自更新能力自
-  dsh-remote-web-ui 拆出，关闭/禁用远程访问插件不再影响更新入口。不要把更新入口
-  重新挂回远程访问插件，或让它依赖该插件运行。
+- 本包是**独立行**（row id `update`，全家桶不挂载该行、只保留 tombstone 子路径，
+  按需单独安装）：自更新能力自 dsh-remote-web-ui 拆出，关闭/禁用远程访问插件不影响
+  更新入口。不要把更新入口重新挂回远程访问插件，或让它依赖该插件运行。
 - 宿主半区只挂两条 loopback 精确路由 `/api/update/status` 与 `/api/update/run`，
   一律经 `isLoopbackRequest` 门禁：run 会在用户 profile 目录里真实执行 pnpm
   install，任何非本机来源都必须 403。

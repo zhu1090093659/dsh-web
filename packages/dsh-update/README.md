@@ -17,9 +17,11 @@ English | [中文](README.zh.md)
 
 > In-GUI auto-update extension for the DeepSeek Harness (DSH) family: a download trigger alongside the settings button in the sidebar footer that checks npm for newer `@linxin666/dsh-web-*` versions and runs a verified `pnpm update --latest` inside the active profile.
 
+> **The family aggregate does not include this package.** `@linxin666/dsh-web-all` mounts no update row and does not depend on `@linxin666/dsh-update`; install this package on its own in the profile that should offer self-update. The aggregate keeps only the `update` tombstone subpath, so a profile that still records `@linxin666/dsh-web-all/update` resolves the export and mounts nothing.
+
 This package is an external plugin for DeepSeek Harness (DSH), structured as a cordis bundle: the host half mounts the `/api/update` route family while the browser half renders the sidebar trigger and update modal.
 
-The feature is deliberately structured as an **independent plugin row** (row id `update`, aggregate row `web-ui-update`) rather than sharing a seat with `dsh-remote-web-ui`: disabling remote access must never remove the update path.
+The feature is deliberately structured as an **independent plugin row** (row id `update`) rather than sharing a seat with `dsh-remote-web-ui`: disabling remote access must never remove the update path, and the row belongs to this package alone.
 
 ## What it does
 
@@ -59,8 +61,8 @@ dsh plugin --profile <profile> add @linxin666/dsh-update
 dsh plugin --profile <profile> add link:<repo>/packages/dsh-update
 ```
 
-In the family aggregate the row is already present; disable it per row in the
-plugin manager if a profile should not offer self-update.
+Installing the package mounts the row. Uninstall it, or disable the row in the
+plugin manager, so a profile stops offering self-update.
 
 ## Configuration
 

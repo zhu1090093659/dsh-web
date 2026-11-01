@@ -167,7 +167,6 @@
     "@linxin666/dsh-client-ui-task-board-team": "workspace:*",
     "@linxin666/dsh-agents": "workspace:*",
     "@linxin666/dsh-client-ui-git-graph": "workspace:*",
-    "@linxin666/dsh-update": "workspace:*",
     "@linxin666/dsh-remote-bridge": "workspace:*",
     "@linxin666/dsh-task-board-remote": "workspace:*",
     "@linxin666/dsh-ssh": "workspace:*",

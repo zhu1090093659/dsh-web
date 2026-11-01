@@ -2,13 +2,15 @@
 
 Status: implemented
 
+> 本决策的一部分已被取代：聚合不再挂载该行、也不再依赖该包——见[家族聚合退役自更新行](2026-11-01-retire-dsh-update-from-aggregate.zh.md)。包本身、行 id `update`、host/browser 分层与桌面/网页席位划分按本记录不变。
+
 ## 问题
 
 dsh-web 家族的自更新面——侧栏下载触发器、其面板与 `/api/update` 路由——原先装在 `dsh-remote-web-ui` 里。侧栏底部每个插件行渲染自己的触发器，于是更新入口的生命周期就是远程访问插件的生命周期：关闭远程访问（`enabled: false`）或禁用 `web-ui-remote-web-ui` 行，更新触发器一起消失。这并不需要任何「放弃自更新」的意图——为安全关闭远程访问的 profile 会失去界面内唯一更新家族的途径。
 
 ## 决策
 
-- **该能力拥有自己的包与行。** `packages/dsh-update`（`@linxin666/dsh-update`）声明行 id `update`；聚合包以 `web-ui-update` / `@linxin666/dsh-web-all/update` 挂载，紧跟远程访问行之后。
+- **该能力拥有自己的包与行。** `packages/dsh-update`（`@linxin666/dsh-update`）声明行 id `update`；profile 装了这个包就挂载该行，聚合包不再携带 `web-ui-update` 行（[家族聚合退役自更新行](2026-11-01-retire-dsh-update-from-aggregate.zh.md)）。
 - **host 半区随功能一起迁出。** `update.ts`（registry 探测、profile 锚定、带核对的 `pnpm update --latest`）与 `update-routes.ts`（`/api/update/status`、`/api/update/run`）落在该包；其入口把两条精确路由挂在共享的 `isLoopbackRequest` 栅栏之后。回退锚点包改为本包（`SELF_PACKAGE = '@linxin666/dsh-update'`），`@linxin666/dsh-web-all` 仍是首选锚点。
 - **browser 半区自行注册席位。** 触发器与面板注册进官方 `sidebar.footer.action` 槽，entry id 为 `update`，使用新的 `update` 字典命名空间，DOM 上打 `data-dsh-plugin="update"`（`entry` / `panel` 部件）。
 - **`dsh-remote-web-ui` 只保留与该路径相关的通道事实。** `/api/update/` 仍留在它的门控通道表（改写前缀与物理本地清单）里：不论由哪个包提供，配对远程都不能到达该端点。
@@ -30,7 +32,7 @@ dsh-web 家族的自更新面——侧栏下载触发器、其面板与 `/api/up
 ## 后果
 
 - 关闭远程访问（设置或整行）保留更新触发器；禁用 `dsh-update` 保留远程访问。每行在插件管理里各自开关。
-- 聚合包多了一个包与一行：钉住 `@linxin666/dsh-web-all` 的 profile 升级后拿到 `web-ui-update`；单独安装需要 `@linxin666/dsh-update`。
+- 该行只属于 `@linxin666/dsh-update`：profile 只有装了这个包才有 `update` 行；聚合包的 `web-ui-update` 挂载已退役（[家族聚合退役自更新行](2026-11-01-retire-dsh-update-from-aggregate.zh.md)）。
 - 在缺少 `@linxin666/dsh-web-all` 时，单独安装的 `dsh-update` 以自己的包清单为锚点。
 - ru 字典、同步清单（console-output/http/loopback/mount-once/telemetry/vitest.setup 副本）与 i18n 审计包清单都新增了对应的消费者行。
 - dsh-skins 仓的语义属性契约表需要补 `update` 插件行及其 `entry`/`panel` 部件；该表属该仓所有，因此是跨仓后续项。

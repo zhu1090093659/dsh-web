@@ -14,6 +14,7 @@
 /** Retired family subpath -> real package name of the plugin that used to mount there. */
 export const RETIRED_FAMILIES: Readonly<Record<string, string>> = {
   'remote-web-ui': '@linxin666/dsh-remote-web-ui',
+  'update': '@linxin666/dsh-update',
 }
 
 /** Every retired package name, sorted: what the shell skips without importing. Derived from

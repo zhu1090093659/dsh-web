@@ -95,6 +95,7 @@ const {
   RELAY_FALLBACK_HEADER,
   RELAY_TRANSPORT_HEADER,
 } = await import('../market/worker/src/relay.js')
+const { RELAY_FAILURE_MESSAGE } = await import('../market/worker/src/relay-failure.js')
 const worker = (await import('../market/worker/src/index.js')).default
 
 const ID = 'abcd1234abcd1234'
@@ -530,10 +531,17 @@ test('a connector that goes away fails the streams it owned', async () => {
   // When the connector socket closes
   connector.close(1006, 'network')
 
-  // Then the downstream caller is told, instead of waiting out the head timeout
+  // Then the downstream caller reads the frozen failure instead of waiting out
+  //      the head timeout: a 502 that says retry, because a reconnected
+  //      connector makes the identical request work
   const response = await pending
   assert.equal(response.status, 502)
-  assert.match(await response.text(), /connector-closed/)
+  assert.equal(response.headers.get('x-relay-retryable'), '1')
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    code: 'connector-closed',
+    message: RELAY_FAILURE_MESSAGE['connector-closed'],
+  })
 })
 
 /** The attach request the Worker's door builds. */

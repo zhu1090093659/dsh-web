@@ -16,6 +16,19 @@
  *   control frames are JSON text  { t, id, ... }
  *   payload frames are binary     [kind:u8][streamId:u32be][payload]
  *   kinds: 1 HTTP body chunk, 2 WebSocket binary, 3 WebSocket text (UTF-8)
+ *   flow control, object -> connector: { t: 'pause', id } closes this stream's
+ *   window, { t: 'resume', id } reopens it, and { t: 'close', id, reason }
+ *   abandons the stream and frees its upstream -- the frame a phone cancel
+ *   already sent, reused so a connector that predates the window still frees
+ *   the upstream instead of ignoring it
+ *
+ * A slow phone must never make this object buffer an instance's whole byte
+ * stream: every streamed body queues under BRIDGE_STREAM_HIGH, is paused at
+ * that mark, and resumes once the phone has read its way down to
+ * BRIDGE_STREAM_LOW. A connector too old to know the window keeps sending, and
+ * what it sends past BRIDGE_STREAM_PAUSED_CAP is dropped and counted instead of
+ * buffered. A paused stream that makes no drain progress for
+ * BRIDGE_STREAM_STALL_MS is harvested and its upstream released.
  *
  * Reconnects are the reason this file has no tickets: the credential is
  * long-lived, so a reconnecting connector dials the same endpoint again and the
@@ -25,10 +38,9 @@
  * already started keep running.
  */
 
+import { relayFailure } from './relay-failure.js'
 import {
   ID_RE,
-  REGISTER_MAX_PER_ID,
-  REGISTER_MAX_PER_IP,
   REGISTER_WINDOW_MS,
   RELAY_BRIDGE_ATTACH_HEADER,
   RELAY_BRIDGE_MARKER,
@@ -47,6 +59,43 @@ export const BRIDGE_ATTACH_PATH = '/__relay_bridge/connector'
 const HEAD_TIMEOUT_MS = 60_000
 /** How long a downstream WebSocket waits for the connector to accept it. */
 const WS_OPEN_TIMEOUT_MS = 15_000
+/**
+ * The door's own rate limit, one window long. It is deliberately not the
+ * registry's per-id budget: this door admits a connection, which a connector
+ * re-establishes after a network drop inside its own backoff, while the claim
+ * budget is sized for the much slower tunnel-start cadence. Sharing one pair of
+ * numbers would make a tightened claim budget silently refuse reconnects.
+ */
+export const BRIDGE_MAX_PER_ID = 6
+export const BRIDGE_MAX_PER_IP = 30
+
+/**
+ * The frozen per-stream flow-control window, shared verbatim with the
+ * connector: a stream pauses once this many bytes are queued for the phone, and
+ * resumes once the phone has read its way back down to LOW.
+ */
+export const BRIDGE_STREAM_HIGH = 1024 * 1024
+export const BRIDGE_STREAM_LOW = 256 * 1024
+/**
+ * A paused stream that makes no drain progress for this long is harvested: the
+ * window is not going to reopen, so waiting longer only holds a phone request
+ * and its bytes open for nothing.
+ */
+export const BRIDGE_STREAM_STALL_MS = 60_000
+/**
+ * What a paused stream may still queue beyond HIGH.
+ *
+ * A connector that knows pause stops within one frame of it arriving, so the
+ * frames already in flight must still land: dropping those would corrupt a body
+ * that is merely slow. A connector too old to know pause never stops, so its
+ * overflow past this cap is dropped and counted (see pushPayload) instead of
+ * growing this object without bound.
+ */
+export const BRIDGE_STREAM_PAUSED_CAP = BRIDGE_STREAM_HIGH + BRIDGE_STREAM_LOW
+/** The phone socket's two frozen codes, both meaning "reconnect at once": the
+ * connector was replaced, and the stream was harvested as stalled. */
+export const BRIDGE_CLOSE_REPLACED = 4001
+export const BRIDGE_CLOSE_STALLED = 4002
 
 const HTTP_BODY = 1
 const WS_BINARY = 2
@@ -65,6 +114,25 @@ const DROPPED_RESPONSE_HEADERS = new Set([
 const NO_STORE = {
   'content-type': 'text/plain; charset=utf-8',
   'cache-control': 'no-store',
+}
+
+/** Every streamed body queues under this window, which is what makes the
+ * controller's own byte accounting the per-stream in-flight count. */
+const STREAM_QUEUING = new ByteLengthQueuingStrategy({ highWaterMark: BRIDGE_STREAM_HIGH })
+
+/** How many bytes of one streamed body are queued for the phone and not read
+ * yet. A null desired size means the stream is already closed or errored. */
+function queuedBytes(controller) {
+  if (controller === null || controller.desiredSize === null) return null
+  const queued = BRIDGE_STREAM_HIGH - controller.desiredSize
+  return queued > 0 ? queued : 0
+}
+
+/** One timer that never keeps the runtime alive on its own, like sleep. */
+function startTimer(fn, ms) {
+  const timer = setTimeout(fn, ms)
+  if (typeof timer === 'object' && timer !== null && typeof timer.unref === 'function') timer.unref()
+  return timer
 }
 
 function encodeChunk(kind, id, payload) {
@@ -154,6 +222,9 @@ export class RelayBridge {
     this.verdicts = new Map()
     /** Connector socket -> its serial frame queue. */
     this.queues = new Map()
+    /** The sockets this object replaced: a close event from one of them is
+     * history, and must touch nothing a newer socket owns. */
+    this.replaced = new WeakSet()
     this.nextId = 1
   }
 
@@ -188,13 +259,17 @@ export class RelayBridge {
       })
     })
     server.addEventListener('close', () => {
-      if (this.connector !== server) return
+      // A socket this object already replaced is history: its late close must
+      // not take down a stream the newer socket is carrying.
+      if (this.replaced.has(server) || this.connector !== server) return
       this.connector = null
       this.failOwnedBy(server, 'connector-closed')
     })
     if (previous !== null && previous !== server) {
-      // The replaced socket's streams die with it: they were multiplexed on a
-      // connection the connector no longer holds, so nothing can answer them.
+      // Marked first, then failed, then closed. The marker is what makes a late
+      // close event harmless, and the failure is what tells each of the old
+      // socket's streams it may be asked again on the new one.
+      this.replaced.add(previous)
       this.failOwnedBy(previous, 'connector-replaced')
       try {
         previous.close(1000, 'replaced')
@@ -225,7 +300,20 @@ export class RelayBridge {
     const url = new URL(request.url)
     const id = this.nextId++
     const head = deferred()
-    const entry = { head: head.resolve, controller: null, chunks: 0, bytes: 0, connector }
+    const entry = {
+      head: head.resolve,
+      controller: null,
+      chunks: 0,
+      bytes: 0,
+      connector,
+      /** This stream's flow-control state: whether its window is closed, how
+       * many drain events it has seen (the harvest counts those rather than
+       * reading a clock), what it had to drop, and the armed harvest. */
+      paused: false,
+      progress: 0,
+      dropped: 0,
+      timer: null,
+    }
     this.http.set(id, entry)
 
     connector.send(JSON.stringify({
@@ -247,9 +335,20 @@ export class RelayBridge {
 
     const timedOut = Symbol('timeout')
     const settled = await Promise.race([head.promise, sleep(HEAD_TIMEOUT_MS).then(() => timedOut)])
-    const result = settled === timedOut ? { ok: false, message: 'connector timed out on the response head' } : settled
+    // A head that never arrives made no progress for the whole window, which is
+    // the same failure a paused body is harvested with.
+    const result = settled === timedOut
+      ? { ok: false, code: 'stream-stalled', message: 'connector timed out on the response head' }
+      : settled
     if (!result.ok) {
       this.http.delete(id)
+      // A frozen code answers the module's canonical message; the detail this
+      // object saw stays in the log, where a phone body cannot lose it.
+      const frozen = relayFailure(result.code)
+      if (frozen !== undefined) {
+        console.warn(JSON.stringify({ relay: 'stream-failed', id, code: result.code, detail: result.message }))
+        return frozen
+      }
       const status = settled === timedOut ? 504 : 502
       return new Response('relay bridge: ' + result.message, { status, headers: NO_STORE })
     }
@@ -264,15 +363,15 @@ export class RelayBridge {
       start: (controller) => {
         entry.controller = controller
       },
+      // Only the phone reading this body drains it, so a pull is the one drain
+      // signal a stream has: it is what reopens a window closed at HIGH.
+      pull: () => { this.onStreamDrain(id, entry) },
       cancel: () => {
         this.http.delete(id)
-        try {
-          connector.send(JSON.stringify({ t: 'close', id, reason: 'client-cancelled' }))
-        } catch {
-          // The connector went away first; the object is already failing streams.
-        }
+        this.clearStallWatch(entry)
+        this.sendControl(connector, { t: 'close', id, reason: 'client-cancelled' })
       },
-    })
+    }, STREAM_QUEUING)
     const headers = new Headers(result.headers)
     headers.set(RELAY_TRANSPORT_HEADER, 'bridge')
     return new Response(stream, { status: result.status, statusText: result.statusText, headers })
@@ -295,6 +394,121 @@ export class RelayBridge {
         // Nothing left to tell; the socket is gone.
       }
     }
+  }
+
+  /** One control frame to the connector that owns a stream. A socket already
+   * gone is the replaced-connector case, not an error at this end. */
+  sendControl(connector, frame) {
+    try {
+      connector.send(JSON.stringify(frame))
+    } catch {
+      // That socket's streams are being failed already; nothing left to tell.
+    }
+  }
+
+  /** The phone read one chunk of a streaming body: record the progress, and
+   * reopen the window once the queue is back down to LOW. */
+  onStreamDrain(id, entry) {
+    if (entry.paused !== true) return
+    entry.progress += 1
+    const queued = queuedBytes(entry.controller)
+    if (queued !== null && queued <= BRIDGE_STREAM_LOW) this.resumeStream(id, entry)
+  }
+
+  /** Hand one connector chunk to the phone's body: close the window at HIGH, and
+   * drop what a connector that never stops sends past the paused cap. */
+  pushPayload(id, entry, payload) {
+    const controller = entry.controller
+    if (controller === null) return
+    if (entry.paused) {
+      const queued = queuedBytes(controller)
+      if (queued !== null && queued + payload.byteLength > BRIDGE_STREAM_PAUSED_CAP) {
+        if (entry.dropped === 0) {
+          console.warn(JSON.stringify({ relay: 'stream-drop', id, cap: BRIDGE_STREAM_PAUSED_CAP }))
+        }
+        entry.dropped += payload.byteLength
+        return
+      }
+    }
+    try {
+      controller.enqueue(payload)
+    } catch {
+      // The phone cancelled this body between the frame and this call.
+      return
+    }
+    const queued = queuedBytes(controller)
+    if (!entry.paused && queued !== null && queued >= BRIDGE_STREAM_HIGH) this.pauseStream(id, entry)
+  }
+
+  /** Close one stream's window: the connector stops sending its chunks and stops
+   * reading upstream, and nothing further is queued for the phone. */
+  pauseStream(id, entry) {
+    if (entry.paused) return
+    entry.paused = true
+    this.sendControl(entry.connector, { t: 'pause', id })
+    this.armStallWatch(id, entry)
+    console.log(JSON.stringify({ relay: 'stream-pause', id, chunks: entry.chunks, dropped: entry.dropped }))
+  }
+
+  /** Reopen it: the phone has read its way back down to LOW. */
+  resumeStream(id, entry) {
+    if (!entry.paused) return
+    entry.paused = false
+    this.clearStallWatch(entry)
+    this.sendControl(entry.connector, { t: 'resume', id })
+    console.log(JSON.stringify({ relay: 'stream-resume', id }))
+  }
+
+  /** Arm the harvest of one paused stream. Drain progress re-arms it by making
+   * the armed counter stale, so no wall clock is read at all. */
+  armStallWatch(id, entry) {
+    this.clearStallWatch(entry)
+    const armed = entry.progress
+    entry.timer = startTimer(() => {
+      entry.timer = null
+      if (entry.paused !== true || this.http.get(id) !== entry) return
+      if (entry.progress !== armed) {
+        this.armStallWatch(id, entry)
+        return
+      }
+      this.harvestStream(id, entry)
+    }, BRIDGE_STREAM_STALL_MS)
+  }
+
+  clearStallWatch(entry) {
+    if (entry.timer === null) return
+    clearTimeout(entry.timer)
+    entry.timer = null
+  }
+
+  /**
+   * Terminate one stream that never drained, and release its upstream.
+   *
+   * A body can only fill a window once its head is out, so the HTTP case has no
+   * status left to answer: the body is aborted, which is what a phone retries
+   * on, and the connector is told with the close frame a phone cancel uses --
+   * this contract's name for abandoning a stream and freeing it. The phone
+   * socket's own code is BRIDGE_CLOSE_STALLED, which no path reaches yet: this
+   * half cannot measure a phone socket's drainage.
+   */
+  harvestStream(id, entry) {
+    this.http.delete(id)
+    this.clearStallWatch(entry)
+    this.sendControl(entry.connector, { t: 'close', id, reason: 'stream-stalled' })
+    if (entry.controller !== null) {
+      try {
+        entry.controller.error(new Error('stream-stalled'))
+      } catch {
+        // The phone left first; nothing is waiting for this body.
+      }
+    }
+    console.log(JSON.stringify({
+      relay: 'stream-stalled',
+      id,
+      chunks: entry.chunks,
+      bytes: entry.bytes,
+      dropped: entry.dropped,
+    }))
   }
 
   async bridgeWebSocket(request) {
@@ -357,10 +571,10 @@ export class RelayBridge {
     const { kind, id, payload } = decodeChunk(raw)
     if (kind === HTTP_BODY) {
       const entry = this.http.get(id)
-      if (entry === undefined || entry.controller === null) return
+      if (entry === undefined) return
       entry.chunks += 1
       entry.bytes += payload.byteLength
-      entry.controller.enqueue(payload)
+      this.pushPayload(id, entry, payload)
       return
     }
     const peer = this.sockets.get(id)
@@ -394,7 +608,8 @@ export class RelayBridge {
         const entry = this.http.get(id)
         if (entry === undefined) return
         this.http.delete(id)
-        console.log(JSON.stringify({ relay: 'bridge-done', id, chunks: entry.chunks, bytes: entry.bytes }))
+        this.clearStallWatch(entry)
+        console.log(JSON.stringify({ relay: 'bridge-done', id, chunks: entry.chunks, bytes: entry.bytes, dropped: entry.dropped }))
         if (entry.controller !== null) {
           try {
             entry.controller.close()
@@ -408,7 +623,11 @@ export class RelayBridge {
         const entry = this.http.get(id)
         if (entry !== undefined) {
           this.http.delete(id)
-          entry.head({ ok: false, message: String(frame.message ?? 'unknown') })
+          this.clearStallWatch(entry)
+          // The connector could not reach its upstream, so what the phone reads
+          // is that the instance is offline -- and that it may retry, because
+          // the same request works once the host is back.
+          entry.head({ ok: false, code: 'instance-offline', message: String(frame.message ?? 'unknown') })
           if (entry.controller !== null) entry.controller.error(new Error(String(frame.message ?? 'connector-failed')))
           return
         }
@@ -444,6 +663,8 @@ export class RelayBridge {
           }
           return
         }
+        const entry = this.http.get(id)
+        if (entry !== undefined) this.clearStallWatch(entry)
         this.http.delete(id)
         return
       }
@@ -459,15 +680,26 @@ export class RelayBridge {
     for (const [id, entry] of this.http) {
       if (entry.connector !== connector) continue
       this.http.delete(id)
-      entry.head({ ok: false, message: reason })
-      if (entry.controller !== null) entry.controller.error(new Error(reason))
+      this.clearStallWatch(entry)
+      // The reason travels as the code too: a frozen one answers with its own
+      // status and the retry hint, anything older keeps the plain answer.
+      entry.head({ ok: false, code: reason, message: reason })
+      if (entry.controller !== null) {
+        try {
+          entry.controller.error(new Error(reason))
+        } catch {
+          // Already settled by a cancel from the other side.
+        }
+      }
       failed += 1
     }
     for (const [id, peer] of this.sockets) {
       if (peer.connector !== connector) continue
       this.sockets.delete(id)
+      // A replaced connector's phone sockets are told to reconnect at once; one
+      // that merely went away is an internal error, not a server instruction.
       try {
-        peer.socket.close(1011, reason)
+        peer.socket.close(reason === 'connector-replaced' ? BRIDGE_CLOSE_REPLACED : 1011, reason)
       } catch {
         // Nothing left to close it with.
       }
@@ -562,7 +794,7 @@ export async function handleRelayBridgeUpgrade(request, env) {
   } catch {
     return new Response('relay storage unavailable', { status: 503, headers: NO_STORE })
   }
-  if (spent[0] > REGISTER_MAX_PER_IP || spent[1] > REGISTER_MAX_PER_ID) {
+  if (spent[0] > BRIDGE_MAX_PER_IP || spent[1] > BRIDGE_MAX_PER_ID) {
     return new Response('rate limited', { status: 429, headers: NO_STORE })
   }
 

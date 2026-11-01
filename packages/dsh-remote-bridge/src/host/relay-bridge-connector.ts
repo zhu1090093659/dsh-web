@@ -30,6 +30,16 @@
  *
  * Frames mirror `market/worker/src/relay-bridge.js`: control frames are JSON
  * text, payload frames are `[kind:u8][streamId:u32be][payload]`.
+ *
+ * Flow control runs one way only, object to connector. A pause closes the
+ * object's window on one stream: this half stops sending that stream's payload
+ * frames and stops reading the upstream (a response body, a WebSocket socket),
+ * so the backlog waits in the kernel instead of in this process. A resume opens
+ * it again. A stream being abandoned arrives as close -- the frame this contract
+ * already used for a phone cancel -- and cancel is accepted as the same thing,
+ * because that is the name the frozen contract gives it. An object too old to
+ * send any of them leaves this half exactly as it was, and a frame this half has
+ * never heard of is ignored rather than answered.
  */
 
 import { randomBytes } from 'node:crypto'
@@ -320,6 +330,11 @@ interface BridgePeer {
   close: (code: number, reason: string) => void
   text: (body: string) => void
   binary: (body: Buffer) => void
+  /** Stop reading the upstream socket: the object's window on this stream is
+   * closed, so the backlog waits there rather than in this process. */
+  pause: () => void
+  /** Start reading it again. */
+  resume: () => void
 }
 
 /**
@@ -333,7 +348,11 @@ export class RelayBridgeConnector {
   private stateValue: RelayBridgeState = { state: 'idle' }
   private attempts = 0
   private disposed = false
+  /** HTTP streams still uploading: the request the object's frames feed. */
   private readonly requests = new Map<number, http.ClientRequest>()
+  /** HTTP streams whose head already arrived: the upstream response body a
+   * pause holds back and a stream being abandoned destroys. */
+  private readonly responses = new Map<number, http.IncomingMessage>()
   private readonly peers = new Map<number, BridgePeer>()
 
   private readonly options: RelayBridgeConnectorOptions
@@ -478,12 +497,27 @@ export class RelayBridgeConnector {
         this.peers.get(id)?.close(typeof frame.code === 'number' ? frame.code : 1000, String(frame.reason ?? ''))
         this.peers.delete(id)
         return
+      case 'pause':
+        this.pauseStream(id)
+        return
+      case 'resume':
+        this.resumeStream(id)
+        return
+      // A stream being abandoned under either spelling reaches one release path:
+      // close is what this contract already sent for a phone cancel, and cancel
+      // is what the frozen frame vocabulary calls the same thing.
+      case 'cancel':
       case 'close': {
         const peer = this.peers.get(id)
         if (peer !== undefined) {
           this.peers.delete(id)
           peer.close(1000, String(frame.reason ?? 'closed'))
           return
+        }
+        const response = this.responses.get(id)
+        if (response !== undefined) {
+          this.responses.delete(id)
+          response.destroy()
         }
         const request = this.requests.get(id)
         if (request !== undefined) {
@@ -493,7 +527,23 @@ export class RelayBridgeConnector {
         return
       }
       default:
+        // A frame this build has never heard of: an older half ignores what a
+        // newer one adds, so there is nothing here to answer.
+        return
     }
+  }
+
+  /** Close the object's window on one stream: a paused response body emits no
+   * more data events and a paused socket leaves its bytes in the kernel. */
+  private pauseStream(id: number): void {
+    this.responses.get(id)?.pause()
+    this.peers.get(id)?.pause()
+  }
+
+  /** Reopen that window. */
+  private resumeStream(id: number): void {
+    this.responses.get(id)?.resume()
+    this.peers.get(id)?.resume()
   }
 
   /**
@@ -536,6 +586,9 @@ export class RelayBridgeConnector {
       headers: bridgeUpstreamHeaders(frame.headers, host),
     }, (response: http.IncomingMessage) => {
       this.requests.delete(id)
+      // The body is what the object's window pauses and a cancel destroys, so
+      // the handle outlives this callback.
+      this.responses.set(id, response)
       this.sendText(JSON.stringify({
         t: 'res',
         id,
@@ -544,8 +597,15 @@ export class RelayBridgeConnector {
         headers: rawHeaderPairs(response.rawHeaders),
       }))
       response.on('data', (chunk: Buffer) => { this.sendChunk(encodeChunk(HTTP_BODY, id, chunk)) })
-      response.on('end', () => { this.sendText(JSON.stringify({ t: 'fin', id })) })
-      response.on('error', (error: Error) => { this.sendText(JSON.stringify({ t: 'fail', id, message: error.message })) })
+      response.on('close', () => { this.responses.delete(id) })
+      response.on('end', () => {
+        this.responses.delete(id)
+        this.sendText(JSON.stringify({ t: 'fin', id }))
+      })
+      response.on('error', (error: Error) => {
+        this.responses.delete(id)
+        this.sendText(JSON.stringify({ t: 'fail', id, message: error.message }))
+      })
     })
     request.on('error', (error: Error) => {
       this.requests.delete(id)
@@ -613,6 +673,8 @@ export class RelayBridgeConnector {
         binary: (body: Buffer) => {
           if (!peer.closed) dialed.socket.write(encodeBridgeFrame(0x2, body))
         },
+        pause: () => { dialed.socket.pause() },
+        resume: () => { dialed.socket.resume() },
       }
       const parse = createBridgeFrameParser((incoming) => {
         if (incoming.opcode === 0x1) {
@@ -682,6 +744,10 @@ export class RelayBridgeConnector {
 
   /** Drop every stream this socket carried: the object re-opens them. */
   private teardown(): void {
+    for (const [id, response] of this.responses) {
+      this.responses.delete(id)
+      response.destroy()
+    }
     for (const [id, request] of this.requests) {
       this.requests.delete(id)
       request.destroy()

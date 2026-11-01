@@ -44,11 +44,49 @@ async function sha256Of(secret) {
 
 function context() { return { waitUntil() {} } }
 
+/**
+ * The binding rules real D1 applies before a statement ever runs, read off the
+ * runtime that serves it: workerd's D1PreparedStatement.bind maps every value
+ * through number / string / boolean / null / byte array / ArrayBuffer view and
+ * throws D1_TYPE_ERROR for anything else. `undefined` is one of those
+ * refusals, so a double that accepts it is more permissive than the database it
+ * stands in for -- which is how a lease upsert binding a missing field reached
+ * production as a 503 instead of failing here. `null` is a supported binding
+ * and stays legal.
+ */
+function rejectUnbindable(args) {
+  for (const value of args) {
+    const type = typeof value
+    if (type === 'number' || type === 'string' || type === 'boolean') continue
+    if (value === null) continue
+    if (Array.isArray(value) && value.every((byte) => typeof byte === 'number' && byte >= 0 && byte < 256)) continue
+    if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) continue
+    throw new Error("D1_TYPE_ERROR: Type '" + type + "' not supported for value '" + String(value) + "'")
+  }
+  return args
+}
+
+/**
+ * The columns one SELECT names. D1 answers with a projection of the row it read
+ * rather than the row itself, so a field the statement never selected arrives as
+ * `undefined` -- and a code path keyed on such a field is dead in production
+ * while a double that hands back the whole seeded row keeps it looking alive.
+ * The `all()` side of this double has always projected for that reason.
+ */
+function selectedColumns(sql) {
+  const match = /^\s*SELECT\s+(.+?)\s+FROM\s/i.exec(sql)
+  if (match === null) return null
+  return match[1].split(',').map((column) => column.trim())
+}
+
 /** D1 double: lease rows and rate-limit windows in memory, batches applied in order. */
 function leaseDb(seed = {}) {
   const leases = new Map(Object.entries(seed.leases || {}))
   const rateLimit = new Map()
   const batches = []
+  // Every relay_leases row the worker asked this double to write, in order: a
+  // case reads the row the statement bound rather than the map it landed in.
+  const leaseWrites = []
   // Every account-budget statement the worker sends, so a case can count the
   // units it spent rather than infer them from the calls that followed.
   const budget = { spends: 0, windowStart: undefined }
@@ -58,7 +96,7 @@ function leaseDb(seed = {}) {
   }
   function applyLeaseInsert(args) {
     const previous = leases.get(args[0])
-    leases.set(args[0], {
+    const row = {
       id: args[0],
       secret_hash: args[1],
       tunnel_id: args[2],
@@ -78,14 +116,22 @@ function leaseDb(seed = {}) {
       token_cache: args[8],
       token_at: args[9],
       released_at: undefined,
-    })
+    }
+    leaseWrites.push(row)
+    leases.set(args[0], row)
   }
   function statement(sql, args) {
     return {
       sql,
       args,
       async first() {
-        if (sql.includes('FROM relay_leases')) return leases.get(args[0]) || null
+        if (sql.includes('FROM relay_leases')) {
+          const row = leases.get(args[0])
+          if (row === undefined) return null
+          const columns = selectedColumns(sql)
+          if (columns === null) return row
+          return Object.fromEntries(columns.map((column) => [column, row[column]]))
+        }
         // The account-budget counter: one write that increments and returns the
         // new total, which is the statement the worker really sends.
         if (sql.includes('INSERT INTO relay_rate_limit') && sql.includes('RETURNING count')) {
@@ -130,7 +176,8 @@ function leaseDb(seed = {}) {
     rateLimit,
     budget,
     batches,
-    prepare(sql) { return { bind: (...args) => statement(sql, args) } },
+    leaseWrites,
+    prepare(sql) { return { bind: (...args) => statement(sql, rejectUnbindable(args)) } },
     async batch(statements) {
       batches.push(statements.map((s) => s.sql))
       return statements.map((s) => {
@@ -518,6 +565,25 @@ test('a new lease defaults to the bridge transport and creates nothing in the ac
   assert.equal(db.budget.spends, 0, 'and spends no account budget')
   assert.equal(db.leases.get(ID).mode, 'bridge', 'the row records the mode it ran in')
   assert.equal(db.leases.get(ID).tunnel_id, '', 'a bridged lease points at no tunnel')
+})
+
+test('a bridge claim commits one lease row with NULL convergence and token columns', async () => {
+  // The regression this case guards: bridgedLease once answered a shape that
+  // omitted target and token, so the upsert bound `undefined`, D1 refused the
+  // whole batch and every claim answered 503 storage-unavailable. The double
+  // above refuses a binding the way D1 does, so that shape fails here.
+  const db = leaseDb()
+  const api = cloudflare()
+  const response = await claim({ DB: db, CF_RELAY_API: api })
+
+  assert.equal(response.status, 200, 'the claim commits instead of answering the storage failure')
+  assert.equal((await response.json()).mode, 'bridge', 'and it answers the bridge transport')
+  assert.equal(db.leaseWrites.length, 1, 'exactly one relay_leases row is written')
+  const row = db.leaseWrites[0]
+  assert.equal(row.mode, 'bridge', 'the row records the transport the claim ran in')
+  assert.equal(row.converged_at, null, 'a bridged claim converges nothing, so the column is NULL and not undefined')
+  assert.equal(row.token_cache, null, 'and it caches no connector token')
+  assert.equal(row.tunnel_id, '', 'a bridged lease owns no tunnel')
 })
 
 test('a row that recorded quick keeps the quick transport under the new default', async () => {
@@ -1078,6 +1144,7 @@ test('the rate-limit GC drops windows past the retention and keeps the current o
     prepare(sql) {
       return {
         bind(...args) {
+          rejectUnbindable(args)
           return {
             sql,
             args,

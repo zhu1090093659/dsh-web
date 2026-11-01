@@ -10,6 +10,28 @@ const TARGET = 'https://minted-tunnel-name.trycloudflare.com'
 
 function context() { return { waitUntil() {} } }
 
+/**
+ * The binding rules real D1 applies before a statement ever runs, read off the
+ * runtime that serves it: workerd's D1PreparedStatement.bind maps every value
+ * through number / string / boolean / null / byte array / ArrayBuffer view and
+ * throws D1_TYPE_ERROR for anything else. `undefined` is one of those
+ * refusals, so a double that accepts it is more permissive than the database it
+ * stands in for -- which is how a lease upsert binding a missing field reached
+ * production as a 503 instead of failing here. `null` is a supported binding
+ * and stays legal.
+ */
+function rejectUnbindable(args) {
+  for (const value of args) {
+    const type = typeof value
+    if (type === 'number' || type === 'string' || type === 'boolean') continue
+    if (value === null) continue
+    if (Array.isArray(value) && value.every((byte) => typeof byte === 'number' && byte >= 0 && byte < 256)) continue
+    if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) continue
+    throw new Error("D1_TYPE_ERROR: Type '" + type + "' not supported for value '" + String(value) + "'")
+  }
+  return args
+}
+
 /** D1 mock keyed by table: registrations and rate-limit rows in memory. */
 function relayDb(seed = {}) {
   const registrations = new Map(Object.entries(seed.registrations || {}))
@@ -20,6 +42,7 @@ function relayDb(seed = {}) {
     s.bind = (...a) => ({ sql, args: a, get bound() { return s.boundArgs = a } })
     return {
       bind(...bindArgs) {
+        rejectUnbindable(bindArgs)
         return {
           sql, args: bindArgs,
           async first() { return firstOf(sql, bindArgs) },

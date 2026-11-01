@@ -58,6 +58,7 @@
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.5",
     "@deepseek-ai/dsh-api-gateway": "^0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-store": "^0.2.1-rc.3",
     "@deepseek-ai/dsh-credentials": "^0.2.1-rc.3",
     "@deepseek-ai/dsh-client-locale": "^0.2.1-rc.3",
     "@deepseek-ai/dsh-client-ui-renderer": "^0.2.1-rc.3",

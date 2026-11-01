@@ -67,10 +67,14 @@ test('copies cover the settings trio for all consumers plus host and http helper
   // totals below are 134 / 73 / 46.
   // dsh-browser-view's real-browser settings card adds seven client copies:
   // the card chrome, form primitives, stylesheet, entry fallback, card seat,
-  // segmented control and slider bubble.
-  assert.equal(entries.length, 134)
+  // segmented control and slider bubble. dsh-task-board-team fills the board's
+  // provider-settings seat with the same nested card, so it takes the five card
+  // derivations (chrome, form primitives, stylesheet, segmented control, slider
+  // bubble) and deliberately none of the entry-bound form fallback: its fields
+  // are written through the board, not a family settings namespace.
+  assert.equal(entries.length, 139)
   const clientTrio = entries.filter(entry => entry.target.includes('/src/client/'))
-  assert.equal(clientTrio.length, 73)
+  assert.equal(clientTrio.length, 78)
   const hostCopies = entries.filter(entry => entry.target.includes('/src/host/')
     || entry.target.includes('/src/dsh-home.ts')
     || entry.target.includes('/src/mount-once.ts')

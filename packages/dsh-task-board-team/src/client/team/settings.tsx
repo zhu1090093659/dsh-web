@@ -9,6 +9,14 @@
  * back: the field always renders empty and the status line says whether one is
  * stored.
  *
+ * The block is one nested settings card of the board's topic list, exactly like
+ * the sibling provider sections: the family card chrome supplies the border, the
+ * header, the body insets and the hairline between rows, so this module owns only
+ * the rows themselves. Its rows use the shared field grid (label and hint on the
+ * left, the control at the trailing edge) instead of a hand-rolled flex row, so a
+ * label is never squeezed into a character-per-line column by the control beside
+ * it.
+ *
  * The block stays reachable while the extension is switched off, because it is
  * where the switch is turned back on; it only reports that fact instead of
  * pretending the forms still apply.
@@ -16,6 +24,9 @@
  * @module dsh-task-board-team/client/team/settings
  */
 import { useState, type ReactElement } from 'react'
+import type { CardShell } from '../settings-form.ts'
+import { PluginSettingsCard } from '../PluginSettingsCard.tsx'
+import card from '../settings-card.module.css'
 import type { TaskBoardExtensionDispatch, TaskBoardSettingsSectionProps } from '../../core/contract.ts'
 import { TEAM_EXTENSION_ID } from '../../core/identity.ts'
 import type { TeamExtensionSummary } from '../../host/service.ts'
@@ -30,6 +41,25 @@ interface PublishedConfiguration {
   hostname?: string
   tokenConfigured?: boolean
   questionWaitMinutes?: number
+}
+
+/**
+ * The card state this block reports: the chrome asks for the family shape, and
+ * this block answers every field immediately through its own action channel, so
+ * there is never a pending draft or an invalid one.
+ * @param failed - whether the last write was refused.
+ * @returns the shell the card renders.
+ */
+function shellOf(failed: boolean): CardShell {
+  return {
+    available: true,
+    exposed: true,
+    writable: true,
+    dirty: false,
+    invalid: false,
+    saving: false,
+    failed,
+  }
 }
 
 /**
@@ -72,13 +102,55 @@ async function send(
   }
 }
 
-/** One capability line of the settings block. */
+/** A label with its control at the row's trailing edge. */
+function ValueRow({ label, value }: { label: string; value: string }): ReactElement {
+  return (
+    <div className={card.field}>
+      <span className={card.head}><span className={card.label}>{label}</span></span>
+      <span className={styles.value}>{value}</span>
+    </div>
+  )
+}
+
+/** A label with a text input: the hint sits under the label, the field at the trailing edge. */
+function TextRow(props: {
+  id: string
+  label: string
+  hint?: string
+  value: string
+  placeholder?: string
+  numeric?: boolean
+  onEdit: (next: string) => void
+}): ReactElement {
+  return (
+    <div className={card.field}>
+      <span className={card.head}>
+        <label className={card.label} htmlFor={props.id}>{props.label}</label>
+      </span>
+      {props.hint === undefined ? null : <p className={card.hint}>{props.hint}</p>}
+      <input
+        id={props.id}
+        className={card.input}
+        {...(props.placeholder === undefined ? {} : { placeholder: props.placeholder })}
+        {...(props.numeric === true ? { inputMode: 'numeric' as const } : {})}
+        value={props.value}
+        onChange={event => { props.onEdit(event.target.value) }}
+      />
+    </div>
+  )
+}
+
+/**
+ * One capability line of the settings block: the name, whether this deployment
+ * serves it, and what a reader can do when it does not.
+ */
 function Capability({ label, available, missing }: { label: string; available: boolean; missing: string }): ReactElement {
   return (
-    <div className={styles.row}>
-      <span className={styles.label}>{label}</span>
+    <div className={card.field} data-dsh-part="team-capability">
+      <span className={card.head}><span className={card.label}>{label}</span></span>
+      {available ? null : <p className={card.hint}>{missing}</p>}
       <span className={styles.value}>
-        {available ? t('section.capability.available') : t('section.capability.missing') + ' — ' + missing}
+        {available ? t('section.capability.available') : t('section.capability.missing')}
       </span>
     </div>
   )
@@ -97,7 +169,7 @@ export function TeamSettingsSection({ dispatch }: TaskBoardSettingsSectionProps)
   const [members, setMembers] = useState<string | undefined>(undefined)
   const [waitMinutes, setWaitMinutes] = useState<string | undefined>(undefined)
   const [token, setToken] = useState('')
-  const [saved, setSaved] = useState(false)
+  const [saved, setSaved] = useState<boolean | undefined>(undefined)
 
   const connection = summary?.connection.state ?? 'idle'
   const membersValue = members ?? (summary?.agents ?? []).map(agent => agent.memberId).join(', ')
@@ -119,90 +191,101 @@ export function TeamSettingsSection({ dispatch }: TaskBoardSettingsSectionProps)
   }
 
   return (
-    <div className={styles.section} data-dsh-plugin="task-board-team" data-dsh-part="team-settings">
-      <p className={styles.title}>{t('section.title')}</p>
-      <div className={styles.row}>
-        <span className={styles.label}>{t('section.connection')}</span>
-        <span className={styles.value} data-dsh-part="team-connection">{t(stateKey)}</span>
-      </div>
-      {summary?.connection.hostId === undefined ? null : (
-        <div className={styles.row}>
-          <span className={styles.label}>{t('section.host')}</span>
-          <span className={styles.value}>{summary.connection.hostId}</span>
-        </div>
-      )}
-      <label className={styles.row}>
-        <span className={styles.label}>{t('section.hub')}</span>
-        <input
-          className={styles.input}
-          value={hubUrl ?? configuration.hubUrl ?? ''}
+    <PluginSettingsCard
+      t={t}
+      titleKey="section.title"
+      descriptionKey="section.description"
+      // One topic inside the board's own settings card, so it takes the same
+      // compact chrome its sibling provider and topic cards use.
+      density="nested"
+      // Rows are written through the board's action channel, so the card holds
+      // no staged draft: save and discard are the no-ops of an always-committed
+      // form, and the footer reports the refused write.
+      state={shellOf(saved === false)}
+      onSave={() => {}}
+      onDiscard={() => {}}
+    >
+      <div data-dsh-plugin="task-board-team" data-dsh-part="team-settings">
+        <ValueRow label={t('section.connection')} value={t(stateKey)} />
+        {summary?.connection.hostId === undefined
+          ? null
+          : <ValueRow label={t('section.host')} value={summary.connection.hostId} />}
+        <TextRow
+          id="task-board-team-hub"
+          label={t('section.hub')}
           placeholder="https://hub.example.com"
-          onChange={event => { setHubUrl(event.target.value) }}
+          value={hubUrl ?? configuration.hubUrl ?? ''}
+          onEdit={setHubUrl}
         />
-      </label>
-      <label className={styles.row}>
-        <span className={styles.label}>{t('section.team')}</span>
-        <input
-          className={styles.input}
-          value={teamId ?? configuration.teamId ?? ''}
+        <TextRow
+          id="task-board-team-team"
+          label={t('section.team')}
           placeholder="team_..."
-          onChange={event => { setTeamId(event.target.value) }}
+          value={teamId ?? configuration.teamId ?? ''}
+          onEdit={setTeamId}
         />
-      </label>
-      <label className={styles.row}>
-        <span className={styles.label}>{t('section.token')}</span>
-        <span className={styles.value}>
-          {configuration.tokenConfigured === true ? t('section.token.configured') : t('section.token.missing')}
-        </span>
-      </label>
-      <input
-        className={styles.input}
-        type="password"
-        placeholder={t('section.token.placeholder')}
-        value={token}
-        onChange={event => { setToken(event.target.value) }}
-      />
-      <label className={styles.row}>
-        <span className={styles.label}>{t('section.agents')}</span>
-        <input
-          className={styles.input}
-          value={membersValue}
+        <div className={card.field}>
+          <span className={card.head}>
+            <label className={card.label} htmlFor="task-board-team-token">{t('section.token')}</label>
+            <span className={styles.status} data-dsh-part="team-token-state">
+              {configuration.tokenConfigured === true ? t('section.token.configured') : t('section.token.missing')}
+            </span>
+          </span>
+          <p className={card.hint}>{t('section.token.placeholder')}</p>
+          <input
+            id="task-board-team-token"
+            className={card.input}
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={t('section.token.placeholderShort')}
+            value={token}
+            onChange={event => { setToken(event.target.value) }}
+          />
+        </div>
+        <TextRow
+          id="task-board-team-agents"
+          label={t('section.agents')}
+          hint={t('section.agents.hint')}
           placeholder="member_..."
-          onChange={event => { setMembers(event.target.value) }}
+          value={membersValue ?? ''}
+          onEdit={setMembers}
         />
-      </label>
-      <p className={styles.meta}>{t('section.agents.hint')}</p>
-      <label className={styles.row}>
-        <span className={styles.label}>{t('section.questionWait')}</span>
-        <input
-          className={styles.input}
-          inputMode="numeric"
+        <TextRow
+          id="task-board-team-wait"
+          label={t('section.questionWait')}
+          hint={t('section.questionWait.hint')}
+          numeric
           value={waitMinutes ?? String(configuration.questionWaitMinutes ?? 0)}
-          onChange={event => { setWaitMinutes(event.target.value) }}
+          onEdit={setWaitMinutes}
         />
-      </label>
-      <p className={styles.meta}>{t('section.questionWait.hint')}</p>
-      {(summary?.agents ?? []).length === 0 ? <p className={styles.empty}>{t('section.agents.empty')}</p> : null}
-      <div className={styles.actions}>
-        <button className={styles.button} type="button" onClick={() => { void saveSettings() }}>{t('section.save')}</button>
-        <button
-          className={styles.button}
-          type="button"
-          disabled={token.trim() === ''}
-          onClick={() => {
-            void send(dispatch, 'set-token', { token }).then(ok => {
-              if (ok) { setToken(''); setSaved(true) } else setSaved(false)
-            })
-          }}
-        >
-          {t('section.token.save')}
-        </button>
-        <button className={styles.button} type="button" onClick={() => { void send(dispatch, 'clear-token') }}>{t('section.token.clear')}</button>
-        <button className={styles.button} type="button" onClick={() => { void send(dispatch, 'refresh') }}>{t('section.refresh')}</button>
-      </div>
-      {saved ? <p className={styles.meta}>{t('section.saved')}</p> : null}
-      <div>
-        <p className={styles.title}>{t('section.capabilities')}</p>
+        {(summary?.agents ?? []).length === 0 ? <p className={styles.empty}>{t('section.agents.empty')}</p> : null}
+        <div className={styles.actions}>
+          <button className={styles.primaryButton} type="button" onClick={() => { void saveSettings() }}>
+            {t('section.save')}
+          </button>
+          <button
+            className={styles.button}
+            type="button"
+            disabled={token.trim() === ''}
+            onClick={() => {
+              void send(dispatch, 'set-token', { token }).then(ok => {
+                setSaved(ok)
+                if (ok) setToken('')
+              })
+            }}
+          >
+            {t('section.token.save')}
+          </button>
+          <button className={styles.button} type="button" onClick={() => { void send(dispatch, 'clear-token') }}>
+            {t('section.token.clear')}
+          </button>
+          <button className={styles.button} type="button" onClick={() => { void send(dispatch, 'refresh') }}>
+            {t('section.refresh')}
+          </button>
+        </div>
+        {saved === true ? <p className={styles.saved}>{t('section.saved')}</p> : null}
+        <p className={styles.groupTitle}>{t('section.capabilities')}</p>
         <Capability
           label={t('section.capability.followUp')}
           available={summary?.capabilities.followUp === true}
@@ -223,20 +306,20 @@ export function TeamSettingsSection({ dispatch }: TaskBoardSettingsSectionProps)
           available={summary?.presetPin === 'supported'}
           missing={t('section.capability.presetPinMissing')}
         />
+        {(summary?.problems ?? []).length === 0 ? null : (
+          <>
+            <p className={styles.groupTitle}>{t('section.problems')}</p>
+            <ul className={styles.list}>
+              {(summary?.problems ?? []).map(problem => (
+                <li key={problem} className={styles.entry}><span className={styles.body}>{problem}</span></li>
+              ))}
+            </ul>
+          </>
+        )}
+        {summary?.connection.lastError === undefined ? null : (
+          <p className={styles.error}>{summary.connection.lastError}</p>
+        )}
       </div>
-      {(summary?.problems ?? []).length === 0 ? null : (
-        <div>
-          <p className={styles.title}>{t('section.problems')}</p>
-          <ul className={styles.list}>
-            {(summary?.problems ?? []).map(problem => (
-              <li key={problem} className={styles.entry}><span className={styles.body}>{problem}</span></li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {summary?.connection.lastError === undefined ? null : (
-        <p className={styles.error}>{summary.connection.lastError}</p>
-      )}
-    </div>
+    </PluginSettingsCard>
   )
 }

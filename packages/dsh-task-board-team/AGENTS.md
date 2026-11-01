@@ -12,6 +12,16 @@
   `task-board.card.decoration`）在 `src/client/index.ts` 以同形 `declare module` 声明，
   不 value import 看板包。设置区块**不随本扩展开关撤下**（它是重新打开开关的地方），
   只依赖看板服务。
+- 设置区块是看板专题列表（`<ul>`）里的一张卡，因此必须渲染成共享
+  `PluginSettingsCard`（`density="nested"`）：卡片外壳与行布局一律来自
+  `settings-card.module.css` 的切片，本包自己的 CSS 模块只管切片没有的部件（状态词、
+  分组标题、动作行）。行用切片的 `.field` 网格，标签在 head 列、控件在尾列——不要写
+  `flex + width:100% 输入框` 的行，那会把标签压成按字换行、控件列各起一行。
+  区块经看板动作通道写入，因此卡片不持有暂存草稿（save/discard 是空操作）。
+- 共享副本：`src/client/{settings-form.ts,PluginSettingsCard.tsx,settings-card.module.css,SegmentGroup.tsx,RangeBubble.tsx}`
+  是 `scripts/sync-shared.mjs` 生成的副本（文件头有 generated 注释），禁止手改；改
+  `shared/client/settings/` 后重跑 `node scripts/sync-shared.mjs`。本包刻意不复制
+  `settings-entry-form.ts`：字段不绑家族设置命名空间。
 - 三项可选能力必须探测后再用：`sessions.followUp`、`tasks.rework`，以及看板宿主面的
   动作应用器（`apply`，用来启动执行）。缺失时降级并在卡片与设置区可见地说明，
   绝不假定存在。探测结果由 `probeTaskBoardCapabilities` 与发布摘要的

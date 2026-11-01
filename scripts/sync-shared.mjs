@@ -30,7 +30,7 @@ export const REPO_ROOT = resolve(SCRIPT_DIR, '..')
 // dsh-web-settings consumes the trio too: the family-wide telemetry switch is a
 // page-level setting, so it renders through the same card chrome (a static
 // header plus a trailing switch) instead of a section of its own.
-const SETTINGS_CONSUMERS = ['dsh-web-settings', 'dsh-task-board', 'dsh-task-board-github', 'dsh-market', 'dsh-liangshen', 'dsh-agents', 'dsh-usage', 'dsh-browser-view']
+const SETTINGS_CONSUMERS = ['dsh-web-settings', 'dsh-task-board', 'dsh-task-board-github', 'dsh-task-board-team', 'dsh-market', 'dsh-liangshen', 'dsh-agents', 'dsh-usage', 'dsh-browser-view']
 const SETTINGS_CARD_CONSUMERS = [...SETTINGS_CONSUMERS]
 // Consumers of the entry-bound form fallback: every package whose card binds a
 // family settings namespace through the shared forms service. It is a superset
@@ -38,9 +38,13 @@ const SETTINGS_CARD_CONSUMERS = [...SETTINGS_CONSUMERS]
 // same way.
 // dsh-web-settings is deliberately absent: it renders the card chrome around a
 // local browser preference and binds no Host namespace, so it needs no entry-
-// bound form transport.
+// bound form transport. dsh-task-board-team is the second absence, for the same
+// reason one level down: its settings card is the provider section inside the
+// board's own card, and its fields are written through the board's action
+// channel rather than a family settings namespace — it takes the card chrome
+// and the field rows, not the entry-bound transport.
 const SETTINGS_ENTRY_FORM_CONSUMERS = [
-  ...SETTINGS_CONSUMERS.filter(pkg => pkg !== 'dsh-web-settings'),
+  ...SETTINGS_CONSUMERS.filter(pkg => pkg !== 'dsh-web-settings' && pkg !== 'dsh-task-board-team'),
   'dsh-session-archive',
 ]
 

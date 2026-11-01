@@ -315,3 +315,31 @@ test('a registry read that fails while registering answers the frozen storage co
   assert.equal(body.code, 'relay-storage-unavailable')
   assert.equal(body.error, 'storage-unavailable', 'the plugin keeps its own spelling of this condition')
 })
+
+test('a registration whose batch write fails answers the frozen storage code, not a bare error body', async () => {
+  // Given a registry that answers the lookup and then refuses the registration write
+  const db = fakeDb({ registration: { secret_hash: await sha256Hex(SECRET) } })
+  db.batch = async () => {
+    throw new Error('d1 unavailable')
+  }
+
+  // When the plugin refreshes its target
+  const response = await handleRelayRegister(new Request('https://dsh-market.com/api/relay/register', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.7' },
+    body: JSON.stringify({ id: ID, secret: SECRET, target: TARGET }),
+  }), { DB: db })
+
+  // Then the answer is the frozen storage failure at its frozen status, and a retry may outlast it
+  assert.equal(response.status, 503)
+  assert.match(response.headers.get('content-type'), /^application\/json/)
+  assert.equal(response.headers.get('x-relay-retryable'), '1')
+
+  // And it carries the frozen code plus the error spelling the plugin's registration client reads
+  const body = await response.json()
+  assert.deepEqual(Object.keys(body).sort(), ['code', 'error', 'message', 'ok'], 'the unified failure body, plus the legacy field only')
+  assert.equal(body.ok, false)
+  assert.equal(body.code, 'relay-storage-unavailable')
+  assert.equal(body.error, 'storage-unavailable', 'the plugin keeps its own spelling of this condition')
+  assert.match(body.message, /registry/)
+})

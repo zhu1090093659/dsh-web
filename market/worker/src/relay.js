@@ -175,7 +175,7 @@ export async function handleRelayRegister(request, env) {
   try {
     await env.DB.batch([perIp.statements[0], perIp.statements[1], perId.statements[1], upsert])
   } catch {
-    return json({ ok: false, error: 'storage-unavailable' }, 503)
+    return relayFailure('relay-storage-unavailable', { legacy: 'storage-unavailable' })
   }
   // The batch cannot conditionally reject, so enforce the budgets after the
   // commit: over-budget writes are harmless overwrites of the same row.
@@ -187,9 +187,10 @@ export async function handleRelayRegister(request, env) {
   ]).catch(() => [])
   const ipCount = Number(counts[0] && counts[0].results && counts[0].results[0] && counts[0].results[0].count) || 0
   const idCount = Number(counts[1] && counts[1].results && counts[1].results[0] && counts[1].results[0].count) || 0
-  // This refusal is the only one on the registration surface that a frozen code
-  // names; the rest keep their pre-contract `error` shape (the table has no code
-  // for them). `legacy` keeps `error` for the plugin's registration client.
+  // The two storage refusals above answer a frozen code too; this one is the
+  // budget's, which the table also names, so it answers a code rather than a
+  // bare `error`. The rest keep their pre-contract `error` shape (the table has
+  // no code for them). `legacy` keeps `error` for the plugin's registration client.
   if (ipCount > REGISTER_MAX_PER_IP || idCount > REGISTER_MAX_PER_ID) {
     return relayFailure('rate-limited', { legacy: true })
   }

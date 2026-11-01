@@ -520,10 +520,13 @@ function isCachedToken(row) {
  * Cloudflare call at all -- not even a token fetch -- and the row's tunnel id
  * stays empty, which is exactly what the cron GC reads as "owns no account
  * resource" when it reclaims the row later.
- * @returns the hostname alone; no tunnel id, no CNAME target, no token.
+ * @returns the same fields the tunnel transports answer with, each one explicit:
+ * no tunnel id, no CNAME target, no token. The row upsert binds every one of
+ * them, and D1 rejects an undefined binding outright, so a field this path does
+ * not produce is named here as null rather than left out.
  */
 function bridgedLease(id) {
-  return { tunnelId: '', hostname: relayHostname(id), tokenAt: null }
+  return { tunnelId: '', hostname: relayHostname(id), target: null, token: null, tokenAt: null }
 }
 
 /**

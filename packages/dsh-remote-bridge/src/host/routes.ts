@@ -28,6 +28,11 @@ export interface PairTokenRouteDeps {
   readonly lan?: () => { address: string; port: number } | undefined
   /** Origin discovery seam; defaults to {@link discoverPairOrigin} over the two seams above. */
   readonly pairOrigin?: () => PairOriginFacts | undefined
+  /**
+   * 桌面端打开配对面板（或本机请求一次性令牌）时的钩子：尚未配对任何设备且未开隧道的
+   * 宿主在此时按需触发一次租约申领，避免无人使用远程功能时后台空转。
+   */
+  readonly onPairTokenIssued?: () => void
 }
 
 /** Write one JSON response. The family's shared reader/writer is not copied into this package. */
@@ -85,6 +90,11 @@ export function makePairTokenHandler(deps: PairTokenRouteDeps): WebRoute['handle
       res.writeHead(405, { allow: 'GET' })
       res.end()
       return
+    }
+    try {
+      deps.onPairTokenIssued?.()
+    } catch {
+      // 触发后台租约申领失败绝不能影响本机取配对码。
     }
     const ticket = deps.pairing.issueToken()
     // The link a client ON THIS MACHINE can open directly. The token rides the

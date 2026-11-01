@@ -92,7 +92,7 @@ import {
 } from './host/lan-bind-plan.ts'
 import { removeManagedBlock, type LegacyBlockCleanup } from './host/lan-bind.ts'
 import { LanForwarder, type LanForwardState } from './host/lan-forward.ts'
-import { createRelayBridgeRunner } from './host/relay-bridge-connector.ts'
+import { createRelayBridgeRunner, type RelayBridgeState } from './host/relay-bridge-connector.ts'
 import {
   RELAY_CONTROL_URL,
   relayControlEndpointOf,
@@ -662,6 +662,11 @@ export interface BridgeWiringFacts {
   readonly candidates?: readonly string[]
   /** 安装的 webserver schema 是否接受通配绑定（只上报，从不写）。 */
   readonly wildcardSupported?: boolean
+  /**
+   * 远程接入是否已被激活（已有已配对设备，或用户主动请求了配对码）。
+   * 缺省按 true 处理以保持纯函数向后兼容；当显式传入 false 且隧道未开启时，不主动申领租约。
+   */
+  readonly remoteArmed?: boolean
 }
 
 /** 一次规划的产物：隧道、租约、局域网边缘与 ingress-sync 各自的输入。 */
@@ -697,8 +702,10 @@ export function bridgeWiringPlanOf(facts: BridgeWiringFacts): BridgeWiringPlan {
     awaitPort: gatePort === undefined,
     // 快速隧道的目标要端口，命名隧道的目标在云侧：只有前者必须等端口。
     tunnel: gatePort === undefined && config.autoTunnel ? undefined : tunnelPlanOf(config, gatePort),
-    // 租约是传输的事，不是隧道的事：无隧道分支同样要申领，否则边缘永远 no-connector。
-    claim: config.relay && gatePort !== undefined,
+    // 租约是传输的事，但在未配对任何设备且未配置隧道（tunnel.mode === 'off'）时按需延迟申领，
+    // 避免从未连接远程的机器在后台空转重试。
+    claim: config.relay && gatePort !== undefined
+      && (facts.remoteArmed !== false || tunnelPlanOf(config, gatePort).mode !== 'off'),
     forward: forwardPlanOf(config.lanBind, facts.startupHost, capability),
     ingress: ingressInputOf({
       // 桥这一行挂上就是开着的：没有主开关，开关是 ingressSync 自己。
@@ -1352,13 +1359,54 @@ export async function retireStaleRelayHalfOf(parts: {
 
 /**
  * 租约状态的一行日志文本。
+ *
+ * `idle` 与 `claiming` 是每次尝试前的内部过渡态，不产生控制台输出；只保留可观测结果
+ * （`claimed` 与 `failed`）。
  * @param state - 租约半区此刻的状态。
- * @returns 一行可读的状态。
+ * @returns 一行可读的状态，或 undefined（无需打印的过渡态）。
  */
-function relayStateLine(state: RelayPairState): string {
+export function relayStateLine(state: RelayPairState): string | undefined {
   if (state.state === 'claimed') return 'claimed ' + state.mode + ' ' + state.hostname
   if (state.state === 'failed') return 'failed ' + state.error
-  return state.state
+  return undefined
+}
+
+/**
+ * 桥连接器状态的一行日志文本。
+ *
+ * `idle` 与 `dialing` 是重连过程的内部过渡态，只保留 `connected` 与 `failed`。
+ * @param state - 桥连接器此刻的状态。
+ * @returns 一行可读的状态，或 undefined（无需打印的过渡态）。
+ */
+export function relayBridgeStateLine(state: RelayBridgeState): string | undefined {
+  if (state.state === 'connected') return 'connected ' + state.instance
+  if (state.state === 'failed') return 'failed ' + state.error
+  return undefined
+}
+
+/**
+ * 为状态回调套一层去重与过渡态过滤：忽略 undefined 行，且连续完全相同的行只打一次。
+ *
+ * 后台指数退避重试在网络不通或上游故障（如 `cf-api-unavailable`）时会反复经历
+ * `claiming -> failed`；过滤过渡态并对结果行去重后，同一故障只报告一次，恢复为
+ * `claimed` 时再正常输出。
+ * @param prefix - 日志前缀（如 `'relay lease: '`）。
+ * @param lineOf - 状态到文本行的映射，返回 undefined 表示忽略该状态。
+ * @param log - 底层日志函数。
+ * @returns 状态观察回调。
+ */
+export function createDedupedStateLogger<T>(
+  prefix: string,
+  lineOf: (state: T) => string | undefined,
+  log: (message: string) => void,
+): (state: T) => void {
+  let lastLine: string | undefined
+  return (state: T): void => {
+    const line = lineOf(state)
+    if (line === undefined || line === lastLine) return
+    lastLine = line
+    log(prefix + line)
+  }
 }
 
 /**
@@ -1565,6 +1613,27 @@ function applyImpl(ctx: Context, config?: unknown): void {
         })
       },
     }
+  // 入站栈的活引用：隧道、租约与 Worker 上的注册状态由下面的 effect 建立，配对令牌
+  // 路由只读它们此刻的状态，所以一个还没起的隧道、一条还没申到的租约都不会把地址
+  // 说成存在。
+  const liveIngress: {
+    tunnel?: TunnelManager
+    pair?: RelayConnectorPair
+    registered?: () => string | undefined
+    /** 局域网转发器此刻的状态；undefined 表示这一行还没挂上转发器。 */
+    forward?: () => LanForwardState
+    /** 按需唤醒租约申领：花名册读出已有设备、用户打开配对面板或新设备完成配对时调用。 */
+    armRelay?: () => void
+  } = {}
+
+  /** 用户在本进程内主动请求过配对码或完成了设备配对。 */
+  let pairingRequested = false
+  const isRemoteArmed = (): boolean => pairingRequested || roster.devices().length > 0
+  const wakeRelay = (): void => {
+    pairingRequested = true
+    liveIngress.armRelay?.()
+  }
+
   const hub = new BridgeHub({
     extensions,
     gateway: ctx.typertGateway,
@@ -1586,6 +1655,7 @@ function applyImpl(ctx: Context, config?: unknown): void {
     offlineClaimTtlMs,
     onPushRegistered: () => { watchers.sync() },
     ...(relayFace === undefined ? {} : { relay: relayFace }),
+    onDeviceEnrolled: () => { wakeRelay() },
     now: () => Date.now(),
     clientTimeZone: localTimeZone,
     log,
@@ -1598,16 +1668,7 @@ function applyImpl(ctx: Context, config?: unknown): void {
     ctx.provide(REMOTE_BRIDGE_SERVICE, createRemoteBridgeFace(extensions, hub))
   }
 
-  // 入站栈的活引用：隧道、租约与 Worker 上的注册状态由下面的 effect 建立，配对令牌
-  // 路由只读它们此刻的状态，所以一个还没起的隧道、一条还没申到的租约都不会把地址
-  // 说成存在。
-  const liveIngress: {
-    tunnel?: TunnelManager
-    pair?: RelayConnectorPair
-    registered?: () => string | undefined
-    /** 局域网转发器此刻的状态；undefined 表示这一行还没挂上转发器。 */
-    forward?: () => LanForwardState
-  } = {}
+
 
   /**
    * 桥自己此刻的公网入口：顺序由 {@link livePublicOriginOf} 一处算清——租约的稳定
@@ -1640,13 +1701,17 @@ function applyImpl(ctx: Context, config?: unknown): void {
       // 转发器自己报出的监听地址（没有监听者就没有兜底地址，响应结构不变）。
       realtime: realtimeOrigin,
       lan: lanOrigin,
+      onPairTokenIssued: () => { wakeRelay() },
     }))
     log(`protocol v1 listening on ${WS_PATH}`)
     // Where the channel stands is only knowable once the roster is read: a relay
     // token may already be on disk, and a line written before that read would
     // claim a route the bridge is not on. One line, after the one disk read.
     void roster.load()
-      .then(() => { watchers.sync() })
+      .then(() => {
+        watchers.sync()
+        if (roster.devices().length > 0) liveIngress.armRelay?.()
+      })
       .catch(() => undefined)
       .finally(() => { log(pushChannelLine(pushChannelDescription())) })
     return () => {
@@ -1679,13 +1744,22 @@ function applyImpl(ctx: Context, config?: unknown): void {
     const forwarder = new LanForwarder()
     // 配对令牌的局域网兜底读这一条：只有转发器真的在监听时它才有答案。
     liveIngress.forward = () => forwarder.snapshot()
+    liveIngress.armRelay = () => {
+      if (disposed || gatePort === undefined || !settings.relay) return
+      ensureRelay()
+      claimer?.claim(gatePort, tunnel.info.url)
+      // 第二会合点跟着同一支扳机申领：它的第一次申领要带上名册里的授权，所以等名册读完
+      // 再申（load() 是记忆化的，重复调用不再读盘）。少了这一行，按需路径上它永不申领。
+      void roster.load().then(() => secondary?.claim()).catch(() => undefined)
+      liveIngress.pair = relayPair
+    }
     const tunnel = new TunnelManager()
     const ingress = new IngressSync()
     // 命名连接器只在快速隧道计划下启动（leaseConnectorSeams 判据）。
     const namedConnector = createNamedRelayConnector()
     // 桥连接器：租约带 bridge 授权就起，与隧道计划无关。
     const runner = createRelayBridgeRunner({
-      onState: (state) => { log('relay bridge: ' + state.state + (state.state === 'failed' ? ' ' + state.error : '')) },
+      onState: createDedupedStateLogger('relay bridge: ', relayBridgeStateLine, log),
     })
     const cleaner = createLegacyBlockCleaner({ profile: () => settings.profile, log })
     let plan: TunnelPlan | undefined
@@ -1764,7 +1838,7 @@ function applyImpl(ctx: Context, config?: unknown): void {
           log,
         }),
         controlUrl: settings.relayControlUrl,
-        onState: (state: RelayPairState) => { log('relay lease: ' + relayStateLine(state)) },
+        onState: createDedupedStateLogger('relay lease: ', relayStateLine, log),
       })
       claimer = createLeaseClaimer({
         start: async (input) => { await relayPair?.start({ port: input.port, pluginVersion: readPluginVersion() }) },
@@ -1855,6 +1929,7 @@ function applyImpl(ctx: Context, config?: unknown): void {
         ...(startup?.host === undefined ? {} : { startupHost: startup.host }),
         candidates: lanIPv4Addresses(),
         wildcardSupported: wildcardBindSupported(),
+        remoteArmed: isRemoteArmed(),
       })
       plan = next.tunnel
       if (next.tunnel === undefined) {
@@ -1875,14 +1950,17 @@ function applyImpl(ctx: Context, config?: unknown): void {
         // 计划为快速隧道且隧道已经在跑时，这里补一次注册（隧道自己报 URL 的那条路在
         // onPhase 里）；同一 target 由 announcer 去重。
         announcer.sync({ relay: true, mode: next.tunnel?.mode, url: tunnel.info.url })
-        // 无隧道分支同样要申领：租约跟着传输走，不跟着隧道走。没有这一步，桥模式下
-        // 边缘永远答 no-connector。
-        ensureRelay()
-        claimer?.claim(port, tunnel.info.url)
-        // 第二会合点第一次申领就要带上名册里的授权，而名册在另一个 effect 里异步读
-        // 出来：等它读完再申。否则一个盘上明明有授权的宿主会在启动时白吃一次
-        // tier-required，而那次退避是六小时。load() 是记忆化的，重复调用不再读盘。
-        void roster.load().then(() => secondary?.claim()).catch(() => undefined)
+        if (next.claim) {
+          // 仅在已有配对设备、用户请求了配对码或开启了隧道时申领租约，避免未连接时后台空转；
+          // 反过来，租约跟着传输走、不跟着隧道走：无隧道但已配对时同样要申领，否则桥模式下
+          // 边缘永远答 no-connector。
+          ensureRelay()
+          claimer?.claim(port, tunnel.info.url)
+          // 第二会合点第一次申领就要带上名册里的授权，而名册在另一个 effect 里异步读
+          // 出来：等它读完再申。否则一个盘上明明有授权的宿主会在启动时白吃一次
+          // tier-required，而那次退避是六小时。load() 是记忆化的，重复调用不再读盘。
+          void roster.load().then(() => secondary?.claim()).catch(() => undefined)
+        }
       } else {
         // relay 关掉：撤注册行并释放租约（只做一次），局域网边缘与 ingress-sync 照旧。
         relayHalf.off()
@@ -1944,6 +2022,7 @@ function applyImpl(ctx: Context, config?: unknown): void {
       liveIngress.tunnel = undefined
       liveIngress.registered = undefined
       liveIngress.forward = undefined
+      liveIngress.armRelay = undefined
       // 卸载只停重试：不撤 Worker 上那行、也不释放租约——那是手机的收藏地址，
       // 陈旧行由服务端 GC 回收（老语义）。
       relayHalf.dispose()

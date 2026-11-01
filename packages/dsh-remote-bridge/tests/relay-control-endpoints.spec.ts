@@ -8,12 +8,12 @@
  * 全部按行为断言：真实的 RelayConnectorPair / RelayRegistrar / announcer 配一个记账
  * 的假控制面（stub 全局 fetch，绝不联网），等的是「那条请求真的到了」这个确定信号。
  */
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { apply, createRelayAnnouncer, resolveBridgeConfig } from '../src/index.ts'
+import { apply, createRelayAnnouncer, resolveBridgeConfig, ROSTER_PATH } from '../src/index.ts'
 import { RELAY_CLAIM_URL, RELAY_CONTROL_URL, RELAY_RELEASE_URL, relayControlEndpointOf } from '../src/host/relay-control.ts'
 import { RelayConnectorPair } from '../src/host/relay-connector.ts'
 import {
@@ -137,6 +137,26 @@ function mountPlugin(config: Record<string, unknown>): MountedHost {
 /** 按 profile 重载的方式拆掉一次挂载：最新的 effect 先拆。 */
 function unmount(host: MountedHost): void {
   for (const dispose of host.disposers.splice(0).reverse()) dispose()
+}
+
+/**
+ * 写下一台已配对设备。租约按需申领：只有名册里已经有设备的宿主才会在挂载时申领。
+ * @param home - 这次的 DSH_HOME。
+ */
+async function writePairedDevice(home: string): Promise<void> {
+  const file = join(home, ROSTER_PATH)
+  await mkdir(dirname(file), { recursive: true })
+  await writeFile(file, JSON.stringify({
+    version: 3,
+    devices: [{
+      deviceId: 'dev_probe',
+      pubKey: 'spki-probe',
+      fingerprint: 'fingerprint-probe',
+      createdAt: 1_700_000_000_000,
+      lastSeenAt: 1_700_000_000_000,
+      tokenHash: 'hash-probe',
+    }],
+  }, null, 2) + '\n', 'utf8')
 }
 
 afterEach(() => {
@@ -317,7 +337,10 @@ describe('挂载路径把配置一路传到底', () => {
   })
 
   it('operator: relay 打开时租约申领打到配置的控制面', async () => {
-    // Given a row pointing at a self-hosted control plane, and a recording control plane
+    // Given a row pointing at a self-hosted control plane, a host already paired with a
+    // device (leases are claimed on demand, so an unpaired host claims nothing), and a
+    // recording control plane
+    await writePairedDevice(home)
     const plane = stubControlPlane()
     // When the plugin mounts with that row
     const host = mountPlugin({

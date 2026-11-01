@@ -240,7 +240,7 @@ Two consequences follow from that hop. It sees the request URL, so a `?token=` c
 ## Ingress stack and security model
 
 `@linxin666/dsh-remote-bridge` owns the complete public and local network ingress stack for remote access:
-- **Relay identity and leases**: `relay-registry` persists the relay ID and secret under `$DSH_HOME/remote-web-ui-registry/<profile>.json`; changing relay config remounts the plugin row. When mounting with `relay=false` and an on-disk identity already exists, it unregisters the previous registration row and releases its lease once via `pair.release()` (best-effort, logging any errors; unmounting neither releases nor unregisters, preserving bookmarked origins for server-side GC; mounting with `relay=false` never mints a new identity and has zero side effects if no identity file exists).
+- **Relay identity and leases**: `relay-registry` persists the relay ID and secret under `$DSH_HOME/remote-web-ui-registry/<profile>.json`; changing relay config remounts the plugin row. When no tunnel is configured (`tunnel.mode === 'off'`) and no remote device is paired yet, the bridge stays idle at startup without minting an identity or claiming a relay lease; lease claiming is armed on demand once the roster loads a paired device, a local pairing token is requested, a device finishes pairing, or a tunnel is enabled (while suppressing transient `idle`/`claiming`/`dialing` state logs and deduplicating repeated identical failure lines). When mounting with `relay=false` and an on-disk identity already exists, it unregisters the previous registration row and releases its lease once via `pair.release()` (best-effort, logging any errors; unmounting neither releases nor unregisters, preserving bookmarked origins for server-side GC; mounting with `relay=false` never mints a new identity and has zero side effects if no identity file exists).
 - **Relay connectors**: `relay-connector` manages quick and named tunnel connectors side by side, and `relay-bridge-connector` connects to the Cloudflare Durable Object meeting point over WSS, recording connection state in `$DSH_HOME/remote-web-ui-relay-bridge.json` (state file writing is verified behaviorally, defaulting to `$DSH_HOME` when unspecified, not checked via source text assertions).
 - **Tunnel lifecycle**: `tunnel`, `tunnel-plan`, and `tunnel-orphan` manage platform `cloudflared` child processes with exponential backoff and reap orphaned processes left behind by crashes.
 - **Ingress sync**: `ingress-sync` converges Cloudflare named tunnel ingress rules to the local gate port when the host listens on a different port.
@@ -261,7 +261,7 @@ The plugin is configured through profile YAML (`cordis.patch.yml` or profile con
 
 | Key | Type | Default | Description |
 | --- | --- | --- | --- |
-| `relay` | boolean | `true` | Whether to claim relay leases. Enabled by default; public availability works out of the box because leases are claimed even when no tunnel is running. |
+| `relay` | boolean | `true` | Whether to claim relay leases. Enabled by default; when no tunnel is configured, leases are claimed on demand once a device is paired or pairing is requested. |
 | `relayControlUrl` | string | `'https://dsh-market.com/api/relay'` | Relay control-plane base URL; claim, release, register, and unregister endpoints are all derived from it. |
 | `relayPublicSuffix` | string | `'.dsh-market.com'` | Stable hostname suffix. |
 | `autoTunnel` | boolean | `false` | Whether to start a Cloudflare quick tunnel targeting the ingress gate. |

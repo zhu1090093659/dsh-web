@@ -8,13 +8,19 @@
  * fetch 顶替，绝不联网）。等待一律等确定信号——假控制面把「某条路径的请求已到达 n
  * 次」暴露成 promise，用例里没有一处睡时长。
  */
+import { generateKeyPairSync } from 'node:crypto'
 import { existsSync } from 'node:fs'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
+import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { apply } from '../src/index.ts'
+import { base64UrlEncode } from '../src/core/crypto.ts'
+import { DeviceRoster } from '../src/core/devices.ts'
+import { PAIR_TOKEN_PATH } from '../src/core/protocol.ts'
+import { apply, ROSTER_PATH } from '../src/index.ts'
 import { loadRelayIdentity, relayIdentityFile } from '../src/host/relay-registry.ts'
 import { settle } from './support/harness.ts'
 
@@ -27,6 +33,7 @@ interface ControlCall {
 /** 一次挂载留在假宿主上的全部东西。 */
 interface MountedHost {
   readonly disposers: (() => void)[]
+  readonly routes: WebRoute[]
 }
 
 /** 本文件里每次挂载都回报的 webServer 端口。 */
@@ -95,6 +102,7 @@ class FakeControlPlane {
  */
 function mountPlugin(config: Record<string, unknown>): MountedHost {
   const disposers: (() => void)[] = []
+  const routes: WebRoute[] = []
   const ctx = {
     typertGateway: {
       invoke: async () => ({}),
@@ -103,7 +111,10 @@ function mountPlugin(config: Record<string, unknown>): MountedHost {
     webServer: {
       port: WEB_PORT,
       getOrigin: () => 'http://127.0.0.1:' + String(WEB_PORT),
-      register: () => () => undefined,
+      register: (route: WebRoute) => {
+        routes.push(route)
+        return () => undefined
+      },
       registerUpgrade: () => () => undefined,
     },
     tools: { register: () => () => undefined },
@@ -111,7 +122,31 @@ function mountPlugin(config: Record<string, unknown>): MountedHost {
     on: () => () => undefined,
   } as unknown as Context
   apply(ctx, config)
-  return { disposers }
+  return { disposers, routes }
+}
+
+/** 在指定 DSH_HOME 下写入一台已配对设备。 */
+async function seedPairedDevice(home: string): Promise<void> {
+  const roster = new DeviceRoster({ file: join(home, ROSTER_PATH) })
+  const pair = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+  const spki = base64UrlEncode(pair.publicKey.export({ format: 'der', type: 'spki' }))
+  await roster.enroll(spki)
+}
+
+/** 模拟本机打开配对面板，请求一次 /remote-bridge/pair/token。 */
+function requestLocalPairToken(host: MountedHost): void {
+  const route = host.routes.find(candidate => candidate.path === PAIR_TOKEN_PATH)
+  if (route === undefined) throw new Error('pair token route not registered')
+  const req = {
+    method: 'GET',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: { host: '127.0.0.1:' + String(WEB_PORT) },
+  } as unknown as IncomingMessage
+  const res = {
+    writeHead: () => res,
+    end: () => undefined,
+  } as unknown as ServerResponse
+  route.handler(req, res)
 }
 
 /** 按 profile 重载的方式拆掉一次挂载：最新的 effect 先拆。 */
@@ -150,8 +185,25 @@ describe('relay 关掉的真实路径', () => {
     await rm(home, { recursive: true, force: true })
   })
 
-  it('operator: relay 打开挂载出的租约，在 relay 关掉的那次挂载里恰好释放一次、注册行撤一次', async () => {
-    // Given a host mounted with the relay on, which claims its lease and mints its identity
+  it('operator: relay 打开但无已配对设备且无隧道时启动静默不申领，打开配对面板取码时按需申领一次', async () => {
+    // Given a host with no paired devices on disk, mounted with relay on and no tunnel
+    const host = mountPlugin({ relay: true, autoTunnel: false, profile: 'web' })
+    await settle()
+    // Then no relay claim is sent while no device is paired and no pairing was requested
+    expect(plane.countOf('/api/relay/claim')).toBe(0)
+    expect(existsSync(relayIdentityFile('web', home))).toBe(false)
+    // When the operator opens the pairing panel on this machine (requests a bootstrap token)
+    requestLocalPairToken(host)
+    await plane.until('/api/relay/claim')
+    // Then the lease is claimed on demand and the identity file is minted
+    expect(plane.countOf('/api/relay/claim')).toBe(1)
+    expect(existsSync(relayIdentityFile('web', home))).toBe(true)
+    unmount(host)
+  })
+
+  it('operator: relay 打开且已有配对设备时挂载出的租约，在 relay 关掉的那次挂载里恰好释放一次、注册行撤一次', async () => {
+    // Given a host with a paired device, mounted with the relay on, which claims its lease and mints its identity
+    await seedPairedDevice(home)
     const withRelay = mountPlugin({ relay: true, autoTunnel: false, profile: 'web' })
     await plane.until('/api/relay/claim')
     expect(plane.countOf('/api/relay/claim')).toBe(1)

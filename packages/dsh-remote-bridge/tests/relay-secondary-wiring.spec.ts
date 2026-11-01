@@ -152,6 +152,18 @@ function unmount(host: MountedHost): void {
   for (const dispose of host.disposers.splice(0).toReversed()) dispose()
 }
 
+/**
+ * 写一份名册文件。租约按需申领：只有名册里已经有设备的宿主才会在挂载时申领。
+ * @param home - 这次的 DSH_HOME。
+ * @param version - 名册 schema 版本。
+ * @param devices - 名册里的设备行。
+ */
+async function writeRoster(home: string, version: number, devices: Record<string, unknown>[]): Promise<void> {
+  const file = join(home, ROSTER_PATH)
+  await mkdir(dirname(file), { recursive: true })
+  await writeFile(file, JSON.stringify({ version, devices }, null, 2) + '\n', 'utf8')
+}
+
 /** @returns the one registered upgrade handler, or throws. */
 function upgradeHandlerOf(host: MountedHost): MountedHost['upgrades'][number]['handler'] {
   const route = host.upgrades.find(candidate => candidate.path === WS_PATH)
@@ -355,7 +367,9 @@ describe('a host that configures a second meeting point', () => {
   })
 
   it('operator configures the second meeting point and both meetings are claimed with one identity', async () => {
-    // Given a host with no grant yet and a second control plane that admits it
+    // Given a host already paired with a device (leases are claimed on demand, so an
+    // unpaired host claims nothing), no grant yet, and a second control plane that admits it
+    await writeRoster(home, 3, [rosterRow()])
     plane.respondWith(call => (call.url.endsWith('/claim')
       ? jsonResponse({ mode: 'bridge', hostname: 'abcdefghijklmnop' + SUFFIX })
       : jsonResponse({ ok: true })))
@@ -413,7 +427,10 @@ describe('a host that configures a second meeting point', () => {
   })
 
   it('operator is refused the tier and the lease is released while the greeting stops announcing it', async () => {
-    // Given a second control plane that refuses the tier, and a counted console
+    // Given a host already paired with a device (leases are claimed on demand, so an
+    // unpaired host claims nothing), a second control plane that refuses the tier, and a
+    // counted console
+    await writeRoster(home, 3, [rosterRow()])
     const logged = vi.spyOn(console, 'log').mockImplementation(() => undefined) // test-standards-allow: applyImpl 的 log 直连 console.log，没有注入缝；这里只接管输出以断言那几行，不 patch 模块图，finally 里 mockRestore
     plane.respondWith(call => {
       if (call.url.endsWith(CONTROL_URL + '/claim')) return jsonResponse({ error: 'tier-required' }, 403)

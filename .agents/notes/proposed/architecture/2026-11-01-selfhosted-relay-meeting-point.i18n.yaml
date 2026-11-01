@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-11-01-selfhosted-relay-meeting-point.md: 207240e01a8366f9186ad90ef063560bed6772c2
-2026-11-01-selfhosted-relay-meeting-point.zh.md: 41eac0ed028c5c8ba145c40d36e4bdfd0215be7d
+2026-11-01-selfhosted-relay-meeting-point.md: 1551c3bdeb31946265d3f18df0d8c8e13cb65d39
+2026-11-01-selfhosted-relay-meeting-point.zh.md: 9cf5edccac215919267757a0ee8f15e982868821

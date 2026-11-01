@@ -85,6 +85,16 @@ export interface RelayClaimRequest {
   port: number
   /** The plugin version, for the adoption readout of the migration. */
   pluginVersion?: string
+  /**
+   * The account service's relay grant, when this bridge holds one.
+   *
+   * Absent is the claim a host makes when no phone has handed a grant over yet,
+   * and the key is then left out of the body entirely: the second meeting point
+   * grades "no grant" as `tier-required`, which is a different answer from "this
+   * grant does not verify" (`grant-invalid`), and `null` would be read as the
+   * latter.
+   */
+  grant?: string
 }
 
 /**
@@ -96,14 +106,52 @@ export interface RelayClaimRequest {
 export const CLAIM_RETRY_BASE_MS = 5_000
 export const CLAIM_RETRY_MAX_MS = 300_000
 
+/**
+ * The control plane's refusal code for a claim whose grant does not reach the
+ * tier this meeting point admits. It is not an authentication answer — the id
+ * and secret verified — so it is graded apart from `auth-failed`.
+ */
+export const RELAY_TIER_REQUIRED = 'tier-required'
+
+/**
+ * The control plane's refusal code for a grant it will not vouch for: a bad
+ * signature, the wrong scope, or — the case that is not an error at all — a grant
+ * that has simply reached the end of its 30 days.
+ *
+ * It shares {@link RELAY_TIER_REQUIRED}'s branch because it is the same kind of
+ * fact: the id and the secret are fine, the admission this host was given is not,
+ * and the repair is a fresh grant (which the phone hands over) or another
+ * evaluation after the plan or the clock moved. `auth-failed` stays the one
+ * terminal 403.
+ */
+export const RELAY_GRANT_INVALID = 'grant-invalid'
+
+/**
+ * How long a claim refused for its admission (`tier-required` or
+ * `grant-invalid`) waits before the next attempt: six hours.
+ *
+ * Deliberately outside {@link CLAIM_RETRY_MAX_MS}. That cap exists because a
+ * spent rate-limit budget is counted over one 300-second window, so retrying
+ * faster lands inside the same spent window. An admission refusal is not a
+ * window: it is a fact about the plan or about the grant's own 30-day lifetime.
+ * Six hours is the interval the lease refresh itself runs on, so a downgrade is
+ * noticed at the next refresh, while an upgrade needs no wait at all: the phone
+ * hands the new grant over (`relay.tier.v1`) and that re-claims immediately.
+ */
+export const CLAIM_TIER_REQUIRED_DELAY_MS = 21_600_000
+
 /** Build the claim body (an absent value is omitted, never sent as null). */
 export function relayClaimBody(request: RelayClaimRequest): string {
+  const grant = request.grant
   return JSON.stringify({
     id: request.id,
     secret: request.secret,
     new_secret: request.newSecret,
     origin: { port: request.port },
     plugin: request.pluginVersion === undefined ? undefined : { version: request.pluginVersion },
+    // 没有授权就不带这个键，也不写 null：第二会合点把「没有授权」与「授权验不过」
+    // 分成两个答案，而 null 只会掉进后者。
+    ...(typeof grant === 'string' && grant !== '' ? { grant } : {}),
   })
 }
 
@@ -233,7 +281,11 @@ export interface RelayClaimRetry {
  * Grade one failed claim into a retry decision.
  *
  * `403 auth-failed` is terminal: the id belongs to another secret and no
- * number of retries can take it back. Everything else retries on a capped
+ * number of retries can take it back. The two admission 403s —
+ * `tier-required` and `grant-invalid` — are the ones that are not: the id and
+ * the secret verified and only the admission is missing, so both retry on the
+ * same fixed wait ({@link CLAIM_TIER_REQUIRED_DELAY_MS}) that the cap below
+ * deliberately does not clamp. Everything else retries on a capped
  * exponential backoff, with the control plane's own `retryAfterMs` (a 502
  * names it) raising the floor so a retry cannot land inside a known outage.
  * @param outcome - the refused attempt.
@@ -247,7 +299,15 @@ export function relayClaimRetryOf(
 ): RelayClaimRetry {
   const base = options.baseDelayMs ?? CLAIM_RETRY_BASE_MS
   const max = options.maxDelayMs ?? CLAIM_RETRY_MAX_MS
-  if (outcome.status === 403) return { retry: false, delayMs: 0, refreshIdentity: false }
+  if (outcome.status === 403) {
+    // No identity refresh on any 403: the id and secret are not what the
+    // control plane refused, and re-claiming the id under a new secret would
+    // strand every phone paired to it.
+    if (outcome.error === RELAY_TIER_REQUIRED || outcome.error === RELAY_GRANT_INVALID) {
+      return { retry: true, delayMs: CLAIM_TIER_REQUIRED_DELAY_MS, refreshIdentity: false }
+    }
+    return { retry: false, delayMs: 0, refreshIdentity: false }
+  }
   const backoff = Math.min(base * 2 ** attempt, max)
   const delayMs = Math.min(Math.max(backoff, outcome.retryAfterMs ?? 0), max)
   const refreshIdentity = outcome.error === 'invalid-params' || outcome.error === 'unknown-id'

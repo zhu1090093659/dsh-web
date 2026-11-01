@@ -26,6 +26,7 @@ import type { PushNotifier } from '../../src/core/push.ts'
 import type { SquadTransport } from '../../src/core/squads.ts'
 import type { TurnEndQuietGate } from '../../src/core/turn-end-quiet.ts'
 import { UsageService, type UsageFaces } from '../../src/core/usage.ts'
+import type { RelayTierFace } from '../../src/core/connection.ts'
 import type { BridgeGateway, GatewayInvokeRequest, GatewayPeer } from '../../src/core/wire.ts'
 
 /** One frame as it crossed the wire. */
@@ -303,6 +304,13 @@ export interface HarnessOptions {
   readonly turnEndQuiet?: TurnEndQuietGate
   /** The roster-change hook the standing watchers are armed from. */
   readonly onPushRegistered?: () => void
+  /**
+   * 第二会合点在协议面上的那一半（`relay.tier.v1`）。
+   *
+   * 缺省是没有第二会合点：握手与 `relay.grant` 都与这条通道出现之前逐字相同，
+   * 所以每一个既有套件的上下文都没有变。
+   */
+  readonly relay?: RelayTierFace
 }
 
 /**
@@ -427,6 +435,7 @@ export function makeConnection(options: HarnessOptions = {}): ConnectionHarness 
     ...(options.liveActivity === undefined ? {} : { liveActivity: options.liveActivity }),
     ...(options.turnEndQuiet === undefined ? {} : { turnEndQuiet: options.turnEndQuiet }),
     ...(options.onPushRegistered === undefined ? {} : { onPushRegistered: options.onPushRegistered }),
+    ...(options.relay === undefined ? {} : { relay: options.relay }),
     now: () => Date.now(),
     clientTimeZone: () => 'Asia/Shanghai',
     log: (message: string) => { logs.push(message) },
@@ -542,6 +551,7 @@ export function makeBareHub(options: HarnessOptions = {}): BareHubHarness {
     ...(options.turnEndQuiet === undefined ? {} : { turnEndQuiet: options.turnEndQuiet }),
     ...(options.onPushRegistered === undefined ? {} : { onPushRegistered: options.onPushRegistered }),
     ...(options.offlineClaimTtlMs === undefined ? {} : { offlineClaimTtlMs: options.offlineClaimTtlMs }),
+    ...(options.relay === undefined ? {} : { relay: options.relay }),
     now: () => Date.now(),
     clientTimeZone: () => undefined,
     log: (message: string) => { logs.push(message) },

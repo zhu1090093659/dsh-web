@@ -348,6 +348,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-remote-bridge
 - **令牌比对不泄漏长度。** 用的是定长比较而非提前返回的比较，因此错误令牌无法被逐字节逼近。
 - **审批在客户端在线时 fail closed。** 只要还有一个已配对客户端在线，桥才认领工具的权限请求；一个都没有时，请求交给下一个应答者而不是卡住。已认领而无人应答的审批会被归一为 `unavailable`，宿主按拒绝处理：手机沉默永远不等于同意。
 - **header 是更安全的载体。** `Authorization: Bearer <deviceToken>` 让凭据不进入 URL；`?token=` 是给无法设置握手 header 的客户端的，此时中继、边缘与访问日志都会看到一条以该设备身份鉴权的 URL。
+- **中继档位分流与授权凭据边界。** 名册（`devices.json`）schema 3 → 4，每台设备行新增可选的 `relay: {grant, receivedAt}`。那枚 `grant` 是账号服务签发的 30 天 HS256 凭据，经**已配对的加密连接**由手机交给宿主，宿主只把它原样放进 claim 请求体。宿主因此仍然不知道账号是谁、也不知道档位：它只知道「我有没有一份被中继承认的租约」。档位判定发生在自建中继与账号服务之间的一次回环请求里，中继只把额度写进租约行，不落任何用户标识。`hello.relay`、能力名 `relay.tier.v1`、`relay.grant` 这一帧**只在配置了第二个会合点时才存在**；不配置时握手逐字节等于今天，那一帧回 `unknown-method`。两个配置项名：`relaySecondaryControlUrl` 与 `relaySecondaryPublicSuffix`，缺省都不配置。
 
 ## 已知限制
 

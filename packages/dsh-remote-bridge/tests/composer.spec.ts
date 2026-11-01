@@ -878,8 +878,9 @@ describe('protocol v1 composer parity: method set', () => {
     // question list each added exactly one more method to the frozen set, the
     // agent channel two, the usage channel two, the session-admin channel six, the
     // usage stats channel one, the interactive-reply channel two (ui.event and
-    // ui.list), and the effort preference one (session.setEffort); none renamed or
-    // removed one.
-    expect(KNOWN_METHODS.size).toBe(42)
+    // ui.list), the effort preference one (session.setEffort), and the second
+    // meeting point one (relay.grant, which only a host configured with that
+    // meeting point serves); none renamed or removed one.
+    expect(KNOWN_METHODS.size).toBe(43)
   })
 })

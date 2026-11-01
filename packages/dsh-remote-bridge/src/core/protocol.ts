@@ -49,6 +49,14 @@ export const METHOD_USAGE_STATS = 'usage.stats'
 // 协议 §35 追加的两个方法：一条卡上的动作回来，以及一张全局卡表的对账读。
 export const METHOD_UI_EVENT = 'ui.event'
 export const METHOD_UI_LIST = 'ui.list'
+/**
+ * 一条配对连接把手机从账号服务换到的中继授权交给宿主。
+ *
+ * 它是这条通道唯一的写动作：授权落进那台设备自己的名册行，随后宿主拿它去第二
+ * 会合点申领租约。宿主不认识账号——它只会看到「准了」或「不准」，绝不会从这一帧
+ * 里读出用户是谁。只在配了第二会合点的宿主上是这个方法（见 {@link CAP_RELAY_TIER}）。
+ */
+export const METHOD_RELAY_GRANT = 'relay.grant'
 
 /** Server-pushed topics of protocol v1. */
 export const TOPIC_SESSION_DELTA = 'session.delta'
@@ -283,6 +291,21 @@ export const CAP_UI = 'ui.v1'
 export const CAP_UI_LIST = 'ui.list.v1'
 
 /**
+ * 宿主配了第二会合点时，在 `hello` 的 `capabilities` 里公告的能力名。
+ *
+ * 它是这条通道的全部门槛，而且门槛落在宿主这一侧：一个配了第二会合点的宿主才
+ * 公告这个名字、才收 {@link METHOD_RELAY_GRANT}，客户端读到它之后才把授权发过来。
+ * 不配第二会合点的宿主——也就是缺省配置的每一台——公告表里没有这个名字，
+ * `relay.grant` 对它仍是 `unknown-method`，名册里也不会因此多出一个块：缺省
+ * 宿主的握手与名册与这条通道出现之前逐字相同。
+ *
+ * 正因为它是**条件**公告，{@link MINOR} 不随它抬格：minor 描述的是这个协议本身，
+ * 而缺省宿主在线路上读不到任何新东西（设计冻结在 21）。客户端因此按名字判断而不是
+ * 按 minor 判断：读不到这个名字就什么都不发。
+ */
+export const CAP_RELAY_TIER = 'relay.tier.v1'
+
+/**
  * Capability a client declares in `hello`'s `cap` array to be answered with
  * byte-level increments instead of the whole roster or the whole board.
  *
@@ -486,6 +509,7 @@ export const KNOWN_METHODS: ReadonlySet<string> = new Set([
   METHOD_USAGE_STATS,
   METHOD_UI_EVENT,
   METHOD_UI_LIST,
+  METHOD_RELAY_GRANT,
 ])
 
 /** Refusal codes the bridge itself raises (DSH failures cross as their own code). */

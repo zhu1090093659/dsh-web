@@ -25,6 +25,14 @@ import css from './panel.module.css'
 /** The custom property carrying the dialog's own enter keyframe name. */
 const EXIT_NAME_VAR = '--pair-exit-name'
 
+/**
+ * Where a reader of the beta build can reach the people running it. The URL is
+ * code, not copy: the dictionaries carry the sentence, this constant carries the
+ * destination, so a translation cannot retarget the link and a check can assert
+ * the real one.
+ */
+export const COMMUNITY_INVITE_URL = 'https://discord.gg/nBy28kjun'
+
 /** What the panel is currently showing. */
 export type PairPanelState =
   /** A read is in flight. */
@@ -211,6 +219,19 @@ export function PairPanel({
               <p className={css.hint}>{t('pair.usedHint')}</p>
             </>
           )}
+
+          {/* The one way out of a beta, offered in every state including a
+              refusal: a reader who cannot pair is exactly the one with a
+              question. It closes the body, so the last thing on the card is the
+              way to ask rather than the code they already have. */}
+          <a
+            className={css.invite}
+            href={COMMUNITY_INVITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t('community.invite')}
+          </a>
         </div>
 
         {/* The row exists only while it holds an action: a refusal offers

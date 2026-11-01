@@ -130,11 +130,13 @@ For detailed architecture, benchmark evaluations, and configuration options, see
 
 ### Mobile Phone App Remote Access（Mobile Remote · Native Phone App Access）
 
-After installing `@linxin666/dsh-remote-bridge` in your profile and restarting the server, click the QR code icon at the bottom of the sidebar (accessible label "Pair a phone (protocol v1)") to open the pairing panel. Scan the QR code with the mobile phone app to start using it immediately.
+After installing `@linxin666/dsh-remote-bridge` in your profile and restarting the server, click the QR code icon at the bottom of the sidebar (accessible label "Pair an iPhone") to open the pairing panel. Scan the QR code with the mobile phone app to start using it immediately.
 
 The pairing panel is protected by a loopback security gate on `/remote-bridge/pair/token` and can only be accessed from a browser running on localhost (remote access returns 403). Pairing codes are single-use credentials valid for 30 seconds; clicking "New code" voids the previous code. The QR code encodes a document containing the address and token (URL format `wss://<origin>/ios/v1?token=...`), allowing the mobile app to acquire both the host address and authentication token in one scan.
 
 The network protocol surface exposes only one WebSocket endpoint at `/ios/v1`. Both tunnels and the LAN forwarder route exclusively to an ingress gate that forwards this path, keeping Web GUI routes inaccessible from the public internet. Host dial addresses resolve in order from live runtime state (relay lease or running tunnel), to the `DSH_REMOTE_PUBLIC_BASE_URL` environment variable, to the active LAN forwarding address when listening. By default, public access is available out of the box (relay is enabled by default, tunnels are off, and LAN forwarding is off); for direct local network access, enable LAN forwarding in the plugin settings. The legacy browser remote control plugin `dsh-remote-web-ui` has retired, and its ingress capabilities have migrated into this package.
+
+[The iOS app is in beta. Come talk to us on Discord](https://discord.gg/nBy28kjun).
 
 ### SSH Remote Ops（SSH Remote Ops · Web Terminal, SFTP Transfer & Cluster Commands）
 

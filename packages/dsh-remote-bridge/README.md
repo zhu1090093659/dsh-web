@@ -31,7 +31,7 @@ The package publishes one protocol and, beside it, one small browser surface. Wh
 - **A subscription, not a poll.** `session.snapshot` opens the harness follow stream and keeps it, so the baseline and every later increment arrive over the same socket.
 - **Approvals reach the client, and a reconnecting phone is handed the ones still waiting.** A tool that asks for permission arrives as an `approval.request` event and is answered with `approval.resolve`; a request nobody answers is rejected, and a connection that declared `approvals.v1` receives every unsettled approval again after its handshake.
 - **Pairing.** A one-time bootstrap token plus a P-256 challenge-response mint a revocable device token; an unpaired connection reaches three methods only.
-- **A pairing panel.** The same plugin row declares a `dsh.client` browser half: a QR code icon at the bottom of the sidebar (aria-label "Pair a phone (protocol v1)") that opens a modal displaying a 30 s single-use pairing QR code and a "New code" action.
+- **A pairing panel.** The same plugin row declares a `dsh.client` browser half: a QR code icon at the bottom of the sidebar (aria-label "Pair an iPhone") that opens a modal displaying a 30 s single-use pairing QR code and a "New code" action.
 - **No relay change.** The protocol rides whatever origin the instance already publishes, and the relay hop forwards it exactly as it forwards everything else.
 
 ## Transport
@@ -181,7 +181,7 @@ The device token rides the WebSocket upgrade as `Authorization: Bearer <deviceTo
 
 ### Bootstrap token
 
-The pairing entry is a QR code icon at the bottom of the sidebar, with the accessible label "Pair a phone (protocol v1)". Clicking it opens the pairing panel. The panel is strictly available on localhost: its token route `GET /remote-bridge/pair/token` is guarded by a two-condition loopback gate where both the socket address and the `Host` header must name this machine (remote or tunneled requests return 403).
+The pairing entry is a QR code icon at the bottom of the sidebar, with the accessible label "Pair an iPhone". Clicking it opens the pairing panel. The panel is strictly available on localhost: its token route `GET /remote-bridge/pair/token` is guarded by a two-condition loopback gate where both the socket address and the `Host` header must name this machine (remote or tunneled requests return 403).
 
 The pairing code is single-use and valid for 30 seconds (`BOOTSTRAP_TOKEN_TTL_MS = 30_000`), consumed immediately upon the first `pair.begin`; clicking "New code" in the panel voids the previous code and mints a fresh one. There is no "Stop" button and no action to revoke all connected devices. The link is printed to the host log, while the code itself renders in the pairing panel for scanning.
 
@@ -280,11 +280,13 @@ The browser half exists so that an operator who never opens a terminal still has
 
 The panel has one job — put the live one-time code in front of the operator, in one reading order:
 
-- **The QR symbol is the code.** It encodes either the bare 43-character base64url token or, when the host can name its own public origin, the `{token,url}` document one scan turns into a fully configured phone. A URL the host did not vouch for would let the phone's own parser rewrite its origin onto this machine's loopback address, which is precisely the address a phone cannot reach. The encoded string is mirrored once, as the `data-dsh-qr-value` attribute on the symbol's part, so a UI check can compare it without decoding anything; it is never rendered as text.
+- **Header and subtitle set the scope.** Title "iOS app pairing"; subtitle "Scan the QR code with the iOS app (beta) to connect an iPhone to this computer. The code is shown only on this machine.", stating the target and security boundary.
+- **The QR symbol is the code.** It encodes either the bare 43-character base64url token or, when the host can name its own public origin, the `{token,url}` document one scan turns into a fully configured iPhone. A URL the host did not vouch for would let the app's own parser rewrite its origin onto this machine's loopback address, which is precisely the address an iPhone cannot reach. The encoded string is mirrored once, as the `data-dsh-qr-value` attribute on the symbol's part, so a UI check can compare it without decoding anything; it is never rendered as text.
 - **One status line under the symbol.** A live code counts its 30 s window down beside a progress bar; an expired code states the expiry in the same fixed box, so only the sentence changes.
-- **One address line.** When the host located its relay origin, the line names the address the phone will dial; otherwise it says outright that no public address was found, that the phone's connection address has to be the public relay set by hand, and that `127.0.0.1:<port>` (this page) is reachable only from this machine.
-- **One single-use note.** The code is spent the moment the phone starts pairing, and a new code voids the previous one.
+- **One address line.** When the host located its relay origin, the line states "The iPhone will dial {origin}"; otherwise it says outright "No public address found: set the connection address in the app to your public relay first, then scan. {host} (this page) is reachable only from this machine."
+- **One single-use note.** The code is single-use: pairing spends it, and a new code voids the previous one.
 - **One action row.** Copy puts the very string the symbol encodes on the clipboard, and **New code** mints a fresh token and voids the previous one; both are one library control at one size, so their states never diverge. Once the code expires, mint-again is the only way back to a scannable symbol: copy is disabled and the symbol is dimmed in place instead of resized or removed.
+- **One beta entry.** Provides "[The iOS app is in beta. Come talk to us on Discord](https://discord.gg/nBy28kjun)", clickable across the entire line.
 - **A refusal is never silent.** The read is the same loopback-only route an operator would curl: a `403` renders as "this page is not open on this machine" and offers nothing to press, a request that never arrives renders as its own unreachable state with a retry, and an unexpected answer names the status it got.
 
 Opening and closing are one motion in both directions: the card stays mounted and plays the dialog's own enter fade backwards, and the reduced-motion path keeps that lifecycle as one short opacity fade rather than dropping the exit. Geometry is held across every state — the symbol's box, the status row, the address line and the copy label keep their height and width — so a countdown, an expiry and a copy confirmation never move their neighbours.

@@ -130,11 +130,13 @@ dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方�
 
 ### 手机 App 远程访问（Mobile Remote · 原生手机 App 接入）
 
-在 profile 中安装 `@linxin666/dsh-remote-bridge` 插件并重启服务后，点击侧边栏底部的二维码图标（aria-label 为「配对手机（协议 v1）」）打开配对面板。使用手机 App 扫码即可直接开始使用。
+在 profile 中安装 `@linxin666/dsh-remote-bridge` 插件并重启服务后，点击侧边栏底部的二维码图标（aria-label 为「配对 iPhone」）打开配对面板。使用手机 App 扫码即可直接开始使用。
 
 配对面板具备本地安全保护，令牌路由（`/remote-bridge/pair/token`）带有回环门控，仅允许在本机浏览器中访问（非本机访问返回 403）。面板生成的配对码为一次性凭据，有效期为 30 秒，点击「重新取码」将作废上一张配对码。二维码编码包含服务地址与令牌的文档（URL 形如 `wss://<origin>/ios/v1?token=...`），手机 App 扫码后即可同时获取服务地址与鉴权令牌。
 
 网络接入协议面仅暴露 `/ios/v1` 一个 WebSocket 端点，隧道与局域网转发均指向仅放行该路径的入站闸门，公网无法直接访问 Web GUI 路由。服务地址按实时状态（中继租约或运行中的隧道）、环境变量 `DSH_REMOTE_PUBLIC_BASE_URL` 以及局域网转发器实际监听地址的顺序解析。默认配置下公网可用（中继默认开启、隧道默认关闭、局域网转发默认关闭）；若需在局域网内直连，需在插件配置中开启局域网转发。原浏览器远程控制插件 `dsh-remote-web-ui` 已退役，接入栈能力已迁入本包。
+
+[iOS App 还在内测，欢迎来 Discord 交流](https://discord.gg/nBy28kjun)。
 
 ### 远程连接（SSH Ops · Web 终端、SFTP 传输与集群运维）
 

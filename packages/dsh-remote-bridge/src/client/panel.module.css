@@ -336,6 +336,38 @@
   line-height: var(--pair-text-line);
 }
 
+/* ── Beta community invite ──
+
+   The body's closing line in every state, and the card's only outbound
+   destination while the app is in testing. It sits in the supporting tier the
+   subtitle already uses and borrows its type from the same token, so the view
+   keeps three sizes; the hue is the secondary label slot rather than the
+   tertiary hint slot above it, because this line is the one interactive string
+   on the card and the tertiary slot does not clear the text contrast floor on
+   the light surface. Underlining it is deliberate: the affordance must not be
+   carried by colour alone, and the whole sentence is the target, so the
+   element is sized to its text instead of filling the row (A6 keeps no empty
+   stretch of card clickable). Hover and focus return the two slots the seat
+   trigger already uses, so one family of states reads the same everywhere. */
+.invite {
+  align-self: flex-start;
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pair-text-size);
+  line-height: var(--pair-text-line);
+  text-decoration: underline;
+  transition: color var(--ds-transition-duration) ease;
+}
+
+.invite:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+.invite:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: var(--pair-focus-offset);
+}
+
 /* ── Refusals ── */
 
 .notice {

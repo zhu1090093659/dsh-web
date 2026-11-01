@@ -65,8 +65,8 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => {
   }
 })
 
-import { PairPanel, type PairCopyState, type PairPanelState } from '../src/client/PairPanel.tsx'
-import { zh, type RemoteBridgeKey } from '../src/client/locales.ts'
+import { COMMUNITY_INVITE_URL, PairPanel, type PairCopyState, type PairPanelState } from '../src/client/PairPanel.tsx'
+import { en, zh, type RemoteBridgeKey } from '../src/client/locales.ts'
 
 /** Translate stub over the zh dictionary, with {param} interpolation. */
 function makeTranslate(): PropsLocale<'remote-bridge'>['t'] {
@@ -168,7 +168,7 @@ describe('protocol v1 pairing panel', () => {
     // Then the symbol carries the whole {token,url} document so one scan sets both
     // halves, and the panel says which address that is
     expect(qr?.getAttribute('data-dsh-qr-value')).toBe(PAYLOAD_URL)
-    expect(screen.getByText(`手机将连到 ${ORIGIN}`)).toBeInstanceOf(HTMLElement)
+    expect(screen.getByText(`iPhone 将连到 ${ORIGIN}`)).toBeInstanceOf(HTMLElement)
   })
 
   it('operator on a host without a public address is told to fill the relay in by hand', () => {
@@ -302,5 +302,74 @@ describe('protocol v1 pairing panel', () => {
     expect(failedText).toContain('宿主返回了 HTTP 500')
     expect(unreachableText).toContain('请求没有到达宿主')
     expect(unreachable.container.querySelector('[data-dsh-part="notice"]')?.getAttribute('role')).toBe('alert')
+  })
+
+  it('operator reads the beta framing of the iOS app on the head of the panel', () => {
+    // Given a panel holding a live code
+    const panel = mount(liveCode(null, null))
+    // When the head is read
+    // Then the title names the app and its platform, and the subtitle names the
+    // beta the code is for, in the operator's words instead of the wire
+    // protocol's
+    expect(screen.getByText('iOS App 配对')).toBeInstanceOf(HTMLElement)
+    expect(panel.container.textContent).toContain(
+      '用 iOS App（内测）扫描二维码，把 iPhone 连到这台电脑上。配对码只在本机显示。',
+    )
+  })
+
+  it('operator in every state is offered the same community invite as a real link', () => {
+    // Given the five states the panel can hold: a read in flight, a live code,
+    // and the three refusals
+    const states: PairPanelState[] = [
+      { kind: 'reading' },
+      liveCode(null, null),
+      { kind: 'forbidden' },
+      { kind: 'failed', status: 500 },
+      { kind: 'unreachable' },
+    ]
+    expect(COMMUNITY_INVITE_URL).toBe('https://discord.gg/nBy28kjun')
+    for (const state of states) {
+      // When each renders
+      const panel = mount(state)
+      const invite = within(panel.container).getByRole('link', { name: zh['community.invite'] })
+      // Then the invitation is on screen in all of them, the sentence itself is
+      // the target, it closes the body, and it leaves for the community in its
+      // own tab without handing the opener over
+      expect(invite.textContent).toBe(zh['community.invite'])
+      expect(invite.getAttribute('href')).toBe(COMMUNITY_INVITE_URL)
+      expect(invite.getAttribute('target')).toBe('_blank')
+      expect(invite.getAttribute('rel')).toBe('noopener noreferrer')
+      expect(invite.parentElement?.lastElementChild).toBe(invite)
+      cleanup()
+    }
+  })
+
+  it('operator reads no internal protocol wording in any state or dictionary entry', () => {
+    // Given the five states the panel can hold
+    const states: PairPanelState[] = [
+      { kind: 'reading' },
+      liveCode(null, null),
+      { kind: 'forbidden' },
+      { kind: 'failed', status: 500 },
+      { kind: 'unreachable' },
+    ]
+    for (const state of states) {
+      // When each renders
+      const panel = mount(state)
+      const text = panel.container.textContent ?? ''
+      // Then no state names the wire protocol or its version marker
+      expect(text).not.toContain('协议')
+      expect(text.toLowerCase()).not.toContain('protocol')
+      cleanup()
+    }
+    // And no key of either dictionary carries the term either, so a state added
+    // later cannot bring it back through a sentence this suite never renders
+    for (const [key, value] of Object.entries(zh)) {
+      expect(value, key).not.toContain('协议')
+      expect(value.toLowerCase(), key).not.toContain('protocol')
+    }
+    for (const [key, value] of Object.entries(en)) {
+      expect(value.toLowerCase(), key).not.toContain('protocol')
+    }
   })
 })

@@ -139,7 +139,7 @@ A mobile client establishes WebSocket communication at `wss://<id>.relay.chatwit
 
 - Only exact HTTP Upgrade requests for `/ios/v1` are accepted into the bridge.
 - All other HTTP requests, query variations outside `/ios/v1`, or mismatched paths immediately return HTTP 404 Not Found without dialling the upstream connector.
-- The server performs no authentication against phone clients: it functions as a transparent protocol pipe. Device tokens and one-time pairing bootstrap tokens are verified end to end on the host instance (`packages/dsh-remote-bridge/src/index.ts:6-12`). Account subscription tiers do not gate transport paths (the `iphone_remote_use_dsh` repository's `docs/account-and-subscription.md:24,226-238`).
+- The server performs no authentication against phone clients: it functions as a transparent protocol pipe. Device tokens and one-time pairing bootstrap tokens are verified end to end on the host instance (`packages/dsh-remote-bridge/src/index.ts:6-12`). Whether and how subscription tiers gate transport paths is owned by [subscription tier relay routing](2026-11-01-subscription-tier-relay-routing.md).
 
 ### Upstream Connector Bridge
 

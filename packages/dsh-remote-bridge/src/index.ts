@@ -62,7 +62,7 @@ import { WS_PATH } from './core/protocol.ts'
 import { SessionMeta, type SessionStoreFace, type SessionTitleFace, type WorkspacesFace } from './core/session-meta.ts'
 import { sessionQuietProbe, TURN_END_QUIET_REPORT_MS, TurnEndQuietGate } from './core/turn-end-quiet.ts'
 import { SessionPermissions, type ApprovalPolicyFace, type PermissionPresetsFace, type SandboxPolicyFace } from './core/session-permissions.ts'
-import { selectionOf, modelSelectionOf } from './core/connection.ts'
+import { selectionOf, modelSelectionOf, type RelayTierFace } from './core/connection.ts'
 import { UsageService, type CredentialStoreFace, type SessionRosterFace, type SessionRouteFace, type SettingsFace } from './core/usage.ts'
 import { UsageStatsReader } from './core/usage-stats.ts'
 import { wireArgs, type GatewayPeer } from './core/wire.ts'
@@ -118,6 +118,12 @@ import {
   type RelayIdentity,
   type RelayState,
 } from './host/relay-registry.ts'
+import {
+  createRelaySecondaryHalf,
+  relaySecondaryBridgeStateFile,
+  relaySecondaryOf,
+  type RelaySecondaryHalf,
+} from './host/relay-secondary.ts'
 import { TunnelManager, type TunnelPhase } from './host/tunnel.ts'
 import { tunnelPlanOf, type TunnelPlan } from './host/tunnel-plan.ts'
 import { isWebSocketUpgrade, presentedTokenOf, readSecWebSocketKey, refuseUpgrade, serveUpgrade } from './host/websocket.ts'
@@ -414,6 +420,10 @@ function jobFaces(ctx: Context) {
  * 没有 schema 依赖，缺省值由 {@link resolveBridgeConfig} 补齐，没写的字段一律按
  * 缺省处理。{@link Config.relayControlUrl} 与 {@link Config.relayPublicSuffix} 只改
  * 会合点地址，缺省仍是市场端点与后缀，所以它们不引入新的开关。
+ *
+ * {@link Config.relaySecondaryControlUrl} 与 {@link Config.relaySecondaryPublicSuffix}
+ * 不一样：它们没有缺省值，两个都写了才多出第二个会合点（见
+ * `host/relay-secondary.ts` 的 {@link relaySecondaryOf}）。
  */
 export interface Config {
   /** 是否申领 relay 租约（默认 true）。关掉就只有本机的回环入口可用。 */
@@ -442,6 +452,12 @@ export interface Config {
   /** relay 稳定子域名的公共后缀（默认 .dsh-market.com）：主机名是
    * https://<id> 加上它，一级子域名由它决定。 */
   relayPublicSuffix?: string
+  /** 第二会合点的控制面基址（默认 undefined = 没有第二会合点）：配了它，同一份
+   * 身份在第二个中继上另申一份租约，握手也才开始公告那个地址。 */
+  relaySecondaryControlUrl?: string
+  /** 第二会合点的公共后缀（默认 undefined）：公告出去的会合点是
+   * `wss://<id>` 接上它，两个字段缺一就没有第二会合点。 */
+  relaySecondaryPublicSuffix?: string
 }
 
 /** 配置面补齐缺省值后的样子：每个字段都是调用方可以直接用的值。 */
@@ -458,6 +474,8 @@ export interface ResolvedBridgeConfig {
   cfTunnelId: string | undefined
   relayControlUrl: string
   relayPublicSuffix: string
+  relaySecondaryControlUrl: string | undefined
+  relaySecondaryPublicSuffix: string | undefined
 }
 
 /** 一次配置读取看到的字段表：不是对象的配置读成空表。 */
@@ -532,6 +550,9 @@ export function resolveBridgeConfig(raw: unknown, env: NodeJS.ProcessEnv = proce
     // 缺省值只认 relay-control.ts / relay-registry.ts 里的常量，这里不抄第二份字面量。
     relayControlUrl: optionalTextField(fields, 'relayControlUrl') ?? RELAY_CONTROL_URL,
     relayPublicSuffix: optionalTextField(fields, 'relayPublicSuffix') ?? RELAY_BASE_SUFFIX,
+    // 第二会合点没有缺省值：没写就是没有它，零配置的宿主因此一条新请求都不发。
+    relaySecondaryControlUrl: optionalTextField(fields, 'relaySecondaryControlUrl'),
+    relaySecondaryPublicSuffix: optionalTextField(fields, 'relaySecondaryPublicSuffix'),
   }
 }
 
@@ -1519,6 +1540,31 @@ function applyImpl(ctx: Context, config?: unknown): void {
   const extensions = new RemoteBridgeRegistry()
   // 离线认领的窗口归桥所有，宿主从不认识它（§32.2）：常量是默认值，部署可用环境变量覆盖。
   const offlineClaimTtlMs = offlineClaimTtl()
+  /**
+   * 第二会合点在协议面上的两处接线：`hello` 的公告与 `relay.grant` 的收帧。
+   *
+   * 只有「配了第二会合点」且「relay 开着」的宿主才有这一面；两种条件缺一，握手就
+   * 与这条通道出现之前逐字相同：能力表里没有那个名字，应答里没有那个键，
+   * `relay.grant` 仍是 `unknown-method`，名册上也不会多出一个块。
+   *
+   * 真正申领的那一半在下面的入站栈里建（它要等端口落定），而 hub 比它建得早，
+   * 所以这里只放一个活引用：两处接线都按调用时刻取，从不捕获一份快照。
+   */
+  const secondaryWiring = relaySecondaryOf(settings)
+  const liveSecondary: { half?: RelaySecondaryHalf } = {}
+  const relayFace: RelayTierFace | undefined = secondaryWiring === undefined || !settings.relay
+    ? undefined
+    : {
+      origin: () => liveSecondary.half?.origin(),
+      grantLanded: () => {
+        // 兑现放在后台跑：`relay.grant` 的应答不等第二会合点的往返（见
+        // core/connection.ts），而这一次失败由半区自己的退避收着。
+        void liveSecondary.half?.grantReceived().catch((error: unknown) => {
+          log('the second meeting point claim did not land: '
+            + (error instanceof Error ? error.message : String(error)))
+        })
+      },
+    }
   const hub = new BridgeHub({
     extensions,
     gateway: ctx.typertGateway,
@@ -1539,6 +1585,7 @@ function applyImpl(ctx: Context, config?: unknown): void {
     turnEndQuiet,
     offlineClaimTtlMs,
     onPushRegistered: () => { watchers.sync() },
+    ...(relayFace === undefined ? {} : { relay: relayFace }),
     now: () => Date.now(),
     clientTimeZone: localTimeZone,
     log,
@@ -1643,6 +1690,8 @@ function applyImpl(ctx: Context, config?: unknown): void {
     const cleaner = createLegacyBlockCleaner({ profile: () => settings.profile, log })
     let plan: TunnelPlan | undefined
     let relayPair: RelayConnectorPair | undefined
+    // 第二会合点的租约半区：与第一半区共用同一份身份，其余全部自成一套。
+    let secondary: RelaySecondaryHalf | undefined
     let claimer: LeaseClaimer | undefined
     let relayIdentity: RelayIdentity | undefined
 
@@ -1665,8 +1714,25 @@ function applyImpl(ctx: Context, config?: unknown): void {
       publicSuffix: settings.relayPublicSuffix,
       log,
     })
-    // relay 关掉时的唯一出口：撤注册行 + 释放租约一次（老插件 disposeRelayHalf(true)）。
-    const relayHalf = createRelayHalfSwitch({ announcer, pair: () => relayPair, log })
+    // relay 关掉时的唯一出口：撤注册行 + 两条租约各释放一次（老插件
+    // disposeRelayHalf(true)；现在两个会合点各有一份租约）。两条半区各释放各的，
+    // 一条失败不影响另一条。
+    const relayHalf = createRelayHalfSwitch({
+      announcer,
+      pair: () => {
+        const halves = [relayPair, secondary].filter((half): half is RelayConnectorPair | RelaySecondaryHalf => half !== undefined)
+        if (halves.length === 0) return undefined
+        return {
+          async release(): Promise<void> {
+            for (const half of halves) await half.release()
+          },
+          dispose(): void {
+            for (const half of halves) half.dispose()
+          },
+        }
+      },
+      log,
+    })
     liveIngress.registered = () => announcer.registered
     // 隧道自己报出 URL 的那一刻就是该注册的时刻；running 之外的事件不注册，也不撤行
     // （那行是手机的收藏地址，撤行只发生在 relay 关掉时）。
@@ -1704,6 +1770,41 @@ function applyImpl(ctx: Context, config?: unknown): void {
         start: async (input) => { await relayPair?.start({ port: input.port, pluginVersion: readPluginVersion() }) },
         log,
       })
+      ensureSecondary(identity)
+    }
+
+    /**
+     * 建第二个会合点的租约半区：配了它才建，建一次，与第一半区共用同一份身份。
+     *
+     * 它读的是名册里最新的那条授权（第一半区从不读它），连接器、释放与退避全部自成
+     * 一套：这条半区无论怎么失败，市场边缘那条租约与连接器都不受影响。
+     * @param identity - 本 profile 的 relay 身份（两个会合点必须是同一个对象）。
+     */
+    const ensureSecondary = (identity: RelayIdentity): void => {
+      if (secondary !== undefined || secondaryWiring === undefined) return
+      // 第二连接器自己的状态记录：两份连接器写同一个文件只会互相覆盖。
+      const secondaryRunner = createRelayBridgeRunner({
+        stateFile: relaySecondaryBridgeStateFile(),
+        onState: (state) => {
+          log('relay secondary bridge: ' + state.state + (state.state === 'failed' ? ' ' + state.error : ''))
+          // 附挂被拒（中继的 `403 lease-stale`，或凭据被拒）说明这条租约已经不新鲜了：
+          // 半区立刻重新申一次。该不该申由半区自己判断（只在它还认为自己持着租约时），
+          // 这里只转述连接器报出的失败。
+          if (state.state === 'failed') secondary?.connectorFailed(state.error)
+        },
+      })
+      secondary = createRelaySecondaryHalf({
+        identity,
+        controlUrl: secondaryWiring.controlUrl,
+        publicSuffix: secondaryWiring.publicSuffix,
+        grant: () => roster.relayGrant()?.grant,
+        port: () => gatePort,
+        pluginVersion: () => readPluginVersion(),
+        startBridge: (start) => { secondaryRunner.start(start) },
+        stopBridge: () => { secondaryRunner.stop() },
+        onState: (state) => { log('relay secondary lease: ' + relayStateLine(state)) },
+      })
+      liveSecondary.half = secondary
     }
     let gate: IngressGate | undefined
     let gatePort: number | undefined
@@ -1778,6 +1879,10 @@ function applyImpl(ctx: Context, config?: unknown): void {
         // 边缘永远答 no-connector。
         ensureRelay()
         claimer?.claim(port, tunnel.info.url)
+        // 第二会合点第一次申领就要带上名册里的授权，而名册在另一个 effect 里异步读
+        // 出来：等它读完再申。否则一个盘上明明有授权的宿主会在启动时白吃一次
+        // tier-required，而那次退避是六小时。load() 是记忆化的，重复调用不再读盘。
+        void roster.load().then(() => secondary?.claim()).catch(() => undefined)
       } else {
         // relay 关掉：撤注册行并释放租约（只做一次），局域网边缘与 ingress-sync 照旧。
         relayHalf.off()
@@ -1842,10 +1947,26 @@ function applyImpl(ctx: Context, config?: unknown): void {
       // 卸载只停重试：不撤 Worker 上那行、也不释放租约——那是手机的收藏地址，
       // 陈旧行由服务端 GC 回收（老语义）。
       relayHalf.dispose()
+      // 两个会合点的连接器在同一步里停：闸门必须是最后关的，而它们都会把 socket 打回
+      // 闸门。每条半区各自收住自己的异常，一条收拾不干净不影响另一条。
+      const connectors = [relayPair, secondary].filter((half): half is RelayConnectorPair | RelaySecondaryHalf => half !== undefined)
       disposeBridgeStack({
         ingress,
         forwarder,
-        ...(relayPair === undefined ? {} : { connectors: relayPair }),
+        ...(connectors.length === 0 ? {} : {
+          connectors: {
+            dispose: () => {
+              for (const half of connectors) {
+                try {
+                  half.dispose()
+                } catch (error) {
+                  log('a relay half did not release cleanly: '
+                    + (error instanceof Error ? error.message : String(error)))
+                }
+              }
+            },
+          },
+        }),
         tunnel,
         ...(gate === undefined ? {} : { gate }),
       }, log)

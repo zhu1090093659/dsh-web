@@ -139,7 +139,7 @@ CREATE INDEX IF NOT EXISTS idx_relay_leases_claimed_at ON relay_leases(claimed_a
 
 - 仅接受精确路径为 `/ios/v1` 的 HTTP Upgrade 握手升级。
 - 任何其他 HTTP 路径、非 `/ios/v1` 的请求直接返回 HTTP 404 Not Found，绝对不触发向宿主建立流连接。
-- 服务端对手机侧完全不设业务鉴权：服务端充当透明管道，设备令牌（deviceToken）与一次性配对引导码（bootstrapToken）完全在宿主侧端到端检验（`packages/dsh-remote-bridge/src/index.ts:6-12`），订阅档位不决定传输路径（`iphone_remote_use_dsh` 仓库的 `docs/account-and-subscription.md:24,226-238`）。
+- 服务端对手机侧完全不设业务鉴权：服务端充当透明管道，设备令牌（deviceToken）与一次性配对引导码（bootstrapToken）完全在宿主侧端到端检验（`packages/dsh-remote-bridge/src/index.ts:6-12`），档位是否决定传输路径由 [中继按订阅档位分流](2026-11-01-subscription-tier-relay-routing.zh.md) 拥有。
 
 ### 上行宿主连接器桥接
 

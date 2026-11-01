@@ -573,7 +573,7 @@ describe('relay: a centre that refuses', () => {
 })
 
 describe('relay: the roster carries the token across schema versions', () => {
-  it('operator opens a version-2 table and every field and every phone survives into version 3', async () => {
+  it('operator opens a version-2 table and every field and every phone survives into version 4', async () => {
     // Given a version-2 table holding one phone with a full registration and no relay token
     const file = await rosterFile()
     const registration = relayRegistration()
@@ -588,10 +588,10 @@ describe('relay: the roster carries the token across schema versions', () => {
     expect(logs.some(line => line.includes(`is schema 2; reading it as ${ROSTER_VERSION}`))).toBe(true)
     // When the phone registers its relay token
     expect(await roster.registerPush('dev_harness', { ...registration, locale: 'zh-Hans', relayToken: 'relay-token-1' })).toBe(true)
-    // Then the file is written as version 3 and the token is on that row
+    // Then the file is written as version 4 and the token is on that row
     const written = JSON.parse(await readFile(file, 'utf8')) as { version: number; devices: { push?: Record<string, unknown> }[] }
-    expect(written.version).toBe(3)
-    expect(ROSTER_VERSION).toBe(3)
+    expect(written.version).toBe(4)
+    expect(ROSTER_VERSION).toBe(4)
     expect(written.devices[0]?.push?.relayToken).toBe('relay-token-1')
     // And it reads back with nothing lost and exactly one reachable row
     const reloaded = await loadedRoster(file)
@@ -622,7 +622,7 @@ describe('relay: the roster carries the token across schema versions', () => {
       relayToken: 'relay-token-1',
     })
     const written = JSON.parse(await readFile(file, 'utf8')) as { version: number; devices: { push?: Record<string, unknown> }[] }
-    expect(written.version).toBe(3)
+    expect(written.version).toBe(4)
     expect(written.devices[0]?.push?.relayToken).toBe('relay-token-1')
   })
 

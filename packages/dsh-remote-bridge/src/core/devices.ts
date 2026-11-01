@@ -25,14 +25,15 @@ export const DEVICE_ID_BYTES = 12
  *
  * 1 carried the six identity fields only; 2 adds the optional `push` block per
  * row (§28); 3 adds the optional `relayToken` inside that block, the credential the
- * hosted relay signs a delivery for instead of a local Apple key. Every step is
- * additive, so an older file reads as-is: no row loses a field, every paired phone
- * stays paired, and the file is rewritten as the current version the next time
- * anything is written. The reader therefore accepts any version whose row table
- * validates rather than quarantining a file it merely does not recognise — a
- * downgrade must never un-pair every phone.
+ * hosted relay signs a delivery for instead of a local Apple key; 4 adds the
+ * optional `relay` block beside it, the tier grant the phone handed over and when
+ * this bridge received it. Every step is additive, so an older file reads as-is:
+ * no row loses a field, every paired phone stays paired, and the file is rewritten
+ * as the current version the next time anything is written. The reader therefore
+ * accepts any version whose row table validates rather than quarantining a file it
+ * merely does not recognise — a downgrade must never un-pair every phone.
  */
-export const ROSTER_VERSION = 3
+export const ROSTER_VERSION = 4
 
 /** The APNs environments a device may register for. */
 export type PushEnvironment = 'sandbox' | 'production'
@@ -82,6 +83,27 @@ export interface PushRegistration {
   readonly registeredAt: number
 }
 
+/**
+ * One device's relay tier grant (schema 4).
+ *
+ * The App obtains it from the account service and hands it over through
+ * `relay.grant`. This bridge never mints, parses or reissues it: it keeps the text
+ * and presents it in its next claim to the second meeting point, which decides the
+ * entitlement out of band and answers the host with a lease or a refusal. Nothing
+ * about the account crosses the wire back — the host learns "admitted" or "not",
+ * never who the phone is.
+ *
+ * It is a fact about the phone that gave it, so it lives in that phone's row and
+ * disappears with the row when the phone is revoked; it never becomes a second
+ * identity of the bridge's own.
+ */
+export interface RelayGrant {
+  /** The grant text, exactly as the account service issued it. */
+  readonly grant: string
+  /** When this bridge received it, in epoch seconds. */
+  readonly receivedAt: number
+}
+
 /** One device a notification can be addressed to. */
 export interface PushTargetView {
   readonly deviceId: string
@@ -103,6 +125,14 @@ export interface DeviceRecord {
    * every phone that predates the channel.
    */
   readonly push?: PushRegistration
+  /**
+   * The device's relay tier grant, absent until it calls `relay.grant`.
+   *
+   * A row without it is a phone whose host may still claim the second meeting
+   * point — a bridged lease needs no grant at the market edge — it just cannot be
+   * admitted to a tier that requires one.
+   */
+  readonly relay?: RelayGrant
 }
 
 /** A roster row plus the one field that never leaves the file. */
@@ -176,6 +206,33 @@ function pushOf(value: unknown, log: (message: string) => void): PushRegistratio
     ...(typeof row.relayToken === 'string' && row.relayToken !== '' ? { relayToken: row.relayToken } : {}),
     registeredAt: typeof row.registeredAt === 'number' ? row.registeredAt : 0,
   }
+}
+
+/**
+ * Read one row's `relay` block.
+ *
+ * Dropped rather than quarantined for the reason `pushOf` is: one unreadable grant
+ * is not a reason to un-pair every phone, and the row keeps its identity and simply
+ * carries no admission. The two fields are the whole block — a grant text and the
+ * epoch second it arrived in — so anything else on that object is discarded instead
+ * of being handed on to a claim body.
+ * @param value - the raw `relay` field of a row.
+ * @param log - where a dropped block is reported.
+ * @returns the grant, or undefined when there is none to read.
+ */
+function relayOf(value: unknown, log: (message: string) => void): RelayGrant | undefined {
+  if (value === undefined) return undefined
+  if (typeof value !== 'object' || value === null) {
+    log('a device row carries an unreadable relay block; ignoring it and keeping the row')
+    return undefined
+  }
+  const row = value as Record<string, unknown>
+  if (typeof row.grant !== 'string' || row.grant === ''
+    || typeof row.receivedAt !== 'number' || !Number.isFinite(row.receivedAt)) {
+    log('a device row carries an unreadable relay block; ignoring it and keeping the row')
+    return undefined
+  }
+  return { grant: row.grant, receivedAt: row.receivedAt }
 }
 
 function isStoredDevice(value: unknown): value is StoredDevice {
@@ -335,6 +392,52 @@ export class DeviceRoster {
   }
 
   /**
+   * Record the relay grant one device just handed over (schema 4).
+   *
+   * A grant the phone resends replaces the one on the row: the account service
+   * reissues them periodically, and the newest text is the one the second meeting
+   * point will verify against the current plan. Nothing else on the row moves, so a
+   * grant that arrives between two reconnects cannot disturb a push registration.
+   * @param deviceId - the device that sent `relay.grant`.
+   * @param grant - the grant text as the account service issued it.
+   * @returns false when no such device is paired.
+   */
+  async setRelayGrant(deviceId: string, grant: string): Promise<boolean> {
+    // Epoch seconds, not milliseconds: the block crosses to the phone as the
+    // protocol's own timestamps do, and a reader comparing it with a claim time
+    // would otherwise disagree by three orders of magnitude.
+    const receivedAt = Math.floor(this.#now() / 1000)
+    for (const [hash, row] of this.#devices) {
+      if (row.deviceId !== deviceId) continue
+      this.#devices.set(hash, { ...row, relay: { grant, receivedAt } })
+      await this.#persist()
+      return true
+    }
+    return false
+  }
+
+  /**
+   * @returns the relay grant this bridge claims with, or undefined when no row
+   * holds one.
+   *
+   * The newest one wins, because one host holds one lease at the second meeting
+   * point and the phone that most recently handed a grant over is the one whose
+   * subscription is being claimed. A pairing with several phones of mixed tiers is
+   * then the accepted asymmetry the design names: the host is admitted while at
+   * least one paired phone holds a tier that is, and the free-tier phone simply
+   * keeps using the market edge.
+   */
+  relayGrant(): RelayGrant | undefined {
+    let newest: RelayGrant | undefined
+    for (const row of this.#devices.values()) {
+      const held = row.relay
+      if (held === undefined) continue
+      if (newest === undefined || held.receivedAt > newest.receivedAt) newest = held
+    }
+    return newest
+  }
+
+  /**
    * Forget one Live Activity token the phone no longer holds.
    *
    * APNs answers 410 (or 400 `BadDeviceToken`) for the token of a card the app
@@ -378,8 +481,10 @@ export class DeviceRoster {
     for (const [hash, row] of this.#devices) {
       const registration = row.push
       if (registration === undefined || registration.deviceToken !== deviceToken) continue
-      const { tokenHash, deviceId, pubKey, fingerprint, createdAt, lastSeenAt } = row
-      this.#devices.set(hash, { tokenHash, deviceId, pubKey, fingerprint, createdAt, lastSeenAt })
+      // Only the push block goes: a dead APNs token says nothing about the relay
+      // grant the same phone handed over, which rides its own block on this row.
+      const { push: _dropped, ...rest } = row
+      this.#devices.set(hash, rest)
       await this.#persist()
       return true
     }
@@ -437,15 +542,25 @@ export class DeviceRoster {
         this.#devices.delete(row.tokenHash)
         rows += 1
       }
-      if (survivor.push !== undefined) continue
       // A survivor that never registered takes the newest registration one of
-      // its dropped rows carried: same phone, same install, same tokens.
+      // its dropped rows carried: same phone, same install, same tokens. The
+      // relay grant follows the same rule for the same reason — collapsing rows
+      // must not withdraw an admission the phone already handed over.
       let newest: PushRegistration | undefined
+      let newestGrant: RelayGrant | undefined
       for (const row of held) {
-        if (row === survivor || row.push === undefined) continue
-        if (newest === undefined || row.push.registeredAt > newest.registeredAt) newest = row.push
+        if (row === survivor) continue
+        if (row.push !== undefined && (newest === undefined || row.push.registeredAt > newest.registeredAt)) newest = row.push
+        if (row.relay !== undefined && (newestGrant === undefined || row.relay.receivedAt > newestGrant.receivedAt)) newestGrant = row.relay
       }
-      if (newest !== undefined) this.#devices.set(survivor.tokenHash, { ...survivor, push: newest })
+      const push = survivor.push ?? newest
+      const relay = survivor.relay ?? newestGrant
+      if (push === survivor.push && relay === survivor.relay) continue
+      this.#devices.set(survivor.tokenHash, {
+        ...survivor,
+        ...(push === undefined ? {} : { push }),
+        ...(relay === undefined ? {} : { relay }),
+      })
     }
     const holders = new Map<string, StoredDevice[]>()
     for (const row of this.#devices.values()) {
@@ -511,10 +626,19 @@ export class DeviceRoster {
     for (const row of rows) {
       // The raw block is re-read per row instead of trusted from the guard, so a
       // row that carries an unreadable token keeps its identity and loses only
-      // its notification.
-      const { push: raw, ...rest } = row as StoredDevice & { readonly push?: unknown }
+      // its notification. The relay grant takes the same route: a block this
+      // reader cannot trust costs the row its admission, never its pairing.
+      const { push: raw, relay: rawRelay, ...rest } = row as StoredDevice & {
+        readonly push?: unknown
+        readonly relay?: unknown
+      }
       const push = pushOf(raw, this.#log)
-      this.#devices.set(row.tokenHash, push === undefined ? rest : { ...rest, push })
+      const relay = relayOf(rawRelay, this.#log)
+      this.#devices.set(row.tokenHash, {
+        ...rest,
+        ...(push === undefined ? {} : { push }),
+        ...(relay === undefined ? {} : { relay }),
+      })
     }
     this.#log(`device roster ${this.#file}: ${rows.length} paired device(s)`)
     const compacted = this.#compact()

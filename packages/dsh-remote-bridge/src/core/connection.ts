@@ -104,6 +104,7 @@ import {
   METHOD_SESSION_SNAPSHOT,
   METHOD_SESSION_TITLES,
   METHOD_SESSION_UNARCHIVE,
+  METHOD_RELAY_GRANT,
   METHOD_UI_EVENT,
   METHOD_UI_LIST,
   METHOD_SESSION_UNPIN,
@@ -116,6 +117,7 @@ import {
   METHOD_USAGE_SESSION,
   METHOD_USAGE_STATS,
   METHOD_WORKSPACE_LIST,
+  CAP_RELAY_TIER,
   MINOR,
   PROTO,
   SERVED_CAPABILITIES,
@@ -183,6 +185,34 @@ export interface BridgeTransport {
    * recording double, for one — omits the member and keeps writing text.
    */
   frameDeflate?(declared: boolean): void
+}
+
+/**
+ * 第二会合点在协议面上的那一半：一条公告与一次收帧。
+ *
+ * 只有配了第二会合点的宿主才提供这个面，而它存在与否就是 `relay.tier.v1` 这个
+ * 能力名与 `relay.grant` 这个方法存在与否——没有它，握手与应答与今天逐字相同。
+ * 宿主侧的动作（写名册、去第二会合点申领）全在插件半区，core 里只留这两处接线，
+ * 所以一个不认识的宿主不会因为这里多了一层而改变任何一帧。
+ */
+export interface RelayTierFace {
+  /**
+   * 这次握手要在 `hello.r.relay` 里公告的会合点，或 undefined（此刻没有可公告的）。
+   *
+   * 公告的含义是「这台宿主此刻确实持有一份中继承认的、按 6 小时周期刷新的租约」，
+   * 而不是「它曾经申到过一次」：公告出去的是「拨这个地址」，而一个没有有效租约的
+   * 地址背后没有人服务。还没申到、降级被拒、grant 过期、主动释放，四种情况都回
+   * undefined，于是一条连接的下一个世代自己退回市场边缘，不需要服务端推送任何东西。
+   * @returns `wss://<id><suffix>`，或 undefined。
+   */
+  origin(): string | undefined
+  /**
+   * 一条新授权已经落进名册行：第二会合点要立刻重新申领一次。
+   *
+   * 调用发生在名册写完之后，所以插件半区读到的就是这条授权。它是**触发**而不是
+   * 等待：`relay.grant` 的应答不等那一次网络往返，申领失败由半区自己的退避收着。
+   */
+  grantLanded(): void
 }
 
 export interface BridgeConnectionOptions {
@@ -272,6 +302,11 @@ export interface BridgeConnectionOptions {
    * read the host's own answer.
    */
   readonly turnEndQuiet?: TurnEndQuietGate
+  /**
+   * 第二会合点（`relay.tier.v1`）。缺省就是没有第二会合点：`hello` 不带
+   * `relay` 键、能力表里没有那个名字、`relay.grant` 仍是 `unknown-method`。
+   */
+  readonly relay?: RelayTierFace
   /**
    * Called after a registration changed the device table.
    *
@@ -1026,6 +1061,11 @@ export class BridgeConnection {
     if (frame.m === METHOD_UI_LIST && !this.declares(CAP_UI_LIST)) {
       return refusal(CODE_UNKNOWN_METHOD, `unknown method ${frame.m}`)
     }
+    // 第二会合点只在配了它的宿主上存在：没有这个面时这一帧与它出现之前逐字一样是
+    // `unknown-method`，名册上也不会为它多出一块授权。
+    if (frame.m === METHOD_RELAY_GRANT && this.#options.relay === undefined) {
+      return refusal(CODE_UNKNOWN_METHOD, `unknown method ${frame.m}`)
+    }
     // Unconditional: a loopback Host buys nothing here. Without a device token
     // only the handshake and the two pairing steps run.
     if (!this.paired && !UNPAIRED_METHODS.has(frame.m)) return refusal(CODE_UNPAIRED, 'this connection is not paired')
@@ -1056,6 +1096,7 @@ export class BridgeConnection {
       case METHOD_QUESTION_LIST: return this.#questionList(frame.p)
       case METHOD_UI_EVENT: return this.#uiEvent(frame.p)
       case METHOD_UI_LIST: return this.#uiList(frame.p)
+      case METHOD_RELAY_GRANT: return await this.#relayGrant(frame.p)
       case METHOD_PUSH_REGISTER: return await this.#pushRegister(frame.p)
       case METHOD_USAGE_SESSION: return await this.#usageSession(frame.p)
       case METHOD_USAGE_BALANCE: return await this.#usageBalance(frame.p)
@@ -1126,6 +1167,10 @@ export class BridgeConnection {
    */
   #servedCapabilities(): string[] {
     const capabilities = [...SERVED_CAPABILITIES]
+    // 第二会合点是条件能力：配了它才公告，所以它不在 {@link SERVED_CAPABILITIES}
+    // 里（那张表是每条连接逐字相同的开头），而是紧跟其后追加——没配它的宿主因此
+    // 仍然答出那张表本身。
+    if (this.#options.relay !== undefined) capabilities.push(CAP_RELAY_TIER)
     for (const capability of this.#options.extensions?.capabilities() ?? []) {
       if (!capabilities.includes(capability)) capabilities.push(capability)
     }
@@ -1142,6 +1187,9 @@ export class BridgeConnection {
     // The hub replays anything this client can now receive but missed: a phone
     // that connected after a question was raised has no other way to learn of it.
     this.#options.onDeclare?.(this)
+    // 第二会合点的公告。钩子缺省存在与否就是「这台宿主有没有第二个会合点」，因此
+    // 没有它、或它此刻答不出地址时，这个键整个不出现——应答与今天逐字相同。
+    const relayOrigin = this.#options.relay?.origin()
     return {
       ok: true,
       r: {
@@ -1151,6 +1199,7 @@ export class BridgeConnection {
         capabilities: this.#servedCapabilities(),
         resume: 'snapshot',
         auth: this.paired ? 'paired' : 'unpaired',
+        ...(relayOrigin === undefined ? {} : { relay: { origin: relayOrigin } }),
       },
     }
   }
@@ -2500,6 +2549,53 @@ export class BridgeConnection {
       // Registration failing has to reach the client: it decides whether to
       // retry, and a token that never reached the disk is a device that will
       // never be notified.
+      return refusal(CODE_INTERNAL, `could not write the device roster: ${failureText(error)}`)
+    }
+    return { ok: true, r: { ok: true } }
+  }
+
+  /**
+   * The body of `relay.grant`: one device hands its relay tier grant over.
+   *
+   * A write, and the only one this channel has. The grant lands in the sending
+   * device's own roster row (schema 4), beside the identity it already proved, so
+   * revoking the device withdraws the admission with it and no second table exists.
+   * The host then asks the second meeting point to refresh its lease, and that ask
+   * is fired rather than awaited: a phone hands a fresh grant over precisely when a
+   * claim was just refused, and this frame must not hang on a meeting point that
+   * stopped answering. The roster row is what the next claim reads, so the ask
+   * never depends on this answer reaching the client first.
+   *
+   * The answer is `{ok:true}` and nothing else. There is deliberately no echo, no
+   * tier and no "admitted" flag: the tier is decided out of band by the meeting
+   * point, this bridge never learns it, and a field claiming one would be a lie the
+   * client might render.
+   * @param payload - `{grant}`.
+   */
+  async #relayGrant(payload: Readonly<Record<string, unknown>>): Promise<DispatchOutcome> {
+    const relay = this.#options.relay
+    // Unreachable through the dispatcher (the gate above refuses first), and kept
+    // because this handler reads its own precondition rather than trusting it.
+    if (relay === undefined) return refusal(CODE_UNKNOWN_METHOD, `unknown method ${METHOD_RELAY_GRANT}`)
+    const grant = payload.grant
+    if (typeof grant !== 'string' || grant === '') {
+      return refusal(CODE_INVALID_ARGS, 'grant must be the string the account service issued')
+    }
+    const deviceId = this.#deviceId
+    if (deviceId === undefined) return refusal(CODE_UNPAIRED, 'this connection is not paired')
+    try {
+      const stored = await this.#options.roster.setRelayGrant(deviceId, grant)
+      if (!stored) return refusal(CODE_INTERNAL, 'this connection names no paired device')
+      try {
+        relay.grantLanded()
+      } catch (error) {
+        // The re-claim is this bridge's own background work and may never turn a
+        // grant the roster already holds into a failure of this frame.
+        this.#options.log(`the second meeting point could not re-claim: ${failureText(error)}`)
+      }
+    } catch (error) {
+      // A grant that never reached the disk is an admission the host does not
+      // have, so the client has to be told instead of assuming it landed.
       return refusal(CODE_INTERNAL, `could not write the device roster: ${failureText(error)}`)
     }
     return { ok: true, r: { ok: true } }

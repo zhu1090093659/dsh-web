@@ -17,6 +17,13 @@
  */
 
 import { relayFailure } from './relay-failure.js'
+import {
+  RATE_LIMIT_RETENTION_MS,
+  REGISTER_MAX_PER_ID,
+  REGISTER_MAX_PER_IP,
+  REGISTER_WINDOW_MS,
+  REGISTRATION_TTL_MS,
+} from './relay-limits.js'
 
 /** The frozen failure contract lives in one module both relay halves share. */
 export { RELAY_FAILURE_STATUS, relayFailure } from './relay-failure.js'
@@ -39,29 +46,15 @@ export const RELAY_FALLBACK_HEADER = 'x-relay-fallback'
 /** The marker the Worker's bridge door alone sets on a connector attach; the
  * proxy path strips it, so a phone cannot present itself as a connector. */
 export const RELAY_BRIDGE_ATTACH_HEADER = 'x-relay-bridge-attach'
-/**
- * Rate limits for the claim and the registration, which share both buckets: a
- * healthy client refreshes its lease once per tunnel start, not on a heartbeat,
- * so the budget is sized for a five-minute cadence plus the churn a quick-tunnel
- * restart or a port settle adds (three per id). The per-IP bucket is counted on
- * the /24 the caller sits on rather than the exact address -- a rotating IPv6
- * /128 or a CGNAT address would otherwise mint a fresh row per request and never
- * reach its own limit -- and it is deliberately generous, because the account
- * budget gate (relay-control.js) is what protects the Cloudflare API while this
- * limit protects D1 from one caller's write volume.
- */
-export const REGISTER_WINDOW_MS = 5 * 60 * 1000
-export const REGISTER_MAX_PER_IP = 60
-export const REGISTER_MAX_PER_ID = 3
-/**
- * How long one rate-limit row outlives its window. A window that has turned over
- * is no longer read by anything (both endpoints key their buckets by the window
- * they are in), so three windows of history is what keeps the table bounded
- * instead of accumulating every identity that ever called.
- */
-export const RATE_LIMIT_RETENTION_MS = 3 * REGISTER_WINDOW_MS
-/** Rows not seen for this long are dropped by the cron GC. */
-const REGISTRATION_TTL_MS = 90 * 24 * 60 * 60 * 1000
+/** The registry's rate limits, its row TTL and the retention window live in
+ * `relay-limits.js`; they stay part of this module's surface because
+ * `relay-control.js` reads the buckets from here. */
+export {
+  RATE_LIMIT_RETENTION_MS,
+  REGISTER_MAX_PER_ID,
+  REGISTER_MAX_PER_IP,
+  REGISTER_WINDOW_MS,
+}
 
 export function json(data, status = 200, extra = {}) {
   return new Response(JSON.stringify(data), {

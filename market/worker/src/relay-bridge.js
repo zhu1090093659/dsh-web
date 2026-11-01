@@ -40,8 +40,20 @@
 
 import { relayFailure } from './relay-failure.js'
 import {
-  ID_RE,
+  BRIDGE_CLOSE_REPLACED,
+  BRIDGE_CLOSE_STALLED,
+  BRIDGE_MAX_PER_ID,
+  BRIDGE_MAX_PER_IP,
+  BRIDGE_STREAM_HIGH,
+  BRIDGE_STREAM_LOW,
+  BRIDGE_STREAM_PAUSED_CAP,
+  BRIDGE_STREAM_STALL_MS,
+  HEAD_TIMEOUT_MS,
   REGISTER_WINDOW_MS,
+  WS_OPEN_TIMEOUT_MS,
+} from './relay-limits.js'
+import {
+  ID_RE,
   RELAY_BRIDGE_ATTACH_HEADER,
   RELAY_BRIDGE_MARKER,
   RELAY_BRIDGE_NO_CONNECTOR,
@@ -55,47 +67,22 @@ import {
  * also requires RELAY_BRIDGE_ATTACH_HEADER, because a downstream phone could type
  * this path on its own relay hostname and must not be mistaken for a connector. */
 export const BRIDGE_ATTACH_PATH = '/__relay_bridge/connector'
-/** How long a downstream request waits for the connector's response head. */
-const HEAD_TIMEOUT_MS = 60_000
-/** How long a downstream WebSocket waits for the connector to accept it. */
-const WS_OPEN_TIMEOUT_MS = 15_000
 /**
- * The door's own rate limit, one window long. It is deliberately not the
- * registry's per-id budget: this door admits a connection, which a connector
- * re-establishes after a network drop inside its own backoff, while the claim
- * budget is sized for the much slower tunnel-start cadence. Sharing one pair of
- * numbers would make a tightened claim budget silently refuse reconnects.
+ * The per-stream window, the stalled-harvest window, the head and accept
+ * timeouts, the door's budgets and the phone's two close codes are stated
+ * once in `relay-limits.js`. They stay exported here because the connector
+ * and the flow spec read the window off this module.
  */
-export const BRIDGE_MAX_PER_ID = 6
-export const BRIDGE_MAX_PER_IP = 30
-
-/**
- * The frozen per-stream flow-control window, shared verbatim with the
- * connector: a stream pauses once this many bytes are queued for the phone, and
- * resumes once the phone has read its way back down to LOW.
- */
-export const BRIDGE_STREAM_HIGH = 1024 * 1024
-export const BRIDGE_STREAM_LOW = 256 * 1024
-/**
- * A paused stream that makes no drain progress for this long is harvested: the
- * window is not going to reopen, so waiting longer only holds a phone request
- * and its bytes open for nothing.
- */
-export const BRIDGE_STREAM_STALL_MS = 60_000
-/**
- * What a paused stream may still queue beyond HIGH.
- *
- * A connector that knows pause stops within one frame of it arriving, so the
- * frames already in flight must still land: dropping those would corrupt a body
- * that is merely slow. A connector too old to know pause never stops, so its
- * overflow past this cap is dropped and counted (see pushPayload) instead of
- * growing this object without bound.
- */
-export const BRIDGE_STREAM_PAUSED_CAP = BRIDGE_STREAM_HIGH + BRIDGE_STREAM_LOW
-/** The phone socket's two frozen codes, both meaning "reconnect at once": the
- * connector was replaced, and the stream was harvested as stalled. */
-export const BRIDGE_CLOSE_REPLACED = 4001
-export const BRIDGE_CLOSE_STALLED = 4002
+export {
+  BRIDGE_CLOSE_REPLACED,
+  BRIDGE_CLOSE_STALLED,
+  BRIDGE_MAX_PER_ID,
+  BRIDGE_MAX_PER_IP,
+  BRIDGE_STREAM_HIGH,
+  BRIDGE_STREAM_LOW,
+  BRIDGE_STREAM_PAUSED_CAP,
+  BRIDGE_STREAM_STALL_MS,
+}
 
 const HTTP_BODY = 1
 const WS_BINARY = 2

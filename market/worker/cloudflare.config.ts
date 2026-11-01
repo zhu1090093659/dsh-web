@@ -59,9 +59,18 @@ export default defineConfig({
 			// never declared here: CF_API_TOKEN (Account: Cloudflare Tunnel, Edit; Zone:
 			// DNS, Edit, on dsh-market.com only), CF_ACCOUNT_ID and CF_ZONE_ID. Without
 			// all three the claim endpoint answers 503 cf-api-unconfigured and creates
-			// nothing. RELAY_MODE is an optional plain variable: absent (or "quick")
-			// answers the quick connector, "named" hands the hostname to the instance's
-			// own connector; it is the migration switch and its rollback.
+			// nothing.
+			//
+			// RELAY_MODE is an optional plain variable and the deployment-wide switch.
+			// Absent means "bridge": the hostname is served by the instance's own
+			// Durable Object, which owns no object in the Cloudflare account, so a
+			// claim costs zero account calls. That is the default because the tunnel
+			// transports converge a tunnel, an ingress and a CNAME (four calls), and
+			// the account allows 1200 calls per 300 seconds for every caller on it at
+			// once. "quick" is the deployment-wide rollback to the Worker's
+			// quick-tunnel proxy and "named" selects the named-tunnel transport; a
+			// per-instance value recorded on the lease row (relay_leases.mode)
+			// overrides either, so one instance flips with a single UPDATE.
 			DB: bindings.d1({
 				name: "dsh-market",
 				id: "95f4e8ae-444a-46d0-98be-c367a9dbe6e8",

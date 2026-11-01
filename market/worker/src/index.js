@@ -337,6 +337,8 @@ export default {
       await pruneOldEvents(env)
     } catch { /* best-effort; pruning retries on the next tick */ }
     try {
+      // Also drops rate-limit rows whose window has turned over, which is what
+      // keeps that table from growing with every identity that ever called.
       await pruneRelay(env)
     } catch { /* best-effort; the relay GC retries on the next tick */ }
     // Lease GC after the registry GC: it settles DNS and tunnel resources, the

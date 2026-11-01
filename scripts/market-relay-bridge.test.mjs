@@ -127,6 +127,7 @@ function bridgeDb(config = {}) {
     modeFails: config.modeFails === true,
     counts: new Map(config.counts ?? []),
     modeReads: 0,
+    registrationReads: 0,
   }
   function statement(sql, args) {
     return {
@@ -137,6 +138,9 @@ function bridgeDb(config = {}) {
         // unknown instance must find nothing, not somebody else's row.
         const rowOf = (row, fields) => (row !== null && row.id === args[0] ? fields(row) : null)
         if (sql.includes('SELECT target FROM relay_registrations')) {
+          // Counted, not just answered: a bridged instance must be served without
+          // this read ever happening, which is what the dispatch-order cases assert.
+          state.registrationReads += 1
           return rowOf(state.registration, (row) => ({ ...row }))
         }
         if (sql.includes('SELECT mode FROM relay_leases')) {
@@ -306,6 +310,151 @@ test('a bridge-mode instance with no connector falls back to quick inside the sa
   }
 })
 
+
+test('a bridged instance with no registration row is served by its object, not the registry', async () => {
+  // Given a flipped lease row and no registry row at all -- the shape a bridged
+  //       instance has once its quick tunnel stops announcing a target
+  const db = bridgeDb({ lease: { id: ID, secret_hash: 'unused', mode: 'bridge' } })
+  const namespace = bridgeNamespace(async (request) => {
+    assert.equal(new URL(request.url).pathname, '/api/ping')
+    return bridgedAnswer('bridged-body')
+  })
+  const forwarded = []
+  const realFetch = globalThis.fetch
+  globalThis.fetch = async (request) => {
+    forwarded.push(request.url)
+    return new Response('tunnel-body', { status: 200 })
+  }
+  try {
+    // When the phone asks for a path on its relay hostname
+    const response = await worker.fetch(phone(), { DB: db, RELAY_BRIDGE: namespace })
+
+    // Then the object answered, and the registry was never consulted: requiring
+    //      a row first is what made a bridged instance unreachable
+    assert.equal(response.status, 200)
+    assert.equal(await response.text(), 'bridged-body')
+    assert.equal(response.headers.get(RELAY_TRANSPORT_HEADER), 'bridge')
+    assert.deepEqual(namespace.named, [ID])
+    assert.equal(db.state.registrationReads, 0, 'the bridge is decided before the registry')
+    assert.deepEqual(forwarded, [], 'and the quick tunnel is never dialed')
+  } finally {
+    globalThis.fetch = realFetch
+  }
+})
+
+test('a bridged instance with no registration row still carries a WebSocket upgrade', async () => {
+  // Given the same shape, and an object that accepts the upgrade
+  const db = bridgeDb({ lease: { id: ID, secret_hash: 'unused', mode: 'bridge' } })
+  const socket = new BridgeSocket()
+  let seen = null
+  const namespace = bridgeNamespace(async (request) => {
+    seen = request
+    return new BridgeResponse(null, { status: 101, webSocket: socket })
+  })
+  const realFetch = globalThis.fetch
+  globalThis.fetch = async (request) => {
+    throw new Error('the quick tunnel must not be dialed: ' + request.url)
+  }
+  try {
+    // When the phone upgrades on its relay hostname
+    const response = await worker.fetch(new Request('https://' + HOST + '/api/ws', {
+      headers: { host: HOST, upgrade: 'websocket' },
+    }), { DB: db, RELAY_BRIDGE: namespace })
+
+    // Then the upgrade reached the object, unaltered, with no registry read
+    assert.equal(response.status, 101)
+    assert.equal(response.webSocket, socket)
+    assert.equal(seen.headers.get('upgrade'), 'websocket')
+    assert.equal(db.state.registrationReads, 0)
+  } finally {
+    globalThis.fetch = realFetch
+  }
+})
+
+test('a bridged instance with no connector and no registration row still answers instance-offline', async () => {
+  // Given a flipped lease row whose object holds no connector, and no registry row
+  const db = bridgeDb({ lease: { id: ID, secret_hash: 'unused', mode: 'bridge' } })
+  const namespace = bridgeNamespace(async () => new BridgeResponse(RELAY_BRIDGE_NO_CONNECTOR, {
+    status: 409,
+    headers: { [RELAY_BRIDGE_MARKER]: RELAY_BRIDGE_NO_CONNECTOR },
+  }))
+  const forwarded = []
+  const realFetch = globalThis.fetch
+  globalThis.fetch = async (request) => {
+    forwarded.push(request.url)
+    return new Response('tunnel-body', { status: 200 })
+  }
+  try {
+    // When the phone asks for a path on its relay hostname
+    const response = await worker.fetch(phone(), { DB: db, RELAY_BRIDGE: namespace })
+
+    // Then the frozen offline code answers, and the object's refusal invented no
+    //      tunnel to fall back to
+    assert.equal(response.status, 503)
+    assert.equal((await response.json()).code, 'instance-offline')
+    assert.equal(db.state.registrationReads, 1, 'the fallback consulted the registry once')
+    assert.deepEqual(forwarded, [])
+  } finally {
+    globalThis.fetch = realFetch
+  }
+})
+
+test('a quick instance with no registration row still answers instance-offline', async () => {
+  // Given a quick lease row and no registry row
+  const db = bridgeDb({ lease: { id: ID, secret_hash: 'unused', mode: 'quick' } })
+  const namespace = bridgeNamespace(() => {
+    throw new Error('the object must not be asked about a quick instance')
+  })
+  const realFetch = globalThis.fetch
+  globalThis.fetch = async (request) => {
+    throw new Error('an instance with no row has nothing to dial: ' + request.url)
+  }
+  try {
+    // When the phone asks for a path on its relay hostname
+    const response = await worker.fetch(phone(), { DB: db, RELAY_BRIDGE: namespace })
+
+    // Then the registry's own answer is exactly what it was before the reorder
+    assert.equal(response.status, 503)
+    assert.equal((await response.json()).code, 'instance-offline')
+    assert.equal(db.state.registrationReads, 1)
+    assert.deepEqual(namespace.named, [], 'a quick instance never reaches an object')
+  } finally {
+    globalThis.fetch = realFetch
+  }
+})
+
+test('a quick instance with a registration row still proxies to its tunnel target', async () => {
+  // Given a quick lease row beside the registry row its quick tunnel announced
+  const db = bridgeDb({
+    registration: { id: ID, secret_hash: 'unused', target: TARGET },
+    lease: { id: ID, secret_hash: 'unused', mode: 'quick' },
+  })
+  const namespace = bridgeNamespace(() => {
+    throw new Error('the object must not be asked about a quick instance')
+  })
+  const forwarded = []
+  const realFetch = globalThis.fetch
+  globalThis.fetch = async (request) => {
+    forwarded.push(request.url)
+    return new Response('tunnel-body', { status: 200 })
+  }
+  try {
+    // When the phone asks for a path on its relay hostname
+    const response = await worker.fetch(phone(), { DB: db, RELAY_BRIDGE: namespace })
+
+    // Then the quick path is byte-for-byte what it was: the target carried it and
+    //      no fallback marker was stamped on a non-fallback answer
+    assert.equal(response.status, 200)
+    assert.equal(await response.text(), 'tunnel-body')
+    assert.deepEqual(forwarded, [TARGET + '/api/ping'])
+    assert.equal(response.headers.get(RELAY_FALLBACK_HEADER), null)
+    assert.equal(response.headers.get(RELAY_TRANSPORT_HEADER), null)
+    assert.equal(db.state.registrationReads, 1)
+    assert.deepEqual(namespace.named, [])
+  } finally {
+    globalThis.fetch = realFetch
+  }
+})
 test('a lease table that cannot answer the mode keeps the instance on quick', async () => {
   // Given a deployment whose D1 has not run the mode migration yet
   const db = bridgeDb({

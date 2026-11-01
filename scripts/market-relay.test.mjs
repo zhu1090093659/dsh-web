@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import worker from '../market/worker/src/index.js'
-import { relayIdOf } from '../market/worker/src/relay.js'
+import { REGISTER_MAX_PER_ID, relayIdOf } from '../market/worker/src/relay.js'
 
 const RELAY_HOST = 'abcd1234abcd1234.dsh-market.com'
 const SECRET = 'A'.repeat(43)
@@ -185,15 +185,19 @@ test('relay proxy never caches a non-200 for a hashed asset path', async () => {
   }
 })
 
-test('relay proxy serves a bilingual offline page for unknown or dead ids', async () => {
+test('relay proxy serves a bilingual offline page only to a browser navigation', async () => {
   const db = relayDb()
-  const response = await proxy(db, '/')
+  const response = await proxy(db, '/', { method: 'GET', headers: { accept: 'text/html,application/xhtml+xml' } })
   assert.equal(response.status, 503)
   assert.equal(response.headers.get('x-robots-tag'), 'noindex')
   const html = await response.text()
   assert.match(html, /远程实例当前离线/)
   assert.match(html, /currently offline/)
-  assert.equal((await proxy(db, '/some/deep/path')).status, 503)
+  // A device asks for data, not a document: the same dead id answers the frozen
+  // failure body instead (see scripts/market-relay-failure-json.test.mjs).
+  const data = await proxy(db, '/some/deep/path')
+  assert.equal(data.status, 503)
+  assert.equal((await data.json()).code, 'instance-offline')
 })
 
 test('relay unregister requires the secret and removes the row', async () => {
@@ -214,12 +218,16 @@ test('relay unregister requires the secret and removes the row', async () => {
 
 test('relay registration is rate-limited per id window', async () => {
   const db = relayDb()
-  for (let i = 0; i < 6; i++) {
+  // The budget is one explicit constant, so this reads it instead of repeating it.
+  for (let i = 0; i < REGISTER_MAX_PER_ID; i++) {
     const response = await register(db, { id: 'abcd1234abcd1234', secret: SECRET, new_secret: SECRET, target: TARGET })
-    assert.equal(response.status, 200)
+    assert.equal(response.status, 200, 'registration ' + String(i + 1) + ' stays inside the budget')
   }
-  const seventh = await register(db, { id: 'abcd1234abcd1234', secret: SECRET, target: TARGET })
-  assert.equal(seventh.status, 429)
+  const refused = await register(db, { id: 'abcd1234abcd1234', secret: SECRET, target: TARGET })
+  assert.equal(refused.status, 429)
+  const body = await refused.json()
+  assert.equal(body.code, 'rate-limited')
+  assert.equal(body.error, 'rate-limited')
 })
 
 test('dsh-market.com paths never dispatch to the relay', async () => {

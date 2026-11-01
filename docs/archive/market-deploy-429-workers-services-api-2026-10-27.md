@@ -1,9 +1,23 @@
 # Market deploy 429 on the Workers services API - evidence for Cloudflare support
 
-Status: open, waiting on Cloudflare-side diagnosis
+Status: resolved 2026-11-01 - the account API budget was being spent by our own relay control plane, not by a Cloudflare-side flag
 Date: 2026-10-27
 Account: redacted (`CLOUDFLARE_ACCOUNT_ID` in GitHub Actions, printed as `***` in logs)
 Worker: `dsh-market` (custom domain `dsh-market.com`, zone `dsh-market.com`)
+
+## Root cause (2026-11-01)
+
+The account was never flagged. Its API budget was genuinely being spent, continuously, by the `dsh-market` worker's own relay control plane.
+
+- The budget is real and readable from the response headers: `ratelimit-policy: "default";q=1200;w=300` with `ratelimit: "default";r=0` on every refusal, and `retry-after: 300`. A quiet probe that recovered the account half (`tokenValid: true`) still saw `r=0` on the Workers half, which is what a flagged account would have looked like too.
+- Every relay claim converges a Cloudflare tunnel and its CNAME through the account API (`List Cloudflare Tunnels`, `Update Tunnel configuration`, `List DNS Records`, `Get Tunnel Token`): four calls per claim. The audit log for one 78 second window held 49 `List Cloudflare Tunnels` and one `Update Tunnel configuration`, every one of them from this worker's token and from a Cloudflare Workers egress address.
+- The claim endpoint was taking roughly 200 authenticated claims per second: `relay_rate_limit` carried 7552 distinct `id:` buckets (35004 attempts) and 8845 distinct `ip:` buckets (33769 attempts) across three 60 second windows, against 16036 rows in `relay_registrations`.
+- Four calls per claim at that rate is two orders of magnitude above 1200 per 300 s, so the budget sat at `r=0`; every claim that then failed made its client retry, which spent the next window the same way. That loop ran for six days.
+- Blocking the two control-plane paths at the zone edge (`/api/relay/claim`, `/api/relay/register`) recovered the budget inside one window (`r`: 43, 166, 292, 413, 536, 657, 1199), which closes the causal loop: the relay was the consumer, not Cloudflare.
+
+The traffic was not an attack. `relay_registrations` grew by 340 to 585 rows per day for the two weeks before this report, every row carrying a distinct `*.trycloudflare.com` target announced by the plugin, and the claim endpoint authenticates before it counts, so those attempts held valid secrets.
+
+No Cloudflare support ticket is needed. The fix set: the relay's default transport moves to the bridge path (no account objects, zero API calls per claim), a D1-backed global budget gate refuses a claim before it can spend an account call, `relay_rate_limit` is pruned by the cron instead of growing without bound (it held 6775893 rows, 576 MB, when this was found), and registrations are to be gated on a paired device rather than open to anyone holding a self-chosen secret.
 
 ## To Cloudflare support
 

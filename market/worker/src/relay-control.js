@@ -18,6 +18,12 @@
  * rate-limited on the same buckets. The account-wide Cloudflare API token
  * never leaves the Worker; the per-instance tunnel token is returned once to
  * the caller that proved possession of the id secret and is never logged.
+ *
+ * Account budget: Cloudflare counts the whole account's calls over one 300
+ * second window, so once an answer is 429 every further call is refused until
+ * that window turns over. Retries cannot tell the difference and would keep the
+ * window full by themselves, so this isolate remembers the spent budget
+ * (`CF_API_COOLDOWN_MS`) and stops dialling until the cooldown passes.
  */
 
 import {
@@ -51,6 +57,14 @@ export const CF_RETRY_AFTER_MS = 5_000
 export const CF_RATE_LIMIT_RETRY_AFTER_MS = 300_000
 /** The status the account API answers with when that budget is spent (10500). */
 const CF_TOO_MANY_REQUESTS = 429
+/**
+ * How long this isolate stops dialling the account API after it answered 429.
+ * Long enough to keep the retry traffic from re-spending the window by itself,
+ * short enough that a recovered account is not left waiting: it is one fifth of
+ * the window, and the caller-facing hint stays the whole window
+ * (CF_RATE_LIMIT_RETRY_AFTER_MS), which the caller cannot avoid anyway.
+ */
+export const CF_API_COOLDOWN_MS = 60_000
 /**
  * The most lease rows one cron tick settles. A row costs up to three account
  * calls (find the record, delete it, delete the tunnel), so an unbounded loop
@@ -160,16 +174,55 @@ function errorTextOf(error) {
 }
 
 /**
+ * The moment the account API may be dialled again, in epoch milliseconds, or 0
+ * while the gate is open. Isolate-local on purpose: two isolates may each probe
+ * once per cooldown, which costs one refused request per isolate and needs no
+ * shared table, no migration and no agreement between colos to be correct.
+ */
+let cfApiCoolingUntil = 0
+
+/** Whether this isolate refuses account calls right now. */
+function cfApiCooling() {
+  return Date.now() < cfApiCoolingUntil
+}
+
+/** Close the gate for one cooldown after the account API answered 429. */
+function armCfApiCooldown() {
+  cfApiCoolingUntil = Date.now() + CF_API_COOLDOWN_MS
+}
+
+/**
+ * Open the gate and forget the last 429. Module state is shared by every caller
+ * in one isolate, so the offline tests reset it between cases instead of
+ * letting one case's 429 decide another case's upstream calls.
+ */
+export function resetCfApiCooldown() {
+  cfApiCoolingUntil = 0
+}
+
+/**
  * One Cloudflare API call against the scoped account token. Errors carry the
  * method, path and Cloudflare's own message so the logs explain a 502 — the
  * bearer token and the per-instance tunnel token never appear in either.
  */
 async function cfCall(config, method, path, body) {
+  // The gate stands in front of the request, not behind it: while the budget is
+  // spent the account refuses every call anyway, so sending one only spends the
+  // retry traffic that keeps the window full. The local 429 is graded by the
+  // same code that grades Cloudflare's own, which is why every caller keeps its
+  // answer and its hint.
+  if (cfApiCooling()) {
+    throw new CfApiError(CF_TOO_MANY_REQUESTS, 'cloudflare api ' + method + ' ' + path + ': cooling down after a 429, request not sent')
+  }
   const response = await fetch(CF_API_BASE + path, {
     method,
     headers: { authorization: 'Bearer ' + config.token, 'content-type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
+  // One 429 is the whole account's condition, so it is recorded before this
+  // call is graded: claim, retire and the cron GC share this client and all of
+  // them stop dialling for one cooldown, whatever path the refused call was on.
+  if (response.status === CF_TOO_MANY_REQUESTS) armCfApiCooldown()
   const payload = await response.json().catch(() => undefined)
   if (!response.ok || payload === undefined || payload.success === false) {
     const first = payload && Array.isArray(payload.errors) ? payload.errors[0] : undefined
@@ -530,12 +583,20 @@ export async function handleRelayRetire(request, env) {
  * LEASE_PRUNE_MAX_PER_TICK rows, and a spent account budget ends the tick on the
  * spot: the rows left over are stale already and lose nothing by waiting a
  * minute, while every call this tick would send is one the account refuses.
+ * A cooled account skips the tick whole — the query included, so not even D1 is
+ * asked about rows whose source cannot be removed yet.
  * A row whose tunnel cannot be removed is left alone — dropping it would orphan
  * a tunnel nothing points at any more — and an unconfigured Worker settles only
  * the rows that own no account resource.
  * @returns how many rows were removed, and whether a spent budget ended the tick.
  */
 export async function pruneRelayLeases(env) {
+  // The gate is the whole tick's answer, and it is the same answer a 429 found
+  // mid-tick gives: nothing was pruned, because nothing could be removed.
+  if (cfApiCooling()) {
+    console.warn('relay control: lease GC skipped, the account request budget is cooling down')
+    return { pruned: 0, rateLimited: true }
+  }
   let stale
   try {
     stale = await env.DB.prepare('SELECT id, tunnel_id FROM relay_leases WHERE last_seen_at < ?1 LIMIT ?2')

@@ -1,8 +1,9 @@
-import test from 'node:test'
+import test, { beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 
 import worker from '../market/worker/src/index.js'
 import {
+  CF_API_COOLDOWN_MS,
   CF_RATE_LIMIT_RETRY_AFTER_MS,
   CF_RETRY_AFTER_MS,
   LEASE_PRUNE_MAX_PER_TICK,
@@ -11,7 +12,12 @@ import {
   RELAY_BRIDGE_ENDPOINT,
   leaseIngress,
   pruneRelayLeases,
+  resetCfApiCooldown,
 } from '../market/worker/src/relay-control.js'
+
+// The account cooldown is isolate-local module state, so one case's 429 must not
+// decide another case's upstream calls: every case starts with an open gate.
+beforeEach(() => resetCfApiCooldown())
 
 const ID = 'abcd1234abcd1234'
 const HOST = ID + '.dsh-market.com'
@@ -239,6 +245,34 @@ const post = (env, path, body = {}) => worker.fetch(new Request('https://dsh-mar
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ id: ID, secret: SECRET, ...body }),
 }), env, context())
+
+/**
+ * The account API answers a converging claim once the gate has opened again:
+ * find-or-create the tunnel, write its ingress, find-or-create the CNAME and
+ * read the connector token. Routed by URL, which is the stub's second argument,
+ * so the case counts paths rather than an order it would have to restate.
+ */
+function convergeReply(callNumber, url) {
+  if (url.includes('/cfd_tunnel?')) return cfReply(200, undefined, [])
+  if (url.endsWith('/cfd_tunnel')) return cfReply(200, undefined, { id: 'tunnel-recovered-1', name: 'dsh-relay-' + ID })
+  if (url.endsWith('/configurations')) return cfReply(200, undefined, {})
+  if (url.includes('/dns_records?')) return cfReply(200, undefined, [])
+  if (url.endsWith('/dns_records')) return cfReply(200, undefined, { id: 'record-recovered-1' })
+  if (url.endsWith('/token')) return cfReply(200, undefined, 'connector-token-recovered-1')
+  return cfReply(500, 'unexpected account call ' + url)
+}
+
+/**
+ * Close the gate the way production does: one claim whose very first account
+ * call meets the spent budget. Returns that claim and how many calls it cost,
+ * so a case can prove the cooldown was armed by a real 429 and not by a flag.
+ */
+async function armCooldown(env = { DB: leaseDb(), ...CF_SECRETS }) {
+  return await withCfStub(RATE_LIMITED_REPLY, async (calls) => {
+    const response = await claim(env)
+    return { response, calls: calls.length }
+  })
+}
 
 test('claim creates the tunnel, its ingress, the CNAME and answers the lease', async () => {
   const db = leaseDb()
@@ -627,6 +661,165 @@ test('the lease helper shapes match the wire contract', () => {
     { hostname: HOST, service: 'http://127.0.0.1:3080' },
     { service: 'http_status:404' },
   ])
+})
+
+test('a spent account budget cools the account and the next claim sends nothing upstream', async () => {
+  const db = leaseDb()
+  const outcome = await withCfStub(RATE_LIMITED_REPLY, async (calls) => {
+    const refused = await claim({ DB: db, ...CF_SECRETS })
+    const refusedBody = await refused.json()
+    const armedCalls = calls.length
+    const cooled = await claim({ DB: db, ...CF_SECRETS })
+    return {
+      refusedStatus: refused.status,
+      refusedBody,
+      armedCalls,
+      cooledStatus: cooled.status,
+      cooledBody: await cooled.json(),
+      totalCalls: calls.length,
+    }
+  })
+  assert.equal(CF_API_COOLDOWN_MS, 60_000, 'the cooldown is one explicit constant')
+  assert.ok(CF_API_COOLDOWN_MS < CF_RATE_LIMIT_RETRY_AFTER_MS, 'the gate reopens well inside the window the caller is told to wait out')
+  assert.equal(outcome.refusedStatus, 502, 'the claim that meets the spent budget answers as before')
+  assert.equal(outcome.refusedBody.error, 'cf-api-rate-limited', 'that first answer keeps its grade')
+  assert.equal(outcome.armedCalls, 1, 'the refused find is the whole spend of the first claim')
+  assert.equal(outcome.cooledStatus, 502, 'a cooled claim keeps the status the endpoint answered with before')
+  assert.deepEqual(outcome.cooledBody, { ok: false, error: 'cf-api-rate-limited', retryAfterMs: CF_RATE_LIMIT_RETRY_AFTER_MS })
+  assert.equal(outcome.totalCalls, outcome.armedCalls, 'the cooled claim sends no account call at all')
+  assert.equal(db.leases.size, 0, 'a cooled claim leaves no lease row behind')
+})
+
+test('a cooled account refuses retire without dialling upstream', async () => {
+  const db = leaseDb({ leases: {
+    [ID]: { ...staleLease(ID, 'tunnel-stale', Date.now()), secret_hash: await secretHashOf(SECRET) },
+  } })
+  const arming = await armCooldown()
+  assert.equal(arming.calls, 1, 'the cooldown is armed by a real 429, not by a flag')
+  const outcome = await withCfStub(RATE_LIMITED_REPLY, async (calls) => {
+    const response = await post({ DB: db, ...CF_SECRETS }, 'retire')
+    return { status: response.status, body: await response.json(), calls: calls.length }
+  })
+  assert.equal(outcome.status, 502)
+  assert.deepEqual(outcome.body, { ok: false, error: 'cf-api-rate-limited', retryAfterMs: CF_RATE_LIMIT_RETRY_AFTER_MS })
+  assert.equal(outcome.calls, 0, 'a cooled retire sends no account call at all')
+  assert.equal(db.leases.size, 1, 'a refused retire keeps the only pointer to the tunnel')
+  assert.equal(db.leases.get(ID).tunnel_id, 'tunnel-stale', 'the row still names the object it owns')
+})
+
+test('a cooled account ends the cron GC at once with no account call', async () => {
+  const now = Date.now()
+  const db = leaseDb({ leases: {
+    [ID]: staleLease(ID, 'tunnel-stale', now),
+    [OTHER_ID]: staleLease(OTHER_ID, 'tunnel-other', now),
+  } })
+  const arming = await armCooldown()
+  assert.equal(arming.calls, 1, 'the cooldown is armed by a real 429, not by a flag')
+  const outcome = await withCfStub(RATE_LIMITED_REPLY, async (calls) => {
+    const result = await pruneRelayLeases({ DB: db, ...CF_SECRETS })
+    return { result, calls: calls.length }
+  })
+  assert.deepEqual(outcome.result, { pruned: 0, rateLimited: true }, 'the tick reports the spent budget it did not have to meet')
+  assert.equal(outcome.calls, 0, 'a cooled tick sends no account call at all')
+  assert.equal(db.leases.size, 2, 'both stale rows keep their tunnel ids for the next tick')
+})
+
+test('a claim dials the account again once the cooldown has passed', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: 1_000_000_000 })
+  const db = leaseDb()
+  const env = { DB: db, ...CF_SECRETS }
+  const armed = await withCfStub(RATE_LIMITED_REPLY, () => claim(env))
+  assert.equal(armed.status, 502, 'the spent budget is met while the gate is open')
+  t.mock.timers.tick(CF_API_COOLDOWN_MS - 1)
+  const cooled = await withCfStub(RATE_LIMITED_REPLY, async (calls) => {
+    const response = await claim(env)
+    return { status: response.status, calls: calls.length }
+  })
+  assert.equal(cooled.status, 502)
+  assert.equal(cooled.calls, 0, 'the gate holds for the whole cooldown, and a cooled attempt does not extend it')
+  t.mock.timers.tick(1)
+  const recovered = await withCfStub(convergeReply, async (calls) => {
+    const response = await claim(env)
+    return { status: response.status, body: await response.json(), calls: calls.length }
+  })
+  assert.equal(recovered.status, 200, 'the claim succeeds once the cooldown has passed')
+  assert.equal(recovered.calls, 6, 'the recovered claim dials the account again: find, create, ingress, record, record, token')
+  assert.equal(recovered.body.tunnel.id, 'tunnel-recovered-1')
+  assert.equal(recovered.body.tunnel.token, 'connector-token-recovered-1')
+  assert.equal(recovered.body.dns.target, 'tunnel-recovered-1.cfargotunnel.com')
+  assert.equal(db.leases.get(ID).tunnel_id, 'tunnel-recovered-1', 'the recovered claim writes its lease row')
+})
+
+test('a bridged claim still succeeds while the account is cooling down', async () => {
+  const db = leaseDb({ leases: {
+    [ID]: {
+      id: ID,
+      secret_hash: await secretHashOf(SECRET),
+      tunnel_id: '',
+      hostname: HOST,
+      origin_port: 3080,
+      plugin_version: '0.4.8',
+      state: 'active',
+      mode: 'bridge',
+      created_at: 1,
+      last_seen_at: 1,
+    },
+  } })
+  const arming = await armCooldown()
+  assert.equal(arming.calls, 1, 'the cooldown is armed by a real 429, not by a flag')
+  const outcome = await withCfStub(RATE_LIMITED_REPLY, async (calls) => {
+    const response = await claim({ DB: db, ...CF_SECRETS })
+    return { status: response.status, body: await response.json(), calls: calls.length }
+  })
+  assert.equal(outcome.status, 200, 'the gate guards the account, not a claim that owns no account object')
+  assert.deepEqual(outcome.body, {
+    mode: 'bridge',
+    hostname: HOST,
+    bridge: { endpoint: RELAY_BRIDGE_ENDPOINT, instance: ID, credential: RELAY_BRIDGE_CREDENTIAL },
+  })
+  assert.equal(outcome.calls, 0, 'a bridged claim sends no account call, cooled or not')
+  assert.equal(db.leases.get(ID).state, 'active', 'the bridged lease is renewed as usual')
+  assert.equal(db.leases.get(ID).tunnel_id, '', 'the cooled gate does not invent a tunnel for a bridged lease')
+})
+
+test('an upstream outage does not cool the account', async () => {
+  const db = leaseDb()
+  const outcome = await withCfStub(() => cfReply(503, 'server unavailable'), async (calls) => {
+    const first = await claim({ DB: db, ...CF_SECRETS })
+    const firstBody = await first.json()
+    const afterFirst = calls.length
+    const second = await claim({ DB: db, ...CF_SECRETS })
+    return { firstStatus: first.status, firstBody, afterFirst, secondStatus: second.status, afterSecond: calls.length }
+  })
+  assert.equal(outcome.firstStatus, 502)
+  assert.equal(outcome.firstBody.error, 'cf-api-unavailable', 'an outage keeps its own grade and its short hint')
+  assert.equal(outcome.firstBody.retryAfterMs, CF_RETRY_AFTER_MS)
+  assert.equal(outcome.afterFirst, 1)
+  assert.equal(outcome.secondStatus, 502)
+  assert.equal(outcome.afterSecond, 2, 'only a 429 closes the gate: the next claim still dials the account')
+})
+
+test('a cooled gate never short-circuits authentication', async () => {
+  const db = leaseDb({ leases: {
+    [ID]: { ...staleLease(ID, 'tunnel-stale', Date.now()), secret_hash: await secretHashOf(SECRET) },
+  } })
+  const arming = await armCooldown()
+  assert.equal(arming.calls, 1, 'the cooldown is armed by a real 429, not by a flag')
+  const outcome = await withCfStub(RATE_LIMITED_REPLY, async (calls) => {
+    const refusedClaim = await claim({ DB: db, ...CF_SECRETS }, { secret: 'B'.repeat(43), new_secret: undefined })
+    const refusedRetire = await post({ DB: db, ...CF_SECRETS }, 'retire', { secret: 'B'.repeat(43) })
+    return {
+      claimStatus: refusedClaim.status,
+      claimBody: await refusedClaim.json(),
+      retireStatus: refusedRetire.status,
+      calls: calls.length,
+    }
+  })
+  assert.equal(outcome.claimStatus, 403, 'a cooled claim still proves the secret before it grades anything')
+  assert.equal(outcome.claimBody.error, 'auth-failed')
+  assert.equal(outcome.retireStatus, 403, 'a cooled retire too')
+  assert.equal(outcome.calls, 0, 'and neither of them dials the account')
+  assert.equal(db.leases.size, 1, 'the refused pair removes nothing')
 })
 
 /** The stored hash of one secret, for seeded rows. */

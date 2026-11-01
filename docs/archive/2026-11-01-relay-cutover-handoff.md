@@ -12,6 +12,22 @@
 | 反代 | `/etc/nginx/sites-available/whale-relay`，server_name 两条，Host 原样透传，升级头走既有 `$whale_connection_upgrade` |
 | 桌面 profile | `~/.dsh/profiles/desktop/cordis.patch.yml` 的 `web-ui-remote-bridge` 行新增 `relayControlUrl: https://relay.chatwithai.icu/v1/relay` 与 `relayPublicSuffix: .relay.chatwithai.icu`，备份为同目录 `.bak-relay-cutover-*` |
 
+## 切换实测
+
+真实宿主重启后服务器侧原始记录：
+
+```
+13:38:15 lease claimed  instance=8957f5eb13560cdc plugin=0.4.13 refreshed=false
+13:38:15 connector attached instance=8957f5eb13560cdc replaced=false
+13:39:35 connector read failed 1006 -> connector detached
+13:39:37 lease claimed  refreshed=true
+13:39:38 connector attached
+```
+
+- 公网地址：`wss://8957f5eb13560cdc.relay.chatwithai.icu`（沿用原有中继 id，只换后缀）
+- 断线到重连：13:39:35 到 13:39:38，3 秒，无需新票据
+- 三条链路在真实宿主上通过：配对（设备名册落盘）；会话流式（手机看到实时增量、工具输出与进行中状态）；审批/提问卡（手机底部弹出「Waiting on you」，宿主那次调用在等它作答）
+
 ## 探针实例上已取到的真机证据
 
 探针宿主（`DSH_HOME=/tmp/dsh-verify-relay`，profile `probe-relay`）在真机 iPhone 17 上取到：
@@ -21,10 +37,19 @@
 - 配对：`connection open (device dev_g2ar7f-4dzSbKWps)`，探针设备名册落盘
 - 会话流式：手机上看到探针会话的实时增量、工具输出与进行中的工具行
 
-## 剩余两步（宿主重启后）
+## 回滚与再切换
 
-1. **审批推送**：真实宿主持有 APNs 密钥，探针宿主是 `push: off`，所以这条只能在真实宿主上验。判据：手机在**未打开会话**时收到审批通知；打开会话能看到审批卡，按「允许一次」后宿主侧那次调用被放行。注意 `packages/dsh-remote-bridge/src/index.ts:1858` 那行监听没有 prepend，桌面 GUI 连着时审批会先被桌面接走——验证时把桌面面板关掉。
-2. **回滚演练**：删掉上面那两行配置，重启宿主，手机连接地址改回 `wss://<id>.dsh-market.com`，确认三条链路在 dsh-market 中继上继续可用；记录从改配置到手机重连成功的用时，与切换用时一起留档。
+回滚只动一个文件：`~/.dsh/profiles/desktop/cordis.patch.yml` 里 `web-ui-remote-bridge` 行的 `config:` 两行，删掉后重启宿主，手机连接地址改回 `wss://8957f5eb13560cdc.dsh-market.com`。
+
+再切回新中继用备份覆盖：
+
+```sh
+cp ~/.dsh/profiles/desktop/cordis.patch.yml.bak-relay-cutover-* ~/.dsh/profiles/desktop/cordis.patch.yml
+```
+
+覆盖后重启宿主，手机地址改回 `wss://8957f5eb13560cdc.relay.chatwithai.icu`。配置生效点只在宿主重启，手机侧只是改一个 origin，两个方向都不需要动 dsh-market 的中继行。
+
+已知边界：`packages/dsh-remote-bridge/src/index.ts:1858` 对 `approval/request` 的监听没有 `prepend`，桌面 GUI 连着时审批会先被桌面接住，手机可能收不到卡；这与走哪个中继无关。
 
 ## 待清理
 

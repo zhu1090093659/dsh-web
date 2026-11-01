@@ -47,7 +47,7 @@ import { Config, resolveConfig, type WinBashConfig, type WinBashConfigInput } fr
 import { startLiangShenGate, LIANGSHEN_PRESET_ID, type GateOptions, type GateOutcome } from './gate.ts'
 import { installPwshReplacement } from './pwsh-replacement.ts'
 import { resolveRuntime, type RuntimeReady, type HostPlatform } from './runtime.ts'
-import { ShellRegistry } from './shell.ts'
+import { ShellRegistry, sweepOrphanShellTempDirs } from './shell.ts'
 import { buildWinBashTool } from './tool.ts'
 
 export { BACKGROUND_JOB_KIND, startBackgroundJob } from './background.ts'
@@ -82,11 +82,16 @@ export {
 export { WIN_BASH_TOOL, renderResult, readJobRegistry, stripTerminalEscapes, truncationNotice } from './tool.ts'
 export type { RenderFacts } from './tool.ts'
 export {
+  SHELL_TEMP_PREFIX,
   ShellRegistry,
   ShellUnavailableError,
+  removeShellTempDir,
   shellArgv,
   shellEnvironment,
   shellTempDir,
+  sweepOrphanShellTempDirs,
+  type ShellTempSweep,
+  type ShellTempSweepOptions,
 } from './shell.ts'
 export { buildFrame, markerFor, parseFrame } from './protocol.ts'
 export {
@@ -268,6 +273,27 @@ export function apply(ctx: Context, config?: WinBashConfigInput): void {
     ctx.logger?.error?.('dsh-win-bash: ' + (error instanceof Error ? error.message : String(error)))
     throw error
   }
+  // Every shell owns a private temp directory under the machine's temp root and
+  // deletes it when it stops. A crash or a hard kill ends this process first, and
+  // those directories are not small - whatever the commands wrote under TMP/TEMP
+  // is still in them. Their names carry the owning pid, so this start can tell
+  // which ones nobody owns any more; the sweep keeps the ones whose pid still
+  // runs. Detached like the mount continuation below, and self-contained, because
+  // an unreclaimed directory must never keep the plugin from mounting.
+  void sweepOrphanShellTempDirs().then((sweep) => {
+    if (sweep.removed.length > 0) {
+      ctx.logger?.info?.('dsh-win-bash: reclaimed ' + sweep.removed.length.toString()
+        + ' orphaned shell temp directories left by earlier runs')
+    }
+    if (sweep.failed.length > 0) {
+      ctx.logger?.warn?.('dsh-win-bash: ' + sweep.failed.length.toString()
+        + ' orphaned shell temp directories could not be reclaimed and will be retried on the next start: '
+        + sweep.failed.join(', '))
+    }
+  }, (error: unknown) => {
+    ctx.logger?.warn?.('dsh-win-bash: the orphaned shell temp directory sweep failed: '
+      + (error instanceof Error ? error.message : String(error)))
+  })
   // Deliberately detached (see mountWithGate), with a last-resort catch so no
   // defect above can surface as the unhandled rejection that kills the process.
   void mountWithGate(ctx, resolved, runtime).catch((error: unknown) => {

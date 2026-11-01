@@ -41,7 +41,7 @@
  */
 
 import type { SubprocessHandle, SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
-import { DEFAULT_SPILL_BYTES, GRACE_MS, SHELL_STDERR_CAPTURE_BYTES } from './shell.ts'
+import { DEFAULT_SPILL_BYTES, GRACE_MS, SHELL_STDERR_CAPTURE_BYTES, removeShellTempDir } from './shell.ts'
 
 /**
  * Producer kind of every job this plugin starts. It namespaces the ids the
@@ -137,6 +137,13 @@ export interface BackgroundCommand {
   readonly cwd: string
   /** Environment entries for the process. */
   readonly env: NodeJS.ProcessEnv
+  /**
+   * The private temp directory this job owns, when the caller created one (it is
+   * the TMP/TEMP/TMPDIR in {@link env}). Reclaimed when the job settles, on every
+   * path: the process's own exit, a kill through the hooks, and a starter that
+   * never spawned.
+   */
+  readonly temp?: string
   /** Label shown for this job. */
   readonly label: string
   /** In-memory capture ceiling for stdout, in bytes. */
@@ -230,7 +237,7 @@ export function startBackgroundJob(command: BackgroundCommand): string {
         failedBeforeStart = messageOf(error)
       }
       const spawned = process
-      const done: Promise<JobOutcomeLike> = spawned === undefined
+      const settled: Promise<JobOutcomeLike> = spawned === undefined
         ? Promise.resolve(processOutcome(undefined, failedBeforeStart, false))
         : spawned.done.then(
             async (outcome) => {
@@ -251,6 +258,16 @@ export function startBackgroundJob(command: BackgroundCommand): string {
               return processOutcome(undefined, failedBeforeStart, false)
             },
           )
+      // The job owned its private temp directory for exactly as long as it ran.
+      // This runs on all three endings - own exit, kill through the hooks, and a
+      // starter that never spawned - because each of them leaves the directory
+      // with nothing left to use it. A reclaim that fails is contained: the
+      // directory is named for this process's pid, so the next start's orphan
+      // sweep collects it.
+      const done: Promise<JobOutcomeLike> = settled.then(async (outcome) => {
+        if (command.temp !== undefined) await removeShellTempDir(command.temp)
+        return outcome
+      })
       return {
         cancel: () => {
           if (terminated) return

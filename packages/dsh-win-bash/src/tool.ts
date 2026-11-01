@@ -430,6 +430,7 @@ export function buildWinBashTool(
             + ' this platform and stays available whenever win_bash cannot serve a call.',
           )
         }
+        const temp = shellTempDir()
         const jobId = startBackgroundJob({
           subprocess: ctx.subprocess,
           jobs: registry,
@@ -437,7 +438,8 @@ export function buildWinBashTool(
           script: command,
           argv: shellArgv(runtime),
           cwd,
-          env: shellEnvironment(runtime, shellTempDir()),
+          env: shellEnvironment(runtime, temp),
+          temp,
           label: args.command,
           stdoutBytes: BACKGROUND_STDOUT_BYTES,
           stderrBytes: BACKGROUND_STDERR_BYTES,

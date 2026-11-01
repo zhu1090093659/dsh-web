@@ -41,6 +41,12 @@ session is what makes that true.
 - Optionally runs a command as a background job in its own pinned bash process
   and returns a job id at once, so a long build or watch does not hold the call
   open or die with the session's shell. See [Background commands](#background-commands).
+- Gives every shell its own private directory under the machine's temp root for
+  `TMPDIR`/`TMP`/`TEMP`, and deletes it when that shell ends — on `exit`, on
+  timeout or abort, on session disposal, on plugin unload, and when a background
+  job settles. Directories a killed host never got to delete are reclaimed on the
+  next start, by the pid in their name, so the temp root does not grow one
+  directory per shell.
 - Verifies the vendored payload against its SHA256 manifest before the tool is
   registered at all; a mismatch refuses the mount.
 - Replaces the host's own `pwsh` tool on the session's model-facing surface

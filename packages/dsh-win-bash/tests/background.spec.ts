@@ -9,6 +9,7 @@
  * it registers, and what it refuses — not the host registry's implementation.
  * Nothing in this file waits on real time.
  */
+import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import type { SandboxExecutionPolicy } from '@deepseek-ai/dsh-sandbox'
@@ -23,7 +24,7 @@ import {
   type JobSpecLike,
 } from '../src/background.ts'
 import { resolveConfig } from '../src/config.ts'
-import type { ShellRegistry } from '../src/shell.ts'
+import { shellTempDir, type ShellRegistry } from '../src/shell.ts'
 import { buildWinBashTool, readJobRegistry } from '../src/tool.ts'
 
 /** One spawn the tool performed, kept for inspection. */
@@ -267,6 +268,24 @@ describe('a background call with a registry', () => {
     expect(registrations[0].sources).toBe(2)
   })
 
+  it('user asking for a background command gets its private temp directory reclaimed once the job settles', async () => {
+    // Given a started background job whose process owns a private temp
+    // directory, with a command's leftovers in it,
+    const { registry, registrations } = fakeRegistry()
+    const subprocess = fakeSubprocess()
+    await runBackground({ jobs: registry, subprocess: subprocess.runtime })
+    const temp = String(subprocess.spawns[0].spec.env?.TMP)
+    expect(existsSync(temp)).toBe(true)
+    // When that job ends,
+    subprocess.settle(0)
+    const outcome = await registrations[0].hooks?.done
+    // Then the job's outcome is unchanged and the directory it owned is gone:
+    // a long session that runs many background commands does not accumulate one
+    // directory per command.
+    expect(outcome?.status).toBe('completed')
+    expect(existsSync(temp)).toBe(false)
+  })
+
   it('operator rendering a background start sees the job id and how to use it', async () => {
     // Given a started background job,
     const { registry } = fakeRegistry()
@@ -391,6 +410,32 @@ describe('background refusal and cancellation', () => {
     // outcome names the failure instead of leaving the model waiting.
     expect(id).toBe('win-bash-1')
     return expect(registrations[0].hooks?.done).resolves.toMatchObject({ status: 'failed' })
+  })
+
+  it('user asking for a background command on a process that cannot start gets its temp directory reclaimed anyway', async () => {
+    // Given a private temp directory created for a job whose process will never
+    // be spawned,
+    const temp = shellTempDir()
+    const subprocess = fakeSubprocess({ failWith: 'spawn refused by the provider' })
+    const { registry, registrations } = fakeRegistry()
+    startBackgroundJob({
+      subprocess: subprocess.runtime,
+      jobs: registry,
+      owner: 'session-1',
+      script: 'echo bg',
+      argv: ['C:/payload/bash.exe'],
+      cwd: process.cwd(),
+      env: { TMP: temp, TEMP: temp, TMPDIR: temp },
+      temp,
+      label: 'echo bg',
+      stdoutBytes: 1024,
+      stderrBytes: 1024,
+    })
+    // When the failed job settles,
+    const outcome = await registrations[0].hooks?.done
+    // Then nothing is left on disk for a command that never ran.
+    expect(outcome?.status).toBe('failed')
+    expect(existsSync(temp)).toBe(false)
   })
 
   it('operator reading an outcome with no exit facts sees a completed-zero rather than an undefined code', () => {

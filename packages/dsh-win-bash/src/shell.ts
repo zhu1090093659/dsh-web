@@ -18,7 +18,8 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, readdirSync, type Dirent } from 'node:fs'
+import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { SubprocessHandle, SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
@@ -53,6 +54,19 @@ export const TIMEOUT_EXIT_CODE = 124
 
 /** Environment variable names carrying the per-shell private temp directory. */
 export const TEMP_ENV_KEYS = ['TMPDIR', 'TMP', 'TEMP'] as const
+
+/**
+ * Name prefix of every private per-shell temp directory. The rest of the name
+ * is the owning process id plus a random suffix, which is what lets a later
+ * start tell an orphan from a directory a live shell is still using.
+ */
+export const SHELL_TEMP_PREFIX = 'dsh-win-bash-'
+
+/** Retries granted to one reclaim, for handles a child releases late. */
+const TEMP_REMOVE_RETRIES = 3
+
+/** Backoff between those retries, in milliseconds. */
+const TEMP_REMOVE_RETRY_DELAY_MS = 100
 
 /**
  * The argv of one pinned shell: the payload's own bash by absolute path, no rc
@@ -102,12 +116,156 @@ export function shellEnvironment(
 
 /**
  * Create one shell process's private temp directory.
+ * @param base - the temp root to create it under; the machine's own by default.
  * @returns the absolute directory, created if absent.
  */
-export function shellTempDir(): string {
-  const temp = join(tmpdir(), 'dsh-win-bash-' + process.pid.toString() + '-' + randomUUID().slice(0, 8))
+export function shellTempDir(base: string = tmpdir()): string {
+  const temp = join(base, SHELL_TEMP_PREFIX + process.pid.toString() + '-' + randomUUID().slice(0, 8))
   mkdirSync(temp, { recursive: true })
   return temp
+}
+
+/**
+ * Delete one private temp directory, reporting failure to the caller.
+ *
+ * The retries are the Windows half of this: a child that just exited has not
+ * necessarily released its own handles yet, and rm reports that as EBUSY/EPERM.
+ * A few short retries turn that into a reclaim instead of a leftover.
+ * @param temp - the directory to delete; a missing one is not an error.
+ */
+async function deleteShellTempDir(temp: string): Promise<void> {
+  await rm(temp, {
+    recursive: true,
+    force: true,
+    maxRetries: TEMP_REMOVE_RETRIES,
+    retryDelay: TEMP_REMOVE_RETRY_DELAY_MS,
+  })
+}
+
+/**
+ * Delete one private temp directory, never letting the attempt throw.
+ *
+ * Teardown must not fail because a directory could not be reclaimed: the shell
+ * is already gone, and whatever is left is named for this process's own pid, so
+ * the next start's {@link sweepOrphanShellTempDirs} collects it once that pid is
+ * gone.
+ * @param temp - the directory that shell owned.
+ */
+export async function removeShellTempDir(temp: string): Promise<void> {
+  try {
+    await deleteShellTempDir(temp)
+  } catch {
+    // Deliberately swallowed; see the doc comment above.
+  }
+}
+
+/** What one orphan sweep found and did, for logging and for tests. */
+export interface ShellTempSweep {
+  /** Directories this sweep deleted. */
+  readonly removed: string[]
+  /** Directories whose owning process is still alive. */
+  readonly kept: string[]
+  /** Directories that could not be deleted; the next start tries again. */
+  readonly failed: string[]
+}
+
+/** The seams one orphan sweep runs against. */
+export interface ShellTempSweepOptions {
+  /** The temp root to scan; the machine's own by default. */
+  readonly root?: string
+  /** Whether the process that owned a directory still exists. */
+  readonly isAlive?: (pid: number) => boolean
+  /** How one directory is deleted; a rejection marks it failed. */
+  readonly remove?: (dir: string) => Promise<void>
+}
+
+/**
+ * Whether a process id still exists.
+ *
+ * Signal 0 performs the existence check without delivering anything. EPERM is
+ * the one answer that means "alive": the pid is there, it just belongs to a
+ * process this one may not signal.
+ * @param pid - the process id taken from a directory name.
+ * @returns whether that process is still running.
+ */
+function processAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM'
+  }
+}
+
+/**
+ * The owning pid of a shell temp directory, when the name is one.
+ * @param name - a directory name inside the temp root.
+ * @returns the pid, or undefined for every other name.
+ */
+function shellTempOwner(name: string): number | undefined {
+  const match = new RegExp('^' + SHELL_TEMP_PREFIX + '(\\d+)-[0-9a-f]{8}$').exec(name)
+  if (match === null) return undefined
+  const pid = Number.parseInt(match[1] ?? '', 10)
+  return Number.isSafeInteger(pid) && pid > 0 ? pid : undefined
+}
+
+/**
+ * List one temp root, reporting an unreadable root as empty.
+ *
+ * There is nothing to reclaim when the root cannot be read, and the next start
+ * retries with the same rules; failing the mount over it would be worse.
+ * @param root - the temp root to list.
+ * @returns its entries, or none.
+ */
+function tempRootEntries(root: string): Dirent[] {
+  try {
+    return readdirSync(root, { withFileTypes: true })
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Reclaim the private temp directories of shells that no longer exist.
+ *
+ * A crash or a hard kill ends this process before it can delete what its live
+ * shells owned, and those directories are not small: whatever a command wrote
+ * under TMP/TEMP/TMPDIR is still in them. Every name carries the pid that owned
+ * it, so the ones whose pid is gone are garbage by construction, and the ones
+ * whose pid still runs may belong to a live shell in this very process or to
+ * another instance sharing the temp root - those are kept.
+ *
+ * One directory that cannot be deleted is reported and skipped; it must not
+ * stop the round, because the usual cause (a long path, a locked file) is local
+ * to that directory.
+ * @param options - the seams; production passes none.
+ * @returns what was removed, kept and failed.
+ */
+export async function sweepOrphanShellTempDirs(options: ShellTempSweepOptions = {}): Promise<ShellTempSweep> {
+  const root = options.root ?? tmpdir()
+  const isAlive = options.isAlive ?? processAlive
+  const remove = options.remove ?? deleteShellTempDir
+  const removed: string[] = []
+  const kept: string[] = []
+  const failed: string[] = []
+  for (const entry of tempRootEntries(root)) {
+    if (!entry.isDirectory()) continue
+    const pid = shellTempOwner(entry.name)
+    if (pid === undefined) continue
+    // This process's own pid is alive by definition, and a directory of its own
+    // may be in use by a shell nothing has disposed yet.
+    if (pid === process.pid || isAlive(pid)) {
+      kept.push(entry.name)
+      continue
+    }
+    try {
+      await remove(join(root, entry.name))
+      removed.push(entry.name)
+    } catch {
+      failed.push(entry.name)
+    }
+  }
+  return { removed, kept, failed }
 }
 
 /** One command's complete result, as the tool consumes it. */
@@ -165,6 +323,12 @@ export class ShellUnavailableError extends Error {
 interface LiveShell {
   /** The spawned process handle. */
   readonly handle: SubprocessHandle
+  /**
+   * The private temp directory this shell owns (its TMP/TEMP/TMPDIR). Recorded
+   * on the shell rather than recomputed at teardown, because teardown is the
+   * only moment this process knows the directory became garbage.
+   */
+  readonly temp: string
   /** Set once the handle's outcome settles, so a dead shell is never reused. */
   exited: boolean
   /**
@@ -395,6 +559,9 @@ export class ShellRegistry {
         // to report but the teardown itself.
         resume()
         this.shells.delete(owner)
+        // The process ended on its own, so dispose never runs for it: its
+        // private temp directory is reclaimed here or nowhere.
+        await removeShellTempDir(shell.temp)
         const partial = tailBytes(recoverPartial(frame.text, marker), budget.stdoutBytes)
         if (shell.exitCode === null) {
           throw new ShellUnavailableError(
@@ -460,6 +627,7 @@ export class ShellRegistry {
     const existing = this.shells.get(owner)
     if (existing !== undefined && !existing.exited) return existing
     if (existing !== undefined) this.shells.delete(owner)
+    const temp = shellTempDir()
     const handle = this.subprocess.spawn({
       argv: shellArgv(runtime),
       cwd,
@@ -469,9 +637,9 @@ export class ShellRegistry {
         stderr: { maxBytes: SHELL_STDERR_CAPTURE_BYTES, spill: { maxBytes: DEFAULT_SPILL_BYTES } },
       },
       graceMs: GRACE_MS,
-      env: shellEnvironment(runtime, shellTempDir()),
+      env: shellEnvironment(runtime, temp),
     })
-    const shell: LiveShell = { handle, exited: false, cursor: { stdout: 0, stderr: 0 }, exitCode: null }
+    const shell: LiveShell = { handle, temp, exited: false, cursor: { stdout: 0, stderr: 0 }, exitCode: null }
     const markExited = (outcome: { exitCode: number | null }): void => {
       shell.exitCode = outcome.exitCode
       shell.exited = true
@@ -617,7 +785,14 @@ function recoverPartial(text: string, marker: FrameMarker): string {
   return begin < 0 ? text : text.slice(begin + marker.begin.length).replace(/^\n/, '')
 }
 
-/** Signal and await one shell's managed range, never letting teardown throw. */
+/**
+ * Signal one shell's managed range and reclaim what it owned, never letting
+ * teardown throw.
+ *
+ * The directory is deleted after the range is gone rather than before: it is
+ * the shell's TMP/TEMP/TMPDIR, so deleting it under a live process would turn
+ * every command still writing there into a failure.
+ */
 async function terminate(shell: LiveShell, reason: string): Promise<void> {
   void reason
   try {
@@ -627,4 +802,5 @@ async function terminate(shell: LiveShell, reason: string): Promise<void> {
     // A provider that can no longer observe its range must not block teardown:
     // the process was signalled and the registry entry is already gone.
   }
+  await removeShellTempDir(shell.temp)
 }

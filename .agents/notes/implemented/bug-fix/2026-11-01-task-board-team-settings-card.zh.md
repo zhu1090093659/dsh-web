@@ -21,6 +21,7 @@ Status: implemented
 - 卡片外壳（边框、背景、圆角、标题、折叠、内容内缩、两行之间的发丝线）一律来自家族切片，绝不来自本包的 CSS 模块。
 - 每一行是一个 `.field`：标签在 head 列，提示在它下面，控件在尾列，并由切片自己的容器查询收窄——卡片宽度低于 440px 时控件落到文字下方，而不是去压文字。标签因此不会被控件挤压，控件也共享同一条左边界。
 - 长说明是字段的 `hint`，不是控件区：不可用的能力把自己的名字留在标签行，原因在它下面，`不可用` 结论在尾列。
+- 卡片默认收起，与兄弟提供方区块和看板自己的专题卡一致：设置页打开时是一份专题列表，提供方区块是其中一条。收起的卡片根本不挂载内容，读者不展开就零成本。
 - 区块仍然经看板自己的动作通道写入（`setup-save`、`set-token`、`clear-token`、`refresh`），并保留自己的保存行：这张卡不持有暂存草稿，所以保存与放弃是空操作，被拒绝的写入由卡片页脚报告。
 - `dsh-task-board-team` 进入 `scripts/sync-shared.mjs` 的共享卡片三件套消费方清单；五个生成副本（`settings-form.ts`、`PluginSettingsCard.tsx`、`settings-card.module.css`、`SegmentGroup.tsx`、`RangeBubble.tsx`）与其它消费方一样提交在包内。它刻意不复制 `settings-entry-form.ts`：它的字段经看板写入，不走家族设置命名空间。
 - `@deepseek-ai/dsh-client-store` 进入本包的 devDependencies，供共享切片导入的类型解析。它不进入 `dsh.client.inject`：`PluginSettingsCard` 只以 type-only 导入 `CardShell`，该模块没有任何部分在运行时进入 bundle。

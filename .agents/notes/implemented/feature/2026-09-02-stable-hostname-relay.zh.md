@@ -47,6 +47,6 @@ Status: implemented
 
 - 路由模式改为 `*.dsh-market.com/*`（`/*` 对非根路径是必需的；已写进配置注释强制提醒）。
 - 通配 DNS 从手动 `*` A 记录迁移为控制台创建的 `*.dsh-market.com` Workers 自定义域，由 CF 托管记录，不再存在占位源。
-- `wrangler.jsonc` 只声明 zone 路由、永不声明 `custom_domain`：wrangler（截至 4.128）在本地校验就拒绝通配自定义域，而任何部署只要声明了一个 `custom_domain` 路由就会 PUT 全量替换该 worker 的整个域清单（wrangler 源码 `publishCustomDomains` → `PUT /domains/records` 已核实）——静默摘除控制台创建的域，诊断期间真实发生过一次。部署对这种摘除不打印任何警告；每次路由或域变更后，用 DoH 查询一个全新子域来确认域仍然存活。
+- `cloudflare.config.ts` 只声明 zone 路由、永不声明 `custom_domain`：wrangler（截至 4.128）无法声明通配自定义域，而任何部署只要声明了一个 `custom_domain` 路由就会 PUT 全量替换该 worker 的整个域清单（wrangler 源码 `publishCustomDomains` → `PUT /domains/records` 已核实）——静默摘除控制台创建的域，诊断期间真实发生过一次。部署对这种摘除不打印任何警告；每次路由或域变更后，用 DoH 查询一个全新子域来确认域仍然存活。
 
 同一晚的第二层：路由修复后，手机的二维码落地页返回插件的纯文本 `forbidden`（403）而不是配对页。根因：**Workers `fetch` 强制把源站侧的 Host 头改为 URL 权威**——`host` 是 Request 构造时就被剥离的禁止头，中继子请求永远无法向隧道后的实例呈现中继源主机名，源站看到的始终是隧道主机名。服务端有两处按 Host 绑定的检查因此全部失败：插件的手机侧围栏信任配置的公网主机（`publicBaseUrl` = 中继源），harness 浏览器鉴权把 Cookie 绑定到 Host 权威（手机的 Cookie 罐按它导航的中继源隔离）。旧的直连隧道流程之所以能工作，只是因为当时 `publicBaseUrl` 本来就是隧道地址。修复：插件在连接器侧盖章稳定源——quick 目标携带 `originHostHeader`（由注册器的稳定基址接线），工厂给 cloudflared 加 `--http-host-header`，本地服务器在所有请求（HTTP 与 WebSocket）上看到中继源。目标身份变化也会让运行中的隧道在中继开关切换时重启（manager 的目标幂等检查）。教训：在按 Host 绑定的应用状态前做反向代理，必须端到端保证 Host；Workers 的代理层做不到，只能由连接器负责。

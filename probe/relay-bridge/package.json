@@ -1,0 +1,9 @@
+{
+	"name": "dsh-relay-bridge-probe",
+	"private": true,
+	"type": "module",
+	"devDependencies": {
+		"cf": "^1.0.0-beta.26",
+		"wrangler": "^4.156.0"
+	}
+}

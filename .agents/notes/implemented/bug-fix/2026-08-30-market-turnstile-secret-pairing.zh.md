@@ -12,7 +12,7 @@ Status: implemented
 
 2026-08-30 的修复：
 
-- `sh()` 在给定 `input` 时改用 `['pipe', 'inherit', 'inherit']` 作为 stdio，secret 才能真正送达 wrangler。
+- `sh()` 改为在给定 `input` 时把 `stdin` 传成 `['pipe', 'inherit', 'inherit']`，secret 才能真正送达 wrangler。车道此后完全不再经 stdin 传 secret：`withSecretFile`（第 265 行）把值暂存在 0600 文件里，`secretUpdateArgs`（第 279 行）交给 CLI 的是 `cf workers secrets update <name> --worker dsh-market --text @<路径>`，因此空管道再也到不了 CLI，值也既不进 argv、也不进会打印命令与参数的失败日志（[市场部署车道改用 cf CLI](../process/2026-10-27-cf-cli-market-deploy-lane.zh.md)）。
 - 部署对 put 结果做端到端核验：用绑定值加假 response token 探测 siteverify，期望 `invalid-input-response`；若为 `invalid-input-secret` 则大声使部署失败，而不是上线一个写入全死的 worker。
 - worker 的 403 响应现在携带 `captcha_error_codes`（siteverify 错误码，外加合成的 `missing-secret-binding`），一次请求即可从客户端侧判定死绑定。
 - GitHub `TURNSTILE_SECRET` 已同步为组件真实 secret，从 `GET /accounts/{account}/challenges/widgets/{sitekey}` 机器读取（wrangler 的 OAuth token 可调用）。

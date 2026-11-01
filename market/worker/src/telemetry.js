@@ -426,7 +426,7 @@ export async function refreshBadgeCache(env) {
  *
  * The live count is a full-table scan over ~1M rows that exceeds shields'
  * ~3.5s fetch timeout, so the badge reads a single precomputed row that a
- * cron trigger (wrangler.jsonc triggers.crons) refreshes every 30 minutes.
+ * cron trigger (cloudflare.config.ts triggers.scheduled) refreshes every 30 minutes.
  * On top of that the response is cached at the edge for 30 minutes with a
  * 24h stale copy. Every fallback answers within the timeout or with a valid
  * shields JSON — the README badge must never show "inaccessible".

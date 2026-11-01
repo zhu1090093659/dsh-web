@@ -1,15 +1,23 @@
 /**
- * Retry contract for scripts/deploy-market.
+ * Retry and payload contract for scripts/deploy-market.
  *
- * The Deploy Market lane went red on Cloudflare API throttling: wrangler only
+ * The Deploy Market lane went red on Cloudflare API throttling: the CLI only
  * backs off when the 429 carries a Retry-After header, so the script itself has
  * to retry transient failures and keep every other failure on the fail-fast
  * path. The CLI turns a false "ok" into fail(), which prints the message and
  * exits 1, so these tests drive the policy through an injected attempt list and
  * an injected wait: no child process, no network, no clock.
+ *
+ * The secret bindings ride a 0600 file (cf workers secrets update --type
+ * secret_text --text @path) instead of stdin, while every failure line prints
+ * cmd + args, so the
+ * payload tests below pin both halves: the value reaches the child, and the
+ * value never reaches the log.
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
@@ -23,13 +31,19 @@ const {
   rayIdFrom,
   retryDelayMs,
   runWithRetries,
+  secretNamesFrom,
+  secretUpdateArgs,
   spawnAttempt,
+  withSecretFile,
 } = require('./deploy-market')
 
 /** The exact text the failing Deploy Market runs stopped on. */
 const THROTTLED = 'Received a malformed response from the API - GET /accounts/***/workers/services/dsh-market -> 429 Too Many Requests'
 
-const WRANGLER = 'wrangler'
+/** What cf prints for the same throttle: the API error names the status. */
+const CF_THROTTLED = 'Status code: 429'
+
+const CF = 'cf'
 const DEPLOY_ARGS = ['deploy']
 
 /**
@@ -54,7 +68,7 @@ async function runPlan(entries, overrides) {
 }
 
 test('the retry schedule pauses 5s, 20s, then 60s and stops with the attempt cap', () => {
-  // Given the documented budget of four runs per wrangler invocation
+  // Given the documented budget of four runs per cf invocation
   assert.equal(MAX_ATTEMPTS, 4)
   assert.deepEqual(RETRY_BACKOFF_MS, [5000, 20000, 60000])
   // When each failed attempt asks for the pause before the next one
@@ -62,10 +76,10 @@ test('the retry schedule pauses 5s, 20s, then 60s and stops with the attempt cap
   assert.deepEqual([1, 2, 3, 4].map((attempt) => retryDelayMs(attempt)), [5000, 20000, 60000, null])
 })
 
-test('a throttled wrangler call that clears on the next attempt ends with status 0 and logs the retry', async () => {
-  // Given a 429 without a Retry-After header on the first run and success on the second
+test('a throttled cf call that clears on the next attempt ends with status 0 and logs the retry', async () => {
+  // Given the 429 cf prints, without a Retry-After header, and success on the second run
   const { result, runs, waits, retries } = await runPlan([
-    { status: 1, tail: THROTTLED },
+    { status: 1, tail: CF_THROTTLED },
     { status: 0, tail: 'Uploaded dsh-market (3.21 sec)' },
   ])
   // When the deploy runs the command
@@ -79,7 +93,7 @@ test('a throttled wrangler call that clears on the next attempt ends with status
 })
 
 test('a malformed API response that clears on the next attempt ends with status 0 and logs the retry', async () => {
-  // Given wrangler reported an unparsable API response on the first run
+  // Given the CLI reported an unparsable API response on the first run
   const { result, runs, waits, retries } = await runPlan([
     { status: 1, tail: 'Received a malformed response from the API - GET /accounts/***/workers/services/dsh-market' },
     { status: 0, tail: 'Deployed dsh-market triggers' },
@@ -94,11 +108,10 @@ test('a malformed API response that clears on the next attempt ends with status 
 })
 
 test('an exhausted retry budget fails with the captured evidence and the Cloudflare Ray ID', async () => {
-  // Given every run is throttled and Cloudflare printed its Ray ID
+  // Given every run is throttled and Cloudflare printed its Ray ID in the body
   const throttledTail = [
-    'X [ERROR] A request to the Cloudflare API (/accounts/abc/workers/services/dsh-market) failed.',
-    '  ' + THROTTLED,
-    '  Ray ID: 8a1b2c3d4e5f6789',
+    'Status code: 429',
+    'Body: {"success":false,"errors":[],"messages":[],"ray_id":"8a1b2c3d4e5f6789"}',
   ].join(String.fromCharCode(10))
   const { result, runs, waits } = await runPlan([{ status: 1, tail: throttledTail }])
   // When the budget runs out
@@ -109,20 +122,20 @@ test('an exhausted retry budget fails with the captured evidence and the Cloudfl
   assert.equal(runs.length, 4)
   assert.deepEqual(waits, [5000, 20000, 60000])
   // And the failure message quotes the attempt count, the evidence, and the Ray ID
-  const message = failureMessage(WRANGLER, DEPLOY_ARGS, result)
-  assert.match(message, /^wrangler deploy failed \(exit 1\)/)
+  const message = failureMessage(CF, DEPLOY_ARGS, result)
+  assert.match(message, /^cf deploy failed \(exit 1\)/)
   assert.match(message, /still transient \(http-429\) after 4 attempts/)
-  assert.match(message, /429 Too Many Requests/)
-  assert.match(message, /malformed response from the API/)
-  assert.equal(message.split('Ray ID: 8a1b2c3d4e5f6789').length - 1, 2)
+  assert.match(message, /Status code: 429/)
+  assert.match(message, /ray_id/)
+  assert.equal(message.split('8a1b2c3d4e5f6789').length - 1, 2)
   assert.match(message, /captured output tail \(at most 200 lines\):/)
 })
 
 test('a non-transient failure is attempted exactly once and keeps the fail-fast message', async () => {
-  // Given wrangler rejected the token, which no retry can fix
+  // Given cf rejected the token, which no retry can fix
   const authFailure = [
-    'X [ERROR] A request to the Cloudflare API (/accounts/abc/workers/scripts/dsh-market) failed.',
-    '  Authentication error [code: 10000]',
+    'Status code: 401',
+    'Body: {"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}',
   ].join(String.fromCharCode(10))
   const { result, runs, waits, retries } = await runPlan([{ status: 1, tail: authFailure }])
   // When the deploy runs the command
@@ -135,17 +148,33 @@ test('a non-transient failure is attempted exactly once and keeps the fail-fast 
   assert.deepEqual(waits, [])
   assert.deepEqual(retries, [])
   // And the message is byte-identical to the one the lane printed before the retry existed
-  assert.equal(failureMessage(WRANGLER, DEPLOY_ARGS, result), 'wrangler deploy failed (exit 1)')
+  assert.equal(failureMessage(CF, DEPLOY_ARGS, result), 'cf deploy failed (exit 1)')
 })
 
 test('the transient classifier recognizes throttling, server errors, malformed responses and socket failures', () => {
-  // Given the failure texts wrangler prints for a transient API condition
+  // Given the failure texts the CLI prints for a transient API condition
   const transient = [
+    [CF_THROTTLED, 'http-429'],
     [THROTTLED, 'http-429'],
     ['GET /accounts/abc/workers/services/dsh-market -> 429 Too Many Requests', 'http-429'],
+    // The lines cf's typed Workers commands print: status text, then the
+    // request path. All four were measured against the real CLI.
+    ['429 Too Many Requests · HTTP /accounts/000/workers/scripts/dsh-market/secrets', 'http-429'],
+    ['503 Service Unavailable · HTTP /accounts/000/workers/scripts/dsh-market/secrets', 'http-5xx'],
+    ['502 Bad Gateway · HTTP /accounts/000/workers/scripts/dsh-market/secrets', 'http-5xx'],
+    ['500 Internal Server Error · HTTP /accounts/000/workers/scripts/dsh-market/secrets', 'http-5xx'],
+    // A status the renderer's text table does not map has an empty text and no
+    // trim, so the separator follows two spaces - 522 is the one with an
+    // incident on record here.
+    ['522  · HTTP /accounts/000/d1/database/95f4e8ae/query', 'http-5xx'],
+    // A tail carrying both statuses reports the reason that retries first.
+    [['503 Service Unavailable · HTTP /accounts/000/workers/scripts/dsh-market/secrets',
+      '429 Too Many Requests · HTTP /accounts/000/workers/scripts/dsh-market/secrets'].join(String.fromCharCode(10)), 'http-429'],
+    ['Status code: 503', 'http-5xx'],
     ['HTTP 503 Service Unavailable', 'http-5xx'],
     ['status: 500', 'http-5xx'],
     ['statusCode: 502', 'http-5xx'],
+    ['statusCode: 522', 'http-5xx'],
     ['request failed -> 522 Connection timed out', 'http-5xx'],
     ['Received a malformed response from the API - unexpected end of JSON input', 'malformed-api-response'],
     ['read ECONNRESET', 'socket-error'],
@@ -163,6 +192,8 @@ test('the transient classifier recognizes throttling, server errors, malformed r
 test('the transient classifier leaves auth, config, and content failures to fail fast', () => {
   // Given failures that another attempt cannot change
   const failFast = [
+    'Status code: 401',
+    'Status code: 404',
     'Authentication error [code: 10000]',
     'You are not authorized to access this resource',
     'Missing entry-point to Worker script or to assets directory',
@@ -170,6 +201,14 @@ test('the transient classifier leaves auth, config, and content failures to fail
     'Deploy failed: invalid value for "assets.directory"',
     'The D1 database 1b2c3d4e5f6a was not found in account abc',
     'Uploaded 1500 assets (500 new)',
+    // "500" and "5xx" in ordinary output stay out: the cf branch needs its separator.
+    'Uploaded 1500 assets (500 KiB) in 3.21 sec',
+    'edge returned 5xx for 12 requests',
+    '503 Service Unavailable on /accounts/000/workers/scripts/dsh-market/secrets',
+    // A number and the separator alone are not a status: the leading code must
+    // be a 5xx for the cf branch to fire.
+    '1500 assets · HTTP smoke',
+    'edge returned 5xx · HTTP smoke',
     'at Object.<anonymous> (/app/node_modules/wrangler/wrangler-dist/cli.js:500:12)',
   ]
   // When each text is classified
@@ -181,7 +220,7 @@ test('the transient classifier leaves auth, config, and content failures to fail
 
 test('a smaller injected attempt budget spends only the pauses it still has', async () => {
   // Given a budget of two runs that both fail transiently
-  const { result, runs, waits } = await runPlan([{ status: 1, tail: THROTTLED }], { attempts: 2 })
+  const { result, runs, waits } = await runPlan([{ status: 1, tail: CF_THROTTLED }], { attempts: 2 })
   // When the policy runs out of attempts
   // Then it stops after the second run with the single pause it was entitled to
   assert.equal(result.ok, false)
@@ -242,12 +281,95 @@ test('the child runner relays a real command and reports its exit status with th
   assert.match(result.tail, /stderr marker/)
 })
 
-test('the child runner writes the stdin payload the secret bindings depend on', async () => {
-  // Given a command that echoes whatever it reads on stdin
-  const script = 'let seen = ""; process.stdin.on("data", (chunk) => { seen += chunk }); process.stdin.on("end", () => { process.stdout.write("read:" + seen) })'
-  // When the runner feeds it a payload
-  const result = await spawnAttempt(process.execPath, ['-e', script], undefined, { input: 'turnstile-value', capture: true })
-  // Then the child received the payload instead of an empty stream
+test('the child runner carries the secret payload in a 0600 file that the run removes', async () => {
+  // Given a command that reads the file its @path argument names
+  const secret = 'turnstile-secret-value'
+  const script = 'const fs=require("node:fs");const file=process.argv[1].slice(1);const mode=fs.statSync(file).mode&0o777;process.stdout.write("mode:"+mode.toString(8)+" read:"+fs.readFileSync(file,"utf8"))'
+  let staged = null
+  // When the runner stages the value and runs that command
+  const result = await withSecretFile(secret, (file) => {
+    staged = file
+    return spawnAttempt(process.execPath, ['-e', script, '@' + file], undefined, { capture: true })
+  })
+  // Then the child read the exact value from a file only its owner can read
   assert.equal(result.status, 0)
-  assert.match(result.output, /read:turnstile-value/)
+  assert.match(result.output, /mode:600 read:turnstile-secret-value/)
+  // And nothing is left on disk afterwards
+  assert.equal(fs.existsSync(staged), false)
+})
+
+test('a staged secret is removed even when the process exits through the failure path', () => {
+  // Given a child that stages a value and then exits the way fail() does
+  const script = 'const { withSecretFile } = require(process.argv[1]);' +
+    'withSecretFile("turnstile-secret-value", (file) => { process.stdout.write(file); process.exit(1) })'
+  // When it exits
+  const child = spawnSync(process.execPath, ['-e', script, require.resolve('./deploy-market')], { encoding: 'utf8' })
+  // Then the exit hook removed the staged value instead of leaving it behind
+  assert.equal(child.status, 1)
+  assert.match(child.stdout, /deploy-market-[^/]*.secret$/)
+  assert.equal(fs.existsSync(child.stdout), false)
+})
+
+test('a failed invocation leaves no staged secret behind', async () => {
+  // Given a run whose upload throws
+  let staged = null
+  await assert.rejects(
+    withSecretFile('turnstile-secret-value', (file) => { staged = file; throw new Error('upload failed') }),
+    /upload failed/,
+  )
+  // Then the staged value is gone
+  assert.equal(fs.existsSync(staged), false)
+})
+
+test('the secret upload argv carries the binding type cf requires without a TTY', () => {
+  // Given a staged secret file
+  const args = secretUpdateArgs('TURNSTILE_SECRET', '/tmp/deploy-market-probe/secret')
+  // When the command line is built
+  // Then it is the canonical cf form, --type included
+  assert.deepEqual(args, [
+    'workers', 'secrets', 'update', 'TURNSTILE_SECRET',
+    '--worker', 'dsh-market',
+    '--type', 'secret_text',
+    '--text', '@/tmp/deploy-market-probe/secret',
+  ])
+})
+
+test('the secret upload logs the file reference and never the value', async () => {
+  // Given a secret that must not reach the job log
+  const secret = 'turnstile-value-must-not-be-logged'
+  let logged = ''
+  // When the upload fails after the retry budget is spent
+  await withSecretFile(secret, (file) => {
+    const args = secretUpdateArgs('TURNSTILE_SECRET', file)
+    // The retry line and the failure message both print cmd + args
+    assert.equal(args.join(' ').includes(secret), false)
+    logged = failureMessage(CF, args, { status: 1, attempts: MAX_ATTEMPTS, reason: 'http-429', tail: CF_THROTTLED })
+  })
+  // Then the evidence names the file, not the value
+  assert.equal(logged.includes(secret), false)
+  assert.match(logged, /^cf workers secrets update TURNSTILE_SECRET --worker dsh-market --type secret_text --text @/)
+  assert.match(logged, /still transient \(http-429\) after 4 attempts/)
+})
+
+test('the secret listing is read from cf JSON in either envelope, with a text fallback', () => {
+  // Given the API envelope cf prints, a bare result array, and a plain listing
+  const envelope = JSON.stringify({
+    success: true,
+    errors: [],
+    messages: [],
+    result: [
+      { name: 'TURNSTILE_SECRET', type: 'secret_text' },
+      { name: 'ASSET_ATTEST_SECRET', type: 'secret_text' },
+    ],
+  })
+  const bare = JSON.stringify([{ name: 'TURNSTILE_SECRET', type: 'secret_text' }])
+  const text = 'TURNSTILE_SECRET' + String.fromCharCode(10) + 'ASSET_ATTEST_SECRET'
+  // When each shape is read
+  // Then every one of them names the bindings it lists
+  assert.match(secretNamesFrom(envelope), /TURNSTILE_SECRET/)
+  assert.match(secretNamesFrom(envelope), /ASSET_ATTEST_SECRET/)
+  assert.match(secretNamesFrom(bare), /TURNSTILE_SECRET/)
+  assert.match(secretNamesFrom(text), /TURNSTILE_SECRET/)
+  // And a listing that names nothing cannot satisfy the fail-closed gate
+  assert.equal(secretNamesFrom('{"success":true,"errors":[],"result":[]}').includes('TURNSTILE_SECRET'), false)
 })

@@ -12,7 +12,7 @@ Root cause: `scripts/deploy-market`'s `sh()` helper called `spawnSync` with `std
 
 Repairs, applied 2026-08-30:
 
-- `sh()` now passes `stdin` as `['pipe', 'inherit', 'inherit']` whenever `input` is given, so the secret actually reaches wrangler.
+- `sh()` was changed to pass `stdin` as `['pipe', 'inherit', 'inherit']` whenever `input` is given, so the secret actually reached wrangler. The lane no longer passes secrets through stdin at all: `withSecretFile` (line 265) stages the value in a 0600 file and `secretUpdateArgs` (line 279) passes `cf workers secrets update <name> --worker dsh-market --text @<path>`, so an empty pipe cannot reach the CLI and the value stays out of the argv and out of the failure log that prints the command and its arguments ([the cf CLI migration](../process/2026-10-27-cf-cli-market-deploy-lane.md)).
 - The deploy verifies the put end-to-end: it probes siteverify with the binding value and a dummy response token, expecting `invalid-input-response`; `invalid-input-secret` fails the deploy loudly instead of shipping a write-dead worker.
 - The worker's 403 responses now carry `captcha_error_codes` (siteverify error-codes, plus a synthetic `missing-secret-binding`), so a dead binding is diagnosable from the client side in one request.
 - The GitHub `TURNSTILE_SECRET` was synced to the widget's true secret, machine-read from `GET /accounts/{account}/challenges/widgets/{sitekey}` (wrangler's OAuth token is accepted there).

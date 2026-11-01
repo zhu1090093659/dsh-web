@@ -112,7 +112,7 @@ flowchart LR
 
 ## 创意工坊与市场站
 
-市场内容的事实源随家族拆分分开：四个独立仓作为 git submodule 挂在 `satellites/`，各自的 gitlink 就是市场读到的提交，[market-inputs.lock.json](../market-inputs.lock.json) 记录哪个 submodule 承载哪份输入及其内容目录，[scripts/market-fetch-inputs.mjs](../scripts/market-fetch-inputs.mjs) 把该提交的内容目录物化到 `.market-inputs/`（submodule 检出停在该提交就地复制，否则按该提交下载 tarball，不需要历史，只取内容目录）；插件索引 `community.json` 与皮肤样式安全管线 `transformSkinCss` 从聚合包依赖树解析已发布包——管线取自该包的 `@linxin666/dsh-client-ui-skin-center/css-safety` 子路径（包根不再携带 lightningcss），较旧的已发布包回退到包根导出；预设取 dsh-presets 的 presets/、编辑推荐取 market/editor-picks.json（手工维护的皮肤 / 宠物 / 插件引用清单，构建时逐条校验可解析）。[scripts/market-build](../scripts/market-build) 派生 `market/dist`（`manifest/{skins,pets,plugins,presets,editor-picks}.json`、预览与试穿资产；产物提交进仓，`market:check` 校验一致）。tryon 试穿壳来自 market/shell 的构建产物，拷入 `dist/tryon/`。部署经 [scripts/deploy-market](../scripts/deploy-market)：先拉取内容输入并 `market-build --check`，再 wrangler 应用 D1 migrations 并部署 [Worker](../market/worker/wrangler.jsonc)（ASSETS 绑定 dist、Turnstile secret 守卫）；push 到 dev 且触及市场相关路径时由 [deploy-market.yml](../.github/workflows/deploy-market.yml) 自动上架，整站资产校验按 manifest 用 [scripts/market-verify-assets.mjs](../scripts/market-verify-assets.mjs) 逐条核对部署版本能以其 ASSETS 绑定为每个路径提供与提交文件一致的字节数（`POST /api/asset-attest`，共享密钥门控，未配置或密钥不符时 fail closed），由维护者在策略允许的网络上按需执行，不在部署车道内。匿名点赞必须保持 Turnstile 门控并经单个 D1 batch 写入（信任边界见根 [AGENTS.md](../AGENTS.md)）。
+市场内容的事实源随家族拆分分开：四个独立仓作为 git submodule 挂在 `satellites/`，各自的 gitlink 就是市场读到的提交，[market-inputs.lock.json](../market-inputs.lock.json) 记录哪个 submodule 承载哪份输入及其内容目录，[scripts/market-fetch-inputs.mjs](../scripts/market-fetch-inputs.mjs) 把该提交的内容目录物化到 `.market-inputs/`（submodule 检出停在该提交就地复制，否则按该提交下载 tarball，不需要历史，只取内容目录）；插件索引 `community.json` 与皮肤样式安全管线 `transformSkinCss` 从聚合包依赖树解析已发布包——管线取自该包的 `@linxin666/dsh-client-ui-skin-center/css-safety` 子路径（包根不再携带 lightningcss），较旧的已发布包回退到包根导出；预设取 dsh-presets 的 presets/、编辑推荐取 market/editor-picks.json（手工维护的皮肤 / 宠物 / 插件引用清单，构建时逐条校验可解析）。[scripts/market-build](../scripts/market-build) 派生 `market/dist`（`manifest/{skins,pets,plugins,presets,editor-picks}.json`、预览与试穿资产；产物提交进仓，`market:check` 校验一致）。tryon 试穿壳来自 market/shell 的构建产物，拷入 `dist/tryon/`。部署经 [scripts/deploy-market](../scripts/deploy-market)：先拉取内容输入并 `market-build --check`，再用 cf 应用 D1 migrations 并部署 [Worker](../market/worker/cloudflare.config.ts)（ASSETS 绑定 dist、Turnstile secret 守卫）；push 到 dev 且触及市场相关路径时由 [deploy-market.yml](../.github/workflows/deploy-market.yml) 自动上架，整站资产校验按 manifest 用 [scripts/market-verify-assets.mjs](../scripts/market-verify-assets.mjs) 逐条核对部署版本能以其 ASSETS 绑定为每个路径提供与提交文件一致的字节数（`POST /api/asset-attest`，共享密钥门控，未配置或密钥不符时 fail closed），由维护者在策略允许的网络上按需执行，不在部署车道内。匿名点赞必须保持 Turnstile 门控并经单个 D1 batch 写入（信任边界见根 [AGENTS.md](../AGENTS.md)）。
 
 ```mermaid
 flowchart LR
@@ -133,7 +133,7 @@ flowchart LR
     S5 --> MB
     SHELL["market/shell 构建：浏览器版试穿壳"] --> DIST["market/dist（提交产物）"]
     MB --> DIST
-    DIST -- "node scripts/deploy-market：wrangler deploy + D1 migrations" --> W["Cloudflare Worker：ASSETS、D1、Turnstile、定时任务"]
+    DIST -- "node scripts/deploy-market：cf deploy + D1 migrations" --> W["Cloudflare Worker：ASSETS、D1、Turnstile、定时任务"]
     W -- "node scripts/market-verify-assets.mjs 逐条校验资产" --> VERIFY["部署后资产校验"]
     W --> SITE["dsh-market.com"]
     CARD["创意工坊卡片（dsh-market 插件）"] -- "读清单，一键安装进 DSH_HOME" --> SITE

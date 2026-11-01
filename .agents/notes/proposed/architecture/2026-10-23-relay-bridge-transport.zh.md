@@ -82,7 +82,7 @@ Status: proposed
 
 ### 观察面
 
-每个经桥的请求带 `x-relay-transport: bridge` 与转发的 `cf-ray`，回退时带 `x-relay-fallback: no-connector`；插件侧把状态、实例、端点、本地上游与最近一次拨号错误写进 `$DSH_HOME/remote-web-ui-relay-bridge.json`，因为桌面宿主把插件跑在一个没人读得到 stdout 的进程里（2026-10-23：一个从未认领的宿主整条命期都答 `no-connector`，没有任何可读痕迹）；对象每 60 秒用 `getWebSockets().length` 采样一次在线连接数；断开原因（`deploy`、`network`、`evicted`）写进结构化日志，沿用 `wrangler.jsonc` 已开的 observability。Workers 每次发布都会在宽限期后断开存量 WebSocket（[Workers limits](https://developers.cloudflare.com/workers/platform/limits/) 的运行时更新宽限一节），所以桥必须假定「发布等于全网 socket 滚动重连」，重连退避沿用插件已有的 `RelayRegistrar` 策略。
+每个经桥的请求带 `x-relay-transport: bridge` 与转发的 `cf-ray`，回退时带 `x-relay-fallback: no-connector`；插件侧把状态、实例、端点、本地上游与最近一次拨号错误写进 `$DSH_HOME/remote-web-ui-relay-bridge.json`，因为桌面宿主把插件跑在一个没人读得到 stdout 的进程里（2026-10-23：一个从未认领的宿主整条命期都答 `no-connector`，没有任何可读痕迹）；对象每 60 秒用 `getWebSockets().length` 采样一次在线连接数；断开原因（`deploy`、`network`、`evicted`）写进结构化日志，沿用 `cloudflare.config.ts` 已开的 observability。Workers 每次发布都会在宽限期后断开存量 WebSocket（[Workers limits](https://developers.cloudflare.com/workers/platform/limits/) 的运行时更新宽限一节），所以桥必须假定「发布等于全网 socket 滚动重连」，重连退避沿用插件已有的 `RelayRegistrar` 策略。
 
 ## 容量与成本算术
 

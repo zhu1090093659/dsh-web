@@ -8,7 +8,7 @@ Status: implemented
 
 ## Decision
 
-worker 改为失败关闭：绑定缺失时 `verifyTurnstile` 返回 `false`，两个写接口按已配置部署中令牌被拒的相同方式返回 403（`captcha-required` / `captcha-invalid`）。`scripts/deploy-market` 新增部署后步骤：当部署环境带有 `TURNSTILE_SECRET` 时先刷新绑定，再通过 `wrangler secret list` 核验 worker 确实持有该绑定，否则让部署立即报错失败。部署工作流在部署前断言仓库 secret 已配置，取代原先的条件 put 步骤（put 改由部署脚本执行）。OpenAPI 摘要去掉「when configured」限定语，`market-worker.test.mjs` 新增测试钉死失败关闭行为：绑定缺失时两个端点都返回 403 且 D1 完全不被触碰。
+worker 改为失败关闭：绑定缺失时 `verifyTurnstile` 返回 `false`，两个写接口按已配置部署中令牌被拒的相同方式返回 403（`captcha-required` / `captcha-invalid`）。`scripts/deploy-market` 新增部署后步骤：当部署环境带有 `TURNSTILE_SECRET` 时先刷新绑定，再通过 `cf workers secrets list` 核验 worker 确实持有该绑定，否则让部署立即报错失败。部署工作流在部署前断言仓库 secret 已配置，取代原先的条件 put 步骤（put 改由部署脚本执行）。OpenAPI 摘要去掉「when configured」限定语，`market-worker.test.mjs` 新增测试钉死失败关闭行为：绑定缺失时两个端点都返回 403 且 D1 完全不被触碰。
 
 ## Alternatives considered
 

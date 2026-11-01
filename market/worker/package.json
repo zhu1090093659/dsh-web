@@ -1,0 +1,10 @@
+{
+  "name": "dsh-market-worker",
+  "private": true,
+  "type": "module",
+  "description": "Deployment manifest for the dsh-market.com Worker: cf builds it and delegates the bundle to wrangler.",
+  "devDependencies": {
+    "cf": "^1.0.0-beta.26",
+    "wrangler": "^4.156.0"
+  }
+}

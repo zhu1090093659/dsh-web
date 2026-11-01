@@ -12,7 +12,7 @@ This is the implementation record of the [relay transport v2 proposal](2026-10-2
 | `market/worker/src/relay-bridge.js` | `RelayBridge` (the object) and the `/api/relay/bridge` door (credential, windows, attach marker) |
 | `market/worker/src/relay.js` | `bridgeModeOf` and the data-plane split; the quick branch gains two lines at its end |
 | `market/worker/src/relay-control.js` | the claim reply carries that instance's `mode` and the bridge endpoint; a bridged claim converges no tunnel, ingress or CNAME and sends no Cloudflare call |
-| `market/worker/wrangler.jsonc` | the `RELAY_BRIDGE` namespace and the `v1` class migration tag |
+| `market/worker/cloudflare.config.ts` | the `RELAY_BRIDGE` namespace and the `RelayBridge` class ledger |
 | `packages/dsh-remote-web-ui/src/relay-bridge-connector.ts` | the plugin connector, grown from `probe/relay-bridge/connector.mjs`, beside the quick connector |
 | `packages/dsh-remote-web-ui/src/relay-connector.ts` | starts the bridge after a claim, stops it on release and teardown |
 | `scripts/market-relay-bridge.test.mjs`, `packages/dsh-remote-web-ui/tests/relay-bridge-connector.spec.ts` | the tests of the new behavior |

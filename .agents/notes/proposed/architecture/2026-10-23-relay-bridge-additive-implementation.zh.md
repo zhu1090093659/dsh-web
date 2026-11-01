@@ -12,7 +12,7 @@ Status: proposed（已实现并有测试，尚未部署）
 | `market/worker/src/relay-bridge.js` | `RelayBridge`（对象）与 `/api/relay/bridge` 的门（凭据校验、窗口限流、attach 标记） |
 | `market/worker/src/relay.js` | `bridgeModeOf` 与数据面分流；quick 分支只在末尾多了回退标记两行 |
 | `market/worker/src/relay-control.js` | claim 应答带该实例的 `mode` 与桥端点；bridge 模式的 claim 不收敛隧道、ingress 与 CNAME，一次 Cloudflare 调用都不发 |
-| `market/worker/wrangler.jsonc` | `RELAY_BRIDGE` 命名空间与 `v1` 类迁移标记 |
+| `market/worker/cloudflare.config.ts` | `RELAY_BRIDGE` 命名空间与 `RelayBridge` 类账本 |
 | `packages/dsh-remote-web-ui/src/relay-bridge-connector.ts` | 插件侧连接器，从 `probe/relay-bridge/connector.mjs` 长出，与 quick 连接器并存 |
 | `packages/dsh-remote-web-ui/src/relay-connector.ts` | claim 成功后启动桥、释放与销毁时停止 |
 | `scripts/market-relay-bridge.test.mjs`、`packages/dsh-remote-web-ui/tests/relay-bridge-connector.spec.ts` | 新行为的测试 |

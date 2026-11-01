@@ -35,7 +35,12 @@ socket 配对后按流 id 多路复用。
 
 ```sh
 # 1. 部署（票据只用来开一次门，见下文）
-npx wrangler deploy --var PROBE_INSTANCE:shadow-1 --var CONNECTOR_TICKET:"$(openssl rand -hex 24)"
+#    探针是非生产测量仪器：PROBE_INSTANCE 已在 cloudflare.config.ts 声明，不必每次给。
+#    票据不进配置，先生成到文件（--text @文件 按字节原样读，写文件不要带换行），
+#    部署后作为 secret 下发；每下发一次，连接器手里的旧票就作废。
+printf '%s' "$(openssl rand -hex 24)" > /tmp/relay-bridge-ticket
+cf deploy
+cf workers secrets update CONNECTOR_TICKET --worker dsh-relay-bridge-probe --type secret_text --text @/tmp/relay-bridge-ticket
 
 # 2. 本机连接器
 PROBE_WORKER=wss://<worker>.workers.dev PROBE_INSTANCE=shadow-1 PROBE_TICKET=<票据> \

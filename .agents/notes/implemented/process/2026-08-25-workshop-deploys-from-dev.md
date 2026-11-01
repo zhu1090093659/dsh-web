@@ -10,7 +10,7 @@ Workshop (dsh-market.com) visibility was coupled to the npm release cadence. dep
 
 - deploy-market.yml push trigger moves from main to dev (branches: dev). The paths filter keeps its role and now watches the satellite pins: market/**, satellites/**, market-inputs.lock.json, scripts/market-build, scripts/market-fetch-inputs.mjs, scripts/market-verify-assets.mjs, scripts/deploy-market, scripts/market-layout.test.mjs, package.json, and the workflow file itself. The in-repo content paths it watched before the family split (packages/skins/**, packages/dsh-pet/**, packages/dsh-community-plugins/**) moved out with the content; the pin mechanics are owned by [the satellite-repositories note](../architecture/2026-09-23-family-satellite-repositories.md).
 - The main trigger is removed, not kept alongside dev. main only ever receives dev content through maintainer integration, so a main push would redeploy an older-or-equal dist and open a rollback window against a newer dev deploy. workflow_dispatch remains the manual fallback.
-- In-workflow gates are unchanged: market:check, community:check, and test:scripts run before wrangler deploy; only committed market/dist artifacts are deployed (no CI rebuild), matching the gallery discipline.
+- In-workflow gates are unchanged: market:check, community:check, and test:scripts run before `cf deploy`; only committed market/dist artifacts are deployed (no CI rebuild), matching the gallery discipline.
 
 ## Alternatives considered
 

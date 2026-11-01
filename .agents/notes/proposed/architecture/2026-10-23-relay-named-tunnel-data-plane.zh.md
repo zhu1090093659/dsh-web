@@ -179,5 +179,5 @@ Worker 的端点留在 market 顶点（`https://dsh-market.com/api/relay/...`）
 - Cloudflare API token 能创建和删除账户内所有隧道；Worker secret 泄漏就是账户级隧道灾难，只能靠专用隧道命名空间与轮换节奏收窄。
 - 删除通配 Workers 自定义域会拿走双语离线页，已登记但停跑的实例从此显示 Cloudflare 自己的隧道故障页。
 - 一个 profile 一条隧道意味着账户的隧道数与单机上的连接器数随采纳增长，而采纳窗口里每个实例要跑两个连接器。
-- 收窄路由同时把 `tv.dsh-market.com` 交还给它自己的自定义域：今天这个主机名被通配路由接住，再经 `wrangler.jsonc` 注释里那条 service binding 转发到 telemetry-view worker，所以收窄上线前要在它自己的绑定上把遥测面板重新验一遍。
+- 收窄路由同时把 `tv.dsh-market.com` 交还给它自己的自定义域：今天这个主机名被通配路由接住，再经 `cloudflare.config.ts` 注释里那条 service binding 转发到 telemetry-view worker，所以收窄上线前要在它自己的绑定上把遥测面板重新验一遍。
 - Worker 对 `<uuid>.cfargotunnel.com` 的子请求能否成功未经验证（阶段 1 要测）；若不能，回滚就无法只做一侧，两侧必须在同一个窗口内一起动。

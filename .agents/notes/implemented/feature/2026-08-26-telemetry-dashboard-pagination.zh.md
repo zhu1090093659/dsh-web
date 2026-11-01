@@ -13,7 +13,7 @@ Status: implemented
 - `GET /api/telemetry/summary` 接受 `paths_limit`/`paths_offset`（默认 20，上限 100）与 `items_limit`/`items_offset`（默认 200，上限 200）；响应携带 `site.paths_total` 与 `plugins.totals.items`（后者从「截断后的页长度」变为精确的去重条目总数），并回显 `*_page` 分页窗口。默认值复现分页前的响应，既有调用方不受影响。条目的渠道/版本分布保持全基数扫描（其行数由插件目录规模决定，与流量无关）并在内存中关联到返回页，保持单个 D1 批次九条语句。
 - `market/telemetry-view` 拆为 `src/index.js`（Access JWT 校验、路由、`/app.js` 与 `/data` 端点）与 `src/page.js`（页面文档与客户端源码）。boot 数据放在不可执行的 `<script type="application/json">` 块中，客户端以同源外部脚本加载：该 zone 的边缘会向 CSP 注入 nonce，按规范 nonce 会使 `unsafe-inline` 失效，内联脚本无论 worker 发什么都会被拦——`script-src 'self'` 加外部文件对此免疫，而 JSON 数据块根本不受 script-src 管辖。客户端渲染含环比昨日的 KPI 卡片、两张手绘 SVG 趋势图（上方为每日活跃实例即心跳 UV，下方为站点 PV/UV，共用同一折线渲染器、各自带悬停十字线）、带分页器（页码 + 10/20/50 每页选择）的热门路径与插件表格。切换时间范围与翻页经由同源 `/data` 代理（同样校验 Access JWT 并转发分页窗口），不再整页刷新。
 - CSP 从禁脚本调整为 `script-src 'self'; connect-src 'self'`：全部脚本为同一个同源文件（不引 CDN），内嵌 boot JSON 将 `<` 转义为 \\u003c，数据无法提前终结所在块。
-- 两个 worker 均以 `wrangler deploy` 直接部署，不涉及 D1 迁移。
+- 两个 worker 均以 `cf deploy` 直接部署，不涉及 D1 迁移。
 
 本 note 扩展 [Anonymous install telemetry via the market edge API](2026-08-24-anonymous-install-telemetry.md)；采集链路与隐私契约归该 note 所有，本次不变。
 

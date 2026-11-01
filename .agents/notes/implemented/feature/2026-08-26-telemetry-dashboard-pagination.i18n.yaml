@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-08-26-telemetry-dashboard-pagination.md: ce2146ee192f9cbaca235adae9e344fdf46989bd
-2026-08-26-telemetry-dashboard-pagination.zh.md: 31d21e194c16b4406857ed3ed5853e2b5d87a5f8
+2026-08-26-telemetry-dashboard-pagination.md: 3d332e3c19e45b4b35ee816ec423079c664cb9e7
+2026-08-26-telemetry-dashboard-pagination.zh.md: f70e7404d79a1fa9baa694b887e1b8653e2d712d

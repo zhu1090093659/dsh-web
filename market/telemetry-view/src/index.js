@@ -109,9 +109,10 @@ const SETUP_HTML = [
   '<ol>',
   '<li>Zero Trust &gt; Access &gt; Applications: create a self-hosted app for <code>tv.dsh-market.com</code> with an email-OTP policy for your address.</li>',
   '<li>Copy the application AUD tag.</li>',
-  '<li>From <code>market/telemetry-view</code> run:<br>',
-  '<code>npx wrangler@4 secret put ACCESS_TEAM --name dsh-market-telemetry-view</code> (your team name, the part before <code>.cloudflareaccess.com</code>)<br>',
-  '<code>npx wrangler@4 secret put ACCESS_AUD --name dsh-market-telemetry-view</code></li>',
+  '<li>Put each value in its own file, with no trailing newline (the file is read byte for byte), then set it as a secret:<br>',
+  '<code>cf workers secrets update ACCESS_TEAM --worker dsh-market-telemetry-view --type secret_text --text @team.txt</code> (your team name, the part before <code>.cloudflareaccess.com</code>)<br>',
+  '<code>cf workers secrets update ACCESS_AUD --worker dsh-market-telemetry-view --type secret_text --text @aud.txt</code><br>',
+  '<code>cf workers secrets update TELEMETRY_READ_KEY --worker dsh-market-telemetry-view --type secret_text --text @read-key.txt</code> (the read key the summary endpoint expects, sent upstream as <code>x-telemetry-key</code>)</li>',
   '</ol>',
 ].join('')
 

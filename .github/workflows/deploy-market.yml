@@ -92,8 +92,16 @@ jobs:
       - name: Market consistency
         run: pnpm market:check && pnpm test:scripts
 
-      - name: Install wrangler
-        run: npm install -g wrangler@4
+      # cf needs Node ^22.23.0; the floating 22 above resolves to the newest
+      # 22.x, which satisfies it.
+      - name: Install cf CLI
+        run: npm install -g cf@latest
+
+      # cf delegates the bundle to Wrangler (bundler=wrangler) and requires it
+      # in the worker's own tree, so the worker manifest installs from the
+      # committed lockfile instead of a global wrangler.
+      - name: Install worker build dependencies
+        run: npm ci --prefix market/worker
 
       # The worker fails closed without TURNSTILE_SECRET (likes/installs reject
       # every write), so deploying without the secret must fail loudly here

@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-10-27-market-deploy-retries-throttled-api.md: 473ba5c53cbf0d66cf23e0466bc0f39fa0a562d3
-2026-10-27-market-deploy-retries-throttled-api.zh.md: ca4f0b39fc85a21383e5dd92e27c0154ed3a6004
+2026-10-27-market-deploy-retries-throttled-api.md: a675757dc52bea03072d90bde12e7b84ad67b036
+2026-10-27-market-deploy-retries-throttled-api.zh.md: ad27c3462140cac6ca8a6e92568565fa7ba9f276

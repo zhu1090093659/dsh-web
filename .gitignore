@@ -43,6 +43,9 @@ test-results/
 # Cloudflare Workers 本地状态（wrangler dev 缓存，不入库）
 .wrangler/
 
+# cf CLI 的构建与类型产物（cf build 输出与 cf workers types 生成，不入库）
+.cloudflare/
+
 # 构建产物（tsdown 输出）
 packages/dsh-usage/lib/
 

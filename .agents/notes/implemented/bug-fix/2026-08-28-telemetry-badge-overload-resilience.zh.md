@@ -11,7 +11,7 @@ README 的 "users" shields 端点徽章渲染为 "inaccessible"。两层独立�
 
 ## Decision
 
-- 新增 `badge_cache` D1 表（迁移 `0005_badge_cache.sql`）以单行存放预算计数。cron 触发器（`market/worker/wrangler.jsonc` 的 `*/30 * * * *`，`market/worker/src/index.js` 的 `scheduled` 处理器）每 30 分钟把心跳去重访客数重算进该表。
+- 新增 `badge_cache` D1 表（迁移 `0005_badge_cache.sql`）以单行存放预算计数。cron 触发器（`market/worker/cloudflare.config.ts` 的 `*/30 * * * *`，`market/worker/src/index.js` 的 `scheduled` 处理器）每 30 分钟把心跳去重访客数重算进该表。
 - `handleTelemetryUsersBadge`（`market/worker/src/telemetry.js`）现在只读这一行主键——任意 colo 都能在 shields 超时内返回——其上再叠加 30 分钟边缘 Cache API 条目与 24 小时 stale 副本。首次 cron 之前（或行缺失时）走 bootstrap：跑一次全表扫描并播种该行。任何 D1 失败时回退 stale 副本，或返回合法的 `{"schemaVersion":1,...,"message":"unavailable"}` 200 JSON。不存在会产生 5xx 或因首字节过慢超出 shields 超时的路径。
 - `handleTelemetryPost` 捕获 D1 写入错误并返回 `503 {"ok":false,"error":"storage-unavailable"}`——与既有缺绑定分支同构——而非未捕获异常页。客户端把未接受视为「下次挂载再补报」，与 docs/telemetry.md 记录的 fire-and-forget 契约一致。
 - `/api/stats`（market/worker/src/index.js）套用同样的边缘缓存模式（60 秒新值 + 1 小时 stale 副本）并增加 503 `storage-unavailable` 兜底：工坊卡片每次 GUI 启动都会抓取它，卡片 UI 本来就把非 200 当作零值状态。`/api/telemetry/summary` 返回同样的 503 JSON 而非异常页；它刻意不做边缘缓存——缓存键无法携带 `x-telemetry-key` 鉴权。

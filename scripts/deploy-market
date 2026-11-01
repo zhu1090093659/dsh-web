@@ -7,38 +7,44 @@
  *
  * Pipeline of this script:
  *   1. sanity: market-build --check (committed dist is up to date)
- *   2. wrangler d1 migrations apply dsh-market --remote (idempotent)
- *   3. wrangler deploy (worker + static assets + custom domain dsh-market.com)
+ *   2. cf d1 migrations apply <database id> --dir migrations (idempotent)
+ *   3. cf deploy (worker + static assets; the custom domains stay
+ *      dashboard-managed and are declared nowhere)
  *   4. ensure the worker actually has a TURNSTILE_SECRET binding (refreshing
  *      it from the deploy environment when present) — likes/installs fail
  *      closed without it, so a missing secret fails the deploy loudly
  *   5. ensure the ASSET_ATTEST_SECRET binding is there for the attestation route
  *
- * Auth: wrangler uses its own login/CI env (CLOUDFLARE_API_TOKEN,
+ * Auth: cf uses its own login/CI env (CLOUDFLARE_API_TOKEN,
  * CLOUDFLARE_ACCOUNT_ID).
  *
  * Retries: the Workers API throttles with a 429 that carries no Retry-After
- * header, and wrangler only backs off when that header is present, so one
- * throttled response used to end the deploy lane. Every wrangler invocation
- * now retries the transient conditions (HTTP 429, HTTP 5xx, wrangler's
- * "malformed response from the API", socket-level errors) up to MAX_ATTEMPTS
- * runs with the RETRY_BACKOFF_MS pauses between them. Every other failure —
- * a bad config, a rejected token, a missing binding, a non-transient D1
- * migration error — still fails on the first attempt, because retrying those
- * only spends three more minutes reaching the same red lane.
+ * header, and the CLI only backs off when that header is present, so one
+ * throttled response used to end the deploy lane. Every cf invocation now
+ * retries the transient conditions (HTTP 429, HTTP 5xx in the shapes the CLI
+ * prints them in, an API response body that is not JSON - cf reports that one
+ * with the status it arrived with - and socket-level errors) up to MAX_ATTEMPTS
+ * runs with the RETRY_BACKOFF_MS pauses between them. Every other failure — a
+ * bad config, a rejected token, a missing binding, a non-transient D1 migration
+ * error — still fails on the first attempt, because retrying those only spends
+ * three more minutes reaching the same red lane.
  *
  * Usage:
- *   node scripts/deploy-market --wrangler "npx wrangler@4"  # custom wrangler cmd
+ *   node scripts/deploy-market --cf "npx cf@latest"  # custom cf cmd
  */
 
+const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 const { spawn, spawnSync } = require('node:child_process')
 
 const ROOT = path.resolve(__dirname, '..')
 const WORKER_DIR = path.join(ROOT, 'market', 'worker')
-const D1_NAME = 'dsh-market'
+const WORKER_NAME = 'dsh-market'
+/** cf takes the D1 database ID here, not the database name or the binding name. */
+const D1_DATABASE_ID = '95f4e8ae-444a-46d0-98be-c367a9dbe6e8'
 
-/** Runs per wrangler invocation: the first attempt plus at most three retries. */
+/** Runs per cf invocation: the first attempt plus at most three retries. */
 const MAX_ATTEMPTS = 4
 
 /** Pause before retry N+1 in milliseconds, so index 0 is the pause after attempt 1. */
@@ -51,7 +57,7 @@ function opt(name, fallback) {
   const i = process.argv.indexOf(name)
   return i >= 0 && process.argv[i + 1] !== undefined ? process.argv[i + 1] : fallback
 }
-const wranglerCmd = opt('--wrangler', 'wrangler')
+const cfCmd = opt('--cf', 'cf')
 
 function fail(msg) {
   console.error('deploy-market: ' + msg)
@@ -60,17 +66,34 @@ function fail(msg) {
 
 /**
  * Signatures of a failure that is worth another attempt, in reason precedence
- * order. The incident that motivated the retry carried both the malformed
- * response text and the 429 status, so the earlier entry names the reason.
+ * order. The incident that motivated the retry carried both the unparsable
+ * response body and the 429 status, so the earlier entry names the reason.
  */
 const TRANSIENT_SIGNATURES = [
-  // A bare 429 in wrangler's failure output is the HTTP status: the API error
-  // is printed as "GET <path> -> 429 Too Many Requests" without a header line.
+  // A bare 429 in the failure output is the HTTP status: the API error is
+  // printed as "GET <path> -> 429 Too Many Requests" (wrangler) or as
+  // "429 Too Many Requests - HTTP <path>" / "Status code: 429" (cf), and
+  // neither shape carries a Retry-After header.
   { reason: 'http-429', re: /\b429\b/ },
-  // Status codes are read from the shapes wrangler prints them in ("-> 503",
-  // "HTTP 522", "statusCode: 500") so an unrelated 500 in a stack trace or a
-  // file size cannot pass for a server-side outage.
+  // Status codes are read from the shapes the CLI prints them in ("-> 503",
+  // "HTTP 522", "statusCode: 500", "Status code: 503") so an unrelated 500 in a
+  // stack trace or a file size cannot pass for a server-side outage.
   { reason: 'http-5xx', re: /(?:\bHTTP(?:\/[\d.]+)?|\bstatus(?:\s*code)?\s*[:=]?|->)\s*\[?\s*5\d{2}\b/i },
+  // cf renders a typed Workers command failure as "<status> <text> · HTTP
+  // <path>" (measured on a real throttle: "429 Too Many Requests · HTTP
+  // /accounts/.../workers/scripts/dsh-market/secrets"). That line carries the
+  // status in no other shape - no "HTTP 5xx" and no "Status code:" marker - so
+  // the branch above misses it; this one anchors on cf's separator instead,
+  // which keeps a size or a count that merely reads "500" out of the match.
+  // The status text comes from a fixed table, so a code that table does not map
+  // (520-527 and friends) renders with an empty text and no trim - "522  · HTTP
+  // /accounts/.../d1/..." - which the second alternative covers; 522 is the code
+  // this repository has an incident on record for.
+  { reason: 'http-5xx', re: /\b5\d{2}\s+[A-Za-z][A-Za-z ]*\s+·\s+HTTP\b|\b5\d{2}\s+·\s*HTTP\b/ },
+  // A response body the CLI cannot parse as JSON. The matched phrase is
+  // wrangler's wording for that condition, kept for the historical incident;
+  // cf reports the same condition as a non-json body and prints the status it
+  // came with, which an earlier entry matches.
   { reason: 'malformed-api-response', re: /malformed response from the API/i },
   { reason: 'socket-error', re: /\b(?:ECONNRESET|ETIMEDOUT|EPIPE)\b|socket hang up/i },
 ]
@@ -143,7 +166,6 @@ function rayIdFrom(text) {
  */
 function spawnAttempt(cmd, args, env, opts) {
   const options = opts || {}
-  const input = options.input
   const capture = Boolean(options.capture)
   return new Promise((resolve) => {
     const tail = createTail()
@@ -154,15 +176,10 @@ function spawnAttempt(cmd, args, env, opts) {
       settled = true
       resolve({ status, output: captured.join(''), tail: tail.flush() })
     }
-    // When input is given, stdin must be a pipe: with stdio 'inherit' node
-    // silently drops the payload and the child reads an empty stream — which
-    // once stored an empty TURNSTILE_SECRET while wrangler reported Success.
-    // Without input stdin stays inherited so an interactive local run behaves
-    // exactly as before.
     const child = spawn(cmd, args, {
       cwd: WORKER_DIR,
       env: Object.assign({}, process.env, env || {}),
-      stdio: [input === undefined ? 'inherit' : 'pipe', 'pipe', 'pipe'],
+      stdio: ['inherit', 'pipe', 'pipe'],
     })
     const relay = (stream) => (buf) => {
       const text = String(buf)
@@ -182,11 +199,6 @@ function spawnAttempt(cmd, args, env, opts) {
       settle(null)
     })
     child.on('close', (code) => settle(code))
-    if (child.stdin) {
-      // A child that exits before reading stdin must not crash the deploy.
-      child.stdin.on('error', () => {})
-      child.stdin.end(input === undefined ? undefined : input)
-    }
   })
 }
 
@@ -247,12 +259,70 @@ async function sh(cmd, args, env, opts) {
   return result
 }
 
-const [cmdExec, ...cmdArgs] = wranglerCmd.split(' ')
-const wr = (args, env, opts) => sh(cmdExec, [...cmdArgs, ...args], env, opts)
+const [cmdExec, ...cmdArgs] = cfCmd.split(' ')
+const cf = (args, env, opts) => sh(cmdExec, [...cmdArgs, ...args], env, opts)
+
+/** Temp dirs still holding a secret value for a running child. */
+const secretDirs = new Set()
+
+// fail() ends the process with process.exit, which skips every pending finally
+// block, so the exit hook is what keeps a failed upload from leaving the value
+// on disk; the finally in withSecretFile covers the ordinary paths.
+process.on('exit', () => {
+  for (const dir of secretDirs) fs.rmSync(dir, { recursive: true, force: true })
+})
+
+/**
+ * Stage one secret value in a 0600 file for the child to read. cf takes the
+ * payload as a `--text @path` reference, so the value stays out of the command
+ * line — and therefore out of the failure log, which prints cmd + args — and
+ * out of the child's stdin, whose empty-pipe failure once stored an empty
+ * TURNSTILE_SECRET while the CLI reported Success.
+ */
+async function withSecretFile(value, run) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'deploy-market-'))
+  const file = path.join(dir, 'secret')
+  secretDirs.add(dir)
+  try {
+    fs.writeFileSync(file, value, { mode: 0o600 })
+    return await run(file)
+  } finally {
+    secretDirs.delete(dir)
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+/**
+ * Command line of one secret upload; the value travels in the file, not here.
+ * --type is not optional: without it cf refuses the call outright when stdin is
+ * not a TTY — which is every CI run — and never sends the request.
+ */
+function secretUpdateArgs(name, file) {
+  return ['workers', 'secrets', 'update', name, '--worker', WORKER_NAME, '--type', 'secret_text', '--text', '@' + file]
+}
+
+/**
+ * Secret names from `cf workers secrets list`: cf prints JSON, either the API
+ * envelope (result: [{ name }]) or the bare result array. Output that does not
+ * parse, or carries no names, is scanned as text instead, so a change of output
+ * shape cannot turn a present binding into a missing one.
+ */
+function secretNamesFrom(output) {
+  const text = String(output || '')
+  try {
+    const parsed = JSON.parse(text)
+    const rows = Array.isArray(parsed) ? parsed : parsed && parsed.result
+    const names = (Array.isArray(rows) ? rows : [])
+      .map((row) => (typeof row === 'string' ? row : row && row.name))
+      .filter((name) => typeof name === 'string' && name !== '')
+    if (names.length) return names.join('\n')
+  } catch { /* not JSON: the text scan below is the fallback */ }
+  return text
+}
 
 async function secretNames() {
-  const list = await wr(['secret', 'list'], undefined, { capture: true })
-  return String(list.output || '')
+  const list = await cf(['workers', 'secrets', 'list', '--worker', WORKER_NAME], undefined, { capture: true })
+  return secretNamesFrom(list.output)
 }
 
 // Turnstile fail-closed contract: /api/like and /api/install reject every
@@ -268,10 +338,10 @@ async function ensureTurnstileSecret() {
   const secret = (process.env.TURNSTILE_SECRET || '').trim()
   if (secret) {
     console.log('deploy-market: refreshing TURNSTILE_SECRET binding')
-    await wr(['secret', 'put', 'TURNSTILE_SECRET'], undefined, { input: secret })
+    await withSecretFile(secret, (file) => cf(secretUpdateArgs('TURNSTILE_SECRET', file)))
   }
   if (!(await secretNames()).includes('TURNSTILE_SECRET')) {
-    fail('worker has no TURNSTILE_SECRET binding — set it (wrangler secret put TURNSTILE_SECRET --config market/worker/wrangler.jsonc) or export TURNSTILE_SECRET before deploying; likes/installs fail closed without it')
+    fail('worker has no TURNSTILE_SECRET binding — set it (cf workers secrets update TURNSTILE_SECRET --worker ' + WORKER_NAME + ' --type secret_text --text "<value>") or export TURNSTILE_SECRET before deploying; likes/installs fail closed without it')
   }
   assertTurnstilePairing(secret)
 }
@@ -285,10 +355,10 @@ async function ensureAttestSecret() {
   const secret = (process.env.MARKET_ATTEST_SECRET || '').trim()
   if (secret) {
     console.log('deploy-market: refreshing ASSET_ATTEST_SECRET binding')
-    await wr(['secret', 'put', 'ASSET_ATTEST_SECRET'], undefined, { input: secret })
+    await withSecretFile(secret, (file) => cf(secretUpdateArgs('ASSET_ATTEST_SECRET', file)))
   }
   if (!(await secretNames()).includes('ASSET_ATTEST_SECRET')) {
-    fail('worker has no ASSET_ATTEST_SECRET binding — set it (wrangler secret put ASSET_ATTEST_SECRET --config market/worker/wrangler.jsonc) or export MARKET_ATTEST_SECRET before deploying; the attestation route fails closed without it')
+    fail('worker has no ASSET_ATTEST_SECRET binding — set it (cf workers secrets update ASSET_ATTEST_SECRET --worker ' + WORKER_NAME + ' --type secret_text --text "<value>") or export MARKET_ATTEST_SECRET before deploying; the attestation route fails closed without it')
   }
 }
 
@@ -318,10 +388,10 @@ async function main() {
   if (check.status !== 0) fail('market-build --check failed — rebuild and commit market/dist first')
 
   // 2) D1 migration（幂等）
-  await wr(['d1', 'migrations', 'apply', D1_NAME, '--remote'])
+  await cf(['d1', 'migrations', 'apply', D1_DATABASE_ID, '--dir', 'migrations'])
 
-  // 3) Worker 部署（含静态资产与自定义域名）
-  await wr(['deploy'])
+  // 3) Worker 部署（含静态资产；自定义域名由 dashboard 管理，配置里不声明）
+  await cf(['deploy'])
 
   // 4) Turnstile 绑定核验（worker 缺绑定时点赞/安装全部 fail closed）
   await ensureTurnstileSecret()
@@ -336,13 +406,18 @@ module.exports = {
   MAX_ATTEMPTS,
   RETRY_BACKOFF_MS,
   TAIL_LINES,
+  WORKER_NAME,
+  D1_DATABASE_ID,
   classifyTransientFailure,
   createTail,
   failureMessage,
   rayIdFrom,
   retryDelayMs,
   runWithRetries,
+  secretNamesFrom,
+  secretUpdateArgs,
   spawnAttempt,
+  withSecretFile,
 }
 
 // Only the CLI entry deploys; requiring this file (the retry tests) must not

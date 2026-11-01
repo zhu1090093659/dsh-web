@@ -4,7 +4,10 @@
  * This is the package's platform AND availability contract, so it is asserted
  * against the shipped entry's own apply and mountWithGate, never a copy.
  */
-import { describe, expect, it } from 'vitest'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import { apply, inject, mountWithGate, name } from '../src/index.ts'
 import { CONFIG_DEFAULTS, resolveConfig } from '../src/config.ts'
@@ -31,6 +34,24 @@ const FAST_GATE = {
   declarationWaitMs: 20,
   pollIntervalMs: 5,
 } as const
+
+/**
+ * The DSH home this suite publishes the payload into.
+ *
+ * apply() prepares the runtime before the tool is built, which on Windows x64
+ * publishes a payload copy under the DSH home. A real home would make this
+ * suite write into whoever runs it; an isolated one keeps that inside the test.
+ */
+const HOME = mkdtempSync(join(tmpdir(), 'dsh-win-bash-mount-spec-'))
+
+beforeAll(() => {
+  process.env.DSH_HOME = HOME
+})
+
+afterAll(() => {
+  delete process.env.DSH_HOME
+  rmSync(HOME, { recursive: true, force: true })
+})
 
 /**
  * The payload resolution this host produces. A host that cannot serve the

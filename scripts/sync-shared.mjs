@@ -124,6 +124,7 @@ const MANIFEST = [
       'packages/dsh-usage/src/dsh-home.ts',
       'packages/dsh-session-archive/src/dsh-home.ts',
       'packages/dsh-remote-bridge/src/host/dsh-home.ts',
+      'packages/dsh-win-bash/src/dsh-home.ts',
     ],
   },
   {

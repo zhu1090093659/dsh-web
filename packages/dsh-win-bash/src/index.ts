@@ -13,6 +13,15 @@
  * and on a Windows host that is not x64, because no PATH bash is ever used as
  * a substitute.
  *
+ * Mount-time publication: the tree that is spawned is a verified copy under the
+ * DSH home, not the tree inside this package. A persistent shell holds its own
+ * executable open, and Windows refuses to rename a directory that holds a
+ * running executable, so a shell started inside node_modules makes pnpm's
+ * import of this package fail with ERR_PNPM_EPERM. Publishing the payload
+ * outside the package is what lets an update or uninstall run while sessions
+ * are live; a cache that cannot be written keeps the tool working from the
+ * packaged tree and logs that updates will need this host stopped.
+ *
  * Availability gate: win_bash serves sessions that run the LiangShen (梁神)
  * preset, so its registration follows that preset's DECLARATION in the
  * harness's agent-preset registry — declared means registered, undeclared
@@ -46,7 +55,7 @@ import type {} from '@deepseek-ai/dsh-tools'
 import { Config, resolveConfig, type WinBashConfig, type WinBashConfigInput } from './config.ts'
 import { startLiangShenGate, LIANGSHEN_PRESET_ID, type GateOptions, type GateOutcome } from './gate.ts'
 import { installPwshReplacement } from './pwsh-replacement.ts'
-import { resolveRuntime, type RuntimeReady, type HostPlatform } from './runtime.ts'
+import { prepareRuntime, type RuntimeReady, type HostPlatform } from './runtime.ts'
 import { ShellRegistry, sweepOrphanShellTempDirs } from './shell.ts'
 import { buildWinBashTool } from './tool.ts'
 
@@ -112,12 +121,23 @@ export {
   type SettleStatus,
 } from './gate.ts'
 export {
+  CACHE_DIR_PARTS,
+  CACHE_STAGING_PREFIX,
+  bashIn,
   bashPath,
+  binIn,
+  cacheRoot,
   parseChecksums,
+  payloadKey,
+  prepareRuntime,
   resolveRuntime,
   runtimeRoot,
+  shIn,
   shPath,
   verifyPayload,
+  verifyPayloadRoot,
+  type CopyTree,
+  type PrepareRuntimeOptions,
 } from './runtime.ts'
 
 /** Cordis plugin name; also the loader row id this package mounts under. */
@@ -259,7 +279,14 @@ export async function mountWithGate(
  */
 export function apply(ctx: Context, config?: WinBashConfigInput): void {
   const host: HostPlatform = { platform: process.platform, arch: process.arch }
-  const runtime = resolveRuntime(host)
+  // The payload is published outside the package before the tool is built: a
+  // shell spawned from node_modules would make every later update or uninstall
+  // of this package fail with ERR_PNPM_EPERM while it runs. A cache that cannot
+  // be written keeps the tool working from the packaged tree and says so.
+  const runtime = prepareRuntime({
+    host,
+    warn: (message: string) => { ctx.logger?.warn?.('dsh-win-bash: ' + message) },
+  })
   if ('code' in runtime) {
     // Refusing the mount is the point: there is no fallback shell, and a
     // mounted tool that always errors is worse than an honest absence.

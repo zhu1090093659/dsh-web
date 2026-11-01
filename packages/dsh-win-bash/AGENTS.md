@@ -6,7 +6,8 @@ packages/AGENTS.md 的全局/包级规则。
 ## 本包要点
 
 - **host-only 包**：只有 `src/index.ts`（host 半区）与 `src/shell.ts`、`src/tool.ts`、
-  `src/background.ts`、`src/protocol.ts`、`src/runtime.ts`、`src/config.ts`、`src/gate.ts`。
+  `src/background.ts`、`src/protocol.ts`、`src/runtime.ts`、`src/config.ts`、`src/gate.ts`，
+  以及 `src/dsh-home.ts`（sync-shared 生成的同步副本，禁止手改）。
   没有 `src/client/`，因此 `shared/tsdown.client.ts` 自动跳过浏览器 bundle；`dsh.client` 不声明。
 - **可用性门控跟随梁神预设声明**（`src/gate.ts`）：挂载时向 agent-preset 注册表
   查询是否声明了 id `liangshen` 的预设，未声明即不注册工具（绝不注册一个总会报错
@@ -27,10 +28,18 @@ packages/AGENTS.md 的全局/包级规则。
 - **工具名固定 `win_bash`，行 id 固定 `dsh-win-bash`**，且行的 `name` 恰好等于包名。
   改名会撞上宿主自带的 `bash`/`pwsh` 行，或让 loader 静默丢弃同行 id 的其它行
   （见 packages/AGENTS.md 的行 id 纪律）。
-- **随包载荷不许回退**：shell 只从 `runtime/win32-x64` 里按绝对路径解析，绝不查 `PATH`。
+- **随包载荷不许回退**：shell 只按绝对路径从校验过的载荷树解析，绝不查 `PATH`。
   任何「顺手用系统 Git 的 bash」的改动都违反本包存在的理由。
-- **载荷完整性是挂载前置条件**：工具注册之前先跑 `resolveRuntime`（校验整份
-  `checksums.sha256`）；改载荷必须重算清单，否则挂载会被拒绝。
+- **运行时那棵树必须在包外**：`prepareRuntime` 先校验包内 `runtime/win32-x64`，再把副本
+  发布到 `$DSH_HOME/win-bash/runtime/<载荷键>`（键 = 清单里 path 与摘要的摘要），并从
+  该副本 spawn。常驻 bash 一旦跑在包目录里，pnpm 覆盖安装时的 rename 就会失败
+  （`ERR_PNPM_EPERM`），更新与卸载都得先停宿主——这正是本包不能退回包内执行的原因。
+  副本按内容寻址：只改 JavaScript 的发布复用已有副本，校验不过的副本先重建再运行。
+  缓存写不出来时降级为已校验的包内树并 warn，**不得**因此拒绝挂载（那是可用性倒退，
+  不是安全边界）；载荷校验失败仍然是硬拒绝。`resolveRuntime` 仍是「只解析包内树」的
+  入口，供载荷审计与测试使用。
+- **载荷完整性是挂载前置条件**：工具注册之前先跑 `prepareRuntime`（校验整份
+  `checksums.sha256`，且校验的是即将运行的那棵树）；改载荷必须重算清单，否则挂载会被拒绝。
   `PROVENANCE.md` 是载荷的唯一事实源（上游 URL、摘要、裁剪规则、许可证对照）。
 - **帧协议改动必须带协议单测**：`src/protocol.ts` 的 heredoc 框架决定了「命令语法错误不会
   卡死 shell」这一核心保证；`tests/protocol.spec.ts` 的 fixture 必须按 bash 实际写出的字节构造。

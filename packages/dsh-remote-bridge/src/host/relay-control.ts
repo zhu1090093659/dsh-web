@@ -61,9 +61,14 @@ export interface RelayClaimRequest {
   pluginVersion?: string
 }
 
-/** The capped backoff a failed claim retries on. */
+/**
+ * The capped backoff a failed claim retries on. The cap is the whole Cloudflare
+ * rate-limit window: a spent account request budget answers `retryAfterMs:
+ * 300000` because that budget is counted over 300 seconds, so a shorter cap
+ * only brings the instance back inside the same spent window.
+ */
 export const CLAIM_RETRY_BASE_MS = 5_000
-export const CLAIM_RETRY_MAX_MS = 60_000
+export const CLAIM_RETRY_MAX_MS = 300_000
 
 /** Build the claim body (an absent value is omitted, never sent as null). */
 export function relayClaimBody(request: RelayClaimRequest): string {

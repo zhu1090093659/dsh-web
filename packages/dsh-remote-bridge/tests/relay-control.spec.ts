@@ -180,6 +180,26 @@ describe('grading one refused claim', () => {
     expect(relayClaimRetryOf({ ok: false, status: 502, error: 'cf-api-unavailable', retryAfterMs: 600_000 }, 0).delayMs)
       .toBe(CLAIM_RETRY_MAX_MS)
   })
+
+  it('operator waits out the whole Cloudflare window when the account budget is spent', () => {
+    // Given the worker's spent-budget 502, whose hint is the 300 s window that
+    // budget is counted over
+    // When the plugin grades the refusal
+    // Then the hint lands at its full 300 s instead of being truncated, because
+    // a shorter wait brings the instance back inside the same spent window
+    expect(relayClaimRetryOf(
+      { ok: false, status: 502, error: 'cf-api-rate-limited', retryAfterMs: 300_000 },
+      0,
+    )).toEqual({ retry: true, delayMs: 300_000, refreshIdentity: false })
+  })
+
+  it('operator converges the exponential backoff on that same 300 s cap', () => {
+    // Given a control plane that has been failing far past the cap
+    // When the plugin grades a refusal that names no hint at all
+    // Then the backoff itself converges on 300 s: one cap for both halves of
+    // the decision, so no path returns inside a spent window
+    expect(relayClaimRetryOf({ ok: false, status: 429, error: 'rate-limited' }, 20).delayMs).toBe(300_000)
+  })
 })
 
 describe('releasing one relay lease', () => {

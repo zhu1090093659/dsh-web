@@ -28,6 +28,10 @@ const SECRET = 'A'.repeat(43)
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 /** The one inbound path the connector serves, so a stream reaches the host. */
 const SERVED_PATH = '/ios/v1'
+/** A path this connector does not serve, refused on the spot without dialing. */
+const REFUSED_PATH = '/not-served'
+/** The stream id that refusal is asked under, which no test opens. */
+const FENCE_ID = 99
 /** How long a paused stream is watched for stray frames. */
 const QUIET_MS = 40
 /** How long a stream is given to start flowing before the pause. */
@@ -55,10 +59,6 @@ function chunkOf(frame: Buffer): { kind: number; id: number; payload: Buffer } {
   return { kind: frame[0], id: frame.readUInt32BE(1), payload: frame.subarray(5) }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 /** Poll one predicate until it holds, or fail the test that waited. */
 function waitFor(predicate: () => boolean, what: string, timeoutMs = FLOW_MS): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -72,10 +72,35 @@ function waitFor(predicate: () => boolean, what: string, timeoutMs = FLOW_MS): P
         reject(new Error('timed out waiting for ' + what))
         return
       }
-      setTimeout(poll, 2)
+      setTimeout(poll, 2) // test-standards-allow: no-arbitrary-sleep — the bounded waitFor poll the rule names, not a fixed-duration sleep
     }
     poll()
   })
+}
+
+/**
+ * Fence everything sent so far. One request for a path this connector refuses
+ * on the spot is answered over the same socket, so that answer proves the
+ * frames before it were processed and the frames before those already arrived:
+ * a count read behind the fence cannot grow by a frame written before it.
+ */
+async function fence(bridge: BridgeStandIn): Promise<void> {
+  bridge.send({ t: 'req', id: FENCE_ID, method: 'GET', url: REFUSED_PATH, host: HOSTNAME, headers: [['host', HOSTNAME]] })
+  await waitFor(
+    () => bridge.controls.some((frame) => frame.t === 'res' && frame.id === FENCE_ID && frame.status === 404),
+    'the refused request to answer',
+  )
+}
+
+/**
+ * Watch one observed count over a quiet window, and fail if it moved. A pause
+ * is defined by the frames that do not arrive, so the window is the assertion
+ * itself rather than a wait for work to finish; the bound keeps its cost fixed
+ * and the failure names the stream that spoke.
+ */
+async function expectQuiet(what: string, observe: () => number, held: number): Promise<void> {
+  await new Promise<void>((resolve) => { setTimeout(resolve, QUIET_MS) }) // test-standards-allow: no-arbitrary-sleep — the bounded quiet window a paused stream is asserted against
+  expect(observe(), what + ' stayed quiet for ' + String(QUIET_MS) + ' ms').toBe(held)
 }
 
 interface BridgeStandIn {
@@ -150,7 +175,7 @@ async function startStreamingHost(intervalMs = 2): Promise<StreamingHost> {
   const server = http.createServer((_request, response) => {
     observed.responses += 1
     response.writeHead(200, { 'content-type': 'application/octet-stream' })
-    const timer = setInterval(() => {
+    const timer = setInterval(() => { // test-standards-allow: no-arbitrary-sleep — the stand-in host produces the body on its own clock; no test waits on this timer
       if (response.destroyed || response.writableEnded) return
       if (!response.write(Buffer.alloc(1024, 0x61))) observed.writeFails += 1
     }, intervalMs)
@@ -185,7 +210,7 @@ async function startTickingSocketHost(intervalMs = 2): Promise<StreamingHost> {
     sockets.push(socket)
     const accept = createHash('sha1').update(String(request.headers['sec-websocket-key']) + WS_GUID).digest('base64')
     socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + accept + '\r\n\r\n')
-    const timer = setInterval(() => {
+    const timer = setInterval(() => { // test-standards-allow: no-arbitrary-sleep — the stand-in host ticks its own socket; no test waits on this timer
       if (socket.destroyed) return
       if (!socket.write(serverFrame(0x1, Buffer.from('tick')))) observed.writeFails += 1
     }, intervalMs)
@@ -245,13 +270,12 @@ describe('a closed window holds one stream back', () => {
 
     // When the object closes the window on that stream
     bridge.send({ t: 'pause', id: 5 })
-    await sleep(20)
+    await fence(bridge)
     const held = bridge.payloadsOf(5, 1).length
-    await sleep(QUIET_MS)
 
     // Then not one more payload frame of that stream arrives: the upstream is
     // not being read, so the backlog stays in its socket
-    expect(bridge.payloadsOf(5, 1).length).toBe(held)
+    await expectQuiet('stream 5 while paused', () => bridge.payloadsOf(5, 1).length, held)
 
     // When the object reopens it
     bridge.send({ t: 'resume', id: 5 })
@@ -271,13 +295,12 @@ describe('a closed window holds one stream back', () => {
 
     // When the object closes the window on one of them
     bridge.send({ t: 'pause', id: 11 })
-    await sleep(20)
+    await fence(bridge)
     const heldFirst = bridge.payloadsOf(11, 1).length
     const heldSecond = bridge.payloadsOf(12, 1).length
-    await sleep(QUIET_MS)
 
     // Then the paused one is silent and the other never stopped
-    expect(bridge.payloadsOf(11, 1).length).toBe(heldFirst)
+    await expectQuiet('stream 11 while paused', () => bridge.payloadsOf(11, 1).length, heldFirst)
     expect(bridge.payloadsOf(12, 1).length).toBeGreaterThan(heldSecond)
   })
 
@@ -293,12 +316,11 @@ describe('a closed window holds one stream back', () => {
 
     // When the object closes the window on that socket
     bridge.send({ t: 'pause', id: 21 })
-    await sleep(20)
+    await fence(bridge)
     const held = bridge.payloadsOf(21, 3).length
-    await sleep(QUIET_MS)
 
     // Then its payload frames stop, and they resume when the window reopens
-    expect(bridge.payloadsOf(21, 3).length).toBe(held)
+    await expectQuiet('socket 21 while paused', () => bridge.payloadsOf(21, 3).length, held)
     bridge.send({ t: 'resume', id: 21 })
     await waitFor(() => bridge.payloadsOf(21, 3).length > held, 'the socket frames to flow again')
   })
@@ -322,11 +344,11 @@ describe('an abandoned stream releases everything behind it', () => {
     // Then both upstream responses are destroyed, so nothing keeps reading and
     // nothing keeps sending for a stream the object no longer has
     await waitFor(() => host.observed.closed >= 2, 'both upstream responses to close')
+    await fence(bridge)
     const afterCancel = bridge.payloadsOf(31, 1).length
     const afterClose = bridge.payloadsOf(32, 1).length
-    await sleep(QUIET_MS)
-    expect(bridge.payloadsOf(31, 1).length).toBe(afterCancel)
-    expect(bridge.payloadsOf(32, 1).length).toBe(afterClose)
+    await expectQuiet('stream 31 after the cancel', () => bridge.payloadsOf(31, 1).length, afterCancel)
+    await expectQuiet('stream 32 after the close', () => bridge.payloadsOf(32, 1).length, afterClose)
   })
 
   it('operator: a cancelled phone socket is closed upstream too', async () => {
@@ -357,13 +379,14 @@ describe('a half this connector was not written against still works', () => {
 
     // When the object sends a frame this build has never heard of
     bridge.send({ t: 'future-frame', id: 51, payload: { anything: true } })
-    await sleep(10)
 
     // Then the connector neither answers it nor loses the socket, and a request
-    // still travels end to end
+    // still travels end to end: that request is served after this frame, so its
+    // answer is also the proof the unknown frame was read and left alone
     await openStream(bridge, 52)
     expect(connector.connected).toBe(true)
     expect(bridge.controls.length).toBeGreaterThan(before)
+    expect(bridge.controls.filter((frame) => frame.t === 'future-frame')).toEqual([])
     expect(bridge.payloadsOf(52, 1).length).toBeGreaterThan(0)
   })
 

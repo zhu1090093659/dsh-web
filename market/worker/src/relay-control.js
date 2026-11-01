@@ -488,13 +488,16 @@ function cachedLease(row) {
  *   underneath a stale row (a tunnel deleted by hand, a record repointed), and
  *   the TTL bounds how long the row is trusted over the account.
  * @param row - the lease row of this id.
+ * @param id - the id this claim names, passed rather than read off the row:
+ *   the row is a projection of the columns the claim needs, so a field nobody
+ *   selected would compare as undefined and quietly disable this whole path.
  * @param port - the origin port this claim named.
  */
-function isCachedConvergence(row, port) {
+function isCachedConvergence(row, id, port) {
   if (row === undefined || row === null) return false
   if (row.state !== 'active') return false
   if (typeof row.tunnel_id !== 'string' || row.tunnel_id === '') return false
-  if (row.hostname !== relayHostname(row.id)) return false
+  if (row.hostname !== relayHostname(id)) return false
   if (Number(row.origin_port) !== port) return false
   const convergedAt = epochOf(row.converged_at)
   return convergedAt > 0 && Date.now() - convergedAt <= LEASE_CONVERGED_TTL_MS
@@ -637,7 +640,7 @@ export async function handleRelayClaim(request, env) {
   try {
     if (mode === 'bridge') {
       lease = bridgedLease(id)
-    } else if (isCachedConvergence(existing, port)) {
+    } else if (isCachedConvergence(existing, id, port)) {
       // The steady state, and the whole point of the cache: the row already
       // describes the account for this port, so the claim costs no account call
       // at all. Before this path every claim spent four (find tunnel, write

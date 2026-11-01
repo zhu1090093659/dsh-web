@@ -151,7 +151,29 @@ describe('sourceKindOf', () => {
 
 describe('dshSpawnCommand', () => {
   it('keeps the binary as-is off Windows', () => {
-    expect(dshSpawnCommand('/usr/local/bin/dsh', 'darwin')).toEqual({ command: '/usr/local/bin/dsh', argsPrefix: [] })
+    // The shebang probe is injected: the default one reads the host's own file
+    // at that path, which on a machine with dsh installed is a Node script.
+    expect(dshSpawnCommand('/usr/local/bin/dsh', 'darwin', () => false, () => false, () => '#!/bin/sh\n')).toEqual({
+      command: '/usr/local/bin/dsh',
+      argsPrefix: [],
+    })
+  })
+
+  it('operator: runs a Node-script CLI through the node beside it off Windows', () => {
+    // Given a CLI whose head names node with a sibling node beside it, when the
+    // spawn command is resolved, then the sibling interpreter runs the script.
+    expect(dshSpawnCommand('/usr/local/bin/dsh', 'linux', () => true, () => false, () => '#!/usr/bin/env node\n')).toEqual({
+      command: '/usr/local/bin/node',
+      argsPrefix: ['/usr/local/bin/dsh'],
+    })
+  })
+
+  it('operator: falls back to the host interpreter when no node sits beside the CLI', () => {
+    // Given the same Node-script CLI with no sibling node, when the spawn
+    // command is resolved, then the host's own interpreter runs the script.
+    const resolved = dshSpawnCommand('/opt/deepseek/bin/dsh', 'linux', () => false, () => false, () => '#!/usr/bin/env node\n')
+    expect(resolved.command).toBe(process.execPath)
+    expect(resolved.argsPrefix).toEqual(['/opt/deepseek/bin/dsh'])
   })
 
   it('resolves the wrapper into node + bin.js on Windows, preferring a local node', () => {

@@ -46,6 +46,8 @@ describe('subprocessRunner', () => {
     expect(specs[0]!.argv).toEqual(['git', 'status'])
     expect(specs[0]!.cwd).toBe('/w')
     expect(specs[0]!.graceMs).toBe(10_000)
+    // The overwrite guard reads git's own prose, so the child is locale-pinned.
+    expect(specs[0]!.env).toEqual({ LC_ALL: 'C', LANG: 'C' })
     expect(result).toEqual({ exitCode: 0, stdout: 'out', stderr: 'err' })
   })
 

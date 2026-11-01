@@ -11,16 +11,22 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GitService, gitSpawnArgv, type GitRunner, type GitRunResult, type WorkspaceGate } from '../src/host/git-service.ts'
+import { GIT_CHILD_ENV } from '../src/host/git-runner.ts'
 import { worktreePathFor } from '../src/host/worktree-home.ts'
 
 const execFileAsync = promisify(execFile)
 
-/** Plain child_process runner standing in for the subprocess seam. */
+/**
+ * Plain child_process runner standing in for the subprocess seam. It carries
+ * the same locale pin the production runner puts on every git child, so the
+ * prose this spec classifies is the prose the host really receives on a
+ * non-English machine.
+ */
 const runner = {
   async run(argv: readonly string[], cwd: string): Promise<GitRunResult> {
     try {
       const { stdout, stderr } = await execFileAsync('git', [...argv], {
-        cwd, encoding: 'utf8', maxBuffer: 1 << 20,
+        cwd, encoding: 'utf8', maxBuffer: 1 << 20, env: { ...process.env, ...GIT_CHILD_ENV },
       })
       return { exitCode: 0, stdout, stderr }
     } catch (error) {

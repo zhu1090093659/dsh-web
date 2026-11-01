@@ -1,15 +1,14 @@
 /**
- * Shared host git subprocess plumbing: the run result shape, the runner seam,
- * the collected-output cap, and the production runner over the subprocess
- * service. Packages receive this file as a generated copy via
- * scripts/sync-shared.mjs; edit the shared source and re-run the sync instead
- * of editing a copy.
+ * Host git subprocess plumbing: the run result shape, the runner seam, the
+ * collected-output cap, and the production runner over the subprocess service.
+ * dsh-git-graph is its only consumer and therefore its owner: this file stopped
+ * being a synced copy when the single-consumer shared modules were consolidated,
+ * so edit it here rather than looking for a source under shared/.
  *
  * The context shape is declared structurally so this module stays
- * self-contained (shared/ has no cordis dependency): any context whose
- * `subprocess` satisfies SubprocessServiceLike works, which the plugin
- * contexts do.
- * @module dsh-web-shared/host/git-runner
+ * self-contained (no cordis dependency): any context whose `subprocess`
+ * satisfies SubprocessServiceLike works, which the plugin contexts do.
+ * @module dsh-git-graph/host/git-runner
  */
 
 /** One finished git invocation. */
@@ -27,6 +26,19 @@ export interface GitRunner {
 /** Collected-output cap for one git command. */
 export const OUTPUT_CAP_BYTES = 1 << 20
 
+/**
+ * The locale every git child runs under. The write verbs classify a failed
+ * command by reading git's own message prose (the overwrite guard in
+ * `core/git-command.ts`), and git localizes that prose to the host locale:
+ * on a zh_CN host a real untracked-overwrite refusal arrives as Chinese text,
+ * matches no pattern and is reported as `internal`, so the user loses the
+ * specific guard message on exactly the machines that need it. Pinning the
+ * child to C keeps those messages the strings the patterns were written
+ * against, on every host. It is a deliberate exception to the service's
+ * ambient environment, not a general locale policy for the plugin.
+ */
+export const GIT_CHILD_ENV: Record<string, string> = { LC_ALL: 'C', LANG: 'C' }
+
 /** The subprocess service surface this runner consumes (structural). */
 export interface SubprocessServiceLike {
   spawn(spec: {
@@ -39,6 +51,8 @@ export interface SubprocessServiceLike {
     }
     graceMs: number
     signal?: AbortSignal
+    /** Explicit environment merged onto the provider's scrubbed parent base. */
+    env?: Record<string, string> | undefined
   }): {
     done: Promise<{ exitCode: number | null }>
     collected: {
@@ -90,6 +104,7 @@ export function subprocessRunner(ctx: { subprocess: SubprocessServiceLike }, opt
         },
         graceMs: 10_000,
         signal,
+        env: GIT_CHILD_ENV,
       }
       if (degrade) {
         let handle

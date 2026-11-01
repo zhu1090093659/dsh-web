@@ -432,7 +432,13 @@ async function convergeLease(api, id, port, cachedToken) {
   const name = relayTunnelName(id)
   let tunnel = await api.findTunnel(name)
   if (tunnel === undefined) tunnel = await api.createTunnel(name)
-  const tunnelId = tunnel.id
+  // The tunnel id is the one value this path binds that comes straight from the
+  // account rather than from a row this Worker wrote, and an undefined binding
+  // is refused by D1 inside the write batch -- which turns a malformed answer
+  // into the same silent 503 a storage failure produces. It is graded here, the
+  // way the token below is graded.
+  const tunnelId = tunnel !== undefined && tunnel !== null && typeof tunnel.id === 'string' && tunnel.id !== '' ? tunnel.id : undefined
+  if (tunnelId === undefined) throw new Error('the tunnel endpoint returned no id')
   await api.putTunnelConfiguration(tunnelId, leaseIngress(id, port))
   const hostname = relayHostname(id)
   const target = relayDnsTarget(tunnelId)

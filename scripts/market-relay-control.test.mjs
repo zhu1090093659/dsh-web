@@ -1132,7 +1132,10 @@ test('a spent account budget refuses the cron GC before it dials', async () => {
   assert.equal(db.leases.has(ID), true, 'the row keeps its tunnel id for the next tick')
 })
 
-test('the rate-limit GC drops windows past the retention and keeps the current ones', async () => {
+test('the rate-limit GC drops windows past the retention and keeps the current ones', async (t) => {
+  // The cutoff is computed inside pruneRelay, so a clock that advances between
+  // this line and that call turns the assertion below into a millisecond race.
+  t.mock.timers.enable({ apis: ['Date'], now: 1_700_000_000_000 })
   const now = Date.now()
   const rows = [
     { bucket: 'id:' + ID, windowStart: now - RATE_LIMIT_RETENTION_MS - 1_000, count: 3 },

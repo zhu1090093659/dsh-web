@@ -43,6 +43,20 @@ const CATCH_ALL_SERVICE = 'http_status:404'
 export const LEASE_TTL_MS = 90 * 24 * 60 * 60 * 1000
 /** How soon a caller should retry a claim that lost its upstream. */
 export const CF_RETRY_AFTER_MS = 5_000
+/**
+ * How soon a caller should retry once the account request budget is spent.
+ * Cloudflare counts that budget over a 300 second window, so a hint shorter
+ * than the window only brings the caller back into the same spent budget.
+ */
+export const CF_RATE_LIMIT_RETRY_AFTER_MS = 300_000
+/** The status the account API answers with when that budget is spent (10500). */
+const CF_TOO_MANY_REQUESTS = 429
+/**
+ * The most lease rows one cron tick settles. A row costs up to three account
+ * calls (find the record, delete it, delete the tunnel), so an unbounded loop
+ * is what turns one spent budget into a tick that keeps spending it.
+ */
+export const LEASE_PRUNE_MAX_PER_TICK = 25
 /** The Cloudflare API origin (`client/v4`). */
 const CF_API_BASE = 'https://api.cloudflare.com/client/v4'
 /** Where a bridge connector dials. The market apex, like the claim endpoint
@@ -118,6 +132,34 @@ function originPortOf(origin) {
 }
 
 /**
+ * One Cloudflare API failure, carrying the upstream HTTP status. Callers grade
+ * the answer by that code: a spent account budget (429) is the whole account's
+ * condition, while a resource that refuses to go is one row's own, and the
+ * message text is Cloudflare's to rewrite.
+ */
+export class CfApiError extends Error {
+  /**
+   * @param status - the HTTP status the account API answered with.
+   * @param message - the method, path and Cloudflare's own message.
+   */
+  constructor(status, message) {
+    super(message)
+    this.name = 'CfApiError'
+    this.status = status
+  }
+}
+
+/** Whether one failure is the spent account request budget, not an outage. */
+export function isCfRateLimited(error) {
+  return typeof error === 'object' && error !== null && error.status === CF_TOO_MANY_REQUESTS
+}
+
+/** One failure's log text: the message alone, which never carries a token. */
+function errorTextOf(error) {
+  return error instanceof Error ? error.message : String(error)
+}
+
+/**
  * One Cloudflare API call against the scoped account token. Errors carry the
  * method, path and Cloudflare's own message so the logs explain a 502 — the
  * bearer token and the per-instance tunnel token never appear in either.
@@ -132,7 +174,7 @@ async function cfCall(config, method, path, body) {
   if (!response.ok || payload === undefined || payload.success === false) {
     const first = payload && Array.isArray(payload.errors) ? payload.errors[0] : undefined
     const detail = first && typeof first.message === 'string' ? first.message : 'HTTP ' + String(response.status)
-    throw new Error('cloudflare api ' + method + ' ' + path + ': ' + detail)
+    throw new CfApiError(response.status, 'cloudflare api ' + method + ' ' + path + ': ' + detail)
   }
   return payload.result
 }
@@ -296,6 +338,17 @@ function cfUnavailable(detail) {
 }
 
 /**
+ * The 502 one failed account half answers with. A spent account budget gets its
+ * own error code and its own, longer hint: the caller must not come back while
+ * the window is still spent, which the outage hint would have it do.
+ */
+function cfFailure(error, detail) {
+  if (!isCfRateLimited(error)) return cfUnavailable(detail)
+  console.warn('relay control: ' + detail + ' (account request budget spent)')
+  return json({ ok: false, error: 'cf-api-rate-limited', retryAfterMs: CF_RATE_LIMIT_RETRY_AFTER_MS }, 502)
+}
+
+/**
  * Claim one lease: for the tunnel transports, find-or-create the tunnel,
  * converge its ingress and its CNAME and read the connector token; for the
  * bridge transport, converge nothing in the account. Either way the row is
@@ -360,7 +413,7 @@ export async function handleRelayClaim(request, env) {
     // The attempt still costs a window: a caller holding a valid secret must
     // not be able to loop upstream failures at the account API for free.
     await spendWindows(env, [perIp, perId])
-    return cfUnavailable('claim convergence failed for ' + id + ': ' + (error instanceof Error ? error.message : String(error)))
+    return cfFailure(error, 'claim convergence failed for ' + id + ': ' + errorTextOf(error))
   }
 
   const now = Date.now()
@@ -461,7 +514,7 @@ export async function handleRelayRetire(request, env) {
   try {
     await removeLeaseSource(api, id, auth.lease.tunnel_id)
   } catch (error) {
-    return cfUnavailable('retire failed for ' + id + ': ' + (error instanceof Error ? error.message : String(error)))
+    return cfFailure(error, 'retire failed for ' + id + ': ' + errorTextOf(error))
   }
   try {
     await env.DB.prepare('DELETE FROM relay_leases WHERE id = ?1').bind(id).run()
@@ -473,22 +526,28 @@ export async function handleRelayRetire(request, env) {
 
 /**
  * Cron GC: recover leases not seen for 90 days (the registry's TTL), settling
- * each one in the retire order. A row whose tunnel cannot be removed is left
- * alone — dropping it would orphan a tunnel nothing points at any more — and
- * an unconfigured Worker settles only the rows that own no account resource.
- * @returns how many rows were removed.
+ * each one in the retire order. One tick settles at most
+ * LEASE_PRUNE_MAX_PER_TICK rows, and a spent account budget ends the tick on the
+ * spot: the rows left over are stale already and lose nothing by waiting a
+ * minute, while every call this tick would send is one the account refuses.
+ * A row whose tunnel cannot be removed is left alone — dropping it would orphan
+ * a tunnel nothing points at any more — and an unconfigured Worker settles only
+ * the rows that own no account resource.
+ * @returns how many rows were removed, and whether a spent budget ended the tick.
  */
 export async function pruneRelayLeases(env) {
   let stale
   try {
-    stale = await env.DB.prepare('SELECT id, tunnel_id FROM relay_leases WHERE last_seen_at < ?1').bind(Date.now() - LEASE_TTL_MS).all()
+    stale = await env.DB.prepare('SELECT id, tunnel_id FROM relay_leases WHERE last_seen_at < ?1 LIMIT ?2')
+      .bind(Date.now() - LEASE_TTL_MS, LEASE_PRUNE_MAX_PER_TICK).all()
   } catch {
-    return { pruned: 0 }
+    return { pruned: 0, rateLimited: false }
   }
   const rows = stale && Array.isArray(stale.results) ? stale.results : []
-  if (rows.length === 0) return { pruned: 0 }
+  if (rows.length === 0) return { pruned: 0, rateLimited: false }
   const api = relayApiOf(env)
   let pruned = 0
+  let rateLimited = false
   for (const row of rows) {
     const tunnelId = typeof row.tunnel_id === 'string' ? row.tunnel_id : ''
     try {
@@ -501,9 +560,18 @@ export async function pruneRelayLeases(env) {
       await removeLeaseSource(api, row.id, tunnelId)
       await env.DB.prepare('DELETE FROM relay_leases WHERE id = ?1').bind(row.id).run()
       pruned += 1
-    } catch {
-      // Best-effort: the row keeps its tunnel id, so the next tick retries.
+    } catch (error) {
+      // A spent budget belongs to the whole account, not to this row: the next
+      // call is refused too, so the tick ends here and this row keeps its
+      // tunnel id like the rows behind it.
+      if (isCfRateLimited(error)) {
+        rateLimited = true
+        console.warn('relay control: lease GC stopped at ' + row.id + ' with the account request budget spent: ' + errorTextOf(error))
+        break
+      }
+      // Best-effort: any other failure is this row's own, it keeps its tunnel
+      // id and the next tick retries it.
     }
   }
-  return { pruned }
+  return { pruned, rateLimited }
 }

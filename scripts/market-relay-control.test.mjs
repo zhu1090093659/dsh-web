@@ -3,7 +3,9 @@ import assert from 'node:assert/strict'
 
 import worker from '../market/worker/src/index.js'
 import {
+  CF_RATE_LIMIT_RETRY_AFTER_MS,
   CF_RETRY_AFTER_MS,
+  LEASE_PRUNE_MAX_PER_TICK,
   LEASE_TTL_MS,
   RELAY_BRIDGE_CREDENTIAL,
   RELAY_BRIDGE_ENDPOINT,
@@ -73,7 +75,10 @@ function leaseDb(seed = {}) {
       async all() {
         if (sql.includes('FROM relay_leases WHERE last_seen_at <')) {
           const cutoff = args[0]
-          return { results: [...leases.values()].filter((row) => row.last_seen_at < cutoff).map(({ id, tunnel_id }) => ({ id, tunnel_id })) }
+          const stale = [...leases.values()].filter((row) => row.last_seen_at < cutoff).map(({ id, tunnel_id }) => ({ id, tunnel_id }))
+          // D1 applies the LIMIT clause, so the double does too: the tick
+          // budget is read off the query the worker really sends.
+          return { results: sql.includes('LIMIT') ? stale.slice(0, Number(args[1])) : stale }
         }
         throw new Error('unexpected all: ' + sql)
       },
@@ -166,6 +171,60 @@ function cloudflare(seed = {}) {
       for (const [name, id] of tunnels) if (id === tunnelId) tunnels.delete(name)
       return {}
     },
+  }
+}
+
+/** One Cloudflare API answer, errors included, shaped the way the account API does. */
+function cfReply(status, message, result) {
+  const body = status >= 400
+    ? { success: false, errors: [{ code: 1000, message }] }
+    : { success: true, errors: [], result }
+  return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+}
+
+/**
+ * Run one body against the worker's own Cloudflare client with `fetch`
+ * replaced by a recording stub, so a test counts the exact account calls a code
+ * path sent rather than trusting a double's bookkeeping. The reply function
+ * receives the 1-based call number, which is how a path is made to succeed once
+ * and then be refused.
+ */
+async function withCfStub(reply, body) {
+  const calls = []
+  const original = globalThis.fetch
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url: String(url), method: init && init.method })
+    return reply(calls.length, String(url))
+  }
+  try {
+    return await body(calls)
+  } finally {
+    globalThis.fetch = original
+  }
+}
+
+/** The Worker secrets the real client builds itself from. */
+const CF_SECRETS = { CF_API_TOKEN: 'scoped-relay-token', CF_ACCOUNT_ID: 'account-id', CF_ZONE_ID: 'zone-id' }
+
+/** The Cloudflare answer when the account request budget is spent (10500). */
+const RATE_LIMITED_REPLY = () => cfReply(429, 'More than 1200 requests per 300 seconds reached')
+
+/** The n-th generated lease id: 16 digits, which ID_RE accepts. */
+function staleId(index) {
+  return String(index).padStart(16, '0')
+}
+
+/** A stale lease row, seeded so the cron GC picks it up. */
+function staleLease(id, tunnelId, now) {
+  return {
+    id,
+    secret_hash: 'hash',
+    tunnel_id: tunnelId,
+    hostname: id + '.dsh-market.com',
+    origin_port: 3080,
+    state: 'active',
+    created_at: now - LEASE_TTL_MS - DAY_MS,
+    last_seen_at: now - LEASE_TTL_MS - DAY_MS,
   }
 }
 
@@ -437,6 +496,130 @@ test('the cron GC leaves leases it cannot settle without the cloudflare api', as
   assert.equal(result.pruned, 1)
   assert.equal(db.leases.has(ID), true, 'a tunnel nothing can remove keeps its only pointer')
   assert.equal(db.leases.has(OTHER_ID), false, 'a lease that owns no account resource is dropped')
+})
+
+test('claim grades a spent account budget apart from an outage', async () => {
+  const db = leaseDb()
+  const response = await withCfStub(RATE_LIMITED_REPLY, () => claim({ DB: db, ...CF_SECRETS }))
+  assert.equal(response.status, 502, 'the endpoint keeps the status code it answered with before')
+  const body = await response.json()
+  assert.equal(body.error, 'cf-api-rate-limited')
+  assert.equal(body.retryAfterMs, CF_RATE_LIMIT_RETRY_AFTER_MS)
+  assert.equal(CF_RATE_LIMIT_RETRY_AFTER_MS, 300_000, 'the hint covers the window Cloudflare counts the budget over')
+  assert.ok(CF_RATE_LIMIT_RETRY_AFTER_MS >= CF_RETRY_AFTER_MS * 60, 'the budget hint is minutes, not seconds')
+  assert.equal(db.leases.size, 0, 'a refused claim still leaves no lease row behind')
+})
+
+test('retire grades a spent account budget apart and keeps the lease', async () => {
+  const db = leaseDb({ leases: { [ID]: { ...staleLease(ID, 'tunnel-x', Date.now()), secret_hash: await secretHashOf(SECRET) } } })
+  const outcome = await withCfStub(RATE_LIMITED_REPLY, async (calls) => ({
+    response: await post({ DB: db, ...CF_SECRETS }, 'retire'),
+    urls: calls.map((call) => call.url),
+  }))
+  assert.equal(outcome.response.status, 502)
+  const body = await outcome.response.json()
+  assert.equal(body.error, 'cf-api-rate-limited')
+  assert.equal(body.retryAfterMs, CF_RATE_LIMIT_RETRY_AFTER_MS)
+  assert.equal(outcome.urls.length, 1, 'the refused lookup ends the retire before any delete')
+  assert.equal(db.leases.size, 1, 'a refused retire keeps the only pointer to the tunnel')
+})
+
+test('the upstream status, not its message, decides the failure grade', async () => {
+  // An outage whose body happens to carry Cloudflare's rate-limit sentence stays
+  // an outage, and a 429 whose body says nothing about rates is still the spent
+  // budget: the grade reads the status code alone.
+  const outageDb = leaseDb()
+  const outage = await withCfStub(
+    () => cfReply(503, 'More than 1200 requests per 300 seconds reached'),
+    () => claim({ DB: outageDb, ...CF_SECRETS }),
+  )
+  assert.equal(outage.status, 502)
+  const outageBody = await outage.json()
+  assert.equal(outageBody.error, 'cf-api-unavailable')
+  assert.equal(outageBody.retryAfterMs, CF_RETRY_AFTER_MS)
+
+  const budgetDb = leaseDb()
+  const budget = await withCfStub(() => cfReply(429, 'internal error'), () => claim({ DB: budgetDb, ...CF_SECRETS }))
+  const budgetBody = await budget.json()
+  assert.equal(budgetBody.error, 'cf-api-rate-limited')
+  assert.equal(budgetBody.retryAfterMs, CF_RATE_LIMIT_RETRY_AFTER_MS)
+  assert.equal(budgetDb.leases.size, 0, 'neither grade writes a lease row')
+})
+
+test('the cron GC settles at most one tick budget of stale leases', async () => {
+  const now = Date.now()
+  const seeded = {}
+  for (let index = 0; index <= LEASE_PRUNE_MAX_PER_TICK; index++) {
+    seeded[staleId(index)] = staleLease(staleId(index), 'tunnel-' + staleId(index), now)
+  }
+  const db = leaseDb({ leases: seeded })
+  const api = cloudflare()
+  const result = await pruneRelayLeases({ DB: db, CF_RELAY_API: api })
+  assert.equal(LEASE_PRUNE_MAX_PER_TICK, 25, 'the tick budget is one explicit constant')
+  assert.equal(result.pruned, LEASE_PRUNE_MAX_PER_TICK)
+  assert.equal(result.rateLimited, false)
+  assert.equal(db.leases.size, 1, 'rows over the budget wait for the next tick')
+  assert.equal(db.leases.has(staleId(LEASE_PRUNE_MAX_PER_TICK)), true, 'the row left over is the one the query did not return')
+  assert.equal(api.names().filter((name) => name === 'deleteTunnel').length, LEASE_PRUNE_MAX_PER_TICK, 'no account call is spent on the row left over')
+})
+
+test('a spent account budget ends the cron GC at once', async () => {
+  const now = Date.now()
+  const db = leaseDb({ leases: {
+    [ID]: staleLease(ID, 'tunnel-stale', now),
+    [OTHER_ID]: staleLease(OTHER_ID, 'tunnel-other', now),
+  } })
+  const outcome = await withCfStub(RATE_LIMITED_REPLY, async (calls) => {
+    const result = await pruneRelayLeases({ DB: db, ...CF_SECRETS })
+    return { result, urls: calls.map((call) => call.url) }
+  })
+  assert.equal(outcome.result.rateLimited, true)
+  assert.equal(outcome.result.pruned, 0)
+  assert.equal(outcome.urls.length, 1, 'the refused call ends the tick: the second stale row is never dialled')
+  assert.match(outcome.urls[0], /\/zones\/zone-id\/dns_records\?type=CNAME&name=/, 'the tick stopped on the first row it touched')
+  assert.equal(db.leases.size, 2, 'both rows keep their tunnel ids for the next tick')
+})
+
+test('a budget that runs out mid-row ends the tick without a further call', async () => {
+  const now = Date.now()
+  const db = leaseDb({ leases: {
+    [ID]: staleLease(ID, 'tunnel-stale', now),
+    [OTHER_ID]: staleLease(OTHER_ID, 'tunnel-other', now),
+  } })
+  const outcome = await withCfStub(
+    (callNumber) => callNumber === 1
+      ? cfReply(200, undefined, [{ id: 'record-1', type: 'CNAME', name: HOST, content: 'tunnel-stale.cfargotunnel.com', proxied: true }])
+      : RATE_LIMITED_REPLY(),
+    async (calls) => {
+      const result = await pruneRelayLeases({ DB: db, ...CF_SECRETS })
+      return { result, urls: calls.map((call) => call.url) }
+    },
+  )
+  assert.equal(outcome.result.rateLimited, true)
+  assert.equal(outcome.result.pruned, 0)
+  assert.equal(outcome.urls.length, 2, 'the find and the refused delete are the whole spend of the interrupted row')
+  assert.match(outcome.urls[1], /\/dns_records\/record-1$/)
+  assert.equal(db.leases.size, 2, 'the interrupted row keeps its tunnel id and is retried next tick')
+})
+
+test('the cron GC still walks past a row that failed for its own reason', async () => {
+  const now = Date.now()
+  const db = leaseDb({ leases: {
+    [ID]: staleLease(ID, 'tunnel-stale', now),
+    [OTHER_ID]: staleLease(OTHER_ID, 'tunnel-other', now),
+  } })
+  const api = cloudflare()
+  api.deleteTunnel = async (tunnelId) => {
+    api.calls.push(['deleteTunnel', tunnelId])
+    if (tunnelId === 'tunnel-stale') throw new Error('cloudflare api DELETE /accounts/account-id/cfd_tunnel/tunnel-stale: not found')
+    return {}
+  }
+  const result = await pruneRelayLeases({ DB: db, CF_RELAY_API: api })
+  assert.equal(result.rateLimited, false)
+  assert.equal(result.pruned, 1)
+  assert.equal(db.leases.has(ID), true, 'the row that could not be settled keeps its tunnel id')
+  assert.equal(db.leases.has(OTHER_ID), false, 'the next stale row still settles in the same tick')
+  assert.equal(api.names().filter((name) => name === 'deleteTunnel').length, 2, 'one row failure does not end the tick')
 })
 
 test('the lease helper shapes match the wire contract', () => {

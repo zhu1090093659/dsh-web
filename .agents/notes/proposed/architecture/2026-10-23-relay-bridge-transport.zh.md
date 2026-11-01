@@ -6,6 +6,8 @@ Status: proposed
 
 本文的落地记录见[汇合桥的附加式实现](2026-10-23-relay-bridge-additive-implementation.zh.md)：按实例 `mode`、长活凭据与对象侧换 socket 已落成可合并的代码，尚未部署。
 
+会合点归属在[自建中继会合点](2026-11-01-selfhosted-relay-meeting-point.zh.md)中改到自建 relay.chatwithai.icu，帧契约与容量模型由新笔记承接，本文其余结论仍作数。
+
 ## 问题
 
 已配对的手机通过 `https://<id>.dsh-market.com` 访问自己的 DSH 实例，而这个源上的每个字节都由 market Worker 送出（`market/worker/src/relay.js`）：Worker 读一行 D1 拿到该实例当前的 `*.trycloudflare.com` quick tunnel 主机名，再把请求转发过去。回源传输因此是 quick tunnel，而官方文档把 quick tunnel 定性为测试用途：没有可用性保证，每条隧道最多 200 个在途请求（超出回 `429`），不支持 Server-Sent Events，主机名每次重建都变（[Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)）。

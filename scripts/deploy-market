@@ -96,6 +96,16 @@ const TRANSIENT_SIGNATURES = [
   // came with, which an earlier entry matches.
   { reason: 'malformed-api-response', re: /malformed response from the API/i },
   { reason: 'socket-error', re: /\b(?:ECONNRESET|ETIMEDOUT|EPIPE)\b|socket hang up/i },
+  // The same condition in Node's own network-layer wording, which is what cf
+  // prints today: undici rejects a connection it could not complete with a
+  // TypeError whose message is exactly "fetch failed", and cf's error box
+  // prints that message alone — the cause naming the syscall (ECONNRESET,
+  // ENOTFOUND, UND_ERR_*) reaches the log only when cf runs with DEBUG. A
+  // node-fetch based client prints the identical failure as "FetchError:
+  // request to <url> failed, reason: ...". Neither token appears in a config,
+  // auth, content or migration failure, so this stays a network-layer match
+  // beside the wrangler socket wording above.
+  { reason: 'socket-error', re: /\bfetch failed\b|\bFetchError\b/i },
 ]
 
 /** Transient reason for a failure text, or null when it must fail fast. */

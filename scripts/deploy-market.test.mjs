@@ -107,6 +107,28 @@ test('a malformed API response that clears on the next attempt ends with status 
   assert.equal(retries[0].reason, 'malformed-api-response')
 })
 
+test('a Node network failure that clears on the next attempt ends with status 0 and logs the retry', async () => {
+  // Given the tail measured on a real deploy: cf's error box printing undici's
+  // "fetch failed" with no cause, no status and no Ray ID
+  const fetchFailed = [
+    '┌ Error',
+    '│ fetch failed',
+    '└',
+    'deploy-market: cf d1 migrations apply 95f4e8ae-444a-46d0-98be-c367a9dbe6e8 --dir migrations failed (exit 1)',
+  ].join(String.fromCharCode(10))
+  const { result, runs, waits, retries } = await runPlan([
+    { status: 1, tail: fetchFailed },
+    { status: 0, tail: 'Applied 1 migration' },
+  ])
+  // When the deploy runs the command
+  // Then the network blip is retried instead of ending the lane on the first run
+  assert.equal(result.ok, true)
+  assert.equal(result.status, 0)
+  assert.equal(runs.length, 2)
+  assert.deepEqual(waits, [5000])
+  assert.deepEqual(retries, [{ attempt: 1, attempts: 4, reason: 'socket-error', pauseMs: 5000 }])
+})
+
 test('an exhausted retry budget fails with the captured evidence and the Cloudflare Ray ID', async () => {
   // Given every run is throttled and Cloudflare printed its Ray ID in the body
   const throttledTail = [
@@ -181,6 +203,10 @@ test('the transient classifier recognizes throttling, server errors, malformed r
     ['connect ETIMEDOUT 104.16.0.1:443', 'socket-error'],
     ['write EPIPE', 'socket-error'],
     ['Error: socket hang up', 'socket-error'],
+    // Node's network layer in its own wording: undici's message as cf prints it
+    // inside the error box, and the node-fetch spelling of the same failure.
+    ['fetch failed', 'socket-error'],
+    ['FetchError: request to https://api.cloudflare.com/client/v4/accounts/000/d1/database/95f4e8ae/query failed', 'socket-error'],
   ]
   // When each text is classified
   // Then every one of them names the condition worth another attempt
@@ -210,6 +236,11 @@ test('the transient classifier leaves auth, config, and content failures to fail
     '1500 assets · HTTP smoke',
     'edge returned 5xx · HTTP smoke',
     'at Object.<anonymous> (/app/node_modules/wrangler/wrangler-dist/cli.js:500:12)',
+    // The Node network-layer branch must not widen into the word "failed": a
+    // rejected upload and a config that never parsed both end the deploy
+    // whatever the attempt count.
+    'upload failed: 400 bad request',
+    'config validation failed',
   ]
   // When each text is classified
   // Then none of them is treated as transient

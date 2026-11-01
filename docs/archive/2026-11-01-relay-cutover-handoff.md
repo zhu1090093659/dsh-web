@@ -45,10 +45,10 @@
 
 回滚只动一个文件：`~/.dsh/profiles/desktop/cordis.patch.yml` 里 `web-ui-remote-bridge` 行的 `config:` 两行，删掉后重启宿主，手机连接地址改回 `wss://8957f5eb13560cdc.dsh-market.com`。
 
-再切回新中继用备份覆盖：
+再切回新中继用新中继状态的备份覆盖（`bak-relay-cutover-*` 是切流前的无配置状态，别拿它来回切；`bak-relay-newrelay` 才是新中继状态）：
 
 ```sh
-cp ~/.dsh/profiles/desktop/cordis.patch.yml.bak-relay-cutover-* ~/.dsh/profiles/desktop/cordis.patch.yml
+cp ~/.dsh/profiles/desktop/cordis.patch.yml.bak-relay-newrelay ~/.dsh/profiles/desktop/cordis.patch.yml
 ```
 
 覆盖后重启宿主，手机地址改回 `wss://8957f5eb13560cdc.relay.chatwithai.icu`。配置生效点只在宿主重启，手机侧只是改一个 origin，两个方向都不需要动 dsh-market 的中继行。

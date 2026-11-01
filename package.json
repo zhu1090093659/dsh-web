@@ -17,12 +17,15 @@
     "@linxin666/dsh-web-all": "^0.4.13"
   },
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "node scripts/host-sdk-link.mjs --check && pnpm -r build",
+    "deps:install": "node scripts/install-deps.mjs",
     "dev:watch": "node scripts/dev-watch.mjs",
-    "test": "pnpm -r test",
+    "host-sdk:check": "node scripts/host-sdk-link.mjs --check",
+    "host-sdk:link": "node scripts/host-sdk-link.mjs",
+    "test": "node scripts/host-sdk-link.mjs --check && pnpm -r test",
     "test:standards": "node scripts/test-standards.mjs --check",
     "test:standards:write": "node scripts/test-standards.mjs --write-baseline",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "node scripts/host-sdk-link.mjs --check && pnpm -r typecheck",
     "aggregate:check": "node scripts/aggregate.mjs --check",
     "runtime-deps:check": "node scripts/runtime-deps-check.mjs",
     "libs:check": "node scripts/lib-artifact-check.mjs",

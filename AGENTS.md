@@ -17,7 +17,7 @@ Before changing `packages/`, read [packages/AGENTS.md](packages/AGENTS.md). Befo
 ## Common Commands
 
 ```sh
-pnpm install
+pnpm run deps:install   # pnpm install --ignore-scripts, then pins node_modules/@deepseek-ai to the host DSH tree
 pnpm build
 pnpm dev:watch   # watch-rebuild browser bundles; the dsh web host reloads the GUI itself
 pnpm test
@@ -36,6 +36,10 @@ pnpm deploy:market
 node scripts/dsh-plugin-new <name>
 node scripts/link-profile.mjs   # link the local family and the satellite packages into the DSH profile
 ```
+
+node_modules/@deepseek-ai is a symlink into the host DSH installation rather than a registry copy: the packages here are loaded by the running host through the profile links, so a second SDK cohort beside the host one breaks service registration instead of failing loudly. pnpm reaches through that symlink, so dependency installs go through `pnpm run deps:install` (scripts/install-deps.mjs), which detaches the pin, installs, and pins it back; `pnpm run host-sdk:check` reports drift and [scripts/host-sdk-link.mjs](scripts/host-sdk-link.mjs) owns the mechanism.
+
+Known limitation of that pin, measured rather than theoretical: it serves 239 workspace entries from the host tree, the host's 85 client packages declare their slot names with `declare module '@deepseek-ai/dsh-client-ui-slots'`, and those augmentations live in the host tree where that package is not installed, so they degrade to standalone ambient declarations while `skipLibCheck` hides the failed resolution; the symptom is `packages/dsh-message-edit`, `packages/dsh-git-graph` and `packages/dsh-web-settings` failing typecheck with slot names that do not satisfy the constraint. That is the price of the single-instance contract rather than a version problem, and it is not fixable by upgrading the three client-only packages: moving `dsh-client-store`, `dsh-client-ui-primitives` and `dsh-client-ui-slots` to 0.2.1-rc.5 was executed and left the 16 errors byte-identical, so do not retry it; a plain registry install (CI, contributors without a host DSH) has no such error at all. `packages/dsh-remote-bridge` also fails typecheck, for an unrelated reason: 0.2.1-rc.5 changed the `AskUserQuestion` handler type into a union of two call signatures, which needs code adaptation.
 
 Before merging, run at least `pnpm typecheck && pnpm test && pnpm test:standards && pnpm docs:check && pnpm i18n:check`. Run the aggregate and market checks when those areas change. [docs/development.md](docs/development.md) owns the test rules, their baseline, and the failure-path audit checklist; `.github/workflows/nightly.yml` is the Tier-2 lane that adds the coverage ratchet and three consecutive full-suite runs for flake detection. Two packages commit their build output under `lib/` (`dsh-market`, `dsh-web-all`); the satellite repositories carry the same rule for their own packages in their own CI. After changing the `src/` of either committing package, rebuild with `pnpm build`, record the new fingerprints with `pnpm libs:write`, and commit the refreshed `lib/` together with `scripts/lib-artifact-fingerprints.json`. A child plugin's client sources stay out of the aggregate's fingerprint: its `lib/` is only the compat layer plus the fault-isolation shell and every family row mounts the real package (issue #1901), so a child's `src/` change moves only that child's own `lib/`. `pnpm libs:check` is the gate. Market site changes must also commit the regenerated `market/dist` (never rebuild in CI; `market:check` verifies consistency, `deploy-market.yml` deploys the committed artifacts).
 

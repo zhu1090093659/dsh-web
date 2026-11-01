@@ -10,6 +10,21 @@ autoInstallPeers: false
 # 链接到 workspace 工程（版本同源），profile 里的 git 安装仍走 npm registry。
 linkWorkspacePackages: true
 
+# pnpm 11 会在执行任何 run 脚本前做一次依赖自检，必要时以 headless install
+# 改写 node_modules；而本仓根 node_modules/@deepseek-ai 是指向宿主 DSH 安装树的
+# 软链（宿主目录 root 所有，pnpm 无法改写），该自检必然 EACCES，连
+# pnpm run deps:install 都起不来。安装入口固定为 deps:install，故关掉自检。
+verifyDepsBeforeRun: false
+
+# 宿主 DSH 跑的是 0.2.1-rc.5 队列；这 3 个包是纯客户端构建输入，宿主不安装它们，
+# 只能从 registry 取。把整条 workspace 固定到与宿主同队列的 rc.5，否则 slot 注册表
+# 会一半 rc.5 一半 rc.3，pnpm -r typecheck 报 slot 名不满足约束。21 个清单仍写
+# ^0.2.1-rc.3（rc.5 满足该 range），override 只负责让解析结果统一。
+overrides:
+  '@deepseek-ai/dsh-client-store': '0.2.1-rc.5'
+  '@deepseek-ai/dsh-client-ui-primitives': '0.2.1-rc.5'
+  '@deepseek-ai/dsh-client-ui-slots': '0.2.1-rc.5'
+
 allowBuilds:
   # The cloudflared postinstall downloads the platform binary (the auto-tunnel
   # feature ships its own tunnel client — users install nothing).
@@ -31,11 +46,11 @@ allowBuilds:
 # 0.1.5-rc.1), so the root devDependencies carry it as a host face instead of a
 # packageExtensions patch.
 packageExtensions:
-  '@deepseek-ai/dsh-client-store@0.2.1-rc.3':
+  '@deepseek-ai/dsh-client-store@0.2.1-rc.5':
     dependencies:
       zustand: '~4.4.7'
       immer: '^10.1.1'
-  '@deepseek-ai/dsh-client-ui-primitives@0.2.1-rc.3':
+  '@deepseek-ai/dsh-client-ui-primitives@0.2.1-rc.5':
     dependencies:
       anser: '^2.3.5'
       clsx: '^2.0.0'

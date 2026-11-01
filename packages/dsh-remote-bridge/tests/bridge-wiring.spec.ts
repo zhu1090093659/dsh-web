@@ -7,7 +7,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   bridgeWiringPlanOf,
+  createDedupedStateLogger,
   disposeBridgeStack,
+  relayBridgeStateLine,
+  relayStateLine,
   resolveBridgeConfig,
 } from '../src/index.ts'
 
@@ -142,5 +145,56 @@ describe('入站栈的卸载次序', () => {
     // And the rejected teardown is stated instead of vanishing into a void
     await flush()
     expect(logs.join(' ')).toContain('EADDRINUSE')
+  })
+})
+
+describe('按需租约申领与后台状态日志去重', () => {
+  it('operator: 未激活远程且无隧道时不申领租约，激活或有隧道时申领', () => {
+    // Given default config (relay: true, autoTunnel: false) and a settled gate port
+    const defaultConfig = resolveBridgeConfig({}, NO_ENV)
+    const quickConfig = resolveBridgeConfig({ autoTunnel: true }, NO_ENV)
+    // When the plan is computed across unarmed, armed, and quick-tunnel states
+    const unarmed = bridgeWiringPlanOf({ config: defaultConfig, gatePort: 41000, remoteArmed: false })
+    const armed = bridgeWiringPlanOf({ config: defaultConfig, gatePort: 41000, remoteArmed: true })
+    const quick = bridgeWiringPlanOf({ config: quickConfig, gatePort: 41000, remoteArmed: false })
+    // Then claim stays false only when unarmed with no tunnel, and true when armed or tunnel is active
+    expect(unarmed.claim).toBe(false)
+    expect(armed.claim).toBe(true)
+    expect(quick.claim).toBe(true)
+  })
+
+  it('operator: 租约与桥连接器状态日志过滤过渡态并对连续相同失败去重', () => {
+    // Given a deduplicated state logger for relay lease and relay bridge
+    const leaseLogs: string[] = []
+    const bridgeLogs: string[] = []
+    const onLeaseState = createDedupedStateLogger('relay lease: ', relayStateLine, line => { leaseLogs.push(line) })
+    const onBridgeState = createDedupedStateLogger('relay bridge: ', relayBridgeStateLine, line => { bridgeLogs.push(line) })
+    // When repeated claiming -> failed cycles and dialing -> failed cycles occur
+    onLeaseState({ state: 'idle' })
+    onLeaseState({ state: 'claiming' })
+    onLeaseState({ state: 'failed', error: 'invalid-params' })
+    onLeaseState({ state: 'claiming' })
+    onLeaseState({ state: 'failed', error: 'cf-api-unavailable' })
+    onLeaseState({ state: 'claiming' })
+    onLeaseState({ state: 'failed', error: 'cf-api-unavailable' })
+    onLeaseState({ state: 'claiming' })
+    onLeaseState({ state: 'claimed', mode: 'bridge', hostname: 'abc.dsh-market.com' })
+    onBridgeState({ state: 'idle' })
+    onBridgeState({ state: 'dialing' })
+    onBridgeState({ state: 'failed', error: 'socket closed' })
+    onBridgeState({ state: 'dialing' })
+    onBridgeState({ state: 'failed', error: 'socket closed' })
+    onBridgeState({ state: 'dialing' })
+    onBridgeState({ state: 'connected', instance: 'abc' })
+    // Then transient states (idle/claiming/dialing) and duplicate errors are suppressed
+    expect(leaseLogs).toEqual([
+      'relay lease: failed invalid-params',
+      'relay lease: failed cf-api-unavailable',
+      'relay lease: claimed bridge abc.dsh-market.com',
+    ])
+    expect(bridgeLogs).toEqual([
+      'relay bridge: failed socket closed',
+      'relay bridge: connected abc',
+    ])
   })
 })

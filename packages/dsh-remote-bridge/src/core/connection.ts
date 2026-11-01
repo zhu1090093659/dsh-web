@@ -282,6 +282,15 @@ export interface BridgeConnectionOptions {
    * `push.register` into a failure.
    */
   readonly onPushRegistered?: () => void
+  /**
+   * Called after `pair.finish` admits a device into the roster.
+   *
+   * A machine that started with no paired devices defers claiming its relay
+   * lease until a remote device is actually paired (or a pairing code is
+   * requested); guarded at the call site so background relay work never fails
+   * the pairing response.
+   */
+  readonly onDeviceEnrolled?: () => void
 }
 
 /** A device the connection proved itself to be, resolved from the upgrade request. */
@@ -1191,6 +1200,11 @@ export class BridgeConnection {
     const enrollment = await this.#options.roster.enroll(devicePubKey)
     if (enrollment === undefined) return refusal(CODE_INVALID_ARGS, 'devicePubKey is not a P-256 SPKI public key')
     this.#deviceId = enrollment.deviceId
+    try {
+      this.#options.onDeviceEnrolled?.()
+    } catch {
+      // Relay lease activation is background work and must never fail pairing.
+    }
     return { ok: true, r: { deviceToken: enrollment.deviceToken, deviceId: enrollment.deviceId } }
   }
 

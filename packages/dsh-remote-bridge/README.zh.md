@@ -237,7 +237,7 @@ curl -s http://127.0.0.1:3080/remote-bridge/pair/token
 ## 接入栈与安全模型
 
 `@linxin666/dsh-remote-bridge` 拥有完整的公网与局域网接入栈：
-- **中继身份与租约**：`relay-registry` 在 `$DSH_HOME/remote-web-ui-registry/<profile>.json` 下持久化中继身份（id 与 secret）；改 relay 配置会重挂载插件行，当以 `relay=false` 挂载且盘上存在身份时，挂载时撤销上一次留下的注册行并 `pair.release()` 释放租约各一次（失败各记一行；卸载时不释放也不撤行，保留手机收藏地址由服务端 GC 回收；`relay=false` 挂载绝不铸造新身份，盘上无身份时零副作用、不写盘）。
+- **中继身份与租约**：`relay-registry` 在 `$DSH_HOME/remote-web-ui-registry/<profile>.json` 下持久化中继身份（id 与 secret）；改 relay 配置会重挂载插件行。在未配置隧道（`tunnel.mode === 'off'`）且尚无已配对设备时，插件启动保持静默，不铸造身份也不申领租约；仅当名册读出已配对设备、本机打开配对面板取码、新设备完成配对或开启隧道时才按需触发申领（同时过滤 `idle`/`claiming`/`dialing` 过渡态日志并对连续相同的失败日志去重）。当以 `relay=false` 挂载且盘上存在身份时，挂载时撤销上一次留下的注册行并 `pair.release()` 释放租约各一次（失败各记一行；卸载时不释放也不撤行，保留手机收藏地址由服务端 GC 回收；`relay=false` 挂载绝不铸造新身份，盘上无身份时零副作用、不写盘）。
 - **中继连接器**：`relay-connector` 并行维护快速隧道与命名隧道连接器；`relay-bridge-connector` 经 WSS 连接 Cloudflare Durable Object 会合点，并将连接状态记录在 `$DSH_HOME/remote-web-ui-relay-bridge.json`（状态文件写入经行为级验证，缺省落到 `$DSH_HOME`，非源码文本断言）。
 - **隧道生命周期**：`tunnel`、`tunnel-plan` 与 `tunnel-orphan` 管理平台原生 `cloudflared` 子进程，具备指数退避重启机制并自动清理崩溃遗留的孤儿进程。
 - **命名隧道端口同步**：`ingress-sync` 在宿主监听端口变化时，把 Cloudflare 命名隧道的 ingress 规则原子收敛到本机闸门端口。
@@ -258,7 +258,7 @@ curl -s http://127.0.0.1:3080/remote-bridge/pair/token
 
 | 配置项 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `relay` | boolean | `true` | 是否申领 relay 租约。默认开启；无隧道时仍 claim 租约，因此默认配置下公网即可用。 |
+| `relay` | boolean | `true` | 是否申领 relay 租约。默认开启；无隧道时在已有配对设备或发起配对时按需 claim 租约。 |
 | `autoTunnel` | boolean | `false` | 是否启动指向入站网关的 Cloudflare 快速隧道。 |
 | `lanBind` | boolean | `undefined`（关） | 是否启动监听本机局域网 IPv4 地址的局域网转发器。 |
 | `tunnelToken` | string | `undefined` | 运行 Cloudflare 命名隧道所需的隧道令牌。 |

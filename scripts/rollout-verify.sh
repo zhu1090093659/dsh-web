@@ -6,7 +6,9 @@
 #   shadow copy 割裂」两类升级事故挡在使用之前。检查项：
 #
 #     1. 宿主版本满足家族宿主底线（dsh.engines.dsh，取自插件脚手架）；
-#     2. 根 lockfile 的全部 @deepseek-ai/dsh-* 解析在底线指名的群体版本上；
+#     2. 根 lockfile 的全部 @deepseek-ai/dsh-* 解析在底线指名的群体版本上，
+#        或在该包 workspace override 钉住的版本上（宿主不安装的客户端专用
+#        例外，声明在 pnpm-workspace.yaml 的 overrides 块）；
 #     3. profile 群体对照（发现 dsh-sdk-upgrade 技能脚本时委托执行，
 #        含可选的运行实例认证栅栏探测）；
 #     4. 未认证 API 请求必须 401/403（alpha.2 起根路径即浏览器认证栅栏；
@@ -40,8 +42,8 @@ node -e 'import("./scripts/lib/rollout-verify.mjs").then(m => { if (!m.satisfies
   || fail "host ${HOST_VERSION} does not satisfy the declared floor ${FLOOR} - upgrade the host CLI first"
 say "PASS host version satisfies the floor"
 
-VIOLATIONS="$(node -e 'import("./scripts/lib/rollout-verify.mjs").then(m => { const v = m.lockfileCohortViolations(require("node:fs").readFileSync("pnpm-lock.yaml", "utf8"), process.argv[1]); for (const [k, ver] of v) console.error(`${k} @ ${ver}`); process.exit(v.length ? 1 : 0); })' "$FLOOR" 2>&1)" \
-  || fail "lockfile cohort drift (expected ${FLOOR#>=}):
+VIOLATIONS="$(node -e 'import("./scripts/lib/rollout-verify.mjs").then(m => { const v = m.lockfileCohortViolations(require("node:fs").readFileSync("pnpm-lock.yaml", "utf8"), process.argv[1], m.readWorkspaceOverrides("pnpm-workspace.yaml")); for (const [k, ver] of v) console.error(`${k} @ ${ver}`); process.exit(v.length ? 1 : 0); })' "$FLOOR" 2>&1)" \
+  || fail "lockfile cohort drift outside the declared overrides (expected ${FLOOR#>=}):
 ${VIOLATIONS}"
 say "PASS root lockfile resolves the family at ${FLOOR#>=}"
 

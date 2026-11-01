@@ -10,6 +10,8 @@ import {
   disposeBridgeStack,
   resolveBridgeConfig,
 } from '../src/index.ts'
+import { RELAY_CONTROL_URL } from '../src/host/relay-control.ts'
+import { RELAY_BASE_SUFFIX } from '../src/host/relay-registry.ts'
 
 /** 一处空的进程环境。 */
 const NO_ENV: NodeJS.ProcessEnv = {}
@@ -36,6 +38,8 @@ describe('配置面沿用老插件的字段名与缺省值', () => {
       cfApiToken: undefined,
       cfAccountId: undefined,
       cfTunnelId: undefined,
+      relayControlUrl: RELAY_CONTROL_URL,
+      relayPublicSuffix: RELAY_BASE_SUFFIX,
     })
   })
 
@@ -66,6 +70,8 @@ describe('配置面沿用老插件的字段名与缺省值', () => {
       cfApiToken: undefined,
       cfAccountId: 'acct',
       cfTunnelId: 'tunnel',
+      relayControlUrl: RELAY_CONTROL_URL,
+      relayPublicSuffix: RELAY_BASE_SUFFIX,
     })
   })
 

@@ -13,9 +13,35 @@
 
 import type { RelayIdentity } from './relay-registry.ts'
 
-/** The control-plane endpoints (market apex, never a relay hostname). */
-export const RELAY_CLAIM_URL = 'https://dsh-market.com/api/relay/claim'
-export const RELAY_RELEASE_URL = 'https://dsh-market.com/api/relay/release'
+/**
+ * The control-plane base every lease and registry endpoint hangs off: the
+ * market apex, never a relay hostname.
+ *
+ * This constant is the one home of the shipped default. A self-hosted meeting
+ * point sets the `relayControlUrl` config field, and its `claim`, `release`,
+ * `register` and `unregister` paths all move with that one base.
+ */
+export const RELAY_CONTROL_URL = 'https://dsh-market.com/api/relay'
+
+/** The paths one control-plane base serves. */
+export type RelayControlEndpoint = 'claim' | 'release' | 'register' | 'unregister'
+
+/**
+ * One endpoint of a control-plane base.
+ *
+ * The base arrives from a hand-written profile YAML, so its trailing slashes
+ * are trimmed instead of doubling the separator this adds.
+ * @param endpoint - the path below the base.
+ * @param controlUrl - the base; undefined means the shipped market apex.
+ * @returns the absolute endpoint URL.
+ */
+export function relayControlEndpointOf(endpoint: RelayControlEndpoint, controlUrl?: string): string {
+  return (controlUrl ?? RELAY_CONTROL_URL).replace(/\/+$/, '') + '/' + endpoint
+}
+
+/** The default lease endpoints (market apex, never a relay hostname). */
+export const RELAY_CLAIM_URL = relayControlEndpointOf('claim')
+export const RELAY_RELEASE_URL = relayControlEndpointOf('release')
 
 /** Which connector serves the relay hostname. `bridge` is the Durable Object
  * meeting point (`relay-bridge-connector.ts`), `named` the instance's own cloud

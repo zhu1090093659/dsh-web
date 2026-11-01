@@ -246,7 +246,7 @@ curl -s http://127.0.0.1:3080/remote-bridge/pair/token
 本包的安全模型对所有外部接入入口实施严格的白名单隔离：
 - **入站网关（`src/host/ingress-gate.ts`）**：仅绑定 `127.0.0.1`，且仅将 `/ios/v1` 的 WebSocket 升级转发到本机协议端口，同时将 `Host` 头改写为回环权威。其余任何普通 HTTP 请求与非白名单升级一律直接返回 `404 {"error":"not-found"}` 并关闭连接，绝不建立上游连接。
 - **隧道的目标是入站网关而非 webServer 端口**：cloudflared 快速隧道与命名隧道的目标均指向 `ingress-gate` 的动态回环端口，绝不直连 `webServer` 端口。外界经隧道传入的请求无法触达 webServer 路由、内部 API 或其他插件。
-- **中继注册行与公网暴露面**：中继注册行只写入快速隧道的 URL，也就是入站闸门，公网因此只看得见 /ios/v1。计划为 quick 且隧道 running 时把闸门 URL 注册给中继 Worker（`<id>.dsh-market.com` 代理到本机）；卸载时只清本地引用不撤行。二维码公网地址由 `livePublicOriginOf` 裁定：bridge 或 named 租约优先稳定子域名；quick 租约在注册未成功时退回隧道 running URL；无租约用隧道 URL；皆无则无地址。其后退回 `DSH_REMOTE_PUBLIC_BASE_URL`，局域网兜底仅当局域网转发器真的在监听时才按实际绑定的 address 与 port 给出（不猜地址列表首项，转发器停止即无兜底；已彻底移除磁盘 registry 行作为兜底地址，消除了对老插件数据文件的最后一处依赖）。
+- **中继注册行与公网暴露面**：中继注册行只写入快速隧道的 URL，也就是入站闸门，公网因此只看得见 /ios/v1。计划为 quick 且隧道 running 时把闸门 URL 注册给中继 Worker（代理稳定子域名到本机，端点与后缀由配置决定、缺省为 `<id>.dsh-market.com`）；卸载时只清本地引用不撤行。二维码公网地址由 `livePublicOriginOf` 裁定：bridge 或 named 租约优先稳定子域名；quick 租约在注册未成功时退回隧道 running URL；无租约用隧道 URL；皆无则无地址。其后退回 `DSH_REMOTE_PUBLIC_BASE_URL`，局域网兜底仅当局域网转发器真的在监听时才按实际绑定的 address 与 port 给出（不猜地址列表首项，转发器停止即无兜底；已彻底移除磁盘 registry 行作为兜底地址，消除了对老插件数据文件的最后一处依赖）。
 - **局域网转发器的目标同样是入站网关**：局域网转发器监听本机局域网 IPv4 地址，并将请求严格转发至 `ingress-gate` 端口，因此局域网入口的暴露面同样仅有 `/ios/v1`。
 - **中继桥会合点白名单**：`relay-bridge-connector.ts` 对 Durable Object 汇聚的入站流执行完全相同的白名单检查，非 `/ios/v1` 的 HTTP 流直接应答 `404 {"error":"not-found"}`，非白名单 WebSocket 升级直接回复 `ws-fail 404 {"error":"not-found"}`，两条路都不建立上游连接。
 - **身份目录沿用历史拼写与并存禁忌**：中继身份目录 `$DSH_HOME/remote-web-ui-registry/` 与状态文件 `remote-web-ui-relay-bridge.json` 有意沿用历史拼写，确保既有 profile 保持身份连续性，已配对设备升级后无需重新配对。**已知风险与并存禁忌**：同一 profile 切勿同时启用本插件与已弃用的 `dsh-remote-web-ui` 的中继——两者按 profile 共用同一份身份文件；若新桥以 `relay=false` 挂载，会撤销该身份下的注册行并释放租约，从而打断老插件正在使用的公网中继；若两侧 relay 同时开启，bridge 传输下两个连接器会拿同一凭据竞争同一个 Durable Object 连接互相顶掉，quick 传输下后注册者覆盖前者。该收尾行为是有意设计的。
@@ -259,6 +259,8 @@ curl -s http://127.0.0.1:3080/remote-bridge/pair/token
 | 配置项 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `relay` | boolean | `true` | 是否申领 relay 租约。默认开启；无隧道时仍 claim 租约，因此默认配置下公网即可用。 |
+| `relayControlUrl` | string | `'https://dsh-market.com/api/relay'` | 中继控制面基址，claim/release/register/unregister 都从它派生。 |
+| `relayPublicSuffix` | string | `'.dsh-market.com'` | 稳定主机名后缀。 |
 | `autoTunnel` | boolean | `false` | 是否启动指向入站网关的 Cloudflare 快速隧道。 |
 | `lanBind` | boolean | `undefined`（关） | 是否启动监听本机局域网 IPv4 地址的局域网转发器。 |
 | `tunnelToken` | string | `undefined` | 运行 Cloudflare 命名隧道所需的隧道令牌。 |

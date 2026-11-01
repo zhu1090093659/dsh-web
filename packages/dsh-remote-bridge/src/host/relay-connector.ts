@@ -14,6 +14,7 @@ import { dshHome } from './dsh-home.ts'
 import {
   claimRelayLease,
   relayClaimRetryOf,
+  relayControlEndpointOf,
   releaseRelayLease,
   type RelayClaim,
   type RelayClaimOutcome,
@@ -137,6 +138,10 @@ export interface RelayConnectorPairOptions {
   stopBridge?: () => void
   /** Release the lease (the offline action, never a retire). */
   release?: (identity: RelayIdentity) => Promise<void>
+  /** The control-plane base the two lease endpoints hang off. The defaults
+   * below derive `claim` and `release` from it, so a host that configures
+   * nothing dials exactly the shipped market URLs. */
+  controlUrl?: string
   /** Observe the lease state (logs only — the card still renders the registry). */
   onState?: (state: RelayPairState) => void
   baseDelayMs?: number
@@ -189,7 +194,8 @@ export class RelayConnectorPair {
     if (this.disposed) return undefined
     this.clearTimer()
     this.setState({ state: 'claiming' })
-    const claimFn = this.options.claim ?? ((request: RelayClaimRequest) => claimRelayLease(request))
+    const claimFn = this.options.claim
+      ?? ((request: RelayClaimRequest) => claimRelayLease(request, { url: relayControlEndpointOf('claim', this.options.controlUrl) }))
     let outcome: RelayClaimOutcome
     try {
       outcome = await claimFn({
@@ -229,7 +235,8 @@ export class RelayConnectorPair {
    * phone's bookmark, and the tunnel behind it survives.
    */
   async release(): Promise<void> {
-    const releaseFn = this.options.release ?? ((identity: RelayIdentity) => releaseRelayLease(identity))
+    const releaseFn = this.options.release
+      ?? ((identity: RelayIdentity) => releaseRelayLease(identity, { url: relayControlEndpointOf('release', this.options.controlUrl) }))
     try {
       await releaseFn(this.identity)
     } catch {

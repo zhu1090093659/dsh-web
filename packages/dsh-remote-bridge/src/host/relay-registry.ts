@@ -19,14 +19,20 @@ import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { dshHome } from './dsh-home.ts'
+import { relayControlEndpointOf } from './relay-control.ts'
 
+// The registration endpoints are the control plane's own paths: one configured
+// base (`relayControlUrl`) moves all four endpoints, these two included.
 /** The market worker's registration endpoints (dsh-market.com edge API). */
-export const RELAY_REGISTER_URL = 'https://dsh-market.com/api/relay/register'
-export const RELAY_UNREGISTER_URL = 'https://dsh-market.com/api/relay/unregister'
+export const RELAY_REGISTER_URL = relayControlEndpointOf('register')
+export const RELAY_UNREGISTER_URL = relayControlEndpointOf('unregister')
 /**
  * The public origin template: one stable single-label subdomain per
  * registration id. Single label on purpose — Universal SSL covers exactly
  * one subdomain level, so a two-level hostname would get no certificate.
+ *
+ * This constant is the one home of the shipped default suffix; a self-hosted
+ * meeting point sets `relayPublicSuffix` and the hostname template follows.
  */
 export const RELAY_BASE_SUFFIX = '.dsh-market.com'
 
@@ -148,9 +154,12 @@ export async function unregisterRelay(
 /**
  * The stable relay base for one identity — the origin the QR and the phone
  * bookmark use while (or after) the registration is accepted.
+ * @param identity - the registration identity.
+ * @param publicSuffix - the configured suffix; undefined means the shipped one.
+ * @returns the origin, with no path of its own.
  */
-export function relayBaseOf(identity: RelayIdentity): string {
-  return `https://${identity.id}${RELAY_BASE_SUFFIX}`
+export function relayBaseOf(identity: RelayIdentity, publicSuffix: string = RELAY_BASE_SUFFIX): string {
+  return `https://${identity.id}${publicSuffix}`
 }
 
 /**
@@ -171,6 +180,9 @@ export class RelayRegistrar {
       fetchFn?: typeof fetch
       registerUrl?: string
       unregisterUrl?: string
+      /** The public suffix the hostname template uses (default
+       * {@link RELAY_BASE_SUFFIX}). */
+      publicSuffix?: string
       baseDelayMs?: number
       maxDelayMs?: number
       timerFn?: (fn: () => void, ms: number) => NodeJS.Timeout
@@ -179,7 +191,7 @@ export class RelayRegistrar {
 
   /** The stable relay base for the QR while registered. */
   get baseUrl(): string {
-    return relayBaseOf(this.identity)
+    return relayBaseOf(this.identity, this.options.publicSuffix)
   }
 
   /** The last registration failure detail (undefined while healthy). */

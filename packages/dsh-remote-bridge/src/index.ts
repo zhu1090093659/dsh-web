@@ -93,7 +93,13 @@ import {
 import { removeManagedBlock, type LegacyBlockCleanup } from './host/lan-bind.ts'
 import { LanForwarder, type LanForwardState } from './host/lan-forward.ts'
 import { createRelayBridgeRunner } from './host/relay-bridge-connector.ts'
-import { releaseRelayLease, type RelayClaim, type RelayConnectorMode } from './host/relay-control.ts'
+import {
+  RELAY_CONTROL_URL,
+  relayControlEndpointOf,
+  releaseRelayLease,
+  type RelayClaim,
+  type RelayConnectorMode,
+} from './host/relay-control.ts'
 import {
   createNamedRelayConnector,
   readPluginVersion,
@@ -106,6 +112,7 @@ import {
 import {
   loadRelayIdentity,
   readExistingRelayIdentity,
+  RELAY_BASE_SUFFIX,
   RelayRegistrar,
   unregisterRelay,
   type RelayIdentity,
@@ -405,7 +412,8 @@ function jobFaces(ctx: Context) {
  *
  * 字段名与 `dsh-remote-web-ui` 逐字一致，所以现有 profile YAML 可以直接沿用；本包
  * 没有 schema 依赖，缺省值由 {@link resolveBridgeConfig} 补齐，没写的字段一律按
- * 缺省处理（不新增开关）。
+ * 缺省处理。{@link Config.relayControlUrl} 与 {@link Config.relayPublicSuffix} 只改
+ * 会合点地址，缺省仍是市场端点与后缀，所以它们不引入新的开关。
  */
 export interface Config {
   /** 是否申领 relay 租约（默认 true）。关掉就只有本机的回环入口可用。 */
@@ -428,6 +436,12 @@ export interface Config {
   cfAccountId?: string
   /** 命名隧道 id（默认 undefined）。 */
   cfTunnelId?: string
+  /** 中继控制面基址（默认 https://dsh-market.com/api/relay）：自建会合点时
+   * claim/release/register/unregister 四个端点随它一起搬家。 */
+  relayControlUrl?: string
+  /** relay 稳定子域名的公共后缀（默认 .dsh-market.com）：主机名是
+   * https://<id> 加上它，一级子域名由它决定。 */
+  relayPublicSuffix?: string
 }
 
 /** 配置面补齐缺省值后的样子：每个字段都是调用方可以直接用的值。 */
@@ -442,6 +456,8 @@ export interface ResolvedBridgeConfig {
   cfApiToken: string | undefined
   cfAccountId: string | undefined
   cfTunnelId: string | undefined
+  relayControlUrl: string
+  relayPublicSuffix: string
 }
 
 /** 一次配置读取看到的字段表：不是对象的配置读成空表。 */
@@ -513,6 +529,9 @@ export function resolveBridgeConfig(raw: unknown, env: NodeJS.ProcessEnv = proce
     cfApiToken: optionalTextField(fields, 'cfApiToken'),
     cfAccountId: optionalTextField(fields, 'cfAccountId'),
     cfTunnelId: optionalTextField(fields, 'cfTunnelId'),
+    // 缺省值只认 relay-control.ts / relay-registry.ts 里的常量，这里不抄第二份字面量。
+    relayControlUrl: optionalTextField(fields, 'relayControlUrl') ?? RELAY_CONTROL_URL,
+    relayPublicSuffix: optionalTextField(fields, 'relayPublicSuffix') ?? RELAY_BASE_SUFFIX,
   }
 }
 
@@ -818,16 +837,24 @@ export interface RelayAnnouncer {
  *
  * 注册上去的 URL 就是隧道的目标，而隧道的目标是入站闸门，所以这一行只透出
  * `/ios/v1`：announcer 不会把宿主的路由表暴露给公网。
- * @param options - 身份来源（懒读，只有真要注册时才碰 DSH home）与失败落点。
+ * @param options - 身份来源（懒读，只有真要注册时才碰 DSH home）、会合点地址与失败落点。
  * @returns announcer 本身。
  */
 export function createRelayAnnouncer(options: {
   identity: () => RelayIdentity | undefined
   registrar?: (identity: RelayIdentity, onState: (state: RelayState) => void) => RelayRegistrar
+  /** 中继控制面基址：注册行与撤行走它派生的两条路径（缺省仍是市场端点）。 */
+  controlUrl?: string
+  /** 稳定子域名的公共后缀（缺省仍是 .dsh-market.com）。 */
+  publicSuffix?: string
   log?: (message: string) => void
 }): RelayAnnouncer {
   const build = options.registrar
-    ?? ((identity: RelayIdentity, onState: (state: RelayState) => void) => new RelayRegistrar(identity, onState))
+    ?? ((identity: RelayIdentity, onState: (state: RelayState) => void) => new RelayRegistrar(identity, onState, {
+      registerUrl: relayControlEndpointOf('register', options.controlUrl),
+      unregisterUrl: relayControlEndpointOf('unregister', options.controlUrl),
+      publicSuffix: options.publicSuffix,
+    }))
   let registrar: RelayRegistrar | undefined
   let attempted: string | undefined
   let registered: string | undefined
@@ -1284,16 +1311,18 @@ function existingRelayIdentityOf(profile: string, log: (message: string) => void
  */
 export async function retireStaleRelayHalfOf(parts: {
   identity: RelayIdentity
+  /** 中继控制面基址：撤行与释放都打到配好的那一个（缺省仍是市场端点）。 */
+  controlUrl?: string
   log?: (message: string) => void
 }): Promise<void> {
   try {
-    await unregisterRelay(parts.identity)
+    await unregisterRelay(parts.identity, relayControlEndpointOf('unregister', parts.controlUrl))
   } catch (error) {
     parts.log?.('the previous relay registration could not be withdrawn: '
       + (error instanceof Error ? error.message : String(error)))
   }
   try {
-    await releaseRelayLease(parts.identity)
+    await releaseRelayLease(parts.identity, { url: relayControlEndpointOf('release', parts.controlUrl) })
   } catch (error) {
     parts.log?.('the previous relay lease could not be released: '
       + (error instanceof Error ? error.message : String(error)))
@@ -1630,7 +1659,12 @@ function applyImpl(ctx: Context, config?: unknown): void {
     // Worker 上那行「稳定子域名 -> 本机隧道」的注册：只有快速隧道计划才写，失败只记
     // 一行，绝不阻断隧道。注册上去的 URL 是隧道的目标，也就是入站闸门，所以这一行
     // 只透出 /ios/v1。
-    const announcer = createRelayAnnouncer({ identity: identityOf, log })
+    const announcer = createRelayAnnouncer({
+      identity: identityOf,
+      controlUrl: settings.relayControlUrl,
+      publicSuffix: settings.relayPublicSuffix,
+      log,
+    })
     // relay 关掉时的唯一出口：撤注册行 + 释放租约一次（老插件 disposeRelayHalf(true)）。
     const relayHalf = createRelayHalfSwitch({ announcer, pair: () => relayPair, log })
     liveIngress.registered = () => announcer.registered
@@ -1663,6 +1697,7 @@ function applyImpl(ctx: Context, config?: unknown): void {
           stopBridge: () => { runner.stop() },
           log,
         }),
+        controlUrl: settings.relayControlUrl,
         onState: (state: RelayPairState) => { log('relay lease: ' + relayStateLine(state)) },
       })
       claimer = createLeaseClaimer({
@@ -1787,7 +1822,7 @@ function applyImpl(ctx: Context, config?: unknown): void {
       const identity = existingRelayIdentityOf(settings.profile, log)
       if (identity === undefined) return
       log('relay is off at mount — withdrawing the registration the previous mount left and releasing its lease')
-      void retireStaleRelayHalfOf({ identity, log })
+      void retireStaleRelayHalfOf({ identity, controlUrl: settings.relayControlUrl, log })
     }
 
     const retry = createPortSettleRetry({ onRetry: () => { void start() }, warn: log })

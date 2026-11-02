@@ -24,4 +24,4 @@ Status: implemented
 
 - A bridge with no APNs key of its own posts to the deployment that minted the token, and the 401 stops at the auth step. What the service does with an accepted delivery is the service's business: with a valid token and a fresh session id it answered `{ok:true, delivered:0, dead:0}` on 2026-11-02, i.e. accepted and not delivered — a fact of the account service, not of this default.
 - The retired address still resolves and still answers `401`, so a deployment pinned to it by the variable keeps failing loudly instead of silently switching service.
-- `lib/` is not committed for this package: a host that runs the built output needs a rebuild to inherit the constant, while a host that sets the variable needs nothing.
+- `lib/` is not committed for this package: a host that runs the built output needs a rebuild to inherit the constant, while a host that sets the variable needs nothing. local1 is the second case today: the build of this package still fails typecheck on the SDK AskUserQuestion union recorded in the repository instructions, so the running host sets DSH_REMOTE_BRIDGE_RELAY_URL in dsh-web.service until that is repaired.

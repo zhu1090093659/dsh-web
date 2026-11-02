@@ -125,13 +125,18 @@ describe('liangshen preset composition', () => {
     expect(row('tool-catalog')).not.toContain('anchorTools')
   })
 
-  it('mounts working-context, tool-activate and the child-route guard, and no retired guard row', () => {
+  it('mounts working-context, tool-activate and both preset-plane guards, and no retired guard row', () => {
     expect(row('tool-activate')).toContain('name: ./tool-activate.mjs')
     expect(row('working-context')).toContain('name: ./working-context.mjs')
     // The subagent route guard is its own row: the retired row below was a
     // runtime-degeneration breaker, not this policy guard.
     expect(row('subagent-routes')).toContain('name: ./subagent-routes.mjs')
     expect(row('subagent-routes')).not.toContain('disabled: true')
+    // The dispatch execution guard is the second preset-plane guard: it refuses
+    // a coordinator-only tool called by a delegated child and a foreground sleep
+    // while a child is running, on `ctx.tools.guard()` alone.
+    expect(row('dispatch-guard')).toContain('name: ./dispatch-guard.mjs')
+    expect(row('dispatch-guard')).not.toContain('disabled: true')
     // The runtime degeneration circuit breaker is retired: the composition
     // carries no guard row, so no session mounts its pre-step channel.
     expect(row('guard')).toBe('')

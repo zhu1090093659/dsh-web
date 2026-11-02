@@ -644,7 +644,7 @@ describe('liangshen-minimal-prompt', () => {
       expect(result.sections.find((section: any) => section.name === 'plan:policy').text).toBe(PLAN.text)
     })
 
-    test('operator gets the whole rule set: identity, R0 through R8, R-W, and the anti-patterns', async () => {
+    test('operator gets the whole rule set: identity, R0 through R9, R-W, and the anti-patterns', async () => {
       // Given the switch on, When the operator assembles the prompt, Then every
       // section of the upstream rule set is present verbatim, the text names no
       // package that LiangShen does not own, and it carries no unbound
@@ -666,14 +666,27 @@ describe('liangshen-minimal-prompt', () => {
         '## R6 · Review & Acceptance',
         '## R7 · Documentation',
         '## R8 · Fallback',
+        '## R9 · Plan Pipeline',
         '## Anti-Patterns (Any Occurrence Is a Violation)',
         '16. Second-guessing list_subagent_models',
+        // The 2026-11-02 re-sync against upstream 0.55.0: the coordinator
+        // contract, the four new rule paragraphs, the plan pipeline, and the
+        // anti-patterns that name their failure modes.
+        '[Standing Subagent Contract]',
+        '[Subagent Report Protocol]',
+        '[Coordinator-Only Tools]',
+        '[Stop by Impact, Not by Effort]',
+        '[Compact Delta Brief]',
+        '[Non-Penalized hand_back]',
+        '[UI Visual Evidence Gate]',
+        '[Clause Deletion Test]',
+        '25. Accepting a visible UI change',
         'G7 to G14 below are the local additions to G1 to G6 above',
         'G15 below is a separate addition to R5',
         '- G7 Asking budget',
         '- G14 Fact-check dispatches',
         'A. Asking instead of judging',
-        'B. Asking the same decision twice',
+        'B. Asking one decision twice',
       ]) {
         expect(text, marker).toContain(marker)
       }
@@ -696,7 +709,7 @@ describe('liangshen-minimal-prompt', () => {
       // allowlist check it owes is stated as the model's job.
       expect(DISPATCHER_RULES).toContain('the CHEAPEST form of a same-route child')
       expect(DISPATCHER_RULES)
-        .toContain('confirm your own provider/model is among the routes list_subagent_models returned')
+        .toContain('confirm your own provider/model is among the returned routes')
       // Then: the enforcement the old text promised is attributed to the layer
       // that actually has it, because the built-in assertion returns early
       // unless the call names a route and only a host-plane guard can police an
@@ -727,10 +740,11 @@ describe('liangshen-minimal-prompt', () => {
       // not a rewrite of the upstream text the block was extracted from.
       const result = await assemble(register({ dispatcher: true }), FULL_SECTIONS, undefined, agentAt(project()))
       const text = personaText(result)
-      // The reference block ends at anti-pattern 20 and carries no addition: the
-      // 2026-10-18 re-extraction moved the last anti-pattern, and this pin is
-      // what makes the next re-extraction a deliberate edit rather than a slip.
-      expect(DISPATCHER_RULES.endsWith('20. Reporting a route as "authorized", or claiming per-task routing is in force, when the session recorded no allowlist (R2 [State: Unlisted]).')).toBe(true)
+      // The reference block ends at the last anti-pattern and carries no
+      // appendix: the 2026-11-02 re-sync moved the tail from 20 to 25, and this
+      // pin is what makes the next re-extraction a deliberate edit rather than a
+      // slip.
+      expect(DISPATCHER_RULES.endsWith('25. Accepting a visible UI change without Before and After comparison evidence taken under the same scenario, viewport, and theme (R6).')).toBe(true)
       expect(DISPATCHER_RULES).not.toContain('G7')
       expect(DISPATCHER_RULES).not.toContain('Task board is not a dispatch')
       // The reference block is the current upstream text: it carries the R-W
@@ -757,6 +771,7 @@ describe('liangshen-minimal-prompt', () => {
         '## R-W · Turn Boundary (Waiting / Goals / Questions)',
         '## R7 · Documentation',
         '## R8 · Fallback',
+        '## R9 · Plan Pipeline (Plan Mode When the Session Is Already In It)',
         '## Anti-Patterns (Any Occurrence Is a Violation)',
       ])
       expect(headings.some(heading => heading.includes('R-T'))).toBe(false)
@@ -776,7 +791,7 @@ describe('liangshen-minimal-prompt', () => {
       for (const marker of [
         'G7 to G14 below are the local additions to G1 to G6 above',
         'G15 below is a separate addition to R5',
-        '- G7 Asking budget: at most 4 questions in a round',
+        '- G7 Asking budget: at most 4 questions a round',
         '- G8 Assumption exit:',
         '- G9 New evidence:',
         '- G10 Where the record lands:',
@@ -787,8 +802,8 @@ describe('liangshen-minimal-prompt', () => {
         '- G15 Task board is not a dispatch:',
         '- G16 Facts are anchors, not sources of truth:',
         'A. Asking instead of judging:',
-        'B. Asking the same decision twice,',
-        'C. Planning on a pinned fact whose subject has changed since it was pinned,',
+        'B. Asking one decision twice,',
+        'C. Planning on a pinned fact whose subject changed,',
       ]) {
         expect(text, marker).toContain(marker)
         expect(text.split(marker)).toHaveLength(2)
@@ -824,8 +839,34 @@ describe('liangshen-minimal-prompt', () => {
       // in place is named there, so dropping one in a later re-extraction is a
       // failing test rather than a silent revert.
       expect(DISPATCHER_RULES_PROVENANCE.package).toBe('@eddyskywalker/dsh-chatgpt-subscription')
-      expect(DISPATCHER_RULES_PROVENANCE.reExtractedAt).toBe('2026-10-18')
+      expect(DISPATCHER_RULES_PROVENANCE.reExtractedAt).toBe('2026-11-02')
+      expect(DISPATCHER_RULES_PROVENANCE.inheritedVersion).toBe('0.55.0')
       expect(DISPATCHER_RULES_PROVENANCE.corrections.map((entry) => entry.rule)).toEqual(['R2', 'R8', 'R6/R7', 'R0/R5', 'R2 fork'])
+      // The additions are recorded separately from the corrections: an addition
+      // fills a gap, a correction replaces a wrong reading, and a later reader
+      // must be able to tell which one a sentence came from.
+      expect(DISPATCHER_RULES_PROVENANCE.additions.map((entry) => entry.rule)).toEqual([
+        '[Standing Subagent Contract]',
+        '[Subagent Report Protocol]',
+        '[Coordinator-Only Tools]',
+        'R0 [Stop by Impact, Not by Effort]',
+        'R5 [Compact Delta Brief]',
+        'R6 [Non-Penalized hand_back]',
+        'R6 [UI Visual Evidence Gate]',
+        'R7 [Clause Deletion Test]',
+        'R9',
+        'Anti-Patterns 21-25',
+      ])
+      // Every recorded addition really is in the text, not only in the record.
+      expect(DISPATCHER_RULES).toContain('A status: hand_back report adds a one-sentence hand_back_reason')
+      expect(DISPATCHER_RULES).toContain('the dispatch-guard row refuses them from a delegated caller')
+      expect(DISPATCHER_RULES).toContain('Effort spent is not the yardstick; blast radius is.')
+      expect(DISPATCHER_RULES).toContain('does not increment the brief\'s 3-run counter')
+      // R9 is adapted, not transcribed: the mode is the user's switch, and the
+      // block must never send the dispatcher off to ask for it.
+      expect(DISPATCHER_RULES).toContain('There is no enter_plan_mode and no leave_plan_mode tool')
+      expect(DISPATCHER_RULES).toContain('do not ask the user to enter it')
+      expect(DISPATCHER_RULES).not.toContain('Ask the user once, through ask_user_question, to switch the session into plan mode')
       // Each correction is really in the text, not only in the record.
       expect(DISPATCHER_RULES).toContain('[State: Unlisted]')
       expect(DISPATCHER_RULES).toContain('is not one, because delegation still works there')

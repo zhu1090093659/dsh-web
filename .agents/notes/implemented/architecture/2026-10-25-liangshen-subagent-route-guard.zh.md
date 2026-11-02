@@ -2,7 +2,7 @@
 
 Status: implemented
 
-扩展[子 agent 模型选择开关](../bug-fix/2026-10-07-liangshen-preset-child-model-selection.zh.md)与[调度规则](2026-10-18-liangshen-dispatcher-rules-maintained-in-place.zh.md)：前者让预设开启子 agent 模型选择，后者把路由纪律写进提示词；本记录拥有这两者都给不了的那层执行。
+扩展[子 agent 模型选择开关](../bug-fix/2026-10-07-liangshen-preset-child-model-selection.zh.md)与[调度规则](2026-10-18-liangshen-dispatcher-rules-maintained-in-place.zh.md)：前者让预设开启子 agent 模型选择，后者把路由纪律写进提示词；本记录拥有这两者都给不了的那层执行；它在委派期的边界与[调度执行守卫](2026-11-02-liangshen-dispatch-execution-guard.zh.md)配对，后者管住同一份组成里的决定口。
 
 ## Problem
 

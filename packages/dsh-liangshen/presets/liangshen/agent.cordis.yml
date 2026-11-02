@@ -235,6 +235,25 @@
 - id: subagent-routes
   name: ./subagent-routes.mjs
 
+# The dispatch execution guard. A preset row composes ONE tool registry, and an
+# in-process child agent inherits that composition, so two things break quietly:
+# a child calls a coordinator-only tool (ask_user_question, the plan-mode
+# transitions, create_goal / update_goal, present) and splits one decision into
+# two - the child asks, the user answers, and the dispatcher never learns what
+# was asked; or a caller sleeps to wait for a child that the built-in completion
+# notification will wake it for. This row refuses both at call execution time: a
+# delegated caller is told to hand the open question back to the dispatcher, and
+# a pure sleep statement (a wait beside nothing but no-ops) is refused while one
+# of its children is still running. It uses ONLY `ctx.tools.guard()`, so the
+# declared tool surface does not move by a byte and a prefix-caching provider
+# never rebuilds because of this row. Every fact it cannot read fails open (no
+# agents service, no roots, a throwing probe), so a host that cannot answer keeps
+# the harness's own behaviour instead of failing the preset's load. It
+# deliberately has no settings-card field: the row's own `enabled` key is the off
+# switch, exactly as for `subagent-routes` above.
+- id: dispatch-guard
+  name: ./dispatch-guard.mjs
+
 # The harness's workspace-instruction loader. Under the default
 # `instructionSource: host` this row owns the channel: its baseline and dynamic
 # user-role messages reach the model untouched. Under

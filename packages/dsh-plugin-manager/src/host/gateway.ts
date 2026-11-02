@@ -15,9 +15,9 @@
  */
 
 import { spawn, type ChildProcess } from 'node:child_process'
-import { closeSync, existsSync, openSync, readSync } from 'node:fs'
+import { closeSync, existsSync, openSync, readSync, realpathSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { join, posix, win32 } from 'node:path'
+import { dirname, join, posix, win32 } from 'node:path'
 import type { InstalledPluginItem } from '../core/protocol.ts'
 import type { ControlChange } from '../core/conflict.ts'
 import { diffLayer, overlappingIds, significantChanges, type LayerChange, type LayerSnapshot } from '../core/patch-diff.ts'
@@ -263,6 +263,67 @@ export function findDshBinary(
     if (exists(candidate)) return candidate
   }
   return null
+}
+
+/** Ancestor directories {@link hostBundleDir} probes for an installation copy. */
+const HOST_PROBE_DEPTH = 16
+
+/**
+ * Resolve one path through its symlinks, or undefined when it cannot be read.
+ * @param path - the path to resolve.
+ * @returns the real path, or undefined.
+ */
+function realpathOf(path: string): string | undefined {
+  try {
+    return realpathSync(path)
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * The installation copy of one bundle package, when the DSH installation this
+ * runtime runs out of carries it.
+ *
+ * A CLI-created profile names the official bundles in `dsh.profile.bundles`
+ * without ever installing them: `@deepseek-ai/dsh-base` and
+ * `@deepseek-ai/dsh-web-app` are mounted from the DSH installation the loader
+ * runs out of, so no profile copy exists and their rows are declared by the
+ * installation's own package. That copy is the one whose rows mount, so a
+ * missing profile copy is not proof of an unknown declaration set (see
+ * {@link CliGateway.liveOverrideIds}).
+ *
+ * Resolution follows Node's own lookup from the CLI entry: every ancestor
+ * directory contributes `node_modules/<name>`, plus the npm-global and
+ * homebrew `<ancestor>/lib/node_modules/<name>`. The entry is resolved through
+ * its symlinks first, because npm-global and homebrew install the `dsh` shim
+ * as a link into the package tree while the shim's own directory carries no
+ * packages.
+ * @param binary - the resolved dsh CLI path, or null when this runtime has none.
+ * @param name - the bundle package name from `dsh.profile.bundles`.
+ * @param exists - existence probe (test seam).
+ * @param resolveReal - symlink resolver (test seam).
+ * @returns the installation package directory, or undefined when it has none.
+ */
+export function hostBundleDir(
+  binary: string | null,
+  name: string,
+  exists: (path: string) => boolean = existsSync,
+  resolveReal: (path: string) => string | undefined = realpathOf,
+): string | undefined {
+  if (binary === null || binary === '') return undefined
+  const segments = name.split('/')
+  let current = dirname(resolveReal(binary) ?? binary)
+  for (let depth = 0; depth < HOST_PROBE_DEPTH; depth += 1) {
+    for (const modules of [join(current, 'node_modules'), join(current, 'lib', 'node_modules')]) {
+      const dir = join(modules, ...segments)
+      if (exists(join(dir, 'package.json'))) return dir
+    }
+    const parent = dirname(current)
+    if (parent === current) break
+    current = parent
+  }
+  return undefined
 }
 
 /**
@@ -1000,17 +1061,20 @@ export class CliGateway {
       )
       if (add.code !== 0 && reportsIgnoredBuilds(add.output)) tolerated = { code: add.code, output: add.output }
       if (add.code !== 0 && tolerated === undefined) {
-        await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
-        job.error = `plugin-manager: 迁移安装 ${targetSpec} 失败${add.output === '' ? '' : `：\n${add.output}`}`
+        if (await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)) {
+          job.error = `plugin-manager: 迁移安装 ${targetSpec} 失败${add.output === '' ? '' : `：\n${add.output}`}`
+        }
         return
       }
       after = await this.capture()
     }
     if (!after.dependencies.includes(targetId)) {
-      await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
-      job.error = tolerated === undefined
-        ? `plugin-manager: dsh plugin add 报告成功，但 ${targetId} 未出现在 profile 中`
-        : `plugin-manager: 迁移安装 ${targetSpec} 失败${tolerated.output === '' ? '' : `：\n${tolerated.output}`}`
+      const rolledBack = await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
+      if (rolledBack) {
+        job.error = tolerated === undefined
+          ? `plugin-manager: dsh plugin add 报告成功，但 ${targetId} 未出现在 profile 中`
+          : `plugin-manager: 迁移安装 ${targetSpec} 失败${tolerated.output === '' ? '' : `：\n${tolerated.output}`}`
+      }
       return
     }
     // The migration's install step is the same pnpm call and the same
@@ -1020,8 +1084,9 @@ export class CliGateway {
       after.bundles,
       !targetPreviouslyInstalled || before.bundles.includes(targetId),
     )) {
-      await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
-      job.error = this.halfMountError(targetId, '迁移安装只写入了依赖，', tolerated)
+      if (await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)) {
+        job.error = this.halfMountError(targetId, '迁移安装只写入了依赖，', tolerated)
+      }
       return
     }
     const stripped = await this.stripDuplicateMounts(job, before, after)
@@ -1042,8 +1107,9 @@ export class CliGateway {
       90_000,
     )
     if (verify.code !== 0) {
-      await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
-      job.error = `plugin-manager: 迁移后的启动预检失败${verify.output === '' ? '' : `：\n${verify.output}`}`
+      if (await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)) {
+        job.error = `plugin-manager: 迁移后的启动预检失败${verify.output === '' ? '' : `：\n${verify.output}`}`
+      }
       return
     }
     // The migration replaces the row-id universe the same way an update does:
@@ -1061,8 +1127,9 @@ export class CliGateway {
     // whatever the checked-out tree contains, not the registry release, so the
     // exact-version gate applies only to npm registry migrations.
     if (!/^(?:link:|file:)/.test(targetSpec) && updated.version !== targetVersion) {
-      await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)
-      job.error = `plugin-manager: 迁移后 ${targetId} 版本为 ${updated.version}，预期 ${targetVersion}`
+      if (await this.rollbackMigration(job, sourceId, targetId, oldSpec, oldIndex, targetPreviouslyInstalled)) {
+        job.error = `plugin-manager: 迁移后 ${targetId} 版本为 ${updated.version}，预期 ${targetVersion}`
+      }
       return
     }
     job.plugin = updated
@@ -1076,7 +1143,24 @@ export class CliGateway {
     job.phase = 'done'
   }
 
-  /** Restore the original legacy package after a failed migration. */
+  /**
+   * Restore the original legacy package after a failed migration.
+   *
+   * The forward migration removed the legacy package first, so the way back is
+   * a remove-then-add in the other direction — and each half has to be read, not
+   * assumed. A removal that does not take the new aggregate back out leaves the
+   * profile carrying it with the legacy package gone, and re-adding the legacy
+   * package on top of it is exactly the dual-mount shape this path exists to
+   * avoid: both bundles declare the same row ids, the loader mounts one of them
+   * without a word, and the next update resolves against a profile that no
+   * longer describes itself. Such a rollback is reported as incomplete
+   * ({@link incompleteRollback}) instead of claimed as done.
+   * @returns true when the rollback finished — the legacy package is back, or
+   *   the profile deliberately keeps the single current aggregate — and false
+   *   when it could not run or could not finish, in which case `job.error`
+   *   already carries the report and the caller must not replace it with its
+   *   own reason.
+   */
   private async rollbackMigration(
     job: GatewayJob,
     sourceId: string,
@@ -1084,16 +1168,28 @@ export class CliGateway {
     oldSpec: string,
     oldIndex: number,
     targetPreviouslyInstalled: boolean,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const binary = this.binary()
     if (binary === null) {
       job.phase = 'error'
       job.error = 'plugin-manager: 迁移失败且无法回滚：dsh CLI not found on PATH'
-      return
+      return false
     }
     const current = await this.capture()
+    // Built here rather than at the re-add below: an incomplete rollback has to
+    // name the command that restores the legacy package.
+    const restoreOld = this.restoreSpec(sourceId, oldSpec)
     if (!targetPreviouslyInstalled && current.dependencies.includes(targetId)) {
-      await this.runCli(binary, ['plugin', '--profile', this.facts.profileName, 'remove', targetId], REMOVE_TIMEOUT_MS)
+      const removed = await this.runCli(binary, ['plugin', '--profile', this.facts.profileName, 'remove', targetId], REMOVE_TIMEOUT_MS)
+      if (removed.code !== 0) {
+        job.phase = 'error'
+        job.error = this.incompleteRollback(
+          targetId,
+          restoreOld,
+          `dsh plugin remove ${targetId} 失败（退出码 ${String(removed.code)}）${removed.output === '' ? '' : `：\n${removed.output}`}`,
+        )
+        return false
+      }
     }
     // If the current aggregate already existed before this migration, the
     // profile already had both bundles and was unusable. Keep the single
@@ -1101,9 +1197,8 @@ export class CliGateway {
     if (targetPreviouslyInstalled) {
       job.phase = 'error'
       job.error = 'plugin-manager: 聚合包迁移失败，已保留当前聚合包并移除旧包'
-      return
+      return true
     }
-    const restoreOld = this.restoreSpec(sourceId, oldSpec)
     const restored = await this.runCli(
       binary,
       ['plugin', '--profile', this.facts.profileName, 'add', restoreOld],
@@ -1112,13 +1207,37 @@ export class CliGateway {
     if (restored.code !== 0) {
       job.phase = 'error'
       job.error = `plugin-manager: 迁移失败且回滚到 ${restoreOld} 失败${restored.output === '' ? '' : `：\n${restored.output}`}`
-      return
+      return false
     }
     if (oldIndex >= 0) {
       await reorderProfileBundle(this.facts.packageJsonPath, sourceId, oldIndex).catch(() => undefined)
     }
     job.phase = 'error'
     job.error = 'plugin-manager: 聚合包迁移失败，已回滚到旧包'
+    return true
+  }
+
+  /**
+   * The report for a rollback that could not take the new aggregate back out.
+   *
+   * The profile is left carrying the new package with the legacy one gone,
+   * which is neither the migration nor a rollback, and it is not a state the
+   * legacy package may be re-added into: both bundles declare the same row ids,
+   * so keeping one of them is the only safe outcome. The message therefore says
+   * what actually happened, never claims a rollback that did not run, and names
+   * the two commands that carry it out by hand.
+   * @param targetId - the new aggregate this migration installed.
+   * @param restoreOld - the exact spec that reinstalls the legacy package.
+   * @param reason - the CLI's own words, or the exit it reported.
+   * @returns the job error text.
+   */
+  private incompleteRollback(targetId: string, restoreOld: string, reason: string): string {
+    return [
+      `plugin-manager: 迁移失败且回滚未完成：需手工 remove ${targetId}`,
+      `请执行：dsh plugin --profile ${this.facts.profileName} remove ${targetId}`,
+      `如需恢复旧包，再执行：dsh plugin --profile ${this.facts.profileName} add ${restoreOld}`,
+      `原因：${reason}`,
+    ].join('\n')
   }
 
   /** Spawn the CLI, through the test seam when present. */
@@ -1643,6 +1762,43 @@ export class CliGateway {
     }
   }
 
+  /**
+   * Whether this gateway's own record says the last in-place update of one
+   * plugin at one version never settled.
+   *
+   * The update path writes the profile before it verifies it: the CLI puts the
+   * target version on disk, and the boot preflight (`--dump-config`, see
+   * {@link verifyBoot}) then decides whether the run is reported as landed. A
+   * preflight failure the plugin is not implicated in settles the job as an
+   * error with the new version already installed, which leaves the profile at
+   * the target version while the update itself failed. That state cannot be
+   * reached again through the update action — the row already carries the
+   * latest version, so the route answers 409 "already at <version>" and the
+   * only way out is a reinstall run by hand. This is the fact that lets that
+   * route tell the state apart from a plugin that is genuinely up to date,
+   * which must keep its 409.
+   *
+   * Only the most recent update of the plugin counts. A settled run — a later
+   * success, or a run that landed nothing and rolled back — is the plugin's
+   * current standing, whatever an older failed attempt said, so the scan starts
+   * at the newest settled job and stops at the first one that is this plugin's
+   * update. Jobs this gateway no longer holds (the ring cap, a restart) are
+   * unknown rather than failed, and answer false.
+   * @param id - the installed package name.
+   * @param version - the version the profile currently carries.
+   * @returns true when the newest recorded update of `id` failed at `version`.
+   */
+  lastUpdateFailed(id: string, version: string): boolean {
+    for (let index = this.finishedOrder.length - 1; index >= 0; index -= 1) {
+      const jobId = this.finishedOrder[index]
+      if (jobId === undefined) continue
+      const job = this.jobs.get(jobId)
+      if (job === undefined || job.action !== 'update' || job.targetId !== id) continue
+      return job.phase === 'error' && job.targetVersion === version
+    }
+    return false
+  }
+
   /** Capture the layer snapshot and the dependency names (tolerant parse). */
   private async capture(): Promise<CapturedState> {
     const rows = new Map<string, boolean>()
@@ -1910,7 +2066,7 @@ export class CliGateway {
 
   /**
    * The entry ids a user-layer override may still point at: the composed ids
-   * plus every id the profile's own bundle layers still declare.
+   * plus every id the bundles the profile lists still declare.
    *
    * The composition alone does not prove a row is retired. A host that
    * composes while a bundle is being replaced — the remove-then-install half of
@@ -1919,6 +2075,11 @@ export class CliGateway {
    * gone, and pruning on that probe deletes the user's override for a row that
    * still exists (0.4.7 lost `web-ui-remote-web-ui` and `ui-schedule` this
    * way). Declarations live in the bundle layers, so they survive that window.
+   *
+   * Every listed bundle therefore has to answer with the declarations the
+   * loader will actually mount, which for an installation-provided bundle is
+   * the installation's copy rather than a profile copy that never existed
+   * ({@link bundleLayerDir}).
    * @param composed - the entry ids of the composition probe.
    * @returns the ids to keep, or undefined when a declared layer cannot be
    * read, which proves nothing either way and must leave the file alone.
@@ -1931,15 +2092,10 @@ export class CliGateway {
     } catch {
       return undefined
     }
+    const binary = this.binary()
     for (const name of manifest.bundles) {
-      const dir = join(this.facts.profileDir, 'node_modules', ...name.split('/'))
-      try {
-        await readFile(join(dir, 'package.json'), 'utf8')
-      } catch {
-        // The bundle's package is not resolvable right now (mid-install, or a
-        // link that moved): its rows cannot be known, so nothing may be pruned.
-        return undefined
-      }
+      const dir = await this.bundleLayerDir(name, manifest.dependencies, binary)
+      if (dir === undefined) return undefined
       let text: string
       try {
         text = await readFile(join(dir, 'cordis.patch.yml'), 'utf8')
@@ -1956,6 +2112,43 @@ export class CliGateway {
       }
     }
     return live
+  }
+
+  /**
+   * The directory whose `cordis.patch.yml` declares one listed bundle's rows,
+   * or undefined when those declarations cannot be known.
+   *
+   * The profile's own copy answers whenever it is installed. A profile that
+   * lists a bundle its own `node_modules` does not carry is normally a
+   * CLI-created profile naming the installation's bundles — it never installs
+   * `@deepseek-ai/dsh-base` or `@deepseek-ai/dsh-web-app`, the loader mounts
+   * them out of the DSH installation, and {@link hostBundleDir} names that copy,
+   * whose rows are by construction the ones this boot carries.
+   *
+   * Everything else that reads as missing is a package this profile installs
+   * itself, caught mid-install or mid-replace. Its rows can be declared by the
+   * copy that is gone and by no other, so they are unknown, never empty:
+   * pruning on that guess is how 0.4.7 lost the user's `web-ui-remote-web-ui`
+   * and `ui-schedule` overrides. The profile's own dependency list separates
+   * the two cases, because it is written by the same pnpm call that creates the
+   * directory: a dependency is this profile's package, so a missing directory
+   * there is unfinished work rather than an installation-provided bundle.
+   * @param name - one entry of `dsh.profile.bundles`.
+   * @param dependencies - the profile manifest's dependency map.
+   * @param binary - the dsh CLI path, or null when this runtime has none.
+   * @returns the declaring package directory, or undefined when unknown.
+   */
+  private async bundleLayerDir(name: string, dependencies: Record<string, string>, binary: string | null): Promise<string | undefined> {
+    const dir = join(this.facts.profileDir, 'node_modules', ...name.split('/'))
+    try {
+      await readFile(join(dir, 'package.json'), 'utf8')
+      return dir
+    } catch {
+      // Not installed here: an installation-provided bundle, or this profile's
+      // own package being replaced. Only the dependency list tells them apart.
+    }
+    if (Object.hasOwn(dependencies, name)) return undefined
+    return hostBundleDir(binary, name)
   }
 
   /**
@@ -2064,11 +2257,10 @@ export class CliGateway {
     // drop: a row that names a live package again is not an orphan. The repair
     // answers to its own authority — the names the bundles it can read declare
     // ({@link liveEntryNames}) — and runs before the guards below rather than
-    // inside them: a profile whose bundle list names a package that is not
-    // installed (the normal shape of a CLI-created profile, which lists
-    // `@deepseek-ai/dsh-base` and `@deepseek-ai/dsh-web-app` without
-    // installing them) leaves {@link liveOverrideIds} unknown, and a repair
-    // gated behind that would never run, while the boot repair does it anyway.
+    // inside them: a profile that still lists a bundle whose package cannot be
+    // read anywhere (a package this profile installs itself, caught mid-install
+    // or mid-replace) leaves {@link liveOverrideIds} unknown, and a repair gated
+    // behind that would never run, while the boot repair does it anyway.
     try {
       const repaired = await this.repairProfileRowNames()
       if (repaired.length > 0) {

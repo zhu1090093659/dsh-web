@@ -37,6 +37,15 @@ Status: implemented
 - 读不到的层——包此刻解析不到，或它的 patch 解析失败——让声明变成未知，守卫整体不写。没有 patch 文件的 bundle 与 patch 为 `[]` 的 bundle 声明零条行，不算错误。
 - 退场仍由组合结果证明：id 必须既不在探针里，也不在任何层的声明里。真正退场的行没有任何层声明它，所以原本的迁移依旧收敛。
 
+### 解析 bundle 层目录
+
+构成该声明地板的各 bundle 层目录由 `bundleLayerDir` 逐项解析 `dsh.profile.bundles` 条目：
+
+- 若 profile 本地的 `node_modules` 中存在该包目录（可读取 `package.json`），则以该副本声明的行集合为准。
+- 若目录缺失且该 bundle 名记录在 profile 的 `dependencies` 中，则视为未知（`undefined`），守卫整体不执行任何清理。列在 `dependencies` 中的包属于 profile 自身依赖，其缺失意味着正处于先卸后装的替换过渡态；若在此处贸然清理，会重蹈 0.4.7 在包替换窗口误删在用覆盖的教训。
+- 若目录缺失且该 bundle 名不属于 profile 的 `dependencies`，则判定为宿主安装提供的 bundle。官方 CLI 创建的 profile 天然在 `dsh.profile.bundles` 中列出 `@deepseek-ai/dsh-base` 与 `@deepseek-ai/dsh-web-app`，但从不在 profile 本地安装它们（由 CLI 宿主在启动时从安装树提供）。若一律要求本地副本存在，会在所有 CLI 创建的 profile 上永远返回未知，导致孤儿清理静默失效。因此解析回退到 `hostBundleDir(binary, name)`。
+- `hostBundleDir` 从解析后的 dsh CLI 入口出发（经 `realpathSync` 穿透 npm-global 与 homebrew 的符号链接 shim），沿祖先目录向上探测至多 16 层中的 `node_modules/<name>` 与 `lib/node_modules/<name>`。若在宿主安装树中仍找不到副本，或无法解析 CLI 路径（`binary === null`），则声明仍视为未知（`undefined`），继续安全放弃清理。
+
 ## Contract
 
 - **备份。** 写入经 `writePatchAtomic`，即 set-enabled 路由所用的同一个辅助函数：先把当前文件复制为 `cordis.patch.yml.bak-plugin-manager`，再写 `0o600` 临时文件并 rename 覆盖目标。不引入新的写盘纪律。
@@ -52,6 +61,7 @@ Status: implemented
 - **按已安装的家族 bundle patch 而不是组合结果判定。** 否决：它看不到官方 base 层，于是指向官方行 id 的覆盖（发行 UI 行的常见情形）会被当作失效清掉，用户的启停意见被销毁。
 - **在每次安装与卸载之后也清理。** 否决：这些动作不改变存在哪些行 id，额外写入只是在没有缺陷的情况下改用户文件；而更新路径才是退场真正会把覆盖晾在原处的地方。
 - **先向用户报告失效 id，再决定是否清理。** 否决：这个状态只可能有一个有用答案——条目已被证明是死的（组合并不声明它）——而备份本身就让这次编辑可以手工回退。
+- **将所有缺失的 bundle 视为空声明。** 否决：在先卸后装的更新窗口中，尚未落盘的 bundle 会被视为空声明并导致在用覆盖被删除，重现 0.4.7 事故。出现在 profile dependencies 中的缺失包必须维持未知状态，只有未就地安装的官方 bundle 允许回退至宿主安装树。
 
 ## Consequences
 
@@ -61,6 +71,7 @@ Status: implemented
 - 最坏情况下一次更新会多一次写入（清理），常见情况下一次写入都不多；CLI 路径上的 `--dump-config` 探针不会被拉起两次，因为清理复用了预检的 dump。
 - 守卫比 `0.4.7` 更窄：bundle 仍声明、但运行中宿主没有挂载的 id（被拒绝或不兼容的 bundle、正在安装的包）会活下来，留下一条失效覆盖；等该 bundle 真的消失后的下一次更新会把它清掉——宁可留下噪音残留，也不删除仍然活着的覆盖。
 - 地板的代价：仅在清理路径上、且变更已落地之后，每个 bundle 层一次 `readFile`，外加解析它的 patch。层多的 profile 每次更新付一次，不是每次启动付。
+- CLI 创建的 profile 中未就地安装的官方 bundle 通过 `hostBundleDir` 沿宿主安装树正常解析，孤儿清理在标准 CLI profile 上能够顺利执行，而不会因本地缺失官方包而静默放弃。
 
 ## Testing
 
@@ -68,6 +79,7 @@ Status: implemented
 - `0.4.7` 事故的桌面回归用例在 `packages/dsh-plugin-manager/tests/gateway-jobs.spec.ts`：一个声明 `web-ui-remote-web-ui` 与 `ui-schedule` 的聚合 bundle、一个携带 quick tunnel 覆盖（`autoTunnel: true`、`relay: true`）与 `ui-schedule` 裸覆盖的用户层，以及一个在该 bundle 缺席时取的组合探针。更新结束后用户层逐字节不变且没有备份，因为没有任何条目失效。第二个用例删掉某个已列 bundle 的包目录，断言即便组合里真的缺了行、该层也原样保留——声明是未知，不是空。
 - `packages/dsh-plugin-manager/tests/rows.spec.ts` 固定 `declaredRowIds`：层的 insert 条目、它自己的行、被声明两次的同一个 id，以及落在某行自身 `config:` 里的 id（那是子条目，不是层条目）各自去重后得到该层的 id 集合；解析失败的层抛错，使调用方无法把它读作空。
 - `packages/dsh-plugin-manager/tests/gateway-jobs.spec.ts` 固定事务行为：带有失效 id 的层经更新后被清理，`cordis.patch.yml.bak-plugin-manager` 保存清理前的文本；同一次更新再跑一次不写入（备份仍是清理前的文本）；覆盖全部有效的层逐字节不变且不产生备份；写入失败把任务结算为 `error` 且备份在位；桌面自有 profile 的更新经只读探针完成清理，拿不到组合时则原样保留该层。
+- `packages/dsh-plugin-manager/tests/gateway.spec.ts` 固定 `hostBundleDir`：解析 CLI 入口旁的安装副本、在回溯祖先目录前穿透 npm-global/homebrew 符号链接 shim、识别 `lib/node_modules` 前缀布局，以及在副本不存在或无法解析 CLI 路径（`binary === null`）时返回 `undefined`。
 
 ## 已知限制：制造失效覆盖的那次升级跑不到清理逻辑
 

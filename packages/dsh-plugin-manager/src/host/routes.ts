@@ -384,7 +384,17 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
       if (latest === '') return { status: 502, error: `plugin-manager: cannot resolve the latest version for ${target}` }
       const unsafeLatest = unsafeSpecReason(`${target}@${latest}`)
       if (unsafeLatest !== undefined) return { status: 502, error: unsafeLatest }
-      if (row.version === latest) return { status: 409, error: `plugin-manager: ${target} is already at ${latest}` }
+      // A run that wrote this version and then failed its boot preflight left
+      // the profile at the target with the update itself unsettled (see
+      // gateway.ts verifyBoot). Answering that retry with "already at latest" is
+      // a dead end the panel cannot leave: the row already carries the newest
+      // version, so the only way out was a reinstall run by hand. Only a
+      // recorded failure of this plugin's newest update at this exact version
+      // re-runs the install — the same job, preflight included — so a plugin
+      // that is genuinely up to date keeps its 409 and writes nothing.
+      if (row.version === latest && !gateway.lastUpdateFailed(target, latest)) {
+        return { status: 409, error: `plugin-manager: ${target} is already at ${latest}` }
+      }
       const requiresDsh = dshRequirementOf(manifest)
       if (requiresDsh !== undefined) {
         const { hostVersion, compatible } = await compatibleVerdict(requiresDsh)

@@ -1,5 +1,6 @@
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { composedEntryIdsOf, detectOfficialChannels, dshSpawnCommand, findDshBinary, unsafeSpecReason, windowsCmdShimArgs, withPrependedPath } from '../src/host/gateway.ts'
+import { composedEntryIdsOf, detectOfficialChannels, dshSpawnCommand, findDshBinary, hostBundleDir, unsafeSpecReason, windowsCmdShimArgs, withPrependedPath } from '../src/host/gateway.ts'
 import { sourceKindOf } from '../src/host/state.ts'
 
 describe('findDshBinary', () => {
@@ -135,6 +136,68 @@ describe('findDshBinary', () => {
 
   it('returns null when nothing matches', () => {
     expect(findDshBinary({ PATH: '/definitely/absent' }, 'linux', exists([]))).toBeNull()
+  })
+})
+
+describe('hostBundleDir', () => {
+  // Every expectation is built with join(): the probe walks real directories,
+  // so a Windows run must compare Windows separators.
+  const exists = (present: string[]) => (path: string) => present.includes(path)
+  const root = join('/opt', 'dsh-runtime')
+  const basePackage = join(root, 'node_modules', '@deepseek-ai', 'dsh-base', 'package.json')
+
+  it('operator: resolves an installation bundle the profile never installs', () => {
+    // Given a CLI entry inside the installation and the official bundle beside
+    // it, which is the shape every CLI-created profile's dsh-base comes from
+    const cli = join(root, 'lib', 'bin.js')
+
+    // When the installation copy is looked up
+    const found = hostBundleDir(cli, '@deepseek-ai/dsh-base', exists([basePackage]))
+
+    // Then the package beside the CLI answers, with the patch file its rows
+    // are declared in
+    expect(found).toBe(join(root, 'node_modules', '@deepseek-ai', 'dsh-base'))
+  })
+
+  it('operator: resolves through a symlinked CLI shim before walking ancestors', () => {
+    // Given the npm-global shape: the CLI is a link in bin/, and only the
+    // package tree it points into carries the bundles
+    const shim = join('/usr', 'local', 'bin', 'dsh')
+    const entry = join(root, 'lib', 'bin.js')
+
+    // When the installation copy is looked up
+    const found = hostBundleDir(shim, '@deepseek-ai/dsh-base', exists([basePackage]), () => entry)
+
+    // Then the resolved entry decides, not the shim's own directory
+    expect(found).toBe(join(root, 'node_modules', '@deepseek-ai', 'dsh-base'))
+  })
+
+  it('operator: finds the npm-global and homebrew lib/node_modules layout', () => {
+    // Given a prefix whose packages live in lib/node_modules, the layout a
+    // shell shim beside bin/dsh implies
+    const cli = join('/opt', 'homebrew-ish', 'bin', 'dsh')
+    const packed = join('/opt', 'homebrew-ish', 'lib', 'node_modules', '@deepseek-ai', 'dsh-web-app', 'package.json')
+
+    // When the installation copy is looked up
+    const found = hostBundleDir(cli, '@deepseek-ai/dsh-web-app', exists([packed]), () => undefined)
+
+    // Then the prefixed layout answers
+    expect(found).toBe(join('/opt', 'homebrew-ish', 'lib', 'node_modules', '@deepseek-ai', 'dsh-web-app'))
+  })
+
+  it('operator: gets nothing reported when no copy exists or no CLI is resolvable', () => {
+    // Given an installation carrying none of the bundle packages, and a
+    // runtime with no CLI at all
+    const cli = join(root, 'lib', 'bin.js')
+
+    // When the copy is looked up
+    const absent = hostBundleDir(cli, '@deepseek-ai/dsh-base', exists([]))
+    const unrunnable = hostBundleDir(null, '@deepseek-ai/dsh-base', exists([basePackage]))
+
+    // Then neither proves anything about the bundle's rows, so the caller
+    // keeps its fail-closed verdict instead of pruning on a guess
+    expect(absent).toBeUndefined()
+    expect(unrunnable).toBeUndefined()
   })
 })
 

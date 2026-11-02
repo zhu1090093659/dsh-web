@@ -5,8 +5,10 @@
  * would (dependencies + node_modules manifests) and reports exit codes.
  */
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { Readable } from 'node:stream'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   CliGateway,
@@ -15,7 +17,9 @@ import {
   unsafeSpecReason,
   type GatewayJob,
 } from '../src/host/gateway.ts'
+import { CURRENT_AGGREGATE, LEGACY_AGGREGATE } from '../src/host/legacy-migration.ts'
 import type { ProfileFacts } from '../src/host/profile.ts'
+import { makeGatewayRoutes } from '../src/host/routes.ts'
 
 interface FakeChild {
   stdout: { on: (event: string, handler: (chunk: Buffer) => void) => void }
@@ -343,6 +347,47 @@ describe('CliGateway legacy aggregate migration', () => {
   })
 })
 
+describe('CliGateway legacy aggregate migration rollback', () => {
+  it('operator: is told the rollback did not finish when taking the new aggregate back out fails', async () => {
+    // Given a migration whose boot preflight fails after it installed the new
+    // aggregate, on a profile whose rollback cannot remove that aggregate again
+    const legacy = LEGACY_AGGREGATE
+    const current = CURRENT_AGGREGATE
+    const { facts, dir } = makeProfile({ [legacy]: { version: '0.3.2', bundle: true } }, { bundles: [legacy] })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 1, output: 'boot preflight: entry "ui-pet" failed to load' }
+      if (args[3] === 'add' && args[4] === `${current}@0.3.3`) {
+        installPackage(facts.profileDir, current, { version: '0.3.3', bundle: true })
+        return { code: 0 }
+      }
+      if (args[3] === 'remove' && args[4] === legacy) {
+        removePackage(facts.profileDir, legacy)
+        return { code: 0 }
+      }
+      if (args[3] === 'remove' && args[4] === current) return { code: 1, output: 'ERR_PNPM cannot remove that dependency' }
+      return { code: 0 }
+    }, calls)
+
+    // When the migration fails and its rollback cannot take the new aggregate out
+    const job = await settle(gateway, gateway.migrate(legacy, current, '0.3.3', `${current}@0.3.3`).jobId)
+
+    // Then the report says the rollback did not finish and names the command
+    // that clears it, instead of claiming a rollback that never happened
+    expect(job.phase).toBe('error')
+    expect(job.error).toContain('回滚未完成')
+    expect(job.error).toContain(`dsh plugin --profile web remove ${current}`)
+    expect(job.error).not.toContain('已回滚到旧包')
+    // ... and the legacy package was not re-added on top of the new one: the
+    // profile keeps one aggregate, never both declaring the same row ids
+    expect(calls.some(args => args[3] === 'add' && args[4]?.startsWith(legacy))).toBe(false)
+    const manifest = readManifest(facts.profileDir)
+    expect(manifest.dependencies[legacy]).toBeUndefined()
+    expect(manifest.dependencies[current]).toBe('1.0.0')
+  })
+})
+
 describe('CliGateway duplicate entry id rollback (B5)', () => {
   it('rolls the new package back and never writes a shared-id disabled row', async () => {
     const { facts, dir } = makeProfile({
@@ -617,6 +662,141 @@ describe('CliGateway update verification', () => {
     expect(job.phase).toBe('error')
     expect(job.error).toContain('更新未生效')
     expect(calls[0]).toEqual(['plugin', '--profile', 'web', 'add', 'dsh-memoir@1.1.0'])
+  })
+})
+
+/**
+ * One POST as the browser half sends it: a JSON body on a request that
+ * satisfies the loopback fence (socket address, Host header, POST).
+ * @param body - the JSON body to send.
+ * @returns the request a route handler reads.
+ */
+function postJson(body: unknown): IncomingMessage {
+  const stream = Readable.from([Buffer.from(JSON.stringify(body))]) as unknown as IncomingMessage
+  stream.socket = { remoteAddress: '127.0.0.1' } as IncomingMessage['socket']
+  stream.headers = { host: '127.0.0.1:3082' }
+  stream.method = 'POST'
+  return stream
+}
+
+/** The status and the decoded body one route answered with. */
+function routeResponse(): { res: ServerResponse; status: () => number; body: () => unknown } {
+  let code = 200
+  let text = ''
+  return {
+    res: { writeHead(value: number) { code = value }, end(value: string) { text = value } } as unknown as ServerResponse,
+    status: () => code,
+    body: () => JSON.parse(text),
+  }
+}
+
+/** The update route of one gateway, wired the way the host mounts it. */
+function updateRoute(facts: ProfileFacts, gateway: CliGateway, latest: string) {
+  return makeGatewayRoutes({
+    facts,
+    gateway,
+    cliAvailable: () => true,
+    fetchManifest: async () => ({ version: latest }),
+  }).find(route => route.path === '/api/plugin-manager/update')!.handler
+}
+
+describe('CliGateway update retry after a failed boot preflight', () => {
+  it('operator: has the failed preflight recorded as an unsettled update at the version it installed', async () => {
+    // Given a plugin at 1.0.0 and an update to 1.1.0 whose boot preflight fails
+    // without naming the plugin
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 1, output: 'boot preflight: entry "ui-pet" failed to load' }
+      if (args[3] === 'add') writePackageFiles(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
+      return { code: 0 }
+    }, [])
+
+    // When the update runs
+    expect(gateway.lastUpdateFailed('dsh-memoir', '1.1.0')).toBe(false)
+    const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
+
+    // Then the version landed while the run failed, and the record answers for
+    // that plugin at that version alone — the fact the route needs to tell this
+    // state from a plugin that is genuinely up to date
+    expect(job.phase).toBe('error')
+    expect(job.plugin?.version).toBe('1.1.0')
+    expect(gateway.lastUpdateFailed('dsh-memoir', '1.1.0')).toBe(true)
+    expect(gateway.lastUpdateFailed('dsh-memoir', '1.0.0')).toBe(false)
+    expect(gateway.lastUpdateFailed('dsh-pet', '1.1.0')).toBe(false)
+  })
+
+  it('operator: stops being told the update failed once the reinstall of it settles', async () => {
+    // Given the same failed update, with the preflight cause cleared afterwards
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    let preflightFails = true
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') {
+        return preflightFails
+          ? { code: 1, output: 'boot preflight: entry "ui-pet" failed to load' }
+          : { code: 0, output: '- id: dsh-memoir\n  name: dsh-memoir\n' }
+      }
+      if (args[3] === 'add') writePackageFiles(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
+      return { code: 0 }
+    }, [])
+    await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
+    expect(gateway.lastUpdateFailed('dsh-memoir', '1.1.0')).toBe(true)
+
+    // When the reinstall of the same version runs and settles
+    preflightFails = false
+    const settled = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
+
+    // Then nothing says the plugin's update failed any more, so the next update
+    // click is answered as "already at latest" instead of installing again
+    expect(settled.phase).toBe('done')
+    expect(gateway.lastUpdateFailed('dsh-memoir', '1.1.0')).toBe(false)
+  })
+
+  it('operator: gets the retry through the update route, reinstall and preflight included', async () => {
+    // Given an update that wrote the target version and then failed the boot
+    // preflight without implicating the plugin, which leaves the profile at the
+    // target version with the update unsettled
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    let preflightFails = true
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') {
+        return preflightFails
+          ? { code: 1, output: 'boot preflight: entry "ui-pet" failed to load' }
+          : { code: 0, output: '- id: dsh-memoir\n  name: dsh-memoir\n' }
+      }
+      if (args[3] === 'add') writePackageFiles(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
+      return { code: 0 }
+    }, calls)
+    const failed = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
+    expect(failed.phase).toBe('error')
+    const handler = updateRoute(facts, gateway, '1.1.0')
+
+    // When the cause is cleared and the user retries from the panel
+    preflightFails = false
+    const captured = routeResponse()
+    await handler(postJson({ id: 'dsh-memoir' }), captured.res)
+
+    // Then the retry starts a real reinstall instead of the dead-end 409, and it
+    // settles at the target version on a preflight that now passes
+    expect(captured.status()).toBe(200)
+    const retried = await settle(gateway, (captured.body() as { jobId: string }).jobId)
+    expect(retried.phase).toBe('done')
+    expect(retried.plugin?.version).toBe('1.1.0')
+    expect(calls.filter(args => args[3] === 'add')).toEqual([
+      ['plugin', '--profile', 'web', 'add', 'dsh-memoir@1.1.0'],
+      ['plugin', '--profile', 'web', 'add', 'dsh-memoir@1.1.0'],
+    ])
+
+    // ... and once it has settled, the same click is refused again: a plugin that
+    // really is at the latest version is never reinstalled a second time
+    const again = routeResponse()
+    await handler(postJson({ id: 'dsh-memoir' }), again.res)
+    expect(again.status()).toBe(409)
+    expect(again.body()).toEqual({ error: expect.stringContaining('already at 1.1.0') })
+    expect(calls.filter(args => args[3] === 'add')).toHaveLength(2)
   })
 })
 
@@ -2218,8 +2398,10 @@ describe('CliGateway orphan pruning keeps overrides of rows that still exist', (
     const { jobId } = gateway.update('dsh-memoir', '1.1.0')
     const job = await settle(gateway, jobId)
 
-    // Then the layer is left exactly as it was: an unreadable layer proves
-    // nothing about which ids still exist, so the guard writes nothing
+    // Then the layer is left exactly as it was: the missing package is one this
+    // profile depends on, so its directory is unfinished work rather than an
+    // installation-provided bundle, and an unreadable layer proves nothing about
+    // which ids still exist — the guard writes nothing
     expect(job.phase).toBe('done')
     expect(readFileSync(facts.patchPath, 'utf8')).toBe(USER_LAYER)
     expect(existsSync(`${facts.patchPath}.bak-plugin-manager`)).toBe(false)
@@ -2296,8 +2478,9 @@ describe('CliGateway row-name repair on the update path', () => {
 
     // Then the row names the live package and every other byte of the layer is
     // untouched, the pre-repair text survives as the single backup, and the
-    // orphan override is still there: the bundle that cannot be resolved
-    // leaves the live ids unknown, so nothing may be deleted
+    // orphan override is still there: no readable copy of that bundle exists
+    // here — the fake CLI points at no installation carrying it — so the live
+    // ids stay unknown and nothing may be deleted
     expect(job.phase).toBe('done')
     const repaired = readFileSync(facts.patchPath, 'utf8')
     expect(repaired).toBe(REPAIRED_NAME_LAYER)
@@ -2314,5 +2497,209 @@ describe('CliGateway row-name repair on the update path', () => {
     expect(second.phase).toBe('done')
     expect(readFileSync(facts.patchPath, 'utf8')).toBe(REPAIRED_NAME_LAYER)
     expect(readFileSync(`${facts.patchPath}.bak-plugin-manager`, 'utf8')).toBe(BACKUP_SENTINEL)
+  })
+})
+
+/**
+ * The bundle layer of `@deepseek-ai/dsh-base` as a real installation carries
+ * it: the host's own plugin-manager row, which no profile ever declares.
+ */
+const INSTALLATION_BASE_LAYER = [
+  '- insert:',
+  '    - id: plugin-manager',
+  "      name: '@deepseek-ai/dsh-plugin-manager'",
+  '',
+].join('\n')
+
+/** The bundle layer of `@deepseek-ai/dsh-web-app`: the schedule panel's row. */
+const INSTALLATION_APP_LAYER = [
+  '- insert:',
+  '    - id: ui-schedule',
+  "      name: '@deepseek-ai/dsh-client-ui-schedule'",
+  '',
+].join('\n')
+
+/**
+ * A layer left behind by the update that retired the aggregate's
+ * `web-ui-update` row: its override still points at an id the current
+ * composition and every current bundle layer dropped, beside overrides of rows
+ * that still exist — one the composition lists, one only the installation's own
+ * base layer declares, one the profile's installed bundle lists — and a config
+ * row this manager never writes.
+ */
+const CLI_PROFILE_LAYER = [
+  '# user overrides written by the plugin manager',
+  '- id: web-ui-update',
+  '  name: "@linxin666/dsh-plugin-manager-update"',
+  '  disabled: true',
+  '- id: ui-schedule',
+  '  name: "@deepseek-ai/dsh-client-ui-schedule"',
+  '  disabled: true',
+  '- id: plugin-manager',
+  '  name: "@deepseek-ai/dsh-plugin-manager"',
+  '  disabled: true',
+  '- id: dsh-memoir',
+  '  name: dsh-memoir',
+  '  disabled: true',
+  '- id: web-ui-skin-center',
+  '  name: "@linxin666/dsh-web-all/skin-center"',
+  '  config:',
+  '    theme: blue-fantasy',
+  '',
+].join('\n')
+
+/**
+ * The composition a CLI-created profile reports: the installation's web-app
+ * layer and the profile's installed bundle, with the base layer's row missing —
+ * the partial probe the bundle declarations exist to widen.
+ */
+const CLI_PROFILE_DUMP = [
+  '# == @deepseek-ai/dsh-web-app',
+  '- id: ui-schedule',
+  '  name: "@deepseek-ai/dsh-client-ui-schedule"',
+  '# == dsh-memoir',
+  '- id: dsh-memoir',
+  '  name: dsh-memoir',
+  '',
+].join('\n')
+
+/**
+ * The layer a profile-installed copy of `@deepseek-ai/dsh-web-app` declares:
+ * the quick-tunnel row beside the schedule row the installation also carries.
+ */
+const PROFILE_COPY_LAYER = [
+  '- insert:',
+  '    - id: web-ui-remote-web-ui',
+  "      name: '@linxin666/dsh-web-all/remote-web-ui'",
+  '    - id: ui-schedule',
+  "      name: '@deepseek-ai/dsh-client-ui-schedule'",
+  '',
+].join('\n')
+
+/**
+ * Overrides of both rows the profile's own copy declares, taken while that
+ * copy is being replaced: the composition reports neither, which is the window
+ * 0.4.7 read as a retirement.
+ */
+const REPLACEMENT_WINDOW_LAYER = [
+  '- id: web-ui-remote-web-ui',
+  "  name: '@linxin666/dsh-web-all/remote-web-ui'",
+  '  disabled: true',
+  '- id: ui-schedule',
+  '  name: "@deepseek-ai/dsh-client-ui-schedule"',
+  '  disabled: true',
+  '',
+].join('\n')
+
+/**
+ * A stand-in for the DSH installation a CLI-created profile mounts its official
+ * bundles from: the CLI entry at `<root>/lib/bin.js` and one package per
+ * bundle beside it, the npm-global layout {@link findDshBinary} resolves.
+ * @param root - the installation root to create.
+ * @param bundles - bundle package name -> the patch text it declares rows in.
+ * @returns the CLI entry path.
+ */
+function fakeInstallation(root: string, bundles: Record<string, string>): string {
+  const cli = join(root, 'lib', 'bin.js')
+  mkdirSync(dirname(cli), { recursive: true })
+  writeFileSync(cli, '// fake dsh CLI entry\n')
+  for (const [name, patch] of Object.entries(bundles)) {
+    const moduleDir = join(root, 'node_modules', ...name.split('/'))
+    mkdirSync(moduleDir, { recursive: true })
+    writeFileSync(join(moduleDir, 'package.json'), JSON.stringify({
+      name,
+      version: '0.2.1-rc.5',
+      dsh: { bundle: { patch: './cordis.patch.yml' } },
+    }))
+    writeFileSync(join(moduleDir, 'cordis.patch.yml'), patch)
+  }
+  return cli
+}
+
+/** A gateway whose fake CLI is the given path, so the installation it walks is the test's own. */
+function gatewayAt(facts: ProfileFacts, binary: string, behavior: SpawnBehavior): CliGateway {
+  return new CliGateway(facts, {} as NodeJS.ProcessEnv, {
+    spawnImpl: fakeSpawn(behavior, []) as never,
+    findBinary: () => binary,
+  })
+}
+
+describe('CliGateway orphan pruning on profiles whose bundles are not all installed', () => {
+  it('operator: prunes a retired row override on a CLI-created profile and backs the layer up', async () => {
+    // Given a CLI-created profile — the installation's own bundles listed in
+    // dsh.profile.bundles while the plugin the update targets is the only one
+    // really installed — whose layer still carries the override the retired
+    // web-ui-update row left behind, beside overrides of rows that still exist
+    const { facts, dir } = makeProfile(
+      { 'dsh-memoir': { version: '1.0.0' } },
+      { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-memoir'] },
+    )
+    tempDirs.push(dir)
+    const cli = fakeInstallation(join(dir, 'dsh'), {
+      '@deepseek-ai/dsh-base': INSTALLATION_BASE_LAYER,
+      '@deepseek-ai/dsh-web-app': INSTALLATION_APP_LAYER,
+    })
+    writeFileSync(facts.patchPath, CLI_PROFILE_LAYER)
+    const gateway = gatewayAt(facts, cli, (args) => {
+      if (args.includes('--dump-config')) return { code: 0, output: CLI_PROFILE_DUMP }
+      if (args[0] === 'plugin' && args[3] === 'add') installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
+      return { code: 0 }
+    })
+
+    // When the update runs
+    const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
+
+    // Then the retired row's override is gone, the layer was written, and the
+    // pre-prune text survives as the single backup
+    expect(job.phase).toBe('done')
+    const pruned = readFileSync(facts.patchPath, 'utf8')
+    expect(pruned).not.toContain('web-ui-update')
+    expect(readFileSync(`${facts.patchPath}.bak-plugin-manager`, 'utf8')).toBe(CLI_PROFILE_LAYER)
+    expect(existsSync(`${facts.patchPath}.tmp`)).toBe(false)
+
+    // ... and no override of a row that still exists was lost: the installed
+    // bundle's composed row, the installation's web-app row the probe lists,
+    // the installation's base row the probe does not, and the unowned config row
+    expect(pruned).toContain('- id: dsh-memoir')
+    expect(pruned).toContain('- id: ui-schedule')
+    expect(pruned).toContain('- id: plugin-manager')
+    expect(pruned).toContain('- id: web-ui-skin-center')
+    expect(pruned).toContain('theme: blue-fantasy')
+  })
+
+  it('operator: keeps every override while a profile-installed bundle is momentarily unreadable', async () => {
+    // Given a profile that installs @deepseek-ai/dsh-web-app itself, whose
+    // package directory is gone right now (the replace window), a layer
+    // overriding both rows that copy declares, and a composition probe taken
+    // while those rows were missing — while the installation, for its part,
+    // does carry a package of that same name
+    const { facts, dir } = makeProfile(
+      {
+        'dsh-memoir': { version: '1.0.0' },
+        '@deepseek-ai/dsh-web-app': { version: '0.2.1-rc.4', bundle: true, patch: PROFILE_COPY_LAYER },
+      },
+      { bundles: ['@deepseek-ai/dsh-web-app', 'dsh-memoir'] },
+    )
+    tempDirs.push(dir)
+    rmSync(join(facts.profileDir, 'node_modules', '@deepseek-ai', 'dsh-web-app'), { recursive: true, force: true })
+    const cli = fakeInstallation(join(dir, 'dsh'), { '@deepseek-ai/dsh-web-app': INSTALLATION_APP_LAYER })
+    writeFileSync(facts.patchPath, REPLACEMENT_WINDOW_LAYER)
+    const gateway = gatewayAt(facts, cli, (args) => {
+      if (args.includes('--dump-config')) return { code: 0, output: STALE_DUMP }
+      if (args[0] === 'plugin' && args[3] === 'add') installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
+      return { code: 0 }
+    })
+
+    // When the update runs
+    const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
+
+    // Then nothing is pruned: the missing directory belongs to a package this
+    // profile installs itself, so its rows are unknown rather than retired —
+    // the installation's same-named package is not the copy this profile
+    // mounts, and reading it would have dropped web-ui-remote-web-ui
+    expect(job.phase).toBe('done')
+    expect(existsSync(join(dir, 'dsh', 'node_modules', '@deepseek-ai', 'dsh-web-app', 'package.json'))).toBe(true)
+    expect(readFileSync(facts.patchPath, 'utf8')).toBe(REPLACEMENT_WINDOW_LAYER)
+    expect(existsSync(`${facts.patchPath}.bak-plugin-manager`)).toBe(false)
   })
 })

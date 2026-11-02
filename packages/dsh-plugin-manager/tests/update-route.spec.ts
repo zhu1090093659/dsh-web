@@ -54,10 +54,13 @@ function updateHandler(
   update = vi.fn(() => ({ jobId: 'job-1' })),
   migrate = vi.fn(() => ({ jobId: 'job-1' })),
 ) {
-  const gateway = { update, migrate, withMutationLock: async <T>(task: () => Promise<T>) => await task() } as unknown as CliGateway
+  // The gateway's own record of the plugin's newest update. False is "nothing
+  // says it failed", which is the up-to-date profile a 409 belongs to.
+  const lastUpdateFailed = vi.fn((_id: string, _version: string) => false)
+  const gateway = { update, migrate, lastUpdateFailed, withMutationLock: async <T>(task: () => Promise<T>) => await task() } as unknown as CliGateway
   const handler = makeGatewayRoutes({ facts, gateway, cliAvailable: () => true, fetchManifest, dshVersion })
     .find(route => route.path === '/api/plugin-manager/update')!.handler
-  return { handler, update, migrate }
+  return { handler, update, migrate, lastUpdateFailed }
 }
 
 /**
@@ -194,20 +197,52 @@ describe('gateway update route', () => {
     expect(update).not.toHaveBeenCalled()
   })
 
-  it('rejects an unchanged or unresolved latest version without starting a job', async () => {
+  it('operator: gets a 409 and no install for a plugin that really is at the latest version', async () => {
+    // Given a plugin the profile carries at the version the registry serves,
+    // with nothing on record saying its update failed
     const { facts, dir } = profile('^1.0.0')
     tempDirs.push(dir)
     const same = updateHandler(facts, async () => manifest('1.0.0'))
     const sameResponse = response()
+
+    // When the update route is asked for it
     await same.handler(request({ id: 'dsh-memoir' }), sameResponse.res)
+
+    // Then it is refused as already up to date: the record was consulted and
+    // said nothing failed, so no install job may start over a healthy profile
     expect(sameResponse.status()).toBe(409)
+    expect(sameResponse.body()).toEqual({ error: expect.stringContaining('already at 1.0.0') })
+    expect(same.lastUpdateFailed).toHaveBeenCalledWith('dsh-memoir', '1.0.0')
     expect(same.update).not.toHaveBeenCalled()
 
+    // And a latest version that cannot be resolved at all is still a 502
     const missing = updateHandler(facts, async () => undefined)
     const missingResponse = response()
     await missing.handler(request({ id: 'dsh-memoir' }), missingResponse.res)
     expect(missingResponse.status()).toBe(502)
     expect(missing.update).not.toHaveBeenCalled()
+  })
+
+  it('operator: retries the version already installed when the newest update of it failed', async () => {
+    // Given a profile already carrying the latest version because an update
+    // wrote it and then failed its boot preflight, which the gateway still
+    // records as a failed update at that exact version
+    const { facts, dir } = profile('^1.0.0', 'dsh-memoir', '1.1.0')
+    tempDirs.push(dir)
+    const update = vi.fn(() => ({ jobId: 'job-2' }))
+    const { handler, lastUpdateFailed } = updateHandler(facts, async () => manifest('1.1.0'), async () => undefined, update)
+    lastUpdateFailed.mockReturnValue(true)
+    const captured = response()
+
+    // When the user retries the same update
+    await handler(request({ id: 'dsh-memoir' }), captured.res)
+
+    // Then the retry re-runs the install — the same job, preflight included —
+    // instead of refusing with a 409 the panel has no way past
+    expect(captured.status()).toBe(200)
+    expect(captured.body()).toEqual({ jobId: 'job-2' })
+    expect(lastUpdateFailed).toHaveBeenCalledWith('dsh-memoir', '1.1.0')
+    expect(update).toHaveBeenCalledWith('dsh-memoir', '1.1.0')
   })
 
   it('blocks an update whose latest version declares a newer DSH minimum', async () => {

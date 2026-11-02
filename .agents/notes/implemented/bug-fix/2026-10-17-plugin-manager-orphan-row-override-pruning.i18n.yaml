@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-10-17-plugin-manager-orphan-row-override-pruning.md: 14d66a2c60acb6e96ba155fe30d49e543175b202
-2026-10-17-plugin-manager-orphan-row-override-pruning.zh.md: 1e5874878d9e151223e7901f15c0c74c7e1a537f
+2026-10-17-plugin-manager-orphan-row-override-pruning.md: affd6101dcdd7720fde2c038a558cba6a9946c24
+2026-10-17-plugin-manager-orphan-row-override-pruning.zh.md: c6cb796a360e66a4cec15b224fde0cfeb04ce5ee

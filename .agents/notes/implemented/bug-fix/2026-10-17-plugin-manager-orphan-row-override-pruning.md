@@ -37,6 +37,15 @@ Three rules therefore hold now:
 - A layer that cannot be read — its package is not resolvable right now, or its patch does not parse — makes the declarations unknown, and the guard writes nothing at all. A bundle without a patch file, or one whose patch is `[]`, declares no rows and is not an error.
 - Retirement is still proven by the composition: the id must be absent from the probe *and* from every layer's declarations. A retired row is declared by no layer at all, so the original migration still converges.
 
+### Resolving bundle layer directories
+
+The bundle layers whose declarations form that floor are located by `bundleLayerDir`, resolving each `dsh.profile.bundles` entry:
+
+- If the package directory exists inside the profile's own `node_modules` (`package.json` can be read), that copy declares its rows.
+- If the directory is missing and the bundle name is in the profile's `dependencies`, it is treated as unknown (`undefined`), so the guard writes nothing. A package listed in `dependencies` belongs to this profile and is caught mid-install or mid-replace; pruning on a missing copy there would repeat the 0.4.7 defect of deleting live overrides during replacement.
+- If the directory is missing and the bundle is not in profile `dependencies`, it is an installation-provided bundle. Profiles created by the official CLI naturally list `@deepseek-ai/dsh-base` and `@deepseek-ai/dsh-web-app` in `dsh.profile.bundles` without installing them locally (the CLI supplies them from the DSH installation at boot). Demanding a profile-local copy would leave declarations unknown and silently disable pruning across every CLI-created profile. Resolution therefore falls back to `hostBundleDir(binary, name)`.
+- `hostBundleDir` starts from the resolved dsh CLI entry (tracing symlink shims such as npm-global and homebrew via `realpathSync`) and probes ancestor directories up to 16 levels for `node_modules/<name>` and `lib/node_modules/<name>`. If no installation copy exists or no CLI binary is resolvable (`binary === null`), declarations are treated as unknown (`undefined`) and pruning remains safely skipped.
+
 ## Contract
 
 - **Backup.** The write goes through `writePatchAtomic`, the same helper the set-enabled route uses: the current file is copied to `cordis.patch.yml.bak-plugin-manager`, then a `0o600` temporary file is renamed over the target. No new write discipline is introduced.
@@ -52,6 +61,7 @@ Three rules therefore hold now:
 - **Prune against the installed family bundle patches instead of the composition.** Rejected: it misses the official base layer, so an override for an official row id (the common case for shipped UI rows) would be pruned as an orphan and the user's enablement opinion would be destroyed.
 - **Prune after every install and removal too.** Rejected: those actions do not change which row ids exist, so the extra write would edit a user's file for no defect, and the update path is where a retirement can actually strand an override.
 - **Report orphaned ids to the user before pruning.** Rejected: the state it would ask about has exactly one useful answer, the entry is provably dead (the composition does not declare it), and the backup already makes the edit reversible by hand.
+- **Treat every missing bundle as declaring zero rows.** Rejected: a bundle missing from disk during a remove-then-install update window would be treated as declaring no rows and prune live overrides, re-introducing the 0.4.7 defect. Missing bundles that appear in profile dependencies must remain unknown, and only uninstalled official bundles fall back to the host installation.
 
 ## Consequences
 
@@ -61,6 +71,7 @@ Three rules therefore hold now:
 - An update now performs one more write in the worst case (prune) and no write at all in the common case; the `--dump-config` probe is not spawned twice on the CLI path because the pruning reuses the preflight's dump.
 - The guard is narrower than 0.4.7's: an id a bundle still declares survives even when the running host has not mounted it (a denied or incompatible bundle, a package mid-install). That leaves a stale override in place, which the next update running once the bundle is really gone clears — a noise residue is accepted over deleting a live override.
 - Cost of the floor: one `readFile` per bundle layer plus a parse of each layer's patch on the pruning path only, after the mutation landed. A profile whose layer list is long pays it once per update, not per boot.
+- Official bundles uninstalled in CLI-created profiles resolve through `hostBundleDir`, so orphan pruning operates normally on standard CLI profiles rather than aborting silently due to missing local bundle packages.
 
 ## Testing
 
@@ -68,6 +79,7 @@ Three rules therefore hold now:
 - The desktop regression of the 0.4.7 incident is a case in `packages/dsh-plugin-manager/tests/gateway-jobs.spec.ts`: an aggregate bundle declaring `web-ui-remote-web-ui` and `ui-schedule`, a user layer carrying the quick-tunnel override (`autoTunnel: true`, `relay: true`) and a bare `ui-schedule` override, and a composition probe taken while the bundle was gone. The update ends with the user layer byte-identical and no backup, because nothing is orphaned. A second case removes a listed bundle's package directory and asserts the layer is left untouched even though the composition really lacks a row — the declarations are unknown, not empty.
 - `packages/dsh-plugin-manager/tests/rows.spec.ts` pins `declaredRowIds`: a layer's insert entries, its own rows, one id declared twice, and an id nested inside a row's own `config:` (a child, not a layer entry) resolve to the layer's ids once each; a layer that does not parse throws so the caller cannot read it as empty.
 - `packages/dsh-plugin-manager/tests/gateway-jobs.spec.ts` pins the transaction: an update over a layer carrying a retired id ends pruned with `cordis.patch.yml.bak-plugin-manager` holding the pre-prune text; the same update run again writes nothing (the backup still holds the pre-prune text); a layer whose overrides are all live is byte-identical and leaves no backup; a write failure settles the job as `error` with the backup in place; a desktop-owned update prunes through the read-only probe, and leaves the layer untouched when no composition can be read.
+- `packages/dsh-plugin-manager/tests/gateway.spec.ts` pins `hostBundleDir`: resolving installation copies beside the CLI entry, tracing through npm-global/homebrew symlink shims before walking ancestors, finding `lib/node_modules` prefix layouts, and returning `undefined` when no copy exists or the CLI binary is unresolvable (`binary === null`).
 
 ## Known limitation: the transition that creates the orphan cannot run the prune
 

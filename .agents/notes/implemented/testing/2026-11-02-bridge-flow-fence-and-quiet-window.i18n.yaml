@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-11-02-bridge-flow-fence-and-quiet-window.md: ea921a71e2e098493829813336fca060027c2d6d
+2026-11-02-bridge-flow-fence-and-quiet-window.zh.md: 19f08d697da1ad22e96ed396e80d2d886a2a5a9d

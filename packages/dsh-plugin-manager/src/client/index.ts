@@ -41,6 +41,7 @@ import {
   parseInstalledPlugin,
   parsePluginList,
   parseRestartMode,
+  parseRestartPlan,
   parseRestartRequired,
   parseUpdateList,
   type InstalledPluginItem,
@@ -49,6 +50,7 @@ import {
   type PluginUpdateItem,
   type PluginUpdateResult,
   type RestartMode,
+  type RestartPlanWire,
 } from '../core/protocol.ts'
 import { PLUGIN_MANAGER_SERVICE, type PluginManagerService } from '../core/service.ts'
 import { reportDailyHeartbeat } from './telemetry.ts'
@@ -117,10 +119,11 @@ export type PluginManagerFace = PluginUpdatePatchInjected & PluginManagerService
   /**
    * Read how a restart would be carried out without triggering it (the same
    * route's plan read). The toolbar words its confirmation from this, so a
-   * packaged Desktop host can say what its system dialog will do instead of
-   * surprising the user with it.
+   * packaged Desktop host can say what its system dialog will do, and a
+   * systemd host can name the unit that restarts, instead of surprising the
+   * user with either.
    */
-  restartPlan: () => Promise<RestartMode>
+  restartPlan: () => Promise<RestartPlanWire>
 }
 
 /**
@@ -259,8 +262,8 @@ export function createPluginManagerFace(ctx: ClientContext): PluginManagerFace {
     // Restart has no official-channel counterpart, so this route is the one
     // call that is always the gateway's, whichever mode the face runs in. The
     // GET-shaped call is the plan read: no state changes, no process exits.
-    restartPlan: async (): Promise<RestartMode> =>
-      parseRestartMode(await gatewayJson(`${GATEWAY_PREFIX}/${RESTART_ENDPOINT}`)),
+    restartPlan: async (): Promise<RestartPlanWire> =>
+      parseRestartPlan(await gatewayJson(`${GATEWAY_PREFIX}/${RESTART_ENDPOINT}`)),
     restart: async (): Promise<RestartMode> =>
       parseRestartMode(await gatewayJson(`${GATEWAY_PREFIX}/${RESTART_ENDPOINT}`, { method: 'POST' })),
   }

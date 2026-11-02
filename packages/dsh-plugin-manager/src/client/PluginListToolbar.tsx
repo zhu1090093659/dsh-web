@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import type { PluginUpdateItem, PluginUpdateResult, RestartMode } from '../core/protocol.ts'
+import type { PluginUpdateItem, PluginUpdateResult, RestartMode, RestartPlanWire } from '../core/protocol.ts'
 import { applicableUpdates, thirdPartyUpdates } from '../core/updates.ts'
 import { displayMinimumVersion } from '../core/version.ts'
 import { dshGateOf } from './PluginUpdatePatch.tsx'
@@ -39,10 +39,11 @@ export interface PluginListToolbarInjected {
   /**
    * Read how a restart would be carried out, without carrying it out: the
    * confirmation must name the same consequence the host will produce (an
-   * in-place relaunch, the packaged Desktop shell's own recovery dialog, or a
-   * manual restart), and a plan read has no side effects.
+   * in-place relaunch, the packaged Desktop shell's own recovery dialog, a
+   * systemd unit restart, or a manual restart), and a plan read has no side
+   * effects. A systemd plan carries the unit it would restart.
    */
-  restartPlan: () => Promise<RestartMode>
+  restartPlan: () => Promise<RestartPlanWire>
   /** Restart the host so an applied update is loaded. */
   restart: () => Promise<RestartMode>
 }
@@ -59,6 +60,23 @@ function messageOf(error: unknown): string {
     return details === '' ? error.message : `${error.message}: ${details}`
   }
   return error instanceof Error ? error.message : String(error)
+}
+
+/** Translate in this package's namespace. */
+type Translate = PluginListToolbarProps['t']
+
+/**
+ * The consequence confirming produces, in the reader's language. It states
+ * what the host will actually do, so a systemd plan names the unit that goes
+ * down and comes back.
+ */
+function planCopy(plan: RestartPlanWire | undefined, t: Translate): string {
+  // The wire is a discriminated union: a systemd plan carries the unit this
+  // copy must name, and no other mode has one to read.
+  if (plan?.mode === 'systemd') return t('restartPlanSystemd', { unit: plan.unit })
+  if (plan?.mode === 'shell') return t('restartPlanShell')
+  if (plan?.mode === 'manual') return t('restartPlanManual')
+  return t('restartPlanRelaunch')
 }
 
 /** What the toolbar is currently doing. */
@@ -91,7 +109,7 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
   const [error, setError] = useState<string | undefined>(undefined)
   const [panel, setPanel] = useState<Panel>('none')
   /** How the host says it would restart, read before the confirmation is shown. */
-  const [plan, setPlan] = useState<RestartMode | undefined>(undefined)
+  const [plan, setPlan] = useState<RestartPlanWire | undefined>(undefined)
   const [restartMode, setRestartMode] = useState<RestartMode | undefined>(undefined)
   /** Synchronous in-flight mirror of the phase: a click and a keypress can land in one frame. */
   const busyRef = useRef(false)
@@ -171,8 +189,8 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
     if (busyRef.current) return
     busyRef.current = true
     setError(undefined)
-    void restartPlan().then(mode => {
-      setPlan(mode)
+    void restartPlan().then(answer => {
+      setPlan(answer)
       setPanel('restart')
     }).catch(reason => {
       setError(t('failed', { reason: messageOf(reason) }))
@@ -214,6 +232,13 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
   }
 
   const busy = phase !== 'idle'
+  /**
+   * The host leaves once the route accepts a relaunch or a systemd restart:
+   * both replace this process, so the action is spent and reads as in progress.
+   */
+  const hostLeaves = restartMode === 'relaunch' || restartMode === 'systemd'
+  /** The mode the plan read named; the confirmation only opens after one arrived. */
+  const planMode = plan?.mode
   /** One alert line, rendered in whichever flyout is open when it appears. */
   const errorLine = error === undefined
     ? null
@@ -252,10 +277,10 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
         className={applied.length > 0 ? `${css.toolbarButton} ${css.primary}` : css.toolbarButton}
         data-update-restart
         data-restart-pending={applied.length}
-        disabled={busy || restartMode === 'relaunch'}
+        disabled={busy || hostLeaves}
         onClick={() => { if (panel === 'restart') { setPanel('none'); setPlan(undefined); return } onAskRestart() }}
       >
-        {restartMode === 'relaunch' ? t('restarting') : t('restartNow')}
+        {hostLeaves ? t('restarting') : t('restartNow')}
       </button>
 
       {restartMode !== undefined && panel !== 'restart' && (
@@ -320,17 +345,17 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
       )}
 
       {panel === 'restart' && (
-        <div className={css.panel} data-update-restart-panel data-restart-plan={plan} role="group" aria-label={t('restartNow')}>
+        <div className={css.panel} data-update-restart-panel data-restart-plan={planMode} role="group" aria-label={t('restartNow')}>
           {errorLine}
-          <p className={css.hint} data-restart-plan-hint={plan}>
-            {plan === 'shell' ? t('restartPlanShell') : plan === 'manual' ? t('restartPlanManual') : t('restartPlanRelaunch')}
+          <p className={css.hint} data-restart-plan-hint={planMode}>
+            {planCopy(plan, t)}
           </p>
-          {plan === 'shell' && <p className={css.hint}>{t('restartShellWarning')}</p>}
+          {planMode === 'shell' && <p className={css.hint}>{t('restartShellWarning')}</p>}
           <div className={css.panelActions}>
             <button type="button" className={css.button} data-restart-cancel onClick={() => { setPanel('none'); setPlan(undefined) }}>
               {t('cancel')}
             </button>
-            {plan !== 'manual' && (
+            {planMode !== 'manual' && (
               <button
                 type="button"
                 className={`${css.button} ${css.primary}`}

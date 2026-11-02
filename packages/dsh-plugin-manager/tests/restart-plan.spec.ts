@@ -127,6 +127,46 @@ describe('restart planning', () => {
     expect(plan.mode).toBe('manual')
   })
 
+  it('operator on a systemd user service without a terminal: systemd restarts the unit', () => {
+    // Given a host systemd started as a user service, so it has no terminal of
+    // its own and a manager that restarts the unit on request
+    const launch = facts({ interactive: false, systemd: { unit: 'dsh-web.service', scope: 'user' } })
+
+    // When the restart is planned
+    const plan = planRestart(launch)
+
+    // Then the manager carries the restart and the plan names the unit it asks
+    expect(plan).toEqual({ mode: 'systemd', unit: 'dsh-web.service' })
+  })
+
+  it('operator on a packaged Desktop host that is also a systemd service: the shell still owns it', () => {
+    // Given a packaged Desktop launch, which the shell owns, that systemd also
+    // started as a unit
+    const launch = facts({
+      desktop: true,
+      interactive: false,
+      env: { DSH_SHELL_RESTARTS_HOST: '1' },
+      systemd: { unit: 'dsh-web.service', scope: 'user' },
+    })
+
+    // When the restart is planned
+    const plan = planRestart(launch)
+
+    // Then the party that owns the process tree is unchanged: the shell restarts
+    expect(plan).toEqual({ mode: 'shell' })
+  })
+
+  it('operator on a system-scope service: nothing is restarted', () => {
+    // Given a service the system manager owns, which this process cannot ask
+    const launch = facts({ interactive: false, systemd: { unit: 'dsh-web.service', scope: 'system' } })
+
+    // When the restart is planned
+    const plan = planRestart(launch)
+
+    // Then the answer stays manual, exactly like any other supervised launch
+    expect(plan).toEqual({ mode: 'manual' })
+  })
+
   it('operator on a launch with no script in argv: nothing is restarted', () => {
     // Given a host whose argv carries no entry script
     const launch = facts({ argv: [] })
@@ -183,6 +223,57 @@ describe('restart execution', () => {
     expect(mode).toBe('relaunch')
     expect(startHelper).toHaveBeenCalledWith(command)
     expect(exit).toHaveBeenCalled()
+  })
+
+  it('operator carrying out a systemd plan: the unit is asked only after the answer can go out', () => {
+    // Given a systemd verdict whose scheduled request is held back
+    const exit = vi.fn()
+    const requestUnit = vi.fn()
+    const pending: (() => void)[] = []
+    const schedule = vi.fn((run: () => void) => { pending.push(run) })
+
+    // When it is carried out
+    const mode = performRestart({ mode: 'systemd', unit: 'dsh-web.service' }, { exit, schedule, requestUnit })
+
+    // Then the response can be written first: nothing has been asked of systemd
+    // yet, and this process has not exited on its own
+    expect(mode).toBe('systemd')
+    expect(schedule).toHaveBeenCalledWith(expect.any(Function), RESTART_EXIT_DELAY_MS)
+    expect(requestUnit).not.toHaveBeenCalled()
+    expect(exit).not.toHaveBeenCalled()
+
+    // When the restart delay elapses
+    for (const run of pending) run()
+
+    // Then the unit the plan named is the one asked to restart
+    expect(requestUnit).toHaveBeenCalledWith('dsh-web.service')
+  })
+
+  it('operator carrying out a systemd plan whose request fails: the mode stays systemd', () => {
+    // Given a systemd verdict and a request seam that reports failure
+    const requestUnit = vi.fn(() => false)
+    const schedule = vi.fn((run: () => void) => { run() })
+
+    // When it is carried out
+    const mode = performRestart({ mode: 'systemd', unit: 'dsh-web.service' }, { schedule, requestUnit })
+
+    // Then the accepted request is what the browser is told: a failed delivery
+    // is journaled by the real seam, not reported as a different restart mode
+    expect(mode).toBe('systemd')
+    expect(requestUnit).toHaveBeenCalledWith('dsh-web.service')
+  })
+
+  it('operator carrying out a systemd plan that names no unit: it degrades to manual', () => {
+    // Given a systemd verdict with no unit to ask
+    const requestUnit = vi.fn()
+    const schedule = vi.fn()
+
+    // When it is carried out
+    const mode = performRestart({ mode: 'systemd' }, { schedule, requestUnit })
+
+    // Then nothing is scheduled and the answer says a human must restart
+    expect(mode).toBe('manual')
+    expect(schedule).not.toHaveBeenCalled()
   })
 
   it('operator carrying out a relaunch plan whose helper cannot start: it degrades to manual', () => {

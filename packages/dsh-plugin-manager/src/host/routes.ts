@@ -20,7 +20,7 @@ import { legacyMigrationFor, targetSpecForLegacy } from './legacy-migration.ts'
 import { setRowEnabled, writePatchAtomic } from './rows.ts'
 import { runDetached } from './detached-work.ts'
 import { buildPluginRow, claimedEntryRowsOf, findRowOwner, LOCKED_ENTRY_IDS, snapshotGateway } from './state.ts'
-import { performRestart, planRestart, type RestartFacts, type RestartRuntime } from './restart.ts'
+import { performRestart, planRestart, readSystemdFacts, type RestartFacts, type RestartRuntime } from './restart.ts'
 import { createOutputCapture, type OutputCapture } from './console-output.ts'
 
 /** Route prefix the browser half mirrors. */
@@ -609,8 +609,9 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
 
   /**
    * The running process's own launch facts, read once per request: the desktop
-   * verdict comes from the profile facts (packaged Desktop launcher), the rest
-   * from this process.
+   * verdict comes from the profile facts (packaged Desktop launcher), the
+   * systemd facts from this process's own cgroup and environment, the rest from
+   * this process.
    */
   const liveRestartFacts = (): RestartFacts => ({
     desktop: facts.desktop,
@@ -620,13 +621,16 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
     execArgv: process.execArgv,
     cwd: process.cwd(),
     interactive: process.stdin.isTTY === true || process.stdout.isTTY === true,
+    systemd: readSystemdFacts(),
   })
 
   /**
    * Restart the host so an applied plugin update is loaded. The route answers
    * with the mode it actually used (see host/restart.ts): 'relaunch' when this
    * process re-executes itself, 'shell' when the packaged Desktop shell owns
-   * the process tree and runs its own restart, 'manual' when neither is safe.
+   * the process tree and runs its own restart, 'systemd' when this host is a
+   * systemd user service that asks its own unit to restart it, 'manual' when
+   * none of these is safe. A systemd plan also names the unit it would restart.
    */
   const restartHandler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const plan = planRestart((deps.restartFacts ?? liveRestartFacts)())
@@ -634,7 +638,7 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
     // tells the user what a restart will do, and no GET-shaped request (a
     // prefetch, a typed URL, a link scanner) may ever stop a running host.
     if (req.method === 'GET' || req.method === 'HEAD') {
-      writeJson(res, 200, { restart: { mode: plan.mode } })
+      writeJson(res, 200, { restart: { mode: plan.mode, ...plan.unit === undefined ? {} : { unit: plan.unit } } })
       return
     }
     if (req.method !== 'POST') {

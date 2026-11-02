@@ -53,7 +53,7 @@ function face(overrides: Partial<ComponentProps<typeof PluginListToolbar>> = {})
     isLoopback: true,
     checkUpdates: vi.fn(async (): Promise<PluginUpdateItem[]> => []),
     update: vi.fn(async (id: string) => landed(id, '1.0.0')),
-    restartPlan: vi.fn(async () => 'relaunch' as const),
+    restartPlan: vi.fn(async () => ({ mode: 'relaunch' as const })),
     restart: vi.fn(async () => 'relaunch' as const),
     ...overrides,
   }
@@ -313,7 +313,7 @@ describe('restarting to apply the updates', () => {
   it('user on a packaged Desktop host is told the system dialog does the restart', async () => {
     // Given the host reports that the Desktop shell owns the process tree
     const restart = vi.fn(async () => 'shell' as const)
-    renderToolbar(face({ restartPlan: vi.fn(async () => 'shell' as const), restart }))
+    renderToolbar(face({ restartPlan: vi.fn(async () => ({ mode: 'shell' as const })), restart }))
 
     // When the user asks to restart
     fireEvent.click(screen.getByRole('button', { name: t('restartNow') }))
@@ -340,7 +340,7 @@ describe('restarting to apply the updates', () => {
   it('user on a host that cannot restart itself gets instructions and no action', async () => {
     // Given the host reports that it cannot be replaced
     const restart = vi.fn(async () => 'manual' as const)
-    renderToolbar(face({ restartPlan: vi.fn(async () => 'manual' as const), restart }))
+    renderToolbar(face({ restartPlan: vi.fn(async () => ({ mode: 'manual' as const })), restart }))
 
     // When the user asks to restart
     fireEvent.click(screen.getByRole('button', { name: t('restartNow') }))

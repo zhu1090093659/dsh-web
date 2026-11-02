@@ -46,10 +46,41 @@ export interface InstalledPluginItem {
 /**
  * How the host carried out (or refused) a restart request:
  * `relaunch` — this host re-executes itself in place; `shell` — the packaged
- * Desktop shell owns the process tree and runs its own restart; `manual` —
- * neither is safe here, the user restarts DSH themselves.
+ * Desktop shell owns the process tree and runs its own restart; `systemd` —
+ * this host runs as a systemd service and asks its own unit to restart it;
+ * `manual` — none of these is possible here, the user restarts DSH themselves.
  */
-export type RestartMode = 'relaunch' | 'shell' | 'manual'
+export type RestartMode = 'relaunch' | 'shell' | 'systemd' | 'manual'
+
+/**
+ * The unit name shape a systemd restart may name. Deliberately conservative:
+ * the host derives the value from its own cgroup and the browser re-validates
+ * it before the confirmation names a unit, so a value outside this shape is
+ * wire drift rather than a unit worth restarting. The one position that is
+ * refused is a leading `-`: this name travels as the last argv element of
+ * `systemctl --user restart --no-block <unit>`, where a leading `-` reads as
+ * another option instead of a unit. Everything else systemd itself accepts is
+ * kept, including a first `_` or `:` (`_x.service` and `:x.service` are
+ * valid unit names).
+ */
+const SYSTEMD_UNIT_RE = /^(?!-)[a-zA-Z0-9:_.@-]+\.service$/
+
+/** Whether a value is a systemd unit name this package asks systemd to restart. */
+export function isSystemdUnitName(value: string): boolean {
+  return SYSTEMD_UNIT_RE.test(value)
+}
+
+/**
+ * What the host would do with a restart request, as the plan read answers it.
+ *
+ * A discriminated union rather than a mode beside an optional unit: a systemd
+ * plan always names the unit it restarts (the parser refuses one that does
+ * not) and no other mode carries a unit at all, so the confirmation reads the
+ * unit off the plan instead of guarding a field that cannot be missing.
+ */
+export type RestartPlanWire =
+  | { mode: 'systemd'; unit: string }
+  | { mode: 'relaunch' | 'shell' | 'manual' }
 
 /**
  * The result of one applied update: the installed row, plus the host's verdict
@@ -291,17 +322,39 @@ export function parseUpdateList(value: unknown): PluginUpdateItem[] {
 }
 
 /**
- * Validate and normalize a `restart` response value.
+ * Validate and normalize a `restart` response value, reading the mode a POST
+ * answer carries.
  * @param value - decoded but untrusted response value.
  * @returns the mode the host actually used.
  */
 export function parseRestartMode(value: unknown): RestartMode {
   const restart = isRecord(value) ? value.restart : undefined
   const mode = isRecord(restart) ? restart.mode : undefined
-  if (mode !== 'relaunch' && mode !== 'shell' && mode !== 'manual') {
+  if (mode !== 'relaunch' && mode !== 'shell' && mode !== 'systemd' && mode !== 'manual') {
     throw new Error('plugin-manager: response must contain a restart mode')
   }
   return mode
+}
+
+/**
+ * Validate and normalize a restart PLAN response value (the GET answer).
+ *
+ * The plan is read before the confirmation is shown, so this parser fails
+ * closed: an unknown mode, or a systemd plan that does not name a unit of the
+ * accepted shape, throws instead of letting the panel promise a restart the
+ * host cannot actually perform.
+ * @param value - decoded but untrusted response value.
+ * @returns the plan the host would carry out.
+ */
+export function parseRestartPlan(value: unknown): RestartPlanWire {
+  const mode = parseRestartMode(value)
+  if (mode !== 'systemd') return { mode }
+  const restart = isRecord(value) ? value.restart : undefined
+  const unit = isRecord(restart) ? restart.unit : undefined
+  if (!isString(unit) || !isSystemdUnitName(unit)) {
+    throw new Error('plugin-manager: response must name the systemd unit a systemd restart uses')
+  }
+  return { mode, unit }
 }
 
 /**

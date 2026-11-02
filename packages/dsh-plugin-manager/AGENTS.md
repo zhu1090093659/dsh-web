@@ -45,15 +45,22 @@ packages/AGENTS.md 的全局/包级规则。
 - **批量更新策略放 core，不放 host**：`src/core/updates.ts` 是唯一策略源——只更新第三方
   （非 `@deepseek-ai/`）且 `compatible !== false` 的行；官方包随 DSH 本体升级，绝不批量改写。
   单页区块（`plugins.detail.section`）仍可对官方包做单包更新，那是用户逐条确认的动作。
-- **重启三态，禁止臆造命令行**：`src/host/restart.ts` 判定并回传实际模式——`relaunch`
+- **重启四态，禁止臆造命令行**：`src/host/restart.ts` 判定并回传实际模式——`relaunch`
   （终端启动：detached helper 等旧进程退出后重放本进程自身的 execPath + argv，剔除
   `--inspect*`）、`shell`（打包桌面**且**外壳声明了重启保证：只退出，由外壳重新拉起）、
-  `manual`（无终端、无脚本，或桌面壳未声明保证：不退出，界面提示手动重启）。判定是纯函数
+  `systemd`（宿主从自身的 `/proc/self/cgroup` + `INVOCATION_ID` 认出所属 systemd 用户 unit，请
+  systemd 执行 `systemctl --user restart <unit>`，由 systemd 停旧起新）、`manual`
+  （无终端且非 systemd 用户服务，或桌面壳未声明保证：不退出，界面提示手动重启）。检测只认
+  「可证明」的 systemd 用户服务：`INVOCATION_ID` 存在、cgroup 末段是 `*.service`、路径在
+  `/user.slice/` 下、`$XDG_RUNTIME_DIR/systemd/private` 存在；system scope 与其它受监督启动一律维持
+  `manual`。顺序约束：systemd 模式下必须先应答 202 再发重启请求（systemd 的 stop job 在请求入队即开始），
+  失败只写 `$DSH_HOME/logs/plugin-manager-restart.log`，宿主继续服务。判定是纯函数
   `planRestart`，执行是 `performRestart`（helper 起不来时降级为 `manual` 而不是让进程白白
   退出）。新增重启路径前先确认宿主真的能重启，不要把「重启」做成静默失败。
-- **重启路由必须按方法区分**：`GET /api/plugin-manager/restart` 只读方案（无副作用），
-  `POST` 才执行，其他方法 405。缺了这道守卫时，一个普通 GET（浏览器预取、直接输入 URL、
-  误探测）就能停掉正在运行的宿主并弹出桌面外壳的崩溃恢复对话框（2026-09-30 实证）。
+- **重启路由必须按方法区分**：`GET /api/plugin-manager/restart` 只读方案（无副作用），wire
+  形状为 `{ restart: { mode, unit? } }`，确认面板对 systemd 会写明将要重启的 unit 名；`POST`
+  才执行，应答 `{ restart: { mode } }`，其他方法 405。缺了这道守卫时，一个普通 GET（浏览器预取、
+  直接输入 URL、误探测）就能停掉正在运行的宿主并弹出桌面外壳的崩溃恢复对话框（2026-09-30 实证）。
   界面必须先读方案再确认：确认面板写的后果必须与 `POST` 实际产生的后果一致。
 - **桌面壳未声明重启保证时不得退出**：打包桌面没有给 Web GUI 任何重启通道（preload 只暴露
   `dshDesktop.updates.status/open/subscribe`，IPC 里没有「请壳重启宿主」，`app.relaunch()`

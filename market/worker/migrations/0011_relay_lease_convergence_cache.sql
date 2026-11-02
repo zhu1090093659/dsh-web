@@ -24,8 +24,12 @@ ALTER TABLE relay_leases ADD COLUMN token_cache TEXT;
 ALTER TABLE relay_leases ADD COLUMN token_at INTEGER;
 
 -- The deployment default also flips from the quick tunnel to the bridge (see
--- relayModeOf in src/relay-control.js). The column default below stays 'quick'
--- on purpose: SQLite has no ALTER COLUMN, and it does not matter, because the
--- claim writes the mode it resolved into this column explicitly rather than
--- leaning on a schema default. An existing row keeps the mode it recorded, so
--- the flip reaches the fleet one instance per claim and rolls back the same way.
+-- relayModeOf in src/relay-control.js). The mode column's own default stays
+-- 'quick' (migration 0010 -- SQLite has no ALTER COLUMN) and it no longer
+-- matters, because the claim names the column in its INSERT and writes the
+-- mode it resolved rather than leaning on a schema default. That INSERT is the
+-- only place the claim writes mode: the upsert's DO UPDATE half omits it on
+-- purpose, so an existing row keeps the mode it recorded. The new default
+-- therefore reaches the leases first claimed after the flip, not the rows
+-- already on the fleet, and a claim can neither apply an operator's per-row
+-- flip nor undo one -- that stays a single UPDATE.

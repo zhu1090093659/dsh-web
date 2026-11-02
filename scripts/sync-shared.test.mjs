@@ -27,7 +27,7 @@ test('copies cover the settings trio for all consumers plus host and http helper
   // bucket holds is the package-root test setup (5 today) plus the per-package
   // http.ts and console-output.ts copies. The settings bucket is the card trio
   // plus the entry-bound form fallback, the latter one per package whose card
-  // binds a family namespace (7 today). Every family panel now renders through
+  // binds a family namespace (8 today). Every family panel now renders through
   // the native layout seats, so the panel-mount-core and sidebar-entry-core
   // copies are gone and body-mutations serves the aggregate shell, the usage
   // card, the plugin-manager's list-level update toolbar and the task board's
@@ -64,7 +64,7 @@ test('copies cover the settings trio for all consumers plus host and http helper
   // explicit targets with it. dsh-win-bash adds one dsh-home.ts copy under src/:
   // its runtime publishes the payload cache under $DSH_HOME, so it resolves the
   // home through the same generated copy every other host half uses. The three
-  // totals below are 134 / 73 / 46.
+  // totals below are 139 / 78 / 46.
   // dsh-browser-view's real-browser settings card adds seven client copies:
   // the card chrome, form primitives, stylesheet, entry fallback, card seat,
   // segmented control and slider bubble. dsh-task-board-team fills the board's

@@ -15,12 +15,13 @@
  * The claim and the registration share both buckets: a healthy client refreshes
  * its lease once per tunnel start, not on a heartbeat, so the budget is sized
  * for a five-minute cadence plus the churn a quick-tunnel restart or a port
- * settle adds (three per id). The per-IP bucket is counted on the /24 the caller
- * sits on rather than the exact address -- a rotating IPv6 /128 or a CGNAT
- * address would otherwise mint a fresh row per request and never reach its own
- * limit -- and it is deliberately generous, because the account budget gate
- * (relay-control.js) is what protects the Cloudflare API while this limit
- * protects D1 from one caller's write volume.
+ * settle adds (three per id). The per-IP bucket is keyed on the exact address
+ * the request arrived from -- `'ip:' + ip` over `cf-connecting-ip`, and one
+ * shared `ip:unknown` bucket when that header is missing -- never on a subnet:
+ * a rotating IPv6 /128 or a CGNAT address is its own identity here instead of
+ * pooling with its neighbours. The budget is deliberately generous, because the
+ * account budget gate (relay-control.js) is what protects the Cloudflare API
+ * while this limit protects D1 from one caller's write volume.
  */
 export const REGISTER_WINDOW_MS = 5 * 60 * 1000
 export const REGISTER_MAX_PER_IP = 60

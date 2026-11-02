@@ -151,15 +151,17 @@ export function leaseIngress(id, port) {
  * costs zero account calls, while the tunnel transports converge a tunnel, an
  * ingress and a CNAME.
  *
- * The per-instance column overrides it in both directions and is both the
- * migration switch and the rollback: a row that explicitly records `quick` or
- * `named` keeps riding its tunnel (every row written before this default
- * changed records one), and a row that records `bridge` hands the hostname to
- * the object. An operator flips one instance with a single UPDATE.
+ * The per-instance column is both the migration switch and the rollback: a row
+ * that explicitly records `quick` or `named` keeps riding its tunnel whatever
+ * the deployment default is (every row written before this default changed
+ * records one), while a row that records `bridge` hands the hostname to the
+ * object unless `RELAY_MODE` below says otherwise. An operator flips one
+ * instance with a single UPDATE.
  *
- * `RELAY_MODE` is the deployment-wide override and it wins over the column in
- * both directions -- the value an operator sets there is the whole deployment's
- * answer, and an instance that must differ is the exception, not the rule. Set it
+ * `RELAY_MODE` is the deployment-wide override, and it reaches exactly the rows
+ * the column left open: a row whose mode is `bridge` or absent follows it, and
+ * a row that already recorded `quick` or `named` does not -- the column is read
+ * first, so an instance that must differ is the exception, not the rule. Set it
  * to `quick` to roll the fleet back to the tunnel transports, or to `named` to
  * select the named-tunnel transport; leaving it unset is the bridge default.
  * @param env - the Worker environment.

@@ -243,7 +243,7 @@ describe('relay: which road the channel stands on', () => {
     // Given no environment variable names a relay
     // Then the default is the account service the App already signs into
     expect(relayUrlFromEnv({})).toBe(RELAY_DEFAULT_URL)
-    expect(RELAY_DEFAULT_URL).toBe('https://account.dsh-market.com')
+    expect(RELAY_DEFAULT_URL).toBe('https://account.chatwithai.icu')
     // When a deployment names its own relay, a trailing slash is not part of the route
     expect(relayUrlFromEnv({ DSH_REMOTE_BRIDGE_RELAY_URL: 'https://relay.test/' })).toBe('https://relay.test')
     expect(relayUrlFromEnv({ DSH_REMOTE_BRIDGE_RELAY_URL: '  https://relay.test  ' })).toBe('https://relay.test')

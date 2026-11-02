@@ -35,7 +35,7 @@ import type { PushAddress, PushNotification, PushRoute, PushSendResult, PushSend
  * The account service the App already signs into: one deployment, one hostname, so
  * an operator with no relay of their own configures nothing at all.
  */
-export const RELAY_DEFAULT_URL = 'https://account.dsh-market.com'
+export const RELAY_DEFAULT_URL = 'https://account.chatwithai.icu'
 /** The environment variable that moves the relay to another deployment. */
 export const RELAY_ENV = { url: 'DSH_REMOTE_BRIDGE_RELAY_URL' } as const
 /** The one path a delivery is posted to. */

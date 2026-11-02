@@ -10,12 +10,12 @@ Status: implemented
 
 ## Decision
 
-- 通道现在只站在**两条互斥的路**之一：`direct`，本机自己的密钥替 APNs 签名；`relay`，由 `account.dsh-market.com` 用任何部署都拿不到的那一枚密钥签名。`off` 是第三种状态：既无密钥也无 relayToken，也就是从来没有配过密钥的部署一直以来的样子。本机密钥永远优先；同一个事件绝不两条路都走。
+- 通道现在只站在**两条互斥的路**之一：`direct`，本机自己的密钥替 APNs 签名；`relay`，由 `account.chatwithai.icu` 用任何部署都拿不到的那一枚密钥签名。`off` 是第三种状态：既无密钥也无 relayToken，也就是从来没有配过密钥的部署一直以来的样子。本机密钥永远优先；同一个事件绝不两条路都走。
 - App 从账户服务取得一枚 relayToken——作用域是 `(userId, fingerprint)`，有效期 90 天——并经由 `push.register` 的可选字段 `relayToken` 交给桥。它落在该设备自己那一行名册的 `push` 块里，名册盘上 schema 因此从 2 升到 3，只是加一个字段。版本 2 的文件读回来一个字段不少、一台手机不掉配对，下次写入时改写成版本 3。
 - `src/host/relay.ts` 每个事件只 POST 一个 JSON 体到 `POST /v1/push/relay`，带 `Authorization: Bearer <relayToken>`：通知是 `{event, sessionId, title, workspace}`，实况卡是 `{event: 'live-activity', sessionId, activityId, activityEvent, contentState}`。这份契约在两仓之间已经冻结；桥不再决定 APNs 的头部、bundle、environment 和通知文案——那些由服务端按 App 直接在那边做的登记决定。
 - 中心对任何结果都答 200，包括 Apple 拒收的投递：`delivered` 记真正落地的条数，`dead` 记它判死并清理掉的登记数。一条谁都没接住的投递就按失败上报，而 `dead` 经 `PushSendResult.dead` → `isDeadPushToken` → 既有 `removePush` 与 `removeLiveActivityToken` 两条路径回到名册。没有新增第二套清理机制。
 - **可达性是这条路自己的问题。** `DeviceRoster.relayTargets()` 报告持有令牌的那些行，`PushNotifier.enabled` 与 `LiveActivityNotifier.enabled` 通过一个 `available` 探针读它，`BridgeHub.#questionMode()` 在中继路上数 `relayTargets()`、在直连路上数 `pushTargets()`。中继模式下没有令牌的行，是本机无从告知的手机，提问不为它认领；两条路都没有的桥，与从未配过密钥的桥一样惰性——不读目标、不看时钟、不装定时器。
-- `DSH_REMOTE_BRIDGE_RELAY_URL` 可以把中心挪到别的部署，缺省是 `https://account.dsh-market.com`。挂载日志在读成名册之后用三行之一说明自己站在哪条路上：`push: direct (APNs key <kid> of team <team>)`、`push: relay (<url>)`、`push: off (no APNs key on this machine and no paired device holds a relay token)`。
+- `DSH_REMOTE_BRIDGE_RELAY_URL` 可以把中心挪到别的部署，缺省是 `https://account.chatwithai.icu`。挂载日志在读成名册之后用三行之一说明自己站在哪条路上：`push: direct (APNs key <kid> of team <team>)`、`push: relay (<url>)`、`push: off (no APNs key on this machine and no paired device holds a relay token)`。
 - §28.5 的纪律在两条路上都没变：广播路径上没有任何一处 await 投递，传输层解析成 `{ok: false, reason}` 而不是 reject，也不重试、不排队。一次被拒就是一行日志加一条被丢弃的事件。
 - 载荷仍然不带会话内容：标题是会话自己的名字（或固定文案），workspace 是目录的短名，正文是服务端那句固定文案——与直连路一字不差，因为 `buildPushNotification` 在两条路看到它之前就已经定好了。
 

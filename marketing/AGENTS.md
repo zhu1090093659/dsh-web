@@ -4,11 +4,11 @@
 
 ## 目录结构
 
-一个片子一个子目录，目录名即片子标识；工程内的设计稿、脚本与素材都留在该子目录里，不散落到仓库其他地方。现有两个名字：`dsh-web-ui-promo-60s/`、`dsh-task-board-promo/`。
+一个片子一个子目录，目录名即片子标识；工程内的设计稿、脚本与素材都留在该子目录里，不散落到仓库其他地方。
 
 ## 版本控制
 
-- 片子目录逐条写进根 [.gitignore](../.gitignore)（`/marketing/dsh-web-ui-promo-60s/`、`/marketing/dsh-task-board-promo/`）；新增片子按同样格式补一行，成片与素材不进仓库。
+- 片子目录逐条写进根 [.gitignore](../.gitignore)，格式为 `/marketing/<片子>/`；新增片子时补一行，成片与素材不进仓库。
 - `marketing/` 本身不在忽略范围内，所以本文件这类目录级规则正常入库。
 - [.oxlintrc.json](../.oxlintrc.json) 的 `ignorePatterns` 已含 `marketing/`，本目录的脚本不参与仓库 lint。
 

@@ -113,3 +113,128 @@ describe('mutation scoping', () => {
     expect(scopes).toEqual([block])
   })
 })
+describe('diagram labels', () => {
+  it('user sees node labels because diagrams are initialized with SVG text labels', async () => {
+    // Given a flowchart fence whose labels mermaid would otherwise render as HTML
+    document.body.innerHTML = ''
+    document.body.append(codeBlock('mermaid', 'graph TD;A[Alpha]-->B[Beta]'))
+    const { runtime, initialize, render } = fakeRuntime()
+    // When the diagram is rendered
+    const stop = startEnhancement({ root: document.body, load: async () => runtime })
+    await vi.waitFor(() => { expect(render).toHaveBeenCalledTimes(1) })
+    // Then the runtime was told to keep labels as SVG text, which the sanitizer keeps
+    expect(initialize).toHaveBeenCalledTimes(1)
+    expect(initialize.mock.calls[0]?.[0]).toMatchObject({ htmlLabels: false, securityLevel: 'strict' })
+    stop()
+  })
+})
+
+describe('render cost control', () => {
+  it('user keeps a usable page when a fence cannot be parsed', async () => {
+    // Given a fence the parser rejects and whose rollback mutates the DOM itself
+    document.body.innerHTML = ''
+    document.body.append(codeBlock('mermaid', 'graph TD;A--'))
+    let attempts = 0
+    const runtime = {
+      initialize: vi.fn(),
+      render: vi.fn(async () => { attempts += 1; throw new Error('parse error') }),
+    } as unknown as MermaidRuntime
+    // When the page keeps producing DOM changes for a while
+    vi.useFakeTimers()
+    try {
+      const stop = startEnhancement({ root: document.body, load: async () => runtime })
+      await vi.advanceTimersByTimeAsync(1000)
+      // Then the rejected source is not parsed again on every DOM mutation
+      expect(attempts).toBe(1)
+      expect(document.querySelector(`.${DIAGRAM_CLASS}`)).toBeNull()
+      stop()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('user gets the rendered diagram back without a second parse when the palette returns', async () => {
+    // Given a diagram painted for the light palette
+    document.body.innerHTML = ''
+    document.body.removeAttribute('data-ds-dark-theme')
+    document.body.append(codeBlock('mermaid', 'graph TD;A-->B'))
+    const { runtime, render } = fakeRuntime()
+    vi.useFakeTimers()
+    try {
+      const stop = startEnhancement({ root: document.body, load: async () => runtime })
+      await vi.advanceTimersByTimeAsync(100)
+      const figure = document.querySelector(`.${DIAGRAM_CLASS}`) as HTMLElement
+      const figureAfterFirstRender = figure.innerHTML
+      const firstRenderId = figureAfterFirstRender.match(/data-render="([^"]+)"/)?.[1]
+      // When the shell flips to dark and then back to light
+      document.body.setAttribute('data-ds-dark-theme', '')
+      await vi.advanceTimersByTimeAsync(100)
+      expect(render).toHaveBeenCalledTimes(2)
+      document.body.removeAttribute('data-ds-dark-theme')
+      await vi.advanceTimersByTimeAsync(100)
+      // Then the light-palette diagram is reused from the cache instead of re-parsed
+      expect(render).toHaveBeenCalledTimes(2)
+      expect(figure.getAttribute(DATA_STATE)).toBe('done')
+      expect(figure.innerHTML).toBe(figureAfterFirstRender)
+      expect(figureAfterFirstRender).toContain(String(firstRenderId))
+      stop()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('user gets each diagram painted before the next one is parsed', async () => {
+    // Given a document holding two mermaid fences
+    document.body.innerHTML = ''
+    document.body.append(codeBlock('mermaid', 'graph TD;A-->B'), codeBlock('mermaid', 'graph TD;C-->D'))
+    const renders: string[] = []
+    let firstFinishedBeforeSecondParse = false
+    const runtime = {
+      initialize: vi.fn(),
+      render: vi.fn(async (id: string, source: string) => {
+        if (renders.length === 1) {
+          // The second parse must only start once the first diagram is on screen;
+          // parsing both at once is what froze the page for hundreds of ms.
+          const done = document.querySelectorAll(`.${DIAGRAM_CLASS}[data-diagram-state="done"]`)
+          firstFinishedBeforeSecondParse = done.length === 1
+        }
+        renders.push(source)
+        return { svg: `<svg xmlns="http://www.w3.org/2000/svg" data-render="${id}"></svg>` }
+      }),
+    } as unknown as MermaidRuntime
+    // When both are rendered
+    const stop = startEnhancement({ root: document.body, load: async () => runtime })
+    await vi.waitFor(() => { expect(document.querySelectorAll(`.${DIAGRAM_CLASS}[data-diagram-state="done"]`)).toHaveLength(2) })
+    // Then the diagrams were parsed one after another, not all at once
+    expect(renders).toHaveLength(2)
+    expect(firstFinishedBeforeSecondParse).toBe(true)
+    stop()
+  })
+
+  it('user sees a streaming fence rendered once it becomes valid', async () => {
+    // Given a fence that is rejected while it is still half-written
+    document.body.innerHTML = ''
+    const block = codeBlock('mermaid', 'graph TD;A--')
+    document.body.append(block)
+    let fail = true
+    let attempts = 0
+    const runtime = {
+      initialize: vi.fn(),
+      render: vi.fn(async () => {
+        attempts += 1
+        if (fail) throw new Error('parse error')
+        return { svg: '<svg xmlns="http://www.w3.org/2000/svg"><text>late</text></svg>' }
+      }),
+    } as unknown as MermaidRuntime
+    const stop = startEnhancement({ root: document.body, load: async () => runtime })
+    await vi.waitFor(() => { expect(attempts).toBe(1) })
+    // When the fence closes
+    fail = false
+    ;(block.querySelector('pre') as HTMLPreElement).textContent = 'graph TD;A-->B'
+    // Then the diagram lands on the retry that follows the change
+    await vi.waitFor(() => {
+      expect(document.querySelector(`.${DIAGRAM_CLASS}`)?.getAttribute(DATA_STATE)).toBe('done')
+    }, { timeout: 2000 })
+    stop()
+  })
+})

@@ -28,7 +28,7 @@ No settings. The package registers one read-only host route and one page-side ob
 ## Known limitations
 
 - **The integration point is the renderer's DOM, not a contract.** The official markdown renderer publishes no code-block extension seam, so this package finds fenced blocks by the `md-code-block` class and reads the fence language from the banner's infostring element. A host release that renames either one stops diagram rendering (the fences stay ordinary code blocks — nothing breaks); the pinned constants live in `src/core/contract.ts` with a test beside them.
-- **Streaming fences render late by design.** While a reply is still streaming, an unclosed fence cannot be rendered; the block is retried on the next DOM change and the diagram appears once the fence closes.
+- **Streaming fences render late by design.** While a reply is still streaming, an unclosed fence cannot be rendered. A rejected fence is retried only after a short quiet period and only once its source actually changes, so a half-written diagram is never re-parsed on every DOM change and a fence the parser rejects is never parsed again.
 - **No diagram theme choice.** Diagrams follow the shell's light/dark state; mermaid's own theme variables are not exposed as settings.
 
 ## Security model

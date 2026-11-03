@@ -56,8 +56,13 @@ re-implementing it would only fight the host.
   infostring class stops diagram rendering; fences simply stay code blocks. The pinned
   constants and their test are what turn that into a visible failure during an SDK cohort
   bump rather than a silent regression.
-- **Streaming fences render late.** An unclosed fence cannot be parsed; the block is retried
-  on the next mutation and the diagram appears once the fence closes.
+- **Streaming fences render late.** An unclosed fence cannot be parsed; the fence is retried
+  after a quiet period once its source changed, and the diagram appears once the fence closes.
+- **Rendering is scheduled, not fired at once.** Mermaid parses and lays out synchronously on the
+  page's main thread, so diagrams are painted one per frame (with a timeout backstop for a tab
+  whose frames are throttled), the sanitized SVG is memoized per theme and source, and the runtime
+  is initialized only when the palette changes. A rejected source is final: retrying it on every
+  DOM change would let the rollback itself re-trigger the pass and spin the page.
 - **The family row carries its own display metadata.** The aggregate's \`shellNotes\` section
   covers family sub-paths (the tombstoned compatibility shells); a row that mounts a real
   package gets its title and purpose from that package's \`locale/{en,zh}.json\`, which this

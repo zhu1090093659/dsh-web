@@ -7,13 +7,22 @@
  * `on*` handlers and `javascript:` URLs. Cleaned markup is returned; input that
  * still carries a dangerous token after cleaning throws, and the caller falls
  * back to the untouched code block.
+ *
+ * One walk does both removals: dropping a disallowed element drops everything
+ * beneath it, so a second pass would only re-examine nodes that are already
+ * detached. The suspicious-token check runs as a case-insensitive pattern over
+ * the markup rather than over a lowercased copy of it, because a large diagram
+ * is hundreds of kilobytes of markup and that copy is pure garbage.
  * @module @linxin666/dsh-client-ui-diagrams/client/sanitize
  */
 
 /** Elements that must never reach the page from a diagram's markup. */
 const DISALLOWED_ELEMENTS = new Set(['script', 'foreignobject', 'iframe', 'object', 'embed'])
 
-/** An attribute name that is an event handler (`onclick`, `onload`, …). */
+/** A token that may not survive sanitizing: a script open tag or a javascript: URL. */
+const SUSPICIOUS_CONTENT = /<script|javascript:/i
+
+/** An attribute name that is an event handler (`onclick`, `onload`, ...). */
 function isEventHandler(name: string): boolean {
   return /^on/i.test(name)
 }
@@ -34,18 +43,11 @@ export function sanitizeSvg(svg: string): string {
   template.innerHTML = svg
   const root = template.content
 
-  // Removals can expose nested offenders, so repeat until a pass finds none.
-  for (let removed = true; removed;) {
-    removed = false
-    for (const element of Array.from(root.querySelectorAll('*'))) {
-      if (DISALLOWED_ELEMENTS.has(element.tagName.toLowerCase())) {
-        element.remove()
-        removed = true
-      }
-    }
-  }
-
   for (const element of Array.from(root.querySelectorAll('*'))) {
+    if (DISALLOWED_ELEMENTS.has(element.tagName.toLowerCase())) {
+      element.remove()
+      continue
+    }
     for (const attribute of Array.from(element.attributes)) {
       if (isEventHandler(attribute.name) || isScriptUrl(attribute.value)) {
         element.removeAttribute(attribute.name)
@@ -54,8 +56,7 @@ export function sanitizeSvg(svg: string): string {
   }
 
   const cleaned = template.innerHTML
-  const lowered = cleaned.toLowerCase()
-  if (lowered.includes('<script') || lowered.includes('javascript:')) {
+  if (SUSPICIOUS_CONTENT.test(cleaned)) {
     throw new Error('diagrams: rendered SVG still carries executable content after sanitizing')
   }
   return cleaned

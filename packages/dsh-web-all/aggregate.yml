@@ -63,6 +63,9 @@ patchFrom:
   # dsh-i18n 语言包无宿主行为、无时序依赖，放列表末尾：注册 ru 语言与全部
   # 家族插件命名空间的 ru 字典（见 packages/dsh-i18n）。
   - ../dsh-i18n
+  # dsh-diagrams 同样是纯页面侧增强：它不占席位、不注册服务，只观察官方 markdown
+  # 渲染出的 mermaid 围栏并原地出图，顺序上与任何家族行无依赖。
+  - ../dsh-diagrams
   # dsh-browser-view 排在最末：它自己不提供任何家族席位，只往 shell.overlay 与
   # 会话头动作列表追加两个可叠加条目，因此与任何已加载插件的顺序都无依赖。
   - ../dsh-browser-view
@@ -92,6 +95,7 @@ deps:
   - ../dsh-win-bash
   - ../dsh-web-settings
   - ../dsh-i18n
+  - ../dsh-diagrams
   - ../dsh-browser-view
 
 # 独立仓库卫星（npm 外部行）：皮肤中心、宠物、社区插件索引迁出本单一仓库后由各自

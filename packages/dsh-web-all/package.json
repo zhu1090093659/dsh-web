@@ -177,6 +177,7 @@
     "@linxin666/dsh-win-bash": "workspace:*",
     "@linxin666/dsh-client-ui-web-ui-settings": "workspace:*",
     "@linxin666/dsh-i18n": "workspace:*",
+    "@linxin666/dsh-client-ui-diagrams": "workspace:*",
     "@linxin666/dsh-client-ui-browser-view": "workspace:*",
     "@linxin666/dsh-client-ui-community-plugins": "^0.4.14",
     "@linxin666/dsh-client-ui-preset-center": "^0.4.14",

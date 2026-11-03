@@ -2,13 +2,14 @@
 
 ## 范围
 
-本版本统一发布 `packages/` 下由 `scripts/lib/family-packages.mjs` 发现的 22 个公开家族包；根 package.json 与 shared 私有包不发布，根的 `version` 与家族包同步 bump（git 安装仓库根别名 bundle 时，插件管理器显示的就是它）。所有家族包采用统一版本号（当前为 0.4.8），皮肤中心只随包分发 `blue-fantasy`，其余皮肤由 Workshop 按需安装。
+本版本统一发布 `packages/` 下由 `scripts/lib/family-packages.mjs` 发现的 23 个公开家族包；根 package.json 与 shared 私有包不发布，根的 `version` 与家族包同步 bump（git 安装仓库根别名 bundle 时，插件管理器显示的就是它）。所有家族包采用统一版本号（当前为 0.4.8），皮肤中心只随包分发 `blue-fantasy`，其余皮肤由 Workshop 按需安装。
 
 皮肤中心、宠物、社区插件索引与预设中心已拆分为独立仓库并各自发版：`@linxin666/dsh-client-ui-skin-center`（[dsh-skins](https://github.com/zhu1090093659/dsh-skins)）、`@linxin666/dsh-pet`（[dsh-pet](https://github.com/zhu1090093659/dsh-pet)）、`@linxin666/dsh-client-ui-community-plugins`（[dsh-community-plugins](https://github.com/zhu1090093659/dsh-community-plugins)）、`@linxin666/dsh-client-ui-preset-center`（[dsh-presets](https://github.com/zhu1090093659/dsh-presets)）。本仓的聚合包按 semver 依赖它们，`satellites/` 下各 submodule 的 gitlink 固定市场站要拉取的内容。四个卫星仓与本仓发布同一个版本号：卫星先发、本仓后发，聚合包的依赖范围、锁定条目与 gitlink 随对齐一起更新，逐步流程见 [dsh-web-release 技能](../.agents/skills/dsh-web-release/SKILL.md)。
 
 | 目录 | npm 包 | 版本 | 发布状态 |
 | --- | --- | --- | --- |
 | packages/dsh-agents | @linxin666/dsh-agents | 0.4.8 | public |
+| packages/dsh-diagrams | @linxin666/dsh-client-ui-diagrams | 0.4.14 | public |
 | packages/dsh-i18n | @linxin666/dsh-i18n | 0.4.8 | public |
 | packages/dsh-liangshen | @linxin666/dsh-liangshen | 0.4.8 | public |
 | packages/dsh-market | @linxin666/dsh-client-ui-market | 0.4.8 | public |

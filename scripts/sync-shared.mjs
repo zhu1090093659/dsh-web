@@ -159,6 +159,7 @@ const MANIFEST = [
       'packages/dsh-usage/src/mount-once.ts',
       'packages/dsh-session-archive/src/mount-once.ts',
       'packages/dsh-update/src/mount-once.ts',
+      'packages/dsh-diagrams/src/mount-once.ts',
     ],
   },
 
@@ -194,12 +195,12 @@ const MANIFEST = [
   {
     file: 'pair-access.ts',
     source: 'shared/host/pair-access.ts',
-    targets: ['packages/dsh-skill-explorer/src/pair-access.ts', 'packages/dsh-usage/src/host/pair-access.ts'],
+    targets: ['packages/dsh-skill-explorer/src/pair-access.ts', 'packages/dsh-usage/src/host/pair-access.ts', 'packages/dsh-diagrams/src/host/pair-access.ts'],
   },
   {
     file: 'loopback.ts',
     source: 'shared/host/loopback.ts',
-    targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-task-board/src/loopback.ts', 'packages/dsh-task-board-github/src/loopback.ts', 'packages/dsh-skill-explorer/src/loopback.ts', 'packages/dsh-plugin-manager/src/host/loopback.ts', 'packages/dsh-market/src/loopback.ts', 'packages/dsh-usage/src/host/loopback.ts', 'packages/dsh-session-archive/src/host/loopback.ts', 'packages/dsh-update/src/loopback.ts', 'packages/dsh-browser-view/src/host/loopback.ts'],
+    targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-task-board/src/loopback.ts', 'packages/dsh-task-board-github/src/loopback.ts', 'packages/dsh-skill-explorer/src/loopback.ts', 'packages/dsh-plugin-manager/src/host/loopback.ts', 'packages/dsh-market/src/loopback.ts', 'packages/dsh-usage/src/host/loopback.ts', 'packages/dsh-session-archive/src/host/loopback.ts', 'packages/dsh-update/src/loopback.ts', 'packages/dsh-browser-view/src/host/loopback.ts', 'packages/dsh-diagrams/src/host/loopback.ts'],
   },
   {
     file: 'http.ts',

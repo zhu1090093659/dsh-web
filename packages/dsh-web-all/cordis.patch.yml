@@ -100,6 +100,11 @@
     - id: web-ui-i18n
       name: '@linxin666/dsh-i18n'
 
+# from ../dsh-diagrams
+- insert:
+    - id: web-ui-diagrams
+      name: '@linxin666/dsh-client-ui-diagrams'
+
 # from ../dsh-browser-view
 - insert:
     - id: web-ui-browser-view

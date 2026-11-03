@@ -191,6 +191,7 @@ flowchart LR
 | dsh-liangshen | 梁神 agent 预设与模式拨杆 |
 | dsh-win-bash | Windows 钉摘要私有 bash（win_bash 持久 shell 工具，仅 win32 x64） |
 | dsh-i18n | 俄语语言包与全家族 ru 词典 |
+| dsh-diagrams | mermaid 图示渲染：观察官方 markdown 的围栏块并原地出图（不占席位、不注册服务） |
 
 ## 门禁与发布流
 

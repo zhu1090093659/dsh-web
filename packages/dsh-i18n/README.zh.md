@@ -30,7 +30,6 @@ dsh Web GUI 与桌面客户端的家族字典包。DSH 自带俄语语言定义�
 
 | 命名空间 | 来源包 |
 | --- | --- |
-| `git-graph` | dsh-git-graph |
 | `liangshen` | dsh-liangshen |
 | `dsh-web-ui-market` | dsh-market |
 | `pet` | dsh-pet |

@@ -17,7 +17,7 @@
 - `skin.json` — v2 清单：`contributes.stylesheet` / `patches` / `backgroundMedia`
   （light → `assets/remiel-calm.jpg`，dark → `assets/remiel-nocturne.jpg`，各带原有遮罩）
 - `skin.css` — L1：基础色 + 全部 `--dsw-*` 调色板重映射（亮色 `:root`、暗色 `body[data-ds-dark-theme]`）
-- `patches.css` — L3：滚动条 / 选区 / 链接 / focus、aion 右侧面板、git-graph 泳道、composer，以及
+- `patches.css` — L3：滚动条 / 选区 / 链接 / focus、aion 右侧面板、composer，以及
   `[role="dialog"]` 设置弹窗的方形专属背景（引用 `assets/remiel-settings-*.jpg`）
 - `assets/` — 场景图与设置弹窗方图
 - `NOTICE` — 角色版权与素材来源声明

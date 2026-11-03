@@ -154,30 +154,6 @@ html[data-dsh-skin="matrix"] ::-webkit-scrollbar-thumb:hover {
   background: #1c7a46;
 }
 
-html[data-dsh-skin="matrix"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1), html[data-dsh-skin="matrix"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) {
-  color: #00e676;
-}
-
-html[data-dsh-skin="matrix"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2), html[data-dsh-skin="matrix"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) {
-  color: #2ffd8c;
-}
-
-html[data-dsh-skin="matrix"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3), html[data-dsh-skin="matrix"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) {
-  color: #b6ff3d;
-}
-
-html[data-dsh-skin="matrix"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4), html[data-dsh-skin="matrix"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) {
-  color: #1de9b6;
-}
-
-html[data-dsh-skin="matrix"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5), html[data-dsh-skin="matrix"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) {
-  color: #76ff03;
-}
-
-html[data-dsh-skin="matrix"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n), html[data-dsh-skin="matrix"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) {
-  color: #00c853;
-}
-
 @media (prefers-reduced-motion: reduce) {
   html[data-dsh-skin="matrix"] * {
     transition: none !important;

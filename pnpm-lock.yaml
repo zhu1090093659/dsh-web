@@ -289,103 +289,6 @@ importers:
         specifier: ^4.1.8
         version: 4.1.12(@types/node@22.20.5)(@vitest/coverage-v8@4.1.12)(jsdom@29.1.1)(yaml@2.9.1)
 
-  packages/dsh-git-graph:
-    dependencies:
-      '@deepseek-ai/schemastery':
-        specifier: ^3.18.6-alpha.2
-        version: 3.18.6-alpha.2
-    devDependencies:
-      '@deepseek-ai/cordis':
-        specifier: ^4.0.6-alpha.2
-        version: 4.0.6-alpha.2(@deepseek-ai/cordis-plugin-loader@1.0.7-alpha.2)
-      '@deepseek-ai/dsh-api-remotes':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)(@deepseek-ai/dsh-scope@0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2))
-      '@deepseek-ai/dsh-api-session-controller':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(6bd92bd487c32c8194c7aed93d0a1e01)
-      '@deepseek-ai/dsh-api-workspace-controller':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(155386c2e391ae11a9ecb7cf5d7409b9)
-      '@deepseek-ai/dsh-client-connection':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)(@deepseek-ai/dsh-scope@0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2))
-      '@deepseek-ai/dsh-client-locale':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)
-      '@deepseek-ai/dsh-client-store':
-        specifier: 0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)(@types/react@18.3.31)(react@18.3.1)
-      '@deepseek-ai/dsh-client-ui-conversation':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)
-      '@deepseek-ai/dsh-client-ui-primitives':
-        specifier: 0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)(supports-color@7.2.0)
-      '@deepseek-ai/dsh-client-ui-renderer':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)
-      '@deepseek-ai/dsh-client-ui-session':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)
-      '@deepseek-ai/dsh-client-ui-slots':
-        specifier: 0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)
-      '@deepseek-ai/dsh-client-ui-workspace':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)
-      '@deepseek-ai/dsh-host-webserver':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)(supports-color@7.2.0)
-      '@deepseek-ai/dsh-settings':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)(@deepseek-ai/dsh-app-boot@0.2.2-alpha.3(@deepseek-ai/cordis-plugin-loader@1.0.7-alpha.2)(@deepseek-ai/cordis@4.0.6-alpha.2))(@deepseek-ai/dsh-brand@0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2))(@deepseek-ai/dsh-session@0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)(@deepseek-ai/dsh-scope@0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)))(@deepseek-ai/schemastery@3.18.6-alpha.2)(node-addon-require-builtin@0.1.9)
-      '@deepseek-ai/dsh-subprocess':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)
-      '@deepseek-ai/dsh-tools':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(ee6f859ec10de045007936ad13b5e9c1)
-      '@deepseek-ai/dsh-workspace':
-        specifier: ^0.2.2-alpha.3
-        version: 0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)(@deepseek-ai/dsh-session-persistence@0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)(@deepseek-ai/dsh-brand@0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2))(@deepseek-ai/dsh-session@0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)(@deepseek-ai/dsh-scope@0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)))(@deepseek-ai/dsh-timeout@0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)))(@deepseek-ai/dsh-session@0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)(@deepseek-ai/dsh-scope@0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2)))(@deepseek-ai/dsh-typert-protocol@0.2.2-alpha.3(@deepseek-ai/cordis@4.0.6-alpha.2))
-      '@testing-library/dom':
-        specifier: ^10.4.1
-        version: 10.4.2
-      '@testing-library/react':
-        specifier: ^16.1.0
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@types/node':
-        specifier: ^22.20.0
-        version: 22.20.5
-      '@types/react':
-        specifier: ~18.3.1
-        version: 18.3.31
-      '@types/react-dom':
-        specifier: ^18.3.5
-        version: 18.3.7(@types/react@18.3.31)
-      jsdom:
-        specifier: 29.1.1
-        version: 29.1.1
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
-      tsdown:
-        specifier: ^0.22.2
-        version: 0.22.2(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite-tsconfig-paths:
-        specifier: ^6.1.1
-        version: 6.1.1(supports-color@7.2.0)(typescript@6.0.3)(vite@8.3.4(@types/node@22.20.5)(yaml@2.9.1))
-      vitest:
-        specifier: ^4.1.8
-        version: 4.1.12(@types/node@22.20.5)(@vitest/coverage-v8@4.1.12)(jsdom@29.1.1)(yaml@2.9.1)
-
   packages/dsh-i18n:
     devDependencies:
       '@deepseek-ai/cordis':
@@ -1599,9 +1502,6 @@ importers:
       '@linxin666/dsh-client-ui-community-plugins':
         specifier: ^0.4.14
         version: 0.4.14(react@18.3.1)
-      '@linxin666/dsh-client-ui-git-graph':
-        specifier: workspace:*
-        version: link:../dsh-git-graph
       '@linxin666/dsh-client-ui-market':
         specifier: workspace:*
         version: link:../dsh-market

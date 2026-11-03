@@ -139,14 +139,14 @@ dsh plugin --profile web add link:<dsh-web>/packages/dsh-web-all
   运行时经 `window.__ModuleLoader__` 加载）。官方 SDK 尚未发布的槽位（如
   `conversation.input.selector.*`）用**模块形式**的本地 augmentation 补齐类型
   （`import type {}` + `declare module '@deepseek-ai/dsh-client-ui-slots'`，参照
-  `packages/dsh-git-graph/src/client/slots-augment.ts`），SDK 发布对应槽位后移除。
+  `packages/dsh-liangshen/src/client/index.ts`），SDK 发布对应槽位后移除。
 - **构建预设**：统一走仓库内单一共享副本 `shared/tsdown.client.ts`（平台模块表
   `shared/web-platform.ts`），各包 `tsdown.config.ts` 引用它并传参（`libExternal` /
   `companions` 等）。**禁止**再复制预设到包内。
 - **测试基建**：vitest 配置需 `server.deps.inline: [/@deepseek-ai\//]`（SDK 包走 vite 转译，
   处理 CSS）；client 半区闭包工厂在测试中不可直接 import——用 `vitest.setup.ts` 的最小
   `__ModuleLoader__` stub（`packages/dsh-task-board/vitest.setup.ts`）或 `vi.mock` 替换
-  （`packages/dsh-git-graph/tests/git-service.spec.ts` 的 service mock）。
+  （`packages/dsh-ssh/tests/connection-pool.test.ts` 的 service mock）。
 - **设置页插件配置（20260811+ 可选能力）**：DSH web 的插件管理页为每个 bundle 的页面提供一片配置区（`plugins.bundle.config` 槽，按 bundle 包名分派）。Web 插件组、皮肤中心、社区插件、桌面宠物各注册一级设置分区（`settings.section`，`label` 用 thunk 跟随语言，内容直接展开）；Web 插件组声明 `web-ui.plugin.item` 子槽归组 task-board 等卡片。插件接入只需两步：
   1. **host 半区**：插件的 `Config`（schemastery）就是它的设置面——`@deepseek-ai/dsh-settings` 按 profile entry 自身的 schema 生成设置表单，因此注册命名空间、`installSection`、`setSource`、`onChange` 都不再存在。需要可编辑的字段必须标记 `.volatile()`（只有 `@deepseek-ai/schemastery` 提供；未标记 volatile 的 entry 根本不生成表单），并在插件运行时通过宿主交付的引用读取当前值，用 `loader/volatile-update` 事件让已派生的行为跟随已提交的修改，无需重启。
   2. **browser 半区**：注入 `configForms`（`@deepseek-ai/dsh-client-ui-settings` 提供 `ctx.configForms`），`ctx.configForms.get(entryId)` 读写该 profile entry 自身的配置——设置命名空间即所属 profile entry id，不再由插件自选名称；一次写入返回布尔值，`false` 表示宿主拒绝或跳过，必须当作保存失败上报。然后注册卡片：家族归组用 `web-ui.plugin.item`，官方 bundle 配置页用 `plugins.bundle.config`，一级菜单用 `settings.section`（自行 `declare module '@deepseek-ai/dsh-client-ui-slots'` 声明该槽，shape 与官方一致；`order` 用 100+；一级分区卡片加 `alwaysOpen` 直接展开）。样板见 `packages/dsh-task-board`（自包含 staged 表单，不依赖兄弟 UI 包）。家族插件用共享的 `installPluginCard`（`shared/client/settings/plugin-card-seat.ts`）选席位：`dsh-web-settings` 已加载（`ctx.get('webUiSettings')` 有值）时进 `web-ui.plugin.item`，否则进官方 keyed 槽 `plugins.bundle.config`（key 用自身 bundle 包名）；**不要**用「官方席位是否已声明」判定——官方插件面属于 harness bundle，其席位在每个 web 构建上都先于外部插件声明，据此判定会让家族分区永远为空。家族插件经 `dsh-web-settings` 的 `webUiSettings` 绑定时按包身份别名表把家族 namespace 解析成所属 entry id，再走原生 `configForms`；解析不到时回落到该包的 loopback HTTP 桥。

@@ -1,6 +1,7 @@
 # Agent Note: Git Graph hero chip seat is asserted per commit, not watched
 
 Status: implemented
+已退役，参见 [dsh-git-graph 包退役决策](../simplification/2026-11-03-git-graph-package-retired.md)
 
 ## Problem
 

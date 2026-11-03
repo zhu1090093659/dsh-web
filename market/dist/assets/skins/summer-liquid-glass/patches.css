@@ -42,8 +42,7 @@ a:visited {
 /* Floating glass surfaces: frosted blur, inner highlight, diffuse shadow. */
 [role="dialog"],
 [role="menu"],
-[role="listbox"],
-[data-gitgraph-dialog] {
+[role="listbox"] {
   -webkit-backdrop-filter: blur(30px) saturate(145%);
   backdrop-filter: blur(30px) saturate(145%);
   box-shadow:
@@ -78,25 +77,6 @@ button,
 a {
   transition: background-color 0.15s ease, border-color 0.15s ease,
     box-shadow 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-}
-
-/* git-graph commit-graph palette. */
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) { color: #67DCE7; }
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) { color: #CBE77D; }
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) { color: #F3B75F; }
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) { color: #DD8FAC; }
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) { color: #86e2ea; }
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) { color: #d6ee9a; }
-
-[data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
-  background: rgba(103, 220, 231, 0.12);
-  border: 1px solid rgba(103, 220, 231, 0.1);
 }
 
 @media (prefers-reduced-motion: reduce) {

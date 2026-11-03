@@ -237,7 +237,7 @@ export interface Config {
  * config against, before the schema turns volatile fields into live references
  * and applies defaults. Declared separately because the two sides no longer
  * share one shape, so the schema is annotated `z<ConfigInput, Config>` — the
- * same split `dsh-git-graph` uses. The annotation is also what keeps the
+ * same split the git-family packages use. The annotation is also what keeps the
  * emitted declaration portable: an unannotated schema holding a nested object
  * array infers a type that cannot be named without reaching into a transitive
  * dependency's own types.

@@ -154,30 +154,6 @@ code, pre {
   background: #1c7a46;
 }
 
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) {
-  color: #00e676;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) {
-  color: #2ffd8c;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) {
-  color: #b6ff3d;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) {
-  color: #1de9b6;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) {
-  color: #76ff03;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) {
-  color: #00c853;
-}
-
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

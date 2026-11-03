@@ -1,6 +1,6 @@
 {
   "name": "@linxin666/dsh-web-all",
-  "description": "DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / git-graph / pet / web-ui-settings / skin-center / community-plugins / compat shim）。compat 桥接层已并入本包（src/client），无需独立 compat npm 包。",
+  "description": "DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / pet / web-ui-settings / skin-center / community-plugins / compat shim）。compat 桥接层已并入本包（src/client），无需独立 compat npm 包。",
   "version": "0.4.14",
   "icon": "icon.svg",
   "type": "module",
@@ -166,7 +166,6 @@
     "@linxin666/dsh-client-ui-task-board-github": "workspace:*",
     "@linxin666/dsh-client-ui-task-board-team": "workspace:*",
     "@linxin666/dsh-agents": "workspace:*",
-    "@linxin666/dsh-client-ui-git-graph": "workspace:*",
     "@linxin666/dsh-remote-bridge": "workspace:*",
     "@linxin666/dsh-task-board-remote": "workspace:*",
     "@linxin666/dsh-ssh": "workspace:*",

@@ -526,59 +526,6 @@ body[data-ds-dark-theme] [data-aionui-explorer-col], body[data-ds-dark-theme] [d
   outline-offset: 0;
 }
 
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) {
-  color: #38628f;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) {
-  color: #5a9e38;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) {
-  color: #b57e1e;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) {
-  color: #b6442e;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) {
-  color: #78896c;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n), [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) {
-  color: #83c94e;
-}
-
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1), body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) {
-  color: #4a7db8;
-}
-
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2), body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) {
-  color: #83c94e;
-}
-
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3), body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) {
-  color: #d9a53c;
-}
-
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4), body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) {
-  color: #d45a5a;
-}
-
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5), body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) {
-  color: #a4b0a0;
-}
-
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n), body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) {
-  color: #aed08a;
-}
-
-[data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
-  border: 1px solid #ffffff2e;
-  border-radius: 0;
-}
-
 @keyframes QecUDa_mc-pan {
   0% {
     transform: rotateY(0);

@@ -12,8 +12,8 @@ shipped as a pure asset directory inside the Skin Center package.
 - **Token-first**: light values on `:root`, dark values under
   `body[data-ds-dark-theme]`; the loader scopes every selector under
   `html[data-dsh-skin="pink-sakura"]`.
-- **Plugin-aware**: stable semantic attributes cover the task board, Git graph,
-  SSH, settings cards, community marketplace, and pet bubble.
+- **Plugin-aware**: stable semantic attributes cover the task board, SSH,
+  settings cards, community marketplace, and pet bubble.
 - **Wallpaper-ready**: panels become translucent while the built-in Wallpaper
   Engine bridge is active, without shipping or redistributing wallpaper media.
 - **Cat-paw selected marker**: selected sidebar workspace / session rows carry a paw icon (`assets/paw.png`, from iconfont.cn, used with the icon author's authorization) with a soft glow and a heartbeat animation; static under `prefers-reduced-motion`.

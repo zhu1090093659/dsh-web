@@ -2,10 +2,10 @@
 
 [中文](README.md) | English
 
-dsh-web is an all-in-one modular plugin ecosystem and AI agent workbench for DeepSeek Harness (DSH) Web GUI, DeepSeek Web UI, and the official DeepSeek Desktop client. Built for DeepSeek-V3 and DeepSeek-R1 reasoning models, it equips developers and power users with autonomous task automation boards (cron background scheduling), mobile phone app remote access, web-based SSH terminal operations and Linux cluster management, visual Git commit graphs with multi-agent worktree workspace isolation, full session search and archive management, token usage and API cost monitoring (including Token Bank), and a unified workshop for themes, skins, and desktop pets. Users can install the complete plugin bundle into an existing `dsh web` instance via the official profile mechanism, or install and run it directly in the official DeepSeek Harness desktop client.
+dsh-web is an all-in-one modular plugin ecosystem and AI agent workbench for DeepSeek Harness (DSH) Web GUI, DeepSeek Web UI, and the official DeepSeek Desktop client. Built for DeepSeek-V3 and DeepSeek-R1 reasoning models, it equips developers and power users with autonomous task automation boards (cron background scheduling), mobile phone app remote access, web-based SSH terminal operations and Linux cluster management, full session search and archive management, token usage and API cost monitoring (including Token Bank), and a unified workshop for themes, skins, and desktop pets. Users can install the complete plugin bundle into an existing `dsh web` instance via the official profile mechanism, or install and run it directly in the official DeepSeek Harness desktop client.
 
 <p align="center">
-  <img src="docs/dsh-web-banner.png" alt="dsh-web — Modular Plugin Ecosystem & Themes for DeepSeek Harness (DSH) Web GUI (Task Board, Mobile Remote, Web SSH, Git Worktree, Token Tracker, Themes & Skins)" width="100%">
+  <img src="docs/dsh-web-banner.png" alt="dsh-web — Modular Plugin Ecosystem & Themes for DeepSeek Harness (DSH) Web GUI (Task Board, Mobile Remote, Web SSH, Token Tracker, Themes & Skins)" width="100%">
 </p>
 
 <p align="center">
@@ -30,7 +30,7 @@ dsh-web is an all-in-one modular plugin ecosystem and AI agent workbench for Dee
 
 <p align="center">
   <strong>DeepSeek Harness (DSH) Web Plugin Ecosystem · Modular AI Agent Workspace</strong><br>
-  <em>All-in-One Web GUI · Task Automation Board · Mobile Phone App Remote Access · Web SSH DevOps · Git Graph & Worktree · Token Cost Tracker · Themes & Skins Workshop</em>
+  <em>All-in-One Web GUI · Task Automation Board · Mobile Phone App Remote Access · Web SSH DevOps · Token Cost Tracker · Themes & Skins Workshop</em>
 </p>
 
 <div align="center">
@@ -44,7 +44,7 @@ dsh-web is an all-in-one modular plugin ecosystem and AI agent workbench for Dee
 Stock DeepSeek Harness Web delivers fundamental chat interactions and tool execution capabilities. However, production workflows often require concurrent task scheduling, persistent background runs, remote collaboration, and developer-oriented tooling.
 
 dsh-web mounts directly into `dsh web` via official profiles without modifying DSH core source code, providing a comprehensive modular extension suite:
-- **Developer Operations & Collaboration Plugins**: Long-running autonomous task boards (multi-agent cascade/Teams orchestration, adversarial judge verification, and cron scheduling), LiangShen Mode (minimal persona, programmatic tool transport, dispatcher discipline), mobile phone app remote access, SSH terminal operations and file transfers, Git history graphs with worktree isolation, full session archive management, and model capability declarations;
+- **Developer Operations & Collaboration Plugins**: Long-running autonomous task boards (multi-agent cascade/Teams orchestration, adversarial judge verification, and cron scheduling), LiangShen Mode (minimal persona, programmatic tool transport, dispatcher discipline), mobile phone app remote access, SSH terminal operations and file transfers, full session archive management, and model capability declarations;
 - **Decoupled Visual Themes & Assets**: Functional plugins and visual assets remain strictly separated. The skin loader handles stylesheet and dynamic effect rendering, while themes and animated desktop pets can be installed on demand from the [DSH Workshop](#workshop-dsh-marketcom);
 - **Bundled or Pick-and-Choose**: Install everything with one command via `@linxin666/dsh-web-all`, or install individual plugins independently. The aggregate pre-integrates every family plugin - see the [plugin bundle installation and configuration guide](packages/dsh-web-all/README.md).
 
@@ -58,7 +58,6 @@ dsh-web mounts directly into `dsh web` via official profiles without modifying D
 | Mobile Phone App Remote Access | Localhost browser only | Instant QR pairing for native phone apps, protocol v1 WebSocket streaming, public relay/tunnels & LAN ingress |
 | Remote Server Operations | None | Web-based SSH terminal (xterm.js), SFTP file transfer, tunnels & cluster commands |
 | Token Usage & Cost Monitor | None | Daily token consumption breakdowns, multi-provider balance tracking, plan quota reset monitoring & Token Bank |
-| Git Graph & Multi-Task Isolation | Terminal git commands only | Visual branch and commit graph + automated Git Worktree directories preventing concurrent agent code collisions |
 | Session Search & Archive Lifecycle | Flat list accumulation | Full-text session search with multi-filter queries, batch archiving, cascade pruning & automated retention policies |
 | Themes, Skins & Visuals | Single default theme | Built-in Blue Fantasy immersive dark eye-care theme, plus Wallpaper Engine live backgrounds & desktop pets on Workshop |
 
@@ -71,7 +70,6 @@ dsh-web mounts directly into `dsh web` via official profiles without modifying D
 | Remote access and control of DeepSeek Harness from mobile phone apps via protocol v1 | Mobile App Remote Access: protocol v1 WebSocket, session streaming, ingress gateway & WAN/LAN ingress | [Mobile App Remote Access](packages/dsh-remote-bridge/README.md) |
 | Delegate Linux server DevOps, SFTP file transfers, SSH terminal interactions, or incident response to AI agents | SSH Remote Ops: web terminal (xterm.js), visual SFTP transfers, port forwarding tunnels, cluster commands | [SSH terminal, file transfer, and tunnels](packages/dsh-ssh/README.md) |
 | Monitor DeepSeek API and LLM token usage metrics, query provider account balances, and track subscription quotas | Usage Statistics: daily token breakdown, balance queries, bill estimation & Token Bank | [Usage statistics and Token Bank](packages/dsh-usage/README.md) |
-| Multi-agent concurrent coding produces file collisions, requiring isolated Git branches and filesystem worktrees | Git Graph & Worktree: visual commit history, automatic dedicated worktree branches & directories | [Git visualization and worktree isolation](packages/dsh-git-graph/README.md) |
 | Accumulated chat history is hard to search, requiring full-text multi-filter queries, batch archiving, and lifecycle pruning | Session Archive Manager: multi-filter search, batch archiving, cascade pruning & automated lifecycle policies | [Full session archive management](packages/dsh-session-archive/README.md) |
 | Customize interface aesthetics with dark eye-care themes, Wallpaper Engine live backgrounds, and desktop pets | Workshop & Skin Center: built-in Blue Fantasy dark theme, plus vast skins, live wallpapers & pets | [Explore the DSH Workshop](https://dsh-market.com) |
 | Use the complete plugin and theme ecosystem directly inside the official DeepSeek Harness Desktop client | Official Desktop Client: install the full aggregate bundle directly via in-app plugin manager | [Official desktop client guide](#official-desktop-client) |
@@ -160,18 +158,6 @@ Monitor token consumption, provider balances, and subscription quotas under "Set
 Tracking starts upon initial plugin activation without backfilling historical sessions; vouchers cover every provider's tokens within configured ledger retention windows (the spend line still comes only from the observed DeepSeek official balance). See [dsh-usage README](packages/dsh-usage/README.md) for supported providers and limitations.
 
 ![DeepSeek Token Usage Tracker & Token Bank — API expenditure tracking and bill estimation](docs/screenshots/35-usage-token-bank.webp)
-
-### Git Graph（Git Graph · Visual Commits & Worktree Session Isolation）
-
-An integrated Git toolbar and visual commit history graph positioned above the chat composer:
-
-- **Branch & Commit Graph**: Visualizes branch forks, merge swimlanes, and commit timelines to help developers track changes and switch branches across projects.
-- **Git Worktree Isolation**: When multiple agents run concurrent tasks, modifying files in the primary checkout risks branch collisions and dirty working trees. The plugin creates isolated worktrees under `$DSH_HOME/worktrees/` on dedicated branches (`wt/<name>`), leaving primary repository files untouched. An integrated management view lets developers inspect and prune temporary checkouts.
-- **Automated Policies & Agent Tooling**: Enable automatic worktree allocation for new sessions entering Git workspaces, or provide the `git_worktree` tool to autonomous agents for self-directed environment management.
-
-| Git Graph | Parallel Sessions with Git Worktree |
-| --- | --- |
-| ![DeepSeek Harness Git Graph — Visual branch visualization and commit log](docs/screenshots/04-git-graph.png) | ![DeepSeek Multi-Agent Parallel Sessions — Git Worktree workspace isolation](docs/screenshots/34-git-worktree.png) |
 
 ### Session Archive Manager（Session Archive · Full-Text Search, Batch Archiving & Lifecycle）
 
@@ -285,7 +271,6 @@ All plugins are published under the `@linxin666/dsh-*` npm scope:
 | [@linxin666/dsh-ssh](https://www.npmjs.com/package/@linxin666/dsh-ssh) | SSH operations: web terminal, SFTP transfers, tunnels, and cluster commands |
 | [@linxin666/dsh-usage](https://www.npmjs.com/package/@linxin666/dsh-usage) | Usage statistics: token consumption, balances, plan tracking, and Token Bank |
 | [@linxin666/dsh-pet](https://www.npmjs.com/package/@linxin666/dsh-pet) | Desktop pet: registry-driven interactive floating companions |
-| [@linxin666/dsh-client-ui-git-graph](https://www.npmjs.com/package/@linxin666/dsh-client-ui-git-graph) | Git graph: visual commit logs, branch flows, and worktree isolation |
 | [@linxin666/dsh-client-ui-skin-center](https://www.npmjs.com/package/@linxin666/dsh-client-ui-skin-center) | Skin center: runtime engine for themes and dynamic backgrounds |
 | [@linxin666/dsh-client-ui-market](https://www.npmjs.com/package/@linxin666/dsh-client-ui-market) | Workshop client: one-click installation for skins, pets, and presets |
 | [@linxin666/dsh-client-ui-preset-center](https://www.npmjs.com/package/@linxin666/dsh-client-ui-preset-center) | Preset center: community Agent preset repository management |
@@ -416,13 +401,6 @@ With the Usage Statistics plugin installed, open "Settings > Usage Statistics" t
 
 </details>
 
-<details>
-<summary><strong>How do I prevent Git merge conflicts and file overwrites when multiple AI agents work concurrently?</strong></summary>
-
-Running multiple autonomous agents in a single shared Git checkout often results in overwritten files and dirty working trees. With the built-in Git Graph plugin, you can automatically or manually allocate dedicated Git Worktrees for each session. Every agent operates on its own isolated branch and filesystem directory under `$DSH_HOME/worktrees/`, completely protecting the main working tree until you are ready to review and merge changes.
-
-</details>
-
 ## Known Limitations
 
 - Task board scheduling runs on the backend host; closing browser tabs will not interrupt tasks, but stopping the host process or putting the machine to sleep will skip missed schedules without backfilling. Optional power management prevents idle sleep only and cannot bypass manual sleep, lid closure, or power shutdown (see [dsh-task-board README](packages/dsh-task-board/README.md)).
@@ -443,7 +421,7 @@ You can also join our [Discord community](https://discord.gg/6v4gm9u4S), or subm
 
 ### Keywords and Topics Index
 
-`DeepSeek` · `DeepSeek Harness` · `DSH` · `DeepSeek Web` · `DeepSeek Web UI` · `DeepSeek Web GUI` · `DeepSeek Desktop Client` · `DeepSeek Desktop` · `DeepSeek-V3` · `DeepSeek-R1` · `DeepSeek Plugins` · `DeepSeek Extensions` · `DeepSeek Task Board` · `DeepSeek Cron Scheduling` · `DeepSeek Autonomous Automation` · `DeepSeek Mobile Remote` · `DeepSeek Phone Access` · `DeepSeek Mobile App` · `DeepSeek SSH Terminal` · `DeepSeek Server DevOps` · `DeepSeek Token Tracker` · `DeepSeek API Cost Monitor` · `Token Bank` · `DeepSeek Themes` · `DeepSeek Skins` · `DeepSeek Live Wallpapers` · `Wallpaper Engine` · `DeepSeek Desktop Pet` · `DeepSeek Git Graph` · `DeepSeek Worktree Isolation` · `DeepSeek Session Archive` · `Multi-Agent Collaboration` · `AI Agent Workspace` · `AI Coding Assistant` · `Open Source AI Agent`
+`DeepSeek` · `DeepSeek Harness` · `DSH` · `DeepSeek Web` · `DeepSeek Web UI` · `DeepSeek Web GUI` · `DeepSeek Desktop Client` · `DeepSeek Desktop` · `DeepSeek-V3` · `DeepSeek-R1` · `DeepSeek Plugins` · `DeepSeek Extensions` · `DeepSeek Task Board` · `DeepSeek Cron Scheduling` · `DeepSeek Autonomous Automation` · `DeepSeek Mobile Remote` · `DeepSeek Phone Access` · `DeepSeek Mobile App` · `DeepSeek SSH Terminal` · `DeepSeek Server DevOps` · `DeepSeek Token Tracker` · `DeepSeek API Cost Monitor` · `Token Bank` · `DeepSeek Themes` · `DeepSeek Skins` · `DeepSeek Live Wallpapers` · `Wallpaper Engine` · `DeepSeek Desktop Pet` · `DeepSeek Session Archive` · `Multi-Agent Collaboration` · `AI Agent Workspace` · `AI Coding Assistant` · `Open Source AI Agent`
 
 ### Friendly Links
 
@@ -472,7 +450,7 @@ Licensed under [Apache-2.0](LICENSE). Imported third-party code must retain orig
 
 **Plugins**
 
-- **dsh-task-board / dsh-task-board-github / dsh-git-graph / dsh-pet / dsh-remote-bridge / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-update / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n** — authored by zhu1090093659, Apache-2.0 (zhu1090093659)
+- **dsh-task-board / dsh-task-board-github / dsh-pet / dsh-remote-bridge / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-update / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n** — authored by zhu1090093659, Apache-2.0 (zhu1090093659)
 - **dsh-ssh** — implemented against the capability list of [badseal/ssh-skill](https://github.com/badseal/ssh-skill); code is this repository's Apache-2.0 (zhu1090093659), the upstream capability list belongs to badseal/ssh-skill
 - **Community plugin index** — 130+ external plugins with sources and licenses declared by their authors, registered in [community.json](https://github.com/zhu1090093659/dsh-community-plugins/blob/main/community.json), browsable in Settings → Community Plugins and on dsh-market.com
 

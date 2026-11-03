@@ -33,14 +33,13 @@ body:not([data-ds-dark-theme]) [class*="md-code-block"] {
 
 /* Web-ui plugin panels: frosted over the wallpaper, without touching the
    conversation/dialog area. Driven by the fixed glass variables, so the
-   whole panel family (task-board / ssh / git-graph / skill-explorer / ... )
+   whole panel family (task-board / ssh / skill-explorer / ... )
    uses fixed glass instead of a runtime slider. The sidebar rows these
    plugins contribute are shell-owned panel rows and never carry the plugin
    attribute, so only the panel roots fall in scope here. */
 [data-dsh-plugin="task-board"],
 [data-dsh-plugin="ssh"],
 [data-dsh-plugin="skill-explorer"],
-[data-dsh-plugin="git-graph"],
 [data-dsh-plugin="pet"],
 [data-dsh-plugin="remote-web-ui"],
 [data-dsh-plugin="community-plugins"],
@@ -101,31 +100,6 @@ body:not([data-ds-dark-theme]) [class*="md-code-block"] {
 [data-conversation-composer-overlay] [class*="_search"],
 [data-conversation-composer-overlay] [class*="_searchInput"] {
   background-color: var(--dsw-wallpaper-glass-hover) !important;
-}
-
-/* git-graph composer chips (bottom dock row of the composer): frosted glass
-   using fixed glass. */
-[data-dsh-plugin="git-graph"] [data-dsh-part="chip"] {
-  background-color: var(--dsw-wallpaper-glass-fill) !important;
-  -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
-  backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px));
-}
-
-/* P7: git branch / project chip (BranchChip/Chip, stable data-gitgraph-chip
-   anchor): remove the default block background at rest, keep the shell's own
-   hover / active / open tints. The :not(:hover/:active/[aria-expanded])
-   guard keeps the !important rest override from killing interactive states. */
-[data-gitgraph-chip]:not(:hover):not(:active):not([aria-expanded="true"]) {
-  background: transparent !important;
-}
-
-/* BranchChip outer wrappers (anchor/anchorHero/chipWrap) may also paint a
-   block background from the shell or plugin CSS; clear those too. */
-[data-gitgraph-chip-anchor],
-[data-gitgraph-chip-anchor] [class*="anchorHero"],
-[data-gitgraph-chip-anchor] [class*="chipWrap"],
-[data-gitgraph-chip-anchor] [class*="anchor"] {
-  background: transparent !important;
 }
 
 /* Skill center (skill-explorer) panel: in the fixed-glass set (direction:
@@ -492,13 +466,11 @@ body[data-we-wallpaper] [class*="centerCol"] {
 
 /* Queued-send / retry dock in the composer: dock contributors mount a card as
    the conversation.input.dock slot's DIRECT CHILD (a *_dock root paints no
-   background of its own, so transcript text bleeds through; git-graph mounts a
-   floating chip anchor).
+   background of its own, so transcript text bleeds through).
    Paint EXACTLY ONE layer per child - the direct child itself - with the
-   input-card material (glass-fill + fixed 10px blur); the git-graph chip is
-   excluded (it must float bare), and *_dock / *_row wrappers NESTED below a
-   direct child stay transparent so layers can never stack into an extra
-   outer rectangle. */
+   input-card material (glass-fill + fixed 10px blur), and *_dock / *_row
+   wrappers NESTED below a direct child stay transparent so layers can never
+   stack into an extra outer rectangle. */
 [data-slot="conversation.input.dock"],
 [data-slot="conversation.input.dock"] * [class*="_dock"],
 [data-slot="conversation.input.dock"] * [class*="_row"] {
@@ -508,7 +480,7 @@ body[data-we-wallpaper] [class*="centerCol"] {
   backdrop-filter: none !important;
 }
 
-[data-slot="conversation.input.dock"] > [class*="_dock"]:not([data-gitgraph-chip-anchor]) {
+[data-slot="conversation.input.dock"] > [class*="_dock"] {
   background-color: var(--dsw-wallpaper-glass-fill) !important;
   border-radius: 8px !important;
   -webkit-backdrop-filter: blur(var(--dsw-wallpaper-glass-blur, 10px)) !important;

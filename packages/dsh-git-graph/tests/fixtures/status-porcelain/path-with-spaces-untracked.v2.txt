@@ -1,4 +1,0 @@
-# branch.oid 2095108ed66c87374d9d87f2f4401e0280a739c9
-# branch.head main
-1 .M N... 100644 100644 100644 c68065a8afab3a2b20284dbefbfb0f753dbbf96f c68065a8afab3a2b20284dbefbfb0f753dbbf96f docs/file with spaces.txt
-? docs/another file with spaces.txt

@@ -31,10 +31,11 @@ patchFrom:
   # slots），自己的侧栏行与主区页面经 slots.inject 声明（行 order 30），不占任何家族
   # 行的席位，因此前后挪动不会改变谁先就位。
   - ../dsh-agents
-  - ../dsh-git-graph
+  # dsh-git-graph 已彻底移除（包目录删除）：Git 变更视图由官方 workspace-changes 插件
+  # 承接，聚合不再挂载它的行、也不再依赖它；子路径导出按 tombstones 段留作退役空壳。
   # dsh-update 已从本聚合退役（包目录保留、仍可独立安装）：聚合不再挂载它的自更新行，
   # 侧栏 footer action 席位上不再有任何家族行。
-  # dsh-remote-bridge 排在 dsh-git-graph 之后：它是家族仅剩的远程面（原生手机端的协议
+  # dsh-remote-bridge 是家族仅剩的远程面（原生手机端的协议
   # v1 通道），但 inject 只要官方的 typertGateway / webServer
   # （浏览器半区 inject 官方的 locale / renderer / sidebar），不依赖任何家族行的席位
   # 或服务，位置只承担阅读归类。
@@ -78,8 +79,7 @@ deps:
   - ../dsh-task-board-team
   # 与 patchFrom 同序：dsh-agents 的行紧跟看板这一对之后（理由见上）。
   - ../dsh-agents
-  - ../dsh-git-graph
-  # 与 patchFrom 同序：桥的行紧跟在 git-graph 之后，两份清单可逐行对照。
+  # 与 patchFrom 同序：桥的行紧跟在家族序列之后，两份清单可逐行对照。
   - ../dsh-remote-bridge
   # 与 patchFrom 同序：看板的远程能力面行紧跟在桥之后（它绑桥的扩展缝）。
   - ../dsh-task-board-remote
@@ -219,6 +219,10 @@ tombstones:
   - market
   - task-board
   - task-board-github
+  # git-graph 已彻底移除（包目录删除；npm 包仍在 registry 上，供单独安装它的老用户
+  # 继续使用）：聚合不再挂载它的行、也不再依赖它，但子路径导出必须留着，否则老
+  # profile 里记录的行名在 import 阶段硬报错。壳按 retiredPlugins 的登记把它当
+  # 静默 no-op，不 import、不记 degraded。
   - git-graph
   # remote-web-ui 已退役（包目录保留、仍可独立安装）：聚合不再挂载它的行、也不再
   # 依赖它，但子路径导出必须留着，否则老 profile 里记录的行名在 import 阶段硬报错。
@@ -250,3 +254,4 @@ tombstones:
 retiredPlugins:
   - {"family": "remote-web-ui", "plugin": "@linxin666/dsh-remote-web-ui"}
   - {"family": "update", "plugin": "@linxin666/dsh-update"}
+  - {"family": "git-graph", "plugin": "@linxin666/dsh-client-ui-git-graph"}

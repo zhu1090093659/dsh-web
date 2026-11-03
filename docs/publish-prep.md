@@ -9,7 +9,6 @@
 | 目录 | npm 包 | 版本 | 发布状态 |
 | --- | --- | --- | --- |
 | packages/dsh-agents | @linxin666/dsh-agents | 0.4.8 | public |
-| packages/dsh-git-graph | @linxin666/dsh-client-ui-git-graph | 0.4.8 | public |
 | packages/dsh-i18n | @linxin666/dsh-i18n | 0.4.8 | public |
 | packages/dsh-liangshen | @linxin666/dsh-liangshen | 0.4.8 | public |
 | packages/dsh-market | @linxin666/dsh-client-ui-market | 0.4.8 | public |

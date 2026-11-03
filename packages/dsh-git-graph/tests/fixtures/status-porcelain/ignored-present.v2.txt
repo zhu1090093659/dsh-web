@@ -1,6 +1,0 @@
-# branch.oid 3690a4223148b9f416d714f719bc172e9f19c15d
-# branch.head main
-1 .M N... 100644 100644 100644 c68065a8afab3a2b20284dbefbfb0f753dbbf96f c68065a8afab3a2b20284dbefbfb0f753dbbf96f docs/file with spaces.txt
-? docs/another file with spaces.txt
-? "docs/\346\226\207\346\241\243.txt"
-? untracked-dir/

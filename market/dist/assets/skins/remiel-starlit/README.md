@@ -19,7 +19,7 @@ then install this skin from the [Creative Workshop](https://dsh-market.com) into
 - `skin.json` — v2 manifest: `contributes.stylesheet` / `patches` / `backgroundMedia`
   (light -> `assets/remiel-calm.jpg`, dark -> `assets/remiel-nocturne.jpg`, each with its own scrim)
 - `skin.css` — L1: base colour plus the full `--dsw-*` palette remap (light on `:root`, dark on `body[data-ds-dark-theme]`)
-- `patches.css` — L3: scrollbars / selection / links / focus, the aion right panel, git-graph lanes,
+- `patches.css` — L3: scrollbars / selection / links / focus, the aion right panel,
   the composer, and the square settings-dialog backdrop (`[role="dialog"]` over `assets/remiel-settings-*.jpg`)
 - `assets/` — scene art and the settings-dialog squares
 - `NOTICE` — character provenance and artwork notice

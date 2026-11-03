@@ -314,30 +314,6 @@ button[role="tab"][aria-selected="true"] {
   color: var(--dsh-accent);
 }
 
-/* --- git-graph 提交图配色（dsh-git-graph） --------------------------------- */
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2) {
-  fill: #b8892f;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3) {
-  fill: #557e3f;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4) {
-  fill: #6c6450;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+6) {
-  fill: #a3732a;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph="lane"] {
-  stroke: rgba(184, 137, 47, 0.45);
-}
-
 /* --- Motion: reduced -------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {

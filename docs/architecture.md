@@ -181,7 +181,6 @@ flowchart LR
 | dsh-pet | 注册表驱动桌宠：响应模型活动、命名与好感度（独立仓，以已发布包消费） |
 | dsh-task-board | 宿主权威任务板：真实会话执行与 cron 调度 |
 | dsh-task-board-github | 任务看板外部提供方扩展：GitHub Issues 同步（默认开启，设置可关） |
-| dsh-git-graph | 空会话 git 分支选择器与提交图 |
 | dsh-ssh | 远程 SSH：PTY 终端、SFTP、端口转发与 agent 工具 |
 | dsh-remote-bridge | 手机 App 远程访问：协议 v1 宿主适配与公网/局域网接入栈 |
 | dsh-update | 家族自更新：探测 npm 上的新版本并在当前 profile 内就地执行更新（全家桶不含该行，需独立安装） |

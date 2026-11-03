@@ -3,7 +3,7 @@
  * paired-device cookie is an additional allow path when remote-web-ui is
  * loaded. The plugin never depends on that plugin — without the service the
  * fence stays loopback-only. The decision logic lives in the generated
- * pair-access.ts copy (shared by git-graph / pet / skill-explorer).
+ * pair-access.ts copy (shared by pet / skill-explorer).
  */
 import type { IncomingMessage } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'

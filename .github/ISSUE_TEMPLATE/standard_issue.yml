@@ -23,7 +23,6 @@ body:
       description: 选择问题涉及的插件或区域；不确定可选「其他」。
       options:
         - 任务看板 (dsh-task-board)
-        - Git 图谱 (dsh-git-graph)
         - 右侧面板 (dsh-aionui-panel)
         - SSH 远程运维 (dsh-ssh)
         - 宠物 (dsh-pet)

@@ -1173,41 +1173,6 @@ select,
   color: var(--miku-brand) !important;
 }
 
-/* git-graph 分道配色：青绿 → 天蓝 → 洋红 → 紫 → 琥珀 → 绿 六色循环
-   （旧版同序，只把六支全部换成新版色板里的值） */
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) { color: #0b7a72; }
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) { color: #2f7ae8; }
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) { color: #c02a72; }
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) { color: #7a4fd0; }
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) { color: #a9761a; }
-[data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n),
-[data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) { color: #1a7f4b; }
-
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1),
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) { color: #39c5bb; }
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2),
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) { color: #6aa8ff; }
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3),
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) { color: #ff63ae; }
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4),
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) { color: #b18cff; }
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5),
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) { color: #e5b94f; }
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n),
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) { color: #4fb86f; }
-
-[data-gitgraph-current-branch] {
-  color: var(--miku-brand) !important;
-  background: var(--dsw-alias-interactive-bg-hover-accent) !important;
-  border: 1px solid var(--miku-brand-soft) !important;
-  border-radius: 999px !important;
-}
-
 /* ─────────── 11. 无障碍降级 ─────────── */
 
 @media (prefers-reduced-transparency: reduce) {

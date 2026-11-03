@@ -30,7 +30,6 @@ The plugin is a pure browser bundle (the host half intentionally has no behavior
 
 | Namespace | Source package |
 | --- | --- |
-| `git-graph` | dsh-git-graph |
 | `liangshen` | dsh-liangshen |
 | `dsh-web-ui-market` | dsh-market |
 | `pet` | dsh-pet |

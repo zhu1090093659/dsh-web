@@ -208,8 +208,6 @@ body[data-ds-dark-theme]:is([data-dsh-backdrop-active], [data-we-wallpaper]) [da
   transform: translateY(-1px);
 }
 
-[data-dsh-plugin="git-graph"] [data-dsh-part="chip"],
-[data-dsh-plugin="git-graph"] [data-dsh-part="ref"],
 [data-dsh-plugin="ssh"] [data-dsh-part="tab"] {
   border-color: var(--pink-sakura-border);
 }

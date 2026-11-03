@@ -84,7 +84,6 @@ jobs:
             }
             if (
               pluginField.includes('task-board') ||
-              pluginField.includes('git-graph') ||
               pluginField.includes('aionui') ||
               pluginField.includes('ssh') ||
               pluginField.includes('doctor') ||

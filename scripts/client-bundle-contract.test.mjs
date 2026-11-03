@@ -41,7 +41,7 @@ test(`${patchLayerOnly}/lib/client.js carries the compat patch layer and no fami
   assert.equal(/dsh-store-engine|@deepseek-ai\/dsh-client-runtime/.test(source), false, 'legacy store resolution must not ship')
   // The family client packages, by their own names: importing one here is the
   // regression this assertion exists for.
-  for (const pkg of ['dsh-client-ui-task-board', 'dsh-client-ui-git-graph', 'dsh-usage', 'dsh-ssh', 'dsh-session-archive']) {
+  for (const pkg of ['dsh-client-ui-task-board', 'dsh-usage', 'dsh-ssh', 'dsh-session-archive']) {
     assert.equal(source.includes(`@linxin666/${pkg}/client`), false, `the compat layer must not inline ${pkg}`)
   }
 })

@@ -42,8 +42,7 @@ html[data-dsh-skin="summer-liquid-glass"] a:visited {
 /* Floating glass surfaces: frosted blur, inner highlight, diffuse shadow. */
 html[data-dsh-skin="summer-liquid-glass"] [role="dialog"],
 html[data-dsh-skin="summer-liquid-glass"] [role="menu"],
-html[data-dsh-skin="summer-liquid-glass"] [role="listbox"],
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-dialog] {
+html[data-dsh-skin="summer-liquid-glass"] [role="listbox"] {
   -webkit-backdrop-filter: blur(30px) saturate(145%);
   backdrop-filter: blur(30px) saturate(145%);
   box-shadow:
@@ -78,25 +77,6 @@ html[data-dsh-skin="summer-liquid-glass"] button,
 html[data-dsh-skin="summer-liquid-glass"] a {
   transition: background-color 0.15s ease, border-color 0.15s ease,
     box-shadow 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-}
-
-/* git-graph commit-graph palette. */
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1),
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) { color: #67DCE7; }
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2),
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) { color: #CBE77D; }
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3),
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) { color: #F3B75F; }
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4),
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) { color: #DD8FAC; }
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5),
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) { color: #86e2ea; }
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n),
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) { color: #d6ee9a; }
-
-html[data-dsh-skin="summer-liquid-glass"] [data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
-  background: rgba(103, 220, 231, 0.12);
-  border: 1px solid rgba(103, 220, 231, 0.1);
 }
 
 @media (prefers-reduced-motion: reduce) {

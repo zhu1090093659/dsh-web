@@ -2,10 +2,10 @@
 
 中文 | [English](README.en.md)
 
-dsh-web 是面向 DeepSeek Harness（DSH）Web GUI、DeepSeek 网页版与官方桌面客户端（DeepSeek Desktop）的模块化插件生态与 AI 智能体开发工作台。全面支持 DeepSeek-V3 与 DeepSeek-R1 等前沿推理模型，为开发者与重度用户提供自主任务自动化看板（Cron 定时后台执行）、手机 App 远程访问、Web SSH 终端与 Linux 集群运维、Git 可视化提交图谱与多 Agent Worktree 隔离开发、全量会话检索与归档管理、Token 用量与成本监控（含 Token 银行），以及一站式主题皮肤与桌面宠物工坊。用户既可以通过官方 profile 机制将插件全家桶一键挂载至已有的 `dsh web` 实例，也可以直接在官方 DeepSeek Harness 桌面客户端中开箱即用。
+dsh-web 是面向 DeepSeek Harness（DSH）Web GUI、DeepSeek 网页版与官方桌面客户端（DeepSeek Desktop）的模块化插件生态与 AI 智能体开发工作台。全面支持 DeepSeek-V3 与 DeepSeek-R1 等前沿推理模型，为开发者与重度用户提供自主任务自动化看板（Cron 定时后台执行）、手机 App 远程访问、Web SSH 终端与 Linux 集群运维、全量会话检索与归档管理、Token 用量与成本监控（含 Token 银行），以及一站式主题皮肤与桌面宠物工坊。用户既可以通过官方 profile 机制将插件全家桶一键挂载至已有的 `dsh web` 实例，也可以直接在官方 DeepSeek Harness 桌面客户端中开箱即用。
 
 <p align="center">
-  <img src="docs/dsh-web-banner.zh.jpg" alt="dsh-web — DeepSeek Harness (DSH) Web GUI 插件全家桶与 AI 智能体工作台架构图（任务看板、手机远程、SSH 运维、Git Worktree、Token 统计、主题皮肤）" width="100%">
+  <img src="docs/dsh-web-banner.zh.jpg" alt="dsh-web — DeepSeek Harness (DSH) Web GUI 插件全家桶与 AI 智能体工作台架构图（任务看板、手机远程、SSH 运维、Token 统计、主题皮肤）" width="100%">
 </p>
 
 <p align="center">
@@ -30,7 +30,7 @@ dsh-web 是面向 DeepSeek Harness（DSH）Web GUI、DeepSeek 网页版与官方
 
 <p align="center">
   <strong>DeepSeek Harness（DSH）Web 插件生态 · 模块化智能体工作台</strong><br>
-  <em>全功能 Web UI · 任务自动化看板 · 手机 App 远程访问 · Web SSH 运维 · Git 图谱与 Worktree · Token 成本统计 · 视觉工坊</em>
+  <em>全功能 Web UI · 任务自动化看板 · 手机 App 远程访问 · Web SSH 运维 · Token 成本统计 · 视觉工坊</em>
 </p>
 
 <div align="center">
@@ -44,7 +44,7 @@ dsh-web 是面向 DeepSeek Harness（DSH）Web GUI、DeepSeek 网页版与官方
 原生 DeepSeek Harness Web 提供了核心的对话交互与工具调用能力，但在多任务并发调度、长程后台执行、移动端协同以及工程化开发运维方面仍有扩展空间。
 
 dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方源码，为用户提供完整的模块化扩展体系：
-- **工程运维与协同插件**：涵盖长程自动化任务看板（多 Agent 级联/Teams 编排、对抗验收质检与定时调度）、梁神模式（极简 Persona、PTC 代码运行传输与敏捷调度纪律）、手机 App 远程访问、SSH 终端传输、Git 图谱与 worktree 隔离、全量会话归档管理以及模型能力声明编辑器；
+- **工程运维与协同插件**：涵盖长程自动化任务看板（多 Agent 级联/Teams 编排、对抗验收质检与定时调度）、梁神模式（极简 Persona、PTC 代码运行传输与敏捷调度纪律）、手机 App 远程访问、SSH 终端传输、全量会话归档管理以及模型能力声明编辑器；
 - **视觉主题与资产解耦**：功能插件与样式资产完全分离。皮肤插件负责底层渲染，多样化的主题皮肤（含样式、贴图与动态特效）以及桌面宠物可通过 [DSH 创意工坊](#创意工坊dsh-marketcom)自由安装；
 - **全家桶聚合与按需组合**：既支持通过 `@linxin666/dsh-web-all` 聚合包一键安装完整功能，也支持按需单独安装特定插件。聚合包预集成家族全部功能插件，详见[插件全家桶使用指南](packages/dsh-web-all/README.zh.md)。
 
@@ -58,7 +58,6 @@ dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方�
 | 手机 App 远程访问 | 仅限本机浏览器 | 手机 App 扫码直连、协议 v1 WebSocket 实时流式交互、公网中继/隧道与局域网接入 |
 | 远程服务器运维 | 无 | 网页版 SSH 终端 (xterm.js)、SFTP 文件传输、端口转发隧道与集群批量命令 |
 | Token 用量与成本监控 | 无 | 每日 Token 消耗明细、多供应商余额查询预警、套餐使用进度与 Token 银行鲸元券 |
-| Git 可视化与多任务开发 | 仅终端 git 命令 | 可视化分支与提交图谱 + Git Worktree 自动创建独立隔离物理工作区防止多 Agent 代码冲突 |
 | 会话检索与生命周期归档 | 会话列表简单堆积 | 全量会话多维检索与过滤、批量归档导出、级联物理删除与自动化生命周期清理策略 |
 | 主题皮肤与个性化视觉 | 仅单一默认主题 | 内置经典 Blue Fantasy 暗黑护眼沉浸皮肤，创意工坊提供 Wallpaper Engine 动态壁纸与互动桌面宠物 |
 
@@ -71,7 +70,6 @@ dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方�
 | 在手机上通过协议 v1 远程访问与控制 DeepSeek Harness | 手机 App 远程访问：协议 v1 WebSocket、会话流式响应、入站网关与公网/局域网接入 | [手机 App 远程访问](packages/dsh-remote-bridge/README.zh.md) |
 | 委派 AI 智能体执行远程 Linux 服务器运维、SFTP 文件传输、SSH 终端交互或排查线上服务 | SSH 运维面板：Web 终端 (xterm.js)、可视化 SFTP 传输、端口转发隧道、集群批量命令 | [SSH 终端、文件传输与隧道](packages/dsh-ssh/README.zh.md) |
 | 监控 DeepSeek API 及主流大模型 Token 消耗明细、查询供应商账户余额预警或套餐进度 | 使用统计：每日消耗明细、余额查询、账单估算、套餐追踪与 Token 银行鲸元券 | [用量统计与 Token 银行](packages/dsh-usage/README.zh.md) |
-| 多 AI Agent 并行编码容易产生代码覆盖冲突，需要分支与物理工作区彻底隔离 | Git 图谱与 Worktree：可视化提交图谱、自动为会话创建专属 worktree 分支与物理目录 | [Git 可视化与 Worktree 隔离](packages/dsh-git-graph/README.zh.md) |
 | 历史会话堆积难以快速定位，需要全量多维搜索过滤、批量归档、级联清理或数据备份 | 会话归档管理器：多维搜索过滤、批量归档与级联清理、自动化生命周期策略 | [全量会话归档管理](packages/dsh-session-archive/README.zh.md) |
 | 打造个性化界面外观，更换深色护眼主题、Wallpaper Engine 动态壁纸或互动桌面宠物 | 创意工坊与皮肤中心：Blue Fantasy 经典暗色内置，海量皮肤、动态壁纸与桌宠 | [浏览 DSH 创意工坊](https://dsh-market.com) |
 | 在官方桌面客户端（DeepSeek Harness Desktop）中开箱即用本扩展生态 | 官方桌面客户端：支持直接通过客户端内置插件管理一键安装本全家桶 | [官方桌面客户端安装说明](#官方桌面客户端) |
@@ -160,18 +158,6 @@ dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方�
 统计自插件首次启用起计，不回填历史数据；鲸元券统计台账窗口内所有 provider 的 tokens（消费行仍只来自 DeepSeek 官方余额观测）。支持的供应商列表与配置细节见 [dsh-usage README](packages/dsh-usage/README.zh.md)。
 
 ![DeepSeek Token 用量统计与 Token 银行 — API 消耗追踪与账单估算](docs/screenshots/35-usage-token-bank.webp)
-
-### Git 图谱（Git Graph · 分支可视化与 Worktree 会话隔离）
-
-在对话输入框上方集成 Git 操作栏与可视化提交历史图谱：
-
-- **分支与提交图谱**：直观展示分支分叉与合并泳道，便于在大中型项目中快速追溯代码演进与切换分支。
-- **Git Worktree 隔离会话**：多 Agent 并发处理任务时，直接在主分支修改容易导致文件冲突与分支污染。插件支持在 `$DSH_HOME/worktrees/` 目录下为新会话建立完全独立的 worktree 检出与隔离分支（命名形如 `wt/<名称>`），主检出文件保持干净；通过“管理 worktree”面板可集中查看与清理临时检出。
-- **自动化策略与 Agent 集成**：提供“自动隔离”选项，为进入 Git 仓库的新会话自动分配专属 worktree；同时向智能体暴露 `git_worktree` 工具，允许 Agent 自主创建与管理隔离开发环境。
-
-| Git 图谱 | Git worktree 并行会话 |
-| --- | --- |
-| ![DeepSeek Harness Git 图谱 — 分支合并与提交历史可视化](docs/screenshots/04-git-graph.png) | ![DeepSeek 多 Agent 并行会话 — Git Worktree 工作区独立隔离](docs/screenshots/34-git-worktree.png) |
 
 ### 会话归档管理（Session Archive Manager · 全文检索与生命周期策略）
 
@@ -285,7 +271,6 @@ dsh plugin --profile web add @linxin666/dsh-i18n@latest                         
 | [@linxin666/dsh-ssh](https://www.npmjs.com/package/@linxin666/dsh-ssh) | 远程运维面板：Web 终端、SFTP 传输、端口转发与集群执行 |
 | [@linxin666/dsh-usage](https://www.npmjs.com/package/@linxin666/dsh-usage) | 用量统计：Token 消耗、余额估算、套餐追踪与 Token 银行 |
 | [@linxin666/dsh-pet](https://www.npmjs.com/package/@linxin666/dsh-pet) | 桌面宠物：注册表驱动的桌面交互悬浮挂件 |
-| [@linxin666/dsh-client-ui-git-graph](https://www.npmjs.com/package/@linxin666/dsh-client-ui-git-graph) | Git 图谱：可视化提交历史、分支流与 worktree 隔离 |
 | [@linxin666/dsh-client-ui-skin-center](https://www.npmjs.com/package/@linxin666/dsh-client-ui-skin-center) | 皮肤中心：主题与壁纸的加载与运行引擎 |
 | [@linxin666/dsh-client-ui-market](https://www.npmjs.com/package/@linxin666/dsh-client-ui-market) | 创意工坊客户端：线上资产一键下载与管理 |
 | [@linxin666/dsh-client-ui-preset-center](https://www.npmjs.com/package/@linxin666/dsh-client-ui-preset-center) | 预设中心：社区 Agent 预设安装与管理 |
@@ -416,13 +401,6 @@ dsh-web 针对主流操作系统、现代化浏览器及网络拓扑进行了深
 
 </details>
 
-<details>
-<summary><strong>多个 AI 智能体（Agent）并发编码时，如何避免 Git 分支和代码冲突？</strong></summary>
-
-直接在单一 Git 工作区并发运行多个智能体容易导致代码互相覆盖。使用全家桶内置的 Git 图谱插件，可以在新建会话时自动或手动创建独立的 Git Worktree。每个智能体会话在各自专属的分支和物理目录中独立运行、提交修改，彻底隔绝主工作区文件，开发完成后可在图谱面板中清晰比对并合并分支。
-
-</details>
-
 ## 已知限制
 
 - 任务看板由后端 Host 进程统一调度，关闭前端标签页不影响任务执行；但若宿主进程停止或操作系统关机睡眠，处于离线期间的触发点将直接跳过不补跑。可选的电源保护仅阻止系统闲置睡眠，无法阻止用户主动合盖、手动休眠或电源切断，技术细节见 [dsh-task-board README](packages/dsh-task-board/README.zh.md)。
@@ -443,7 +421,7 @@ dsh-web 针对主流操作系统、现代化浏览器及网络拓扑进行了深
 
 ### 关键词索引（Keywords & Topics）
 
-`DeepSeek` · `DeepSeek Harness` · `DSH` · `DeepSeek Web` · `DeepSeek Web UI` · `DeepSeek 网页版` · `DeepSeek 桌面客户端` · `DeepSeek Desktop` · `DeepSeek-V3` · `DeepSeek-R1` · `DeepSeek 插件` · `DeepSeek 扩展` · `DeepSeek 任务看板` · `DeepSeek 定时任务` · `DeepSeek Cron 自动化` · `DeepSeek 手机版` · `DeepSeek 远程控制` · `DeepSeek 手机 App` · `DeepSeek SSH 终端` · `DeepSeek 服务器运维` · `DeepSeek Token 统计` · `DeepSeek 余额查询` · `DeepSeek API 费用` · `Token 银行` · `DeepSeek 主题` · `DeepSeek 皮肤` · `DeepSeek 动态壁纸` · `Wallpaper Engine` · `DeepSeek 桌面宠物` · `DeepSeek Git 图谱` · `DeepSeek Worktree 隔离` · `DeepSeek 会话归档` · `多智能体协作` · `AI Agent 工作台` · `AI 编程助手` · `开源智能体`
+`DeepSeek` · `DeepSeek Harness` · `DSH` · `DeepSeek Web` · `DeepSeek Web UI` · `DeepSeek 网页版` · `DeepSeek 桌面客户端` · `DeepSeek Desktop` · `DeepSeek-V3` · `DeepSeek-R1` · `DeepSeek 插件` · `DeepSeek 扩展` · `DeepSeek 任务看板` · `DeepSeek 定时任务` · `DeepSeek Cron 自动化` · `DeepSeek 手机版` · `DeepSeek 远程控制` · `DeepSeek 手机 App` · `DeepSeek SSH 终端` · `DeepSeek 服务器运维` · `DeepSeek Token 统计` · `DeepSeek 余额查询` · `DeepSeek API 费用` · `Token 银行` · `DeepSeek 主题` · `DeepSeek 皮肤` · `DeepSeek 动态壁纸` · `Wallpaper Engine` · `DeepSeek 桌面宠物` · `DeepSeek 会话归档` · `多智能体协作` · `AI Agent 工作台` · `AI 编程助手` · `开源智能体`
 
 ### 友情链接
 
@@ -472,7 +450,7 @@ dsh-web 针对主流操作系统、现代化浏览器及网络拓扑进行了深
 
 **插件**
 
-- **dsh-task-board / dsh-task-board-github / dsh-git-graph / dsh-pet / dsh-remote-bridge / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-update / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n** — 本仓库原创（zhu1090093659），Apache-2.0（zhu1090093659）
+- **dsh-task-board / dsh-task-board-github / dsh-pet / dsh-remote-bridge / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-update / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n** — 本仓库原创（zhu1090093659），Apache-2.0（zhu1090093659）
 - **dsh-ssh** — 依据 [badseal/ssh-skill](https://github.com/badseal/ssh-skill) 的能力清单实现；代码为本仓库 Apache-2.0（zhu1090093659），上游能力清单归属 badseal/ssh-skill
 - **社区插件索引** — 130+ 项外部插件，来源与版权由各作者声明，登记于 [community.json](https://github.com/zhu1090093659/dsh-community-plugins/blob/main/community.json)，可在「设置 → 社区插件」与 dsh-market.com 查看
 

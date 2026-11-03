@@ -4,7 +4,6 @@
   "packages": {
     "dsh-agents": { "lines": 70.62, "statements": 67.11, "functions": 70.32, "branches": 59.99 },
     "dsh-browser-view": { "lines": 79.92, "statements": 75.41, "functions": 72.54, "branches": 69.85 },
-    "dsh-git-graph": { "lines": 84.54, "statements": 80.75, "functions": 79.72, "branches": 71.3 },
     "dsh-i18n": { "lines": 100, "statements": 100, "functions": 100, "branches": 100 },
     "dsh-liangshen": { "lines": 85.14, "statements": 82.39, "functions": 84.39, "branches": 73.92 },
     "dsh-market": { "lines": 86.43, "statements": 82.81, "functions": 78.64, "branches": 74 },

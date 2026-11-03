@@ -888,6 +888,7 @@ defineMethod("transform", [
 /** Every retired package name, sorted: what the shell skips without importing. Derived from
 *  RETIRED_FAMILIES so the two can never disagree. */
 const RETIRED_PLUGINS$1 = Object.freeze(Object.values({
+	"git-graph": "@linxin666/dsh-client-ui-git-graph",
 	"remote-web-ui": "@linxin666/dsh-remote-web-ui",
 	"update": "@linxin666/dsh-update"
 }).sort());
@@ -1210,4 +1211,4 @@ async function apply(ctx, config) {
 //#endregion
 export { inject as i, _resetDegradedRouteForTest as n, apply as r, Config as t };
 
-//# sourceMappingURL=shell-Do6Vsg6W.js.map
+//# sourceMappingURL=shell-BSpbOYk9.js.map

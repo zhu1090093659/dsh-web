@@ -38,7 +38,6 @@ area/skills:
 area/plugin:
   - changed-files:
       - any-glob-to-any-file:
-          - 'packages/dsh-git-graph/**'
           - 'packages/dsh-liangshen/**'
           - 'packages/dsh-plugin-manager/**'
           - 'packages/dsh-ssh/**'

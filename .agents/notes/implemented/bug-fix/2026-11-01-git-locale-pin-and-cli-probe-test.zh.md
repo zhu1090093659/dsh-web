@@ -1,6 +1,7 @@
 # Agent Note: Host-dependent gates: the git overwrite guard's locale and the CLI probe test
 
 Status: implemented
+已退役，参见 [dsh-git-graph 包退役决策](../simplification/2026-11-03-git-graph-package-retired.md)
 
 ## Problem
 

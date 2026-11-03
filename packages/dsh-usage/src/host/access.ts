@@ -4,7 +4,7 @@
  * loaded — the same family fence the skill center uses. Without that service
  * the fence stays loopback-only, so an unpaired LAN browser keeps its 403.
  * The decision logic lives in the generated pair-access.ts copy (shared by
- * git-graph / pet / skill-explorer).
+ * pet / skill-explorer).
  */
 import type { IncomingMessage } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'

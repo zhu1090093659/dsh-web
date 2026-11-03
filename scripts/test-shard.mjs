@@ -33,7 +33,6 @@ const ROOT = resolve(dirname(SCRIPT_PATH), '..')
  */
 export const PACKAGE_WEIGHTS = Object.freeze({
   'packages/dsh-task-board': 20,
-  'packages/dsh-git-graph': 14,
   'shared': 11,
   'packages/dsh-ssh': 8,
   'packages/dsh-web-all': 7,

@@ -1952,13 +1952,15 @@ body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRo
   right: 24px;
 }
 
-/* slot 包装只负责排那两张读数药丸，外壳已上移到 dock 容器 */
+/* slot 包装只负责排那两张读数药丸，外壳已上移到 dock 容器；两张读数与上下文环
+   读作同一条横排的统计栏，所以这里是 flex 单行，不是两行的 grid。 */
 [data-slot="conversation.composer.dock"] {
   position: relative;
   z-index: 2;
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto;
-  row-gap: 2px;
+  display: flex !important;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
   min-width: 0;
   flex: 1 1 auto;
   background: none !important;
@@ -1980,20 +1982,13 @@ body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRo
   width: auto !important;
   margin: 0 !important;
   padding: 2px 6px !important;
-}
-
-[data-slot="conversation.composer.dock"] > :first-child {
-  text-align: center;
-  text-overflow: ellipsis;
   white-space: nowrap;
-  grid-column: 1 / -1;
-  overflow: hidden;
-  border-bottom: 1px solid color-mix(in srgb, var(--vd-gold) 30%, transparent) !important;
-  padding-bottom: 5px !important;
 }
 
 [data-slot="conversation.composer.dock"] > :not(:first-child, [role="tooltip"]) {
   text-align: left;
+  border-left: 1px solid color-mix(in srgb, var(--vd-gold) 30%, transparent) !important;
+  padding-left: 14px !important;
 }
 
 [data-slot="conversation.composer.dock"] > [role="tooltip"] {
@@ -2235,12 +2230,12 @@ body[data-ds-dark-theme] [data-slot="sidebar.settings"] [role="dialog"][aria-mod
   }
 
   [data-slot="conversation.composer.dock"] {
-    grid-template-columns: 1fr;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   [data-slot="conversation.composer.dock"] > :not(:first-child, [role="tooltip"]) {
     text-align: center;
-    justify-self: stretch;
   }
 
   [data-composer-dock] > *:not([data-slot]) button[aria-haspopup="dialog"] {

@@ -61,7 +61,7 @@ vite 8 在 client 环境被要求打包 Node 内建模块时直接报错。Node 
   覆盖**：掩盖真实问题（host 专属 spec 跑在浏览器环境里），且让所有 spec
   继续支付 jsdom 启动成本。
 - **把 CI 固定到 `builtinModules` 包含 `sqlite` 的 Node 版本**：拒绝；CI
-  的 `node-version: 22` 刻意保持宽泛，测试环境应显式声明，而不是耦合到
+  的 `node-version: 24.9.0` 与宿主下限一致，测试环境应显式声明，而不是耦合到
   某个 Node patch 版本的内建模块列表。
 - **保留 fire-and-forget 写入，让 spec 轮询等文件**：只在测试侧修症状，
   生产侧真实调用方（删除成功后立即读索引）依旧暴露在竞态之下。

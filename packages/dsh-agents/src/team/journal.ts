@@ -1,13 +1,14 @@
 /*
- * Forked from deepseek-harness dsh-v0.2.1-rc.2 (commit 687f282e) packages/experimental/agent-team/src/journal.ts
+ * Forked from deepseek-harness dsh-v0.2.2-alpha.3 (commit 05b1cae8) packages/experimental/agent-team/src/journal.ts
  * MIT licensed; every change this package made is listed in
  * packages/dsh-agents/docs/fork-provenance.md.
  */
 /** Serialized Team transactions over the exact live Lead Session log. */
 
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type { SessionEventMap, SessionId } from '@deepseek-ai/dsh-session'
-import type { TeamEventType, TeamState } from './projection.ts'
+import type { TeamEventType, TeamProjectionState, TeamState } from './projection.ts'
 import type { TeamServiceFaces } from './services.ts'
 
 type AppendTeamEvent = <T extends TeamEventType>(type: T, data: SessionEventMap[T]) => void
@@ -19,10 +20,12 @@ export class TeamJournal {
 
   /**
    * @param faces - the Host Session faces resolved once at mount.
+   * @param teamProjectionHandle - Team state registration owned by the Team service.
    * @param onCommit - synchronous notification after the Team event flush succeeds.
    */
   constructor(
     private readonly faces: TeamServiceFaces,
+    private readonly teamProjectionHandle: ProjectionHandle<TeamProjectionState>,
     private readonly onCommit: (root: Agent) => void,
   ) {}
 
@@ -30,10 +33,10 @@ export class TeamJournal {
    * Read authoritative Team state for one exact live Lead.
    * @param root - exact live Team Lead.
    * @returns current projected state selected by the Lead Team id.
+   * @throws when the durable Team projection has failed.
    */
   state(root: Agent): TeamState {
-    const projection = this.faces.sessionProjections.stateOf(root.session, 'agentTeam')
-    if (projection === undefined) throw new Error('Agent Teams projection is not registered')
+    const projection = this.teamProjectionHandle.stateOf(root.session)
     if (projection.failure !== undefined) throw new Error(projection.failure)
     return projection
   }

@@ -59,11 +59,10 @@ function servedTeamServices(projections: Projection[]): Record<string, unknown> 
     sessions: { get: () => undefined, flush: async () => undefined },
     sessionPersistence: { open: async () => undefined },
     sessionProjections: {
-      register: (definition: Projection): (() => void) => {
+      register: async (definition: Projection) => {
         projections.push({ key: definition.key, stateVersion: definition.stateVersion })
-        return () => undefined
+        return { stateOf: () => ({}) }
       },
-      stateOf: () => undefined,
     },
     subagents: {
       startActivation: async () => undefined,
@@ -305,11 +304,10 @@ describe('team runtime mount on a real cordis tree', () => {
         provider.provide('sessions', { get: () => undefined, flush: async () => undefined })
         provider.provide('sessionPersistence', { open: async () => undefined })
         provider.provide('sessionProjections', {
-          register: (definition: Projection) => {
+          register: async (definition: Projection) => {
             projections.push({ key: definition.key, stateVersion: definition.stateVersion })
-            return () => undefined
+            return { stateOf: () => ({}) }
           },
-          stateOf: () => undefined,
         })
         provider.provide('subagents', {
           startActivation: async () => undefined,
@@ -326,7 +324,7 @@ describe('team runtime mount on a real cordis tree', () => {
       inject: [...inject],
       apply(row: Context) {
         try {
-          team = new TeamService(row)
+          void TeamService.create(row).then((service) => { team = service }, (error: unknown) => { failure = error })
         } catch (error) {
           failure = error
         }
@@ -382,11 +380,10 @@ describe('team runtime mount on a real cordis tree', () => {
         provider.provide('sessions', { get: () => undefined, flush: async () => undefined })
         provider.provide('sessionPersistence', { open: async () => undefined })
         provider.provide('sessionProjections', {
-          register: (definition: Projection) => {
+          register: async (definition: Projection) => {
             projections.push({ key: definition.key, stateVersion: definition.stateVersion })
-            return () => undefined
+            return { stateOf: () => ({}) }
           },
-          stateOf: () => undefined,
         })
         provider.provide('subagents', {
           startActivation: async () => undefined,

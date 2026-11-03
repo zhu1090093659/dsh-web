@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/npm/v/@linxin666/dsh-usage?style=flat-square" alt="Version">
   &nbsp;
-  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.3-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
+  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--alpha.3-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
@@ -39,7 +39,7 @@
 
 ## 安装
 
-要求 DSH 0.2.1-rc.3 或更高：插件基于 0.2.1-rc.3 DSH cohort 开发（其设置页即宿主根据插件自身 Config schema 生成的页面），`@deepseek-ai/*` 运行时导入由宿主本体提供。
+要求 DSH 0.2.2-alpha.3 或更高：插件基于 0.2.2-alpha.3 DSH cohort 开发（其设置页即宿主根据插件自身 Config schema 生成的页面），`@deepseek-ai/*` 运行时导入由宿主本体提供。
 
 在 profile（如 `~/.dsh/profiles/web`）中：
 

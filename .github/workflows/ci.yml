@@ -20,7 +20,7 @@ concurrency:
 # than in a package.json dependency (a workspace devDependency cannot run in
 # this tree; see the install step).
 env:
-  DSH_CLI_VERSION: 0.2.1-rc.3
+  DSH_CLI_VERSION: 0.2.2-alpha.3
 
 # Four independent gates run in parallel and a fifth job aggregates them into
 # the required "CI checks" context:
@@ -78,7 +78,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24.9.0
           cache: pnpm
 
       # --ignore-scripts: the consistency checks in the consistency lane
@@ -186,7 +186,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24.9.0
           cache: pnpm
 
       # No build in this lane on purpose: see the Build step in static-checks.
@@ -231,7 +231,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24.9.0
           cache: pnpm
 
       - name: Install dependencies
@@ -366,7 +366,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24.9.0
           cache: pnpm
 
       - name: Install dependencies

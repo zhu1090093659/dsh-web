@@ -37,7 +37,7 @@ export interface WebExtensionPageSlots {
 export interface WebExtensionPageContext {
   slots: WebExtensionPageSlots
   get?(name: string): unknown
-  on?(event: string, listener: () => void): unknown
+  on?(event: never, listener: never): unknown
 }
 
 const SETTINGS_SECTION = 'settings.section'
@@ -137,7 +137,7 @@ export function installWebExtensionPage(
   }
 
   if (typeof ctx.on === 'function') {
-    try { ctx.on('slots/changed', reconcile) } catch { /* the initial entry remains usable */ }
+    try { ctx.on('slots/changed' as never, reconcile as never) } catch { /* the initial entry remains usable */ }
   }
   reconcile()
   return () => {

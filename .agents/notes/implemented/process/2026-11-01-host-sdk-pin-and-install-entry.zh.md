@@ -6,7 +6,7 @@ Status: implemented
 
 本检出由运行中的宿主通过 profile 的 `link:` 条目加载，因此 Node 解析插件的 `@deepseek-ai/*` 导入时会从插件目录向上走到本仓的 `node_modules`。有两条路径决定这次解析的结果：根 `node_modules/@deepseek-ai` 作用域目录，以及开发安装生成的逐包 `packages/<pkg>/node_modules/@deepseek-ai` 条目——对包自身的导入而言，后者优先于根目录。
 
-宿主旁边多出一份 SDK 不会大声失败。多一个 cordis 会让服务注册落空，cohort 分裂会让类型身份分裂：既消费宿主核心类型又增补 cordis 的包会看到两份互不相关的 `Context` 声明；在 pin 覆盖到库之前，`packages/dsh-i18n` 在 tsgo 上正是这样失败的。plain `pnpm install` 不会产出宿主实际运行的那套 cohort：清单声明 `^0.2.1-rc.3`，操作者宿主运行 `0.2.1-rc.5`，而该 range 解析到 rc.3。
+宿主旁边多出一份 SDK 不会大声失败。多一个 cordis 会让服务注册落空，cohort 分裂会让类型身份分裂：既消费宿主核心类型又增补 cordis 的包会看到两份互不相关的 `Context` 声明；在 pin 覆盖到库之前，`packages/dsh-i18n` 在 tsgo 上正是这样失败的。plain `pnpm install` 不保证产出宿主实际运行的那套 cohort：声明的 range 可能解析到与已装宿主不同的版本。
 
 ## Decision
 
@@ -16,7 +16,7 @@ Status: implemented
 
 `build`、`test`、`typecheck` 在递归命令之前先跑 `host-sdk-link --check`，于是 registry 副本的 SDK 会在门禁处大声失败，而不是静默分裂 cohort。`pnpm-workspace.yaml` 关掉 `verifyDepsBeforeRun`：pnpm 11 的运行前依赖自检在它认为必要时以 headless 方式改写 `node_modules`，而对着 root 所有的宿主链接，这个自检只能以 EACCES 收场——连 `pnpm run deps:install` 本身都起不来。
 
-宿主不安装的三个纯客户端包（`dsh-client-store`、`dsh-client-ui-primitives`、`dsh-client-ui-slots`）由工作区 `overrides` 固定到 `0.2.1-rc.5`，于是解析产出的是宿主的 cohort，而不是一半 rc.5 一半 rc.3。清单继续声明 `^0.2.1-rc.3`，rc.5 满足该 range；override 只统一解析结果，配套的 `packageExtensions` 键随之移动。
+宿主不安装的三个纯客户端包（`dsh-client-store`、`dsh-client-ui-primitives`、`dsh-client-ui-slots`）由工作区 `overrides` 固定到 `0.2.2-alpha.3`，使解析结果保持在同一 cohort。清单声明 `^0.2.2-alpha.3`；override 只统一解析结果，配套的 `packageExtensions` 键随之移动。
 
 ## Alternatives considered
 
@@ -32,15 +32,13 @@ Status: implemented
 
 ## Consequences
 
-- 这条 typecheck 限制是实测而非理论，且 rc.5 override 并不能消除它：pin 从宿主树服务 239 个工作区条目，宿主的 85 个客户端包用 `declare module '@deepseek-ai/dsh-client-ui-slots'` 声明各自的 slot 名，而那些增补活在未安装该包的宿主树里，于是退化为独立的 ambient 声明，同时 `skipLibCheck` 掩盖了失败解析。`packages/dsh-message-edit`、`packages/dsh-git-graph`、`packages/dsh-web-settings` 因 slot 名不满足约束而 typecheck 失败，把三个纯客户端包迁到 `0.2.1-rc.5` 已执行过且这些报错逐字节不变——不要再把它当作修复重试。`packages/dsh-remote-bridge` 也 typecheck 失败，原因无关：`0.2.1-rc.5` 把 `AskUserQuestion` 处理器类型改成了两个调用签名的联合，需要代码适配。纯 registry 安装（CI、没有宿主 DSH 的贡献者）没有这些报错。
+- pin 只接受完整的宿主 SDK 树。Windows npm-global 探测读取 `%APPDATA%/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai`；当前全局树缺少有效的 `dsh-session` 与 `dsh-agent` 清单标记，因此被拒绝而不是强行建立 pin。纯 registry 安装仍是 CI 与不完整安装的受支持回退。
 - 这条 pin 是本地开发契约：它不改任何清单、lockfile 或已提交产物，从不运行它的检出仍从 registry cohort 构建。
-- `pnpm run deps:install` 是唯一能让运行中的宿主继续解析宿主 cohort 的安装路径。在装有宿主的机器上，plain `pnpm install` 预期会在 root 所有的链接上失败，而不是静默替换 pin。
+- `pnpm run deps:install` 是唯一能让有效运行宿主继续解析宿主 cohort 的安装路径。Windows 上入口经 shell 调用 `pnpm.cmd`；alpha.3 的重新解析已通过这条路径完成。
 - pnpm 不再在本工作区跑运行前依赖自检，因此改清单后陈旧的 `node_modules` 会由安装与门禁命令报出，而不是被就地修复。
 
 ## Testing
 
-- `node scripts/host-sdk-link.mjs --check` 报告 pin 在位：宿主树 306 个包、239/239 工作区条目已钉、41 个宿主不提供的条目留给 pnpm。
-- `pnpm test:scripts` 495 个用例通过；`pnpm libs:check`、`pnpm runtime-deps:check`、`pnpm aggregate:check`、`pnpm docs:check`、`pnpm i18n:check`、`pnpm test:standards`、`pnpm emoji:check` 在同一棵树上通过。
-- 本机的 `pnpm test` 有两处环境性红，都与这条 pin 无关：在 `zh_CN.UTF-8` 下一个 `dsh-git-graph` git-service 用例把 git 的本地化 stderr 归类为 `internal`（同一用例在 `LC_ALL=C` 下通过）；一个 `dsh-plugin-manager` gateway 用例期望 `/usr/local/bin/dsh` 被原样保留，而本机该路径是指向 Node 脚本的软链，于是 spawn 命令用 node 包了一层。这两个包都未被本次改动触碰。
-- `pnpm typecheck` 仍报上面三个纯客户端包的 slot 名报错与 `dsh-remote-bridge` 的签名报错；纯 registry 检出没有它们。
-- `pnpm run deps:install` 本身在本次验证中没有重跑：pin 已在位且 `--check` 通过，而重跑会重装整个工作区。因此摘下、安装、复原这条路径由脚本自身的头部契约与这次 check 担保，而不是由本次改动里的端到端安装担保。
+- Windows 候选路径测试通过，真实全局树则因不完整被正确拒绝。没有强行建立 pin，也没有重启运行中的服务。
+- `node scripts/install-deps.mjs --no-frozen-lockfile` 在 Windows 完成并安装 alpha.3 cohort；随后全量 `pnpm typecheck` 与完整 `pnpm test` 在 registry cohort 上通过。
+- `pnpm test:scripts` 有 552 个通过项与一个既有 Windows 文件权限失败：deploy-market 探针期望 `600`，Windows 返回 `666`。`pnpm libs:check`、`pnpm runtime-deps:check`、`pnpm aggregate:check`、`pnpm docs:check` 与 `pnpm i18n:check` 在同一棵树上通过。

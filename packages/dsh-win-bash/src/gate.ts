@@ -12,7 +12,7 @@
  * on @deepseek-ai/dsh-agent-preset-registry (a leaf plugin takes no SDK
  * dependency to read one optional service), so the single method consumed is
  * mirrored from the published declaration of
- * @deepseek-ai/dsh-agent-preset-registry@0.2.1-rc.3, lib/types/index.d.ts:
+ * @deepseek-ai/dsh-agent-preset-registry@0.2.2-alpha.3, lib/types/index.d.ts:
  *
  *   export declare class AgentPresetRegistry {
  *     list(): Promise<AgentPreset[]>

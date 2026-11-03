@@ -7,13 +7,13 @@
 | 事实 | 值 |
 |---|---|
 | 上游仓库 | https://github.com/deepseek-ai/deepseek-harness |
-| tag | `dsh-v0.2.1-rc.2` |
-| commit | `687f282e8625c6b8d11ff58211a90524be2e4317` |
-| agent-team **src/** 树哈希 | `77e8a11de277837e2860f3f3172799f6cc509e95`（`git rev-parse dsh-v0.2.1-rc.2:packages/experimental/agent-team/src`） |
-| tool-agent-team **src/** 树哈希 | `e8af5edce18085dce4ad2e6ec3946e0da3422190`（`git rev-parse dsh-v0.2.1-rc.2:packages/experimental/tool-agent-team/src`） |
+| tag | `dsh-v0.2.2-alpha.3` |
+| commit | `05b1cae8db6e674c5685101494d4eec24652424a` |
+| agent-team **src/** 树哈希 | `08322f8f03faad9b0ee04c7e72d1b119b0158977`（`git rev-parse dsh-v0.2.2-alpha.3:packages/experimental/agent-team/src`） |
+| tool-agent-team **src/** 树哈希 | `e8af5edce18085dce4ad2e6ec3946e0da3422190`（`git rev-parse dsh-v0.2.2-alpha.3:packages/experimental/tool-agent-team/src`） |
 | 许可证 | MIT（上游仓库根 `LICENSE`，Copyright (c) 2026 DeepSeek） |
 
-本机已安装的 app build 与该 tag 的发布构建逐字节一致，因此该 tag 是唯一正确的 fork 基线；换基线必须同时更新本文件与本节四个哈希。
+fork 对照固定在这个发布 tag，不使用持续移动的上游工作树；换基线必须同时更新本文件与本节四个哈希。
 
 ## 逐文件映射
 
@@ -71,6 +71,7 @@
 12. **`spawn_teammate` 的参数 schema 提取为 `SPAWN_PARAMETERS` 常量**：与第 11 条同因，避免在调用点被 const 泛型重新推断八个属性。
 13. **文件头 banner**：所有 vendor 文件加 provenance banner（纯注释）。
 14. **五个 Host 服务在挂载时经 `ctx.get` 解析一次**（`src/team/services.ts`，本包新增文件；`src/team/index.ts`、`src/team/journal.ts`、`src/team/roster.ts`）：上游把运行期当作 cordis 插件挂在它自己的 `inject` 行上，`agents` / `sessions` / `sessionPersistence` / `sessionProjections` / `subagents` 因此可以按属性直接读取。本包在插件行自己的 fiber 上 `new TeamService(ctx)`，该 fiber 的 `inject` 只有三个服务，而 cordis 对**未注入**服务的属性读取会抛 `cannot get property "<name>" without inject`——整个 `apply` 失败，页面随即报「Host API 未挂载」。因此 `TeamService` 在构造时把五个面解析一次（`serveTeamFaces`）、存进 `this.faces`，`TeamJournal` 与 `TeamRoster` 改为读同一份面对象；投影注册从 `ctx.root.sessionProjections` 改为读该面（同一个服务实例，注册位置不变）。上游的其余逻辑、`ctx.on` 事件监听与 `ctx.logger` 未动。
+15. **手动挂载显式等待异步投影注册**（`src/team/index.ts`、`src/team/journal.ts`、`src/team/projection.ts`）：上游在类插件的 `Service.init` 中等待 `sessionProjections.register()` 并把 `ProjectionHandle` 交给 `TeamJournal`，同时移除 `SessionProjectionStateMap` augmentation；本包重放这三处变化。手动 `new TeamService` 不会触发类插件的 init 钩子，因此新增 `TeamService.create()` 显式等待同一个 init，pins 保存到初始化时交给 `TeamRoster`，挂载方在工厂完成后再安装 Team 工具。
 
 ## 行为差异：Team 工具只进「本 Host 启动的整队运行会话」
 

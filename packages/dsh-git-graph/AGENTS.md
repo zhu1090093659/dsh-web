@@ -4,7 +4,7 @@ dsh Web GUI 的外部 git 上下文插件（项目选择器 + 分支选择器 + 
 
 ## 仓库规则
 
-- **遵循 turtle-ui 规范**：独立 pnpm 包（`"type": "module"`，node `^22.19 || >=24`，packageManager pnpm），peer APIs 走 `@deepseek-ai/dsh-*` peerDependencies + `autoInstallPeers: false`，`"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }` 声明 bundle 激活。
+- **遵循 turtle-ui 规范**：独立 pnpm 包（`"type": "module"`，node `>=24.9`，packageManager pnpm），peer APIs 走 `@deepseek-ai/dsh-*` peerDependencies + `autoInstallPeers: false`，`"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }` 声明 bundle 激活。
 - **tsconfig 分层**：`tsconfig.json` 是 solution（`files: []`），`tsconfig.host.json`（host half）与 `tsconfig.client.json`（browser half）各自成 program——host 侧 `sessions: SessionStore` merge 与浏览器侧 `sessions: ISessions` merge 不得同 program（主仓 one-program-per-side 规则）。`tsconfig.vitest.json` 为测试 program（排除 `src/index.ts`，它只由 host project 检查）。
 - **浏览器 bundle 纪律**：`@deepseek-ai/*` 只能 type-only 导入（构建期纯度门）；值导入只允许平台种子表成员（react / cordis / ui-slots / ui-primitives）。跨插件协作走 cordis 服务（`ctx.slots` / `ctx.sessions` / `ctx.workspaces`）。
 - **共享构建预设**：`tsdown.config.ts` 与 `tsdown.prepare.config.ts` 都 import 仓库根 `shared/tsdown.client.ts`（平台种子表 `shared/web-platform.ts`），包内不保留副本；规则见 [packages/AGENTS.md](../AGENTS.md)。

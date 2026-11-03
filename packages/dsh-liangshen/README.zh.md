@@ -66,7 +66,7 @@ DeepSeek V4.1 Flash 的后训练直接对齐其原生 DSML 工具调用面，官
 | `instructionSource` | `host` | 工作区指令送达模型的方式。`host`（默认）不追加任何自有段，也不改动宿主的 agent-instructions 注入，工作区指令以宿主自己的 user 角色消息送达：一条持久基线，加上触碰目录后的增量、替换与移除；`system-prompt` 在组装时读取 AGENTS.md 链并追加进系统提示词（harness 自己的注入被丢弃）；`hint` 把首次注入替换为一次性的、非命令式的参考文件提示，后续注入丢弃。 |
 | `instructionMaxBytes` | `65536` | 渲染后的 workspace-instructions 段的字节预算，仅在 `system-prompt` 模式下生效：最宽的文件先被省略，最具体的文件最后被截断。 |
 | `descriptionMaxLength` | `200` | 注入目录中单个工具一行摘要的长度上限，作用于所有未被策展表覆盖的工具；被策展的宿主内置工具直接使用整行手写短描述。完整关键参数语义保持完整。 |
-| `presentation` | `ptc` | 整个会话的 wire 呈现方式。`ptc`（出厂默认）把 wire 收拢为 `run_code`，其余工具经生成的 SDK 调用；`native` 保持组装出的原生清单。插件在 agent scope 一出现时就通过 `agent.ctx.tools.presentAs`（SDK 的工具呈现 API）声明该取值，并重新组装一次，使声明落到模型真正收到的请求上。组合里没有执行器行：0.2.1-rc.3 通过该 API 选择呈现，也不发布 `@deepseek-ai/dsh-tool-executor-ptc`。部署没有 PTC runtime、宿主拒绝声明、或 scope 拿不到该 API 时保持原生面并告警一次。已删除的 `both` 取值不被接受：旧 profile 写明它会在注册时被拒绝，请迁移为 `ptc` 或 `native`。 |
+| `presentation` | `ptc` | 整个会话的 wire 呈现方式。`ptc`（出厂默认）把 wire 收拢为 `run_code`，其余工具经生成的 SDK 调用；`native` 保持组装出的原生清单。插件在 agent scope 一出现时就通过 `agent.ctx.tools.presentAs` 声明该取值，组合同时挂载官方 `@deepseek-ai/dsh-tool-executor-ptc` 行执行 PTC 程序。切换到 `native` 会停用该执行器行，使呈现声明与实际执行保持同一模式。部署没有 PTC runtime、宿主拒绝声明、或 scope 拿不到该 API 时保持原生面并告警一次。已删除的 `both` 取值不被接受：旧 profile 写明它会在注册时被拒绝，请迁移为 `ptc` 或 `native`。 |
 | `pagedToolPatterns` | `['mcp__*']` | 出厂开启温和分页：命中的 MCP 工具被扣留在 wire 与生成的 SDK 之外，直到模型通过 `tool_activate({ namespace })` 激活其命名空间。被扣留的命名空间在目录中以一行摘要出现。最多同时保持三个已激活的分页命名空间，激活状态从持久事件流重建。 |
 | `maxResidentTokens` | `8000` | 常驻 wire 面的估算 token 上限（按序列化 schema 约四字符一 token），按 V4.1 的 KV 压缩重新校准后仍高于出厂清单，用于发现真实增长而非出厂配置本身。超过时告警一次、列出最重的工具并指向 `pagedToolPatterns`；不会截断工具清单。 |
 | `ptcPresentation` | （已退役） | 旧别名：`true` 映射为 `presentation: 'ptc'`，`false` 映射为 `'native'`，两者都伴随弃用告警。 |
@@ -145,7 +145,7 @@ dsh plugin --profile web remove @linxin666/dsh-liangshen
 - preset 与 shell 访问具有相同信任等级，安装前可自行审阅 `presets/liangshen/`；
 - 插件不发起网络请求，也不增加遥测；
 - 不要在已经产生内容的会话中途切换 preset；
-- 需要 DSH 0.2.1-rc.3+（preset 机制、`system-prompt/assemble` 瀑布、persona 的 `prefix` schema，以及 PTC 呈现 API）。
+- 需要 DSH 0.2.2-alpha.3+（preset 机制、`system-prompt/assemble` 瀑布、persona 的 `prefix` schema，以及 PTC 呈现 API）。
 
 ## 许可
 

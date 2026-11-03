@@ -195,10 +195,9 @@
 # PTC runtime, a host that declines the declaration, or a wire that offers no
 # schema projection keeps the native surface and warns once.
 #
-# The composition carries NO executor row. The 0.2.1-rc.3 SDK ships the
-# presentation as a tool property selected through `presentAs`; it publishes no
-# `@deepseek-ai/dsh-tool-executor-ptc`, so a row naming it never starts and the
-# preset's load audit reports it alongside the rows that did mount (2026-10-26).
+# This cohort splits execution into an agent-scoped executor row. The row below
+# selects the same official PTC executor as the builtin ptc preset; the settings
+# overlay disables it for native presentation so the two modes stay distinct.
 #
 # The row ships `presentation: 'ptc'` because that is the shipped default, and
 # the settings overlay rewrites the SAME key, so the settings switch and the
@@ -444,18 +443,6 @@
     # selection fails with `child model selection is disabled for this tool
     # instance` and the settings page's subagent toggle reads as dead.
     #
-    # `modelSelectionSettings: true` is the PRE-SPLIT spelling of the same
-    # opt-in: one boolean that published the route fields AND registered
-    # discovery. The SDK pinned in this package's devDependencies
-    # (0.2.1-rc.3) still ships only that key, while the harness checkout this
-    # repository runs against has replaced it with the pair above. That
-    # loader's schema does not declare the retired name, so nothing reads it:
-    # Schemastery keeps the undeclared field but fills `modelSelection` and
-    # `modelDiscovery` with `false`, leaving the opt-in inert with no error
-    # to notice. Both spellings therefore ship together: each generation
-    # reads the key it knows and ignores the other, and neither host loses
-    # the opt-in. Delete `modelSelectionSettings` once no supported cohort
-    # predates the split.
     #
     # EXACTLY ONE delegation row per composition scope may enable
     # `modelDiscovery`: it registers the discovery tool under the FIXED name
@@ -474,7 +461,6 @@
       config:
         provider: spawn
         toolName: subagent
-        modelSelectionSettings: true
         modelSelection: true
         modelDiscovery: true
         backgroundMode: continuable
@@ -543,3 +529,9 @@
   config:
     fetch: false
     searchTimeoutMs: 60000
+
+# PTC execution is an agent-scoped plugin in this cohort. The declaration
+# overlay disables this row for the native presentation; without it, `presentAs`
+# can select the wire but no executor can carry a run_code program.
+- id: tool-executor-ptc
+  name: '@deepseek-ai/dsh-tool-executor-ptc'

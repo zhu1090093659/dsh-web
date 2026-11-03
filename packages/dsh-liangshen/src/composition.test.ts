@@ -275,15 +275,15 @@ describe('applyPresetOverrides', () => {
     expect(configOf(rowOf(applied, 'minimal-prompt'))['dispatcher']).toBe(false)
   })
 
-  it('operator gets the wire from the catalog row this preset declares', () => {
-    // Given the 0.2.1 API, where a preset selects its wire through
-    // agent.ctx.tools.presentAs, When the operator commits a presentation, Then
-    // the tool-catalog row carries it and nothing else is written: the
-    // declaration and the catalog text read one value.
+  it('operator gets matching wire and executor rows from the presentation setting', () => {
+    // Given the split presentation/executor contract, When the operator commits
+    // a presentation, Then the catalog and the executor select the same mode.
     const ptc = applyPresetOverrides(rows(), { presentation: 'ptc' })
     expect(configOf(rowOf(ptc, 'tool-catalog'))['presentation']).toBe('ptc')
+    expect(rowOf(ptc, 'tool-executor-ptc').disabled).toBe(false)
     const native = applyPresetOverrides(rows(), { presentation: 'native' })
     expect(configOf(rowOf(native, 'tool-catalog'))['presentation']).toBe('native')
+    expect(rowOf(native, 'tool-executor-ptc').disabled).toBe(true)
     expect(rowOf(native, 'tool-catalog').disabled).toBeUndefined()
   })
 

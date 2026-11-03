@@ -154,9 +154,10 @@ function main(argv) {
       log('installed tree has a different install shape (see ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY)')
       discardModulesDirs()
     }
-    const result = spawnSync('pnpm', forwarded, {
+    const result = spawnSync(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', forwarded, {
       cwd: REPO_ROOT,
       stdio: 'inherit',
+      shell: process.platform === 'win32',
       // No terminal: nothing here can answer an interactive prompt. A
       // re-resolve stays out of CI mode so pnpm is allowed to write the lockfile.
       env: noFrozen ? { ...process.env } : { ...process.env, CI: 'true' },

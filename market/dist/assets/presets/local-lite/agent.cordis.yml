@@ -34,8 +34,8 @@
 # 1,789 token。这 11 个 = 本组合声明的 10 个工具名（read、write、edit、glob、grep、
 # web_search、一个 shell、job_output、job_list、job_kill）+ `dsh-tool-fs` 在
 # `attachments` 挂载时自动注册的 `read_image`。
-# PTC 部署（`tools` 行 mode: both）下实测 13 个工具 / 2,479 token，`run_code` 在 wire
-# 上而继承来的全局工具仍被摘掉 —— 保留名过滤那条修复的真机验证。
+# 本组合不挂 PTC 执行器，wire 保持 native；继承来的全局工具仍由同一遮蔽行摘掉。
+# 外层作用域若选择 PTC，保留名过滤避免把保留传输名 `run_code` 交给 restrict()。
 # 另一条路由上的自带 standard 预设约 9,288 token（不同机器状态，仅作量级参照，不可与
 # 上面任何一行相减）。
 #

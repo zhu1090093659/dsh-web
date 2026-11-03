@@ -506,11 +506,9 @@ type OverrideTarget = readonly [string, Readonly<Record<string, unknown>>]
 /**
  * The overlay table: settings field to composition row and config key.
  *
- * `presentation` writes the `tool-catalog` row alone, because that row's
- * declaration IS the wire: the plugin hands the value to
- * `agent.ctx.tools.presentAs` and re-assembles, so the catalog text and the
- * declared presentation always travel together. The composition carries no
- * executor row to mount or unmount.
+ * `presentation` also selects the executor: the catalog declares the wire and
+ * the official PTC executor row carries it. Native mode disables that row so
+ * the assembled native roster remains the only surface.
  */
 function overrideTargets(overrides: PresetOverrides): OverrideTarget[] {
   return [
@@ -537,7 +535,11 @@ export function applyPresetOverrides(
 ): PresetDefinition['plugins'] {
   const table = overrideTargets(overrides)
   return rows.map((row) => {
-    const target = table.find(([id]) => id === (row as CompositionRow).id)
+    const id = (row as CompositionRow).id
+    if (id === 'tool-executor-ptc' && overrides.presentation !== undefined) {
+      return { ...row, disabled: overrides.presentation !== 'ptc' }
+    }
+    const target = table.find(([targetId]) => targetId === id)
     if (target === undefined) return row
     const [, patch] = target
     if (Object.keys(patch).length === 0) return row

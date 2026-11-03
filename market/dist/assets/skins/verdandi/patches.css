@@ -1906,14 +1906,16 @@ body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRo
 [data-composer-dock] {
   isolation: isolate;
   box-sizing: border-box;
-  width: min(100%, 780px);
+  /* 读数条按内容收窄：三格读数本来就挨着读，铺满输入卡宽度只会在中间留一大块空白 */
+  width: max-content;
+  max-width: 100%;
   color: var(--vd-ink-muted);
   background: color-mix(in srgb, var(--vd-paper-solid) 92%, transparent);
   border: 1px solid color-mix(in srgb, var(--vd-gold) 42%, var(--vd-line));
   border-radius: 12px 12px 14px 14px;
   align-self: center;
   gap: 14px;
-  justify-content: space-between;
+  justify-content: flex-start;
   margin: 3px auto 0;
   padding: 7px 14px 8px 42px;
   font-size: 12px;

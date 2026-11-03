@@ -9,6 +9,7 @@
  * cleared the moment a new grant arrives. The market edge's own lease is not part
  * of this file, because nothing here is allowed to touch it.
  */
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
   CLAIM_RETRY_MAX_MS,
@@ -607,7 +608,7 @@ describe('the meeting point one configuration names', () => {
     // Given the first connector's own record path under the same home
     // When the second connector's path is resolved
     // Then the two differ, so one meeting point's state cannot erase the other's
-    expect(relaySecondaryBridgeStateFile('/tmp/dsh')).toBe('/tmp/dsh/remote-web-ui-relay-bridge-secondary.json')
-    expect(relaySecondaryBridgeStateFile('/tmp/dsh')).not.toBe('/tmp/dsh/remote-web-ui-relay-bridge.json')
+    expect(relaySecondaryBridgeStateFile('/tmp/dsh')).toBe(join('/tmp/dsh', 'remote-web-ui-relay-bridge-secondary.json'))
+    expect(relaySecondaryBridgeStateFile('/tmp/dsh')).not.toBe(join('/tmp/dsh', 'remote-web-ui-relay-bridge.json'))
   })
 })

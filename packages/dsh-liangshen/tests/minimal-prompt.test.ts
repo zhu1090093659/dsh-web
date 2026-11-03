@@ -657,7 +657,7 @@ describe('liangshen-minimal-prompt', () => {
         '## R0 · Complexity Triage',
         '## R0.5 · Compatibility Gate',
         '## R-G · Clarification Interview',
-        '## R1 · Responsibility Boundary',
+        '## R1 · Execution Topology & Boundary',
         '## R2 · Model Routing',
         '## R3 · Subagent Autonomy',
         '## R4 · Subagent Role',
@@ -681,6 +681,15 @@ describe('liangshen-minimal-prompt', () => {
         '[UI Visual Evidence Gate]',
         '[Clause Deletion Test]',
         '25. Accepting a visible UI change',
+        // The 2026-11-03 re-sync against upstream 0.56.0 plus its unreleased
+        // Agent Teams pass: the Lead identity, the three execution topologies,
+        // and the split between the legacy team runtime and the current one.
+        'You are the Lead & Dispatch Agent',
+        '- Lead-Core:',
+        '- Hybrid:',
+        '- Fan-out:',
+        'The current runtime adds nothing but a shared task board',
+        'Never gate on wait_agent, send_message, list_agents or interrupt_agent',
         'G7 to G14 below are the local additions to G1 to G6 above',
         'G15 below is a separate addition to R5',
         '- G7 Asking budget',
@@ -762,7 +771,7 @@ describe('liangshen-minimal-prompt', () => {
         '## R0.5 · Compatibility Gate (Once per New Session, Before R0)',
         '## R0 · Complexity Triage (Triage First, Then Choose the Workflow)',
         '## R-G · Clarification Interview (L2 Only, Always Before Planning)',
-        '## R1 · Responsibility Boundary (Layered by Tier)',
+        '## R1 · Execution Topology & Boundary (Coupling × Fan-out ROI)',
         '## R2 · Model Routing (Check Availability First, Then Decide How to Dispatch)',
         '## R3 · Subagent Autonomy',
         '## R4 · Subagent Role',
@@ -775,7 +784,12 @@ describe('liangshen-minimal-prompt', () => {
         '## Anti-Patterns (Any Occurrence Is a Violation)',
       ])
       expect(headings.some(heading => heading.includes('R-T'))).toBe(false)
-      expect(DISPATCHER_RULES).not.toContain('team_task_')
+      // The current built-in team's board is named, because R0.5 now has to put
+      // it in its place; the dispatch ledger is not, because this preset mounts
+      // no such tool (provenance.omissions records the two omissions).
+      expect(DISPATCHER_RULES).toContain('team_task_')
+      expect(DISPATCHER_RULES).not.toContain('dispatch_ledger')
+      expect(DISPATCHER_RULES).not.toContain('[Dispatch Ledger]')
       // It is English, and it names no package this repository does not own.
       expect(DISPATCHER_RULES).toContain('[Role Identification]')
       expect(DISPATCHER_RULES).not.toContain('dsh-chatgpt-subscription')
@@ -839,8 +853,8 @@ describe('liangshen-minimal-prompt', () => {
       // in place is named there, so dropping one in a later re-extraction is a
       // failing test rather than a silent revert.
       expect(DISPATCHER_RULES_PROVENANCE.package).toBe('@eddyskywalker/dsh-chatgpt-subscription')
-      expect(DISPATCHER_RULES_PROVENANCE.reExtractedAt).toBe('2026-11-02')
-      expect(DISPATCHER_RULES_PROVENANCE.inheritedVersion).toBe('0.55.0')
+      expect(DISPATCHER_RULES_PROVENANCE.reExtractedAt).toBe('2026-11-03')
+      expect(DISPATCHER_RULES_PROVENANCE.inheritedVersion).toBe('0.56.0')
       expect(DISPATCHER_RULES_PROVENANCE.corrections.map((entry) => entry.rule)).toEqual(['R2', 'R8', 'R6/R7', 'R0/R5', 'R2 fork'])
       // The additions are recorded separately from the corrections: an addition
       // fills a gap, a correction replaces a wrong reading, and a later reader
@@ -856,7 +870,22 @@ describe('liangshen-minimal-prompt', () => {
         'R7 [Clause Deletion Test]',
         'R9',
         'Anti-Patterns 21-25',
+        '[Coordinator Identity]',
+        'R1',
+        'R2 [State: Unlisted]',
+        'R6 [Noticed but not handled]',
+        'R8',
+        'R0.5',
       ])
+      // The two entries this preset deliberately does NOT carry name tools it
+      // does not mount, so the omission is a deployment fact and not a missed
+      // sync. Pinning them keeps a later re-extraction from copying text that
+      // would send the model to an unknown tool.
+      expect(DISPATCHER_RULES_PROVENANCE.omissions.map((entry) => entry.rule)).toEqual([
+        '[Dispatch Ledger]',
+        'R9 enter_plan_mode / leave_plan_mode',
+      ])
+      expect(DISPATCHER_RULES_PROVENANCE.omissions.every((entry) => entry.why.length > 40)).toBe(true)
       // Every recorded addition really is in the text, not only in the record.
       expect(DISPATCHER_RULES).toContain('A status: hand_back report adds a one-sentence hand_back_reason')
       expect(DISPATCHER_RULES).toContain('the dispatch-guard row refuses them from a delegated caller')

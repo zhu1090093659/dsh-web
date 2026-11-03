@@ -217,10 +217,21 @@ function resolveTypertGateway(ctx: Context): TypertGatewayFace | undefined {
 export type TeamRuntimeGate = 'ready' | 'host-teams' | 'host-teams-declared' | 'missing-faces'
 
 /**
- * Published activation unit of the official Agent Teams runtime: enabling this
- * bundle in a profile is what inserts the rows that provide `agentTeams`.
+ * Published activation units of the official Agent Teams runtime: enabling one
+ * of these in a profile is what inserts the rows that provide `agentTeams`.
+ *
+ * Both generations are listed because both own the same service name. The
+ * legacy generation ships as the experimental profile bundle; the current one
+ * moved to `packages/team/` upstream and ships the `@deepseek-ai/dsh-agent-team`
+ * package (with `@deepseek-ai/dsh-tool-agent-team` for the model-facing tools).
+ * The newer names are the forward-compatible half: while the current runtime is
+ * composed into the base bundle rather than published as a profile bundle, a
+ * profile cannot list it, and the service probe is what catches it.
  */
-export const OFFICIAL_TEAMS_BUNDLE = '@deepseek-ai/dsh-experimental-agent-team-profile'
+export const OFFICIAL_TEAMS_BUNDLES = [
+  '@deepseek-ai/dsh-experimental-agent-team-profile',
+  '@deepseek-ai/dsh-agent-team',
+] as const
 
 /** The launcher's profile facts, narrowed to the one field this gate reads. */
 interface ProfileBundlesFace {
@@ -241,7 +252,8 @@ interface ProfileBundlesFace {
  */
 export function profileMountsOfficialTeams(ctx: Context): boolean {
   const profile = readService<ProfileBundlesFace>(ctx, 'profileContext', false)
-  return Array.isArray(profile?.startedBundles) && profile.startedBundles.includes(OFFICIAL_TEAMS_BUNDLE)
+  if (!Array.isArray(profile?.startedBundles)) return false
+  return OFFICIAL_TEAMS_BUNDLES.some(bundle => profile.startedBundles?.includes(bundle) === true)
 }
 
 /**
@@ -402,7 +414,7 @@ export function apply(ctx: Context, config?: Config): void {
         // second owner of one service rather than a coexistence.
         warn(ctx, gate === 'host-teams'
           ? '[dsh-agents] this deployment already serves the official Agent Teams runtime (agentTeams); the forked Agent Teams runtime and its Team tools stay unmounted so one service keeps one owner, and squads keep member runs, the ledger and the routes'
-          : '[dsh-agents] this deployment mounts the official Agent Teams runtime bundle (@deepseek-ai/dsh-experimental-agent-team-profile); the forked Agent Teams runtime and its Team tools stay unmounted so that row keeps the agentTeams service, and squads keep member runs, the ledger and the routes')
+          : `[dsh-agents] this deployment mounts an official Agent Teams runtime bundle (${OFFICIAL_TEAMS_BUNDLES.join(' or ')}); the forked Agent Teams runtime and its Team tools stay unmounted so that row keeps the agentTeams service, and squads keep member runs, the ledger and the routes`)
       } else if (gate === 'missing-faces') {
         warn(ctx, '[dsh-agents] this deployment does not serve the agents/sessions/sessionPersistence/sessionProjections/subagents set; the forked Agent Teams runtime stays unmounted and only member runs are available')
       } else {

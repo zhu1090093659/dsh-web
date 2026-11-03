@@ -15,6 +15,27 @@
 
 fork 对照固定在这个发布 tag，不使用持续移动的上游工作树；换基线必须同时更新本文件与本节四个哈希。
 
+## 上游 2026-11-03 复核：spawn 支点已被移除，基线不动
+
+复核上游 master 后确认：**我们 fork 的那一代运行期在上游已经不存在了**。这不是「落后几个提交」，因此基线刻意保持在发布 tag 上。
+
+| 事实 | 值 |
+|---|---|
+| 上游复核点 | `8bd073392ee`（`dsh-v0.2.2-alpha.3` 之后 555 个提交，尚未发版） |
+| 包位置 | `packages/experimental/{agent-team,tool-agent-team}` → `packages/team/{agent-team,tool-agent-team}`（不再是实验内容） |
+| 包名 | `@deepseek-ai/dsh-experimental-*` → `@deepseek-ai/dsh-agent-team` / `@deepseek-ai/dsh-tool-agent-team`；两个新名字在 npm 上均为 404（未发布） |
+| 上游删除的源文件 | `activity.ts`、`lifecycle.ts`、`persisted.ts`、`roster.ts`、`session-message.ts` |
+| 上游删除的能力 | `spawn_teammate`，以及队内 `send_message` / `list_agents` / `interrupt_agent`；`TeamMembership`、`TeamMemberView`、spawn/send 请求与结果类型、`TeamWaitResult` 一并移除 |
+| 上游保留的能力 | 四个任务工具 `team_task_create` / `team_task_list` / `team_task_get` / `team_task_update`，加一段 `team:policy`——Team 现在只是原生 `subagent` / `subagent_fork` / `send_message` / `list_agents` 之上的**共享任务板** |
+
+上游自己在 `docs/upgrade-guide/v0.2.1-rc.2/agent-team-subagents/guide.md` 里给出了迁移映射（`spawn_teammate` → `subagent`、`ctx.agentTeams.spawnTeammate` → `ctx.subagents.startActivation`、`tryMembership` → `rootOf`）。
+
+**为什么这次不跟。** 本包的全部增量价值——成员定义的 preset / permission / model / reasoningEffort 钉住，在成员子会话建立之前解析、在首条提示 checkpoint 之前应用——挂在被删除的那条接缝上。上游的替代方案是「队友就是原生 subagent」，于是钉住只剩 `model` / `reasoning_effort` 两个参数，`preset` 与 `permission` 没有落点：跟这个基线不是重新 vendor，而是重写本包的 host 半区（run-gateway、service、squad、agent-tools、member-prompt）与全部运行期测试，并砍掉两个钉住维度。另外新运行期只存在于 master，没有 tag 可钉，对照表无法固定。
+
+**今天怎么共存。** 官方运行期（任一代）在场时本包让位，细节见 [runtime-deltas.md](runtime-deltas.md)：服务名 `agentTeams` 只留一个所有者。新一代目前的装配位置是 base bundle（`packages/bundle/base/cordis.patch.yml` 里的 `agent-team` / `tool-agent-team` 两行），不是 profile bundle，所以「profile 声明了官方 bundle」这条前置判据看不到它；能兜住的是 `agentTeams` 服务探测，以及 `OFFICIAL_TEAMS_BUNDLES` 现在同时认 `@deepseek-ai/dsh-agent-team`（`tests/apply-inject.spec.ts` 两个 generation 各一条用例）。新一代的行为后果是：小队保留成员运行、账本与路由，而 squad 会话里 Lead 看到的 Team 工具面变成官方任务板。
+
+**将来若要跟**，要做的是三件事，而不是同步：把钉住重做到原生 `subagent` 面（preset / permission 需要一个官方接缝，否则本包只能放弃这两个维度）；把 squad 自己的 `squads_*` 工具面与官方 `team_task_*` 的关系写清楚（谁记账、谁派发）；重写 `tests/team-runtime.spec.ts` 里按 legacy 运行期写的门禁断言。
+
 ## 逐文件映射
 
 `src/team/`（对应 `packages/experimental/agent-team/src/`）：

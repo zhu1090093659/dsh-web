@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-11-01-host-sdk-pin-and-install-entry.md: c610f0ddbb16503013fba6b6d14e1bbbd4555b75
-2026-11-01-host-sdk-pin-and-install-entry.zh.md: 2d449b4a8fe1cfddbae905edd018aeece8bdc086
+2026-11-01-host-sdk-pin-and-install-entry.md: 38df520cea8d2a67dff4bb7b9edaf3ffd05afcc9
+2026-11-01-host-sdk-pin-and-install-entry.zh.md: 44a1bff335b1119b0daeb9d82c4ff657afafa248

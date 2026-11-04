@@ -605,7 +605,7 @@ function capabilitiesOf(value: unknown): ReadonlySet<string> {
  * @param value - the request's `answers` member, or undefined.
  * @returns the batch in protocol vocabulary, or undefined when it is not one.
  */
-function answersOf(value: unknown): readonly QuestionAnswerItem[] | undefined {
+function answersOf(value: unknown): QuestionAnswerItem[] | undefined {
   if (!Array.isArray(value)) return undefined
   const answers: QuestionAnswerItem[] = []
   for (const entry of value) {

@@ -1,5 +1,15 @@
 {
   "compilerOptions": {
+    // The host tree does not ship this client-only package, so the slot-map
+    // augmentation a pinned client-UI package declares for it cannot resolve from
+    // that copy's location, and a slot key narrows to `never`. The mapping points
+    // the specifier at this package's own registry copy - the module the plugin
+    // imports. Mechanism: .agents/notes/implemented/process/
+    // 2026-11-01-host-sdk-pin-and-install-entry.md.
+    "paths": {
+      "@deepseek-ai/dsh-client-ui-slots": ["./node_modules/@deepseek-ai/dsh-client-ui-slots"],
+      "@deepseek-ai/dsh-client-ui-slots/*": ["./node_modules/@deepseek-ai/dsh-client-ui-slots/*"]
+    },
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",

@@ -64,16 +64,24 @@ export interface QuestionItem {
   readonly multiSelect?: boolean
 }
 
-/** One item of the answer batch. */
+/**
+ * One item of the answer batch. `selected` is a mutable array because the host's
+ * own answer item declares it mutable, and a readonly array is not assignable to
+ * a mutable one - the host's `user-questions/request` handler is typed with its
+ * own answer type, so this mirror has to stay assignable to it.
+ */
 export interface QuestionAnswerItem {
   readonly id: string
-  readonly selected: readonly string[]
+  readonly selected: string[]
   readonly custom?: string
 }
 
-/** The whole answer batch the host's ask is settled with. */
+/**
+ * The whole answer batch the host's ask is settled with. `answers` is mutable for
+ * the same reason {@link QuestionAnswerItem} keeps `selected` mutable.
+ */
 export interface QuestionAnswer {
-  readonly answers: readonly QuestionAnswerItem[]
+  readonly answers: QuestionAnswerItem[]
 }
 
 /**

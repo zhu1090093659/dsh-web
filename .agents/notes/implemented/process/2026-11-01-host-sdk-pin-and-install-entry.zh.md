@@ -24,18 +24,20 @@ Status: implemented
 
 **只钉根作用域目录。** 否决：开发安装会生成 `packages/<pkg>/node_modules/@deepseek-ai` 条目，对包自身的导入优先于根 pin，只链根目录会让每个声明 SDK devDependency 的包解析到别处。
 
+**把宿主副本增补了宿主未提供模块的那些包留在 registry 副本上。** 否决：这些副本增补的是 `@deepseek-ai/cordis`，从 registry 副本出发该增补解析到 pnpm store 里的 registry cordis，而插件消费的是宿主 cordis，两份模块身份就此分裂，`Context` 上的增补全部消失——实测 74 个条目报 `Property 'slots' does not exist on type 'Context'`，`locale` 与 `uiWorkspace` 同样消失。这正是 pin 本来要防的 cohort 分裂，因此该方向不成立。判据是增补而不是声明：真正出问题的是宿主副本增补了一个宿主未提供的模块，而按「宿主副本声明了对宿主未提供包的运行时依赖」去数一个也选不出来。工作区清单声明 48 个 `@deepseek-ai` 包，宿主提供其中 44 个，这 44 个里有 11 个针对宿主未提供的 `dsh-client-ui-slots` 携带 `declare module '@deepseek-ai/dsh-client-ui-slots'` 增补；这 11 个都只把它列为构建期 devDependency，而 devDependency 不参与宿主副本运行时的解析。
+
 **保留 pnpm 的运行前依赖自检，之后再修复 pin。** 否决：自检在每次 `pnpm run` 之前跑，对着 root 所有的链接只能以 EACCES 收场；安装入口之所以存在，就是为了在 pnpm 写入时先摘下 pin。
 
 **通过改清单来推进三个纯客户端包。** 否决：cohort 字面量由许多仍然正确的清单承载，override 无需碰一个 rc.5 本就满足的声明即可统一解析。
 
-**在本次改动里把整个工作区声明迁到 rc.5。** 否决：cohort 声明属于 cohort 链条与卫星仓，而本次改动只关乎本检出解析到什么。下面的 typecheck 限制经此迁移并未改变，因此它也不是挡住解析的理由。
+**在本次改动里把整个工作区声明迁到 rc.5。** 否决：cohort 声明属于 cohort 链条与卫星仓，而本次改动只关乎本检出解析到什么。
 
 ## Consequences
 
 - pin 只接受完整的宿主 SDK 树。Windows npm-global 探测读取 `%APPDATA%/npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai`；当前全局树缺少有效的 `dsh-session` 与 `dsh-agent` 清单标记，因此被拒绝而不是强行建立 pin。纯 registry 安装仍是 CI 与不完整安装的受支持回退。
-- 完整的宿主树过不了本机门禁。pin 生效时 `pnpm typecheck` 与 `pnpm build` 都在 `packages/dsh-message-edit` 失败：首条是 `src/client/MessageEditTail.tsx(14,49): error TS2344: Type '"conversation.chat.turnTail"' does not satisfy the constraint 'never'`，该槽名提供的五个 slot props 缺失（TS2339），它们喂入的两个参数为隐式 `any`（TS7006）；`packages/dsh-remote-bridge` 的 `tsgo --noEmit` 另报一条 TS2345，位于 `src/index.ts(2064,36)`。registry cohort 仍是门禁的验证基准，因此同一份提交在 CI 的 `Static checks` 作业里跑同一条 `pnpm typecheck` 通过，并通过发布 run 41862887131 的 Typecheck 与 Build 步骤。`host-sdk-link --check` 报不出这类分歧：它核验根作用域是否链到尺寸相符的宿主树、每个被 pin 的工作区条目是否解析到宿主副本，不核验宿主副本自身的导入能否解析，也不核验宿主包集合与 lockfile cohort 是否一致。
-- 两处失败都是 pin 生效后解析的产物，不是本检出源码的缺陷。宿主树不携带纯客户端的 `@deepseek-ai/dsh-client-ui-slots`，而 `@deepseek-ai/dsh-client-ui-chat` 由宿主副本提供，于是 chat 包的 `declare module '@deepseek-ai/dsh-client-ui-slots'` 增补落在被增补模块解析不到的位置；插件导入的 registry 副本因此保留未增补的 `SlotMap`，`PropsRuntime<K extends keyof SlotMap & string>` 把键约束收窄成 `never`。宿主树确实携带 `@deepseek-ai/dsh-user-questions`，而 lockfile 里没有任何条目安装它，所以它那条对 `@deepseek-ai/cordis` 的 `user-questions/request` 增补只在 pin 生效时进入编译；此时处理器按 SDK 的可变 `answers: AskUserQuestionAnswerItem[]` 校验，而 `packages/dsh-remote-bridge/src/core/questions.ts` 把同一形状镜像为 `readonly answers: readonly QuestionAnswerItem[]`。
-- 这处分歧如何消除尚未决定。以下两条只是候选，都未实现：让 pin 经一层 shim 暴露宿主树并补齐宿主缺失的 registry 包，或把宿主树无法满足其自身依赖的包留在 registry 副本上、不再 pin 到宿主副本。
+- 完整的宿主树通过本机门禁。pin 生效时 `pnpm typecheck` exit 0，24 个包全部报 `typecheck: Done`、没有一个 `Failed`，`pnpm build` 也 exit 0——与 registry cohort 的结果一致，门禁区分不出两套 cohort。`host-sdk-link --check` 不核验宿主副本自身的导入能否解析，也不核验宿主包集合与 lockfile cohort 是否一致：它核验的是根作用域链到尺寸相符的宿主树、每个被 pin 的工作区条目解析到宿主副本，因此两套 cohort 之间的分歧在 typecheck 处暴露，而不是在 pin 检查处。
+- `conversation.chat.turnTail` 这个槽位键经 `packages/dsh-message-edit` 与 `packages/dsh-web-settings` 的 `tsconfig.json` 里的 `paths` 映射解析：该映射把 `@deepseek-ai/dsh-client-ui-slots` 及其 `/*` 子路径指向该包自己的 `./node_modules/@deepseek-ai/dsh-client-ui-slots`，也就是插件实际导入的那份 registry 副本。宿主树不提供这个纯客户端包，而声明 `declare module '@deepseek-ai/dsh-client-ui-slots'` 增补的被 pin 客户端包——11 个，含 `dsh-client-ui-chat` 与 `dsh-client-ui-settings`——来自宿主副本，那些增补只能在宿主副本自身位置解析，而那里没有该模块；插件导入的 registry 副本因此保留未增补的 `SlotMap`，`PropsRuntime<K extends keyof SlotMap & string>` 把键约束收窄成 `never`。把说明符映射过去，增补就落回那一份。映射只声明在真正消费这类被增补槽位键的两个包里：铺开到整个工作区，等宿主提供 `dsh-client-ui-slots` 时它会盖过 pin——pin 把每个包的条目重指到宿主副本，而映射会覆盖这一点、把所有包钉死在 registry 副本上——那正是同一场 cohort 分裂，只是方向反过来。
+- `user-questions/request` 处理器按可变的答案镜像通过类型校验：`packages/dsh-remote-bridge/src/core/questions.ts` 里 `QuestionAnswerItem.selected` 是 `string[]`、`QuestionAnswer.answers` 是 `QuestionAnswerItem[]`，属性级 `readonly` 保留，与宿主的 `AskUserQuestionAnswerItem.selected: string[]` 和 `AskUserQuestionAnswer.answers: AskUserQuestionAnswerItem[]` 对齐；`src/core/connection.ts` 的 `answersOf()` 返回它本来就构造的可变数组。该文件按字段镜像 `dsh-user-questions`，而它必须保持可赋值的那个处理器类型只在宿主副本进入编译程序时才出现：宿主树携带 `@deepseek-ai/dsh-user-questions`，lockfile 里没有任何条目安装它，它那条对 `@deepseek-ai/cordis` 的 `user-questions/request` 增补只在 pin 生效时进入编译，readonly 镜像对它是不可赋值的。
 - 这条 pin 是本地开发契约：它不改任何清单、lockfile 或已提交产物，从不运行它的检出仍从 registry cohort 构建。
 - `pnpm run deps:install` 是唯一能让有效运行宿主继续解析宿主 cohort 的安装路径。Windows 上入口经 shell 调用 `pnpm.cmd`；alpha.3 的重新解析已通过这条路径完成。
 - pnpm 不再在本工作区跑运行前依赖自检，因此改清单后陈旧的 `node_modules` 会由安装与门禁命令报出，而不是被就地修复。
@@ -44,5 +46,6 @@ Status: implemented
 
 - Windows 候选路径测试通过，真实全局树则因不完整被正确拒绝。没有强行建立 pin，也没有重启运行中的服务。
 - `node scripts/install-deps.mjs --no-frozen-lockfile` 在 Windows 完成并安装 alpha.3 cohort；随后全量 `pnpm typecheck` 与完整 `pnpm test` 在 registry cohort 上通过。
-- 本机的宿主树完整时，`node scripts/host-sdk-link.mjs --check` 打印 `host sdk: /usr/local/lib/nodejs/current/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai (0.2.2-rc.1, 330 packages)` 与 `check: ok (root exposes 330 packages, 226/226 workspace entries pinned, 39 host-absent left to pnpm)`；该树里没有任何 `slots` 包，`grep -c dsh-user-questions pnpm-lock.yaml` 为 `0`。同一状态下在 `packages/dsh-message-edit` 直接跑 `tsgo --noEmit` 报 8 条错误（1 条 TS2344、5 条 TS2339、2 条 TS7006），同包的 `tsc -p tsconfig.build.json --noEmit` 报同样 8 条，`packages/dsh-remote-bridge` 的 `tsgo --noEmit` 报上面那 1 条 TS2345。
-- `pnpm test:scripts` 有 552 个通过项与一个既有 Windows 文件权限失败：deploy-market 探针期望 `600`，Windows 返回 `666`。`pnpm libs:check`、`pnpm runtime-deps:check`、`pnpm aggregate:check`、`pnpm docs:check` 与 `pnpm i18n:check` 在同一棵树上通过。
+- 本机的宿主树完整时，`node scripts/host-sdk-link.mjs --check` 打印 `host sdk: /usr/local/lib/nodejs/current/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai (0.2.2-rc.1, 330 packages)` 与 `check: ok (root exposes 330 packages, 226/226 workspace entries pinned, 39 host-absent left to pnpm)`；该树里没有任何 `slots` 包，`grep -c dsh-user-questions pnpm-lock.yaml` 为 `0`。
+- `pnpm test:scripts` 有 552 个通过项与一个既有 Windows 文件权限失败：deploy-market 探针期望 `600`，Windows 返回 `666`。
+- 本机在 pin 生效时的实测：`pnpm typecheck` exit 0，24 个包报 `typecheck: Done`、0 个 `Failed`；`pnpm build` exit 0；`pnpm sync-shared:check`、`pnpm aggregate:check`、`pnpm runtime-deps:check`、`pnpm libs:check`、`pnpm emoji:check`、`pnpm docs:check`、`pnpm i18n:check`、`pnpm test:standards` 与 `pnpm test:scripts`（fail 0）全绿。

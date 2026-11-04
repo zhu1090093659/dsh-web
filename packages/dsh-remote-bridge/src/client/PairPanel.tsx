@@ -17,7 +17,7 @@ import {
   IconRefreshOutlineRegular, IconWarningOutlineRegular, Modal,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import { isLanOrigin, type PairOriginSource } from './pair-token.ts'
+import { isLanOrigin, type PairOriginSource } from '../core/pair-address.ts'
 import {
   EXPIRED_ATTR, PART_COPY, PART_NOTICE, PART_PANEL, PART_QR, PART_REFRESH, PLUGIN_ATTR, QR_VALUE_ATTR,
 } from './semantic.ts'
@@ -44,9 +44,9 @@ export type PairPanelState =
    * client parses into both halves of its configuration, so one scan sets the
    * address AND the token. With no origin the QR carries the bare token and the
    * panel says the address has to be set on the phone by hand. `originSource`
-   * decides which of the two located lines renders: a public origin is stated as
-   * a kind and never printed, while a LAN literal is named because it answers
-   * only inside the network this page is already on.
+   * and the literal itself decide which of the two located lines renders: a
+   * public origin is stated as a kind and never printed, while a LAN literal is
+   * named because it answers only inside the network this page is already on.
    */
   | {
     kind: 'ready'

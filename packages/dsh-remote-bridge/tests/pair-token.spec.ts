@@ -200,8 +200,7 @@ describe('the token response carries the address the route now reads', () => {
     makePairTokenHandler({
       pairing: new PairingService(),
       log: () => undefined,
-      realtime: () => undefined,
-      lan: () => ({ address: '192.168.1.5', port: 3080 }),
+      pairOrigin: () => ({ origin: 'http://192.168.1.5:3080', source: 'lan' }),
     })(loopbackRequest(), response.asServerResponse())
     // When the loopback request is answered
     // Then the link a phone dials names the same host the same answer reported,
@@ -211,7 +210,7 @@ describe('the token response carries the address the route now reads', () => {
     expect(body.origin).toBe('http://192.168.1.5:3080')
     expect(body.pairingUrl).toBe('ws://192.168.1.5:3080/ios/v1?token=' + body.token)
     expect(body.url).toBe('ws://127.0.0.1:3000/ios/v1?token=' + body.token)
-    expect(['realtime', 'env', 'lan']).toContain(body.originSource)
+    expect(body.originSource).toBe('lan')
   })
 })
 
@@ -248,6 +247,24 @@ describe('the line the route writes to the host log', () => {
     })(loopbackRequest(), response.asServerResponse())
     // When the handler answers
     // Then the log says which kind of address the code carries, and names no address
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toContain('(phone: lan)')
+    expect(lines[0]).not.toContain('192.168.1.5')
+  })
+
+  it('operator pastes the log of a host whose configured base is a private address', () => {
+    // Given a configured base the host called public while the address itself is
+    // a private literal
+    const lines: string[] = []
+    const response = new RecordingResponse()
+    makePairTokenHandler({
+      pairing: new PairingService(),
+      log: (message) => { lines.push(message) },
+      pairOrigin: () => ({ origin: 'http://192.168.1.5:3080', source: 'env' }),
+    })(loopbackRequest(), response.asServerResponse())
+    // When the handler answers
+    // Then the log names the same kind the panel states for that configuration,
+    // and still no address
     expect(lines).toHaveLength(1)
     expect(lines[0]).toContain('(phone: lan)')
     expect(lines[0]).not.toContain('192.168.1.5')

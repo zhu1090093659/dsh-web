@@ -20,51 +20,11 @@
  * @module dsh-remote-bridge/client/pair-token
  */
 
+import type { PairOriginSource } from '../core/pair-address.ts'
 import { PAIR_TOKEN_PATH } from '../core/protocol.ts'
 
 /** Document-relative form of the Host route, for a page served under any base. */
 export const PAIR_TOKEN_URL = PAIR_TOKEN_PATH.replace(/^\/+/, '')
-
-/**
- * Where the host's own answer says the address came from: this bridge's live
- * public face, the configured public base, or the LAN literal. Anything else —
- * including a host that predates the field — reads as unknown, and the panel
- * then treats the address as public.
- */
-export type PairOriginSource = 'realtime' | 'env' | 'lan'
-
-/**
- * Hosts a phone can only reach from the same network: the private IPv4 ranges,
- * the loopback literals, and the IPv6 loopback, unique-local and link-local
- * prefixes. A configured base can name one of these — the package README calls
- * `DSH_REMOTE_PUBLIC_BASE_URL` a public or LAN origin — and a line that called
- * such an address public would promise a phone something it cannot reach from
- * outside.
- */
-const PRIVATE_HOST_RE = /^(?:localhost|\[?::1\]?|10\.|127\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.|169\.254\.|\[?(?:f[cd][0-9a-f]{2}|fe80):)/i
-
-/** The hostname a URL carries, or null when the value is not a URL at all. */
-function hostnameOf(origin: string): string | null {
-  try {
-    return new URL(origin).hostname
-  } catch {
-    return null
-  }
-}
-
-/**
- * Whether a located origin answers only inside this network. The host's own
- * answer decides first; the literal decides when the host did not say LAN.
- * @param origin - the located origin, or null when there is none.
- * @param source - where the host said that origin came from.
- * @returns true when a phone must be on the same network to dial it.
- */
-export function isLanOrigin(origin: string | null, source: PairOriginSource | null): boolean {
-  if (source === 'lan') return true
-  if (origin === null) return false
-  const host = hostnameOf(origin)
-  return host !== null && PRIVATE_HOST_RE.test(host)
-}
 
 /** The outcome of one token read. */
 export type PairTokenOutcome =

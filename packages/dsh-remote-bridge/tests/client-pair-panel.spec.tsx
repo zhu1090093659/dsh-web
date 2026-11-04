@@ -67,7 +67,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => {
 })
 
 import { COMMUNITY_INVITE_URL, PairPanel, type PairCopyState, type PairPanelState } from '../src/client/PairPanel.tsx'
-import type { PairOriginSource } from '../src/client/pair-token.ts'
+import type { PairOriginSource } from '../src/core/pair-address.ts'
 import { en, zh, type RemoteBridgeKey } from '../src/client/locales.ts'
 
 /** Translate stub over the zh dictionary, with {param} interpolation. */

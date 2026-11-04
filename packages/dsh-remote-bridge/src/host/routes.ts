@@ -12,6 +12,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { loopbackDenialOf } from '../core/loopback.ts'
+import { isLanOrigin } from '../core/pair-address.ts'
 import { PAIR_TOKEN_PATH, WS_PATH } from '../core/protocol.ts'
 import type { PairingService } from '../core/pairing.ts'
 import { discoverPairOrigin, type PairOriginFacts } from './pair-origin.ts'
@@ -119,13 +120,15 @@ export function makePairTokenHandler(deps: PairTokenRouteDeps): WebRoute['handle
       ? undefined
       : pairingDialUrlOf(discovered.origin, ticket.value)
     // The log names the machine-local link and, when there is one, only the KIND
-    // of phone-facing address. The public hostname is a durable fact that a log
-    // line is likely to be pasted with, and the phone reads the address off the
-    // QR anyway; the LAN literal is left out for the same reason, because the
-    // panel already states it where the operator can see the code.
+    // of phone-facing address — the same rule the panel states it with, so the two
+    // surfaces can never disagree about one configuration. The public hostname is
+    // a durable fact that a log line is likely to be pasted with, and the phone
+    // reads the address off the QR anyway; the LAN literal is left out for the
+    // same reason, because the panel already states it where the operator can see
+    // the code.
     const phone = discovered === undefined
       ? ''
-      : ` (phone: ${discovered.source === 'lan' ? 'lan' : 'public'})`
+      : ` (phone: ${isLanOrigin(discovered.origin, discovered.source) ? 'lan' : 'public'})`
     deps.log(`pair a device with ${url}${phone}`)
     writeJson(res, 200, {
       token: ticket.value,

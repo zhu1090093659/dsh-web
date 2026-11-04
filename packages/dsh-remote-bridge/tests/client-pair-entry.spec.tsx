@@ -84,7 +84,7 @@ function makeReader(tokens: readonly string[]) {
       served += 1
       // No origin in this stub: the entry's own flow is what is under test here,
       // and the origin-bearing code has its own cases in the panel and reader specs.
-      return { kind: 'ok', token, expiresAt: Date.now() + 30_000, origin: null, pairingUrl: null }
+      return { kind: 'ok', token, expiresAt: Date.now() + 30_000, origin: null, originSource: null, pairingUrl: null }
     },
     served: () => served,
   }
@@ -174,6 +174,27 @@ describe('protocol v1 pairing seat', () => {
     // says so where the copy label was
     expect(clipboard.written).toEqual(['token-one'])
     expect(screen.getByRole('button', { name: zh['action.copied'] })).toBeInstanceOf(HTMLElement)
+  })
+
+  it('operator copies the one-scan code when the host located its own address', async () => {
+    // Given a host that answered with the link a phone adopts in one scan
+    const payload = 'wss://abc.dsh-market.com/ios/v1?token=token-one'
+    const read = async (): Promise<PairTokenOutcome> => ({
+      kind: 'ok',
+      token: 'token-one',
+      expiresAt: Date.now() + 30_000,
+      origin: 'wss://abc.dsh-market.com',
+      originSource: 'realtime',
+      pairingUrl: payload,
+    })
+    const clipboard = makeCopier()
+    await open(read, clipboard.copy)
+    // When the operator presses copy
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: zh['action.copy'] })))
+    // Then the clipboard got the very document the symbol carries, address included,
+    // so a paste configures the phone's origin as well as its code
+    expect(clipboard.written).toEqual([payload])
+    expect(document.querySelector('[data-dsh-part="qr"]')?.getAttribute('data-dsh-qr-value')).toBe(payload)
   })
 
   it('operator closes the panel and the card leaves before it unmounts', async () => {

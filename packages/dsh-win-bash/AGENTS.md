@@ -6,8 +6,9 @@ packages/AGENTS.md 的全局/包级规则。
 ## 本包要点
 
 - **host-only 包**：只有 `src/index.ts`（host 半区）与 `src/shell.ts`、`src/tool.ts`、
-  `src/background.ts`、`src/protocol.ts`、`src/runtime.ts`、`src/config.ts`、`src/gate.ts`，
-  以及 `src/dsh-home.ts`（sync-shared 生成的同步副本，禁止手改）。
+  `src/background.ts`、`src/protocol.ts`、`src/runtime.ts`、`src/integrity.ts`、
+  `src/config.ts`、`src/gate.ts`，以及 `src/dsh-home.ts`（sync-shared 生成的同步副本，
+  禁止手改）。
   没有 `src/client/`，因此 `shared/tsdown.client.ts` 自动跳过浏览器 bundle；`dsh.client` 不声明。
 - **可用性门控跟随梁神预设声明**（`src/gate.ts`）：挂载时向 agent-preset 注册表
   查询是否声明了 id `liangshen` 的预设，未声明即不注册工具（绝不注册一个总会报错
@@ -34,13 +35,33 @@ packages/AGENTS.md 的全局/包级规则。
   发布到 `$DSH_HOME/win-bash/runtime/<载荷键>`（键 = 清单里 path 与摘要的摘要），并从
   该副本 spawn。常驻 bash 一旦跑在包目录里，pnpm 覆盖安装时的 rename 就会失败
   （`ERR_PNPM_EPERM`），更新与卸载都得先停宿主——这正是本包不能退回包内执行的原因。
-  副本按内容寻址：只改 JavaScript 的发布复用已有副本，校验不过的副本先重建再运行。
-  缓存写不出来时降级为已校验的包内树并 warn，**不得**因此拒绝挂载（那是可用性倒退，
-  不是安全边界）；载荷校验失败仍然是硬拒绝。`resolveRuntime` 仍是「只解析包内树」的
-  入口，供载荷审计与测试使用。
+  副本按内容寻址：只改 JavaScript 的发布复用已有副本，校验不过的副本先重建再运行——
+  但「复用」还必须先通过强制性完整性标签核验，见下一条，哈希命中本身不再足够。
+  缓存写不出来或没有安全候选根时降级为已校验的包内树并 warn，**不得**因此拒绝挂载（那是
+  可用性倒退，不是安全边界）；载荷校验失败仍然是硬拒绝。`resolveRuntime` 仍是「只解析
+  包内树」的入口，供载荷审计与测试使用。
 - **载荷完整性是挂载前置条件**：工具注册之前先跑 `prepareRuntime`（校验整份
   `checksums.sha256`，且校验的是即将运行的那棵树）；改载荷必须重算清单，否则挂载会被拒绝。
   `PROVENANCE.md` 是载荷的唯一事实源（上游 URL、摘要、裁剪规则、许可证对照）。
+- **安全元数据与字节同样必须核验**：Windows 强制性完整性标签在 SACL 里，Node 的 fs 读不到，
+  `src/integrity.ts` 用 `%SystemRoot%\System32\icacls.exe <path> /save` 输出的语言无关
+  SDDL（UTF-16LE）判定 `(ML;...;LW)` / `S-1-16-<低于 8192>`。Medium runner 从带 Low 标签的
+  映像起进程会得到 Low 进程，写不了普通 Medium 工作区；字节与哈希完全相同也照样出错，所以
+  `cacheReady` 的哈希命中**不是**可复用判据。`prepareRuntime` 在复用前、发布前、发布后
+  三处核验整条现存祖先链与 `bash.exe`：Low/Untrusted 的树不复用、不发布、不执行；无法读取
+  标签（`unknown`）也不当作已核验。这是每次挂载都跑的通用机制，不是对某个 payload-key
+  目录的一次性修补，因此重启/更新不会靠哈希匹配继续复用旧 Low 缓存。
+- **Low 树的替代位置必须仍在包外**：候选根按 `cacheRoot()`（DSH home，保留 #1996 与探针
+  隔离）→ `isolatedCacheRoot()`（每用户 AppData/缓存目录，末段由 `DSH_HOME` 摘要派生，
+  隔离宿主仍各得一份）顺序尝试。旧 Low 缓存以「弃用」完成迁移，不改写用户目录的标签、不
+  要求管理员、不改 workspace 标签或全局 sandbox-policy。`DSH_WIN_BASH_RUNTIME_HOME` 可覆盖
+  隔离根父目录。所有根都写不出来或不可核验时，沿用既有规则降级到已校验的包内树并 warn
+  （明确写出 `ERR_PNPM_EPERM` 代价）；只有连包内 `bash.exe` 也确证 Low 才以
+  `unsafe-integrity` 硬拒绝挂载并指明 pwsh 退路，绝不静默启动一个写不了工作区的 shell。
+  挂载级拒绝不会调用 `registerWinBash`，因此 `installPwshReplacement` 不安装、pwsh 保留，
+  `servingVerdict` 无需为它增加第三条会话级拒绝理由。
+- **受限会话拒绝不放宽**：`src/tool.ts` 的 `assertUnconfined` 与 `tests/sandbox-mode.spec.ts`
+  契约保持原样；完整性核验只在挂载期选树，不参与会话模式判定。
 - **帧协议改动必须带协议单测**：`src/protocol.ts` 的 heredoc 框架决定了「命令语法错误不会
   卡死 shell」这一核心保证；`tests/protocol.spec.ts` 的 fixture 必须按 bash 实际写出的字节构造。
 - **恢复策略对外可见**：shell 退出、超时、中止都会销毁该 shell，且必须在下一次调用的结果或错误里

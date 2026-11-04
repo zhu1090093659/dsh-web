@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/npm/v/@linxin666/dsh-update?style=flat-square" alt="Version">
   &nbsp;
-  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--alpha.3-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
+  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--rc.1-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
@@ -38,7 +38,7 @@
 
 ## 环境要求
 
-- DSH `>= 0.2.2-alpha.3`。
+- DSH `>= 0.2.2-rc.1`。
 - profile 需通过 npm 持有家族包：聚合包 `@linxin666/dsh-web-all`，或直接安装的
   家族包。家族包以本地 `link:` 方式安装的 profile 会报告为**本地开发模式**并拒绝
   更新（请改为同步本地仓库）。

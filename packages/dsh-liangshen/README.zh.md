@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/npm/v/@linxin666/dsh-liangshen?style=flat-square" alt="Version">
   &nbsp;
-  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.0--rc.2-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
+  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--rc.1-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
@@ -145,7 +145,7 @@ dsh plugin --profile web remove @linxin666/dsh-liangshen
 - preset 与 shell 访问具有相同信任等级，安装前可自行审阅 `presets/liangshen/`；
 - 插件不发起网络请求，也不增加遥测；
 - 不要在已经产生内容的会话中途切换 preset；
-- 需要 DSH 0.2.2-alpha.3+（preset 机制、`system-prompt/assemble` 瀑布、persona 的 `prefix` schema，以及 PTC 呈现 API）。
+- 需要 DSH 0.2.2-rc.1+（preset 机制、`system-prompt/assemble` 瀑布、persona 的 `prefix` schema，以及 PTC 呈现 API）。
 
 ## 许可
 

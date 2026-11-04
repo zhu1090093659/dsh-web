@@ -7,21 +7,21 @@
 | 事实 | 值 |
 |---|---|
 | 上游仓库 | https://github.com/deepseek-ai/deepseek-harness |
-| tag | `dsh-v0.2.2-alpha.3` |
-| commit | `05b1cae8db6e674c5685101494d4eec24652424a` |
-| agent-team **src/** 树哈希 | `08322f8f03faad9b0ee04c7e72d1b119b0158977`（`git rev-parse dsh-v0.2.2-alpha.3:packages/experimental/agent-team/src`） |
-| tool-agent-team **src/** 树哈希 | `e8af5edce18085dce4ad2e6ec3946e0da3422190`（`git rev-parse dsh-v0.2.2-alpha.3:packages/experimental/tool-agent-team/src`） |
+| tag | `dsh-v0.2.2-rc.1` |
+| commit | `66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db` |
+| agent-team **src/** 树哈希 | `08322f8f03faad9b0ee04c7e72d1b119b0158977`（`git rev-parse dsh-v0.2.2-rc.1:packages/experimental/agent-team/src`） |
+| tool-agent-team **src/** 树哈希 | `e8af5edce18085dce4ad2e6ec3946e0da3422190`（`git rev-parse dsh-v0.2.2-rc.1:packages/experimental/tool-agent-team/src`） |
 | 许可证 | MIT（上游仓库根 `LICENSE`，Copyright (c) 2026 DeepSeek） |
 
-fork 对照固定在这个发布 tag，不使用持续移动的上游工作树；换基线必须同时更新本文件与本节四个哈希。
+fork 对照固定在这个发布 tag，不使用持续移动的上游工作树；换基线必须同时更新本文件与本节四个哈希。`dsh-v0.2.2-rc.1` 与 `dsh-v0.2.2-alpha.3` 的两棵 `src/` 树逐字节一致。
 
-## 上游 2026-11-03 复核：spawn 支点已被移除，基线不动
+## 上游 2026-11-04 复核：spawn 支点已被移除，基线停在 0.2.2 发布线
 
-复核上游 master 后确认：**我们 fork 的那一代运行期在上游已经不存在了**。这不是「落后几个提交」，因此基线刻意保持在发布 tag 上。
+复核上游 master 后确认：**我们 fork 的那一代运行期在上游 master 已经不存在了**。这不是「落后几个提交」，因此基线刻意保持在 0.2.2 发布 tag 上。
 
 | 事实 | 值 |
 |---|---|
-| 上游复核点 | `8bd073392ee`（`dsh-v0.2.2-alpha.3` 之后 555 个提交，尚未发版） |
+| 上游复核点 | `fcc0ad4621`（合入 `release-dsh-0.2.2-rc.1` 后的 master，新运行期尚未发布 npm 包） |
 | 包位置 | `packages/experimental/{agent-team,tool-agent-team}` → `packages/team/{agent-team,tool-agent-team}`（不再是实验内容） |
 | 包名 | `@deepseek-ai/dsh-experimental-*` → `@deepseek-ai/dsh-agent-team` / `@deepseek-ai/dsh-tool-agent-team`；两个新名字在 npm 上均为 404（未发布） |
 | 上游删除的源文件 | `activity.ts`、`lifecycle.ts`、`persisted.ts`、`roster.ts`、`session-message.ts` |

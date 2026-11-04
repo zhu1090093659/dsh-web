@@ -16,7 +16,7 @@ Status: implemented
 
 `build`、`test`、`typecheck` 在递归命令之前先跑 `host-sdk-link --check`，于是 registry 副本的 SDK 会在门禁处大声失败，而不是静默分裂 cohort。`pnpm-workspace.yaml` 关掉 `verifyDepsBeforeRun`：pnpm 11 的运行前依赖自检在它认为必要时以 headless 方式改写 `node_modules`，而对着 root 所有的宿主链接，这个自检只能以 EACCES 收场——连 `pnpm run deps:install` 本身都起不来。
 
-宿主不安装的三个纯客户端包（`dsh-client-store`、`dsh-client-ui-primitives`、`dsh-client-ui-slots`）由工作区 `overrides` 固定到 `0.2.2-alpha.3`，使解析结果保持在同一 cohort。清单声明 `^0.2.2-alpha.3`；override 只统一解析结果，配套的 `packageExtensions` 键随之移动。
+宿主不安装的三个纯客户端包（`dsh-client-store`、`dsh-client-ui-primitives`、`dsh-client-ui-slots`）由工作区 `overrides` 固定到 `0.2.2-rc.1`，使解析结果保持在同一 cohort。清单声明 `^0.2.2-rc.1`；override 只统一解析结果，配套的 `packageExtensions` 键随之移动。
 
 ## Alternatives considered
 

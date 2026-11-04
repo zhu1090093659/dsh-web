@@ -10,7 +10,7 @@ import {
 describe('renderer DOM contract', () => {
   it('operator gets a failing pin when the renderer renames a hook', () => {
     // Given the official markdown renderer (ui-primitives CodeBlock at
-    // 0.2.2-alpha.3) emits these exact names
+    // 0.2.2-rc.1) emits these exact names
     // When this package's constants are read
     // Then they still match: a renderer rename must fail here, not silently
     // disable diagrams in production.

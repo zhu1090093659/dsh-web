@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/npm/v/@linxin666/dsh-i18n?style=flat-square" alt="Version">
   &nbsp;
-  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--alpha.3-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
+  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--rc.1-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
@@ -47,7 +47,7 @@ dsh Web GUI 与桌面客户端的家族字典包。DSH 自带俄语语言定义�
 
 ## 安装
 
-需要 DSH 0.2.2-alpha.3 或更高版本：插件针对 0.2.2-alpha.3 DSH cohort 开发，其 `@deepseek-ai/*` 运行时服务由宿主自身提供。
+需要 DSH 0.2.2-rc.1 或更高版本：插件针对 0.2.2-rc.1 DSH cohort 开发，其 `@deepseek-ai/*` 运行时服务由宿主自身提供。
 
 在你的 profile（如 `~/.dsh/profiles/web`）中执行：
 

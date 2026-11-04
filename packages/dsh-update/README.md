@@ -5,7 +5,7 @@ English | [中文](README.zh.md)
 <p align="center">
   <img src="https://img.shields.io/npm/v/@linxin666/dsh-update?style=flat-square" alt="Version">
   &nbsp;
-  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--alpha.3-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
+  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--rc.1-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
@@ -45,7 +45,7 @@ The feature is deliberately structured as an **independent plugin row** (row id 
 
 ## Requirements
 
-- DSH `>= 0.2.2-alpha.3`.
+- DSH `>= 0.2.2-rc.1`.
 - The profile must own the family packages through npm: the aggregate
   `@linxin666/dsh-web-all`, or the family packages installed directly. A profile
   whose family is installed with local `link:` specs is reported as **local

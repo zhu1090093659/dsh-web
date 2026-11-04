@@ -15,7 +15,7 @@ packages/AGENTS.md 的全局/包级规则。
   一致、ru 覆盖每个 ns 的 zh 键集、占位符集合一致。来源包清单与本包映射同步
   维护：新增家族插件包 = 新增一个 ru 文件 + index.ts 一行 + 脚本清单
   （scripts/i18n-audit.mjs 的 PACKAGES）一项。
-- 注册语义（对照 @deepseek-ai/dsh-client-locale 0.2.2-alpha.3 验证）：
+- 注册语义（对照 @deepseek-ai/dsh-client-locale 0.2.2-rc.1 验证）：
   `register(ns, 'ru', dict)` 对重复 (ns, locale) 抛错（单一属主），按 ns 逐个
   catch，抛错的 ns 跳过、其余照常。所有 disposer 幂等，组合释放只释放实际
   注册成功的项。

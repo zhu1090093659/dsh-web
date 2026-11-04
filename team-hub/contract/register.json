@@ -12,7 +12,7 @@
     },
     "body": {
       "hostname": "macbook-pro-14",
-      "client_version": "0.2.2-alpha.3",
+      "client_version": "0.2.2-rc.1",
       "agents": [
         {
           "name": "qa-bot",

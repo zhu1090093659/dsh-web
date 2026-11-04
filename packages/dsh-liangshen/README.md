@@ -5,7 +5,7 @@ English | [中文](README.zh.md)
 <p align="center">
   <img src="https://img.shields.io/npm/v/@linxin666/dsh-liangshen?style=flat-square" alt="Version">
   &nbsp;
-  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.0--rc.2-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
+  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--rc.1-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
@@ -145,7 +145,7 @@ All fields are editable in the web settings surface (plugin config) or through t
 - The preset carries the same trust level as shell access — review `presets/liangshen/` before installing;
 - The plugin makes no network requests and adds no telemetry;
 - Do not switch presets mid-conversation;
-- Requires DSH 0.2.2-alpha.3+ (preset mechanism, the `system-prompt/assemble` waterfall, the persona `prefix` schema, and the PTC presentation API).
+- Requires DSH 0.2.2-rc.1+ (preset mechanism, the `system-prompt/assemble` waterfall, the persona `prefix` schema, and the PTC presentation API).
 
 ## License
 

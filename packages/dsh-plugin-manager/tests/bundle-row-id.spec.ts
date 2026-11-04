@@ -13,7 +13,7 @@
  *    would mount the host half only and leave the update-check section dead;
  * 2. the row's `id` is claimed by nobody else: not an official DSH bundle row
  *    (the roster below, snapshotted from the installed
- *    `@deepseek-ai/dsh-web-app` at the 0.2.2-alpha.3 cohort) and not another
+ *    `@deepseek-ai/dsh-web-app` at the 0.2.2-rc.1 cohort) and not another
  *    family package. Reusing the official `ui-plugin-manager` id dropped the
  *    official row, and because only the official client registers
  *    `sidebar.panellist`, the sidebar "Plugins" entry and the whole plugin
@@ -65,7 +65,7 @@ function familyClaimedIds(): Map<string, string[]> {
 /**
  * Row ids the official DSH bundles already claim, snapshotted from the
  * installed `@deepseek-ai/dsh-base` and `@deepseek-ai/dsh-web-app` bundle
- * patches (cohort 0.2.2-alpha.3, both bundles: the official id space is not
+ * patches (cohort 0.2.2-rc.1, both bundles: the official id space is not
  * only `ui-*` — `dsh-base` claims a bare `plugin-manager`, which is why this
  * package's own id could not simply drop the prefix). A family row must stay
  * out of this set: the loader cannot mount two packages under one id and

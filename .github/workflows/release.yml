@@ -29,7 +29,7 @@ env:
   # is the only thing that installs the CLI now, so the pin lives here rather
   # than in a package.json dependency (a workspace devDependency cannot run in
   # this tree; see the install step).
-  DSH_CLI_VERSION: 0.2.2-alpha.3
+  DSH_CLI_VERSION: 0.2.2-rc.1
 
 permissions:
   contents: write

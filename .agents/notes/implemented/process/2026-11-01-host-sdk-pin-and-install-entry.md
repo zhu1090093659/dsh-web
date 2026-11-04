@@ -16,7 +16,7 @@ A second copy of the SDK beside the host's does not fail loudly. A second cordis
 
 `build`, `test` and `typecheck` run `host-sdk-link --check` ahead of the recursive command, so a registry copy of the SDK fails loudly at the gate instead of splitting the cohort silently. `pnpm-workspace.yaml` turns `verifyDepsBeforeRun` off: pnpm 11's pre-run dependency self-check rewrites `node_modules` headlessly when it decides it must, and against the root-owned host link that check can only end in EACCES — including for `pnpm run deps:install` itself.
 
-The three client-only packages the host does not install (`dsh-client-store`, `dsh-client-ui-primitives`, `dsh-client-ui-slots`) are forced to `0.2.2-alpha.3` through workspace `overrides`, so resolution stays on one cohort. The manifests declare `^0.2.2-alpha.3`; the override only unifies the resolution result, and the matching `packageExtensions` keys move with it.
+The three client-only packages the host does not install (`dsh-client-store`, `dsh-client-ui-primitives`, `dsh-client-ui-slots`) are forced to `0.2.2-rc.1` through workspace `overrides`, so resolution stays on one cohort. The manifests declare `^0.2.2-rc.1`; the override only unifies the resolution result, and the matching `packageExtensions` keys move with it.
 
 ## Alternatives considered
 

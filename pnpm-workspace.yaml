@@ -16,14 +16,14 @@ linkWorkspacePackages: true
 # pnpm run deps:install 都起不来。安装入口固定为 deps:install，故关掉自检。
 verifyDepsBeforeRun: false
 
-# 宿主 DSH 跑的是 0.2.2-alpha.3 队列；这 3 个包是纯客户端构建输入，宿主不安装它们，
+# 宿主 DSH 跑的是 0.2.2-rc.1 队列；这 3 个包是纯客户端构建输入，宿主不安装它们，
 # 只能从 registry 取。把整条 workspace 固定到与宿主同队列的 rc.5，否则 slot 注册表
 # 会一半 rc.5 一半 rc.3，pnpm -r typecheck 报 slot 名不满足约束。21 个清单仍写
-# ^0.2.2-alpha.3（rc.5 满足该 range），override 只负责让解析结果统一。
+# ^0.2.2-rc.1（rc.5 满足该 range），override 只负责让解析结果统一。
 overrides:
-  '@deepseek-ai/dsh-client-store': '0.2.2-alpha.3'
-  '@deepseek-ai/dsh-client-ui-primitives': '0.2.2-alpha.3'
-  '@deepseek-ai/dsh-client-ui-slots': '0.2.2-alpha.3'
+  '@deepseek-ai/dsh-client-store': '0.2.2-rc.1'
+  '@deepseek-ai/dsh-client-ui-primitives': '0.2.2-rc.1'
+  '@deepseek-ai/dsh-client-ui-slots': '0.2.2-rc.1'
 
 allowBuilds:
   # The cloudflared postinstall downloads the platform binary (the auto-tunnel
@@ -35,7 +35,7 @@ allowBuilds:
   ssh2: true
 
 # Upstream packaging defect (reported at 0.1.5-alpha.2, re-verified against the
-# 0.2.2-alpha.3 tarballs on 2026-10-24): published SDK packages import
+# 0.2.2-rc.1 tarballs on 2026-10-24): published SDK packages import
 # runtime dependencies their published manifests never declare, so vitest/node
 # resolution fails for workspace consumers. Restore them at the versions the
 # source pins; the host web bundle supplies its own copies at runtime. Reported
@@ -46,11 +46,11 @@ allowBuilds:
 # 0.1.5-rc.1), so the root devDependencies carry it as a host face instead of a
 # packageExtensions patch.
 packageExtensions:
-  '@deepseek-ai/dsh-client-store@0.2.2-alpha.3':
+  '@deepseek-ai/dsh-client-store@0.2.2-rc.1':
     dependencies:
       zustand: '~4.4.7'
       immer: '^10.1.1'
-  '@deepseek-ai/dsh-client-ui-primitives@0.2.2-alpha.3':
+  '@deepseek-ai/dsh-client-ui-primitives@0.2.2-rc.1':
     dependencies:
       anser: '^2.3.5'
       clsx: '^2.0.0'
@@ -78,11 +78,11 @@ packageExtensions:
       # rendering, and the published manifest still declares no dependencies at
       # all (peer `@deepseek-ai/cordis` only). Version read from the cohort's own
       # publish; it is an exact pin in the official source devDependencies.
-      '@deepseek-ai/dsh-util-workspace-path': '0.2.2-alpha.3'
+      '@deepseek-ai/dsh-util-workspace-path': '0.2.2-rc.1'
       # The emitted lib/index.js also imports `@deepseek-ai/dsh-util-code-language`,
       # which the published manifest likewise omits. The package's cohort pin is
       # the exact target version.
-      '@deepseek-ai/dsh-util-code-language': '0.2.2-alpha.3'
+      '@deepseek-ai/dsh-util-code-language': '0.2.2-rc.1'
       # New at 0.1.6-alpha.2: the emitted lib/index.js imports `simple-icons`
       # for the markdown link glyphs, and the published manifest still declares
       # no runtime dependencies at all. Version is the exact pin the official
@@ -91,80 +91,70 @@ packageExtensions:
       simple-icons: '16.31.0'
 
 minimumReleaseAgeExclude:
-  - '@deepseek-ai/dsh-agent-default-model@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-agent@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-api-remotes@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-attachment@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-brand@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-connection@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-locale@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-ui-conversation@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-ui-primitives@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-ui-settings@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-ui-sidebar@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-ui-slots@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-ui-theme@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-commands@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-credentials@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-goal@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-host-directory-picker@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-host-webserver@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-launch-environment@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-llm-retry@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-llm@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-native-command@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-sandbox@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-session-persistence@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-session-projection-cache@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-session-projection@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-session-query@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-session-title@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-session@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-settings@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-skill@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-subagent@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-subprocess@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-token-meter@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-tools@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-util-crypto@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-util-time@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-util-values@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-user-approval@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-workspace@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-system-prompt@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-timeout@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-scope@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-jobs@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-typert-protocol@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-user-questions@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-agent-preset@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-agent-preset-registry@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-api-gateway@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-api-session-controller@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-api-workspace-controller@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-store@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-ui-renderer@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-ui-session@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-deque@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-api-settings-controller@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-chunked-list@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-ui-settings-models@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-ui-workspace@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-atomic-write@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-config-editor@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-util-workspace-path@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-web-frontend@0.2.2-alpha.3'
-  - '@deepseek-ai/cordis@4.0.6-alpha.2'
-  - '@deepseek-ai/cordis-plugin-include@1.0.11-alpha.2'
-  - '@deepseek-ai/cordis-plugin-loader@1.0.7-alpha.2'
-  - '@deepseek-ai/cosmokit@1.8.6 || 1.8.7-alpha.2'
-  - '@deepseek-ai/schemastery@3.18.6-alpha.2'
+  - '@deepseek-ai/cordis@4.1.0'
+  - '@deepseek-ai/cordis-plugin-loader@1.1.0'
+  - '@deepseek-ai/cosmokit@1.8.6 || 1.9.0'
+  - '@deepseek-ai/dsh-agent@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-agent-preset-registry@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-api-gateway@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-api-remotes@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-api-session-controller@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-api-workspace-controller@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-app-boot@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-atomic-write@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-attachment@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-brand@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-chunked-list@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-connection@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-locale@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-store@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-ui-chat@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-ui-conversation@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-ui-layout@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-ui-plugin-manager@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-ui-primitives@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-ui-renderer@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-ui-session@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-ui-settings@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-ui-sidebar@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-ui-sidebar-right@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-ui-slots@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-client-ui-workspace@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-commands@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-config-editor@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-credentials@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-deque@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-host-webserver@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-llm@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-message-quotes@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-native-command@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-official-bundles@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-package-manifest@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-sandbox@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-scope@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-session@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-session-persistence@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-session-projection@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-settings@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-subagent@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-subprocess@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-system-prompt@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-timeout@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-tools@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-typert-protocol@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-user-approval@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-util-code-language@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-util-crypto@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-util-time@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-util-values@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-util-workspace-path@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-web-frontend@0.2.2-rc.1'
+  - '@deepseek-ai/dsh-workspace@0.2.2-rc.1'
+  - '@deepseek-ai/schemastery@3.18.5 || 3.19.0'
   # The aggregate bundle mounts @mlgbnb/dsh-archive-manager at exactly 1.0.7;
   # pnpm 11's minimum-release-age guard must not reject the fresh version.
   # Scoped to that exact version so later upstream publishes get no cooldown bypass.
   - '@mlgbnb/dsh-archive-manager@1.0.7'
-  - '@deepseek-ai/dsh-app-boot@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-package-manifest@0.2.2-alpha.3'
   # The satellite repositories publish the family's X.Y.Z just before this
   # repository does, and this repository consumes each version as soon as the
   # pin moves, so every pinned satellite version has to bypass the
@@ -174,8 +164,6 @@ minimumReleaseAgeExclude:
   - '@linxin666/dsh-client-ui-skin-center@0.4.14'
   - '@linxin666/dsh-pet@0.4.14'
   - '@linxin666/dsh-client-ui-preset-center@0.4.14'
-  - '@deepseek-ai/dsh-util-code-language@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-ui-layout@0.2.2-alpha.3'
   - '@oxlint/binding-android-arm-eabi@1.88.0'
   - '@oxlint/binding-android-arm64@1.88.0'
   - '@oxlint/binding-darwin-arm64@1.88.0'
@@ -196,8 +184,3 @@ minimumReleaseAgeExclude:
   - '@oxlint/binding-win32-ia32-msvc@1.88.0'
   - '@oxlint/binding-win32-x64-msvc@1.88.0'
   - oxlint@1.88.0
-  - '@deepseek-ai/dsh-client-ui-chat@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-ui-plugin-manager@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-client-ui-sidebar-right@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-message-quotes@0.2.2-alpha.3'
-  - '@deepseek-ai/dsh-official-bundles@0.2.2-alpha.3'

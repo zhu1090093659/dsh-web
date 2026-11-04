@@ -1,5 +1,5 @@
 /*
- * Forked from deepseek-harness dsh-v0.2.2-alpha.3 (commit 05b1cae8) packages/experimental/agent-team/src/roster.ts
+ * Forked from deepseek-harness dsh-v0.2.2-rc.1 (commit 66491b05) packages/experimental/agent-team/src/roster.ts
  * MIT licensed; every change this package made is listed in
  * packages/dsh-agents/docs/fork-provenance.md.
  */

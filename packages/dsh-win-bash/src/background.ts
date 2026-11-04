@@ -15,7 +15,7 @@
  * STRUCTURALLY: a leaf plugin takes no dependency on @deepseek-ai/dsh-jobs to
  * call one method on an optional service, and the same decision keeps this
  * package out of the job registry's implementation. The members below are
- * mirrored from the published declaration of @deepseek-ai/dsh-jobs@0.2.2-alpha.3:
+ * mirrored from the published declaration of @deepseek-ai/dsh-jobs@0.2.2-rc.1:
  *
  *   lib/types/index.d.ts
  *     abstract class JobRegistry {

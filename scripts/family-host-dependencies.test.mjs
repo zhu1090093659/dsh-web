@@ -7,7 +7,7 @@
  * plugin manager installs a package's `dependencies` into the user profile, and
  * the host loads profile copies ahead of its own. A core package pinned with a
  * prerelease range is therefore a version switch the user never asked for:
- * `^0.2.2-alpha.3` desugars to `>=0.2.2-alpha.3 <0.3.0-0`, so the next rc of the same
+ * `^0.2.2-rc.1` desugars to `>=0.2.2-rc.1 <0.3.0-0`, so the next rc of the same
  * 0.2.1 cohort (`0.2.1-rc.4`) satisfies it. pnpm then hoists rc.4 into
  * `profiles/<profile>/node_modules/@deepseek-ai`, where it shadows the rc.3 the
  * running host supplies, `sessionProjections` never registers, and the required

@@ -67,8 +67,6 @@ const NAMESPACE_ALIASES: Readonly<Record<string, string | null>> = {
   'dsh-liangshen': 'liangshen',
   'session-archive': 'session-archive',
   'dsh-session-archive': 'session-archive',
-  'dsh-git-graph': null,
-  'dsh-client-ui-git-graph': null,
   'dsh-web': null,
   'dsh-web-all': null,
   'dsh-client-ui-web-ui-settings': null,

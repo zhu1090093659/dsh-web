@@ -13,7 +13,6 @@
 <!-- 勾选本次改动涉及的包；仅脚本改动（维护类）可全部不勾选并说明。 -->
 
 - [ ] 任务看板 `packages/dsh-task-board`
-- [ ] Git 图谱 `packages/dsh-git-graph`
 - [ ] 右侧面板 `packages/dsh-aionui-panel`
 - [ ] SSH 远程运维 `packages/dsh-ssh`
 - [ ] 宠物（[dsh-pet](https://github.com/zhu1090093659/dsh-pet) 仓）
@@ -27,7 +26,7 @@
 <!-- 必填。勾选本 PR 最贴近的类别（可多选），用于机器人按类别自动分派给协作者。注意：本仓库不再接受外部内容贡献——皮肤 / 皮肤中心、社区插件索引与预设增加都已迁至独立仓（dsh-skins / dsh-community-plugins / dsh-presets），勾选这些类别的 PR 会被自动关闭并重定向；「插件功能」里的功能改动与「维护 / 其他」也不在接受范围，会被自动关闭，请改提 Issue；仓库所有者与拥有写权限的协作者（维护者）不受此限制。 -->
 
 - [ ] 皮肤 / 皮肤中心（新皮肤收录、皮肤样式）—— 已迁至 [dsh-skins](https://github.com/zhu1090093659/dsh-skins) 仓，本仓提交会被自动关闭并重定向
-- [ ] 插件功能（任务看板 / Git 图谱 / 右侧面板 / 远程 Web UI / SSH / 设置 / 聚合包）
+- [ ] 插件功能（任务看板 / 右侧面板 / 远程 Web UI / SSH / 设置 / 聚合包）
 - [ ] 社区插件索引 —— 已迁至 [dsh-community-plugins](https://github.com/zhu1090093659/dsh-community-plugins) 仓，本仓提交会被自动关闭并重定向
 - [ ] 预设 / 预设中心 —— 已迁至 [dsh-presets](https://github.com/zhu1090093659/dsh-presets) 仓，本仓提交会被自动关闭并重定向
 - [ ] 维护 / 其他

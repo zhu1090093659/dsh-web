@@ -7,13 +7,34 @@
 | 事实 | 值 |
 |---|---|
 | 上游仓库 | https://github.com/deepseek-ai/deepseek-harness |
-| tag | `dsh-v0.2.1-rc.2` |
-| commit | `687f282e8625c6b8d11ff58211a90524be2e4317` |
-| agent-team **src/** 树哈希 | `77e8a11de277837e2860f3f3172799f6cc509e95`（`git rev-parse dsh-v0.2.1-rc.2:packages/experimental/agent-team/src`） |
-| tool-agent-team **src/** 树哈希 | `e8af5edce18085dce4ad2e6ec3946e0da3422190`（`git rev-parse dsh-v0.2.1-rc.2:packages/experimental/tool-agent-team/src`） |
+| tag | `dsh-v0.2.2-alpha.3` |
+| commit | `05b1cae8db6e674c5685101494d4eec24652424a` |
+| agent-team **src/** 树哈希 | `08322f8f03faad9b0ee04c7e72d1b119b0158977`（`git rev-parse dsh-v0.2.2-alpha.3:packages/experimental/agent-team/src`） |
+| tool-agent-team **src/** 树哈希 | `e8af5edce18085dce4ad2e6ec3946e0da3422190`（`git rev-parse dsh-v0.2.2-alpha.3:packages/experimental/tool-agent-team/src`） |
 | 许可证 | MIT（上游仓库根 `LICENSE`，Copyright (c) 2026 DeepSeek） |
 
-本机已安装的 app build 与该 tag 的发布构建逐字节一致，因此该 tag 是唯一正确的 fork 基线；换基线必须同时更新本文件与本节四个哈希。
+fork 对照固定在这个发布 tag，不使用持续移动的上游工作树；换基线必须同时更新本文件与本节四个哈希。
+
+## 上游 2026-11-03 复核：spawn 支点已被移除，基线不动
+
+复核上游 master 后确认：**我们 fork 的那一代运行期在上游已经不存在了**。这不是「落后几个提交」，因此基线刻意保持在发布 tag 上。
+
+| 事实 | 值 |
+|---|---|
+| 上游复核点 | `8bd073392ee`（`dsh-v0.2.2-alpha.3` 之后 555 个提交，尚未发版） |
+| 包位置 | `packages/experimental/{agent-team,tool-agent-team}` → `packages/team/{agent-team,tool-agent-team}`（不再是实验内容） |
+| 包名 | `@deepseek-ai/dsh-experimental-*` → `@deepseek-ai/dsh-agent-team` / `@deepseek-ai/dsh-tool-agent-team`；两个新名字在 npm 上均为 404（未发布） |
+| 上游删除的源文件 | `activity.ts`、`lifecycle.ts`、`persisted.ts`、`roster.ts`、`session-message.ts` |
+| 上游删除的能力 | `spawn_teammate`，以及队内 `send_message` / `list_agents` / `interrupt_agent`；`TeamMembership`、`TeamMemberView`、spawn/send 请求与结果类型、`TeamWaitResult` 一并移除 |
+| 上游保留的能力 | 四个任务工具 `team_task_create` / `team_task_list` / `team_task_get` / `team_task_update`，加一段 `team:policy`——Team 现在只是原生 `subagent` / `subagent_fork` / `send_message` / `list_agents` 之上的**共享任务板** |
+
+上游自己在 `docs/upgrade-guide/v0.2.1-rc.2/agent-team-subagents/guide.md` 里给出了迁移映射（`spawn_teammate` → `subagent`、`ctx.agentTeams.spawnTeammate` → `ctx.subagents.startActivation`、`tryMembership` → `rootOf`）。
+
+**为什么这次不跟。** 本包的全部增量价值——成员定义的 preset / permission / model / reasoningEffort 钉住，在成员子会话建立之前解析、在首条提示 checkpoint 之前应用——挂在被删除的那条接缝上。上游的替代方案是「队友就是原生 subagent」，于是钉住只剩 `model` / `reasoning_effort` 两个参数，`preset` 与 `permission` 没有落点：跟这个基线不是重新 vendor，而是重写本包的 host 半区（run-gateway、service、squad、agent-tools、member-prompt）与全部运行期测试，并砍掉两个钉住维度。另外新运行期只存在于 master，没有 tag 可钉，对照表无法固定。
+
+**今天怎么共存。** 官方运行期（任一代）在场时本包让位，细节见 [runtime-deltas.md](runtime-deltas.md)：服务名 `agentTeams` 只留一个所有者。新一代目前的装配位置是 base bundle（`packages/bundle/base/cordis.patch.yml` 里的 `agent-team` / `tool-agent-team` 两行），不是 profile bundle，所以「profile 声明了官方 bundle」这条前置判据看不到它；能兜住的是 `agentTeams` 服务探测，以及 `OFFICIAL_TEAMS_BUNDLES` 现在同时认 `@deepseek-ai/dsh-agent-team`（`tests/apply-inject.spec.ts` 两个 generation 各一条用例）。新一代的行为后果是：小队保留成员运行、账本与路由，而 squad 会话里 Lead 看到的 Team 工具面变成官方任务板。
+
+**将来若要跟**，要做的是三件事，而不是同步：把钉住重做到原生 `subagent` 面（preset / permission 需要一个官方接缝，否则本包只能放弃这两个维度）；把 squad 自己的 `squads_*` 工具面与官方 `team_task_*` 的关系写清楚（谁记账、谁派发）；重写 `tests/team-runtime.spec.ts` 里按 legacy 运行期写的门禁断言。
 
 ## 逐文件映射
 
@@ -71,6 +92,7 @@
 12. **`spawn_teammate` 的参数 schema 提取为 `SPAWN_PARAMETERS` 常量**：与第 11 条同因，避免在调用点被 const 泛型重新推断八个属性。
 13. **文件头 banner**：所有 vendor 文件加 provenance banner（纯注释）。
 14. **五个 Host 服务在挂载时经 `ctx.get` 解析一次**（`src/team/services.ts`，本包新增文件；`src/team/index.ts`、`src/team/journal.ts`、`src/team/roster.ts`）：上游把运行期当作 cordis 插件挂在它自己的 `inject` 行上，`agents` / `sessions` / `sessionPersistence` / `sessionProjections` / `subagents` 因此可以按属性直接读取。本包在插件行自己的 fiber 上 `new TeamService(ctx)`，该 fiber 的 `inject` 只有三个服务，而 cordis 对**未注入**服务的属性读取会抛 `cannot get property "<name>" without inject`——整个 `apply` 失败，页面随即报「Host API 未挂载」。因此 `TeamService` 在构造时把五个面解析一次（`serveTeamFaces`）、存进 `this.faces`，`TeamJournal` 与 `TeamRoster` 改为读同一份面对象；投影注册从 `ctx.root.sessionProjections` 改为读该面（同一个服务实例，注册位置不变）。上游的其余逻辑、`ctx.on` 事件监听与 `ctx.logger` 未动。
+15. **手动挂载显式等待异步投影注册**（`src/team/index.ts`、`src/team/journal.ts`、`src/team/projection.ts`）：上游在类插件的 `Service.init` 中等待 `sessionProjections.register()` 并把 `ProjectionHandle` 交给 `TeamJournal`，同时移除 `SessionProjectionStateMap` augmentation；本包重放这三处变化。手动 `new TeamService` 不会触发类插件的 init 钩子，因此新增 `TeamService.create()` 显式等待同一个 init，pins 保存到初始化时交给 `TeamRoster`，挂载方在工厂完成后再安装 Team 工具。
 
 ## 行为差异：Team 工具只进「本 Host 启动的整队运行会话」
 

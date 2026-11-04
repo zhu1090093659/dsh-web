@@ -1,6 +1,6 @@
 {
   "name": "@linxin666/dsh-web-all",
-  "description": "DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / git-graph / pet / web-ui-settings / skin-center / community-plugins / compat shim）。compat 桥接层已并入本包（src/client），无需独立 compat npm 包。",
+  "description": "DSH Web UI 全家桶聚合插件：一键安装全部功能插件（task-board / pet / web-ui-settings / skin-center / community-plugins / compat shim）。compat 桥接层已并入本包（src/client），无需独立 compat npm 包。",
   "version": "0.4.14",
   "icon": "icon.svg",
   "type": "module",
@@ -106,7 +106,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.2.1-rc.3"
+      "dsh": ">=0.2.2-alpha.3"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -124,7 +124,7 @@
     "watch": "tsdown --watch"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh": ">=0.2.1-rc.3"
+    "@deepseek-ai/dsh": ">=0.2.2-alpha.3"
   },
   "license": "Apache-2.0",
   "files": [
@@ -139,21 +139,21 @@
     "url": "https://github.com/zhu1090093659/dsh-web.git"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.5",
-    "@deepseek-ai/dsh-agent": "^0.2.1-rc.3",
-    "@deepseek-ai/dsh-api-session-controller": "^0.2.1-rc.3",
-    "@deepseek-ai/dsh-attachment": "^0.2.1-rc.3",
-    "@deepseek-ai/dsh-host-webserver": "^0.2.1-rc.3",
-    "@deepseek-ai/dsh-llm": "^0.2.1-rc.3",
-    "@deepseek-ai/dsh-scope": "^0.2.1-rc.3",
-    "@deepseek-ai/dsh-session": "^0.2.1-rc.3",
-    "@deepseek-ai/dsh-settings": "^0.2.1-rc.3",
-    "@deepseek-ai/dsh-subagent": "^0.2.1-rc.3",
-    "@deepseek-ai/dsh-system-prompt": "^0.2.1-rc.3",
-    "@deepseek-ai/dsh-tools": "^0.2.1-rc.3",
-    "@deepseek-ai/dsh-typert-protocol": "^0.2.1-rc.3",
-    "@deepseek-ai/dsh-util-time": "^0.2.1-rc.3",
-    "@deepseek-ai/dsh-workspace": "^0.2.1-rc.3",
+    "@deepseek-ai/cordis": "^4.0.6-alpha.2",
+    "@deepseek-ai/dsh-agent": "^0.2.2-alpha.3",
+    "@deepseek-ai/dsh-api-session-controller": "^0.2.2-alpha.3",
+    "@deepseek-ai/dsh-attachment": "^0.2.2-alpha.3",
+    "@deepseek-ai/dsh-host-webserver": "^0.2.2-alpha.3",
+    "@deepseek-ai/dsh-llm": "^0.2.2-alpha.3",
+    "@deepseek-ai/dsh-scope": "^0.2.2-alpha.3",
+    "@deepseek-ai/dsh-session": "^0.2.2-alpha.3",
+    "@deepseek-ai/dsh-settings": "^0.2.2-alpha.3",
+    "@deepseek-ai/dsh-subagent": "^0.2.2-alpha.3",
+    "@deepseek-ai/dsh-system-prompt": "^0.2.2-alpha.3",
+    "@deepseek-ai/dsh-tools": "^0.2.2-alpha.3",
+    "@deepseek-ai/dsh-typert-protocol": "^0.2.2-alpha.3",
+    "@deepseek-ai/dsh-util-time": "^0.2.2-alpha.3",
+    "@deepseek-ai/dsh-workspace": "^0.2.2-alpha.3",
     "@types/node": "^22.20.0",
     "jsdom": "29.1.1",
     "typescript": "^6.0.3",
@@ -166,7 +166,6 @@
     "@linxin666/dsh-client-ui-task-board-github": "workspace:*",
     "@linxin666/dsh-client-ui-task-board-team": "workspace:*",
     "@linxin666/dsh-agents": "workspace:*",
-    "@linxin666/dsh-client-ui-git-graph": "workspace:*",
     "@linxin666/dsh-remote-bridge": "workspace:*",
     "@linxin666/dsh-task-board-remote": "workspace:*",
     "@linxin666/dsh-ssh": "workspace:*",
@@ -178,6 +177,7 @@
     "@linxin666/dsh-win-bash": "workspace:*",
     "@linxin666/dsh-client-ui-web-ui-settings": "workspace:*",
     "@linxin666/dsh-i18n": "workspace:*",
+    "@linxin666/dsh-client-ui-diagrams": "workspace:*",
     "@linxin666/dsh-client-ui-browser-view": "workspace:*",
     "@linxin666/dsh-client-ui-community-plugins": "^0.4.14",
     "@linxin666/dsh-client-ui-preset-center": "^0.4.14",

@@ -295,7 +295,6 @@ const ADAPT_CSS: readonly string[] = [
   `body.${ACTIVE_CLASS} [data-dsh-plugin=\"ssh\"],`,
   `body.${ACTIVE_CLASS} [data-dsh-plugin=\"skill-explorer\"],`,
   `body.${ACTIVE_CLASS} [data-dsh-plugin=\"task-board\"],`,
-  `body.${ACTIVE_CLASS} [data-dsh-plugin=\"git-graph\"],`,
   `body.${ACTIVE_CLASS} [data-dsh-plugin=\"pet\"],`,
   `body.${ACTIVE_CLASS} [data-dsh-plugin=\"usage\"]{display:none !important}`,
   // The official workbench (Files / source control) mounts into a

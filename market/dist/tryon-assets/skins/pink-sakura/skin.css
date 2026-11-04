@@ -303,8 +303,6 @@ html[data-dsh-skin="pink-sakura"] [data-dsh-plugin="community-plugins"] [data-ds
   transform: translateY(-1px);
 }
 
-html[data-dsh-skin="pink-sakura"] [data-dsh-plugin="git-graph"] [data-dsh-part="chip"],
-html[data-dsh-skin="pink-sakura"] [data-dsh-plugin="git-graph"] [data-dsh-part="ref"],
 html[data-dsh-skin="pink-sakura"] [data-dsh-plugin="ssh"] [data-dsh-part="tab"] {
   border-color: var(--pink-sakura-border);
 }

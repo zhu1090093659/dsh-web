@@ -1,5 +1,5 @@
 /* cyber-night (赛博夜城) skin — component-level patches: translucent panes,
-   focus/links, aionui panel, git-graph lanes, composer seat frost, and
+   focus/links, aionui panel, composer seat frost, and
    transition polish. Loaded together with skin.css by the skin-center. */
 
 /* The host's `contributes.backgroundMedia` illustration is appended to <body>
@@ -187,96 +187,6 @@ transition: none;
 
 }
 
-[data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+1),
-[data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+1) {
-color: #00b8d4;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+2),
-[data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+2) {
-color: #00d98a;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+3),
-[data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+3) {
-color: #e6b800;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+4),
-[data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+4) {
-color: #33dcff;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+5),
-[data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+5) {
-color: #9d4edd;
-}
-
-[data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n),
-[data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n) {
-color: #ff2d78;
-}
-
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+1),
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+1) {
-color: #00e5ff;
-}
-
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+2),
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+2) {
-color: #00ff9c;
-}
-
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+3),
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+3) {
-color: #ffe94d;
-}
-
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+4),
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+4) {
-color: #7adff5;
-}
-
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n+5),
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n+5) {
-color: #c77dff;
-}
-
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='node']:nth-child(6n),
-body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph='merge']:nth-child(6n) {
-color: #ff5c82;
-}
-
-[data-gitgraph-dialog] {
--webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  border-color: rgba(0, 229, 255, 0.4);
-}
-
-body[data-ds-dark-theme] [data-gitgraph-dialog] {
-border-color: rgba(0, 229, 255, 0.22);
-}
-
-[data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
-background: rgba(0, 200, 255, 0.12);
-  border: 1px solid rgba(0, 150, 210, 0.2);
-}
-
-body[data-ds-dark-theme] [data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
-background: rgba(0, 229, 255, 0.14);
-  border-color: rgba(0, 229, 255, 0.2);
-}
-
-div:has(> div > [data-gitgraph-chip]) > button[aria-expanded='true'],
-[data-gitgraph-chip][aria-expanded='true'] {
-background-color: rgba(0, 200, 255, 0.16);
-}
-
-body[data-ds-dark-theme] div:has(> div > [data-gitgraph-chip]) > button[aria-expanded='true'],
-body[data-ds-dark-theme] [data-gitgraph-chip][aria-expanded='true'] {
-background-color: rgba(0, 229, 255, 0.18);
-}
-
 [data-phase='active'] [class*='composerSeat'] {
 background: transparent !important;
 }
@@ -377,24 +287,6 @@ background-image: none;
 
 ::-webkit-scrollbar-thumb {
 transition: background-color 0.13s ease;
-}
-
-div:has(> div > [data-gitgraph-chip]) {
---dsw-alias-button-tool-bar-fill: rgba(0, 200, 255, 0.08);
-  --dsw-alias-border-l2: rgba(0, 150, 210, 0.38);
-  --dsw-alias-label-secondary: #20839a;
-  --dsw-alias-label-tertiary: #2497b2;
-  --dsw-alias-interactive-bg-hover: rgba(0, 200, 255, 0.14);
-  --dsw-alias-interactive-bg-active: rgba(0, 200, 255, 0.2);
-}
-
-body[data-ds-dark-theme] div:has(> div > [data-gitgraph-chip]) {
---dsw-alias-button-tool-bar-fill: rgba(0, 229, 255, 0.08);
-  --dsw-alias-border-l2: rgba(0, 229, 255, 0.38);
-  --dsw-alias-label-secondary: #d6f9ff;
-  --dsw-alias-label-tertiary: #a8d8e8;
-  --dsw-alias-interactive-bg-hover: rgba(0, 229, 255, 0.14);
-  --dsw-alias-interactive-bg-active: rgba(0, 229, 255, 0.22);
 }
 
 [data-phase='active'] [class*='composerSeat']::before {

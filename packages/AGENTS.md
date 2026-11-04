@@ -6,7 +6,7 @@
 
 ## 包形态
 
-- **独立 cordis bundle 包**：`"type": "module"`，node `^22.19 || >=24`，
+- **独立 cordis bundle 包**：`"type": "module"`，node `>=24.9`，
   `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }` 声明 bundle 激活；
   `dsh.client` 声明浏览器半区注入与 `platform: "web"`（形态参照
   `packages/dsh-task-board/`）。
@@ -39,14 +39,14 @@
 - **宿主核包不进 `dependencies`**：`@deepseek-ai/dsh` 与 `@deepseek-ai/dsh-*` 只写
   `devDependencies`（类型与 host 半区的值导入），运行时那一份一律由宿主提供。插件管理器
   会把这个段装进用户 profile，且 profile 副本优先于宿主加载，于是预发布范围就成了用户没
-  点过的版本开关：`^0.2.1-rc.3` 等于 `>=0.2.1-rc.3 <0.3.0-0`，下一个 rc 照样满足，
-  宿主 0.2.1-rc.3 上装进 rc.4 会让 `sessionProjections` 注册失败、`agent-loop` 无法激活
+  点过的版本开关：`^0.2.2-alpha.3` 等于 `>=0.2.2-alpha.3 <0.3.0-0`，下一个 rc 照样满足，
+  宿主 0.2.2-alpha.3 上装进 rc.4 会让 `sessionProjections` 注册失败、`agent-loop` 无法激活
   并拖垮整套插件（[#1966](https://github.com/zhu1090093659/dsh-web/issues/1966)，门禁
   `scripts/family-host-dependencies.test.mjs`）。`@deepseek-ai/schemastery` /
   `@deepseek-ai/cordis` 是普通库，不受此限。
 - **共享构建预设**：所有 tsdown 包 import `shared/tsdown.client.ts`，禁止复制到
   包内；tsconfig 分层（solution + host/client 各自 program，参照
-  `dsh-git-graph`/`dsh-task-board`）。
+  `dsh-task-board`）。
 - **运行时共享模块**：settings 卡三件套、dsh-home、mount-once、http、loopback、
   pair-access、telemetry、tool-surface 等家族共享模块的事实源在 `shared/`
   （权威清单是 `scripts/sync-shared.mjs` 的 manifest），包内同名文件是生成的同步副本
@@ -89,6 +89,9 @@
   Harness 桌面客户端承接。
 - 例外：dsh-model-capabilities（模型能力配置）已彻底移除——包、聚合行、ru 语言包
   与文档引用均已清理；自定义模型的输入类型与推理档位由官方 Models 设置页编辑。
+- 例外：dsh-git-graph（Git 图谱）已彻底移除——包、聚合行、退役登记、ru 语言包、门禁
+  基线与文档引用均已清理；Git 变更视图由官方 workspace-changes 插件承接，聚合仍
+  保留 `git-graph` 子路径空壳与退役登记，老 profile 残留行名走静默 no-op。
 
 ## 语义属性约定（L2，issue #506）
 
@@ -129,5 +132,5 @@
 ## 包级 AGENTS.md
 
 - 包有跨目录规则、复杂构建链或安全模型时，在该包写 `AGENTS.md`（参照
-  `dsh-git-graph/AGENTS.md`、`dsh-ssh/AGENTS.md` 的简洁风格）。
+  `dsh-ssh/AGENTS.md` 的简洁风格）。
 - 包级 AGENTS.md 只写该包特有规则，不重复本文件与根文件内容。

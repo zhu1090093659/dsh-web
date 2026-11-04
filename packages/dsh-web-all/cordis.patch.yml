@@ -49,11 +49,6 @@
     - id: web-ui-agents
       name: '@linxin666/dsh-agents'
 
-# from ../dsh-git-graph
-- insert:
-    - id: web-ui-git-graph
-      name: '@linxin666/dsh-client-ui-git-graph'
-
 # from ../dsh-remote-bridge
 - insert:
     - id: web-ui-remote-bridge
@@ -104,6 +99,11 @@
 - insert:
     - id: web-ui-i18n
       name: '@linxin666/dsh-i18n'
+
+# from ../dsh-diagrams
+- insert:
+    - id: web-ui-diagrams
+      name: '@linxin666/dsh-client-ui-diagrams'
 
 # from ../dsh-browser-view
 - insert:

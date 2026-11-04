@@ -1,3 +1,0 @@
-?? "docs/another file with spaces.txt"
-?? "docs/\346\226\207\346\241\243.txt"
-?? untracked-dir/

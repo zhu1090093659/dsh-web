@@ -176,8 +176,9 @@ minimumReleaseAgeExclude:
 EOF
 
 # 步骤 3：官方 CLI 安装 tarball + bundle 协调（真实挂载路径）
-say "执行 dsh plugin --profile web add file:$TARBALL ..."
-$DSH_CMD plugin --profile web add "file:$TARBALL"
+TARBALL_URL="$(node -e 'const { pathToFileURL } = require("node:url"); console.log(pathToFileURL(process.argv[1]).href)' "$TARBALL")"
+say "执行 dsh plugin --profile web add $TARBALL_URL ..."
+$DSH_CMD plugin --profile web add "$TARBALL_URL"
 
 # 步骤 4：校验挂载生效（dsh.profile.bundles 含聚合包）
 if ! node -e '

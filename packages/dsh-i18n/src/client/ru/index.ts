@@ -8,7 +8,6 @@
  */
 import { ru as agents } from './agents.ts'
 import { ru as browserView } from './browser-view.ts'
-import { ru as gitGraph } from './git-graph.ts'
 import { ru as liangshen } from './liangshen.ts'
 import { ru as market } from './market.ts'
 import { ru as messageEdit } from './message-edit.ts'
@@ -31,7 +30,6 @@ import { ru as webSettings } from './web-settings.ts'
 export const ruDictionaries: Record<string, Record<string, string>> = {
   'dsh-agents': agents,
   'browser-view': browserView,
-  'git-graph': gitGraph,
   'liangshen': liangshen,
   'dsh-web-ui-market': market,
   'message-edit': messageEdit,

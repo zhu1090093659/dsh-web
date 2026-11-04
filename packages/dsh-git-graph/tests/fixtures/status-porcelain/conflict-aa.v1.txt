@@ -1,6 +1,0 @@
-AA docs/added-both.txt
-M  "docs/file with spaces.txt"
-UU src/alpha.txt
-?? "docs/another file with spaces.txt"
-?? "docs/\346\226\207\346\241\243.txt"
-?? untracked-dir/

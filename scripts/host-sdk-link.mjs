@@ -6,8 +6,8 @@
  * "link:" entries (~/.dsh/profiles/<profile>/package.json -> this checkout), so
  * Node resolves their @deepseek-ai imports by walking up from the plugin
  * directory into this repository's node_modules. Two paths decide whether that
- * resolution reaches the host's SDK cohort (0.2.1-rc.5) or a registry copy
- * (0.2.1-rc.3), and a second copy of any SDK package beside the host's does not
+ * resolution reaches the host's SDK cohort or a registry copy, and a second
+ * copy of any SDK package beside the host's does not
  * fail loudly: a second cordis makes service registration miss, and a split
  * cohort splits type identity too, so a package that consumes a host core type
  * and augments cordis sees two unrelated Context declarations
@@ -72,6 +72,12 @@ const MIN_HOST_PACKAGES = 100
 export function hostSdkCandidates() {
   const candidates = []
   if (process.env.DSH_HOST_SDK_DIR) candidates.push(resolvePath(process.env.DSH_HOST_SDK_DIR))
+  if (process.platform === 'win32' && process.env.APPDATA) {
+    candidates.push(join(
+      process.env.APPDATA,
+      'npm/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai',
+    ))
+  }
   candidates.push(HOST_SDK_DEFAULT)
   const nodeRoot = '/usr/local/lib/nodejs'
   try {

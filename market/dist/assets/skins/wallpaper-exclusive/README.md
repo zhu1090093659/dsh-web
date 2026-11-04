@@ -18,7 +18,7 @@ the backdrop.
 - Liquid glass everywhere: user bubble, code block, inline code, settings
   surface, plugin panels, sidebar keys (新会话 / 任务看板 / ssh / 技能中心) and
   session/workspace cards, the top-bar subagent board, bottom panel chrome,
-  composer `+`/`/` menus, skill-center panel, git-graph chips, ssh panel
+  composer `+`/`/` menus, skill-center panel, ssh panel
   chrome, the queued-send card, and the task-board columns and cards.
 - Single-layer workbench and trajectory glass: the bottom workbench (its tab
   strip, tab items, picker cards, panes and terminal canvas) and the 轨迹

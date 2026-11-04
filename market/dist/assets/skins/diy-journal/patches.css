@@ -1851,22 +1851,10 @@ body[data-ds-dark-theme] .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:h
   box-shadow:inset 0 0 0 1px #79b7cd80,inset 0 2px 0 #daf8ff55,inset 0 -2px 0 #93d6ea22,0 2px 5px #071d341a;
 }
 
-/* CG-HERO-GLASS-FIX-V79: Git graph branch chip and wider title halo. */
+/* CG-HERO-GLASS-FIX-V79: wider title halo. */
 .Hqq-bq_headline::before {
   width:min(100%,680px);height:132px;filter:blur(16px);
 }
-.Dc7zOa_heroWorkspaceRow [data-gitgraph-chip] {
-  background:linear-gradient(116deg,rgba(255,255,255,.8),rgba(215,247,255,.6) 42%,rgba(255,255,255,.72) 43%,rgba(217,246,255,.5) 70%,rgba(241,253,255,.76));
-  border-radius:10px;
-  box-shadow:inset 0 0 0 1px #8fd4e8,inset 0 2px 0 #ffffffdb,inset 0 -2px 0 #c2eef8a6,0 2px 5px #286a8c14;
-  text-shadow:none!important;
-}
-.Dc7zOa_heroWorkspaceRow [data-gitgraph-chip] [class*="chipLabel"] {text-shadow:none!important;}
-body[data-ds-dark-theme] .Dc7zOa_heroWorkspaceRow [data-gitgraph-chip] {
-  background:linear-gradient(116deg,#477a968c,#214b66b3 42%,#83b7cc38 43%,#285a769c 70%,#39728cb3);
-  box-shadow:inset 0 0 0 1px #79b7cd80,inset 0 2px 0 #daf8ff55,inset 0 -2px 0 #93d6ea22,0 2px 5px #071d341a;
-}
-
 /* ⑲ 无脚本兜底：进行中的转圈 → 飞行小飞机（纯 CSS）
    手工安装的皮肤拿不到 hooks 权限，这条保证"飞行指示"仍然可用；
    脚本生效时（宿主被加上 data-cg-spin）本条自动让位，不会出现两只。
@@ -2040,13 +2028,12 @@ body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) [data-conversation-regi
 body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) [data-conversation-region="chat"] [data-composer-card]::before,
 body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) [data-conversation-region="chat"] [data-composer-card]::after {display:none!important;}
 body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow {background:transparent!important;gap:7px;flex-wrap:wrap;box-shadow:none;}
-body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]),[data-gitgraph-chip]) {
+body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"])) {
  background:var(--sj-card) url(assets/journal-paper-v80.svg)!important;
  border-radius:4px;box-shadow:inset 0 0 0 1px var(--sj-edge),0 2px 3px #665a431a!important;
  color:var(--sj-ink);text-shadow:none!important;
 }
 body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow .Hqq-bq_workspace {background-color:var(--sj-yellow)!important;}
-body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow [data-gitgraph-chip] {background-color:var(--sj-blue)!important;}
 body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Hqq-bq_headline {color:var(--sj-ink);font-weight:500;}
 body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Hqq-bq_headline::before {background:radial-gradient(ellipse,var(--sj-card) 0%,transparent 70%);width:min(100%,640px);}
 body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Hqq-bq_previewBadge {background:var(--sj-blue);color:var(--sj-ink);border:1px solid var(--sj-line);box-shadow:none;border-radius:4px;}
@@ -2147,7 +2134,7 @@ body[data-ds-dark-theme] {
 body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow {
  gap:12px!important;align-items:center;overflow:visible;padding-top:4px;padding-bottom:5px;
 }
-body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]),[data-gitgraph-chip]) {
+body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"])) {
 
  position:relative;isolation:isolate;box-sizing:border-box;min-height:36px;padding:7px 14px!important;
  background:linear-gradient(135deg,transparent 49%,var(--sj-tab-edge) 50%,var(--sj-tab-fold) 58%) right top / 9px 9px no-repeat,
@@ -2163,13 +2150,10 @@ body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRo
 body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow button:has(:is([class*="seatLabel"],[class*="triggerLabel"])) {
 transform:rotate(.65deg);
 }
-body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow [data-gitgraph-chip] {
- --sj-tab-fill:var(--sj-tab-blue);transform:rotate(-.65deg);
-}
-body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]),[data-gitgraph-chip]):hover {
+body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"])):hover {
  box-shadow:0 3px 2px #5e503333,0 5px 8px #5e503324,inset 0 1px #ffffff90!important;
 }
-body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]),[data-gitgraph-chip]):focus-visible {
+body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"])):focus-visible {
  outline:2px solid #428cc1;outline-offset:3px;
 }
 
@@ -2692,7 +2676,7 @@ body[data-ds-dark-theme] [data-conversation-region="chat"] [data-composer-card] 
 }
 
 /* SJ-TAB-FOLD-V103: cut-away corner with an inward-facing paper underside. */
-body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]),[data-gitgraph-chip]) {
+body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"])) {
  --sj-tab-corner:url(assets/journal-tab-fold-light-v103.svg);
  background:transparent!important;
  border-color:transparent!important;
@@ -2700,7 +2684,7 @@ body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRo
  box-shadow:none!important;
  overflow:visible;
 }
-body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]),[data-gitgraph-chip])::before {
+body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]))::before {
  content:"";position:absolute;display:block;inset:-1px;
  width:auto;height:auto;margin:0;padding:0;border:0;border-image:none;border-radius:3px;
  background:url(assets/journal-paper-v80.svg) 0 0 / 160px 160px repeat,var(--sj-tab-fill,var(--sj-tab-ivory));
@@ -2708,22 +2692,22 @@ body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRo
  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--sj-tab-edge) 60%,transparent),inset 0 2px #ffffff65;
  transform:none;opacity:1;pointer-events:none;z-index:-1;
 }
-body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]),[data-gitgraph-chip])::after {
+body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]))::after {
  content:"";position:absolute;display:block;inset:-1px -1px auto auto;
  width:15px;height:15px;margin:0;padding:0;border:0;border-image:none;border-radius:0;
  background:var(--sj-tab-corner) right top / 15px 15px no-repeat;
  box-shadow:none;transform:none;opacity:1;pointer-events:none;z-index:1;
 }
-body[data-ds-dark-theme] .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]),[data-gitgraph-chip]) {
+body[data-ds-dark-theme] .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"])) {
  --sj-tab-corner:url(assets/journal-tab-fold-dark-v103.svg);
 }
-body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]),[data-gitgraph-chip]):hover::before {
+body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"])):hover::before {
  box-shadow:inset 0 0 0 1px var(--sj-tab-edge),inset 0 0 0 40px #ffffff12;
 }
 @media(forced-colors:active) {
- body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]),[data-gitgraph-chip]) {background:Canvas!important;border-color:ButtonText!important;}
- body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]),[data-gitgraph-chip])::before,
- body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]),[data-gitgraph-chip])::after {display:none;}
+ body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"])) {background:Canvas!important;border-color:ButtonText!important;}
+ body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]))::before,
+ body:is([data-ds-dark-theme],:not([data-ds-dark-theme])) .Dc7zOa_heroWorkspaceRow :is(.Hqq-bq_workspace,button:has([class*="seatLabel"]),button:has([class*="triggerLabel"]))::after {display:none;}
 }
 
 /* SJ-PEN-ARCHIVE-V104: ink signature on notebook paper and ivory code slips. */

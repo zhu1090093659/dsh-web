@@ -61,7 +61,7 @@ export interface PluginCardContext {
   /** Service lookup; absent on a context double that only models the slots. */
   get?(name: string): unknown
   /** Event subscription seat; absent on an event-less test double. */
-  on?(event: string, listener: (...args: never[]) => void): unknown
+  on?(event: never, listener: never): unknown
 }
 
 /** Owner share of a family list-seat card (that seat supplies nothing). */
@@ -192,7 +192,7 @@ export function installPluginCard(ctx: PluginCardContext, seat: PluginCardSeat):
 
   if (typeof ctx.on === 'function') {
     try {
-      ctx.on('slots/changed', () => { reconcile() })
+      ctx.on('slots/changed' as never, (() => { reconcile() }) as never)
     } catch {
       // An event seat that refuses the subscription leaves the initial
       // decision in place; the card still renders in the seat chosen below.

@@ -1,7 +1,7 @@
 {
   // Host/client combined program: the host half runs in the dsh process, the
   // browser half in the Web GUI, and the two share src/core. A combined program
-  // is the shape dsh-remote-web-ui (the sibling surface) uses; the git-graph
+  // is the shape dsh-remote-web-ui (the sibling surface) uses; the per-family
   // split exists for the sessions-store Context merge, which this package does
   // not carry. SDK types resolve from the @deepseek-ai/* npm devDependencies.
   "compilerOptions": {

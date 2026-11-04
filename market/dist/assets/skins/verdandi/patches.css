@@ -1897,17 +1897,25 @@ body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRo
   transform: rotate(-31deg) scale(1.02);
 }
 
-[data-slot="conversation.composer.dock"] {
+/* 输入卡下方的读数条：宿主把两张读数药丸装在 slot 包装
+   （[data-slot="conversation.composer.dock"]）里，把上下文环（ContextMeter）渲染成
+   **slot 包装的同级兄弟**——环是 [data-composer-dock] 的子元素，不是 slot 包装的
+   子元素。旧写法把纸面外壳画在 slot 包装上，环于是飘在面板右端外侧，读作两块割裂的
+   东西；现在外壳画在 dock 容器上：两张读数在左、上下文环在右，同一张纸面一条统计栏。
+   旧稿里那条 [data-dsh-live-tps] 右对齐规则随之作废：宿主与本仓都没有这个属性。 */
+[data-composer-dock] {
   isolation: isolate;
   box-sizing: border-box;
-  width: min(100%, 780px);
+  /* 读数条按内容收窄：三格读数本来就挨着读，铺满输入卡宽度只会在中间留一大块空白 */
+  width: max-content;
+  max-width: 100%;
   color: var(--vd-ink-muted);
   background: color-mix(in srgb, var(--vd-paper-solid) 92%, transparent);
   border: 1px solid color-mix(in srgb, var(--vd-gold) 42%, var(--vd-line));
   border-radius: 12px 12px 14px 14px;
-  grid-template-columns: minmax(0, 1fr) auto;
   align-self: center;
-  row-gap: 2px;
+  gap: 14px;
+  justify-content: flex-start;
   margin: 3px auto 0;
   padding: 7px 14px 8px 42px;
   font-size: 12px;
@@ -1915,10 +1923,9 @@ body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRo
   position: relative;
   overflow: visible;
   box-shadow: 0 8px 18px #3e111d14, inset 0 1px #fffdfbb8;
-  display: grid !important;
 }
 
-[data-slot="conversation.composer.dock"]:before {
+[data-composer-dock]:before {
   content: "";
   z-index: 1;
   background: var(--vd-art-ring-tag) center / contain no-repeat;
@@ -1932,7 +1939,7 @@ body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRo
   left: 10px;
 }
 
-[data-slot="conversation.composer.dock"]:after {
+[data-composer-dock]:after {
   content: "";
   z-index: 0;
   background: var(--vd-crimson);
@@ -1947,6 +1954,26 @@ body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRo
   right: 24px;
 }
 
+/* slot 包装只负责排那两张读数药丸，外壳已上移到 dock 容器；两张读数与上下文环
+   读作同一条横排的统计栏，所以这里是 flex 单行，不是两行的 grid。 */
+[data-slot="conversation.composer.dock"] {
+  position: relative;
+  z-index: 2;
+  display: flex !important;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-width: 0;
+  flex: 1 1 auto;
+  background: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: auto !important;
+}
+
 [data-slot="conversation.composer.dock"] > :not([role="tooltip"]) {
   z-index: 2;
   min-width: 0;
@@ -1957,30 +1984,59 @@ body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRo
   width: auto !important;
   margin: 0 !important;
   padding: 2px 6px !important;
-}
-
-[data-slot="conversation.composer.dock"] > :first-child {
-  text-align: center;
-  text-overflow: ellipsis;
   white-space: nowrap;
-  grid-column: 1 / -1;
-  overflow: hidden;
-  border-bottom: 1px solid color-mix(in srgb, var(--vd-gold) 30%, transparent) !important;
-  padding-bottom: 5px !important;
 }
 
-[data-slot="conversation.composer.dock"] > :not(:first-child, [role="tooltip"], [data-dsh-live-tps]) {
+[data-slot="conversation.composer.dock"] > :not(:first-child, [role="tooltip"]) {
   text-align: left;
-}
-
-[data-slot="conversation.composer.dock"] > [data-dsh-live-tps] {
-  text-align: right;
-  justify-self: end;
+  border-left: 1px solid color-mix(in srgb, var(--vd-gold) 30%, transparent) !important;
+  padding-left: 14px !important;
 }
 
 [data-slot="conversation.composer.dock"] > [role="tooltip"] {
   z-index: 30;
   max-width: min(720px, 100vw - 32px);
+}
+
+/* 上下文环：宿主把它画在 dock 容器里（slot 包装之外），这里并进同一条纸面——
+   一道金线分隔，右对齐，与两张读数同一张纸。环的轨道与填充是 SVG stroke。
+   宿主给环按钮留着一枚自己的药丸底色与圆角（外壳主题那层规则赢过按钮自己的
+   transparent），不抹掉的话它会像一枚贴片压在纸面右端，所以整棵子树先归零。 */
+[data-composer-dock] > *:not([data-slot]),
+[data-composer-dock] > *:not([data-slot]) * {
+  background: none !important;
+  box-shadow: none !important;
+}
+
+[data-composer-dock] > *:not([data-slot]) {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  align-self: center;
+  border-radius: 0 !important;
+}
+
+[data-composer-dock] > *:not([data-slot]) button[aria-haspopup="dialog"] {
+  background: none !important;
+  border: 0 !important;
+  border-left: 1px solid color-mix(in srgb, var(--vd-gold) 30%, transparent) !important;
+  border-radius: 0 !important;
+  padding: 2px 0 2px 14px !important;
+  color: var(--vd-ink-muted) !important;
+  gap: 6px;
+}
+
+[data-composer-dock] > *:not([data-slot]) button[aria-haspopup="dialog"]:hover {
+  background: color-mix(in srgb, var(--vd-gold) 12%, transparent) !important;
+  color: var(--vd-ink) !important;
+}
+
+[data-composer-dock] > *:not([data-slot]) svg circle:first-of-type {
+  stroke: color-mix(in srgb, var(--vd-line) 80%, transparent) !important;
+}
+
+[data-composer-dock] > *:not([data-slot]) svg circle:last-of-type {
+  stroke: var(--vd-crimson) !important;
 }
 
 body[data-ds-dark-theme] [data-composer-card] {
@@ -2164,21 +2220,28 @@ body[data-ds-dark-theme] [data-slot="sidebar.settings"] [role="dialog"][aria-mod
     border-radius: 15px !important;
   }
 
-  [data-slot="conversation.composer.dock"] {
-    grid-template-columns: 1fr;
+  [data-composer-dock] {
     padding-left: 34px;
     padding-right: 8px;
   }
 
-  [data-slot="conversation.composer.dock"]:before {
+  [data-composer-dock]:before {
     width: 20px;
     height: 20px;
     left: 7px;
   }
 
-  [data-slot="conversation.composer.dock"] > :not(:first-child, [role="tooltip"], [data-dsh-live-tps]), [data-slot="conversation.composer.dock"] > [data-dsh-live-tps] {
+  [data-slot="conversation.composer.dock"] {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  [data-slot="conversation.composer.dock"] > :not(:first-child, [role="tooltip"]) {
     text-align: center;
-    justify-self: stretch;
+  }
+
+  [data-composer-dock] > *:not([data-slot]) button[aria-haspopup="dialog"] {
+    padding-left: 10px !important;
   }
 }
 

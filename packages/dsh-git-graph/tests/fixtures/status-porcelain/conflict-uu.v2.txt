@@ -1,7 +1,0 @@
-# branch.oid 3e8947a8b441a4e0e812004a1d90084b0e7c6ca4
-# branch.head main
-1 M. N... 100644 100644 100644 c68065a8afab3a2b20284dbefbfb0f753dbbf96f 13cd7a00bdb06f2f44b7a88f1188cf36ec972b1e docs/file with spaces.txt
-u UU N... 100644 100644 100644 100644 ec20141f0267805d3db1349c4701ed1f84f3ee61 a9080777247cccd407de4de93759f2def0e891ed a686d2c09186bb6779a230845b7d9b4776b16ec3 src/alpha.txt
-? docs/another file with spaces.txt
-? "docs/\346\226\207\346\241\243.txt"
-? untracked-dir/

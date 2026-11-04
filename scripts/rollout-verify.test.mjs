@@ -26,7 +26,7 @@ test('the plugin scaffold declares a >= floor and the current cohort matches it'
   assert.match(floor, /^>=\s*\d+\.\d+\.\d+/)
   // The scaffold floor names the cohort the repository installs; when the
   // cohort moves, this assertion and the manifest move together.
-  assert.equal(floor, '>=0.2.1-rc.3')
+  assert.equal(floor, '>=0.2.2-alpha.3')
 })
 
 test('satisfiesFloor follows semver prerelease ordering', () => {
@@ -125,28 +125,28 @@ const OVERRIDE_LOCK = [
   '  .:',
   '    devDependencies:',
   "      '@deepseek-ai/dsh-client-store':",
-  '        specifier: ^0.2.1-rc.3',
+  '        specifier: ^0.2.2-alpha.3',
   '        version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)',
   "      '@deepseek-ai/dsh-session':",
-  '        specifier: ^0.2.1-rc.3',
-  '        version: 0.2.1-rc.3',
+  '        specifier: ^0.2.2-alpha.3',
+  '        version: 0.2.2-alpha.3',
 ].join(NL)
 
 const CLIENT_STORE_OVERRIDE = { '@deepseek-ai/dsh-client-store': '0.2.1-rc.5' }
 
 test('lockfile purity accepts a family key at its declared override version', () => {
-  assert.deepEqual(lockfileCohortViolations(OVERRIDE_LOCK, '>=0.2.1-rc.3', CLIENT_STORE_OVERRIDE), [])
+  assert.deepEqual(lockfileCohortViolations(OVERRIDE_LOCK, '>=0.2.2-alpha.3', CLIENT_STORE_OVERRIDE), [])
 })
 
 test('lockfile purity rejects that same key once the workspace declares no override', () => {
-  assert.deepEqual(lockfileCohortViolations(OVERRIDE_LOCK, '>=0.2.1-rc.3'), [
+  assert.deepEqual(lockfileCohortViolations(OVERRIDE_LOCK, '>=0.2.2-alpha.3'), [
     ['@deepseek-ai/dsh-client-store', '0.2.1-rc.5'],
   ])
 })
 
 test('lockfile purity rejects a declared override the lockfile does not honor', () => {
   assert.deepEqual(
-    lockfileCohortViolations(OVERRIDE_LOCK, '>=0.2.1-rc.3', {
+    lockfileCohortViolations(OVERRIDE_LOCK, '>=0.2.2-alpha.3', {
       '@deepseek-ai/dsh-client-store': '0.2.1-rc.6',
     }),
     [['@deepseek-ai/dsh-client-store', '0.2.1-rc.5']],
@@ -154,16 +154,16 @@ test('lockfile purity rejects a declared override the lockfile does not honor', 
 })
 
 test('lockfile purity keeps guarding the keys the overrides do not name', () => {
-  const drifted = driftLock('version: 0.2.1-rc.3', 'version: 0.2.1-rc.4', OVERRIDE_LOCK)
-  assert.deepEqual(lockfileCohortViolations(drifted, '>=0.2.1-rc.3', CLIENT_STORE_OVERRIDE), [
-    ['@deepseek-ai/dsh-session', '0.2.1-rc.4'],
+  const drifted = driftLock('version: 0.2.2-alpha.3', 'version: 0.2.2-alpha.4', OVERRIDE_LOCK)
+  assert.deepEqual(lockfileCohortViolations(drifted, '>=0.2.2-alpha.3', CLIENT_STORE_OVERRIDE), [
+    ['@deepseek-ai/dsh-session', '0.2.2-alpha.4'],
   ])
 })
 
 test('lockfile purity lets a range override excuse its key without pinning it', () => {
   assert.deepEqual(
-    lockfileCohortViolations(OVERRIDE_LOCK, '>=0.2.1-rc.3', {
-      '@deepseek-ai/dsh-client-store': '^0.2.1-rc.3',
+    lockfileCohortViolations(OVERRIDE_LOCK, '>=0.2.2-alpha.3', {
+      '@deepseek-ai/dsh-client-store': '^0.2.2-alpha.3',
     }),
     [],
   )

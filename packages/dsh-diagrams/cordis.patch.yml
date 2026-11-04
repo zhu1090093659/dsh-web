@@ -1,0 +1,7 @@
+# bundle patch for the diagrams plugin: inserts its row into the web profile
+# roster. Applied as a profile bundle layer (the `dsh.bundle.patch` manifest
+# field); install with
+# `dsh plugin --profile web add link:<this repo>/packages/dsh-diagrams`.
+- insert:
+    - id: ui-diagrams
+      name: '@linxin666/dsh-client-ui-diagrams'

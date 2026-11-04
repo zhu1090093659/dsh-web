@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-02",
+  "generated": "2026-11-03",
   "items": [
     {
       "kind": "skin",
@@ -24,6 +24,10 @@
     {
       "kind": "skin",
       "id": "xinghai-heart"
+    },
+    {
+      "kind": "plugin",
+      "id": "dsh-widget-board"
     }
   ]
 }

@@ -1,6 +1,7 @@
 # Agent Note: Git worktree parallel sessions in dsh-git-graph
 
 Status: implemented
+Superseded by: [the dsh-git-graph package is retired in favour of the official Git changes plugin](../simplification/2026-11-03-git-graph-package-retired.md)
 
 ## Problem
 

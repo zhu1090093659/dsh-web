@@ -29,7 +29,7 @@ env:
   # is the only thing that installs the CLI now, so the pin lives here rather
   # than in a package.json dependency (a workspace devDependency cannot run in
   # this tree; see the install step).
-  DSH_CLI_VERSION: 0.2.1-rc.3
+  DSH_CLI_VERSION: 0.2.2-alpha.3
 
 permissions:
   contents: write
@@ -63,7 +63,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24.9.0
           cache: pnpm
 
       # --ignore-scripts: the consistency checks compare COMMITTED bundle
@@ -222,7 +222,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24.9.0
           cache: pnpm
 
       - name: Install dependencies

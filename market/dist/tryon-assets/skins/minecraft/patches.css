@@ -526,59 +526,6 @@ html[data-dsh-skin="minecraft"] .aionui-root input:focus, html[data-dsh-skin="mi
   outline-offset: 0;
 }
 
-html[data-dsh-skin="minecraft"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1), html[data-dsh-skin="minecraft"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) {
-  color: #38628f;
-}
-
-html[data-dsh-skin="minecraft"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2), html[data-dsh-skin="minecraft"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) {
-  color: #5a9e38;
-}
-
-html[data-dsh-skin="minecraft"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3), html[data-dsh-skin="minecraft"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) {
-  color: #b57e1e;
-}
-
-html[data-dsh-skin="minecraft"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4), html[data-dsh-skin="minecraft"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) {
-  color: #b6442e;
-}
-
-html[data-dsh-skin="minecraft"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5), html[data-dsh-skin="minecraft"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) {
-  color: #78896c;
-}
-
-html[data-dsh-skin="minecraft"] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n), html[data-dsh-skin="minecraft"] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) {
-  color: #83c94e;
-}
-
-html[data-dsh-skin="minecraft"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+1), html[data-dsh-skin="minecraft"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+1) {
-  color: #4a7db8;
-}
-
-html[data-dsh-skin="minecraft"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+2), html[data-dsh-skin="minecraft"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+2) {
-  color: #83c94e;
-}
-
-html[data-dsh-skin="minecraft"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+3), html[data-dsh-skin="minecraft"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+3) {
-  color: #d9a53c;
-}
-
-html[data-dsh-skin="minecraft"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+4), html[data-dsh-skin="minecraft"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+4) {
-  color: #d45a5a;
-}
-
-html[data-dsh-skin="minecraft"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n+5), html[data-dsh-skin="minecraft"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n+5) {
-  color: #a4b0a0;
-}
-
-html[data-dsh-skin="minecraft"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="node"]:nth-child(6n), html[data-dsh-skin="minecraft"] body[data-ds-dark-theme] [data-gitgraph-lanes] > [data-gitgraph-glyph="merge"]:nth-child(6n) {
-  color: #aed08a;
-}
-
-html[data-dsh-skin="minecraft"] [data-gitgraph-ref]:not([data-gitgraph-ref-current]) {
-  border: 1px solid #ffffff2e;
-  border-radius: 0;
-}
-
 @keyframes QecUDa_mc-pan {
   0% {
     transform: rotateY(0);

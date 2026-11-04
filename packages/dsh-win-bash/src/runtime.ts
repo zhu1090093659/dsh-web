@@ -5,7 +5,7 @@
  * The package ships its own Git for Windows MinGit extraction under
  * runtime/win32-x64/: the tool must NEVER fall back to a bash found on PATH
  * (a host Git for Windows install, WSL, or a stray MSYS), because the whole
- * point of vendoring is a shell whose version and bytes are pinned. Three
+ * point of vendoring is a shell whose version and bytes are pinned. Four
  * invariants implement that:
  *
  * 1. the binary is addressed by absolute path, never by name,
@@ -13,6 +13,13 @@
  *    packaging time before it is used at all, and
  * 3. the tree that RUNS is a published copy under the DSH home, not the tree
  *    inside the package.
+ * 4. the copy's Windows mandatory integrity label is checked before it is
+ *    reused or before a freshly published copy is spawned. A Low (or lower)
+ *    label on the executable image makes Windows start a Low-integrity process
+ *    even from a Medium runner, and that process cannot write an ordinary
+ *    Medium workspace or temp directory. Such a tree is never used: the payload
+ *    is published into an isolated cache root instead, and if no candidate root
+ *    is safe the mount is refused with a specific diagnosis.
  *
  * The third invariant is why this module publishes a cache: Windows refuses to
  * rename a directory whose executable is running, and pnpm imports a package by
@@ -35,9 +42,14 @@
 
 import { createHash, randomUUID } from 'node:crypto'
 import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { resolveDshHome } from './dsh-home.ts'
+import {
+  existingAncestors, readMandatoryLabel,
+  type IntegrityLabel, type LabelReader,
+} from './integrity.ts'
 
 /** Directory holding the shipped payload, relative to the package root. */
 export const RUNTIME_DIR = 'runtime/win32-x64'
@@ -60,6 +72,20 @@ export const RUNTIME_ARCH = 'x64'
  * also why a release that only changes JavaScript never has to move 16 MiB.
  */
 export const CACHE_DIR_PARTS = ['win-bash', 'runtime'] as const
+
+/**
+ * Directory parts of the isolated fallback cache, used only when the preferred
+ * cache root carries a Low mandatory integrity label. It lives outside the DSH
+ * data tree, which a workspace sandbox can label Low with an inheritable ACE.
+ */
+export const ISOLATED_CACHE_DIR_PARTS = ['dsh-win-bash', 'runtime'] as const
+
+/**
+ * Optional environment override for the isolated cache root's parent. An
+ * operator whose local app data is itself labelled Low can point this at a
+ * directory they have verified is Medium; it is not needed on a normal host.
+ */
+export const RUNTIME_ROOT_ENV = 'DSH_WIN_BASH_RUNTIME_HOME'
 
 /**
  * Name prefix of the staging directory one cache copy is built in. The rest of
@@ -117,6 +143,32 @@ export function binDir(packageRoot: string = PACKAGE_ROOT): string {
  */
 export function cacheRoot(env: NodeJS.ProcessEnv = process.env): string {
   return join(resolveDshHome(env), ...CACHE_DIR_PARTS)
+}
+
+/**
+ * Absolute root of the isolated fallback payload cache.
+ *
+ * The DSH home is a data tree a workspace sandbox may have labelled Low with
+ * an inheritable ACE. A copy published below it then inherits that label and
+ * starts a Low-integrity bash, which cannot write a Medium workspace or temp
+ * directory. This root deliberately lives OUTSIDE the DSH home, under the
+ * per-user application-data (or cache) directory instead.
+ *
+ * It still follows the probe-isolation convention: the final path component is
+ * derived from the DSH home, so an isolated `DSH_HOME` gets its own isolated
+ * cache too. Operators whose application-data tree is itself labelled Low can
+ * point {@link RUNTIME_ROOT_ENV} at a directory they have verified.
+ * @param env - environment to read the override, app-data root and DSH home from.
+ * @returns the directory the fallback payload copies are published under.
+ */
+export function isolatedCacheRoot(env: NodeJS.ProcessEnv = process.env): string {
+  const override = env[RUNTIME_ROOT_ENV]?.trim()
+  if (override !== undefined && override !== '') return resolve(override)
+  const base = env.LOCALAPPDATA
+    ?? (process.platform === 'win32'
+      ? join(homedir(), 'AppData', 'Local')
+      : (env.XDG_CACHE_HOME ?? join(homedir(), '.cache')))
+  return join(base, ...ISOLATED_CACHE_DIR_PARTS, sha256(resolveDshHome(env)).slice(0, 12))
 }
 
 /** One manifest row: a payload-relative path and its digest. */
@@ -237,6 +289,7 @@ export interface RuntimeRejection {
     | 'missing-binary'
     | 'checksum-mismatch'
     | 'manifest-unreadable'
+    | 'unsafe-integrity'
   /** One-sentence, operator-facing explanation. */
   readonly message: string
 }
@@ -359,8 +412,12 @@ export interface PrepareRuntimeOptions {
   readonly packageRoot?: string
   /** Cache root to publish into; the DSH home's own by default. */
   readonly cacheRoot?: string
-  /** Environment the default cache root resolves from; process.env by default. */
+  /** Isolated fallback root; the per-user app-data cache by default. */
+  readonly isolatedCacheRoot?: string
+  /** Environment the default roots resolve from; process.env by default. */
   readonly env?: NodeJS.ProcessEnv
+  /** Mandatory-integrity-label reader; the Windows icacls reader by default. */
+  readonly readLabel?: LabelReader
   /** Operator-facing notes; a copy that could not be published is reported here. */
   readonly warn?: (message: string) => void
   /** The copy itself; a real recursive copy by default. */
@@ -392,10 +449,11 @@ function removeStaging(staging: string): void {
  *
  * The copy's own manifest must reproduce the expected key before any byte is
  * executed, so a directory whose manifest was rewritten alongside its files is
- * a miss rather than a match.
+ * a miss rather than a match. This is a BYTE check only: it says nothing about
+ * the security descriptor, which is why callers also run {@link cacheSafe}.
  * @param root - the candidate payload root.
  * @param key - the key the shipped manifest produced.
- * @returns whether that directory can be spawned from.
+ * @returns whether that directory's bytes can be spawned from.
  */
 function cacheReady(root: string, key: string): boolean {
   try {
@@ -406,6 +464,32 @@ function cacheReady(root: string, key: string): boolean {
   } catch {
     return false
   }
+}
+
+/**
+ * Whether a published tree's mandatory integrity label is safe to spawn from.
+ *
+ * Both the directory and the executable itself are inspected: the Windows
+ * sandbox applies an inheritable Low ACE to the directory, and the image then
+ * carries an inherited Low ACE. Before a directory exists, the closest existing
+ * ancestor is what decides the label a newly created file inherits.
+ *
+ * `unknown` is not treated as safe. A descriptor we cannot read cannot be
+ * claimed as verified, so the caller moves on to another candidate root rather
+ * than silently running from an unverified image.
+ * @param root - the candidate payload root.
+ * @param readLabel - the label reader (injectable seam).
+ * @returns the label verdict for that tree.
+ */
+function cacheSafe(root: string, readLabel: LabelReader): IntegrityLabel {
+  // Every existing ancestor matters: an inheritable Low ACE on the DSH home
+  // can be propagated onto existing children after the cache was published.
+  const verdicts = existingAncestors(root).map(target => readLabel(target))
+  const bash = bashIn(root)
+  if (existsSync(bash)) verdicts.push(readLabel(bash))
+  if (verdicts.includes('low-or-untrusted')) return 'low-or-untrusted'
+  if (verdicts.includes('unknown')) return 'unknown'
+  return 'medium-or-higher'
 }
 
 /**
@@ -442,20 +526,44 @@ function publishPayload(source: string, target: string, key: string, copy: CopyT
 }
 
 /**
+ * Why one candidate cache root could not serve the payload.
+ *
+ * A Low verdict is a security fact, not a write failure: the tree must not be
+ * reused or spawned from at all. The other reasons keep the existing honest
+ * fallback to the verified packaged tree.
+ */
+interface CacheDiagnosis {
+  /** Operator-facing explanation. */
+  readonly message: string
+  /** Whether a Low/Untrusted mandatory label was actually observed. */
+  readonly low: boolean
+}
+
+/**
  * Resolve the shell one host runs, publishing the payload outside the package.
  *
- * The verification order is the whole point: the shipped manifest identifies
- * the payload, a published copy of that identity is reused when it verifies,
- * and otherwise the packaged tree is verified first and only then copied. What
- * gets spawned is therefore always a tree whose bytes match the shipped
- * manifest, and it lives under the DSH home where an update or uninstall of
- * this package cannot be blocked by a running shell.
+ * Two independent proofs gate every tree that can be spawned: the shipped
+ * SHA256 manifest proves its BYTES, and a mandatory-integrity-label check
+ * proves its SECURITY DESCRIPTOR cannot downgrade a Medium runner to a Low
+ * process. A label check runs before a published copy is reused, before a new
+ * copy is published, and again after publication (the decisive check is on the
+ * bash.exe that will actually be spawned). A tree carrying Low or Untrusted is
+ * never reused and never spawned from, so a hash match alone can no longer keep
+ * a broken cache alive across restarts and updates.
  *
- * A cache that cannot be written is not a reason to withhold the tool: the
- * verified packaged tree runs instead and the caller is told, through
- * {@link PrepareRuntimeOptions.warn}, that updates will need this host stopped.
- * A payload that fails its manifest is still a refusal — running unverified
- * bytes is the outcome the manifest exists to prevent, cache or no cache.
+ * Candidate roots are tried in order. The DSH home cache keeps the #1996 fix;
+ * when its data tree is labelled Low, the payload is published into an isolated
+ * per-user application-data root instead, still OUTSIDE the package. An old Low
+ * cache under the DSH home is therefore migrated by abandonment, not by a
+ * one-off repair of one payload-key directory.
+ *
+ * When no candidate can be written or verified, the verified packaged tree runs
+ * instead and the caller is told, through {@link PrepareRuntimeOptions.warn},
+ * that updates will need this host stopped. But if a Low label was observed and
+ * even the packaged image is not proven clean, the mount is REFUSED with
+ * `unsafe-integrity` rather than silently executing a shell that cannot write
+ * the session's workspace. A payload that fails its manifest is always a
+ * refusal, cache or no cache.
  * @param options - host facts, roots, and the seams tests drive.
  * @returns the shell paths to run, or the rejection reason.
  */
@@ -465,8 +573,28 @@ export function prepareRuntime(options: PrepareRuntimeOptions = {}): RuntimeRead
   if (refused !== undefined) return refused
   const packageRoot = options.packageRoot ?? PACKAGE_ROOT
   const source = runtimeRoot(packageRoot)
-  const cacheDir = options.cacheRoot ?? cacheRoot(options.env)
   const warn = options.warn ?? ((): void => {})
+  // One mount inspects the same ancestors several times (before reuse, before
+  // publication, after publication). Memoize within this call: a descriptor
+  // cannot change underneath us, and icacls is a process per query.
+  const rawLabel = options.readLabel ?? readMandatoryLabel
+  const labels = new Map<string, IntegrityLabel>()
+  const readLabel: LabelReader = (target: string): IntegrityLabel => {
+    const hit = labels.get(target)
+    if (hit !== undefined) return hit
+    const verdict = rawLabel(target)
+    labels.set(target, verdict)
+    return verdict
+  }
+  const copy = options.copy ?? copyTree
+
+  // A caller that names cacheRoot explicitly (tests, probe instances) owns the
+  // candidate set: it must also name isolatedCacheRoot to get a second one.
+  // Only the real default path adds the isolated fallback automatically.
+  const roots = [options.cacheRoot ?? cacheRoot(options.env)]
+  const isolated = options.isolatedCacheRoot
+    ?? (options.cacheRoot === undefined ? isolatedCacheRoot(options.env) : undefined)
+  if (isolated !== undefined && !roots.includes(isolated)) roots.push(isolated)
 
   let key: string
   try {
@@ -478,25 +606,86 @@ export function prepareRuntime(options: PrepareRuntimeOptions = {}): RuntimeRead
     }
   }
 
-  const published = join(cacheDir, key)
-  if (cacheReady(published, key)) return readyFrom(published, 'cache')
-
-  const shipped = resolveRuntime(host, packageRoot)
-  if ('code' in shipped) return shipped
-
-  try {
-    publishPayload(source, published, key, options.copy ?? copyTree)
-  } catch (error) {
-    warn('the verified payload could not be published to ' + published + ' (' + describe(error)
-      + '), so this host runs the shell from ' + source + '; while it runs, updating or uninstalling'
-      + ' this package can fail with ERR_PNPM_EPERM')
+  const diagnoses: CacheDiagnosis[] = []
+  let shipped: RuntimeReady | RuntimeRejection | undefined
+  const verifiedPackage = (): RuntimeReady | RuntimeRejection => {
+    shipped ??= resolveRuntime(host, packageRoot)
     return shipped
   }
-  if (!cacheReady(published, key)) {
-    warn('the payload copy at ' + published + ' did not verify against the shipped manifest, so this host'
-      + ' runs the shell from ' + source + '; while it runs, updating or uninstalling this package can fail'
-      + ' with ERR_PNPM_EPERM')
-    return shipped
+
+  for (const cacheDir of roots) {
+    const published = join(cacheDir, key)
+
+    // Before reuse AND before publication: never touch a Low-labelled tree.
+    const before = cacheSafe(published, readLabel)
+    if (before === 'low-or-untrusted') {
+      diagnoses.push({
+        low: true,
+        message: 'the cache root ' + cacheDir + ' carries a Low or Untrusted mandatory integrity label',
+      })
+      continue
+    }
+    if (before === 'unknown') {
+      diagnoses.push({
+        low: false,
+        message: 'the mandatory integrity label of ' + cacheDir + ' could not be read',
+      })
+      continue
+    }
+
+    if (cacheReady(published, key)) return readyFrom(published, 'cache')
+
+    const packaged = verifiedPackage()
+    if ('code' in packaged) return packaged
+    try {
+      publishPayload(source, published, key, copy)
+    } catch (error) {
+      diagnoses.push({
+        low: false,
+        message: 'the verified payload could not be published to ' + published + ' (' + describe(error) + ')',
+      })
+      continue
+    }
+    if (!cacheReady(published, key)) {
+      diagnoses.push({
+        low: false,
+        message: 'the payload copy at ' + published + ' did not verify against the shipped manifest',
+      })
+      continue
+    }
+
+    // After publication: the label a freshly created bash.exe INHERITED is the
+    // decisive fact. A tree that turned Low here is never returned to a caller.
+    const after = cacheSafe(published, readLabel)
+    if (after !== 'medium-or-higher') {
+      diagnoses.push({
+        low: after === 'low-or-untrusted',
+        message: after === 'low-or-untrusted'
+          ? 'the newly published bash.exe at ' + bashIn(published) + ' inherited a Low or Untrusted mandatory integrity label'
+          : 'the mandatory integrity label of the newly published bash.exe at ' + bashIn(published) + ' could not be read',
+      })
+      continue
+    }
+    return readyFrom(published, 'cache')
   }
-  return readyFrom(published, 'cache')
+
+  const packaged = verifiedPackage()
+  if ('code' in packaged) return packaged
+  const reasons = diagnoses.map(entry => entry.message).join('; ')
+  const sawLow = diagnoses.some(entry => entry.low)
+  const packagedLabel = readLabel(bashPath(packageRoot))
+  if (sawLow && packagedLabel === 'low-or-untrusted') {
+    return {
+      code: 'unsafe-integrity',
+      message: 'every runtime cache root is unsafe to spawn from and the packaged payload is not proven clean: '
+        + reasons + '. A Low-labelled bash.exe would start a Low-integrity process on this Medium host, which '
+        + 'cannot write an ordinary workspace or temp directory, so win_bash refuses to mount instead of '
+        + 'silently running a broken shell. Use the host pwsh tool, or point ' + RUNTIME_ROOT_ENV
+        + ' at a directory you have verified has no Low Mandatory Level label. Do not lower the '
+        + 'workspace integrity level or change the global sandbox policy to work around this.',
+    }
+  }
+  warn(reasons + ', so this host runs the shell from ' + source + '; while it runs, updating or '
+    + 'uninstalling this package can fail with ERR_PNPM_EPERM')
+  return packaged
 }

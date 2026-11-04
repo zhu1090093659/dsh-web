@@ -2,7 +2,7 @@
 
 Status: implemented
 
-Extends [the child-model selection opt-in](../bug-fix/2026-10-07-liangshen-preset-child-model-selection.md) and [the dispatcher rules](2026-10-18-liangshen-dispatcher-rules-maintained-in-place.md). The first made the preset opt into child-model selection, the second states the routing discipline in the prompt; this note owns the enforcement neither of them could provide.
+Extends [the child-model selection opt-in](../bug-fix/2026-10-07-liangshen-preset-child-model-selection.md) and [the dispatcher rules](2026-10-18-liangshen-dispatcher-rules-maintained-in-place.md). The first made the preset opt into child-model selection, the second states the routing discipline in the prompt; this note owns the enforcement neither of them could provide. The delegation-time boundary it adds is paired with [the dispatch execution guard](2026-11-02-liangshen-dispatch-execution-guard.md), which polices the decision surfaces of the same composition.
 
 ## Problem
 

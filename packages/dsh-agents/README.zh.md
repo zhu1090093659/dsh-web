@@ -24,7 +24,7 @@ DSH Web GUI 的 Agent 小队：可复用的成员定义（agent 预设、权限�
 - 运行记录同时覆盖两类：带 Lead 会话与目标的整队运行，以及带成员名与「打开会话」动作的成员运行；最新在前，上限是 Host 保留的 200 条。
 - 页面把每一种失败变成一句话：传输层失败读作 not-mounted、unauthorized、forbidden、timeout、unreachable 或 unexpected；Host 拒绝在 unknown-preset、no-workspace、squad-missing、lead-create-failed、lead-prepare-failed、ledger-unavailable 上保留自己的类别；其余 code 一律读作普通拒绝，引用 Host 那句有界原文。
 - 运行结算不在此处观察：已启动的运行保持 `running`，直到后续里程碑接管其结果。
-- 部署自带官方 Agent Teams 运行期（`agentTeams`，官方实验 bundle）时，本包保留账本、路由与成员运行，但 fork 运行期与其 Team 工具整块不挂载：一个服务名只留一个所有者，因此不会出现第二个 `TeamService`、也不会再注册一次 `agentTeam` 投影。实时队伍视图照旧可用，因为官方运行期发布的是同一个 `agentTeam` 投影（`stateVersion` 4）。
+- 部署自带官方 Agent Teams 运行期（`agentTeams`：旧的实验 profile bundle 或新的 `@deepseek-ai/dsh-agent-team` 都算）时，本包保留账本、路由与成员运行，但 fork 运行期与其 Team 工具整块不挂载：一个服务名只留一个所有者，因此不会出现第二个 `TeamService`、也不会再注册一次 `agentTeam` 投影。实时队伍视图照旧可用，因为官方运行期发布的是同一个 `agentTeam` 投影（`stateVersion` 4）。
 
 上述每一处差异，以及它偏离的精确上游基线，都记录在 [docs/fork-provenance.md](docs/fork-provenance.md) 与 [docs/runtime-deltas.md](docs/runtime-deltas.md)；两者是维护者契约，不是建议。
 

@@ -59,7 +59,7 @@ write/read race, timing-dependent rather than environment-specific.
   state deterministically.
 - Future packages importing Node builtins in vitest specs must either set the
   per-file node environment or confirm the builtin is in
-  `module.builtinModules` on CI's Node line (22.x), not just importable.
+  `module.builtinModules` on CI's Node line (24.x), not just importable.
 
 ## Alternatives considered
 
@@ -70,7 +70,7 @@ write/read race, timing-dependent rather than environment-specific.
   vitest config**: masks the real issue (host-only specs running in a browser
   environment) and keeps every spec paying jsdom startup cost.
 - **Pin CI to a Node version whose `builtinModules` includes `sqlite`**:
-  rejected; the CI pin is deliberately broad (`node-version: 22`), and the
+  rejected; the CI pin tracks the Host floor (`node-version: 24.9.0`), and the
   test environment should be explicit rather than coupled to a Node patch
   release's builtin list.
 - **Keep the fire-and-forget write and have the spec poll for the file**:

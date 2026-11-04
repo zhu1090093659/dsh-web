@@ -25,7 +25,7 @@ const MANIFESTS: ReadonlyArray<{ label: string; manifest: Record<string, unknown
   { label: 'declares the host only as a peer', manifest: { peerDependencies: { '@deepseek-ai/dsh': '>=0.2.0-rc.1' } } },
   {
     label: 'prefers dsh.engines.dsh over the peer range',
-    manifest: { dsh: { engines: { dsh: '>=0.2.1-rc.3' } }, peerDependencies: { '@deepseek-ai/dsh': '>=0.1.0' } },
+    manifest: { dsh: { engines: { dsh: '>=0.2.2-alpha.3' } }, peerDependencies: { '@deepseek-ai/dsh': '>=0.1.0' } },
   },
   { label: 'ignores a peer on another package', manifest: { peerDependencies: { react: '>=18' } } },
   { label: 'ignores a non-string floor', manifest: { dsh: { engines: { dsh: 7 } } } },

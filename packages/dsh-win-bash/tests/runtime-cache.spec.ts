@@ -14,7 +14,7 @@
  */
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -27,6 +27,7 @@ import {
   runtimeRoot,
   verifyPayloadRoot,
 } from '../src/runtime.ts'
+import { readMandatoryLabel } from '../src/integrity.ts'
 
 /** The platform this package serves, used as the host fact in every case. */
 const WINDOWS = { platform: 'win32', arch: 'x64' } as const
@@ -316,5 +317,65 @@ describe.skipIf(!RUNNABLE)('the published copy on a real host', () => {
     expect(run.stdout.trim().toLowerCase()).toBe(runtime.bin.replace(/\\/g, '/').toLowerCase())
     expect(runtime.payloadRoot.startsWith(cache)).toBe(true)
     cleanup(cache)
+  })
+
+  it('operator reading a real Low-labelled directory gets a Low verdict from icacls', () => {
+    // Given a disposable directory carrying an inheritable Low label and a
+    // bash.exe created under it (the condition reported in issue #2007),
+    const parent = tempRoot('acl')
+    const image = join(parent, 'usr', 'bin', 'bash.exe')
+    mkdirSync(dirname(image), { recursive: true })
+    writeFileSync(image, 'fixture-bash-bytes')
+    const exe = join(process.env.SystemRoot ?? process.env.windir ?? 'C:\\Windows', 'System32', 'icacls.exe')
+    const set = (level: string): number => spawnSync(exe, [parent, '/setintegritylevel', level], {
+      windowsHide: true, timeout: 10000, stdio: 'ignore',
+    }).status ?? -1
+    try {
+      // When the label is applied to the directory only,
+      expect(set('(OI)(CI)L')).toBe(0)
+      // Then the reader sees Low on both the directory and the inherited image,
+      // using language-independent SDDL rather than localized icacls output.
+      expect(readMandatoryLabel(parent)).toBe('low-or-untrusted')
+      expect(readMandatoryLabel(image)).toBe('low-or-untrusted')
+      // And a directory with no explicit label reads as Medium-or-higher.
+      const clean = tempRoot('clean')
+      try {
+        expect(readMandatoryLabel(clean)).toBe('medium-or-higher')
+      } finally {
+        rmSync(clean, { recursive: true, force: true })
+      }
+    } finally {
+      set('(OI)(CI)M')
+      rmSync(parent, { recursive: true, force: true })
+    }
+  })
+
+  it('operator whose real cache parent is Low gets the shell from the isolated root', () => {
+    // Given a real Low-labelled cache root and a clean isolated root,
+    const { pkg, payload } = packageFixture()
+    const cache = tempRoot('acl-cache')
+    const isolated = tempRoot('acl-isolated')
+    const exe = join(process.env.SystemRoot ?? process.env.windir ?? 'C:\\Windows', 'System32', 'icacls.exe')
+    const set = (level: string): number => spawnSync(exe, [cache, '/setintegritylevel', level], {
+      windowsHide: true, timeout: 10000, stdio: 'ignore',
+    }).status ?? -1
+    try {
+      expect(set('(OI)(CI)L')).toBe(0)
+      // When the runtime is prepared with the real (uninjected) label reader,
+      const runtime = prepareRuntime({
+        host: WINDOWS, packageRoot: pkg, cacheRoot: cache, isolatedCacheRoot: isolated,
+      })
+      // Then no shell is spawned from the Low-labelled tree: the verified copy
+      // lives in the isolated root, so a Medium runner starts a Medium bash.
+      expect('code' in runtime).toBe(false)
+      if ('code' in runtime) return
+      expect(runtime.source).toBe('cache')
+      expect(runtime.payloadRoot).toBe(join(isolated, keyOf(payload)))
+      expect(readMandatoryLabel(runtime.bash)).toBe('medium-or-higher')
+      expect(existsSync(join(cache, keyOf(payload)))).toBe(false)
+    } finally {
+      set('(OI)(CI)M')
+      cleanup(pkg, cache, isolated)
+    }
   })
 })

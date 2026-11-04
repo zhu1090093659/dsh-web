@@ -183,11 +183,10 @@ export function createTeamHarness(): TeamHarness {
     },
   })
   ctx.provide('sessionProjections', {
-    register: (definition: { key: string; stateVersion: number }) => {
+    register: async (definition: { key: string; stateVersion: number }) => {
       projections.push({ key: definition.key, stateVersion: definition.stateVersion })
-      return () => undefined
+      return { stateOf: (session: FakeSession) => stateFor(session.header.id) }
     },
-    stateOf: (session: FakeSession, key: string) => (key === 'agentTeam' ? stateFor(session.header.id) : undefined),
   })
   ctx.provide('subagents', {
     startActivation: async (spec: { childId: string; request: { parent: { id: string } } }) => {

@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-02",
+  "generated": "2026-11-03",
   "items": [
     {
       "id": "dsh-quick-ask",
@@ -1919,6 +1919,19 @@
       "npm": "dsh-composer-ease",
       "category": "ui",
       "subcategory": "chat"
+    },
+    {
+      "id": "dsh-widget-board",
+      "name": "组件看板",
+      "rank": 151,
+      "nameEn": "Widget Board",
+      "author": "Nwflower",
+      "description": "DSH Web 组件看板插件：侧栏「看板」入口打开可拖拽、缩放的多标签卡片看板页，首次打开自带默认看板，设置页支持看板重命名、移除与切换。每个组件由 widget.json、index.html、style.css（及可选 main.js）组成，运行在严格 CSP、无网络与 Cookie 的独立沙箱 iframe 中，仅经 MessagePort 桥通信；权限授权绑定组件内容哈希，凭据由宿主凭据服务保管且对组件不可读。支持内置、用户自写、Agent 生成以及第三方插件经 widgetBoard 服务注册组件、数据源、动作与宿主能力；向会话注册 7 个 widget_* 工具与 widget-authoring 技能，可用 widget_show 在回复中内联渲染卡片。",
+      "descriptionEn": "Widget board for the DSH Web GUI: a sidebar Board entry opens a multi-tab page of draggable, resizable widget cards, pre-populated on first launch with board rename, removal and switching in Settings. Each widget consists of widget.json, index.html and style.css (plus optional main.js) and runs inside an isolated sandboxed iframe (strict CSP, no network or cookies, MessagePort bridge only), with content-hash-bound permission grants and host-stored credentials unreadable to widget code. Supports built-in, user-written and agent-authored widgets, third-party extensions via the widgetBoard service (widgets, data sources, actions and host capabilities), and seven widget_* session tools plus the widget-authoring skill including inline rendering via widget_show.",
+      "repo": "https://github.com/Nwflower/dsh-widget-board",
+      "npm": "dsh-widget-board",
+      "category": "ui",
+      "subcategory": "panel"
     }
   ]
 }

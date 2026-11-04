@@ -1,5 +1,5 @@
 /*
- * Forked from deepseek-harness dsh-v0.2.1-rc.2 (commit 687f282e) packages/experimental/agent-team/src/projection.ts
+ * Forked from deepseek-harness dsh-v0.2.2-alpha.3 (commit 05b1cae8) packages/experimental/agent-team/src/projection.ts
  * MIT licensed; every change this package made is listed in
  * packages/dsh-agents/docs/fork-provenance.md.
  */
@@ -161,12 +161,6 @@ export function emptyTeamState(rootId: SessionId): TeamProjectionState {
 /** Checkpoint-safe state for the Team owned by the projected Session. */
 export interface TeamProjectionState extends TeamState {
   readonly failure?: string
-}
-
-declare module '@deepseek-ai/dsh-session-projection/types' {
-  interface SessionProjectionStateMap {
-    agentTeam: TeamProjectionState
-  }
 }
 
 const teamProjectionEntrySchema = z.object({

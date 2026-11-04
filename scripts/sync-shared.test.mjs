@@ -64,7 +64,12 @@ test('copies cover the settings trio for all consumers plus host and http helper
   // explicit targets with it. dsh-win-bash adds one dsh-home.ts copy under src/:
   // its runtime publishes the payload cache under $DSH_HOME, so it resolves the
   // home through the same generated copy every other host half uses. The three
-  // totals below are 139 / 78 / 46.
+  // dsh-git-graph retired from the family with its eight copies: two client
+  // ones (telemetry, main-session), five host ones (dsh-home, mount-once,
+  // pair-access, loopback, http) and the package-root vitest setup.
+  // dsh-diagrams adds the mount-once, loopback and pair-access copies its
+  // vendor route needs.
+  // totals below are 134 / 76 / 44.
   // dsh-browser-view's real-browser settings card adds seven client copies:
   // the card chrome, form primitives, stylesheet, entry fallback, card seat,
   // segmented control and slider bubble. dsh-task-board-team fills the board's
@@ -72,9 +77,9 @@ test('copies cover the settings trio for all consumers plus host and http helper
   // derivations (chrome, form primitives, stylesheet, segmented control, slider
   // bubble) and deliberately none of the entry-bound form fallback: its fields
   // are written through the board, not a family settings namespace.
-  assert.equal(entries.length, 139)
+  assert.equal(entries.length, 134)
   const clientTrio = entries.filter(entry => entry.target.includes('/src/client/'))
-  assert.equal(clientTrio.length, 78)
+  assert.equal(clientTrio.length, 76)
   const hostCopies = entries.filter(entry => entry.target.includes('/src/host/')
     || entry.target.includes('/src/dsh-home.ts')
     || entry.target.includes('/src/mount-once.ts')
@@ -82,7 +87,7 @@ test('copies cover the settings trio for all consumers plus host and http helper
     || entry.target.includes('/src/pair-access.ts')
     || entry.target.includes('/src/agent/')
     || entry.target.endsWith('/packages/dsh-task-board/src/http.ts'))
-  assert.equal(hostCopies.length, 46)
+  assert.equal(hostCopies.length, 44)
 })
 
 test('checkSync detects drift and applySync repairs it', async () => {

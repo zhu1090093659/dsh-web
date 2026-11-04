@@ -5,6 +5,7 @@
     { "kind": "plugin", "id": "dsh-chatgpt-subscription" },
     { "kind": "skin", "id": "diy-journal" },
     { "kind": "plugin", "id": "dsh-llm-verifier" },
-    { "kind": "skin", "id": "xinghai-heart" }
+    { "kind": "skin", "id": "xinghai-heart" },
+    { "kind": "plugin", "id": "dsh-widget-board" }
   ]
 }

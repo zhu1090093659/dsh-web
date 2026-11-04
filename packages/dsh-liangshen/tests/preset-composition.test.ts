@@ -118,20 +118,26 @@ describe('liangshen preset composition', () => {
     expect(row('tool-catalog')).toContain('descriptionMaxLength: 200')
   })
 
-  it("declares the 'ptc' presentation with MCP paging on by default, and no retired keys", () => {
+  it("declares the 'ptc' presentation, its executor, and MCP paging without retired keys", () => {
     expect(row('tool-catalog')).toContain("presentation: 'ptc'")
     expect(row('tool-catalog')).toContain("pagedToolPatterns: ['mcp__*']")
     expect(row('tool-catalog')).not.toContain('ptcPresentation')
     expect(row('tool-catalog')).not.toContain('anchorTools')
+    expect(row('tool-executor-ptc')).toContain("name: '@deepseek-ai/dsh-tool-executor-ptc'")
   })
 
-  it('mounts working-context, tool-activate and the child-route guard, and no retired guard row', () => {
+  it('mounts working-context, tool-activate and both preset-plane guards, and no retired guard row', () => {
     expect(row('tool-activate')).toContain('name: ./tool-activate.mjs')
     expect(row('working-context')).toContain('name: ./working-context.mjs')
     // The subagent route guard is its own row: the retired row below was a
     // runtime-degeneration breaker, not this policy guard.
     expect(row('subagent-routes')).toContain('name: ./subagent-routes.mjs')
     expect(row('subagent-routes')).not.toContain('disabled: true')
+    // The dispatch execution guard is the second preset-plane guard: it refuses
+    // a coordinator-only tool called by a delegated child and a foreground sleep
+    // while a child is running, on `ctx.tools.guard()` alone.
+    expect(row('dispatch-guard')).toContain('name: ./dispatch-guard.mjs')
+    expect(row('dispatch-guard')).not.toContain('disabled: true')
     // The runtime degeneration circuit breaker is retired: the composition
     // carries no guard row, so no session mounts its pre-step channel.
     expect(row('guard')).toBe('')
@@ -209,11 +215,9 @@ describe('liangshen preset composition', () => {
     const spawn = row('tool-subagent')
     expect(spawn).toContain('modelSelection: true')
     expect(spawn).toContain('modelDiscovery: true')
-    // Then: the pre-split spelling rides along. The SDK pinned in
-    // devDependencies reads only that key, and the harness checkout this
-    // repository runs against silently drops it as an unknown field, so the
-    // row carries both and either generation finds its opt-in.
-    expect(spawn).toContain('modelSelectionSettings: true')
+    // Then: the pre-split spelling stays out because the supported cohort
+    // reads the two current knobs directly.
+    expect(spawn).not.toContain('modelSelectionSettings')
     // Then: the fork row stays out of both, because the discovery flag
     // registers one tool under a FIXED name per composed scope and a second
     // owner fails the whole session composition with the duplicate

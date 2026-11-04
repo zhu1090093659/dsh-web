@@ -13,14 +13,17 @@
  * and on a Windows host that is not x64, because no PATH bash is ever used as
  * a substitute.
  *
- * Mount-time publication: the tree that is spawned is a verified copy under the
- * DSH home, not the tree inside this package. A persistent shell holds its own
- * executable open, and Windows refuses to rename a directory that holds a
- * running executable, so a shell started inside node_modules makes pnpm's
+ * Mount-time publication: the tree that is spawned is a verified copy outside
+ * this package, not the tree inside node_modules. A persistent shell holds its
+ * own executable open, and Windows refuses to rename a directory that holds a
+ * running executable, so a shell started inside the package makes pnpm's
  * import of this package fail with ERR_PNPM_EPERM. Publishing the payload
  * outside the package is what lets an update or uninstall run while sessions
- * are live; a cache that cannot be written keeps the tool working from the
- * packaged tree and logs that updates will need this host stopped.
+ * are live. The copy's mandatory integrity label is checked before reuse and
+ * before execution: a Low-labelled cache is abandoned for an isolated root
+ * instead of starting a Low-integrity shell. A cache that cannot be written,
+ * or no safe root at all, keeps the tool working from the packaged tree and
+ * logs that updates will need this host stopped.
  *
  * Availability gate: win_bash serves sessions that run the LiangShen (梁神)
  * preset, so its registration follows that preset's DECLARATION in the
@@ -123,10 +126,13 @@ export {
 export {
   CACHE_DIR_PARTS,
   CACHE_STAGING_PREFIX,
+  ISOLATED_CACHE_DIR_PARTS,
+  RUNTIME_ROOT_ENV,
   bashIn,
   bashPath,
   binIn,
   cacheRoot,
+  isolatedCacheRoot,
   parseChecksums,
   payloadKey,
   prepareRuntime,

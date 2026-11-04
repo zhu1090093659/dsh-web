@@ -257,6 +257,24 @@ anything runs, and an isolated `DSH_HOME` gets its own cache. When that copy
 cannot be written, the verified packaged tree runs instead and one warning line
 says so.
 
+Matching the manifest is not enough to make a copy safe to run. A Windows
+mandatory integrity label lives in the file's security descriptor, not in its
+bytes: a data tree carrying an inheritable Low label gives the copied
+`bash.exe` a Low label, and Windows then starts a Low-integrity process even
+from a Medium runner. That process cannot write an ordinary Medium workspace or
+temp directory. Before a copy is reused, before one is published, and again
+after publication, `win_bash` reads the mandatory labels of the directory chain
+and of `bash.exe` through the Windows `icacls` SDDL output. A Low or Untrusted
+tree is never reused and never spawned from; the payload is published into an
+isolated per-user cache root instead (still outside the package), so a stale Low
+cache is abandoned rather than kept alive across restarts and updates. This
+checks metadata only: it never changes a label, a DACL or a token, and it never
+asks the user to lower a workspace label, change the sandbox policy or run DSH
+elevated. If no safe cache root exists, the verified packaged tree runs with an
+explicit warning; only when even that image is labelled Low does the mount fail
+with `unsafe-integrity` and name the `pwsh` fallback. Set
+`DSH_WIN_BASH_RUNTIME_HOME` to override the isolated cache root's parent.
+
 ## Known limitations
 
 - Windows x64 only. The payload is a Windows MSYS2 build and the tool refuses
@@ -271,8 +289,9 @@ says so.
 - A background job is one command in one process: it has no persistent state
   across jobs, and it cannot be promoted from a running foreground call
   (a foreground call that hits `timeoutMs` still stops its shell).
-- The published payload lives under `<DSH_HOME>/win-bash/runtime/`. Each
-  distinct payload keeps one directory there, about 16 MiB, and such a
+- The published payload normally lives under `<DSH_HOME>/win-bash/runtime/`,
+  and in the isolated per-user cache root when that data tree is labelled Low.
+  Each distinct payload keeps one directory there, about 16 MiB, and such a
   directory can be deleted while DSH is stopped: the next mount publishes it
   again.
 

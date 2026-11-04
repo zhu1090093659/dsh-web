@@ -14,7 +14,7 @@ Status: implemented
 
 - **缓存按内容寻址。** `payloadKey()` 对清单里排序后的 `path + 摘要` 行取摘要并保留 16 个十六进制字符，于是目录名本身就说明了它装着哪一份载荷。只改 JavaScript 的发布复用已发布的副本；任何一个载荷文件变了就会得到新名字。
 - **缓存位于 DSH home 之下**：`$DSH_HOME/win-bash/runtime/<键>`，经家族共享的 `resolveDshHome()` 解析（新增的 `packages/dsh-win-bash/src/dsh-home.ts` 是 `sync-shared` 生成的副本）。选 `DSH_HOME` 而不是 `%LOCALAPPDATA%`：仓库既有的探针隔离约定已经规定验证实例用自己的 `DSH_HOME`，隔离的宿主因此自动得到隔离的缓存，不必再学第二套约定，测试与探针也永远不会写进用户的缓存。
-- **命中必须自证。** 副本自己的清单必须复现期望的键，且每个文件都要哈希正确，才会被 spawn。于是「清单连同文件一起被整体换过」的目录读作未命中而不是命中：键是清单的摘要，改任一摘要就改了名字。
+- **命中必须自证。** 副本自己的清单必须复现期望的键，且每个文件都要哈希正确，才会被 spawn。于是「清单连同文件一起被整体换过」的目录读作未命中而不是命中：键是清单的摘要，改任一摘要就改了名字。仅字节匹配现在已不够：每次挂载还会核验副本的 Windows 强制性完整性标签，带 Low 标签的树会被弃用并改用隔离根（见[缓存完整性标签的决策](2026-11-04-win-bash-cache-integrity-label.zh.md)）。
 - **未命中先校验、再复制、再校验。** 包内树先过 `resolveRuntime()`——消息与拒绝理由不变——然后复制进目标旁的 `.staging-<键>-<pid>-<uuid8>` 目录，rename 落位，返回之前再校验一次副本。因此一个已发布的名字永远只指向一棵完整且校验过的树。
 - **缓存写不出来不算拒绝。** 改由校验过的包内树运行，`apply()` 记一条警告，写明缓存路径、包内路径与 `ERR_PNPM_EPERM`。因为一个打包期的隐患就扣掉 shell，只会把打包问题变成一台本来能用的机器上的能力缺失；而载荷校验失败仍然一律拒绝，有缓存也一样。
 - **所有 shell 的路径都来自 `RuntimeReady`。** `shell.ts` 本来就是从调用方拿 `{ bash, bin }`，所以常驻 shell、每个后台任务以及 `PATH` 前缀一起改到发布副本，无需改动该模块。
@@ -36,7 +36,7 @@ Status: implemented
 - 更新、卸载或重装 `@linxin666/dsh-win-bash` 不再取决于「没有会话用过 `win_bash`」：包目录里不再有运行中的可执行文件。
 - 过渡期仍要重启一次。当安装的是本改动之前的版本时，它的 `bash.exe` 仍从包内运行，所以第一次升级到带本改动的版本仍需要停掉 `bash.exe` 或重启宿主，与 issue 描述一致。
 - 副本已发布时挂载没有额外开销；需要发布时付一次 16 MiB 复制（加上两棵树本来就要做的校验）。挂载保持同步，因此这份开销落在宿主启动时，每份载荷版本一次。
-- 缓存增长是一份载荷一个目录，各约 16 MiB，位于 `<DSH_HOME>/win-bash/runtime/`。DSH 停止时删除它是安全的：下一次挂载会重新发布。
+- 缓存增长是一份载荷一个目录，各约 16 MiB，位于 `<DSH_HOME>/win-bash/runtime/`；当 DSH home 带 Low 标签时，隔离根下同样各一份。DSH 停止时删除它是安全的：下一次挂载会重新发布。
 - 运行的那棵树是校验过的；命中缓存时不再重算包内树的哈希。包内树因此只是来源，一棵被篡改但缓存有效的包内树会保持惰性而不会被 spawn。
 - 仍在被活的 shell 占用的副本无法替换：重建时的删除会被拒绝，挂载带着同一条警告回退到包内树，而不是失败。
 - 第一次发布中途被强杀的宿主会留下一个 `.staging-*` 目录。它是惰性的——名字不是载荷键，没有挂载会把它当载荷——需要人工删除。
@@ -46,4 +46,4 @@ Status: implemented
 - `tests/runtime-cache.spec.ts`（新增 11 条）在真实文件系统上用 fixture 载荷固化契约：首次挂载按清单导出的键发布到缓存根且不留 staging 目录；第二次挂载复用该副本（注入的复制步骤一旦被调用就抛错）；被破坏的副本与被重写清单的副本都会从包内载荷重建；不可写的缓存回退到包内树并给出一条写明 `ERR_PNPM_EPERM` 的警告；复制中途失败不留 staging 目录；包内载荷校验失败即拒绝且什么都不发布；包内树事后被破坏时已发布副本继续服务；POSIX 宿主在触碰缓存之前就被拒绝；默认缓存根跟随 `DSH_HOME`。
 - `tests/runtime-cache.spec.ts` 还在真实 Windows x64 宿主上 spawn 随包载荷的已发布副本（`cd /usr/bin && pwd -W`），断言解析出的 MSYS 根就是缓存根下的副本——这才证明复制出来的树是可运行的，而不仅仅是字节相同。
 - `tests/mount.spec.ts` 把 `DSH_HOME` 指向临时目录，于是一次挂载不再写进跑测试那个人的 home。
-- `pnpm --filter @linxin666/dsh-win-bash typecheck`、`test`（13 个文件 158 条）与 `build` 通过；`test` 在 win32 x64 上执行。
+- `pnpm --filter @linxin666/dsh-win-bash typecheck`、`test`（14 个文件 181 条）与 `build` 通过；`test` 在 win32 x64 上执行。`tests/runtime-integrity.spec.ts` 与 `tests/runtime-cache.spec.ts` 新增的两条活体用例覆盖强制性标签核验（见[缓存完整性标签的决策](2026-11-04-win-bash-cache-integrity-label.zh.md)）。

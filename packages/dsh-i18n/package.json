@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-i18n",
   "description": "DSH web GUI family dictionary pack: centrally carries the ru dictionaries for every family plugin namespace while DSH owns the Russian language and shell translations (missing keys fall back to English through the SDK chain).",
-  "version": "0.4.14",
+  "version": "0.4.15",
   "icon": "icon.svg",
   "type": "module",
   "main": "lib/index.js",

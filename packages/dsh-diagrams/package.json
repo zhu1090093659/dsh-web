@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-diagrams",
   "description": "Mermaid diagram rendering for the DSH Web GUI: fenced mermaid blocks in the chat transcript and the document preview are rendered in place as SVG, from a runtime the host serves on demand.",
-  "version": "0.4.14",
+  "version": "0.4.15",
   "icon": "icon.svg",
   "type": "module",
   "main": "lib/index.js",

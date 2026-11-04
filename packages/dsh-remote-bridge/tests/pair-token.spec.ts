@@ -214,3 +214,60 @@ describe('the token response carries the address the route now reads', () => {
     expect(['realtime', 'env', 'lan']).toContain(body.originSource)
   })
 })
+
+describe('the line the route writes to the host log', () => {
+  it('operator pastes the log and it names the phone address only by kind', () => {
+    // Given a loopback request and a bridge with a live public face
+    const lines: string[] = []
+    const response = new RecordingResponse()
+    makePairTokenHandler({
+      pairing: new PairingService(),
+      log: (message) => { lines.push(message) },
+      realtime: () => 'https://abc123.dsh-market.com',
+    })(loopbackRequest(), response.asServerResponse())
+    // When the handler answers
+    const body = JSON.parse(response.body) as { token: string; pairingUrl?: string }
+    // Then the machine-local link is logged, the durable public hostname is not,
+    // and the phone-facing link is never written a second time
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toContain('pair a device with ws://127.0.0.1:3000/ios/v1?token=')
+    expect(lines[0]).toContain('(phone: public)')
+    expect(lines[0]).not.toContain('abc123')
+    expect(lines[0]).not.toContain('dsh-market.com')
+    expect(lines[0]).not.toContain(body.pairingUrl ?? 'no phone-facing link')
+  })
+
+  it('operator pastes the log of a host that only answers inside the network and the literal stays out', () => {
+    // Given a bridge whose only address is the LAN literal
+    const lines: string[] = []
+    const response = new RecordingResponse()
+    makePairTokenHandler({
+      pairing: new PairingService(),
+      log: (message) => { lines.push(message) },
+      pairOrigin: () => ({ origin: 'http://192.168.1.5:3080', source: 'lan' }),
+    })(loopbackRequest(), response.asServerResponse())
+    // When the handler answers
+    // Then the log says which kind of address the code carries, and names no address
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toContain('(phone: lan)')
+    expect(lines[0]).not.toContain('192.168.1.5')
+  })
+
+  it('operator pastes the log of a host with no address and no suffix is added', () => {
+    // Given a bridge that can name no origin at all
+    const lines: string[] = []
+    const response = new RecordingResponse()
+    makePairTokenHandler({
+      pairing: new PairingService(),
+      log: (message) => { lines.push(message) },
+      pairOrigin: () => undefined,
+    })(loopbackRequest(), response.asServerResponse())
+    // When the handler answers
+    const body = JSON.parse(response.body) as { token: string }
+    // Then the log is the machine-local link and nothing else: no suffix means no
+    // address was located, and the phone-facing link was never written
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toBe('pair a device with ws://127.0.0.1:3000/ios/v1?token=' + body.token)
+    expect(lines[0]).not.toContain('(phone:')
+  })
+})

@@ -4,7 +4,7 @@
  * against a fake response instead of patching the global fetch.
  */
 import { describe, expect, it } from 'vitest'
-import { PAIR_TOKEN_URL, readPairToken, type PairTokenFetch } from '../src/client/pair-token.ts'
+import { isLanOrigin, PAIR_TOKEN_URL, readPairToken, type PairOriginSource, type PairTokenFetch } from '../src/client/pair-token.ts'
 
 /** A transport that answers once with the given status and body. */
 function answering(status: number, body: unknown, contentType = 'application/json'): PairTokenFetch {
@@ -20,6 +20,32 @@ const refusing: PairTokenFetch = async () => {
   throw new TypeError('fetch failed')
 }
 
+describe('the kind of address a located origin is', () => {
+  it('operator with a private literal reads a local address whatever the host called it', () => {
+    // Given every shape a located origin can take, with the source the host named
+    const cases: Array<[string | null, PairOriginSource | null, boolean]> = [
+      ['wss://abc.dsh-market.com', 'realtime', false],
+      ['https://relay.example', 'env', false],
+      ['http://192.168.1.5:3080', 'env', true],
+      ['http://10.0.0.4:3080', 'realtime', true],
+      ['http://172.20.0.9:3080', null, true],
+      ['http://172.32.0.9:3080', null, false],
+      ['ws://127.0.0.1:3080', null, true],
+      ['http://localhost:3080', null, true],
+      ['wss://[::1]:3080', null, true],
+      ['http://[fd00::1]:3080', 'env', true],
+      ['http://192.168.1.5:3080', 'lan', true],
+      [null, null, false],
+      ['not a url', 'env', false],
+    ]
+    // When each one is classified
+    // Then only the private literals and the host's own LAN answer read as local
+    for (const [origin, source, expected] of cases) {
+      expect([origin, source, isLanOrigin(origin, source)]).toEqual([origin, source, expected])
+    }
+  })
+})
+
 describe('protocol v1 pairing code read', () => {
   it('operator reads the one-shot code from this package own Host route', async () => {
     // Given a host that answers with a live token and its expiry
@@ -31,7 +57,7 @@ describe('protocol v1 pairing code read', () => {
     // When the panel reads one
     const outcome = await readPairToken({ fetchImpl: transport })
     // Then the token and its deadline cross, and the route is this package's own
-    expect(outcome).toEqual({ kind: 'ok', token: 'Zm9vYmFy', expiresAt: 1_760_000_030_000, origin: null, pairingUrl: null })
+    expect(outcome).toEqual({ kind: 'ok', token: 'Zm9vYmFy', expiresAt: 1_760_000_030_000, origin: null, originSource: null, pairingUrl: null })
     expect(asked).toBe(PAIR_TOKEN_URL)
     expect(asked).toBe('remote-bridge/pair/token')
   })
@@ -44,18 +70,66 @@ describe('protocol v1 pairing code read', () => {
       expiresAt: 1_760_000_030_000,
       url: 'ws://127.0.0.1:3000/ios/v1?token=Zm9vYmFy',
       origin: 'wss://abc.dsh-market.com',
-      originSource: 'registry',
+      originSource: 'realtime',
       pairingUrl,
     })
     // When the panel reads it
     const outcome = await readPairToken({ fetchImpl: transport })
-    // Then both halves cross, so the panel can encode {token,url} instead of a bare code
+    // Then both halves cross, so the panel can encode {token,url} instead of a bare code,
+    // together with the source that decides which located line renders
     expect(outcome).toEqual({
       kind: 'ok',
       token: 'Zm9vYmFy',
       expiresAt: 1_760_000_030_000,
       origin: 'wss://abc.dsh-market.com',
+      originSource: 'realtime',
       pairingUrl,
+    })
+  })
+
+  it('operator on a host that named its address by configuration gets the same one-scan code', async () => {
+    // Given a body whose origin came from the configured public base
+    const pairingUrl = 'wss://relay.example/ios/v1?token=Zm9vYmFy'
+    const transport = answering(200, {
+      token: 'Zm9vYmFy',
+      expiresAt: 1_760_000_030_000,
+      origin: 'wss://relay.example',
+      originSource: 'env',
+      pairingUrl,
+    })
+    // When the panel reads it
+    const outcome = await readPairToken({ fetchImpl: transport })
+    // Then the source crosses as the configured one, which the panel renders as public
+    expect(outcome).toEqual({
+      kind: 'ok',
+      token: 'Zm9vYmFy',
+      expiresAt: 1_760_000_030_000,
+      origin: 'wss://relay.example',
+      originSource: 'env',
+      pairingUrl,
+    })
+  })
+
+  it('operator reads a code from a host whose source this panel does not know', async () => {
+    // Given a body naming a source no version of this panel has ever heard of
+    const transport = answering(200, {
+      token: 'Zm9vYmFy',
+      expiresAt: 1_760_000_030_000,
+      origin: 'wss://abc.dsh-market.com',
+      originSource: 'registry',
+      pairingUrl: 'wss://abc.dsh-market.com/ios/v1?token=Zm9vYmFy',
+    })
+    // When the panel reads it
+    const outcome = await readPairToken({ fetchImpl: transport })
+    // Then the address still crosses as an unknown source, which the panel renders
+    // as a public one instead of trusting a name it cannot read
+    expect(outcome).toEqual({
+      kind: 'ok',
+      token: 'Zm9vYmFy',
+      expiresAt: 1_760_000_030_000,
+      origin: 'wss://abc.dsh-market.com',
+      originSource: null,
+      pairingUrl: 'wss://abc.dsh-market.com/ios/v1?token=Zm9vYmFy',
     })
   })
 
@@ -75,6 +149,7 @@ describe('protocol v1 pairing code read', () => {
       token: 'Zm9vYmFy',
       expiresAt: 1_760_000_030_000,
       origin: 'wss://abc.dsh-market.com',
+      originSource: null,
       pairingUrl: null,
     })
   })

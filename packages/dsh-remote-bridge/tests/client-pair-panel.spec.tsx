@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 /**
  * The pairing panel: the symbol and the single machine string it carries, the
- * countdown and the expiry state, the address fact, the single-use hint, the
+ * countdown and the expiry state, the address line, the single-use hint, the
  * action row, and the three refusals. Pure presentation — the clock arrives as a
- * prop, so the expiry flip is a value, not a wait.
+ * prop, so the expiry flip is a value, not a wait. The address line is asserted
+ * both ways: what it says, and the public hostname it must never say.
  *
  * The panel's shell is the official Modal and its actions are the official
  * Button, so the primitive components are replaced by contract fakes: the real
@@ -66,6 +67,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => {
 })
 
 import { COMMUNITY_INVITE_URL, PairPanel, type PairCopyState, type PairPanelState } from '../src/client/PairPanel.tsx'
+import type { PairOriginSource } from '../src/client/pair-token.ts'
 import { en, zh, type RemoteBridgeKey } from '../src/client/locales.ts'
 
 /** Translate stub over the zh dictionary, with {param} interpolation. */
@@ -88,9 +90,33 @@ const PAYLOAD_URL = `{"token":"${TOKEN}","url":"${ORIGIN}/ios/v1?token=${TOKEN}"
 const ISSUED_AT = 1_000_000
 const WINDOW_MS = 30_000
 
-/** A live code with the given origin knowledge. */
-function liveCode(origin: string | null, pairingUrl: string | null): PairPanelState {
-  return { kind: 'ready', token: TOKEN, issuedAt: ISSUED_AT, expiresAt: ISSUED_AT + WINDOW_MS, origin, pairingUrl }
+/** A live code with the given origin knowledge; an unnamed source counts as public. */
+function liveCode(
+  origin: string | null,
+  pairingUrl: string | null,
+  originSource: PairOriginSource | null = null,
+): PairPanelState {
+  return {
+    kind: 'ready',
+    token: TOKEN,
+    issuedAt: ISSUED_AT,
+    expiresAt: ISSUED_AT + WINDOW_MS,
+    origin,
+    originSource,
+    pairingUrl,
+  }
+}
+
+/**
+ * The panel's markup with the symbol's own part removed. The symbol is the one
+ * part allowed to mirror the payload — the contract says so — so a public
+ * hostname anywhere else in the markup, text or attribute, is a leak the panel
+ * must not have.
+ */
+function markupWithoutSymbol(container: HTMLElement): string {
+  const clone = container.cloneNode(true) as HTMLElement
+  clone.querySelector('[data-dsh-part="qr"]')?.remove()
+  return clone.innerHTML
 }
 
 /** Render the panel in one state and return the DOM. */
@@ -160,15 +186,70 @@ describe('protocol v1 pairing panel', () => {
     expect(slot?.querySelector('svg')).toBeNull()
   })
 
-  it('operator on a host that knows its public address is told which address the phone dials', () => {
-    // Given a host that located its relay origin and handed back the code for it
-    const panel = mount(liveCode(ORIGIN, PAYLOAD_URL))
+  it('operator on a host that knows its public address is told what the code carries, and the hostname stays off the panel', () => {
+    // Given a host that located its public relay origin and handed back the code for it
+    const panel = mount(liveCode(ORIGIN, PAYLOAD_URL, 'realtime'))
     // When the panel renders
     const qr = panel.container.querySelector('[data-dsh-part="qr"]')
-    // Then the symbol carries the whole {token,url} document so one scan sets both
-    // halves, and the panel says which address that is
+    // Then the symbol still carries the whole {token,url} document so one scan sets
+    // both halves, while the durable public hostname is nowhere in the rendered text
     expect(qr?.getAttribute('data-dsh-qr-value')).toBe(PAYLOAD_URL)
-    expect(screen.getByText(`iPhone 将连到 ${ORIGIN}`)).toBeInstanceOf(HTMLElement)
+    expect(panel.container.textContent).toContain(zh['origin.public'])
+    expect(panel.container.textContent).not.toContain(ORIGIN)
+    expect(panel.container.textContent).not.toContain('dsh-market.com')
+    expect(panel.container.querySelector('[data-tone="plain"]')?.textContent).toBe(zh['origin.public'])
+    // And nothing outside the symbol carries it either: a title, an aria-label or
+    // a data attribute added later would leak just as a sentence does
+    expect(markupWithoutSymbol(panel.container)).not.toContain(ORIGIN)
+    expect(markupWithoutSymbol(panel.container)).not.toContain('dsh-market.com')
+  })
+
+  it('operator on a host that located its address by configuration reads the same line as a live one', () => {
+    // Given each way a host can name a public origin without a LAN literal
+    for (const source of ['realtime', 'env'] as const) {
+      // When the panel renders
+      const panel = mount(liveCode(ORIGIN, PAYLOAD_URL, source))
+      // Then both read as the public kind, and neither prints the hostname
+      expect(panel.container.querySelector('[data-tone="plain"]')?.textContent).toBe(zh['origin.public'])
+      expect(markupWithoutSymbol(panel.container)).not.toContain('dsh-market.com')
+      cleanup()
+    }
+  })
+
+  it('operator on a configured base that is a private address is shown that literal', () => {
+    // Given a host that called its configured base public while the address itself
+    // answers only inside this network
+    const lan = 'http://192.168.1.5:3080'
+    const panel = mount(liveCode(lan, `ws://192.168.1.5:3080/ios/v1?token=${TOKEN}`, 'env'))
+    // When the panel renders its address line
+    // Then the literal decides the kind, not the host's own word for it
+    const address = panel.container.querySelector('[data-tone="plain"]')
+    expect(address?.textContent).toBe(zh['origin.lan'].replace('{origin}', lan))
+    expect(panel.container.textContent).not.toContain(zh['origin.public'])
+  })
+
+  it('operator on a host whose address source this panel does not know still reads no hostname', () => {
+    // Given a code whose host named no source: an older host, or one this panel
+    // has never heard of
+    const panel = mount(liveCode(ORIGIN, PAYLOAD_URL))
+    // When the panel renders its address line
+    // Then an unknown source is treated as public rather than printed
+    expect(panel.container.textContent).toContain(zh['origin.public'])
+    expect(panel.container.textContent).not.toContain(ORIGIN)
+    expect(markupWithoutSymbol(panel.container)).not.toContain(ORIGIN)
+  })
+
+  it('operator on a host whose only address is the local network is shown that literal', () => {
+    // Given a LAN origin, which only a phone on the same network can dial
+    const lan = 'http://192.168.1.5:3080'
+    const panel = mount(liveCode(lan, `ws://192.168.1.5:3080/ios/v1?token=${TOKEN}`, 'lan'))
+    // When the panel renders its address line
+    // Then it names that literal, because a private address answers only inside the
+    // network this page is already on
+    const address = panel.container.querySelector('[data-tone="plain"]')
+    expect(address?.textContent).toBe(zh['origin.lan'].replace('{origin}', lan))
+    // And the public kind is not stated anywhere beside it
+    expect(panel.container.textContent).not.toContain(zh['origin.public'])
   })
 
   it('operator on a host without a public address is told to fill the relay in by hand', () => {

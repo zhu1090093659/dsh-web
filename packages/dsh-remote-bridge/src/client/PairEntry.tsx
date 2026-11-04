@@ -57,6 +57,7 @@ function panelStateOf(outcome: PairTokenOutcome, issuedAt: number): PairPanelSta
         issuedAt,
         expiresAt: outcome.expiresAt,
         origin: outcome.origin,
+        originSource: outcome.originSource,
         pairingUrl: outcome.pairingUrl,
       }
     case 'forbidden': return { kind: 'forbidden' }

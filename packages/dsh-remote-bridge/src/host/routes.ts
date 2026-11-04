@@ -118,11 +118,15 @@ export function makePairTokenHandler(deps: PairTokenRouteDeps): WebRoute['handle
     const pairingUrl = discovered === undefined
       ? undefined
       : pairingDialUrlOf(discovered.origin, ticket.value)
-    deps.log(
-      pairingUrl === undefined
-        ? `pair a device with ${url}`
-        : `pair a device with ${url} (phone: ${pairingUrl})`,
-    )
+    // The log names the machine-local link and, when there is one, only the KIND
+    // of phone-facing address. The public hostname is a durable fact that a log
+    // line is likely to be pasted with, and the phone reads the address off the
+    // QR anyway; the LAN literal is left out for the same reason, because the
+    // panel already states it where the operator can see the code.
+    const phone = discovered === undefined
+      ? ''
+      : ` (phone: ${discovered.source === 'lan' ? 'lan' : 'public'})`
+    deps.log(`pair a device with ${url}${phone}`)
     writeJson(res, 200, {
       token: ticket.value,
       expiresAt: ticket.expiresAt,

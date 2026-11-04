@@ -4,11 +4,15 @@
  *
  * The panel has one job — put the live one-shot code in front of the operator as
  * a QR symbol — so its copy carries what to do with the symbol, how long it
- * lives, which address the phone will actually dial, why the code is single-use,
+ * lives, what kind of address the phone will dial, why the code is single-use,
  * and that the app is still in testing: the reader is told what they are joining
- * and where to ask about it. No key states how the host finds its public
- * address, and no key names the wire protocol: both are implementation facts the
- * reader cannot act on.
+ * and where to ask about it. No key renders the public origin: the symbol
+ * already carries it, and a durable public hostname printed as text would
+ * outlive every screenshot it appears in. A LAN literal is not that fact — it
+ * answers only inside the network this page is already on — so the LAN line
+ * keeps naming it. No key states how the host finds either address, and no key
+ * names the wire protocol: both are implementation facts the reader cannot act
+ * on.
  *
  * The card's keys say only what the transcript row can act on: whether the page
  * is still waiting for the operator, that it is over, that this desktop renders
@@ -27,7 +31,8 @@ export const zh = {
   'pair.expired': '配对码已过期',
   'pair.refresh': '重新取码',
   'pair.usedHint': '配对码一次性有效：iPhone 一开始配对就作废，重新取码也会作废上一张。',
-  'origin.located': 'iPhone 将连到 {origin}',
+  'origin.public': '二维码已包含公网地址，扫码后 iPhone 自动连上这台电脑',
+  'origin.lan': '二维码指向局域网地址 {origin}，iPhone 需与本机在同一网络',
   'origin.missing': '没有找到公网地址：先在 App 里把连接地址填成你的公网中继，再扫码。本页的 {host} 只有本机能连。',
   'community.invite': 'iOS App 还在内测，欢迎来 Discord 交流',
   'forbidden.title': '这个页面不是从本机打开的',
@@ -61,7 +66,8 @@ export const en: Record<RemoteBridgeKey, string> = {
   'pair.expired': 'The pairing code expired',
   'pair.refresh': 'New code',
   'pair.usedHint': 'The code is single-use: pairing spends it, and a new code voids the previous one.',
-  'origin.located': 'The iPhone will dial {origin}',
+  'origin.public': 'The QR code carries the public address: the iPhone connects to this computer as soon as it scans',
+  'origin.lan': 'The QR code points at the LAN address {origin}: the iPhone must be on the same network',
   'origin.missing': 'No public address found: set the connection address in the app to your public relay first, then scan. {host} (this page) is reachable only from this machine.',
   'community.invite': 'The iOS app is in beta. Come talk to us on Discord',
   'forbidden.title': 'This page is not open on this machine',

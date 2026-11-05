@@ -1290,6 +1290,32 @@
       "npm": "@chendaleiq/dsh-plugin-auto-update",
       "category": "tools",
       "subcategory": "dev"
+    },
+    {
+      "id": "dsh-tutorloop",
+      "name": "TutorLoop 学习陪练",
+      "rank": 102,
+      "nameEn": "TutorLoop Study Companion",
+      "author": "Qinling-Melon-Farmers",
+      "description": "围绕自选资料进行小步练习、证据反馈和 Leitner 间隔复习；18 个教师工具与中英双语学生面板，复用当前 DSH 会话模型，无需另配模型密钥。学习记录按工作区保存在本地，选用材料和作答可发送给宿主模型；主观反馈需核对。需 DSH >=0.2.1-rc.2 <0.3.0-0、Python 3.11+，安装后运行 dsh-tutorloop setup 配置 Python 依赖。内置 6 道自编示例题，真题库需自行导入。",
+      "descriptionEn": "Guided practice over your materials, evidence-grounded feedback and Leitner spaced review, with 18 teacher tools and a Chinese/English student panel. Uses the current DSH session model without a separate model key. Learning records stay local per workspace; selected materials and answers may reach the host model, and subjective feedback needs review. Requires DSH >=0.2.1-rc.2 <0.3.0-0 and Python 3.11+; run dsh-tutorloop setup after installation for Python dependencies. Includes six original example exercises; users must import past-exam question banks themselves.",
+      "repo": "https://github.com/Qinling-Melon-Farmers/dsh-tutorloop",
+      "npm": "dsh-tutorloop",
+      "category": "knowledge",
+      "subcategory": "qa"
+    },
+    {
+      "id": "dsh-character-cards",
+      "name": "角色卡",
+      "rank": 103,
+      "nameEn": "Character Cards",
+      "author": "sildo466",
+      "description": "为每个 DSH 会话绑定可切换的角色卡：身份、语气、代码风格与硬性约束按会话注入，支持默认卡、单会话覆盖、可视化编辑器与单文件导入导出。",
+      "descriptionEn": "Switchable identity cards for DSH sessions: identity, tone, code style, and hard constraints injected per session, with a default card, per-session overrides, a visual editor, and single-file import/export.",
+      "repo": "https://github.com/sildo466/dsh-character-cards",
+      "npm": "dsh-character-cards",
+      "category": "ui",
+      "subcategory": "chat"
     }
   ]
 }

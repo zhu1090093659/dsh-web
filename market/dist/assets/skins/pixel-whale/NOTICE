@@ -1,0 +1,34 @@
+像素鲸海 / Pixel Whale Sea — NOTICE
+==================================
+
+角色与立绘
+----------
+本皮肤出现的角色为「鲸鱼娘 / Whale-chan」，是贡献者（GitHub: stushansusu）自有的
+角色线，与 whale-fantasy（未至之境）、rainy-night（雨夜）、shuimo-danqing（水墨丹青）、
+whale-watercolour（清透水彩）是同一个角色，不属于任何既有作品，也没有第三方权利人。
+
+素材来源类别：AI 生成素材。立绘由贡献者在本机 ComfyUI 上用开源图像模型生成，提示词与
+参考图自撰自备；非转载，未使用第三方素材。皮肤内只分发由该立绘降采样、限色、描边得到
+的 40×30 像素精灵，不再分发原始立绘文件。
+
+生成的图形
+----------
+海面、雨幕（rain-a.gif / rain-b.gif）、设置页背景（sea-plain.gif）、
+工作区像素件（dither-grid / wave-edge / whale-mark / corner-* / bubbles）
+全部由本皮肤的构建脚本程序化生成（GIF 调色板量化 + SVG 字符画），
+不包含第三方素材。
+
+许可
+----
+皮肤目录内的 CSS、SVG、GIF 与文档以 CC BY-NC-SA 4.0 分发：
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+美术素材不在 CC BY-NC-SA 4.0 的授权范围内。本皮肤仅限个人非商业使用。
+
+责任
+----
+本贡献的版权与合规责任由贡献者（GitHub: stushansusu）承担；贡献者就上文的素材来源与
+授权依据作出声明并自负责任。如权利人提出有依据的异议，贡献者将及时核查，并采取更正、
+移除或停止分发等措施。
+
+DeepSeek Harness 与本皮肤无隶属关系；本皮肤为非官方作品，与本仓库无隶属或关联关系。

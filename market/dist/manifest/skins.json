@@ -2503,6 +2503,58 @@
       }
     },
     {
+      "id": "equation-sea",
+      "name": "方程星海",
+      "nameEn": "Equation Sea",
+      "author": "Chenjiangwen",
+      "rank": 60,
+      "tagline": "黑洞吸积盘 · 暗色玻璃 / 亮色羊皮卷",
+      "description": "以黑洞与公式星流为背景的透明皮肤。暗色是原片（黑底星海），亮色是羊皮卷手稿（星海转陈墨线稿，压在做旧纸面上）——同一张图两种洗法。面板为磨砂玻璃，透明度随「背景遮挡」滑块 0–100% 连续变化。",
+      "tags": [
+        "space",
+        "black-hole",
+        "glass",
+        "transparent",
+        "dark",
+        "monochrome"
+      ],
+      "version": "1.0.0",
+      "accent": "#8fb6ff",
+      "preview": {
+        "light": "assets/skins/equation-sea/preview/light.jpg",
+        "dark": "assets/skins/equation-sea/preview/dark.jpg"
+      },
+      "files": [
+        "NOTICE",
+        "README.md",
+        "README.zh.md",
+        "assets/backdrop-parchment.jpg",
+        "assets/backdrop.jpg",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/Chenjiangwen/dsh-skin-equation-sea",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/equation-sea/assets/backdrop-parchment.jpg",
+            "scrim": "linear-gradient(rgba(240,229,205,0.06) 0%, rgba(236,224,199,0.10) 55%, rgba(231,218,190,0.14) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/equation-sea/assets/backdrop.jpg",
+            "scrim": "linear-gradient(rgba(2,3,6,0.14) 0%, rgba(2,3,6,0.20) 55%, rgba(3,4,8,0.28) 100%)"
+          }
+        }
+      }
+    },
+    {
       "id": "lucy-nightsignal",
       "name": "露西·夜城信号",
       "nameEn": "Lucy · Night City Signal",
@@ -2613,6 +2665,71 @@
             "type": "image",
             "src": "assets/skins/crt-phosphor/assets/scene-dark.webp",
             "scrim": "linear-gradient(rgba(0, 10, 5, 0.26) 0%, rgba(0, 8, 4, 0.34) 60%, rgba(0, 6, 3, 0.44) 100%)"
+          }
+        }
+      }
+    },
+    {
+      "id": "pixel-whale",
+      "name": "像素鲸海",
+      "nameEn": "Pixel Whale Sea",
+      "author": "stushansusu",
+      "rank": 62,
+      "tagline": "俯视像素海 · 仰泳的鲸鱼娘 · 侧栏在下雨",
+      "description": "俯视的像素海面：深蓝到青绿的十二阶海水、断续的破峰亮线与碎浪。鲸鱼娘是立绘压成的四十像素长、十色、带深色描边的像素形象，横躺在水面上仰泳，沿 S 形路线来回游，身体随划水一波波起伏，身后拖泡沫尾迹、脚边溅水、身下荡开涟漪。侧边栏在下雨：两张 160×220 的透明 GIF 雨幕错位叠铺，雨滴落到自己的落点时开一圈水花环再散掉。工作区换成一套像素件：8 像素抖动颗粒、底边水线、角上一枚像素鲸标，输入卡直角加四角括号，滚动条收细，图标关掉抗锯齿。设置模态里铺同一片海的无人物版本。",
+      "tags": [
+        "pixel",
+        "ocean",
+        "whale",
+        "animated",
+        "loop",
+        "dark",
+        "dark-only",
+        "8bit",
+        "rain"
+      ],
+      "version": "2.1.1",
+      "accent": "#3FB3A9",
+      "preview": {
+        "light": "assets/skins/pixel-whale/preview/light.jpg",
+        "dark": "assets/skins/pixel-whale/preview/dark.jpg"
+      },
+      "files": [
+        "NOTICE",
+        "README.md",
+        "README.zh.md",
+        "assets/bubbles.svg",
+        "assets/corner-bl.svg",
+        "assets/corner-br.svg",
+        "assets/corner-tl.svg",
+        "assets/corner-tr.svg",
+        "assets/dither-grid.svg",
+        "assets/rain-a.gif",
+        "assets/rain-b.gif",
+        "assets/sea-plain.gif",
+        "assets/sea.gif",
+        "assets/wave-edge.svg",
+        "assets/whale-mark.svg",
+        "patches.css",
+        "preview/dark.jpg",
+        "preview/light.jpg",
+        "skin.css",
+        "skin.json"
+      ],
+      "repo": "https://github.com/zhu1090093659/dsh-skins/tree/main/skins/pixel-whale",
+      "contributes": {
+        "stylesheet": "skin.css",
+        "patches": "patches.css",
+        "backgroundMedia": {
+          "light": {
+            "type": "image",
+            "src": "assets/skins/pixel-whale/assets/sea.gif",
+            "scrim": "linear-gradient(180deg, rgba(5,12,21,0.55) 0%, rgba(5,12,21,0.12) 28%, rgba(5,12,21,0.18) 68%, rgba(5,12,21,0.62) 100%)"
+          },
+          "dark": {
+            "type": "image",
+            "src": "assets/skins/pixel-whale/assets/sea.gif",
+            "scrim": "linear-gradient(180deg, rgba(5,12,21,0.55) 0%, rgba(5,12,21,0.12) 28%, rgba(5,12,21,0.18) 68%, rgba(5,12,21,0.62) 100%)"
           }
         }
       }

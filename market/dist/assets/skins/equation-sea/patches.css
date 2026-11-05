@@ -1,0 +1,78 @@
+/* ============================================================================
+ * 方程星海 / Equation Sea — L3 patches
+ * 皮肤中心会把这些选择器强制作用域到 html[data-dsh-skin="equation-sea"]。
+ *
+ * 原则：**不覆盖任何底色**。星海的可见度完全由 skin.css 里的
+ * --dsw-alias-bg-* 与背景遮挡滑块决定，这里只补「玻璃的边」——
+ * 发丝线、内阴影、圆角，任何一条都不改变布局，也不会让文字失去底色。
+ * ========================================================================== */
+
+/* 输入卡：玻璃厚度用内阴影 + 发丝边表示。
+ * 绝不给输入卡加 backdrop-filter —— 非 none 的 backdrop-filter 会让卡片
+ * 成为 fixed 后代的包含块，把官方 tooltip 推进会话滚动区（官方 #1724）。 */
+[data-dsh-surface="composer"] {
+  --eq-composer-hairline: rgba(18, 24, 34, 0.10);
+}
+
+body[data-ds-dark-theme] [data-dsh-surface="composer"] {
+  --eq-composer-hairline: rgba(160, 190, 230, 0.18);
+}
+
+body[data-dsh-composer-frost] [data-dsh-surface="composer"] {
+  box-shadow:
+    inset 0 0 0 1px var(--eq-composer-hairline),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* 侧栏与详情栏：只加一条内发丝线，让面板边界与背景的暗角对齐 */
+[data-dsh-surface="sidebar"] {
+  box-shadow: inset -1px 0 0 var(--eq-hairline);
+}
+
+[data-dsh-surface="details"] {
+  box-shadow: inset 1px 0 0 var(--eq-hairline);
+}
+
+/* 代码块：星海会从半透明底里透出来，可能吃掉语法色，
+ * 这里钉死为不透明，只保留一圈发丝边。 */
+[data-dsh-part="message-row"] pre,
+[data-dsh-part="message-row"] pre code {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body[data-ds-dark-theme] [data-dsh-part="message-row"] pre {
+  box-shadow: inset 0 0 0 1px rgba(160, 190, 230, 0.12);
+}
+
+/* 表格与引用线在星海上容易断，补一点对比 */
+[data-dsh-part="message-row"] table {
+  border-color: var(--eq-hairline);
+}
+
+[data-dsh-part="message-row"] blockquote {
+  border-left-color: rgba(143, 182, 255, 0.45);
+}
+
+/* 设置模态：全屏玻璃，保证表格和表单在背景上依然清晰 */
+[data-dsh-surface="settings"] {
+  backdrop-filter: blur(24px) saturate(120%);
+  -webkit-backdrop-filter: blur(24px) saturate(120%);
+}
+
+/* 文字保护层：遮挡滑块拉到 0 时，靠投影保住笔画边缘的对比 --------------- */
+[data-dsh-surface="conversation"] {
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.75), 0 0 2px rgba(255, 255, 255, 0.55);
+}
+
+body[data-ds-dark-theme] [data-dsh-surface="conversation"] {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.68), 0 0 3px rgba(0, 0, 0, 0.50);
+}
+
+/* 代码块与行内码保持干净：那里已经有不透明底，不需要投影 */
+[data-dsh-surface="conversation"] pre,
+[data-dsh-surface="conversation"] pre *,
+[data-dsh-surface="conversation"] code,
+[data-dsh-surface="conversation"] code * {
+  text-shadow: none;
+}

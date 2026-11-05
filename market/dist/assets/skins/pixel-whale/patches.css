@@ -1,0 +1,220 @@
+/**
+ * 像素鲸海 — L3 layer.
+ *
+ * The loader force-scopes every selector under html[data-dsh-skin="pixel-whale"].
+ * Four generated SVG tiles carry the workspace: an 8px dither grid and a water
+ * edge on the sidebar, four corner brackets on the composer card, a bubble
+ * cluster and the pixel whale mark in the sidebar foot. Everything else stays
+ * on the L1 token layer.
+ */
+
+html,
+body {
+  background-color: #050c15;
+}
+
+/* the backdrop never blurs, and never gets smoothed on upscale */
+body [data-dsh-skin-layer="background"] img,
+body [data-dsh-skin-layer="background"] video {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+body [data-dsh-skin-layer="background"] {
+  filter: none;
+}
+
+/* ---- sidebar: dither grain, a waterline along the bottom, whale mark in the corner */
+/* [data-slot="sidebar"] is a display:contents outlet, so the painted box is its child */
+[data-slot="sidebar"] > *,
+[data-dsh-surface="sidebar"],
+[data-pane="sidebar"],
+body [data-slot="sidebar"],
+body [data-dsh-surface="sidebar"] {
+  background-image:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%228%22%20height%3D%228%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.14%22%2F%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2210%22%20shape-rendering%3D%22crispEdges%22%3E%3Cg%20fill-opacity%3D%220.32%22%3E%3Crect%20x%3D%229%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2213%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2215%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2213%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2215%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2217%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2218%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2219%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2213%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2215%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2217%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2218%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2219%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2213%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2215%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2217%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2218%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2213%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2215%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2217%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2218%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2219%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2213%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2215%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2217%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2219%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2215%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2218%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%226%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20x%3D%220%22%20y%3D%223%22%20width%3D%222%22%20height%3D%223%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.30%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%223%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.5%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%222%22%20width%3D%222%22%20height%3D%224%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.30%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%222%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.5%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%221%22%20width%3D%222%22%20height%3D%225%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.30%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.5%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%221%22%20width%3D%222%22%20height%3D%225%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.30%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.5%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%222%22%20width%3D%222%22%20height%3D%224%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.30%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%222%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.5%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%223%22%20width%3D%222%22%20height%3D%223%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.30%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%223%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.5%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%224%22%20width%3D%222%22%20height%3D%222%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.30%22%2F%3E%3Crect%20x%3D%2212%22%20y%3D%224%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.5%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%224%22%20width%3D%222%22%20height%3D%222%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.30%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%224%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%20fill-opacity%3D%220.5%22%2F%3E%3C%2Fsvg%3E"),
+    url("assets/rain-a.gif"),
+    url("assets/rain-b.gif") !important;
+  background-repeat: repeat, no-repeat, repeat-x, repeat, repeat !important;
+  background-position: 0 0, calc(100% - 14px) calc(100% - 16px), 0 100%, 0 0, 43px 71px !important;
+  background-size: 8px 8px, 40px 20px, 16px 6px, 160px 220px, 160px 220px !important;
+  box-shadow: inset -1px 0 0 #2b5a684d;
+}
+
+/* ---- composer: square pixel card with corner brackets and a hard drop */
+body [data-composer-card],
+body [data-dsh-surface="composer"] {
+  border-radius: 0;
+  border: 1px solid #3fb3a94d;
+  box-shadow: 0 3px 0 #00000059;
+  background-image:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%228%22%20height%3D%228%22%20shape-rendering%3D%22crispEdges%22%3E%3Cg%20fill-opacity%3D%220.45%22%3E%3Crect%20x%3D%221%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%228%22%20height%3D%228%22%20shape-rendering%3D%22crispEdges%22%3E%3Cg%20fill-opacity%3D%220.45%22%3E%3Crect%20x%3D%222%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%228%22%20height%3D%228%22%20shape-rendering%3D%22crispEdges%22%3E%3Cg%20fill-opacity%3D%220.45%22%3E%3Crect%20x%3D%220%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%228%22%20height%3D%228%22%20shape-rendering%3D%22crispEdges%22%3E%3Cg%20fill-opacity%3D%220.45%22%3E%3Crect%20x%3D%227%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: left top, right top, left bottom, right bottom;
+  background-size: 8px 8px;
+}
+
+/* ---- bubbles stay flat; only the user row gets a hard edge */
+body [data-chat-flow-kind="user"] {
+  border-radius: 0;
+}
+
+/* ---- buttons and chips lose their pills */
+body [data-composer-card] button,
+body [data-composer-card] [role="button"] {
+  border-radius: 0;
+}
+
+/* ---- bubbles cluster floats above the sidebar foot */
+[data-slot="sidebar.workspaces"] > *,
+body [data-slot="sidebar.workspaces"] {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2216%22%20shape-rendering%3D%22crispEdges%22%3E%3Cg%20fill-opacity%3D%220.36%22%3E%3Crect%20x%3D%222%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%2212%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%2213%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%235fd3c6%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 6px top 6px !important;
+  background-size: 12px 16px !important;
+}
+
+/* ---- settings modal: the same sea without the swimmer, behind a readable scrim */
+[data-dsh-surface="settings"],
+[role="dialog"]:has([data-slot="settings.section"]) {
+  background-image:
+    linear-gradient(180deg, #050c1585, #050c15a3),
+    url("assets/sea-plain.gif") !important;
+  background-size: cover, cover !important;
+  background-position: center, center !important;
+  background-repeat: no-repeat, no-repeat !important;
+  border-radius: 0;
+  image-rendering: pixelated;
+  /* let the water read through the panels inside the modal */
+  --dsw-alias-bg-layer-1: #08131fd9;
+  --dsw-alias-bg-layer-2: #0a1a29d9;
+  --dsw-alias-bg-layer-3: #0e2131d9;
+  --dsw-alias-bg-overlay: #071320d9;
+  --dsw-specific-menu: #0a1826ee;
+  --dsw-specific-sidebar-fill: #050f19b3;
+}
+
+/* ---- 组件自带的「深色主题分支」-------------------------------------------
+ *
+ * deliverables / changes / plan / schedule 这几张卡不用 token 判断深浅，而是
+ * 写死 `body[data-ds-dark-theme]` 下换一套 neutral 填充：浅色模式一律
+ * --dsw-static-neutral-50 (#fafafa)，图标位一律 50% 白。
+ * 皮肤是深色单貌，而本机主题偏好是 light —— 于是这些卡是白块 + 皮肤近白文字，
+ * 交付卡片（.cardPreview 那整张）就是其中最显眼的一处。
+ *
+ * 把深色分支镜像到两种模式。锚点优先用 data-*（presented-file / changed-files /
+ * plan-card / tool=schedule_create），图标位没有语义属性，只能跟官方 CSS Modules
+ * 的 hash 类名，官方重建后同步这几个名字（旧版 .kuvljq_* 已随重建失效）。
+ */
+body [data-presented-file],
+body [data-changed-files],
+body [data-plan-card],
+body [data-tool='schedule_create'] {
+  --deliverable-fill: #0b1a29d9;
+  --deliverable-hover: #123246e6;
+  --changes-fill: #0b1a29d9;
+  --changes-hover: #123246e6;
+  --plan-card-fill: #0b1a29d9;
+  --plan-card-hover: #123246e6;
+  --card-fill: #0b1a29d9;
+  --card-hover: #123246e6;
+}
+
+body [data-presented-file] .K5rwea_fileIcon,
+body [data-changed-files] .HOHHba_tile,
+body [data-plan-card] .lLdGaq_cardIcon,
+body [data-tool='schedule_create'] .oT5lKa_leading,
+body .K5rwea_fileIcon,
+body .HOHHba_tile,
+body .lLdGaq_cardIcon,
+body .oT5lKa_leading {
+  background: color-mix(in srgb, #d6ece9 7%, transparent);
+  border-color: #2b5a6880;
+}
+
+/* 账户设置页同理：官方深浅各备一张插画，浅色模式下拿到的是浅色插画 */
+body:not([data-ds-dark-theme]) .GAdqeW_lightIllustration {
+  display: none;
+}
+
+body:not([data-ds-dark-theme]) .GAdqeW_darkIllustration {
+  display: block;
+}
+
+/* ---- icons: drop anti-aliasing, square every cap and join, no pills */
+svg {
+  shape-rendering: crispEdges;
+}
+
+svg path,
+svg line,
+svg polyline,
+svg polygon,
+svg rect,
+svg circle,
+svg ellipse {
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+img[src$=".svg"],
+img[src*="icon"],
+img[src*="Icon"] {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ---- controls: square corners and a hard 1px press instead of soft glows */
+button,
+[role="button"] {
+  border-radius: 0;
+}
+
+button:hover,
+[role="button"]:hover {
+  box-shadow: inset 0 0 0 1px #3fb3a94d;
+}
+
+/* ---- scrollbars become thin pixel rails */
+body ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+body ::-webkit-scrollbar-thumb {
+  border-radius: 0;
+  background: #3fb3a966;
+}
+body ::-webkit-scrollbar-thumb:hover {
+  background: #5fd3c699;
+}
+body ::-webkit-scrollbar-track {
+  background: #07132266;
+}
+
+/* ---- 菜单表面（模型选择下拉 / 命令面板 / 弹出菜单） ----------------------
+ *
+ * 官方的菜单底是 --dsw-menu-surface-fill：浅色主题是 #f8f9fa94 的近白半透明，
+ * 深色主题是 #43454a73 的灰。皮肤把 --dsw-alias-label-primary 设成近白 #d6ece9，
+ * 于是浅色主题下菜单 = 白面白字（叠在海面上实测 1.59:1），模型列表几乎读不出来。
+ *
+ * 这两条 token 不带 --dsw-alias- / --dsw-specific- 前缀，皮肤 loader 的
+ * 「:root → body 克隆」（bodyCloneProperty）不会搬运它们，写在 skin.css 的
+ * :root/body 块里会被 body 上的官方值反盖。所以必须从 L3 直接写在 body 上。
+ *
+ * 顺带把 backdrop-filter 关掉：皮肤是实心像素面，40px 高斯把背后的亮海水
+ * 揉进菜单里，只会再拉低一档对比度。
+ */
+body {
+  --dsw-menu-surface-fill: #0a1826f5;
+  --dsw-menu-backdrop-filter: none;
+}
+
+/* 深色海面上给弹层一道 1px 像素描边，免得和背景糊成一片 */
+body [data-menu-material] {
+  box-shadow: inset 0 0 0 1px #3fb3a966;
+}

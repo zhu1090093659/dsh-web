@@ -1,0 +1,175 @@
+/* ============================================================================
+ * 方程星海 / Equation Sea — a transparent DSH skin over a black-hole backdrop.
+ *
+ * 设计前提
+ *   背景是黑底星海（原画 74% 的像素比 #202020 更暗，吸积盘高光接近 255）。
+ *   面板必须是半透明玻璃，否则背景看不见；但玻璃必须够厚，否则文字压不住。
+ *   所有 alpha 都用 WCAG 相对亮度算过，明细见 README「可读性」。
+ *   合成分两层：画布（bg-base，46%）先压一道，会话与面板（layer-1..4）
+ *   再叠在上面，所以文字背后不是生背景，而是 base+layer 的合成色。
+ *   结果：星海典型区域正文 ≥13.0:1；即使背景是最亮的镜面高光，
+ *   正文仍有 6.0:1。只有次要文字在最亮像素上会掉到 3.6:1，
+ *   由 patches.css 的文字投影与「背景遮挡」滑块兜底（滑块 20% 即回到 AA）。
+ *
+ *   --dsw-skin-scrim 是皮肤中心「背景遮挡」滑块的 0–1 值：
+ *   scrim=0 背景最透，scrim=1 基本回到实心。默认值下的可读性由下面的
+ *   常数项保证，滑块只在此基础上继续加深。
+ * ========================================================================== */
+
+/* ---- LIGHT：白雾玻璃覆在星海上 ------------------------------------------ */
+:root {
+  --eq-glass-1: calc(0.26 + var(--dsw-skin-scrim, 0) * 0.62);
+  --eq-glass-2: calc(0.28 + var(--dsw-skin-scrim, 0) * 0.62);
+  --eq-glass-3: calc(0.36 + var(--dsw-skin-scrim, 0) * 0.56);
+  --eq-glass-4: calc(0.44 + var(--dsw-skin-scrim, 0) * 0.50);
+  --eq-blur: 18px;
+  --eq-hairline: rgba(90, 70, 45, 0.20);
+  --eq-accent: #9c3b2a;
+  --eq-accent-soft: rgba(156, 59, 42, 0.14);
+}
+
+/* 画布本身几乎透明，让星海透出来；真正的可读性由面板层负责 */
+:root {
+  --dsw-alias-bg-base: rgba(240, 229, 205, calc(0.30 + var(--dsw-skin-scrim, 0) * 0.60));
+  --dsw-alias-bg-layer-1: rgba(243, 233, 211, var(--eq-glass-1));
+  --dsw-alias-bg-layer-2: rgba(240, 229, 206, var(--eq-glass-2));
+  --dsw-alias-bg-layer-3: rgba(236, 224, 199, var(--eq-glass-3));
+  --dsw-alias-bg-layer-4: rgba(232, 219, 192, var(--eq-glass-4));
+  --dsw-alias-bg-module-platform: rgba(243, 233, 211, var(--eq-glass-2));
+  --dsw-alias-bg-overlay: rgba(247, 239, 223, 0.96);
+  --dsw-alias-bg-multi-select: rgba(232, 219, 192, 0.94);
+  --dsw-alias-bg-skeleton: rgba(20, 26, 36, 0.06);
+  --dsw-alias-bg-document-preview: rgba(247, 239, 223, 0.94);
+
+  --dsw-alias-border-l1: rgba(90, 70, 45, 0.16);
+  --dsw-alias-border-l2: rgba(90, 70, 45, 0.22);
+  --dsw-alias-border-l3: rgba(90, 70, 45, 0.28);
+  --dsw-alias-border-l4: rgba(90, 70, 45, 0.34);
+  --dsw-alias-border-l2-darkmode-thin: rgba(90, 70, 45, 0.22);
+
+  --dsw-alias-interactive-bg-hover: rgba(90, 62, 30, 0.07);
+  --dsw-alias-interactive-bg-active: rgba(90, 62, 30, 0.12);
+  --dsw-alias-interactive-bg-hover-solid: rgba(255, 255, 255, var(--eq-glass-3));
+  --dsw-alias-interactive-bg-hover-accent: var(--eq-accent-soft);
+
+  /* 代码块必须在星海上完全不透，否则语法色就废了 */
+  --dsw-alias-markdown-code-block: rgba(250, 243, 228, 0.93);
+  --dsw-alias-markdown-code-block-banner: rgba(240, 229, 206, 0.96);
+
+  --dsw-alias-label-primary: #3a2a1c;
+  --dsw-alias-label-primary-bluish: #3a2a1c;
+  --dsw-alias-label-primary-dimmed: #63482f;
+  --dsw-alias-label-primary-foreground: #ffffff;
+  --dsw-alias-label-primary-inverted: #ffffff;
+  --dsw-alias-label-secondary: #6b5741;
+  --dsw-alias-label-tertiary: #8a7355;
+  --dsw-alias-label-caption: #8a7355;
+  --dsw-alias-label-dimmed: #8a7355;
+
+  --dsw-alias-brand-primary: var(--eq-accent);
+  --dsw-alias-brand-primary-invert: #ffffff;
+  --dsw-alias-button-primary-fill: var(--eq-accent);
+  --dsw-alias-button-primary-hover: #7d2f21;
+  --dsw-alias-button-primary-dimmed: rgba(156, 59, 42, 0.20);
+  --dsw-alias-button-info-fill: var(--eq-accent);
+  --dsw-alias-button-info-hover: #7d2f21;
+  --dsw-alias-button-floating-fill: rgba(255, 255, 255, 0.92);
+  --dsw-alias-button-floating-hover: rgba(255, 255, 255, 1);
+  --dsw-alias-button-elevated-fill: rgba(255, 255, 255, var(--eq-glass-3));
+  --dsw-alias-button-ghost-active-fill: rgba(16, 22, 32, 0.10);
+  --dsw-alias-button-ghost-active-hover: rgba(16, 22, 32, 0.14);
+  --dsw-alias-button-ghost-active-border: rgba(18, 24, 34, 0.22);
+
+  --dsw-focus-ring-color: var(--eq-accent);
+  --dsh-scrollbar-thumb: rgba(90, 70, 45, 0.26);
+  --dsh-scrollbar-thumb-hover: rgba(90, 70, 45, 0.42);
+}
+
+/* ---- DARK：黑玻璃 ------------------------------------------------------ */
+body[data-ds-dark-theme] {
+  --eq-glass-1: calc(0.40 + var(--dsw-skin-scrim, 0) * 0.50);
+  --eq-glass-2: calc(0.42 + var(--dsw-skin-scrim, 0) * 0.50);
+  --eq-glass-3: calc(0.48 + var(--dsw-skin-scrim, 0) * 0.46);
+  --eq-glass-4: calc(0.54 + var(--dsw-skin-scrim, 0) * 0.42);
+  --eq-hairline: rgba(160, 190, 230, 0.16);
+  --eq-accent: #8fb6ff;
+  --eq-accent-soft: rgba(143, 182, 255, 0.16);
+
+  --dsw-alias-bg-base: rgba(5, 6, 10, calc(0.46 + var(--dsw-skin-scrim, 0) * 0.46));
+  --dsw-alias-bg-layer-1: rgba(10, 12, 17, var(--eq-glass-1));
+  --dsw-alias-bg-layer-2: rgba(15, 18, 24, var(--eq-glass-2));
+  --dsw-alias-bg-layer-3: rgba(21, 25, 33, var(--eq-glass-3));
+  --dsw-alias-bg-layer-4: rgba(27, 32, 41, var(--eq-glass-4));
+  --dsw-alias-bg-module-platform: rgba(12, 15, 20, var(--eq-glass-1));
+  --dsw-alias-bg-overlay: rgba(11, 14, 19, 0.95);
+  --dsw-alias-bg-multi-select: rgba(26, 32, 42, 0.92);
+  --dsw-alias-bg-skeleton: rgba(200, 220, 255, 0.06);
+  --dsw-alias-bg-document-preview: rgba(9, 11, 15, 0.94);
+
+  --dsw-alias-border-l1: rgba(150, 175, 210, 0.14);
+  --dsw-alias-border-l2: rgba(150, 175, 210, 0.19);
+  --dsw-alias-border-l3: rgba(170, 195, 230, 0.25);
+  --dsw-alias-border-l4: rgba(180, 205, 240, 0.32);
+  --dsw-alias-border-l2-darkmode-thin: rgba(150, 175, 210, 0.19);
+
+  --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.065);
+  --dsw-alias-interactive-bg-active: rgba(255, 255, 255, 0.11);
+  --dsw-alias-interactive-bg-hover-solid: rgba(21, 25, 33, var(--eq-glass-3));
+  --dsw-alias-interactive-bg-hover-accent: var(--eq-accent-soft);
+
+  --dsw-alias-markdown-code-block: rgba(2, 3, 6, 0.90);
+  --dsw-alias-markdown-code-block-banner: rgba(10, 13, 18, 0.92);
+
+  --dsw-alias-label-primary: #e9eef6;
+  --dsw-alias-label-primary-bluish: #eaf0f9;
+  --dsw-alias-label-primary-dimmed: #c8d2e0;
+  --dsw-alias-label-primary-foreground: #06080c;
+  --dsw-alias-label-primary-inverted: #06080c;
+  --dsw-alias-label-secondary: #b0bac8;
+  --dsw-alias-label-tertiary: #97a3b5;
+  --dsw-alias-label-caption: #97a3b5;
+  --dsw-alias-label-dimmed: #97a3b5;
+
+  --dsw-alias-brand-primary: var(--eq-accent);
+  --dsw-alias-brand-primary-invert: #06080c;
+  --dsw-alias-button-primary-fill: var(--eq-accent);
+  --dsw-alias-button-primary-hover: #a9c8ff;
+  --dsw-alias-button-primary-dimmed: rgba(143, 182, 255, 0.20);
+  --dsw-alias-button-info-fill: var(--eq-accent);
+  --dsw-alias-button-info-hover: #a9c8ff;
+  --dsw-alias-button-floating-fill: rgba(18, 22, 30, 0.92);
+  --dsw-alias-button-floating-hover: rgba(26, 32, 42, 0.96);
+  --dsw-alias-button-elevated-fill: rgba(21, 25, 33, var(--eq-glass-3));
+  --dsw-alias-button-ghost-active-fill: rgba(255, 255, 255, 0.10);
+  --dsw-alias-button-ghost-active-hover: rgba(255, 255, 255, 0.15);
+  --dsw-alias-button-ghost-active-border: rgba(180, 205, 240, 0.30);
+
+  --dsw-focus-ring-color: #a9c8ff;
+  --dsh-scrollbar-thumb: rgba(170, 195, 230, 0.22);
+  --dsh-scrollbar-thumb-hover: rgba(190, 215, 245, 0.38);
+}
+
+/* ---- 玻璃质感：只加在真正的大面上，避免污染布局 ------------------------- */
+[data-dsh-surface="sidebar"],
+[data-dsh-surface="details"] {
+  backdrop-filter: blur(var(--eq-blur)) saturate(115%);
+  -webkit-backdrop-filter: blur(var(--eq-blur)) saturate(115%);
+  border-color: var(--eq-hairline);
+}
+
+[data-dsh-surface="session-header"] {
+  backdrop-filter: blur(14px) saturate(110%);
+  -webkit-backdrop-filter: blur(14px) saturate(110%);
+}
+
+/* 会话主体保持通透，文字靠 bg-base 的暗度压住；这里只补一层很轻的雾 */
+[data-dsh-surface="conversation"] {
+  background-image: linear-gradient(
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.05)
+  );
+}
+
+body[data-ds-dark-theme] [data-dsh-surface="conversation"] {
+  background-image: linear-gradient(rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.10));
+}

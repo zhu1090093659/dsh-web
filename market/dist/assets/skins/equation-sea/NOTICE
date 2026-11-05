@@ -1,0 +1,29 @@
+# NOTICE · 方程星海 Equation Sea
+
+## 样式与代码
+
+`skin.css`、`patches.css`、`skin.json` 以 **CC0-1.0** 贡献（公有领域），
+可自由使用、修改、再分发，无需署名。
+
+## 背景图
+
+### 素材类别
+
+**AI 生成**。`assets/backdrop.jpg`、`assets/backdrop-parchment.jpg` 以及
+`preview/*.jpg` 里的背景部分，由本皮肤作者使用出图工具（text-to-image）生成，
+再经裁切、提亮、锐化与去色（亮色版）处理后在皮肤内使用。背景图不包含
+任何第三方摄影作品、绘画或商标素材。
+
+### 分发范围
+
+随本皮肤在 dsh 皮肤目录内分发，供安装该皮肤的用户在宿主界面中作为背景显示。
+如需将该背景图用于其他用途（商用、二次创作、独立再分发），请先联系作者取得许可。
+
+### 免责
+
+本贡献的版权与合规责任由贡献者（Chenjiangwen）承担。
+
+## 上游仓库
+
+- 源码与设计说明：https://github.com/Chenjiangwen/dsh-skin-equation-sea
+- 皮肤契约：skin center v2（`x-org.linxin666.skin-center/v2`）

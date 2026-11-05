@@ -30,13 +30,6 @@ import { apply as applyActivate } from '../presets/liangshen/tool-activate.mjs'
 
 type Listener = (first: any, second: any, third: any) => Promise<any>
 
-/** The run_code transport the registry reserves for a code presentation. */
-const RUN_CODE = {
-  name: 'run_code',
-  description: 'Execute a TypeScript program against the available tools.',
-  parameters: { type: 'object', properties: { code: { type: 'string' }, description: { type: 'string' } } },
-}
-
 const RESIDENT = [
   { name: 'bash', description: 'Run commands in a bash shell.' },
   { name: 'read', description: 'Read a UTF-8 text file.' },
@@ -52,12 +45,13 @@ const PAGED = [
 
 interface RegistryOptions {
   restrictThrows?: boolean
-  presentThrows?: boolean
 }
 
 /**
- * The miniature registry: one global surface, per-scope restriction layers, and
- * the reserved transport appended for any scope presenting through code.
+ * The miniature registry: one global surface and per-scope restriction layers.
+ * The reserved transport is never part of it - the shipped ptc executor keeps
+ * `run_code` outside the registry and only its `describe()` names it - which is
+ * exactly why the catalog cannot read the transport from a schema list.
  */
 function registry(surface: unknown[], options: RegistryOptions = {}) {
   const layers = new Map<unknown, Array<{ allow?: Set<string>; deny?: Set<string> }>>()
@@ -82,13 +76,7 @@ function registry(surface: unknown[], options: RegistryOptions = {}) {
      * per-scope call); here the scope is captured in the closure instead.
      */
     scoped: (agent: any) => ({
-      presentAs(mode: string) {
-        // A host that declines the declaration: the scope keeps the native wire.
-        if (options.presentThrows === true) throw new Error('presentation declaration rejected by host policy')
-        agent.mode = mode
-        return () => { agent.mode = undefined }
-      },
-      schemas: () => (agent.mode === undefined || agent.mode === 'native' ? visible(agent) : [...visible(agent), RUN_CODE]),
+      schemas: () => visible(agent),
       sdkSchemas: () => visible(agent),
       restrict(filter: { allow?: string[]; deny?: string[] }) {
         if (options.restrictThrows === true) throw new Error('registry refused the filter')
@@ -122,17 +110,25 @@ interface Harness {
   emit(event: string, ...args: unknown[]): Promise<unknown>
   /** Assemble for one agent, the way the harness does before the waterfall. */
   assemble(agent: any): Promise<any>
+  /** The names the request's own wire carries for one scope. */
+  wireNames(agent: any): string[]
   /** The durable catalog message this session would publish next step. */
   catalog(agent: any): Promise<string>
 }
+
+/**
+ * The step admission the harness passes through the assemble context. The
+ * catalog never inspects it: it hands it back to `tools.schemas(agent, toolSet)`
+ * exactly as the shipped contract reads it, and the miniature registry applies
+ * the scope's restriction on the way out.
+ */
+const TOOL_SET = Object.freeze({ admitted: 'step' })
 
 interface HarnessOptions {
   restrictThrows?: boolean
   pageable?: boolean
   /** Omit the PTC runtime, as a deployment without one does. */
   ptcRuntime?: boolean
-  /** Refuse the presentation declaration, as host policy can. */
-  presentThrows?: boolean
 }
 
 function harness(config: Record<string, unknown> = {}, options: HarnessOptions = {}): Harness {
@@ -156,16 +152,19 @@ function harness(config: Record<string, unknown> = {}, options: HarnessOptions =
       return listeners.get(event)!.listener(...(args as [any, any, any]))
     },
     async assemble(agent: any) {
-      // The harness collects the tool providers BEFORE the waterfall: the wire
-      // this assembly carries is decided by the presentation the scope had.
-      const wire = agent.mode === 'ptc'
-        ? [{ ...RUN_CODE }]
-        : tools.schemas(agent)
+      // The shipped harness collects the tool providers BEFORE the waterfall and
+      // merges the authoritative `tools` back AFTER it, so the presentation this
+      // listener transforms carries no tool array at all; the step's admission
+      // arrives in the assemble context instead.
       return listeners.get('system-prompt/assemble')!.listener(
         { sections: [] },
-        { agent },
-        async () => ({ sections: [], contexts: [], tools: wire, variables: {} }),
+        { agent, toolSet: TOOL_SET },
+        async () => ({ sections: [], contexts: [], variables: {} }),
       )
+    },
+    /** The names the request's own wire carries, as the executor renders them. */
+    wireNames(agent: any) {
+      return tools.schemas(agent).map((tool: any) => tool.name)
     },
     async catalog(agent: any) {
       const decision = await listeners.get('agent/pre-step')!.listener(
@@ -221,10 +220,9 @@ describe('gentle paging under the collapsed ptc wire', () => {
     expect(h.tools.get('mcp__github__create_issue', agent)).toBeUndefined()
     expect(h.tools.get('mcp__codegraph__explore', agent)).toBeUndefined()
 
-    const assembled = await h.assemble(agent)
-    // The wire itself is the collapsed transport, as always.
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['run_code'])
-    // The registry is where paging bites: a program cannot reach the paged
+    await h.assemble(agent)
+    // The registry is where paging bites, and since the waterfall cannot filter
+    // the wire it is the only place it can: a program cannot reach the paged
     // tools, and neither can the generated SDK the tools:sdk section renders.
     expect(h.tools.get('mcp__github__create_issue', agent)).toBeUndefined()
     expect(h.tools.get('bash', agent)).toBeDefined()
@@ -305,17 +303,19 @@ describe('gentle paging under the collapsed ptc wire', () => {
     expect(first.tools.sdkSchemas(agentA).map((tool: any) => tool.name)).toContain('mcp__github__create_issue')
   })
 
-  it('drops the page once the wire stops being the collapsed transport', async () => {
+  it('keeps the page installed across assemblies, in the ptc wording', async () => {
+    // Given a paged scope, When a second assembly runs, Then it re-derives the
+    // same page and the catalog still describes it as the collapsed transport:
+    // activation, not another assembly, is what lifts a namespace.
     const h = harness()
     const agent = await agentOf(h)
     expect(h.tools.get('mcp__github__create_issue', agent)).toBeUndefined()
-    // The declaration is reverted (or the presentation changed): the native
-    // roster comes back, so a filter left behind would keep hiding tool families
-    // that wire now hands back.
-    agent.mode = 'native'
     await h.assemble(agent)
-    expect(h.tools.get('mcp__github__create_issue', agent)).toBeDefined()
-    expect(h.tools.sdkSchemas(agent).map((tool: any) => tool.name)).toContain('mcp__codegraph__explore')
+    await h.assemble(agent)
+    expect(h.tools.get('mcp__github__create_issue', agent)).toBeUndefined()
+    const text = await h.catalog(agent)
+    expect(text).toContain('The page covers the whole surface here')
+    expect(text).toContain('presents these tools through `run_code`')
   })
 
   it('does not accumulate restrictions across syncs', async () => {
@@ -331,12 +331,14 @@ describe('gentle paging under the collapsed ptc wire', () => {
     expect(once).toEqual(['bash', 'read'])
   })
 
-  it("leaves 'native' untouched: paging stays a wire-only concern", async () => {
+  it("pages the 'native' roster too, since the waterfall can no longer filter it", async () => {
     const h = harness({ presentation: 'native' })
     const agent = await agentOf(h)
-    const assembled = await h.assemble(agent)
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['bash', 'read'])
-    expect(h.tools.get('mcp__github__create_issue', agent)).toBeDefined()
+    await h.assemble(agent)
+    // The native wire is rendered from the registry, so a restriction is the
+    // only mechanism left that keeps a paged family off it.
+    expect(h.wireNames(agent)).toEqual(['bash', 'read'])
+    expect(h.tools.get('mcp__github__create_issue', agent)).toBeUndefined()
     const text = await h.catalog(agent)
     expect(text).toContain('<inactive_namespaces>')
     expect(text).not.toContain('run_code')
@@ -346,9 +348,8 @@ describe('gentle paging under the collapsed ptc wire', () => {
     const h = harness({}, { restrictThrows: true })
     const agent = await agentOf(h)
     await h.emit('agent/created', { agent, source: 'resume' })
-    const assembled = await h.assemble(agent)
+    await h.assemble(agent)
 
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['run_code'])
     // The refusal is reported once and the session keeps its whole surface.
     const pagingWarnings = h.warnings.filter(message => message.includes('could not restrict'))
     expect(pagingWarnings).toHaveLength(1)
@@ -358,58 +359,44 @@ describe('gentle paging under the collapsed ptc wire', () => {
     expect(text).not.toContain('<inactive_namespaces>')
   })
 
-  it('installs no page at all when the deployment has no PTC runtime', async () => {
-    // The documented fallback: 'ptc' is configured but no PTC runtime is
-    // mounted, so the scope never declares the collapse and the wire stays
-    // native. The assembled array already carries paging by itself, so a
-    // registry restriction here would strip the paged families from a wire that
-    // is supposed to carry them — and the catalog would announce namespaces as
-    // withheld that nothing withheld.
+  it('pages a native fallback deployment too, where no code runtime is mounted', async () => {
+    // 'ptc' is configured but no PTC runtime is mounted, so the scope never
+    // declares the collapse and the wire stays native. Before 0.2.2 that wire
+    // carried paging by itself (the listener returned a narrowed array); the
+    // harness now owns `tools`, so the registry restriction is the only page
+    // left - and the catalog states exactly that page.
     const h = harness({ presentation: 'ptc' }, { ptcRuntime: false })
     const agent = await agentOf(h)
 
-    // No declaration, therefore no restriction, therefore no page.
-    expect(agent.mode).toBeUndefined()
-    expect(h.tools.sdkSchemas(agent).map((tool: any) => tool.name)).toContain('mcp__codegraph__explore')
-    expect(h.tools.get('mcp__github__create_issue', agent)).toBeDefined()
+    expect(h.tools.get('mcp__github__create_issue', agent)).toBeUndefined()
 
-    const assembled = await h.assemble(agent)
-    // The wire is the native one, and paging there is the wire partition's own
-    // job — that is what keeps the paged families off a native roster. What must
-    // NOT happen is the registry losing them: an unrunnable collapse means no
-    // page, so the scope keeps reaching every tool it was given.
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['bash', 'read'])
-    expect(h.tools.get('mcp__github__create_issue', agent)).toBeDefined()
-    expect(h.tools.sdkSchemas(agent).map((tool: any) => tool.name)).toContain('mcp__codegraph__explore')
+    await h.assemble(agent)
+    expect(h.wireNames(agent)).toEqual(['bash', 'read'])
 
     const text = await h.catalog(agent)
     expect(text).toContain('<inactive_namespaces>')
+    expect(text).toContain('This presentation carries no program transport')
     expect(text).not.toContain('run_code')
   })
 
-  it('installs no page when the host declines the presentation declaration', async () => {
-    // A declined declaration keeps the native wire exactly like a missing
-    // runtime does, and paging must not engage on a wire that cannot collapse.
-    const h = harness({ presentation: 'ptc' }, { presentThrows: true })
+  it('pages a scope whose composition selects the native roster', async () => {
+    // No declaration is involved any more: the composition's executor row is
+    // the transport, and the native roster is paged exactly the same way.
+    const h = harness({ presentation: 'native' })
     const agent = await agentOf(h)
 
-    expect(agent.mode).toBeUndefined()
-    expect(h.tools.get('mcp__github__create_issue', agent)).toBeDefined()
+    expect(h.tools.get('mcp__github__create_issue', agent)).toBeUndefined()
 
-    const assembled = await h.assemble(agent)
-    // Same as the missing runtime: the native wire pages through the assembled
-    // array, and the registry is left alone.
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['bash', 'read'])
-    expect(h.tools.get('mcp__github__create_issue', agent)).toBeDefined()
-    expect(h.tools.sdkSchemas(agent).map((tool: any) => tool.name)).toContain('mcp__codegraph__explore')
-    expect(h.warnings.some(w => w.includes('presentation was declined'))).toBe(true)
+    await h.assemble(agent)
+    expect(h.wireNames(agent)).toEqual(['bash', 'read'])
+    expect(h.warnings).toEqual([])
   })
 
   it('never names the reserved transport in a restriction, even with nothing paged', async () => {
     const h = harness({}, { pageable: false })
     const agent = await agentOf(h)
-    const assembled = await h.assemble(agent)
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['run_code'])
+    await h.assemble(agent)
+    expect(h.wireNames(agent)).toEqual(['bash', 'read'])
     // Nothing matched the paging patterns, so no filter was installed at all —
     // and the transport survives.
     expect(h.tools.sdkSchemas(agent).map((tool: any) => tool.name)).toEqual(['bash', 'read'])

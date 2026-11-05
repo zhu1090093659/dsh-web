@@ -19,68 +19,55 @@ type Listener = (first: any, second: any, third: any) => Promise<any>
 
 interface Harness {
   listeners: Map<string, { listener: Listener, options: any }>
-  presentCalls: string[]
   warnings: string[]
-  /** The inputs of the assembly in flight, reused when the plugin re-enters it. */
-  assemblyInput?: { tools: unknown[]; sections: unknown[] }
-  /** Declarations already landed when the effective assembly's providers were read. */
-  declarationsBeforeNext: number
   /** Replace the surface the registry projects, as a mid-session tool change would. */
-  setSdk(schemas: unknown[]): void
+  setSurface(schemas: unknown[]): void
   /** Make the projection start throwing, as a mid-session breakage would. */
-  failSdk(): void
+  failSurface(): void
+  /** The names the live scope restriction withholds from one scope. */
+  withheld(agent: unknown): string[]
 }
 
 interface HarnessOptions {
-  /** The surface the registry's `sdkSchemas` projects; defaults to {@link SDK_SURFACE}. */
-  sdk?: unknown[]
-  /** When true the registry advertises no `sdkSchemas` at all. */
-  noSdkSchemas?: boolean
-  /** When true `sdkSchemas` throws, as a hostile definition would. */
-  sdkThrows?: boolean
+  /** The surface the registry projects; defaults to {@link WIRE}. */
+  surface?: unknown[]
+  /** When true the registry advertises no read method at all. */
+  noSurface?: boolean
+  /** When true the projection throws, as a hostile definition would. */
+  surfaceThrows?: boolean
   /** When false the context exposes no code runtime. */
   ptcRuntime?: boolean
-  /** When true the context exposes no SystemPrompt, so nothing can re-assemble. */
-  noPromptService?: boolean
 }
 
-const SDK_SURFACE = [
-  {
-    name: 'bash',
-    description: 'Run commands in a bash shell\n* State is persistent across command calls.',
-    parameters: {
-      type: 'object',
-      properties: { command: { type: 'string' }, timeoutMs: { type: 'integer' } },
-      required: ['command'],
-    },
-  },
-  { name: 'read', description: 'Read a UTF-8 text file and return line-numbered content.' },
-]
+/**
+ * The step admission the harness hands the plugin through the assemble context.
+ * Nothing in the catalog inspects it: like the shipped `tools.schemas(agent,
+ * toolSet)` contract, it only carries it back to the registry, which is where a
+ * step's conditional admission is applied.
+ */
+const STEP_TOOL_SET = Object.freeze({ admitted: 'step' })
 
-/** The run_code transport schema the harness adds for code presentations. */
-const RUN_CODE = {
-  name: 'run_code',
-  description: 'Execute a TypeScript program against the available tools.',
-  parameters: {
-    type: 'object',
-    properties: { code: { type: 'string' }, description: { type: 'string' } },
-    required: ['code', 'description'],
-  },
-}
+/**
+ * The names each scope's live restriction withholds, keyed by the agent whose
+ * `agent.ctx.tools.restrict()` installed it. The registry stub below enforces
+ * them exactly as the official one does, so a paging assertion is about what
+ * the wire and a program can reach, not about an array a listener returned.
+ */
+const DENIED = new WeakMap<object, Set<string>>()
 
 function register(config: Record<string, unknown> = {}, options: HarnessOptions = {}): Harness {
   const listeners = new Map<string, { listener: Listener, options: any }>()
-  const presentCalls: string[] = []
   const warnings: string[] = []
-  let sdk = options.sdk ?? SDK_SURFACE
-  let sdkFails = options.sdkThrows === true
-  const tools: Record<string, unknown> = {
-    sdkSchemas: () => {
-      if (sdkFails) throw new Error('unsupported schema')
-      return sdk
-    },
+  let surface = options.surface ?? WIRE
+  let surfaceFails = options.surfaceThrows === true
+  /** The scope's visible projection: the surface minus that scope's restriction. */
+  const visible = (agent: any) => {
+    if (surfaceFails) throw new Error('unsupported schema')
+    const deny = typeof agent === 'object' && agent !== null ? DENIED.get(agent) : undefined
+    return deny === undefined ? surface : surface.filter((tool: any) => !deny.has(tool?.name))
   }
-  if (options.noSdkSchemas === true) delete tools.sdkSchemas
+  const tools: Record<string, unknown> = { schemas: (agent: any) => visible(agent) }
+  if (options.noSurface === true) delete tools.schemas
   const services: Record<string, unknown> = { tools }
   if (options.ptcRuntime !== false) services.ptcRuntime = { language: 'typescript' }
   const ctx = {
@@ -93,19 +80,17 @@ function register(config: Record<string, unknown> = {}, options: HarnessOptions 
   apply(ctx, config)
   const harness: Harness = {
     listeners,
-    presentCalls,
     warnings,
-    setSdk(next: unknown[]) { sdk = next },
-    failSdk() { sdkFails = true },
+    setSurface(next: unknown[]) { surface = next },
+    failSurface() { surfaceFails = true },
+    withheld(agent: unknown) {
+      return [...DENIED.get(agent as object) ?? []]
+    },
   }
-  // A faithful SystemPrompt: it snapshots the presentation before the waterfall runs
-  // -- which is exactly why a declaration made inside one cannot reach that same
-  // assembly -- and re-entering it is what a declaration relies on. A stub whose
-  // wire ignored the declared mode could not tell those two apart.
-  if (options.noPromptService !== true) {
-    services.systemPrompt = {
-      assemble: async (context: any) => (await runAssembly(harness, context?.agent)).assembled,
-    }
+  // A faithful SystemPrompt: the shipped host keeps one assembly entry point, and
+  // this stub re-enters it exactly as a re-assembly would.
+  services.systemPrompt = {
+    assemble: async (context: any) => (await runAssembly(harness, context?.agent, undefined, context?.sections ?? [])).assembled,
   }
   return harness
 }
@@ -116,10 +101,26 @@ function listener(harness: Harness, event: string): Listener {
   return entry!.listener
 }
 
-/** The assembled wire the harness hands the plugin: a native Standard-like roster. */
+/**
+ * The surface the registry projects for one scope, and therefore the list the
+ * request's own wire carries: the executor renders tool declarations from the
+ * same `schemas()` read the catalog performs.
+ *
+ * The bash entry keeps a real argument signature and the read entry declares no
+ * parameters at all, so the catalog has to render both shapes: a signature, and
+ * the bare name a tool that takes no declared argument gets.
+ */
 const WIRE = [
-  { name: 'bash', description: 'Run commands in a bash shell', parameters: { type: 'object', properties: {} } },
-  { name: 'read', description: 'Read a UTF-8 text file', parameters: { type: 'object', properties: {} } },
+  {
+    name: 'bash',
+    description: 'Run commands in a bash shell\n* State is persistent across command calls.',
+    parameters: {
+      type: 'object',
+      properties: { command: { type: 'string' }, timeoutMs: { type: 'integer' } },
+      required: ['command'],
+    },
+  },
+  { name: 'read', description: 'Read a UTF-8 text file and return line-numbered content.' },
   { name: 'web_search', description: 'Search the web.', parameters: { type: 'object', properties: {} } },
 ]
 
@@ -134,33 +135,27 @@ const MCP_TOOLS = [
  * One live agent: the catalog stash and the declaration latch are keyed by the
  * agent object, so a test that spans several steps reuses the same one.
  * `events` is the durable log the catalog history and the paging state are
- * read back from, `surface` its visible positions, and
- * `ctx.tools.presentAs` the per-session presentation declaration.
+ * read back from, `visible` its visible positions, `ctx.tools.presentAs` the
+ * per-session presentation declaration and `ctx.tools.restrict` the paging
+ * filter that withholds a namespace until it is activated.
  */
 function agentOf(
   events: unknown[] = [],
-  surface?: number[],
+  visible?: number[],
   harness?: Harness,
-  options?: { presentThrows?: boolean; disposers?: (() => void)[] },
+  options?: { restrictThrows?: boolean },
 ) {
   const session: any = { snapshotEvents: () => events }
-  if (surface !== undefined) session.surface = { nodes: surface }
+  if (visible !== undefined) session.surface = { nodes: visible }
   const agent: any = {
     session,
-    // The scope's current presentation, exactly as the real registry tracks it: a
-    // declaration changes what the NEXT assembly collects, not the one in flight.
-    mode: undefined as string | undefined,
     ctx: {
       tools: {
-        presentAs(mode: string) {
-          if (options?.presentThrows) throw new Error('presentation declaration rejected by host policy')
-          harness?.presentCalls.push(mode)
-          agent.mode = mode
-          const disposer = () => {
-            agent.mode = undefined
-            options?.disposers?.push(disposer)
-          }
-          return disposer
+        restrict(filter: { deny?: string[] }) {
+          if (options?.restrictThrows) throw new Error('registry refused the filter')
+          const deny = new Set(filter?.deny ?? [])
+          DENIED.set(agent, deny)
+          return () => { DENIED.delete(agent) }
         },
       },
     },
@@ -177,33 +172,28 @@ function activationEvents(namespace: string, callId: string) {
 }
 
 /**
- * One assembly, as the harness performs it: the wire is built from the presentation
- * the agent had BEFORE the waterfall ran, and the count of declarations already
- * landed is recorded at that same moment.
+ * One assembly, exactly as the shipped harness performs it: the waterfall's
+ * `PromptPresentation` carries sections, contexts and variables and NO tool
+ * array (tool declarations are provider-owned), while the step's admitted
+ * selection arrives in the assemble context. The count of declarations already
+ * landed is recorded when the providers would have been read.
+ *
+ * `surface` replaces what the registry projects for this and later assemblies,
+ * the way a mid-session tool change does; omitted, the current surface stays.
  */
-async function runAssembly(harness: Harness, agent: any, tools: unknown[] = WIRE, sections: unknown[] = []) {
-  // The caller's inputs are remembered, so a re-entry triggered from inside the
-  // waterfall assembles the SAME prompt rather than falling back to the defaults.
-  if (tools !== WIRE || sections.length > 0) harness.assemblyInput = { tools, sections }
-  const input = harness.assemblyInput ?? { tools: WIRE, sections: [] }
-  const wire = agent?.mode === 'ptc'
-    ? [{ ...RUN_CODE }]
-    : input.tools
-  harness.declarationsBeforeNext = -1
+async function runAssembly(harness: Harness, agent: any, surface?: unknown[], sections: unknown[] = []) {
+  if (surface !== undefined) harness.setSurface(surface)
   const assembled = await listener(harness, 'system-prompt/assemble')(
-    { sections: input.sections },
-    { agent },
-    async () => {
-      harness.declarationsBeforeNext = harness.presentCalls.length
-      return { sections: input.sections, contexts: [], tools: wire, variables: {} }
-    },
+    { sections },
+    { agent, toolSet: STEP_TOOL_SET },
+    async () => ({ sections, contexts: [], variables: {} }),
   )
-  return { assembled, declarationsBeforeNext: harness.declarationsBeforeNext }
+  return { assembled }
 }
 
 /** Assemble through the same entry the harness uses, so re-entry behaves identically. */
-async function assemble(harness: Harness, agent: unknown, tools: unknown[] = WIRE, sections: unknown[] = []) {
-  return runAssembly(harness, agent, tools, sections)
+async function assemble(harness: Harness, agent: unknown, surface?: unknown[], sections: unknown[] = []) {
+  return runAssembly(harness, agent, surface, sections)
 }
 
 async function preStep(harness: Harness, agent: unknown, messages: unknown[] = [{ id: 'user', source: { kind: 'user' } }]) {
@@ -253,24 +243,59 @@ describe('liangshen-tool-catalog', () => {
     expect(catalog.content[0].text).toContain(`- \`read\`: ${CURATED_TOOL_SUMMARIES.get('read')}`)
   })
 
-  test("default presentation is 'ptc': the wire collapses to the run_code transport", async () => {
+  test('operator opening a seeded child session gets its own surface, never an inherited "no tools" (issue #2016)', async () => {
+    // Given a session whose durable log already carries the catalog a PARENT
+    // published (a seeded sidebar child, or a fork of a conversation), When that
+    // scope assembles on a host whose waterfall no longer carries a tool array
+    // and prepares its first step, Then the catalog names the tools this request
+    // really opens. The inherited record is the parent's, so it can neither
+    // suppress the child's own catalog nor be mistaken for "this session has no
+    // tools" — the two faces of the 2.0.22 defect.
+    // Both presentations: the seeded child must describe the surface it opens
+    // whichever transport the composition mounted.
+    await Promise.all(PRESENTATION_MODES.map(async (presentation) => {
+      const harness = register({ presentation })
+      const parentCatalog = createCatalogMessage(
+        [{ name: 'retired_tool', signature: '()', description: 'A tool only the parent had.' }],
+        'native',
+      )
+      const agent = agentOf([durableEvent(2, parentCatalog)], [2], harness)
+      await assemble(harness, agent)
+      const text = catalogText((await preStep(harness, agent)).messages)
+      expect(text).toContain('The following tools are available in this session:')
+      expect(text).toContain('- `bash({ command: string, timeoutMs?: number })`')
+      expect(text).toContain('- `web_search')
+      expect(text).not.toContain('No tools are currently available in this session.')
+      expect(text).not.toContain('retired_tool')
+    }))
+  })
+
+  test('operator sees the assembly travel back untouched: tool declarations are provider-owned', async () => {
+    // The 0.2.2 waterfall transforms a PromptPresentation with no tool array. A
+    // listener that still tried to page or restore `tools` here would be
+    // rewriting a field the harness owns and overwrites.
+    const harness = register({ presentation: 'native' })
+    const agent = agentOf([], undefined, harness)
+    const { assembled } = await assemble(harness, agent)
+    expect(assembled).toEqual({ sections: [], contexts: [], variables: {} })
+  })
+
+  test("default presentation is 'ptc': the catalog announces the program transport", async () => {
+    // The composition mounts the ptc executor from this same setting, so the
+    // shipped default makes the first request open the collapsed wire and the
+    // catalog has to describe it.
     const harness = register()
     const agent = agentOf([], undefined, harness)
-    const { assembled, declarationsBeforeNext } = await assemble(harness, agent)
-    expect(declarationsBeforeNext).toBe(1)
-    expect(harness.presentCalls).toEqual(['ptc'])
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['run_code'])
-    // Declared once per agent scope.
     await assemble(harness, agent)
-    expect(harness.presentCalls).toEqual(['ptc'])
+    const text = catalogText((await preStep(harness, agent)).messages)
+    expect(text).toContain('presents these tools through `run_code`')
+    expect(text).toContain('- `bash({ command: string, timeoutMs?: number })`')
   })
 
   test("'ptc' presentation collapses the wire and ships the program contract", async () => {
     const harness = register({ presentation: 'ptc' })
     const agent = agentOf([], undefined, harness)
-    const { assembled } = await assemble(harness, agent)
-    expect(harness.presentCalls).toEqual(['ptc'])
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['run_code'])
+    await assemble(harness, agent)
     const text = catalogText((await preStep(harness, agent)).messages)
     expect(text).toContain('presents these tools through `run_code`')
     expect(text).toContain('Compose one program per intent instead of one tool call per step')
@@ -280,12 +305,10 @@ describe('liangshen-tool-catalog', () => {
     expect(text).not.toContain('- `run_code(')
   })
 
-  test("'native' presentation never declares and never mentions run_code", async () => {
+  test("'native' presentation never mentions run_code", async () => {
     const harness = register({ presentation: 'native' })
-    const agent = agentOf()
-    const { assembled } = await assemble(harness, agent)
-    expect(harness.presentCalls).toEqual([])
-    expect(assembled.tools).toBe(WIRE)
+    const agent = agentOf([], undefined, harness)
+    await assemble(harness, agent)
     const text = catalogText((await preStep(harness, agent)).messages)
     expect(text).not.toContain('run_code')
     expect(text).toContain('- `bash({ command: string, timeoutMs?: number })`')
@@ -302,43 +325,40 @@ describe('liangshen-tool-catalog', () => {
     // booting cleanly after the SDK removed `'both'` from ToolPresentationMode.
     const harness = register({ presentation: 'both' })
     const agent = agentOf([], undefined, harness)
-    const { assembled } = await assemble(harness, agent)
-    expect(harness.presentCalls).toEqual(['ptc'])
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['run_code'])
+    await assemble(harness, agent)
+    // The mapped value reaches the catalog as the collapsed transport.
+    expect(catalogText((await preStep(harness, agent)).messages)).toContain('presents these tools through `run_code`')
     expect(harness.warnings.filter(w => w.includes("the 'both' presentation was removed in 0.2.1; mapping 'both' -> 'ptc'"))).toHaveLength(1)
   })
 
   test('maps the legacy ptcPresentation key onto the enum with one deprecation warning', async () => {
     const ptc = register({ ptcPresentation: true })
     const ptcAgent = agentOf([], undefined, ptc)
-    const { assembled } = await assemble(ptc, ptcAgent)
-    expect(ptc.presentCalls).toEqual(['ptc'])
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['run_code'])
+    await assemble(ptc, ptcAgent)
+    expect(catalogText((await preStep(ptc, ptcAgent)).messages)).toContain('presents these tools through `run_code`')
     expect(ptc.warnings.filter(w => w.includes('ptcPresentation key is deprecated'))).toHaveLength(1)
 
     const native = register({ ptcPresentation: false })
-    const nativeAgent = agentOf()
-    const nativeAssembled = await assemble(native, nativeAgent)
-    expect(native.presentCalls).toEqual([])
-    expect(nativeAssembled.assembled.tools).toBe(WIRE)
+    const nativeAgent = agentOf([], undefined, native)
+    await assemble(native, nativeAgent)
+    expect(catalogText((await preStep(native, nativeAgent)).messages)).not.toContain('run_code')
     expect(native.warnings.filter(w => w.includes('ptcPresentation key is deprecated'))).toHaveLength(1)
   })
 
   test('an explicit presentation wins over the legacy key and still warns once', async () => {
     const harness = register({ presentation: 'native', ptcPresentation: true })
-    const agent = agentOf()
-    const { assembled } = await assemble(harness, agent)
-    expect(harness.presentCalls).toEqual([])
-    expect(assembled.tools).toBe(WIRE)
+    const agent = agentOf([], undefined, harness)
+    await assemble(harness, agent)
+    expect(catalogText((await preStep(harness, agent)).messages)).not.toContain('run_code')
     expect(harness.warnings.filter(w => w.includes('ptcPresentation key is deprecated'))).toHaveLength(1)
   })
 
-  test('the retired anchorTools key warns once and no longer narrows the wire', async () => {
+  test('the retired anchorTools key warns once and no longer narrows the surface', async () => {
     const harness = register({ anchorTools: ['bash'], presentation: 'native' })
     const agent = agentOf([{ type: 'turn/start' }], undefined, harness)
-    const { assembled } = await assemble(harness, agent)
-    // No anchor narrowing: the full wire survives even on the first turn.
-    expect(assembled.tools).toBe(WIRE)
+    await assemble(harness, agent)
+    // No anchor narrowing: the full surface survives even on the first turn.
+    expect(harness.withheld(agent)).toEqual([])
     expect(harness.warnings.filter(w => w.includes('anchor-turn staging is retired'))).toHaveLength(1)
     await assemble(harness, agent)
     expect(harness.warnings.filter(w => w.includes('anchor-turn staging is retired'))).toHaveLength(1)
@@ -409,7 +429,6 @@ describe('liangshen-tool-catalog', () => {
     const first = await preStep(harness, agent)
     const history = agentOf([durableEvent(2, catalogOf(first.messages))], [2], harness)
     await assemble(harness, history)
-    harness.setSdk([...SDK_SURFACE, { name: 'edit', description: 'Edit one file.' }])
     await assemble(harness, history, [...WIRE, { name: 'edit', description: 'Edit one file.' }])
     const second = await preStep(harness, history)
     const update = catalogOf(second.messages)
@@ -498,11 +517,12 @@ describe('liangshen-tool-catalog', () => {
   })
 
   test('paged namespaces stay off the wire and appear in the catalog summary', async () => {
-    const harness = register({ presentation: 'native' }, { sdk: [...SDK_SURFACE, ...MCP_TOOLS] })
-    const agent = agentOf()
-    const { assembled } = await assemble(harness, agent, [...WIRE, ...MCP_TOOLS])
-    // The wire keeps only the resident tools.
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['bash', 'read', 'web_search'])
+    const harness = register({ presentation: 'native' }, { surface: [...WIRE, ...MCP_TOOLS] })
+    const agent = agentOf([], undefined, harness)
+    await assemble(harness, agent)
+    // The scope's restriction withholds exactly the paged namespaces, so the
+    // wire (rendered from the same registry read) keeps only the resident tools.
+    expect(harness.withheld(agent).sort()).toEqual(MCP_TOOLS.map(tool => tool.name).sort())
     const text = catalogText((await preStep(harness, agent)).messages)
     expect(text).toContain('<inactive_namespaces>')
     expect(text).toContain('- `codegraph` (1 tool, e.g. `mcp__codegraph__explore`): Explore the code graph. Call `tool_activate({ namespace: "codegraph" })`')
@@ -513,14 +533,12 @@ describe('liangshen-tool-catalog', () => {
   })
 
   test('an activated namespace returns to the wire, rebuilt from the event stream', async () => {
-    const harness = register({ presentation: 'native' }, { sdk: [...SDK_SURFACE, ...MCP_TOOLS] })
+    const harness = register({ presentation: 'native' }, { surface: [...WIRE, ...MCP_TOOLS] })
     // The durable log already carries a successful tool_activate call: a resumed
     // session rebuilds the active set without any process-memory state.
-    const agent = agentOf(activationEvents('github', 'c1'))
-    const { assembled } = await assemble(harness, agent, [...WIRE, ...MCP_TOOLS])
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual([
-      'bash', 'read', 'web_search', 'mcp__github__create_issue', 'mcp__github__list_prs',
-    ])
+    const agent = agentOf(activationEvents('github', 'c1'), undefined, harness)
+    await assemble(harness, agent)
+    expect(harness.withheld(agent)).toEqual(['mcp__codegraph__explore'])
     const text = catalogText((await preStep(harness, agent)).messages)
     expect(text).toContain('- `mcp__github__create_issue')
     expect(text).toContain('- `codegraph` (1 tool')
@@ -528,30 +546,25 @@ describe('liangshen-tool-catalog', () => {
   })
 
   test('an errored activation never takes effect in the replay', async () => {
-    const harness = register({ presentation: 'native' }, { sdk: [...SDK_SURFACE, ...MCP_TOOLS] })
+    const harness = register({ presentation: 'native' }, { surface: [...WIRE, ...MCP_TOOLS] })
     const errored = [
       { type: 'tool/call', data: { callId: 'c1', name: 'tool_activate', arguments: '{"namespace":"github"}' } },
       { type: 'tool/result', data: { message: { source: { callId: 'c1' }, content: [{ type: 'text', text: 'unknown paged namespace', isError: true }] } } },
     ]
-    const agent = agentOf(errored)
-    const { assembled } = await assemble(harness, agent, [...WIRE, ...MCP_TOOLS])
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['bash', 'read', 'web_search'])
+    const agent = agentOf(errored, undefined, harness)
+    await assemble(harness, agent)
+    expect(harness.withheld(agent).sort()).toEqual(MCP_TOOLS.map(tool => tool.name).sort())
   })
 
-  test("the collapsed 'ptc' wire still pages the SDK projection the wire cannot carry", async () => {
-    // The wire itself has nothing left to filter, so this assertion is about the
-    // OTHER half of paging: the per-scope registry restriction is exercised in
-    // tool-paging-registry.test.ts against a faithful registry stub. What this
-    // test pins is the catalog's side under a scope that exposes no restriction
-    // API at all: no crash, no false claim that a namespace is unreachable.
-    // This harness declares the presentation but exposes no restrict() API, so
-    // paging cannot be enforced here. What it pins is the fallback: paging must
-    // never cost the session its tools, and the catalog must not claim a
-    // namespace is unreachable when nothing withheld it.
-    const harness = register({ presentation: 'ptc' }, { sdk: [...SDK_SURFACE, ...MCP_TOOLS] })
+  test("a 'ptc' scope with no restriction API still lists every tool it can reach", async () => {
+    // Paging is enforced at the registry, so a scope that exposes no
+    // restrict() cannot page anything - and the catalog must not claim it did.
+    // What this pins is that fallback: paging never costs the session its
+    // tools, and nothing is announced as withheld that nothing withheld.
+    const harness = register({ presentation: 'ptc' }, { surface: [...WIRE, ...MCP_TOOLS] })
     const agent = agentOf([], undefined, harness)
-    const { assembled } = await assemble(harness, agent, [...WIRE, ...MCP_TOOLS])
-    expect(assembled.tools.map((tool: any) => tool.name)).toEqual(['run_code'])
+    agent.ctx.tools.restrict = undefined
+    await assemble(harness, agent)
     const text = catalogText((await preStep(harness, agent)).messages)
     expect(text).toContain('- `mcp__github__create_issue')
     expect(text).not.toContain('<inactive_namespaces>')
@@ -560,106 +573,105 @@ describe('liangshen-tool-catalog', () => {
   test('stays native and says nothing about run_code without a PTC runtime', async () => {
     const harness = register({}, { ptcRuntime: false })
     const agent = agentOf([], undefined, harness)
-    const { assembled } = await assemble(harness, agent)
-    expect(harness.presentCalls).toEqual([])
-    expect(assembled.tools).toBe(WIRE)
+    await assemble(harness, agent)
     const text = catalogText((await preStep(harness, agent)).messages)
     expect(text).not.toContain('run_code')
     expect(text).toContain('- `bash({ command: string, timeoutMs?: number })`')
   })
 
-  test('degrades to the assembled wire when the registry publishes no SDK projection', async () => {
-    const harness = register({ presentation: 'native' }, { noSdkSchemas: true })
-    const agent = agentOf()
-    const { assembled } = await assemble(harness, agent)
-    expect(assembled.tools).toEqual(WIRE)
+  test('injects nothing when the registry offers no readable surface', async () => {
+    // Given a deployment whose tools service publishes no read method, When a
+    // step is prepared, Then no catalog is injected at all: an unreadable
+    // projection is not an empty one, and announcing "no tools" over it is the
+    // defect this contract exists to prevent (issue #2016).
+    const harness = register({ presentation: 'native' }, { noSurface: true })
+    const agent = agentOf([], undefined, harness)
+    await assemble(harness, agent)
+    const result = await preStep(harness, agent)
+    expect(catalogOf(result.messages)).toBeUndefined()
+    expect(result.messages).toHaveLength(1)
+  })
+
+  test('survives a hostile projection with one warning and keeps the last catalog', async () => {
+    // Given a surface that was readable once, When a later read throws, Then the
+    // warning is reported once and the published catalog stays: a transient read
+    // failure must not rewrite the session's tool list into "none".
+    const harness = register({ presentation: 'native' })
+    const agent = agentOf([], undefined, harness)
+    await assemble(harness, agent)
+    harness.failSurface()
+    await assemble(harness, agent)
+    await assemble(harness, agent)
+    expect(harness.warnings.filter(w => w.includes('no tool schemas available'))).toHaveLength(1)
     const text = catalogText((await preStep(harness, agent)).messages)
     expect(text).toContain('- `web_search(')
+    expect(text).not.toContain('No tools are currently available in this session.')
   })
 
-  test('survives a hostile SDK projection with one warning', async () => {
-    const harness = register({ presentation: 'native' }, { sdkThrows: true })
-    const agent = agentOf()
-    await assemble(harness, agent)
-    await assemble(harness, agent)
-    expect(harness.warnings).toHaveLength(1)
-    expect(catalogText((await preStep(harness, agent)).messages)).toContain('- `web_search(')
-  })
-
-  test('warns once when a session has no scoped tools view to declare through', async () => {
-    // Given a scope that cannot reach `presentAs`, When the presentation is
-    // configured `ptc`, Then the session keeps the native surface and says so
-    // once: no composition row selects the wire in its place, so a silent
-    // native run would be a setting the operator believes is in effect.
+  test('catalogs a scope that reaches the registry only through the service', async () => {
+    // Given a scope with no scoped tools view at all (only a session), When its
+    // step is prepared, Then the global registry still supplies the surface: an
+    // absent scoped view is not an absent tool set.
     const harness = register()
     const agent: any = { session: { snapshotEvents: () => [] } }
     await assemble(harness, agent)
-    await assemble(harness, agent)
-    expect(harness.warnings).toHaveLength(1)
-    expect(harness.warnings[0]).toContain('keeping the native tool surface')
+    const text = catalogText((await preStep(harness, agent)).messages)
+    expect(text).toContain('- `bash({ command: string, timeoutMs?: number })`')
   })
 
-  test('never announces a transport its own assembly wire does not carry', async () => {
-    // The declaration succeeds, but this deployment offers nothing to re-assemble
-    // with, so the presentation cannot reach the request in flight. The catalog
-    // describes the WIRE, so it must keep describing native tools.
-    const harness = register({}, { noPromptService: true })
+  test('keeps the native wording when the composition mounts no code executor', async () => {
+    // Without a code runtime the composition cannot mount the ptc executor, so
+    // the request opens the native roster and the catalog must describe that.
+    const harness = register({}, { ptcRuntime: false })
     const agent = agentOf([], undefined, harness)
-    const { assembled } = await assemble(harness, agent)
-    // The declaration is attempted (the shipped default is 'ptc') but cannot reach
-    // this assembly, so the wire stays native and the catalog must describe that.
-    expect(harness.presentCalls).toEqual(['ptc'])
-    expect(assembled.tools).toBe(WIRE)
+    await assemble(harness, agent)
+    expect(harness.withheld(agent)).toEqual([])
     const text = catalogText((await preStep(harness, agent)).messages)
     expect(text).not.toContain('run_code')
     expect(text).toContain('- `bash')
   })
 
-  test('a declined declaration degrades to native, does not announce run_code, and warns once', async () => {
+  test('keeps the ptc wording while the composition still mounts the code executor', async () => {
+    // The catalog no longer declares anything, so nothing can be declined here:
+    // the transport is the composition's, and the catalog follows it.
     const harness = register({ presentation: 'ptc' })
-    const agent = agentOf([], undefined, harness, { presentThrows: true })
-    const { assembled } = await assemble(harness, agent)
-    expect(assembled.tools).toBe(WIRE)
-    expect(harness.warnings).toHaveLength(1)
-    expect(harness.warnings[0]).toContain('presentation was declined')
+    const agent = agentOf([], undefined, harness)
+    await assemble(harness, agent)
     const text = catalogText((await preStep(harness, agent)).messages)
-    expect(text).not.toContain('run_code')
+    expect(text).toContain('presents these tools through `run_code`')
     expect(text).toContain('- `bash')
   })
 
-  test('wire carrying only run_code reverts the declaration when the projection is unavailable', async () => {
-    const disposers: (() => void)[] = []
+  test('a broken projection under ptc keeps the last catalog instead of asserting no tools', async () => {
+    // The transport is the composition's, so a read failure cannot revert it;
+    // what must never happen is the catalog turning that failure into "this
+    // session has no tools".
     const harness = register({ presentation: 'ptc' })
     const priorCatalog = createCatalogMessage([{ name: 'prior_tool', signature: '()', description: 'Prior' }], 'native')
-    const agent = agentOf([durableEvent(2, priorCatalog)], [2], harness, { disposers })
+    const agent = agentOf([durableEvent(2, priorCatalog)], [2], harness)
     await assemble(harness, agent)
-    expect(harness.presentCalls).toEqual(['ptc'])
-    // The projection breaks under the already-collapsed wire.
-    harness.failSdk()
-    const { assembled } = await assemble(harness, agent, [{ ...RUN_CODE }])
-    expect(disposers.length).toBeGreaterThanOrEqual(1)
-    expect(harness.warnings.some(w => w.includes('tool schemas available') || w.includes('native tool surface'))).toBe(true)
+    harness.failSurface()
+    await assemble(harness, agent)
+    expect(harness.warnings.some(w => w.includes('no tool schemas available'))).toBe(true)
     const text = catalogText((await preStep(harness, agent)).messages)
-    // Does not falsely claim full tools exist; truthfully reports the empty surface
-    expect(text).toContain('No tools are currently available in this session.')
-    expect(text).not.toContain('await tools.run_code')
-    expect(text).not.toContain('presents these tools through `run_code`')
-    expect(assembled.tools).toEqual([])
+    expect(text).not.toContain('No tools are currently available in this session.')
+    expect(text).toContain('- `bash')
+    expect(text).toContain('presents these tools through `run_code`')
   })
 
-  test('refreshes fallback every assembly when sdkSchemas fails instead of keeping stale catalog', async () => {
-    const harness = register({ presentation: 'native' }, { sdk: [{ name: 'custom_turn1', description: 'Turn 1 tool' }] })
-    const agent = agentOf()
-    await assemble(harness, agent, [{ name: 'custom_turn1', description: 'Turn 1 tool' }])
+  test('reads the surface fresh on every assembly instead of keeping a stale catalog', async () => {
+    // Given one scope that is assembled twice with a different registry surface,
+    // When the second catalog is published, Then it describes the new surface:
+    // the read happens per assembly, not once per session.
+    const harness = register({ presentation: 'native' }, { surface: [{ name: 'custom_turn1', description: 'Turn 1 tool' }] })
+    const agent = agentOf([], undefined, harness)
+    await assemble(harness, agent)
     const firstText = catalogText((await preStep(harness, agent)).messages)
     expect(firstText).toContain('custom_turn1')
 
-    // In a later assembly the SDK projection throws; the wire fallback rules.
-    const harnessFail = register({ presentation: 'native' }, { sdkThrows: true })
-    const agent2 = agentOf()
-    await assemble(harnessFail, agent2, [{ name: 'wire_fresh', description: 'Fresh fallback tool' }])
-    const secondText = catalogText((await preStep(harnessFail, agent2)).messages)
-    expect(secondText).toContain('wire_fresh')
+    await assemble(harness, agent, [{ name: 'surface_fresh', description: 'Fresh tool' }])
+    const secondText = catalogText((await preStep(harness, agent)).messages)
+    expect(secondText).toContain('surface_fresh')
     expect(secondText).not.toContain('custom_turn1')
   })
 

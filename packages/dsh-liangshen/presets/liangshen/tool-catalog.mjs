@@ -1,22 +1,25 @@
 /**
- * tool-catalog — the model-visible tool surface for LiangShen mode: one
- * presentation declaration per session, gentle tool paging for high-fan-out
+ * tool-catalog — the model-visible tool surface for LiangShen mode: the
+ * presentation this composition renders, gentle tool paging for high-fan-out
  * namespaces, and the durable catalog message.
  *
- * PRESENTATION: the `presentation` config picks how this session's tools sit
- * on the wire, matching the SDK's ToolPresentationMode:
- * - `native`: the assembled native roster, no code transport;
+ * PRESENTATION: the `presentation` config names the transport the session
+ * carries, matching the SDK's tool presentation modes:
+ * - `native`: the native roster, no code transport;
  * - `ptc` (default): the wire collapses to the single `run_code` transport
  *   and every other tool is reached from inside the program through the
  *   generated SDK.
  *
- * The declaration happens once per agent scope (agent.ctx.tools.presentAs) as
- * early as the scope exists — there is no turn-boundary staging: the retired
- * anchor-turn mechanism is gone, and the legacy `anchorTools` key is accepted
- * but ignored with a one-time warning. The legacy boolean `ptcPresentation`
- * maps onto the enum (true -> 'ptc', false -> 'native') with a one-time
- * deprecation warning. A missing code runtime or a declined declaration keeps
- * the native surface with a one-time warning.
+ * The preset composition is what actually selects it: `src/composition.ts`
+ * enables or disables the `tool-executor-ptc` row from the same setting, and
+ * that row is what installs the executor whose `describe()` decides the wire
+ * (0.2.2 retired `ctx.tools.presentAs`, the old per-scope declaration, so this
+ * plugin no longer declares anything). A deployment with no code runtime keeps
+ * the native surface, and the catalog says so. There is no turn-boundary
+ * staging: the retired anchor-turn mechanism is gone, and the legacy
+ * `anchorTools` key is accepted but ignored with a one-time warning. The legacy
+ * boolean `ptcPresentation` maps onto the enum (true -> 'ptc', false ->
+ * 'native') with a one-time deprecation warning.
  *
  * TOOL PAGING: tools whose names match `pagedToolPatterns` (default
  * `['mcp__*']`) stay off the wire until their namespace is activated through
@@ -26,25 +29,27 @@
  * process-memory state. At most a few namespaces stay active; the LRU
  * eviction falls out of the same replay.
  *
- * Paging is enforced in TWO places, because the wire is not the only surface a
- * tool can be reached through:
- * - the wire partition below (resident tools returned, paged tools lifted) and
- * - a per-scope registry restriction (agent.ctx.tools.restrict) that removes
- *   the paged names exactly as the wire does.
- * The second one is what makes paging real under the `ptc` presentation,
- * where the wire has already collapsed to the single `run_code` transport and
- * every other tool is reached from inside a program. Under a collapsed wire
- * the visible set is the whole surface: it renders the `tools:sdk` prompt
- * section and it is what a program may dispatch to, so filtering the assembled
- * `tools` array alone would withhold nothing the model can observe. The
- * restriction is derived from the same pattern match as the partition
- * (`withheldToolNames`) and is lifted before a new one is applied, so repeated
- * collections do not accumulate filters.
+ * Paging is enforced in ONE place: a per-scope registry restriction
+ * (agent.ctx.tools.restrict) that removes the paged names from every scoped
+ * reader, the request's own wire included.
  *
- * WHICH PRESENTATION PAGES WHAT: the registry restriction is installed for
- * `ptc` alone, because a collapsed wire is the one presentation where the
- * scope's registry IS the whole reachable surface. `native` carries no
- * program at all, so the wire partition is the whole of paging there.
+ * The wire cannot be filtered by a listener any more. Since 0.2.2 the
+ * `system-prompt/assemble` waterfall transforms a `PromptPresentation` that
+ * carries no tool array at all: the harness collects the tool providers BEFORE
+ * the waterfall runs and merges the authoritative `tools` back AFTER it, so a
+ * listener can neither observe nor rewrite what the request carries. The
+ * registry is the surface every tool declaration is projected from — the
+ * native roster the executor renders and the set a program may dispatch to —
+ * so one restriction pages both presentations, and the wire partition that
+ * used to page the `native` roster is gone with the array it filtered.
+ *
+ * READING THE SURFACE: the catalog describes the request's own tool set, read
+ * as `tools.schemas(agent, context.toolSet)` while assembling. The assemble
+ * context's `toolSet` is the step's admitted selection — the fact a listener
+ * cannot recover from the assembly value — and `schemas()` reads through the
+ * scope's restriction, so the catalog lists exactly what the wire carries. An
+ * unreadable projection is NOT an empty one: the catalog keeps its last
+ * published state rather than announcing a session with no tools.
  *
  * TIMING: that restriction is installed from OUTSIDE the assembly waterfall.
  * `SystemPrompt.assemble()` collects the tool providers and calls every
@@ -83,7 +88,6 @@ import {
   inactiveNamespaces,
   integerAtLeast,
   namespaceOf,
-  partitionWireTools,
   replayActivations,
   summarizeInactive,
   validatePagedToolPatterns,
@@ -115,7 +119,7 @@ const pagedSurfaceBySession = new WeakMap()
 /**
  * Publish (or, with `undefined`, retract) one scope's paged namespaces.
  * @param agent - agent scope the partition belongs to.
- * @param surface - namespace-keyed namespaces, as `partitionWireTools` returns.
+ * @param surface - namespace-keyed namespaces, as `inactiveNamespaces` returns.
  */
 function publishPagedSurface(agent, surface) {
   if (agent === undefined || agent === null) return
@@ -558,38 +562,6 @@ export function renderCatalogText(entries, presentation = 'native', inactive = [
   ].join('\n')
 }
 
-/**
- * Overlay the registry projection onto each wire entry, keyed by name, so the
- * catalog describes complete argument semantics even when the assembly's own
- * tool object carries a thinner definition.
- *
- * A tool the projection NAMES is authoritative for the parameter field,
- * including its absence: a projected entry that declares no parameters means
- * the tool takes no declared arguments, and the wire's placeholder object
- * (`{ type: 'object', properties: {} }`) would otherwise render the misleading
- * `Record<string, JsonValue>` signature. A tool the projection does not name
- * keeps the wire's own definition, and so does every entry when no projection
- * is readable at all.
- */
-export function mergeProjectedSchemas(wireTools, projection) {
-  if (!Array.isArray(projection) || projection.length === 0) return wireTools
-  const byName = new Map()
-  for (const schema of projection) {
-    if (typeof schema?.name === 'string' && schema.name !== '') byName.set(schema.name, schema)
-  }
-  return wireTools.map((tool) => {
-    const projected = byName.get(tool?.name)
-    if (projected === undefined) return tool
-    const merged = { ...tool }
-    if (projected.parameters === undefined) delete merged.parameters
-    else merged.parameters = projected.parameters
-    if (typeof projected.description === 'string' && projected.description.length > 0) {
-      merged.description = projected.description
-    }
-    return merged
-  })
-}
-
 /** Build the durable catalog message for one entry list. */
 export function createCatalogMessage(entries, presentation = 'native', inactive = []) {
   return {
@@ -662,7 +634,7 @@ function withoutMessage(decision, id) {
   return { ...decision, messages: decision.messages.filter(message => message.id !== id) }
 }
 
-/** Register the presentation declaration, the wire paging, and the per-step catalog injection. */
+/** Register the registry paging and the per-step catalog injection. */
 export function apply(ctx, config) {
   const descriptionMaxLength = integerAtLeast(
     name,
@@ -711,11 +683,6 @@ export function apply(ctx, config) {
   // Session to agent mapping for lifecycle events
   const agentBySession = new WeakMap()
 
-  // Presentation declaration tracking per agent scope (one declaration each)
-  const agentDeclared = new WeakSet()
-  const agentDeclareFailed = new WeakSet()
-  const agentDisposers = new WeakMap()
-
   // Registry-level paging state, one entry per agent scope: the names the live
   // restriction withholds and the exact disposer that lifts it. Keyed by agent
   // so two sessions assembling at once cannot lift each other's filter, and
@@ -736,15 +703,17 @@ export function apply(ctx, config) {
 
   /**
    * Recompute one agent scope's page from the durable session event stream and
-   * make the registry match it: `deny` masks exactly the names the wire
-   * partition would withhold, so the scope still inherits everything else.
+   * make the registry match it: `deny` masks exactly the names the paged
+   * namespaces carry, so the scope still inherits everything else.
    * Scoped registrations are exempt by the registry's own rule, so
    * preset-owned tools can never be filtered away by this.
    *
-   * The restriction is what paging MEANS under a collapsed `ptc` wire, where
-   * filtering the assembled `tools` array changes nothing a program can reach.
-   * It also stores the namespaces it withheld, so the catalog and the live
-   * restriction are read from ONE fact instead of two computations.
+   * The restriction is what paging MEANS in both presentations now that the
+   * waterfall carries no tool array: the registry is the surface every tool
+   * declaration is projected from, so the native roster and the program
+   * bindings lose the paged names together. It also stores the namespaces it
+   * withheld, so the catalog and the live restriction are read from ONE fact
+   * instead of two computations.
    *
    * Called OUTSIDE the assembly waterfall, deliberately: see
    * {@link syncBeforeAssembly} for why an in-waterfall sync cannot fix the
@@ -769,7 +738,7 @@ export function apply(ctx, config) {
     // nothing left to withhold. Silent on an unreadable surface: a sync may
     // run before the registry is populated, and "no tools yet" is not the
     // assembly-path emergency that warning describes.
-    const fullSurface = quietSchemas(agent) ?? []
+    const fullSurface = readSurface(agent, undefined, { quiet: true }) ?? []
     if (fullSurface.length === 0) return undefined
     // Publish before the withhold decision: with every namespace already active
     // there is nothing to restrict, and the activation tool must still know the
@@ -809,23 +778,18 @@ export function apply(ctx, config) {
    * request's own SDK section still lists it. Syncing before the providers are
    * collected is what keeps the two consistent from the FIRST `ptc` request.
    *
-   * GATED ON THE WIRE ACTUALLY COLLAPSING, not on the configuration asking for
-   * it. Both halves of that gate matter, and each covers a deployment where
-   * paging at the registry would be wrong:
-   * - `presentation === 'ptc'` is what the operator configured, and it is the
-   *   only presentation whose registry is the whole reachable surface;
-   * - `agentDeclared.has(agent)` is the scope's own declaration actually
-   *   landing, which is NOT the same as `transportReady()`. A deployment with
-   *   no mounted code runtime (and one whose host declines the declaration)
-   *   keeps the native wire: the assembled array carries paging by itself, and
-   *   a registry restriction installed anyway would strip the paged families
-   *   from that request's native wire — the first request would lose tools it
-   *   is supposed to have, and the catalog would announce namespaces as
-   *   withheld that nothing withheld.
+   * EVERY SCOPE IS PAGED, in both presentations. Before 0.2.2 the native
+   * roster was filtered in the waterfall itself — the listener returned a
+   * narrowed `tools` array — so a registry restriction there would have been
+   * redundant, and a deployment whose wire never collapsed (no code runtime, a
+   * declined declaration) had to keep it off entirely. The harness now merges
+   * its own provider-owned `tools` back after the waterfall, so that return
+   * value is discarded: the registry is the only place a page can exist, and a
+   * scope left unpaged would hand the model every paged family it was supposed
+   * to activate first.
    */
   const syncBeforeAssembly = (agent) => {
-    if (agent === undefined || presentation !== 'ptc') return undefined
-    if (!agentDeclared.has(agent)) return undefined
+    if (agent === undefined) return undefined
     return syncScopePaging(agent)
   }
 
@@ -834,65 +798,16 @@ export function apply(ctx, config) {
   // The 0.1.6 cohort renamed the service face from `codeRuntime` to
   // `ptcRuntime` (package `@deepseek-ai/dsh-code-runtime` became
   // `@deepseek-ai/dsh-ptc-runtime`); the old key is gone, so reading it would
-  // silently disable PTC staging for every session.
-  const transportReady = () => presentation !== 'native' && ctx.get('ptcRuntime') !== undefined
-
-  /**
-   * Declare this agent scope's presentation through the public
-   * agent.ctx.tools.presentAs(mode). One declaration per scope; a refusal is
-   * permanent for the agent, a wire miss is retryable.
-   */
-  const declarePresentation = (agent) => {
-    if (!transportReady() || agent === undefined) return false
-    if (agentDeclared.has(agent)) return true
-    if (agentDeclareFailed.has(agent)) return false
-
-    const tools = agent?.ctx?.tools
-    if (tools === undefined || typeof tools.presentAs !== 'function') {
-      // No composition row replaces this declaration: `presentAs` is how a
-      // preset selects its wire, so a scope that cannot reach it runs the
-      // native surface no matter what `presentation` says. Report it once
-      // instead of leaving the operator's setting silently unapplied.
-      agentDeclareFailed.add(agent)
-      warnOnce('runtime', 'no scoped tools view to declare the presentation through — keeping the native tool surface')
-      return false
-    }
-
-    try {
-      const disposer = tools.presentAs(presentation)
-      agentDeclared.add(agent)
-      if (typeof disposer === 'function') {
-        agentDisposers.set(agent, disposer)
-      }
-      return true
-    } catch (err) {
-      agentDeclareFailed.add(agent)
-      warnOnce('runtime', `the "${presentation}" presentation was declined: ${err instanceof Error ? err.message : String(err)} — keeping the native tool surface`)
-      return false
-    }
-  }
-
-  /**
-   * Abort/revert the declaration if active, restoring the native presentation.
-   */
-  const revertPresentation = (agent, reason, retryable = false) => {
-    if (agent === undefined) return
-    const disposer = agentDisposers.get(agent)
-    if (typeof disposer === 'function') {
-      try {
-        disposer()
-      } catch {
-        // Ignore disposer error
-      }
-      agentDisposers.delete(agent)
-    }
-    agentDeclared.delete(agent)
-    // A declaration the host itself refused is permanent for this agent. One that
-    // merely failed to reach a wire is not: the next assembly may declare again,
-    // and latching it would strand the session on the native surface.
-    if (!retryable) agentDeclareFailed.add(agent)
-    warnOnce('runtime', `${reason} — keeping the native tool surface`)
-  }
+  // silently disable program presentation for every session.
+  //
+  // This is the ONE fact that decides what the request carries, because no
+  // reader can observe the collapse itself: the petc executor keeps `run_code`
+  // outside the registry (`describe()` returns it, `tools.schemas()` never
+  // does), so a `schemas()` read returns the same roster under both
+  // presentations. The composition enables the `tool-executor-ptc` row from
+  // exactly this setting (see `src/composition.ts`), so the configured
+  // presentation plus a mounted runtime IS the wire.
+  const collapsedTransport = () => presentation !== 'native' && ctx.get('ptcRuntime') !== undefined
 
   /**
    * Read visible tool schemas from the public tools.schemas(agent) API.
@@ -911,71 +826,59 @@ export function apply(ctx, config) {
   }
 
   /**
-   * Read the scope's model-facing surface without the assembly path's warning.
-   * Returns undefined when no projection is readable at all.
+   * Read the model-facing surface one scope offers this step, without the
+   * reserved transport (the catalog never lists run_code as an entry).
+   *
+   * `toolSet` is the assemble context's step admission: passing it narrows the
+   * read to exactly the tools this request may carry, conditionally registered
+   * ones excluded. Omitted, the read covers every registered definition, which
+   * is what the paging sync needs to compute its page.
+   *
+   * An EMPTY list and an UNREADABLE registry are different facts, and the
+   * return type keeps them apart: `[]` means this scope really offers no tool,
+   * `undefined` means nothing could be read (a deployment without the registry,
+   * a projection that threw). A caller that treats the second as the first
+   * announces "no tools" to a session that has them — the defect issue #2016
+   * reports.
+   *
+   * @param agent - agent scope the surface is read for.
+   * @param toolSet - the step's admitted selection, or undefined for every definition.
+   * @param options - `quiet` suppresses the diagnostic of an unreadable registry.
+   * @returns the visible schemas minus run_code, or undefined when unreadable.
    */
-  const quietSchemas = (agent) => {
+  const readSurface = (agent, toolSet, options) => {
     const tools = resolveToolsService(agent)
     if (tools === undefined) return undefined
     for (const method of ['schemas', 'sdkSchemas']) {
       if (typeof tools[method] !== 'function') continue
       try {
-        const schemas = tools[method](agent)
+        const schemas = tools[method](agent, toolSet)
         if (Array.isArray(schemas)) return schemas.filter(entry => entry?.name && entry.name !== 'run_code')
-      } catch {
-        // Try the next source; an unreadable registry is not fatal here.
-      }
-    }
-    return undefined
-  }
-
-  const publicSchemas = (agent) => {
-    const tools = resolveToolsService(agent)
-    if (tools === undefined) return undefined
-    if (typeof tools.schemas === 'function') {
-      try {
-        const schemas = tools.schemas(agent)
-        if (Array.isArray(schemas) && schemas.length > 0) {
-          const filtered = schemas.filter(t => t?.name && t.name !== 'run_code')
-          return filtered.length > 0 ? filtered : undefined
+      } catch (err) {
+        if (options?.quiet !== true) {
+          // Its own key, so an unreadable projection never swallows the
+          // declaration warning that explains what replaced it.
+          warnOnce('surface', `no tool schemas available (${err instanceof Error ? err.message : String(err)}) — the catalog keeps its last published state`)
         }
-        return undefined
-      } catch {
-        warnOnce('runtime', 'no tool schemas available — keeping the native tool surface')
-        return undefined
-      }
-    }
-    // Test harness compatibility stub
-    if (typeof tools.sdkSchemas === 'function') {
-      try {
-        const schemas = tools.sdkSchemas(agent)
-        if (Array.isArray(schemas) && schemas.length > 0) {
-          const filtered = schemas.filter(t => t?.name && t.name !== 'run_code')
-          return filtered.length > 0 ? filtered : undefined
-        }
-      } catch {
-        warnOnce('runtime', 'no tool schemas available — keeping the native tool surface')
         return undefined
       }
     }
     return undefined
   }
 
-  // Early lifecycle hook: declare the presentation and page the scope as soon
-  // as it exists.
+  // Early lifecycle hook: page the scope as soon as it exists.
   //
   // The 0.1.6 cohort folded the former `agent/session-start` into the async
   // serial `agent/created`, which carries the same payload object and runs
   // before the first prompt assembly; the host waits for this listener, so the
-  // declaration is already in place when that assembly reads the presentation.
+  // page is already in place when that assembly collects its tool providers.
   //
   // The payload is destructured ON PURPOSE: `agent/created` passes its payload
   // OBJECT as the first argument, not the agent itself. Reading that parameter
-  // as the agent yields an object with no `session` and no `ctx`, so the
-  // declaration is skipped and paging silently never engages.
+  // as the agent yields an object with no `session` and no `ctx`, so paging
+  // would silently never engage.
   ctx.on('agent/created', ({ agent }) => {
     if (agent?.session !== undefined) agentBySession.set(agent.session, agent)
-    if (transportReady()) declarePresentation(agent)
     // The session log is readable here, and this runs before the first turn
     // assembles a prompt, so a scope created over an existing (resumed)
     // session is paged before its FIRST assembly rather than one request late.
@@ -1004,166 +907,86 @@ export function apply(ctx, config) {
     return next()
   }, { prepend: true })
 
-  // Per-agent, not one process-wide flag: two sessions assembling at once would
-  // otherwise let one skip the re-assembly the other is running.
-  const reassembling = new WeakSet()
-
   ctx.on('system-prompt/assemble', async (assembly, context, next) => {
     const agent = context?.agent
+    // The step's admitted selection, and the one fact about this request's tool
+    // set a listener can still read: since 0.2.2 the assembly value carries no
+    // tool array, and the providers it is built from are collected before this
+    // waterfall runs.
+    const toolSet = context?.toolSet
 
     if (agent !== undefined && agent.session !== undefined) {
       agentBySession.set(agent.session, agent)
     }
 
-    if (agent !== undefined && !agentDeclared.has(agent) && transportReady()) {
-      // Under 'ptc' a declaration collapses the wire to the single `run_code`
-      // transport and lists the tools from their SDK projection. Where no
-      // projection can be read at all, declaring would collapse the wire and
-      // then have to undo it, losing the native surface on the way out. Stay
-      // native instead.
-      const projectable = publicSchemas(agent)
-      if (presentation === 'ptc' && (projectable === undefined || projectable.length === 0)) {
-        warnOnce('runtime', 'no tool schema projection available — keeping the native tool surface')
-      } else {
-        const declaredNow = declarePresentation(agent)
-        // A declaration made here cannot reach THIS assembly: the harness collects
-        // the tool providers before the waterfall runs. Re-assemble so the
-        // presentation lands on the assembly the model actually receives.
-        if (declaredNow && !reassembling.has(agent)) {
-          const sp = ctx.get('systemPrompt')
-          if (typeof sp?.assemble === 'function') {
-            reassembling.add(agent)
-            try {
-              return await sp.assemble(context)
-            } catch (error) {
-              warnOnce('runtime', `re-assembling after the presentation declaration failed: ${error instanceof Error ? error.message : String(error)}`)
-            } finally {
-              reassembling.delete(agent)
-            }
-          }
-          // Nothing re-assembled, so this wire stays native. Presenting a transport
-          // the request never names would lie to the model, so drop back to native
-          // for this assembly and let the next assembly declare again.
-          revertPresentation(agent, `the "${presentation}" declaration did not reach this assembly wire`, true)
-        }
-      }
-    }
+    // Page the scope before the providers are collected; a scope the lifecycle
+    // hooks already paged re-derives the same state, so this is idempotent.
+    syncBeforeAssembly(agent)
 
-    // A declaration that just landed here (a scope no lifecycle hook could
-    // reach) pages the scope before the re-assembly collects its providers, so
-    // that request renders a page-consistent SDK section too. Idempotent: a
-    // scope already paged by its lifecycle hook re-derives the same state.
-    if (agent !== undefined && agentDeclared.has(agent)) syncBeforeAssembly(agent)
-
-    // Delegate first: the assembled value stays authoritative for the wire (a
-    // presentation declared inside this waterfall reaches the NEXT assembly,
-    // which is why a declaration is followed by a re-assembly).
+    // The waterfall's transformed value travels on untouched: tool declarations
+    // are provider-owned, so there is no array here to filter or restore.
     const assembled = await next()
 
-    const assembledTools = Array.isArray(assembled?.tools) ? assembled.tools : undefined
-    const wireOnlyRunCode = assembledTools !== undefined && assembledTools.length > 0 && assembledTools.every(t => t?.name === 'run_code')
+    // The catalog describes THIS request's surface, read from the registry
+    // through the step's admission. `schemas()` reads through the scope's
+    // restriction, so the result is exactly the list this request carries: the
+    // native roster, or - under a collapsed `ptc` wire - the projection every
+    // tool is reached through from inside a program (run_code is the transport,
+    // never a catalog entry).
+    const surface = agent === undefined ? undefined : readSurface(agent, toolSet)
 
-    // The paging restriction was installed OUTSIDE this waterfall (see
-    // {@link syncBeforeAssembly}) because `assemble()` renders the sections and
-    // collects the providers before the waterfall runs: installing it here
-    // would leave the request it runs for with a catalog that claims a
-    // namespace is paged and a `tools:sdk` section that still lists it. What
-    // this waterfall does with it is read the SAME state the restriction was
-    // built from, so the catalog never describes a different page than the one
-    // the registry enforces.
-    const pagingState = agent === undefined ? undefined : agentPaging.get(agent)
+    // The presentation this request carries is the one the composition mounted.
+    // Nothing in the assembly names it and `schemas()` reads the same roster
+    // under both, so the configured mode plus a mounted runtime is the answer -
+    // and a mode whose runtime is missing keeps the native wording, because
+    // that is the wire an executor-less deployment renders.
+    const effectivePresentation = collapsedTransport() ? 'ptc' : 'native'
 
-    // Under a collapsed `ptc` wire the registry is the ONLY surface a tool can
-    // be reached through, so the page is expressed as a registry restriction.
-    // The native wire carries paging by itself on the assembled array. A wire
-    // that carries the native roster again (a reverted declaration) must also
-    // drop a page left over from a collapsed assembly, or the filter would keep
-    // hiding tools that wire just handed back.
-    let surface = agent !== undefined ? publicSchemas(agent) : undefined
-    // The wire partition replays the durable log itself: `pagingState` exists
-    // only where a restriction was installed (the collapsed ptc wire), and the
-    // native wire still pages the assembled array from the same event stream.
-    const activeNamespaces = new Set(
-      replayActivations(sessionEvents(agent?.session), maxActiveNamespaces, pagedToolPatterns).active,
-    )
-    if (agent !== undefined && !wireOnlyRunCode && pagingState !== undefined) clearScopePaging(agent)
-
-    // If the wire carries only run_code but no projection is readable, revert to
-    // native and restore the native wire. The replacement travels in the RETURNED
-    // assembly: the waterfall's returned value is the authoritative one, and
-    // mutating the object the harness handed downstream would be a side effect no
-    // other listener can see.
-    let correctedWire
-    if (wireOnlyRunCode && (surface === undefined || surface.length === 0)) {
-      revertPresentation(agent, 'no tool schema projection available under PTC')
-      const nativeSchemas = publicSchemas(agent) ?? []
-      surface = nativeSchemas
-      correctedWire = nativeSchemas
+    // An unreadable projection is NOT an empty one. Keep the catalog this scope
+    // last published instead of rewriting it: recording "this session has no
+    // tools" over a read that merely failed is what made the model refuse tools
+    // the request was carrying (issue #2016). The one fact that still has to
+    // follow the request is the transport, so the wording is corrected above.
+    if (agent === undefined) return assembled
+    if (surface === undefined) {
+      const previous = agentCatalogState.get(agent)
+      if (previous !== undefined && previous.presentation !== effectivePresentation) {
+        agentCatalogState.set(agent, { ...previous, presentation: effectivePresentation })
+      }
+      return assembled
     }
-
-    const effectiveWire = correctedWire ?? assembledTools
-    const effectiveOnlyRunCode = effectiveWire !== undefined && effectiveWire.length > 0 && effectiveWire.every(t => t?.name === 'run_code')
-
-    // The catalog describes the transport this request actually carries, never
-    // the configuration's intent: a collapsed wire is 'ptc', and anything else
-    // is native.
-    const effectivePresentation = effectiveOnlyRunCode ? 'ptc' : 'native'
-
-    // Gentle paging: the active namespaces were replayed from the durable event
-    // stream above; here the paged-but-inactive tools come off the wire itself.
-    // run_code and the resident roster never match the paging patterns.
-    const { resident, inactive } = partitionWireTools(effectiveWire, pagedToolPatterns, activeNamespaces)
 
     // Diagnostic guard on the always-on-wire surface. It warns rather than
     // truncates: silently dropping a tool the session needs would trade a
     // measurable context cost for an unmeasurable capability loss.
-    const residentTokens = estimateSurfaceTokens(resident)
+    const residentTokens = estimateSurfaceTokens(surface)
     if (residentTokens > maxResidentTokens) {
       // Name the heaviest tools so the remedy is actionable rather than a bare number.
-      const heaviest = [...resident]
+      const heaviest = [...surface]
         .map(tool => ({ name: typeof tool?.name === 'string' ? tool.name : '(unnamed)', tokens: estimateSurfaceTokens([tool]) }))
         .sort((left, right) => right.tokens - left.tokens)
         .slice(0, 3)
         .map(entry => `${entry.name} (${entry.tokens})`)
         .join(', ')
-      warnOnce('resident-budget', `the resident tool surface is about ${residentTokens} tokens across ${resident.length} tools, over the ${maxResidentTokens}-token budget; heaviest: ${heaviest} — add matching families to pagedToolPatterns so they are held off the wire until activated`)
+      warnOnce('resident-budget', `the resident tool surface is about ${residentTokens} tokens across ${surface.length} tools, over the ${maxResidentTokens}-token budget; heaviest: ${heaviest} — add matching families to pagedToolPatterns so they are held off the wire until activated`)
     }
 
-    // The catalog describes this request's ACTUAL surface: with a live page it
-    // summarizes exactly the namespaces that page withholds (the same fact the
-    // restriction was built from), and otherwise the namespaces the WIRE
-    // partition found.
-    const catalogInactive = summarizeInactive(
-      pagingState?.inactive ?? inactive,
+    // The page the registry enforces IS this request's page: the restriction was
+    // installed before the providers were collected (see {@link syncBeforeAssembly}),
+    // and the surface above already reads through it. A scope whose page could
+    // not be installed withholds nothing, so it advertises nothing.
+    const pagingState = agentPaging.get(agent)
+    const inactiveSummary = summarizeInactive(
+      pagingState?.inactive ?? [],
       describe => catalogDescription(describe, descriptionMaxLength),
     )
 
-    let entries
-    if (effectivePresentation === 'ptc') {
-      // Under the collapsed transport the request opens only run_code, so the
-      // catalog lists the SDK-reachable projection instead of the wire.
-      entries = catalogEntries(surface ?? [], descriptionMaxLength, { patterns: pagedToolPatterns })
-    } else {
-      const merged = mergeProjectedSchemas(resident, surface)
-      entries = catalogEntries(merged, descriptionMaxLength, { patterns: pagedToolPatterns })
-    }
-    const inactiveSummary = catalogInactive
-
-    // Store fresh state on agent
-    if (agent !== undefined) {
-      agentCatalogState.set(agent, {
-        entries,
-        presentation: effectivePresentation,
-        inactive: inactiveSummary,
-      })
-    }
-
-    if (assembledTools === undefined) return assembled
-    // Keep the caller's own assembly object whenever this pass neither corrected
-    // a collapsed wire nor lifted a paged tool off it: a needless copy would hand
-    // downstream listeners a different object for no behavioral reason.
-    const unchanged = correctedWire === undefined && resident.length === assembledTools.length
-    return unchanged ? assembled : { ...assembled, tools: resident }
+    agentCatalogState.set(agent, {
+      entries: catalogEntries(surface, descriptionMaxLength, { patterns: pagedToolPatterns }),
+      presentation: effectivePresentation,
+      inactive: inactiveSummary,
+    })
+    return assembled
   }, { prepend: true })
 
   ctx.on('agent/pre-step', async (payload, next) => {

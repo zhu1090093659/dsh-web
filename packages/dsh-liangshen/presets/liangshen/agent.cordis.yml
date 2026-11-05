@@ -5,17 +5,17 @@
 # presentation declared for the session's whole lifetime instead of a staged
 # turn boundary.
 #
-# The presentation is the SDK's ToolPresentationMode, picked by the
+# The presentation is the SDK's tool presentation mode, picked by the
 # tool-catalog row's `presentation` key (default `'ptc'`): `'native'` keeps
-# the assembled roster on the wire, and `'ptc'` collapses the wire to the
-# single `run_code` transport with every other tool reached from inside the
-# program through the generated SDK. The declaration lands once per agent
-# scope through agent.ctx.tools.presentAs as early as the scope exists, and
-# degrades to the native surface with a one-time warning when the deployment
-# has no code runtime or the host declines. The retired anchor-turn staging is
-# gone: the legacy `anchorTools` and boolean `ptcPresentation` keys are still
-# accepted (the latter mapping true -> 'ptc' and false -> 'native') but only
-# warn once.
+# the roster on the wire, and `'ptc'` collapses the wire to the single
+# `run_code` transport with every other tool reached from inside the program
+# through the generated SDK. The settings overlay turns that key into the
+# `tool-executor-ptc` row below, which is what actually decides the wire:
+# 0.2.2 retired `agent.ctx.tools.presentAs`, so no plugin declares it per
+# scope any more, and a deployment with no code runtime keeps the native
+# surface. The retired anchor-turn staging is gone: the legacy `anchorTools`
+# and boolean `ptcPresentation` keys are still accepted (the latter mapping
+# true -> 'ptc' and false -> 'native') but only warn once.
 #
 # Gentle tool paging keeps high-fan-out families out of reach until needed:
 # tools matching `pagedToolPatterns` (default `mcp__*`) stay paged out, the
@@ -187,13 +187,14 @@
 
 # ── the wire ────────────────────────────────────────────────────────────────
 #
-# `presentation` on the `tool-catalog` row above IS the wire. The plugin
-# declares it on each agent scope through `agent.ctx.tools.presentAs` as soon
-# as the scope exists, then re-assembles so the declaration reaches the
-# request the model actually receives; `native` keeps the assembled roster,
-# `ptc` collapses it to the single `run_code` transport. A deployment with no
-# PTC runtime, a host that declines the declaration, or a wire that offers no
-# schema projection keeps the native surface and warns once.
+# `presentation` on the `tool-catalog` row above IS the wire, because the
+# settings overlay turns it into the `tool-executor-ptc` row below: a mounted
+# ptc executor collapses the wire to the single `run_code` transport, and the
+# `native` value disables that row so the roster is what the request carries.
+# The catalog reads the same fact back (a `ptc` setting plus a mounted
+# runtime) because no reader can observe the collapse itself: the ptc
+# executor keeps `run_code` outside the registry, so a schema read returns the
+# same list under both modes.
 #
 # This cohort splits execution into an agent-scoped executor row. The row below
 # selects the same official PTC executor as the builtin ptc preset; the settings
@@ -530,8 +531,8 @@
     fetch: false
     searchTimeoutMs: 60000
 
-# PTC execution is an agent-scoped plugin in this cohort. The declaration
-# overlay disables this row for the native presentation; without it, `presentAs`
-# can select the wire but no executor can carry a run_code program.
+# PTC execution is an agent-scoped plugin in this cohort, and this row IS the
+# presentation: the settings overlay disables it for the native presentation.
+# Without that executor the wire has no `run_code` to carry a program.
 - id: tool-executor-ptc
   name: '@deepseek-ai/dsh-tool-executor-ptc'

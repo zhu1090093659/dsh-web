@@ -856,7 +856,7 @@ body [data-composer-card] button[aria-haspopup='listbox'] {
   color: #e8e3d2f2 !important;
 }
 /* 发送键：圆钮。禁用态退成细线圈 —— 「还没落笔」是线，可以按了才是那一点墨绿。 */
-body [data-composer-card] button:not([aria-haspopup]):not([disabled]) {
+body [data-composer-card] button:not([aria-haspopup]):not([data-slot='conversation.input.attachments'] *):not([disabled]) {
   border-radius: 999px;
 }
 body [data-composer-card] button[disabled] {
@@ -1136,7 +1136,13 @@ body [data-clock] {
    #171A20 压上去只有 3.0:1，所以改成**纸白图标**（5.12:1）——
    一颗墨绿的钮上挑一笔白，也正是「墨上留白」的样子。
    禁用态退成一根细线圈：「还没落笔」是线，按下去了才是那一点。 */
-body [data-composer-card] button:not([aria-haspopup]) {
+/* 附件轨里也是 button：官方 ComposerAttachments 的缩略图与删除键都不带 aria-haspopup，
+   所以这套「发送键」必须显式排除 [data-slot='conversation.input.attachments'] 子树（issue #100）。
+   不排除会怎样：官方 .remove 是 position: absolute; top: 4px; right: 4px，被这条的
+   position: relative 一覆盖就掉进 64px .imageItem 的流式排版、被挤出盒外，同时失去
+   .imageItem:hover .remove{opacity:1} 的悬停浮现 —— 表现就是「删除按钮不见了」。
+   用插槽名而不是哈希类名（JVDQca_remove / _54WpYG_remove 每次发版都会变）。 */
+body [data-composer-card] button:not([aria-haspopup]):not([data-slot='conversation.input.attachments'] *) {
   position: relative;
   border-radius: 999px !important;
   border: 1px solid #3d66499e !important;
@@ -1147,20 +1153,20 @@ body [data-composer-card] button:not([aria-haspopup]) {
     0 0 18px #3d664966 !important;
   transition: box-shadow 0.16s ease, filter 0.16s ease;
 }
-body [data-composer-card] button:not([aria-haspopup]):hover:not([disabled]) {
+body [data-composer-card] button:not([aria-haspopup]):not([data-slot='conversation.input.attachments'] *):hover:not([disabled]) {
   filter: brightness(1.10);
   box-shadow: 0 0 0 1px #6fa87f8c, inset 0 1px 0 #e8e3d28c,
     0 0 26px #6fa87f73 !important;
 }
 /* 禁用态（输入框还空着）：退成一根细线圈 + 淡墨绿的箭头。 */
-body [data-composer-card] button:not([aria-haspopup])[disabled] {
+body [data-composer-card] button:not([aria-haspopup]):not([data-slot='conversation.input.attachments'] *)[disabled] {
   background-image: none !important;
   background-color: transparent !important;
   border: 1px solid #4d657699 !important;
   color: #6fa87f73 !important;
   box-shadow: none !important;
 }
-body [data-composer-card] button:not([aria-haspopup])[disabled] svg {
+body [data-composer-card] button:not([aria-haspopup]):not([data-slot='conversation.input.attachments'] *)[disabled] svg {
   filter: none;
 }
 /* 访问模式那颗（官方插槽 conversation.input.permission）是 chip，别吃上面那套。 */

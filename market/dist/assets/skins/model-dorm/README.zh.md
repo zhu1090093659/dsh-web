@@ -45,7 +45,45 @@
 
 1. **主行动按钮四件套是成套的。** `--dsw-alias-brand-primary` 是强调色，**不是按钮底色**——拿它当 fill 又配白字会黑底黑字。暗色主题里按钮底色是亮琥珀 `#e39a55`，字色是**深色** `#231a1c`。
 2. **背景遮挡滑杆会实时改变面板厚度。** 加载器把「背景遮挡」（0–100）写成 `document.body` 上的 `--dsw-skin-scrim`（0..1 alpha），本皮肤每一条表面的 alpha 都挂在它上面，两个主题的基线都只 0.05。
-3. **故意不覆盖的 token**：`--dsw-elevation-*`、`--dsw-corner-shape`、`--dsw-mask-blur`、`--dsw-menu-backdrop-filter`（结构类，非配色）；`--dsw-linear-gradient-think` / `--dsw-linear-think-select`（渐变，官方值格式无法离线验证）。配色类 token 覆盖 91%（104/114），未覆盖的走加载器 `color-mix()` 自动派生。
+3. **仍然故意不覆盖的 token**（只剩三个）：`--dsw-corner-shape`（超椭圆圆角是官方壳层自己的几何语言）、`--dsw-mask-blur` 与 `--dsw-menu-backdrop-filter`（毛玻璃是这套皮肤的招牌，改了才是破坏）。
+
+## 浮层空间感：把漏掉的 11 个非字体 token 补到 115
+
+初版把 14 个非字体 token 以"结构类，不是配色"为由留给了加载器派生。后来对线上构建做了逐条消费追踪，发现这个判断只对了一半：
+
+| 当初的判断 | 实测结论 |
+|---|---|
+| `--dsw-shadow-lv1/2/3`、`--dsw-elevation-stroke-color` 是结构 | **不成立**。取值是 `#000000xx` —— 它们是**阴影的颜色**，而且是中性冷黑。画上落纯黑阴影，正是那种说不清哪里不对、但就是脏的感觉 |
+| `--dsw-linear-gradient-think` / `-think-select` 格式无法离线验证 | **已可解决**。真格式是 `linear-gradient(180deg, <页面底色> 20.19%, <同色透明> 100%)` |
+| `--dsw-elevation-*` 三个配方是结构，不该动 | 半对。**结构**确实不该动，但配方**内层还嵌着纯黑**（soft = `..., 0 4px 16px 0 #00000008`），而 soft 正是输入卡这类最常用节点在用的那一条 |
+| `--dsw-mask-blur` / `--dsw-menu-backdrop-filter` 该保留 | **成立**，保留 |
+
+补完之后：配色类非字体 token **115/118**（余下 3 个即上一条所列）。
+
+### 一个反直觉的层叠发现
+
+`--dsw-elevation-stroke` / `-panel` / `-prominent` / `-soft` **写在 `:root` 里是无效的**。官方主题把这一族声明在 `body, body *` 上 —— 等于给**每一个元素**都重新写一遍。皮肤写在 `:root` 的值只赢得下 `html` 和 `body` 两个节点，一进子树就被那条 `body *` 切断了继承。
+
+CDP `getMatchedStylesForNode` 在输入卡节点上的实测：
+
+- 皮肤规则 `html[data-dsh-skin="model-dorm"] body` → 值正确、带 `!important`，但 **`matchesCard: false`**（它只选到 `body`）
+- 官方规则 `body, body *` → **`matchesCard: true`**
+
+所以 `!important` 也救不了 —— 问题不是优先级不够，而是**规则根本没匹配到那个元素**。唯一的解法是用 `*` 让规则匹配每个元素。皮肤里只有这一处用 `*`，因为只有这一族 token 是这个结构：
+
+```css
+* {
+  --dsw-elevation-soft: 0 0 0 .5px #6b4a3f5c,
+                        0 4px 16px 0 #3a2a2612,
+                        0 0 24px 0 #3a2a2612 !important;
+}
+```
+
+值的形状保持官方原样（发丝描边 + 两层模糊投影，偏移与模糊半径逐字照抄），只把色相从纯黑换成画里的暖褐，alpha 按暖色阴影的感知权重略作加重。
+
+### 顺带接管的、契约里没有的 token
+
+官方组件 CSS 还在消费另一批 token，而 `contracts/official-tokens-v1.json` 一条都没收录 —— 这意味着**任何皮肤都看不见、也控制不了它们**。按消费量排前几名：`--dsw-radius-sm`（118 处）、`--dsw-focus-ring-color`（113 处）、`--dsw-radius-md`（88 处）、`--dsw-radius-lg`（71 处）、`--dsw-focus-ring-width`（52 处）。也就是说焦点环和全应用的圆角此前不在皮肤手里。本皮肤按自身的暖调与圆角尺寸补齐（圆角取 4/8/10/14/18px，**不**压平 —— 玻璃面板的圆角是它的语言）。
 
 ## 素材与许可
 

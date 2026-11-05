@@ -175,6 +175,80 @@
   --dsw-alias-file-diff-deleted-bg: #f8e6e1;
   --dsw-alias-file-diff-deleted-gutter: #f0cfc7;
   --dsw-alias-file-diff-deleted-marker: #b03a24;
+
+  /* ── 第三批：浮层的"空间感" ──────────────────────────────────────────
+     前两批把颜色补到了 104/118，剩下 14 个当初以"结构类，不是配色"为由
+     留给了加载器派生。逐条实测之后，这个判断有一半不成立：
+
+       · --dsw-shadow-lv1/2/3 与 --dsw-elevation-stroke-color 取值**是纯黑**
+         （官方 lv2 = `0 4px 12px 0 #00000005, 0 2px 8px 0 #0000000a`）。
+         它们不是"结构"，是**阴影的颜色**，而且是中性冷黑。一张暖紫褐的画
+         上落一层纯黑阴影，正是那种说不清哪里不对、但就是脏的感觉 ——
+         README 自己写着"最深只到 #32272b，从不用纯黑"，偏偏这四组漏在外面。
+         现在把它们整族改成画里的暖褐：偏移与模糊半径逐字保留，alpha 则
+         按暖色阴影的感知权重略作上调（0d→12、05→08、0a→12、14→1f），
+         让暖褐与原来的纯黑观感等重。
+
+       · --dsw-linear-gradient-think / -think-select 当初记为"官方值格式
+         无法离线验证"。现在从线上构建里读到了真格式：
+             linear-gradient(180deg, <页面底色> 20.19%, <同色透明> 100%)
+         格式既定，按本皮肤的页面底色回填即可。
+
+       · --dsw-elevation-* 三个配方：**这条是本次最反直觉的发现**。
+         官方主题把 elevation-stroke / -panel / -prominent / -soft 声明在
+         `body, body *` 上 —— 也就是给**每一个元素**都重新写一遍。皮肤写在
+         :root 里的值只赢得下 html / body 两个节点，一进子树就被那条
+         `body *` 盖掉（实测：html/body 读到我改的暖调，输入卡读到的仍是
+         `#00000008`）。所以这四个 token 在 :root 层**改不动**，这不是
+         "没写"，是层叠上够不着。
+
+         解法是在每个元素上以 !important 胜出（自定义属性同样适用）。
+         值的构造保持官方形状：发丝描边 + 两层模糊投影，偏移与模糊半径
+         逐字照抄，只把色相从纯黑换成画里的暖褐，alpha 按暖色在亮/暗底上
+         的感知权重微调（暖色阴影要略重一点才与纯黑等重）。
+
+       · --dsw-mask-blur / --dsw-menu-backdrop-filter 仍然不动：这套皮肤的
+         招牌就是毛玻璃，改了才是破坏。 */
+  --dsw-shadow-lv1: 0 2px 4px 0 #3a2a2612;
+  --dsw-shadow-lv1-blur: 0 4px 12px 0 #3a2a2608;
+  --dsw-shadow-lv2: 0 4px 12px 0 #3a2a2608, 0 2px 8px 0 #3a2a2612;
+  --dsw-shadow-lv3: 0 0 1px 0 #3a2a2633, 0 0 4px 0 #3a2a2608, 0 12px 32px 0 #3a2a261f;
+  --dsw-linear-gradient-think: linear-gradient(180deg, #fbe9d8 20.19%, #fbe9d800 100%);
+  --dsw-linear-think-select: linear-gradient(180deg, #f7e2ce 20.19%, #f7e2ce00 100%);
+
+  /* ── 第四批：契约里没有、线上却在消费的 token ────────────────────────
+     官方组件 CSS 读它们，但 contracts/official-tokens-v1.json 一条都没收，
+     所以**任何皮肤都看不见、也控制不了**。按消费量排前几名：
+       --dsw-radius-sm 118 处（按钮、菜单项）、--dsw-focus-ring-color 113 处、
+       --dsw-radius-md 88 处、--dsw-radius-lg 71 处、--dsw-focus-ring-width 52 处。
+     也就是说焦点环和全应用的圆角一直不在皮肤手里。全部按本皮肤的暖调与
+     圆角尺寸补齐 —— 这里**不能**学零圆角那套，玻璃面板的圆角是它的语言。 */
+  --dsw-focus-ring-color: #b4551a;
+  --dsw-focus-ring-width: 2px;
+  --dsw-radius-xs: 4px;
+  --dsw-radius-sm: 8px;
+  --dsw-radius-md: 10px;
+  --dsw-radius-lg: 14px;
+  --dsw-radius-xl: 18px;
+  --dsw-radius-panel: 16px;
+  --dsw-menu-surface-fill: rgba(253, 244, 234, 0.92);
+  --dsw-alias-menu-icon: #6b4f47;
+  --dsw-alias-menu-group-header-fill: rgba(250, 240, 230, 0.64);
+  --dsw-alias-settings-card-fill: rgba(255, 250, 244, 0.60);
+  --dsw-alias-settings-card-stroke: #6b4a3f26;
+  --dsw-alias-fill-l1: rgba(250, 240, 230, 0.64);
+  --dsw-alias-fill-l2: rgba(255, 250, 244, 0.60);
+  --dsw-alias-fill-tertiary: rgba(245, 231, 218, 0.68);
+  --dsw-alias-fill-tsp-secondary: rgba(245, 231, 218, 0.68);
+  --dsw-alias-bg-l1: rgba(255, 250, 244, 0.60);
+  --dsw-alias-switch-thumb: #fff8f2;
+  --dsw-alias-label-shimmer: #8d7168;
+  --dsw-alias-label-quaternary: #ac948b;
+  --dsw-alias-separator-primary: #8d7168;
+  --dsw-alias-turn-trigger-bg: rgba(250, 240, 230, 0.64);
+  --dsw-alias-turn-trigger-bg-hover: rgba(245, 231, 218, 0.68);
+  --dsw-alias-toast-label: #fff8f2;
+  --dsw-alias-tooltip-key-bg: rgba(245, 231, 218, 0.68);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -311,6 +385,79 @@ body[data-ds-dark-theme] {
   --dsw-alias-file-diff-deleted-bg: #38211e;
   --dsw-alias-file-diff-deleted-gutter: #4a2b26;
   --dsw-alias-file-diff-deleted-marker: #e0745c;
+
+  /* ── 第三批：浮层的空间感（详见亮色块末尾的长注释）────────────────────
+     暗色主场的阴影同样不能是纯黑：这一层画在暖紫褐玻璃与夕阳画面之上，
+     纯黑阴影会把暖调压出一圈冷灰边。改用画面最深处的 #0d080a。 */
+  --dsw-shadow-lv1: 0 2px 4px 0 #0d080a2e;
+  --dsw-shadow-lv1-blur: 0 4px 12px 0 #0d080a1a;
+  --dsw-shadow-lv2: 0 4px 12px 0 #0d080a1f, 0 2px 8px 0 #0d080a2e;
+  --dsw-shadow-lv3: 0 0 1px 0 #0d080a66, 0 0 4px 0 #0d080a1a, 0 12px 32px 0 #0d080a5c;
+  --dsw-linear-gradient-think: linear-gradient(180deg, #161013 20.19%, #16101300 100%);
+  --dsw-linear-think-select: linear-gradient(180deg, #2b2023 20.19%, #2b202300 100%);
+
+  /* ── 第四批：契约未收录的运行期 token（清单见亮色块）──────────────── */
+  --dsw-focus-ring-color: #e39a55;
+  --dsw-focus-ring-width: 2px;
+  --dsw-radius-xs: 4px;
+  --dsw-radius-sm: 8px;
+  --dsw-radius-md: 10px;
+  --dsw-radius-lg: 14px;
+  --dsw-radius-xl: 18px;
+  --dsw-radius-panel: 16px;
+  --dsw-menu-surface-fill: rgba(62, 45, 50, 0.92);
+  --dsw-alias-menu-icon: #e6d5ca;
+  --dsw-alias-menu-group-header-fill: rgba(114, 85, 93, 0.60);
+  --dsw-alias-settings-card-fill: rgba(100, 74, 82, 0.58);
+  --dsw-alias-settings-card-stroke: #ffd9b81f;
+  --dsw-alias-fill-l1: rgba(114, 85, 93, 0.60);
+  --dsw-alias-fill-l2: rgba(100, 74, 82, 0.58);
+  --dsw-alias-fill-tertiary: rgba(120, 89, 97, 0.62);
+  --dsw-alias-fill-tsp-secondary: rgba(120, 89, 97, 0.62);
+  --dsw-alias-bg-l1: rgba(100, 74, 82, 0.58);
+  --dsw-alias-switch-thumb: #f6e8dd;
+  --dsw-alias-label-shimmer: #cfb8ac;
+  --dsw-alias-label-quaternary: #b0978c;
+  --dsw-alias-separator-primary: #cfb8ac;
+  --dsw-alias-turn-trigger-bg: rgba(114, 85, 93, 0.60);
+  --dsw-alias-turn-trigger-bg-hover: rgba(120, 89, 97, 0.62);
+  --dsw-alias-toast-label: #231a1c;
+  --dsw-alias-tooltip-key-bg: rgba(120, 89, 97, 0.62);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   浮层描边与投影：必须打在 * 上才生效
+   ══════════════════════════════════════════════════════════════════
+   官方主题把 --dsw-elevation-stroke / -panel / -prominent / -soft 声明在
+   `body, body *` 上 —— 相当于给**每一个元素**都重新写一遍这个变量。
+   皮肤写在 :root 里的值只能赢下 html 和 body 两个节点：一旦进入子树，
+   那条 body * 就把变量的继承切断了。
+
+   实测证据（CDP getMatchedStylesForNode，输入卡节点）：
+     · 皮肤规则 html[data-dsh-skin="model-dorm"] body  → 值正确、带 important
+       但 matchesCard: false（它只选到 body，选不到子元素）
+     · 官方规则 body, body *                            → matchesCard: true
+   所以变量在 html/body 上读得到、在输入卡上读不到，`!important` 也救不了
+   —— 因为问题不是优先级不够，而是**规则根本没匹配到那个元素**。
+
+   唯一够得着的写法：用 `*` 让规则匹配每个元素，并以 !important 压过
+   body *。皮肤里只有这一处用 *，因为只有这一族 token 是这个结构。
+   值仍是官方形状（发丝描边 + 两层模糊投影），只把色相从纯黑换成画里的
+   暖褐，alpha 按暖色阴影的感知权重略作加重。 */
+* {
+  --dsw-elevation-stroke-color: #6b4a3f5c !important;
+  --dsw-elevation-stroke: 0 0 0 .5px #6b4a3f5c !important;
+  --dsw-elevation-soft: 0 0 0 .5px #6b4a3f5c, 0 4px 16px 0 #3a2a2612, 0 0 24px 0 #3a2a2612 !important;
+  --dsw-elevation-panel: 0 0 0 .5px #6b4a3f5c, 0 3px 8px 0 #3a2a2612, 0 0 16px 0 #3a2a260a !important;
+  --dsw-elevation-prominent: 0 0 0 .5px #6b4a3f5c, 0 3px 8px 0 #3a2a2617, 0 0 20px 0 #3a2a261f !important;
+}
+
+body[data-ds-dark-theme] * {
+  --dsw-elevation-stroke-color: #ffd9b85c !important;
+  --dsw-elevation-stroke: 0 0 0 .5px #ffd9b85c !important;
+  --dsw-elevation-soft: 0 0 0 .5px #ffd9b85c, 0 4px 16px 0 #0d080a2e, 0 0 24px 0 #0d080a2e !important;
+  --dsw-elevation-panel: 0 0 0 .5px #ffd9b85c, 0 3px 8px 0 #0d080a2e, 0 0 16px 0 #0d080a1f !important;
+  --dsw-elevation-prominent: 0 0 0 .5px #ffd9b85c, 0 3px 8px 0 #0d080a3d, 0 0 20px 0 #0d080a47 !important;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -383,7 +530,10 @@ body[data-ds-dark-theme]::selection {
   background: #e39a55;
 }
 
-body[data-ds-dark-theme] :focus-visible {
+/* 焦点环：亮色原先没写这条，靠官方默认的商业蓝，跟赭石打架。
+   颜色本身已由 --dsw-focus-ring-color（第四批）给出，这里补上亮色的
+   outline-color 回退，暗色保留原写法。 */
+:focus-visible {
   outline-color: var(--dsw-alias-brand-primary);
 }
 

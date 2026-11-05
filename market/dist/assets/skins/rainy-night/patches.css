@@ -631,7 +631,7 @@ body [data-composer-card] button[aria-haspopup='listbox'] {
   color: #e8f2f5f2 !important;
 }
 /* 发送键：圆钮。禁用态退成细线圈 —— 「还没画完」是线，可以按了才是那块实心。 */
-body [data-composer-card] button:not([aria-haspopup]):not([disabled]) {
+body [data-composer-card] button:not([aria-haspopup]):not([data-slot='conversation.input.attachments'] *):not([disabled]) {
   border-radius: 999px;
 }
 body [data-composer-card] button[disabled] {
@@ -860,7 +860,13 @@ body [data-clock] {
    定位：卡里唯一「没有 aria-haspopup」且不在官方插槽里的按钮 —— button.primary 身上没有
    data 钩子，只能靠这条排除法（权限那颗有 data-slot=conversation.input.permission，见最后一条）。
    壳给它的圆角与实心都是 token 下的，所以要 !important；禁用态单独一条（特异性更高）。 */
-body [data-composer-card] button:not([aria-haspopup]) {
+/* 附件轨里也是 button：官方 ComposerAttachments 的缩略图与删除键都不带 aria-haspopup，
+   所以这套「发送键」必须显式排除 [data-slot='conversation.input.attachments'] 子树（issue #100）。
+   不排除会怎样：官方 .remove 是 position: absolute; top: 4px; right: 4px，被这条的
+   position: relative 一覆盖就掉进 64px .imageItem 的流式排版、被挤出盒外，同时失去
+   .imageItem:hover .remove{opacity:1} 的悬停浮现 —— 表现就是「删除按钮不见了」。
+   用插槽名而不是哈希类名（JVDQca_remove / _54WpYG_remove 每次发版都会变）。 */
+body [data-composer-card] button:not([aria-haspopup]):not([data-slot='conversation.input.attachments'] *) {
   position: relative;
   border-radius: 9px !important;
   border: 1px solid #38b9e899 !important;
@@ -871,23 +877,23 @@ body [data-composer-card] button:not([aria-haspopup]) {
     0 0 18px #38b9e873 !important;
   transition: box-shadow 0.16s ease, filter 0.16s ease;
 }
-body [data-composer-card] button:not([aria-haspopup]):hover:not([disabled]) {
+body [data-composer-card] button:not([aria-haspopup]):not([data-slot='conversation.input.attachments'] *):hover:not([disabled]) {
   background-image: linear-gradient(180deg, #66c8eb 0%, #f79c588c 100%) !important;
   box-shadow: 0 0 0 1px #f79c58d9, inset 0 1px 0 #f79c58cc,
     0 0 26px #f79c5873 !important;
 }
-body [data-composer-card] button:not([aria-haspopup]) svg {
+body [data-composer-card] button:not([aria-haspopup]):not([data-slot='conversation.input.attachments'] *) svg {
   filter: drop-shadow(0 0 6px #f79c5899);
 }
 /* 禁用态（输入框还空着）：退成一根细线圈 + 暗橙箭头 —— 「还没画完」是线，可以按了才是那块实心。 */
-body [data-composer-card] button:not([aria-haspopup])[disabled] {
+body [data-composer-card] button:not([aria-haspopup]):not([data-slot='conversation.input.attachments'] *)[disabled] {
   background-image: none !important;
   background-color: transparent !important;
   border: 1px solid #2e538899 !important;
   color: #f79c586b !important;
   box-shadow: none !important;
 }
-body [data-composer-card] button:not([aria-haspopup])[disabled] svg {
+body [data-composer-card] button:not([aria-haspopup]):not([data-slot='conversation.input.attachments'] *)[disabled] svg {
   filter: none;
 }
 /* 访问模式那颗（官方插槽 conversation.input.permission）是 chip，别吃上面那套。 */

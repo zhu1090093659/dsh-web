@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-03",
+  "generated": "2026-11-05",
   "items": [
     {
       "id": "frutiger-aero",
@@ -2246,7 +2246,7 @@
         "gpt-art",
         "local"
       ],
-      "version": "0.1.0",
+      "version": "0.1.1",
       "accent": "#b4551a",
       "preview": {
         "light": "assets/skins/model-dorm/preview/light.jpg",

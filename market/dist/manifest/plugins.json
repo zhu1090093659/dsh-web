@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-03",
+  "generated": "2026-11-05",
   "items": [
     {
       "id": "dsh-quick-ask",
@@ -1932,6 +1932,32 @@
       "npm": "dsh-widget-board",
       "category": "ui",
       "subcategory": "panel"
+    },
+    {
+      "id": "dsh-plugin-desktop-notify",
+      "name": "桌面通知与未读角标",
+      "rank": 152,
+      "nameEn": "Desktop Notify",
+      "author": "chendaleiQ",
+      "description": "给 DeepSeek Harness 加桌面通知与应用图标未读角标：一轮结束、等待审批／回答／计划确认、以及这一轮出错时各弹一条横幅；角标显示有几个会话需要你，看过之后清零，点横幅切到对应会话。文案跟随 DSH 界面语言，子智能体会话默认不提醒，标题与正文长度可配置；宿主还在回环地址上开了一个 HTTP 接口，供脚本和其它工具发通知。",
+      "descriptionEn": "Desktop notifications and an app-icon unread badge for DeepSeek Harness: a banner fires when a turn finishes, when an approval, question or plan confirmation is waiting, and when a turn fails. The badge shows how many sessions need you and clears once viewed, and clicking a banner switches to that session. Copy follows the DSH interface language, subagent sessions stay quiet by default, title and body length are configurable, and a loopback HTTP interface lets scripts and other tools post notifications.",
+      "repo": "https://github.com/chendaleiQ/dsh-plugin-desktop-notify",
+      "npm": "dsh-plugin-desktop-notify",
+      "category": "utility",
+      "subcategory": "notify"
+    },
+    {
+      "id": "dsh-plugin-auto-update",
+      "name": "插件自动更新",
+      "rank": 153,
+      "nameEn": "Plugin Auto Update",
+      "author": "chendaleiQ",
+      "description": "给 DeepSeek Harness 插件做按包白名单的自动更新：按计划去 npm 查已装插件的最新版本，只更新你勾选的包，本地 link／file 安装、锁定版本和出错的包一律跳过；默认不跨大版本、不装预发布。更新走 profile 里运行中的官方插件管理器，profile 写锁、pnpm 执行、bundle 补丁校验与热重载都由宿主负责，安装失败会把旧版本装回去。每轮结果追加到一份 JSON 日志。",
+      "descriptionEn": "Per-package automatic updates for the DeepSeek Harness plugins you choose: on a schedule it asks npm for the latest version of installed plugins, updates only the packages you tick, and skips local link or file installs, pinned versions and packages with errors. Upgrades stay inside the major version and skip prereleases by default. Updates go through the profile's own running plugin manager, so the profile write lock, the pnpm step, bundle-patch validation and hot reload stay the host's job, and a failed install puts the previous version back. Each cycle is appended to a JSON log.",
+      "repo": "https://github.com/chendaleiQ/dsh-plugin-auto-update",
+      "npm": "@chendaleiq/dsh-plugin-auto-update",
+      "category": "tools",
+      "subcategory": "dev"
     }
   ]
 }

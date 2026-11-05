@@ -18,10 +18,6 @@
       "id": "diy-journal"
     },
     {
-      "kind": "plugin",
-      "id": "dsh-llm-verifier"
-    },
-    {
       "kind": "skin",
       "id": "xinghai-heart"
     },

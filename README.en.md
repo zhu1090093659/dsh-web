@@ -454,7 +454,7 @@ Licensed under [Apache-2.0](LICENSE). Imported third-party code must retain orig
 - **dsh-task-board / dsh-task-board-github / dsh-pet / dsh-remote-bridge / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-update / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n / dsh-diagrams** — authored by zhu1090093659, Apache-2.0 (zhu1090093659)
 - **dsh-diagrams** — ships the [mermaid](https://github.com/mermaid-js/mermaid) runtime (MIT): the build copies it from the npm `mermaid` package into `lib/assets/mermaid.min.js`, served by the host route; no third-party source is committed. The package's own code is this repository's Apache-2.0 (zhu1090093659)
 - **dsh-ssh** — implemented against the capability list of [badseal/ssh-skill](https://github.com/badseal/ssh-skill); code is this repository's Apache-2.0 (zhu1090093659), the upstream capability list belongs to badseal/ssh-skill
-- **Community plugin index** — 130+ external plugins with sources and licenses declared by their authors, registered in [community.json](https://github.com/zhu1090093659/dsh-community-plugins/blob/main/community.json), browsable in Settings → Community Plugins and on dsh-market.com
+- **Community plugin index** — 100+ external plugins with sources and licenses declared by their authors, registered in [community.json](https://github.com/zhu1090093659/dsh-community-plugins/blob/main/community.json), browsable in Settings → Community Plugins and on dsh-market.com
 
 **Skins (third-party authors or artwork)**
 

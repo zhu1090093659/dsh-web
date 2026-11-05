@@ -454,7 +454,7 @@ dsh-web 针对主流操作系统、现代化浏览器及网络拓扑进行了深
 - **dsh-task-board / dsh-task-board-github / dsh-pet / dsh-remote-bridge / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-update / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n / dsh-diagrams** — 本仓库原创（zhu1090093659），Apache-2.0（zhu1090093659）
 - **dsh-diagrams** — 随包分发 [mermaid](https://github.com/mermaid-js/mermaid) 运行库（MIT）：构建时从 npm 的 `mermaid` 包复制到 `lib/assets/mermaid.min.js` 并由宿主路由伺服，仓库不提交任何第三方源码；本包自身代码为本仓库 Apache-2.0（zhu1090093659）
 - **dsh-ssh** — 依据 [badseal/ssh-skill](https://github.com/badseal/ssh-skill) 的能力清单实现；代码为本仓库 Apache-2.0（zhu1090093659），上游能力清单归属 badseal/ssh-skill
-- **社区插件索引** — 130+ 项外部插件，来源与版权由各作者声明，登记于 [community.json](https://github.com/zhu1090093659/dsh-community-plugins/blob/main/community.json)，可在「设置 → 社区插件」与 dsh-market.com 查看
+- **社区插件索引** — 100+ 项外部插件，来源与版权由各作者声明，登记于 [community.json](https://github.com/zhu1090093659/dsh-community-plugins/blob/main/community.json)，可在「设置 → 社区插件」与 dsh-market.com 查看
 
 **皮肤（第三方作者或第三方素材）**
 

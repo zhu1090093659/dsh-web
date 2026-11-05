@@ -340,6 +340,20 @@ async function secretNames() {
   return secretNamesFrom(list.output)
 }
 
+/**
+ * A secrets update lands as a new version, and the list answers from the
+ * deployment the CLI can see, so the re-read right after an update can still
+ * report the previous set. Poll that short window instead of failing the deploy
+ * on the race: a binding that is genuinely absent still fails, ten seconds on.
+ */
+async function secretNamesSettled(name) {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    if ((await secretNames()).includes(name)) return true
+    await waitMs(2000)
+  }
+  return false
+}
+
 // Turnstile fail-closed contract: /api/like and /api/install reject every
 // write when the worker has no TURNSTILE_SECRET, so deploying without the
 // secret silently disables likes/installs. Refresh the binding when the
@@ -355,7 +369,7 @@ async function ensureTurnstileSecret() {
     console.log('deploy-market: refreshing TURNSTILE_SECRET binding')
     await withSecretFile(secret, (file) => cf(secretUpdateArgs('TURNSTILE_SECRET', file)))
   }
-  if (!(await secretNames()).includes('TURNSTILE_SECRET')) {
+  if (!(await secretNamesSettled('TURNSTILE_SECRET'))) {
     fail('worker has no TURNSTILE_SECRET binding — set it (cf workers secrets update TURNSTILE_SECRET --worker ' + WORKER_NAME + ' --type secret_text --text "<value>") or export TURNSTILE_SECRET before deploying; likes/installs fail closed without it')
   }
   assertTurnstilePairing(secret)
@@ -372,7 +386,7 @@ async function ensureAttestSecret() {
     console.log('deploy-market: refreshing ASSET_ATTEST_SECRET binding')
     await withSecretFile(secret, (file) => cf(secretUpdateArgs('ASSET_ATTEST_SECRET', file)))
   }
-  if (!(await secretNames()).includes('ASSET_ATTEST_SECRET')) {
+  if (!(await secretNamesSettled('ASSET_ATTEST_SECRET'))) {
     fail('worker has no ASSET_ATTEST_SECRET binding — set it (cf workers secrets update ASSET_ATTEST_SECRET --worker ' + WORKER_NAME + ' --type secret_text --text "<value>") or export MARKET_ATTEST_SECRET before deploying; the attestation route fails closed without it')
   }
 }

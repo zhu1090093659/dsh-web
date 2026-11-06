@@ -21,7 +21,7 @@
  */
 
 import { CdpClient } from '../core/cdp.ts'
-import type { CdpTransport } from '../core/cdp.ts'
+import type { CdpConnectOptions, CdpTransport } from '../core/cdp.ts'
 import { ChromeProcess } from '../core/chrome.ts'
 import { TabManager, type ScreencastFrame } from '../core/tabs.ts'
 import { buildSnapshot, type SnapshotResult } from '../core/snapshot.ts'
@@ -156,14 +156,36 @@ async function openIsolatedSession(options: OpenSessionOptions): Promise<Browser
   }
 }
 
+/**
+ * Handshake deadline for an external browser. Its debugger port is already
+ * listening, so an endpoint that does not complete the upgrade within this
+ * window is wedged; the per-command budget is a separate setting and is left at
+ * `CDP_COMMAND_TIMEOUT_MS`, exactly as in the isolated mode.
+ */
+export const REAL_BROWSER_HANDSHAKE_TIMEOUT_MS = 5_000
+
+/**
+ * Seams the external session factory resolves when it connects. The defaults
+ * are the production transport; a test injects one to observe what a
+ * real-browser attach asks for without starting a browser.
+ */
+export interface ExternalSessionSeams {
+  /** Open the DevTools transport. @default CdpClient.connect */
+  connect?: (url: string, timeouts: CdpConnectOptions) => Promise<CdpTransport>
+}
+
 /** Connect to an existing real browser without owning its process or tabs. */
-async function openExternalSession(options: OpenSessionOptions): Promise<BrowserSession> {
+export async function openExternalSession(
+  options: OpenSessionOptions,
+  seams: ExternalSessionSeams = {},
+): Promise<BrowserSession> {
   const endpoint = parseCdpEndpoint(options.cdpEndpoint ?? '')
-  let cdp: CdpClient | undefined
+  const connect = seams.connect ?? CdpClient.connect
+  let cdp: CdpTransport | undefined
   let tabs: TabManager | undefined
   try {
     const version = await fetchCdpVersion(endpoint)
-    cdp = await CdpClient.connect(version.webSocketDebuggerUrl, { timeoutMs: 5_000 })
+    cdp = await connect(version.webSocketDebuggerUrl, { handshakeTimeoutMs: REAL_BROWSER_HANDSHAKE_TIMEOUT_MS })
     tabs = new TabManager({
       transport: cdp,
       jpegQuality: options.jpegQuality,
@@ -387,7 +409,7 @@ export class BrowserViewService implements BrowserViewBackend {
     if (sessionId === undefined) {
       throw new Error('browser_close needs the calling session: with no session there is no tab this call may close')
     }
-    if (this.session === undefined) {
+    if (this.session === undefined || this.session.transport.closed) {
       // Omitted tab_id stays a no-launch cleanup. An explicit real-browser id is
       // an operation, so it must connect and discover before it can close.
       if (tabId === undefined || tabId === '' || this.resolveConfig().mode !== 'cdp') return []
@@ -783,7 +805,7 @@ export class BrowserViewService implements BrowserViewBackend {
 
   /** Open tabs, for `browser_tabs`. */
   async listTabs(): Promise<{ tabs: BrowserTabView[]; activeTabId: string | null }> {
-    if (this.session === undefined) {
+    if (this.session === undefined || this.session.transport.closed) {
       // Isolated listing stays a cheap no-launch probe. Real-browser listing is
       // the explicit discovery entry point for tabs that already exist.
       if (this.resolveConfig().mode !== 'cdp') return { tabs: [], activeTabId: null }
@@ -809,13 +831,8 @@ export class BrowserViewService implements BrowserViewBackend {
   async reconfigure(): Promise<void> {
     if (this.disposed) return
     this.generation += 1
-    const session = this.session
-    this.session = undefined
     this.opening = undefined
-    this.bindings.clear()
-    this.authTopUpSpent.clear()
-    this.displayedTabId = null
-    this.selectionPinned = false
+    const session = this.forgetSession()
     this.lastError = undefined
     if (session !== undefined) await session.dispose()
     this.broadcast({ v: 1, kind: 'state', state: this.state() })
@@ -843,11 +860,7 @@ export class BrowserViewService implements BrowserViewBackend {
         // A socket that is already gone needs no second close.
       }
     }
-    const session = this.session
-    this.session = undefined
-    this.bindings.clear()
-    this.displayedTabId = null
-    this.selectionPinned = false
+    const session = this.forgetSession()
     if (session !== undefined) await session.dispose()
   }
 
@@ -868,17 +881,66 @@ export class BrowserViewService implements BrowserViewBackend {
     return (await this.requireSession()).tabs
   }
 
-  /** Resolve the live session, starting the browser on first use. */
+  /**
+   * Forget everything bound to the current session without disposing it: the
+   * per-session tab bindings, the watched tab, the pinned selection and the
+   * spent auth tickets all describe a browser that is going away.
+   * @returns the session that was dropped, if any.
+   */
+  private forgetSession(): BrowserSession | undefined {
+    const session = this.session
+    this.session = undefined
+    this.bindings.clear()
+    this.authTopUpSpent.clear()
+    this.displayedTabId = null
+    this.selectionPinned = false
+    return session
+  }
+
+  /**
+   * Resolve the live session, starting the browser on first use.
+   *
+   * A session whose transport has closed is dead even though its record still
+   * exists: the external browser restarted, crashed, or dropped the socket, and
+   * every command would reject with that one stale reason for the rest of the
+   * host's life. The next call therefore drops it exactly the way a settings
+   * change does and opens a replacement, so the caller recovers instead of
+   * needing a reconfigure or a restart. The replacement goes through `opening`,
+   * so concurrent callers share one session instead of opening two.
+   */
   private async requireSession(): Promise<BrowserSession> {
     if (this.disposed) throw new Error('the browser view service is disposed')
-    if (this.session !== undefined) return this.session
-    if (this.opening === undefined) this.opening = this.startSession()
+    const current = this.session
+    if (current !== undefined && !current.transport.closed) return current
+    if (this.opening === undefined) this.opening = this.replaceSession(current)
     const opening = this.opening
     try {
       return await opening
     } finally {
       if (this.opening === opening) this.opening = undefined
     }
+  }
+
+  /**
+   * Drop a closed session and open its replacement.
+   *
+   * The cleanup is the settings-change cleanup: an external browser is only
+   * detached, never closed, and its tabs stay open. A teardown that throws is
+   * swallowed because the dead session has nothing left to deliver — its
+   * failure must not be the reason no replacement starts.
+   * @param stale - the dead session, or undefined for an ordinary first start.
+   * @returns the live session.
+   */
+  private async replaceSession(stale: BrowserSession | undefined): Promise<BrowserSession> {
+    if (stale === undefined) return await this.startSession()
+    if (this.session === stale) this.forgetSession()
+    await stale.dispose().catch(() => undefined)
+    this.broadcast({ v: 1, kind: 'state', state: this.state() })
+    const session = await this.startSession()
+    // The panels were watching a tab of the dead session; a live screencast is
+    // what makes the recovered browser visible without a settings change.
+    if (this.sinks.size > 0) void this.startStreaming().catch(() => undefined)
+    return session
   }
 
   /** Start the browser once, recording failures for the panel. */
@@ -917,7 +979,8 @@ export class BrowserViewService implements BrowserViewBackend {
 
   /** Start the screencast for the tab the panel watches. */
   private async startStreaming(): Promise<void> {
-    const session = this.session
+    const live = this.session !== undefined && !this.session.transport.closed ? this.session : undefined
+    const session = live
       ?? (this.resolveConfig().mode === 'cdp' && this.sinks.size > 0 ? await this.requireSession() : undefined)
     if (session === undefined || this.sinks.size === 0) return
     const tabId = this.displayedOrDefault()

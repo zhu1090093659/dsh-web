@@ -53,6 +53,12 @@ export interface CdpTransport {
    * @returns the unsubscribe function.
    */
   on(method: string, handler: CdpEventListener): () => void
+  /**
+   * Whether the transport can still carry commands. False once the socket is
+   * gone — a peer that closed, a failed write, or {@link close} — because every
+   * later command would reject with the same stale reason.
+   */
+  readonly closed: boolean
   /** Drop the socket; every pending round-trip rejects. */
   close(): void
 }
@@ -60,8 +66,28 @@ export interface CdpTransport {
 /** One protocol event delivery. */
 export type CdpEventListener = (params: Record<string, unknown>, sessionId: string | undefined) => void
 
+/**
+ * Default deadline for opening the DevTools socket. A freshly launched browser
+ * answers at once, so this only bounds a wedged endpoint; an external browser
+ * is reached over a network path the caller controls and sets its own.
+ */
+export const CDP_HANDSHAKE_TIMEOUT_MS = 30_000
+
 /** Default per-command deadline; long enough for a navigation, short enough to fail a wedged tab. */
 export const CDP_COMMAND_TIMEOUT_MS = 30_000
+
+/**
+ * Deadlines for one connection. They bound different phases and are therefore
+ * separate knobs: opening the socket is bounded once, while every command gets
+ * the command budget, so a caller may wait seconds for a browser to answer
+ * without shortening the time a navigation is allowed to take.
+ */
+export interface CdpConnectOptions {
+  /** Deadline for the WebSocket handshake. @default CDP_HANDSHAKE_TIMEOUT_MS */
+  handshakeTimeoutMs?: number
+  /** Deadline for each protocol command. @default CDP_COMMAND_TIMEOUT_MS */
+  commandTimeoutMs?: number
+}
 
 /** One in-flight round-trip. */
 interface PendingCall {
@@ -76,15 +102,15 @@ interface PendingCall {
  */
 export class CdpClient implements CdpTransport {
   private readonly socket: WebSocket
-  private readonly timeoutMs: number
+  private readonly commandTimeoutMs: number
   private readonly pending = new Map<number, PendingCall>()
   private readonly listeners = new Map<string, Set<CdpEventListener>>()
   private nextId = 1
   private closedReason: string | undefined
 
-  private constructor(socket: WebSocket, timeoutMs: number) {
+  private constructor(socket: WebSocket, commandTimeoutMs: number) {
     this.socket = socket
-    this.timeoutMs = timeoutMs
+    this.commandTimeoutMs = commandTimeoutMs
     socket.on('message', (data: WebSocket.RawData) => { this.handleMessage(data) })
     socket.on('close', () => { this.failAll('the DevTools socket closed') })
     socket.on('error', (error: Error) => { this.failAll(`the DevTools socket failed: ${error.message}`) })
@@ -93,13 +119,13 @@ export class CdpClient implements CdpTransport {
   /**
    * Open a client against an already-discovered DevTools endpoint.
    * @param url - `webSocketDebuggerUrl` from `/json/version`.
-   * @param options - command deadline override.
+   * @param options - handshake and per-command deadlines, independently.
    * @returns a connected client.
    * @throws CdpError when the socket cannot be established in time.
    */
-  static async connect(url: string, options: { timeoutMs?: number } = {}): Promise<CdpClient> {
-    const timeoutMs = options.timeoutMs ?? CDP_COMMAND_TIMEOUT_MS
-    const socket = new WebSocket(url, { handshakeTimeout: timeoutMs })
+  static async connect(url: string, options: CdpConnectOptions = {}): Promise<CdpClient> {
+    const commandTimeoutMs = options.commandTimeoutMs ?? CDP_COMMAND_TIMEOUT_MS
+    const socket = new WebSocket(url, { handshakeTimeout: options.handshakeTimeoutMs ?? CDP_HANDSHAKE_TIMEOUT_MS })
     await new Promise<void>((resolve, reject) => {
       const cleanup = (): void => {
         socket.off('open', onOpen)
@@ -110,7 +136,12 @@ export class CdpClient implements CdpTransport {
       socket.once('open', onOpen)
       socket.once('error', onError)
     })
-    return new CdpClient(socket, timeoutMs)
+    return new CdpClient(socket, commandTimeoutMs)
+  }
+
+  /** Whether the socket is gone and every later command will be refused. */
+  get closed(): boolean {
+    return this.closedReason !== undefined
   }
 
   /**
@@ -132,8 +163,8 @@ export class CdpClient implements CdpTransport {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id)
-        reject(new CdpError(method, -1, `timed out after ${this.timeoutMs} ms`))
-      }, this.timeoutMs)
+        reject(new CdpError(method, -1, `timed out after ${this.commandTimeoutMs} ms`))
+      }, this.commandTimeoutMs)
       this.pending.set(id, {
         method,
         timer,

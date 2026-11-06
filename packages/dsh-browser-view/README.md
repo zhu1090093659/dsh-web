@@ -84,7 +84,7 @@ Sign in to the sites the agent should see inside that profile once; the plugin d
 - **Your sign-ins stay in your browser**: the plugin reads pages, not the cookie jar; nothing is copied out of the attached profile into the plugin, the isolated profile or disk.
 - **Every DSH session sees every tab**: while CDP mode is on, every session on this host can enumerate, read, navigate, click and type in every tab of the attached browser, including tabs opened after it attached. The mode grants that to the host, not to one session.
 - **Headless by default**: in isolated mode nothing pops up on the desktop; the tab is the only view.
-- **Process lifetime**: a Chromium the plugin launched is killed when the plugin disposes; disposing or changing configuration only detaches from an external browser and closes neither the browser nor any of its tabs.
+- **Process lifetime**: a Chromium the plugin launched is killed when the plugin disposes; disposing or changing configuration only detaches from an external browser and closes neither the browser nor any of its tabs. A session whose CDP socket has closed is dropped on its next call and detached the same way — it never closes an external browser or its tabs — then reconnected to the configured endpoint; a reconnect that fails is reported as the connection error, and the configured source is never swapped for another one.
 - **Failure is an error, not a downgrade**: an endpoint that does not answer fails the tool call with the connection error, and the plugin never falls back to the isolated browser, so the panel cannot show a browser other than the configured one.
 - **Token handling**: the launch token is minted per navigation, held in memory, and never written to disk; the retry only happens on a loopback target whose document is DSH's own challenge, so no other local service is ever handed the token.
 
@@ -93,7 +93,7 @@ Sign in to the sites the agent should see inside that profile once; the plugin d
 - The tab is a **view**. Input comes from the agent through the tools; it does not forward your mouse or keyboard.
 - CDP mode lists every tab the browser has, including tabs that have nothing to do with this workspace; the panel does not filter or hide them.
 - Chrome 136 and later ignore `--remote-debugging-port` for the default data directory, so the default Chrome profile cannot be attached this way: use a profile explicitly started with a non-default `--user-data-dir` ([Changes to remote debugging switches](https://developer.chrome.com/blog/remote-debugging-port)).
-- A browser that was launched without the debug port, or that has since exited, produces a connection error on the tool call; the plugin starts nothing in its place.
+- A browser that was launched without the debug port, or that has since exited, produces a connection error on the tool call. The retry on the next call reconnects only to the configured endpoint; the plugin never starts a real browser in its place.
 - The tab lives inside the right sidebar, so it needs that column; a layout that hides the column hides the tab.
 - Frames are produced when the page changes, so a static page holds the last frame instead of streaming duplicates.
 - Switching chips keeps the body mounted (`keepMounted`), so the socket survives; the frame still waits for the next change.

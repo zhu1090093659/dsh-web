@@ -31,8 +31,11 @@ re-implementing it would only fight the host.
   that serves the mermaid IIFE the build copies out of the npm package into
   \`lib/assets/\`. Pages without a mermaid block download nothing.
 - **Rendered SVG is sanitized twice.** Mermaid runs at \`securityLevel: 'strict'\` and the
-  output still goes through a strip pass (elements, \`on*\` attributes, \`javascript:\` URLs);
-  markup that stays suspicious is rejected and the fence falls back to a code block.
+  output still goes through a strip pass (elements, \`on*\` attributes, URL attributes whose
+  parsed scheme is \`javascript:\`, \`vbscript:\` or \`data:\`). The scheme is read by parsing the value, not by prefix
+  matching, so a value a browser resolves to \`javascript:\` after dropping tab, line feed and
+  carriage return characters from the scheme or leading C0 controls is stripped as well.
+  Markup that stays suspicious is rejected and the fence falls back to a code block.
 - **Theme flips re-render.** Mermaid paints colors into the SVG, so a light/dark switch
   re-renders each finished diagram from its stored source.
 

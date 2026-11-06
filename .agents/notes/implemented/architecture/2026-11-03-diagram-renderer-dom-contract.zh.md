@@ -24,7 +24,9 @@ Status: implemented
   （\`/api/dsh-diagrams/vendor/mermaid.js\`，走共享配对围栏），伺服构建时从 npm 包复制到
   \`lib/assets/\` 的 mermaid IIFE。没有 mermaid 块的页面不下载任何东西。
 - **渲染出的 SVG 二次消毒。** mermaid 以 \`securityLevel: 'strict'\` 运行，输出仍要过一遍剥除
-  （元素、\`on*\` 属性、\`javascript:\` URL）；清理后仍可疑的标记被拒，围栏退回代码块。
+  （元素、\`on*\` 属性、解析出的 scheme 为 \`javascript:\` / \`vbscript:\` / \`data:\` 的 URL 属性）。scheme 靠解析取值判定，
+  不做前缀匹配：浏览器会先删掉 scheme 里的 TAB/LF/CR 与前导 C0 控制字符，这类取值同样被剥。
+  清理后仍可疑的标记被拒，围栏退回代码块。
 - **主题切换重绘。** mermaid 把颜色画进 SVG，明暗切换按保存的源码重绘每张已完成的图。
 
 ## Alternatives considered

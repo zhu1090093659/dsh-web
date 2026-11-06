@@ -393,6 +393,32 @@ describe('startMobileAdapt', () => {
     await vi.waitFor(() => { expect(whale?.style.display).not.toBe('none') })
   })
 
+  it('user tapping an open portrait drawer hits the drawer rows, not the app frame', async () => {
+    // Given the adaptation layer installed on a portrait phone
+    media.portrait = true
+    media.coarse = true
+    setWidth(390)
+    const start = await freshStart()
+    start()
+
+    // When the injected sheet is read, then the drawer ladder is declared by
+    // this layer itself. In its own drawer mode the official layout paints
+    // _sidebarCol at z-index:71 over its _drawerMask at 70, and any stylesheet
+    // that lands after the official one puts another layer above the drawer -
+    // the app frame then answers every tap meant for an open drawer, which is
+    // what the phone mirror reported (#2012/#2014: elementFromPoint returned
+    // _frame and the drawer folded on its first tap). The ladder must not lean
+    // on the aggregate compat sheet: this package also ships alone.
+    const css = document.querySelector('style[data-plugin-css="dsh-remote-web-ui/mobile-adapt.css"]')?.textContent ?? ''
+    expect(css).toContain('[class*="_sidebarCol"]{z-index:1100 !important}')
+    expect(css).toContain('[class*="_drawerMask"]{z-index:1050 !important}')
+    const drawerZ = Number(/\[class\*="_sidebarCol"\]\{z-index:(\d+)/.exec(css)?.[1])
+    const maskZ = Number(/\[class\*="_drawerMask"\]\{z-index:(\d+)/.exec(css)?.[1])
+    // The dimming sits under the drawer it dims and above the content it darkens.
+    expect(drawerZ).toBeGreaterThan(maskZ)
+    expect(maskZ).toBeGreaterThan(0)
+  })
+
   it('scopes the Enter rewrite to the composer, not every _input field', async () => {
     media.portrait = true
     media.coarse = true

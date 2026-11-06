@@ -9,6 +9,9 @@ afterEach(() => {
   document.head.querySelectorAll('style[data-dsh-compat="responsive"]').forEach(style => style.remove())
 })
 
+/** The layer a declaration block puts its subject on. */
+const zIndexOf = (declarations: string): number => Number(/z-index:\s*(\d+)/.exec(declarations)?.[1])
+
 describe('aggregate responsive compat contract', () => {
   it('stamps new content in the shared frame without queueing a second frame', async () => {
     const frames = new Map<number, FrameRequestCallback>()
@@ -380,5 +383,40 @@ describe('aggregate responsive compat contract', () => {
     expect(drawer).toContain('inset-block: 0')
     expect(drawer).toContain('z-index: 1100')
     expect(drawer).toContain('width: min(88vw, 320px) !important')
+  })
+
+  // #2013: the drawer's LAYER fights the same opponent as its position, and the
+  // opponent is the official layout rather than a skin. The layout's own drawer
+  // mode ships `.frame[data-sidebar-drawer] .sidebarCol { position: absolute;
+  // z-index: 71 }` at exactly this rule's 0-3-0 weight, and the ui-layout client
+  // module injects that stylesheet at runtime - after this tag - so document
+  // order hands the later sheet every plain declaration here. The drawer then
+  // computed 71 with this sheet's own 1050 mask painted over it: an open drawer
+  // that reported `elementFromPoint -> frame` on every row and folded on its
+  // first tap.
+  it('user tapping an open drawer on a narrow viewport hits the drawer, not the frame', () => {
+    // Given the mobile breakpoint declares the drawer and its dimming
+    const mobile = RESPONSIVE_CSS.slice(RESPONSIVE_CSS.indexOf('@media (max-width: 768px)'))
+    const drawer = mobile.match(/\[data-dsh-frame\] \[data-pane="sidebar"\][^{]*\{([^}]*)\}/)?.[1] ?? ''
+    const mask = mobile.match(/\[data-dsh-frame\]:not\(\[data-sidebar-collapsed\]\)::after\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(drawer).not.toBe('')
+    expect(mask).not.toBe('')
+
+    // When the official drawer stylesheet is served after this one, then the
+    // drawer's layer must not be decided by that order.
+    expect(drawer).toContain('z-index: 1100 !important')
+
+    // And the dimming must stay purely visual: a hit layer here answers "the
+    // frame" for itself (a pseudo-element's hit reports its originating
+    // element), which is the report's shape and how a tap meant for the
+    // conversation underneath was swallowed. Dismissal keeps its owners - the
+    // official drawer mask and the capture-phase click handler covered by the
+    // outside-click test above.
+    expect(mask).toContain('pointer-events: none')
+    expect(mask).not.toMatch(/pointer-events:\s*auto/)
+
+    // The dimming still sits under the drawer it dims, and still above content.
+    expect(zIndexOf(mask)).toBeLessThan(zIndexOf(drawer))
+    expect(zIndexOf(mask)).toBeGreaterThan(0)
   })
 })

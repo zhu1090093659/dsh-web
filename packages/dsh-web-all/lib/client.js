@@ -201,24 +201,47 @@ html[data-platform="darwin"] body > :is(
      a side effect of that intent, not the intent. A skin that needs a
      containing block should paint its layer inside the pane's slot child
      instead. Chasing skins here would turn the mobile contract into an arms
-     race the shell cannot win. */
+     race the shell cannot win.
+
+     The LAYER has to survive the same fight as the position, and it is the
+     official layout - not a skin - that it fights. The layout has a drawer
+     mode of its own: '.frame[data-sidebar-drawer] .sidebarCol' ships
+     'position: absolute; z-index: 71' at exactly this rule's 0-3-0 weight, and
+     the ui-layout client module injects that stylesheet at runtime, i.e. after
+     this tag, so document order hands the later sheet every plain declaration
+     here. The drawer then computed 71, this sheet's own 1050 mask painted over
+     it, and every tap on an open drawer landed on the frame element (#2013:
+     an open drawer with a grey cast, dismissed by its first tap). Both the
+     position and the layer are therefore !important: which layer the drawer
+     lives on must not be decided by the order two injected stylesheets happen
+     to load in. */
   [data-dsh-frame] [data-pane="sidebar"]:is([data-pane="sidebar"]) {
     position: absolute !important;
     inset-block: 0;
     inset-inline-start: 0;
-    z-index: 1100;
+    z-index: 1100 !important;
     width: min(88vw, 320px) !important;
     max-width: 100%;
     box-shadow: 0 12px 32px rgb(0 0 0 / 24%);
     transform: translateX(0);
     transition: transform 160ms ease;
   }
+  /* The mask is the drawer's dimming, never its hit surface. At 1050 with the
+     default pointer-events it is a full-frame hit layer, and a pseudo-element's
+     hit reports its originating element - so a tap anywhere on the frame
+     answered "the frame", which is the shape #2013 reported from inside the
+     drawer (every row resolving to the frame) and how a tap meant for the
+     conversation under the dimming was swallowed. Dismissal keeps two owners
+     and both stay: the official drawer mask the layout paints under its own
+     drawer (it closes the drawer through the app), and the capture-phase click
+     handler that folds the drawer on any click outside the sidebar. */
   [data-dsh-frame]:not([data-sidebar-collapsed])::after {
     content: "";
     position: fixed;
     inset: 0;
     z-index: 1050;
     background: rgb(0 0 0 / 24%);
+    pointer-events: none;
   }
   [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] {
     width: 52px !important;

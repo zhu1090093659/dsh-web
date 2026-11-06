@@ -151,6 +151,20 @@ const ADAPT_CSS: readonly string[] = [
   '[class$="_frame"][data-sidebar-collapsed] [class*="_sidebarCol"]{grid-column:1/2}',
   '[class$="_frame"][data-sidebar-collapsed] [class$="_centerCol"]{grid-column:2/3}',
   '[class$="_frame"][data-sidebar-collapsed] [class$="_detailsCol"]{grid-column:3/4}',
+  // The drawer ladder, declared by this layer itself. In its own drawer mode the
+  // official layout paints _sidebarCol at z-index:71 over its _drawerMask at 70,
+  // and nothing in this sheet owned that ordering: a stylesheet that lands after
+  // the official one (the aggregate compat sheet's 1050 mask did exactly that)
+  // puts another layer above the drawer, and then the app frame answers every
+  // tap meant for an open drawer - the phone mirror's panel rows went dead that
+  // way while the drawer still looked fine (#2012/#2013/#2014: elementFromPoint
+  // returned _frame, and the drawer's first tap folded it). This package also
+  // ships on profiles without the aggregate, so the portrait surface states the
+  // ladder instead of inheriting it: the drawer at 1100, its dimming at 1050 -
+  // above the content it darkens, below the drawer, and still the app's own
+  // dismiss surface.
+  '[class*="_sidebarCol"]{z-index:1100 !important}',
+  '[class*="_drawerMask"]{z-index:1050 !important}',
   // Keep the chat header title clear of the floating whale.
   `body.${RAIL_HIDDEN_CLASS} [class$="_titleRow"]{padding-left:52px}`,
   // The whale button itself.

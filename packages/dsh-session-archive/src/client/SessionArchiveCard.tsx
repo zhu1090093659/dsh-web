@@ -17,6 +17,7 @@ import {
   validateDays,
 } from '../core/config.ts'
 import type { ArchiveSessionRow } from '../core/types.ts'
+import { selectionFullyProtected } from '../core/cascade.ts'
 import { filterRows, PAGE_SIZE, selectionSummary, sortRows, type SortDir, type SortKey } from '../core/selection.ts'
 import type { ArchiveController } from './archive-controller.ts'
 import { formatBytes, formatTime, BatchDialog, DeleteConfirmDialog, PreviewDialog } from './dialogs.tsx'
@@ -76,6 +77,12 @@ export function SessionArchiveCard(props: SessionArchiveProps): ReactNode {
   const page = Math.min(ui.page, totalPages - 1)
   const shown = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
   const busy = ui.batch !== null && ui.batch.running
+  // The host's protection facts (running / attached / in-flight / current),
+  // merged with the same precedence the host's authoritative plan uses, so the
+  // affordances here refuse exactly what the host would refuse.
+  const protection = useMemo(() => controller.protectedReason(), [controller, rows])
+  // A selection the host protects whole has nothing left to delete.
+  const deleteBlocked = selectionFullyProtected(ui.selection, protection)
 
   const workspaceTitle = (id: string): string => workspaces.find((workspace) => workspace.id === id)?.title ?? id
 
@@ -179,7 +186,13 @@ export function SessionArchiveCard(props: SessionArchiveProps): ReactNode {
           <button type="button" className={styles.button} disabled={selection.size === 0 || busy} onClick={() => { runBatch('unarchive') }}>
             {t('arch.batch.unarchive')}
           </button>
-          <button type="button" className={styles.dangerButton} disabled={selection.size === 0 || busy} onClick={() => { requestDelete(ui.selection) }}>
+          <button
+            type="button"
+            className={styles.dangerButton}
+            disabled={selection.size === 0 || busy || deleteBlocked}
+            title={deleteBlocked ? t('arch.batch.deleteBlocked') : undefined}
+            onClick={() => { requestDelete(ui.selection) }}
+          >
             {t('arch.batch.delete')}
           </button>
         </span>
@@ -190,6 +203,7 @@ export function SessionArchiveCard(props: SessionArchiveProps): ReactNode {
         {shown.map((row) => {          const chips = statusChips(row, currentId)
           const issues = issueLabels(row)
           const selected = selection.has(row.id)
+          const protectedReason = protection.get(row.id)
           return (
             <div key={row.id} className={`${styles.row} ${selected ? styles.rowSelected : ''}`} data-dsh-part="row">
               <input
@@ -229,7 +243,13 @@ export function SessionArchiveCard(props: SessionArchiveProps): ReactNode {
                     {t('arch.op.unarchive')}
                   </button>
                 )}
-                <button type="button" className={`${styles.linkButton} ${styles.linkDanger}`} disabled={busy} onClick={() => { requestDelete([row.id]) }}>
+                <button
+                  type="button"
+                  className={`${styles.linkButton} ${styles.linkDanger}`}
+                  disabled={busy || protectedReason !== undefined}
+                  title={protectedReason === undefined ? undefined : t(`arch.reason.${protectedReason}`)}
+                  onClick={() => { requestDelete([row.id]) }}
+                >
                   {t('arch.op.delete')}
                 </button>
               </div>

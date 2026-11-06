@@ -327,4 +327,43 @@ describe('archivedAtSource', () => {
     expect(row?.archivedAt).toBeUndefined()
     expect(row && 'archivedAtSource' in row).toBe(false)
   })
+
+  it('operator sees the host protection facts on the rows the host reports', async () => {
+    // Given a pass whose caller supplies the host's own protection map
+    const host = createFakeHost({
+      feedItems: [
+        { sessionId: 'session-attached', updatedAt: 3, running: false },
+        { sessionId: 'session-inflight', updatedAt: 2 },
+        { sessionId: 'session-idle', updatedAt: 1 },
+      ],
+    })
+    const sources = {
+      ...host.sources(),
+      hostProtectedReason: new Map<string, 'attached' | 'in-flight'>([
+        ['session-attached', 'attached'],
+        ['session-inflight', 'in-flight'],
+      ]),
+    }
+
+    // When one inventory pass builds the rows
+    const built = await buildInventory(sources, AbortSignal.timeout(5000))
+    const byId = new Map(built.rows.map((row) => [row.id, row]))
+
+    // Then each row reports exactly the host fact that covers it
+    expect(byId.get('session-attached')?.hostProtectedReason).toBe('attached')
+    expect(byId.get('session-inflight')?.hostProtectedReason).toBe('in-flight')
+    // And an unprotected row carries no such field at all
+    expect(byId.get('session-idle') && 'hostProtectedReason' in byId.get('session-idle')!).toBe(false)
+  })
+
+  it('operator sees no host fact when the pass is not given one', async () => {
+    // Given a pass with no host protection map (an older caller, or a test host)
+    const host = createFakeHost({ feedItems: [{ sessionId: 'session-plain', updatedAt: 1 }] })
+
+    // When one inventory pass builds the rows
+    const built = await buildInventory(host.sources(), AbortSignal.timeout(5000))
+
+    // Then every row degrades to what the browser half observes on its own
+    for (const row of built.rows) expect('hostProtectedReason' in row).toBe(false)
+  })
 })

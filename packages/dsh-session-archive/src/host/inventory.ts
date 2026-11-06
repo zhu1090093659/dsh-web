@@ -64,6 +64,15 @@ export interface InventorySources {
    * reads and parses the file itself.
    */
   projcacheIndex?: ProjcacheIndex
+  /**
+   * Optional host-side protection facts the browser half cannot observe: live
+   * SessionStore members (`attached`) and sessions a mutating operation owns
+   * (`in-flight`). The service passes one so the served rows say why the host
+   * will refuse to delete them; absent means rows carry no
+   * {@link ArchiveSessionRow.hostProtectedReason}, exactly as before the field
+   * existed.
+   */
+  hostProtectedReason?: ReadonlyMap<string, 'attached' | 'in-flight'>
 }
 
 /** Enrichment facts from one per-session projection-cache file. */
@@ -335,6 +344,7 @@ export async function buildInventory(sources: InventorySources, signal: AbortSig
     if (draft.fromFeed === false && draft.hasDir === false) issues.push('no-data')
     const childList = childIds.get(draft.id) ?? []
     const sizeBytes = dirIndex.sizes.get(draft.id)
+    const hostProtectedReason = sources.hostProtectedReason?.get(draft.id)
     rows.push({
       id: draft.id,
       ...(draft.title !== undefined ? { title: draft.title } : {}),
@@ -348,6 +358,7 @@ export async function buildInventory(sources: InventorySources, signal: AbortSig
       lastActivityReliable: draft.lastActivityReliable,
       ...(sizeBytes !== undefined ? { sizeBytes } : {}),
       running: draft.running,
+      ...(hostProtectedReason !== undefined ? { hostProtectedReason } : {}),
       blank: draft.blank,
       ...(draft.origin !== undefined ? { origin: draft.origin } : {}),
       ...(draft.parentId !== undefined ? { parentId: draft.parentId } : {}),

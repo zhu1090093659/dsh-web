@@ -292,6 +292,7 @@ export class ArchiveService {
       projcacheFiles: this.projcacheFiles,
       dirIndex: this.dirIndex.get(),
       projcacheIndex: this.projcacheIndex.get(),
+      hostProtectedReason: this.hostProtectedReasons(),
     }
   }
 
@@ -317,6 +318,20 @@ export class ArchiveService {
       // A failing store read degrades to feed-only protection.
     }
     return ids
+  }
+
+  /**
+   * Row-level host protection facts the browser half cannot observe: live-store
+   * members are `attached`, sessions a mutating operation owns are `in-flight`.
+   * `running` (feed flag) and `current` (the client's own session) travel on
+   * their own, so the wire carries only what the client cannot see. The
+   * `in-flight` write lands last, matching {@link protectedReason}'s precedence.
+   */
+  private hostProtectedReasons(): Map<string, 'attached' | 'in-flight'> {
+    const map = new Map<string, 'attached' | 'in-flight'>()
+    for (const id of this.liveSessionIds()) map.set(id, 'attached')
+    for (const id of this.busy) map.set(canonicalSessionId(id), 'in-flight')
+    return map
   }
 
   /** Protection map shared by manual delete and auto cycles. */

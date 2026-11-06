@@ -109,12 +109,22 @@ export class ArchiveController {
     }
   }
 
+  /**
+   * Protection map over the current inventory snapshot: the same input the
+   * confirm-dialog plan is computed from, and what the list reads to disable the
+   * affordances the host would refuse. Rows carrying no host fact degrade to
+   * what the browser half observes itself.
+   */
+  protectedReason(): Map<string, string> {
+    const rows = this.store.getSnapshot().inventory?.rows ?? []
+    return clientProtectedReason(rows, this.currentSessionId())
+  }
+
   /** The delete plan the confirm dialog shows, from the current snapshot. */
   planDeleteFor(directIds: readonly string[]): { plan: DeletePlanView; totalBytes: number } {
     const inventory = this.store.getSnapshot().inventory
     const rows = inventory?.rows ?? []
-    const protectedReason = clientProtectedReason(rows, this.currentSessionId())
-    const plan = planDelete(rows, directIds, protectedReason)
+    const plan = planDelete(rows, directIds, clientProtectedReason(rows, this.currentSessionId()))
     return { plan, totalBytes: plan.totalBytes }
   }
 

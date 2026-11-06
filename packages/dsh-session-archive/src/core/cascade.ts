@@ -95,18 +95,48 @@ export function planDelete(
 }
 
 /**
- * Protected-reason map for preview surfaces. `running` and `current` are the
- * two facts the browser half knows; the host adds `in-flight` and re-checks
- * everything authoritatively.
+ * Precedence among the protection facts that can cover one session, ordered
+ * exactly like the host's authoritative map: a live-store attachment outranks
+ * the feed's `running` flag, the session being viewed outranks an attachment,
+ * and an in-flight operation outranks everything else. {@link planDelete}
+ * reports one reason per id, so the browser half must resolve a conflict the
+ * same way or its skip list would disagree with the host's.
+ */
+const PROTECTION_RANK: Record<string, number> = { running: 1, attached: 2, current: 3, 'in-flight': 4 }
+
+/**
+ * Protected-reason map for preview surfaces. `running` and `current` are facts
+ * the browser half observes itself; `attached` and `in-flight` come from the
+ * row's {@link ArchiveSessionRow.hostProtectedReason}, which an older host does
+ * not send — those rows simply stay unprotected here, and the host still
+ * refuses them authoritatively.
  */
 export function clientProtectedReason(
   rows: readonly ArchiveSessionRow[],
   currentSessionId: string | undefined,
 ): Map<string, string> {
   const map = new Map<string, string>()
-  for (const row of rows) {
-    if (row.running) map.set(row.id, 'running')
+  const mark = (id: string, reason: string): void => {
+    const held = map.get(id)
+    if (held !== undefined && (PROTECTION_RANK[held] ?? 0) >= (PROTECTION_RANK[reason] ?? 0)) return
+    map.set(id, reason)
   }
-  if (currentSessionId !== undefined && currentSessionId !== '') map.set(currentSessionId, 'current')
+  for (const row of rows) {
+    if (row.running) mark(row.id, 'running')
+    if (row.hostProtectedReason !== undefined) mark(row.id, row.hostProtectedReason)
+  }
+  if (currentSessionId !== undefined && currentSessionId !== '') mark(currentSessionId, 'current')
   return map
+}
+
+/**
+ * True when the host protects every selected session. The batch delete
+ * affordance is disabled in exactly that case: a selection the host would skip
+ * whole has nothing left to act on.
+ */
+export function selectionFullyProtected(
+  ids: readonly string[],
+  protectedReason: ReadonlyMap<string, string>,
+): boolean {
+  return ids.length > 0 && ids.every((id) => protectedReason.has(id))
 }

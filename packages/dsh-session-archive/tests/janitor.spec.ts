@@ -151,6 +151,51 @@ describe('physical delete', () => {
     expect(response.results[0]?.reason).toBe('attached')
   })
 
+  it('operator sees attachment and in-flight facts in the served inventory', async () => {
+    // Given one session the host process holds open, one it is mutating, and one idle
+    const host = createFakeHost({
+      feedItems: [
+        { sessionId: 'session-attached', updatedAt: 3 },
+        { sessionId: 'session-inflight', updatedAt: 2 },
+        { sessionId: 'session-idle', updatedAt: 1 },
+      ],
+      persistedIds: ['session-attached', 'session-inflight', 'session-idle'],
+      liveIds: ['session-attached'],
+    })
+    const service = await settledService(host)
+
+    // When a delete of the in-flight session is stalled at its first seam
+    let entered = (): void => {}
+    const reachedSeam = new Promise<void>((resolve) => { entered = resolve })
+    let release = (): void => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const unarchiveSession = host.registry.unarchiveSession
+    host.registry.unarchiveSession = async (id: string) => {
+      entered()
+      await gate
+      await unarchiveSession(id)
+    }
+    const deleting = service.deleteSessions(['session-inflight'])
+    await reachedSeam
+    const during = new Map((await service.inventory()).rows.map((row) => [row.id, row]))
+
+    // Then the served inventory carries exactly those two facts, and nothing on the idle row
+    expect(during.get('session-attached')?.hostProtectedReason).toBe('attached')
+    expect(during.get('session-inflight')?.hostProtectedReason).toBe('in-flight')
+    expect(during.get('session-idle') && 'hostProtectedReason' in during.get('session-idle')!).toBe(false)
+
+    // And once the operation finishes the in-flight fact is gone with it
+    release()
+    await deleting
+    const after = new Map((await service.inventory()).rows.map((row) => [row.id, row]))
+    expect(
+      after.get('session-inflight') !== undefined && 'hostProtectedReason' in (after.get('session-inflight') as object),
+    ).toBe(false)
+    expect(
+      after.get('session-idle') !== undefined && 'hostProtectedReason' in (after.get('session-idle') as object),
+    ).toBe(false)
+  })
+
   it('skips the entire family when a descendant is running (no half-deleted families)', async () => {
     const host = createFakeHost({
       feedItems: [

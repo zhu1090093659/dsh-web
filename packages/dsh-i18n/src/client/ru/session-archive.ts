@@ -64,6 +64,7 @@ export const ru: Record<string, string> = {
   'arch.batch.archive': 'Архивировать выбранные',
   'arch.batch.unarchive': 'Разархивировать выбранные',
   'arch.batch.delete': 'Удалить выбранные',
+  'arch.batch.deleteBlocked': 'Все выбранные сессии защищены хостом и не могут быть удалены',
   'arch.confirm.deleteTitle': 'Удаление сессий',
   'arch.confirm.direct': 'Выбрано напрямую: {n} сессий',
   'arch.confirm.descendants': 'Удаляются по связи родитель-потомок: {n} сессий',

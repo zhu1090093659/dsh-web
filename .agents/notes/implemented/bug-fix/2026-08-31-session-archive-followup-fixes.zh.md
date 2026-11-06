@@ -152,3 +152,18 @@ DSH 进程持有（活跃 SessionStore 成员）。批量对话框确实报告�
 **备选方案。** 把 `nativeIds` 传进读取：否决——这里的另一种拼写是 id 上的一次双射，推导出来即可让这个导出函数不依赖清单状态；`scrubProjcache` 需要那张映射，只是因为它还要删除自己推导不出的名字。把投影缓存目录一次读成一个名字集合：否决——成本不在名字上，而在名字背后那 11.8 MiB 的文件内容，这样一个集合一次读取也省不下来。让记忆在未命中时不记忆：作为另一项决策否决，它需要自己收集证据——它改变的是哪些装配会重读，而本次要修的行是文件本已存在的老会话。
 
 **后果。** 会话的缓存文件用裸名命名时，该行从第一次装配起就得到富化，而不是永远得不到。两种拼写下都没有文件的会话，仍会在插件存活期内记忆 `null`——此处不变，并作为一项独立决策记在这里。覆盖：`tests/inventory.spec.ts` 新增两例——两种拼写都能读取且 canonical 优先、以及用裸名文件富化一个 canonical 行；包内 15 个测试文件 / 115 个用例、两个 program 的 typecheck 与 `docs:check` 通过。属 host 半区改动，需用户重启 DSH 服务后才会作用到 GUI。
+
+## 后续修复 6（issue #2022）：列表拒绝的必须就是宿主拒绝的
+
+**问题。** 宿主的保护判定只在删除路径里计算（`ArchiveService.protectedReason`：活跃 SessionStore 成员记 `attached`、feed 的 `running`、客户端声明的 `current`、正在处理的目标记 `in-flight`），而服务出去的清单只带 feed 的 `running` 位。于是浏览器半区只知道四个事实里的两个：被运行中的 DSH 进程占用的行看起来可以删除，即使选中的会话全部受保护，「批量删除」仍然可点，确认框对宿主一定会跳过的会话报 `skipped 0`——用户只有在批次跑完时才看到真相。四个事实里有三个在浏览器里根本观测不到：空闲占用、在途操作，以及混用 id 拼写时的当前会话，都是宿主侧状态。
+
+**决策。**
+
+1. `ArchiveSessionRow.hostProtectedReason?: 'attached' | 'in-flight'` 承载浏览器无法观测的那两个事实；`running`（feed 位）与 `current`（客户端自己的会话）照旧各自随行，于是线上协议只多一个可选字段，其余形状不变。`InventorySources.hostProtectedReason` 负责注入，`buildInventory` 把它贴到对应行上；`ArchiveService.sources()` 用 `liveSessionIds()` 与 busy 集合填充这张表，并把 `in-flight` 写在最后，使在途目标取胜的方式与 `protectedReason()` 完全一致。
+2. `clientProtectedReason` 按宿主的优先级合并行事实——`in-flight > current > attached > running`——这条规则记在 `core/cascade.ts` 的 `planDelete` 旁边，于是确认框的跳过计数与批次的跳过原因，指向的胜者与宿主权威计划里的完全一致。
+3. 列表每次装配只读一次该映射：受保护的行的删除按钮被禁用并以自身原因作 title，批量删除只在 `selectionFullyProtected` 成立时禁用——混合选择照常可用，确认框给出准确的跳过数量。新增文案键 `arch.batch.deleteBlocked`（zh/en，ru 在集中包）。
+4. 不下发该字段的旧宿主退化为 `running` 加当前会话：正是修复前的行为，而宿主依旧权威地拒绝。
+
+**备选方案。** 把宿主整张保护表作为单独的清单字段（`InventoryView.protected`）下发：否决——它会让「哪些行受保护」多出第二处查找点，而这本来是行自身的属性。让宿主连 `running` 与 `current` 一起下发：否决——浏览器两样都观测得到，重复来源只会漂移。对受保护行禁用复选框：否决——那是比问题报告大得多的行为变更；行保持可选，对话框才能如实记账，而这正是跳过明细存在的理由。
+
+**后果。** 用户点得动的东西现在与宿主的实际行为一致；删除语义未变——宿主仍是唯一权威，每次拒绝仍以带原因的 `skipped` 结果落地。覆盖：`tests/card-protection.spec.ts`（行内控件、全保护与混合选择、对话框跳过记账、旧宿主降级）、`tests/cascade.spec.ts`（合并优先级、`selectionFullyProtected`）、`tests/inventory.spec.ts`（线上字段的有与无）、`tests/janitor.spec.ts`（服务出去的清单如何报告 attached 行与 in-flight 行）、`tests/controller.spec.ts`（确认框计数与逐行跳过原因）。改动前后的卡片组件 DOM 捕获（同一份清单、同样的 jsdom 渲染）存放在仓库外的 `C:\\Users\\A\\Documents\\qa-2022-archive-evidence\\{before,after}.{json,html}`；真实安装上的 GUI 确认留给维护者，因此此处不宣称已有截图。

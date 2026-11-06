@@ -131,6 +131,39 @@ describe('ArchiveController.runBatch', () => {
     expect(skipped?.reason).toBe('running')
   })
 
+  it('operator sees host-protected sessions counted as skipped before any request', async () => {
+    // Given rows the host protects for reasons this browser half cannot observe,
+    // beside one it protects by being the session the user is viewing
+    const rows = [
+      row({ id: 'session-attached', hostProtectedReason: 'attached' }),
+      row({ id: 'session-inflight', hostProtectedReason: 'in-flight' }),
+      row({ id: 'session-cur' }),
+      row({ id: 'session-x' }),
+    ]
+    const { api, calls } = stubApi()
+    const controller = new ArchiveController({ api, sessions: { current: () => 'session-cur' } })
+    controller.store.actions.setInventory(makeInventory(rows))
+
+    // When the user confirms a delete covering all four
+    await controller.confirmDelete(['session-attached', 'session-inflight', 'session-cur', 'session-x'])
+    const confirm = controller.store.getSnapshot().confirmDelete
+
+    // Then the dialog counts only the deletable session and reports three skips
+    expect(confirm?.total).toBe(1)
+    expect(confirm?.skippedProtected).toBe(3)
+
+    // And the batch sends only that session, recording each skip with its own reason
+    await controller.runBatch('delete', ['session-attached', 'session-inflight', 'session-cur', 'session-x'])
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.ids).toEqual(['session-x'])
+    const skipped = new Map((controller.store.getSnapshot().batch?.results ?? [])
+      .filter((result) => result.status === 'skipped')
+      .map((result) => [result.id, result.reason]))
+    expect(skipped.get('session-attached')).toBe('attached')
+    expect(skipped.get('session-inflight')).toBe('in-flight')
+    expect(skipped.get('session-cur')).toBe('current')
+  })
+
   it('marks a chunk failed when the API throws and keeps the rest', async () => {
     const rows = Array.from({ length: 3 }, (_, index) => row({ id: `session-${index}` }))
     let failOnce = true

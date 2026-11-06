@@ -152,6 +152,45 @@ describe('/api/dsh-skill-explorer trust fence', () => {
     expect(status()).toBe(200)
   })
 
+  it('operator: allows a non-loopback client when host connection service admits the request', async () => {
+    // Given a remote client behind a reverse proxy accepted by the connection service
+    const requestRejection = vi.fn(() => undefined)
+    const ctx = { get: (name: string) => name === 'connection' ? { requestRejection } : undefined }
+    const proxyRoutes = makeRoutes(ctx as never, deps)
+    const list = proxyRoutes.find((route) => route.path === ROUTES.list)!
+    const { res, status } = response()
+
+    // When querying the skill list route through the proxy
+    await list.handler(request(ROUTES.list, 'GET', {
+      remoteAddress: '192.168.15.24',
+      host: 'dsh.example.internal',
+    }), res)
+
+    // Then the request is admitted with status 200
+    expect(status()).toBe(200)
+    expect(requestRejection).toHaveBeenCalled()
+  })
+
+  it('operator: still rejects a non-loopback client when host connection service rejects the request', async () => {
+    // Given a remote client rejected by the connection service
+    const requestRejection = vi.fn(() => 403)
+    const ctx = { get: (name: string) => name === 'connection' ? { requestRejection } : undefined }
+    const proxyRoutes = makeRoutes(ctx as never, deps)
+    const list = proxyRoutes.find((route) => route.path === ROUTES.list)!
+    const { res, status, body } = response()
+
+    // When querying the skill list route
+    await list.handler(request(ROUTES.list, 'GET', {
+      remoteAddress: '192.168.15.24',
+      host: 'dsh.example.internal',
+    }), res)
+
+    // Then the request is rejected with 403
+    expect(status()).toBe(403)
+    expect(JSON.parse(body())).toEqual({ error: 'forbidden: loopback-only' })
+    expect(requestRejection).toHaveBeenCalled()
+  })
+
   it('still rejects a non-loopback client when pairing reports false', async () => {
     const ctx = { get: () => ({ isPairedDevice: () => false }) }
     const revokedRoutes = makeRoutes(ctx as never, deps)

@@ -104,9 +104,10 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
 
 - 全部 `/api/dsh-skill-explorer/*` 路由默认仅限 loopback（插件家族共享围栏：
   loopback 套接字 + Host 头 + 浏览器同源标记）：未配对的局域网客户端在任何
-  技能文件访问前即收到 `403 forbidden: loopback-only`。同时装了
-  `dsh-remote-web-ui` 时，有效的已配对设备 cookie 是额外放行路径（与
-  `api/gate` 检查同一枚 cookie）；未配对与已撤销设备仍 403。技能中心不硬依赖
+  技能文件访问前即收到 `403 forbidden: loopback-only`。经由宿主 `connection`
+  服务接纳的反向代理或入口部署（`--trusted-host`、有效签名浏览器会话）可直接
+  通行。同时装了 `dsh-remote-web-ui` 时，有效的已配对设备 cookie 是额外放行路径
+  （与 `api/gate` 检查同一枚 cookie）；未配对与已撤销设备仍 403。技能中心不硬依赖
   远程插件。
 - 写路由仅把面板展示的路径作为身份声明；执行修改前，最新文件系统扫描必须解析到
   同名且路径完全一致的技能。任意路径与过期的同名回退都会被拒绝，因此项目技能

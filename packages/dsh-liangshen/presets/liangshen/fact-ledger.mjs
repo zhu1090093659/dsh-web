@@ -13,12 +13,13 @@
  * renders the current facts as one of its fields, republished only on change.
  *
  * The register itself is a list of single-line facts, newest last, rebuilt by
- * replaying `tool/call` events for this tool from the session log — exactly
- * the way the paging activation state replays. A fact is a string the model
- * writes; registering a new fact APPENDS, and registering one already present
- * is a no-op report. REVOCATION is append-only too: a `revoke` entry removes
- * every earlier fact carrying the same tag, so the fold stays deterministic
- * after resume and compaction without any process memory.
+ * replaying this tool's calls out of the session log — exactly the way the
+ * paging activation state replays, and from both wire shapes a session records
+ * them in ({@link factRegisterCall}). A fact is a string the model writes;
+ * registering a new fact APPENDS, and registering one already present is a
+ * no-op report. REVOCATION is append-only too: a `revoke` entry removes every
+ * earlier fact carrying the same tag, so the fold stays deterministic after
+ * resume and compaction without any process memory.
  *
  * The tool is deliberately small: it validates and reports, it does not edit
  * the context itself. The projection the model sees next step is the fold of
@@ -54,16 +55,51 @@ export const MAX_FACT_CHARS = 160
 export const MAX_FACTS = 12
 
 /**
+ * The call one event contributes to the fold, or undefined when the event is
+ * not a `fact_register` call that took effect.
+ *
+ * The session records the call in one of two shapes, and which one depends on
+ * the presentation the session runs. `native` records a top-level `tool/call`
+ * whose `arguments` is the JSON string the model emitted. `ptc` — the shipped
+ * default — collapses the wire to `run_code` and reaches every other tool from
+ * inside a program, which the runtime records as `tool/ptc-dispatch`: its
+ * `arguments` is already an object, and a dispatch that failed carries its own
+ * `isError` on the dispatch record (`event.data.isError`), not on the event
+ * envelope. Reading only `tool/call` therefore folded an empty register in
+ * every factory-default session — pin and revoke both reported success while no
+ * `key facts` field ever rendered — which is the same gap `paging.mjs` replays
+ * both shapes to avoid.
+ *
+ * A dispatch that reported an error never took effect, so it contributes
+ * nothing: a failed pin must not pin, and a failed revoke must not drop a fact
+ * that still stands. `tool/ptc-dispatch-start` only announces a dispatch that
+ * has not settled yet, so the event-type check below leaves it out. The
+ * `native` half keeps its existing semantics untouched: a `tool/call` is read
+ * whatever its `tool/result` later reported, exactly as before this change.
+ */
+function factRegisterCall(event) {
+  if (event?.type === 'tool/ptc-dispatch') {
+    const dispatch = event.data
+    if (dispatch?.name !== FACT_LEDGER_TOOL || dispatch?.isError === true) return undefined
+    return dispatch
+  }
+  if (event?.type !== 'tool/call' || event.data?.name !== FACT_LEDGER_TOOL) return undefined
+  return event.data
+}
+
+/**
  * Fold the current fact register from the event stream: every successful
- * `fact_register` call appends its fact (or revokes by tag). Facts carry no
- * ids — revocation matches on the optional `tag`, and an untagged fact can
- * only be revoked by revoking its exact text as the tag of last resort.
+ * `fact_register` call appends its fact (or revokes by tag), whichever wire
+ * shape recorded it. Facts carry no ids — revocation matches on the optional
+ * `tag`, and an untagged fact can only be revoked by revoking its exact text as
+ * the tag of last resort.
  */
 export function foldFactLedger(events) {
   const facts = []
   for (const event of Array.isArray(events) ? events : []) {
-    if (event?.type !== 'tool/call' || event.data?.name !== FACT_LEDGER_TOOL) continue
-    let args = event.data?.arguments
+    const data = factRegisterCall(event)
+    if (data === undefined) continue
+    let args = data.arguments
     if (typeof args === 'string') {
       try { args = JSON.parse(args) } catch { args = undefined }
     }

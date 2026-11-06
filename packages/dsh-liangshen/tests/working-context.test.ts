@@ -60,6 +60,27 @@ function activation(namespace: string, callId: string) {
   ]
 }
 
+/** One fact_register call as the `native` wire records it: JSON-string arguments. */
+function factCall(args: Record<string, unknown>) {
+  return { type: 'tool/call', data: { callId: 'call_fact', name: 'fact_register', arguments: JSON.stringify(args) } }
+}
+
+/** One fact_register dispatch as the `ptc` wire records it: object arguments. */
+function factDispatch(args: Record<string, unknown>, isError = false) {
+  return {
+    type: 'tool/ptc-dispatch',
+    data: {
+      rootCallId: 'call_root',
+      parentCallId: 'call_root',
+      subCallId: 'call_root:ptc:1',
+      name: 'fact_register',
+      arguments: args,
+      isError,
+      content: [{ type: 'text', text: isError ? 'failed' : 'Pinned' }],
+    },
+  }
+}
+
 describe('liangshen-working-context', () => {
   test('exports a diagnostic plugin name and prepends its pre-step hook', () => {
     expect(name).toBe('liangshen-working-context')
@@ -111,6 +132,44 @@ describe('liangshen-working-context', () => {
       { type: 'todo/write', data: { todos: [{ content: 'Fix auth', status: 'in_progress' }] } },
     ])
     expect(line).toBe('[Working Context: plan mode: on | active namespaces: github | in progress: Fix auth]')
+  })
+
+  test('operator sees a ptc-pinned key fact on the working-context line', () => {
+    // Given a pin the runtime recorded as a ptc dispatch beside a plan-mode event.
+    const events = [
+      { type: 'plan/mode', data: { active: true } },
+      factDispatch({ fact: 'User requires strict TypeScript', tag: 'constraints' }),
+    ]
+    // When the line renders, Then the register is one of its fields, tag inline.
+    expect(renderWorkingContext(events))
+      .toBe('[Working Context: plan mode: on | key facts: User requires strict TypeScript [constraints]]')
+  })
+
+  test('operator sees key facts from both wires folded onto one line', () => {
+    // Given a native pin, a ptc pin, and a ptc revocation of the native fact's tag.
+    const events = [
+      factCall({ fact: 'User prefers tabs', tag: 'constraints' }),
+      factDispatch({ fact: 'Auth decided: JWT', tag: 'auth' }),
+      factDispatch({ revoke: 'constraints' }),
+    ]
+    // When the line renders, Then only the surviving fact is projected.
+    expect(renderWorkingContext(events)).toBe('[Working Context: key facts: Auth decided: JWT [auth]]')
+  })
+
+  test('operator does not see a failed ptc fact dispatch on the line', () => {
+    // Given a ptc pin that reported an error and nothing else to say.
+    const events = [factDispatch({ fact: 'never pinned' }, true)]
+    // When the line renders, Then no field has anything to say and nothing is injected.
+    expect(renderWorkingContext(events)).toBeUndefined()
+  })
+
+  test('operator gets the ptc-pinned fact in the injected working-context message', async () => {
+    // Given a session whose log carries one pin recorded over the ptc wire.
+    const harness = register()
+    const agent = agentOf([factDispatch({ fact: 'Build uses pnpm', tag: 'build' })])
+    // When the pre-step hook runs, Then the durable message carries the fact.
+    const result = await preStep(harness, agent)
+    expect(contextOf(result.messages).content[0].text).toBe('[Working Context: key facts: Build uses pnpm [build]]')
   })
 
   test('clips long titles and collapses the rest', () => {

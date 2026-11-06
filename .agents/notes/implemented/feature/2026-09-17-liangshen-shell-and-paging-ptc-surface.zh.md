@@ -22,6 +22,7 @@ preset 在两个平台都挂上游 shell 栈，并用作用域级限制 API 施�
 - 分页只在 `ptc` 下作用于整个可达面。折叠后的 wire 让作用域注册表成为工具唯一可被触达的面，因此限制在那里就是分页本身的含义。`both` 刻意不安装限制：它的 wire 在 `run_code` 之外同时携带完整原生清单，被扣留的命名空间因此只在直调面缺席，程序内仍可触达——这份可达性由 wire 自己携带，因为 wire 持有全部已注册工具，且没有任何东西把被扣留的那些从作用域注册表里移除。`native` 根本不带程序，wire 分区就是那里分页的全部。
 - 目录里的被扣留命名空间摘要逐呈现写明各自的可达性——`ptc` 下程序内同样不可达、`both` 下程序内仍可达、`native` 下不存在程序传输——而不再用同一句话描述两种代码呈现，让读者自己去和后面的程序契约对账。
 - 激活状态依旧从持久会话事件流重建，因此压缩与恢复无需进程内存即可还原同一张激活集合与同一张限制集合。
+- 关键事实登记簿遵循同一规则。`foldFactLedger` 同时读取会话能记录一次调用的两种形态——`native` 记录为顶层 `tool/call`，`ptc` 把程序内的调用记录为 `tool/ptc-dispatch`——并跳过报错的 dispatch。只读 `tool/call` 会让登记簿在每个出厂默认会话里都是空的：`fact_register` 返回登记成功，而保证命中的那一行从未携带过 `key facts` 字段。`native` 半边保持既有语义，包括本次刻意不动的那一条：报错的顶层调用仍会被折叠，因为这份折叠没有 `tool/result` 过滤。
 - wire 由预设自己按作用域的声明决定（2026-10-26）。`agent.ctx.tools.presentAs(mode)` 就是 0.2.1 的 API——内置预设的 `@deepseek-ai/dsh-agent-tool-presentation` 行调用的正是它，作用于所挂载的 scope——因此 `tool-catalog` 行上的 `presentation` 取值**就是** wire：插件在 agent scope 一出现时就声明它，声明落在组装中途时重新组装一次；部署没挂 PTC runtime、宿主拒绝声明、或读不到任何 schema 投影时退回原生面并告警一次。组合里不再有执行器行：曾有一版挂了 `@deepseek-ai/dsh-tool-executor-ptc`，但 SDK 在 0.2.1-rc.3 并不发布该包（npm 上也从未有过），那一行永远不会启动，预设的激活审计会把它和真正挂上的行并列报出。`applyPresetOverrides` 只写 `tool-catalog` 一个取值，基准变体改写同一行，因此设置开关、出厂组合与两个基准臂仍然只决定一条 wire。
 
 ## Alternatives considered
@@ -46,4 +47,4 @@ preset 不再携带任何平台专属的 persona 文本，因此在给定 cwd �
 
 ## Testing
 
-`tests/platform-guard.test.ts` 对注入平台的 `!!js` 门求值而不是匹配文本，断言组本身不带门、两半的极性恰好成对、每个平台恰好挂一个 shell 工具。`tests/minimal-prompt.test.ts` 断言 persona 在 win32 与 POSIX 上完全一致，且源码中不再有平台分支。分页行为由 preset 的目录、激活与分页测试覆盖。`tests/tool-catalog.test.ts` 钉住每种呈现的被扣留可达性句子、同一工具面重复渲染的逐字节一致文本，以及可判定的程序触发条件；`tests/tool-paging-registry.test.ts` 断言 `both` 不安装任何限制，且它的目录摘要如实说明这一点。
+`tests/platform-guard.test.ts` 对注入平台的 `!!js` 门求值而不是匹配文本，断言组本身不带门、两半的极性恰好成对、每个平台恰好挂一个 shell 工具。`tests/minimal-prompt.test.ts` 断言 persona 在 win32 与 POSIX 上完全一致，且源码中不再有平台分支。分页行为由 preset 的目录、激活与分页测试覆盖。`tests/tool-catalog.test.ts` 钉住每种呈现的被扣留可达性句子、同一工具面重复渲染的逐字节一致文本，以及可判定的程序触发条件；`tests/tool-paging-registry.test.ts` 断言 `both` 不安装任何限制，且它的目录摘要如实说明这一点。`tests/fact-ledger.test.ts` 钉住登记簿对两种 wire 形态的折叠：事实与其 tag、按 tag 与按原文的撤销、不得生效的报错 dispatch、跨两种形态的同一顺序与同一上限，以及必须被忽略的无关工具与 `tool/ptc-dispatch-start` 事件；`tests/working-context.test.ts` 在投影层断言经 `ptc` wire 登记的事实确实进入 `[Working Context: ...]` 行与注入消息。

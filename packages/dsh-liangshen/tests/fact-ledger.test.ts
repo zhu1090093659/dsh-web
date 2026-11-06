@@ -12,6 +12,31 @@ function revoke(tag) {
   return { type: 'tool/call', data: { name: FACT_LEDGER_TOOL, arguments: JSON.stringify({ revoke: tag }) } }
 }
 
+/**
+ * One call dispatched from inside a program, in the shape the `ptc` runtime
+ * records instead of a top-level tool/call: object arguments, a settled
+ * `isError` flag, and the dispatch ids the ptc wire carries.
+ */
+function dispatchOf(name, args, isError = false) {
+  return {
+    type: 'tool/ptc-dispatch',
+    data: {
+      rootCallId: 'call_root',
+      parentCallId: 'call_root',
+      subCallId: 'call_root:ptc:1',
+      name,
+      arguments: args,
+      isError,
+      content: [{ type: 'text', text: isError ? 'failed' : 'ok' }],
+    },
+  }
+}
+
+/** A fact_register dispatch: how the ptc wire records a pin or a revocation. */
+function dispatch(args, isError = false) {
+  return dispatchOf(FACT_LEDGER_TOOL, args, isError)
+}
+
 describe('fact-ledger foldFactLedger', () => {
   it('operator sees an empty register on an empty or unrelated stream', () => {
     // Given no ledger calls in the stream.
@@ -69,6 +94,59 @@ describe('fact-ledger foldFactLedger', () => {
     // When it is folded twice, Then both runs agree and the revocation held.
     expect(foldFactLedger(events)).toEqual(foldFactLedger(events))
     expect(foldFactLedger(events).map(entry => entry.text)).toEqual(['b', 'c'])
+  })
+})
+
+describe('fact-ledger foldFactLedger under the ptc wire', () => {
+  it('operator sees a fact pinned through the ptc wire land in the register', () => {
+    // Given a pin the runtime recorded as a programmatic dispatch, with object arguments.
+    // When the fold runs, Then the fact reaches the register under its tag.
+    expect(foldFactLedger([dispatch({ fact: 'pin via ptc', tag: 'wire' })])).toEqual([{ text: 'pin via ptc', tag: 'wire' }])
+  })
+
+  it('operator can revoke a ptc-pinned fact by tag and by exact text', () => {
+    // Given ptc pins followed by ptc revocations, one by tag and one by exact text.
+    const byTag = [dispatch({ fact: 'a', tag: 't1' }), dispatch({ fact: 'b' }), dispatch({ revoke: 't1' })]
+    const byText = [dispatch({ fact: 'c' }), dispatch({ revoke: 'c' })]
+    // When the fold runs, Then each revocation removes exactly its target.
+    expect(foldFactLedger(byTag).map(entry => entry.text)).toEqual(['b'])
+    expect(foldFactLedger(byText)).toEqual([])
+  })
+
+  it('operator does not see a failed ptc dispatch take effect', () => {
+    // Given a pinned fact and two errored dispatches: a pin that should never land and a
+    // revocation of the fact that already stands.
+    const events = [dispatch({ fact: 'keep', tag: 't1' }), dispatch({ fact: 'failed pin' }, true), dispatch({ revoke: 't1' }, true)]
+    // When the fold runs, Then the errored pin is absent and the errored revocation dropped nothing.
+    expect(foldFactLedger(events).map(entry => entry.text)).toEqual(['keep'])
+  })
+
+  it('operator sees both wire shapes fold into one stream in the recorded order', () => {
+    // Given native and ptc pins interleaved, with one text repeated across the two shapes.
+    const events = [pin('native one'), dispatch({ fact: 'ptc one' }), pin('ptc one'), dispatch({ fact: 'last' })]
+    // When the fold runs, Then the order is the stream's own and the repeat is still one fact.
+    expect(foldFactLedger(events).map(entry => entry.text)).toEqual(['native one', 'ptc one', 'last'])
+  })
+
+  it('operator sees the register cap hold when both wires overflow it', () => {
+    // Given more pins than MAX_FACTS, written through both shapes alternately.
+    const many = Array.from({ length: MAX_FACTS + 2 }, (_, index) =>
+      index % 2 === 0 ? pin(`fact ${index}`) : dispatch({ fact: `fact ${index}` }))
+    // When the fold runs, Then the register holds MAX_FACTS and the newest survive.
+    const facts = foldFactLedger(many)
+    expect(facts.length).toBe(MAX_FACTS)
+    expect(facts[0].text).toBe('fact 2')
+    expect(facts[facts.length - 1].text).toBe(`fact ${MAX_FACTS + 1}`)
+  })
+
+  it('operator does not see an unrelated tool dispatch or an unsettled dispatch-start take effect', () => {
+    // Given a dispatch for another tool and a dispatch-start announcement of this one.
+    const events = [
+      dispatchOf('tool_activate', { namespace: 'github', fact: 'not a fact' }),
+      { type: 'tool/ptc-dispatch-start', data: { name: FACT_LEDGER_TOOL, arguments: { fact: 'unsettled' } } },
+    ]
+    // When the fold runs, Then neither reaches the register.
+    expect(foldFactLedger(events)).toEqual([])
   })
 })
 

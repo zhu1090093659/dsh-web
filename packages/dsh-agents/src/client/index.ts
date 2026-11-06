@@ -4,8 +4,9 @@
  * exposes the agent announcement switch.
  *
  * The Host half owns the routes and the protocol; this entry needs the slot
- * and locale services and only probes the optional workspace service for its
- * session opener.
+ * and locale services and bridges the two optional faces its session entry
+ * points read - the workspace opener and the shared session catalog - per
+ * instance, so a provider that mounts after this row still enables them.
  *
  * @module @linxin666/dsh-agents/client
  */
@@ -27,8 +28,7 @@ import { registerAgentsPanel } from './panel.tsx'
 import { installPluginCard } from './plugin-card-seat.ts'
 import type { PluginCardContext, SettingsPluginItemOwnerProps } from './plugin-card-seat.ts'
 import { createServedEntryForm } from './settings-entry-form.ts'
-import { createTeamSource, sessionListFace } from './team-source.ts'
-import type { SquadTeamSource } from './team-source.ts'
+import { bridgeSessionFaces, createSessionFaces } from './session-faces.ts'
 
 /**
  * Services cordis waits for before it runs apply. The locale seat is required,
@@ -123,52 +123,22 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 }
 
 /**
- * Resolve the GUI's session opener, if this deployment has the workspace
- * service. It is probed here so the member card can hide the action entirely
- * instead of offering a button that would do nothing.
- * @param ctx - client root context (service: uiWorkspace, optional).
- */
-function sessionOpener(ctx: ClientContext): ((sessionId: string) => void) | undefined {
-  try {
-    const workspace = (ctx as unknown as { uiWorkspace?: { openSession(id: string): void } }).uiWorkspace
-    if (workspace === undefined || typeof workspace.openSession !== 'function') return undefined
-    return (sessionId: string) => { workspace.openSession(sessionId) }
-  } catch {
-    return undefined
-  }
-}
-
-/**
- * Resolve the surface the squad page reads the live team from.
- *
- * The shared session catalog is the preferred one, and it is PROBED rather than
- * injected: this entry must still mount on a deployment that serves no session
- * service, and the adapter then falls back to the proposed roster route. The
- * probe is the one place the choice is made - `team-source.ts` owns both
- * implementations, so adopting the Host-side route changes no page code.
- * @param ctx - client root context (service: sessions, optional).
- * @param transport - the frozen-contract transport, used by the fallback poll.
- */
-function teamSourceOf(ctx: ClientContext, transport: AgentsTransport): SquadTeamSource {
-  try {
-    const get = (ctx as unknown as { get?: (name: string) => unknown }).get
-    return createTeamSource(sessionListFace(get === undefined ? undefined : get.call(ctx, 'sessions')), transport)
-  } catch {
-    return createTeamSource(undefined, transport)
-  }
-}
-
-/**
  * Mount the agents plugin.
+ *
+ * The session opener and the live-team surface are OPTIONAL faces of other
+ * plugins, so they are bridged per instance (`session-faces.ts`) instead of
+ * being probed while this row applies: on a deployment where the workspace or
+ * session plugin loads later, a probe would read `undefined` once and leave the
+ * page without a session entry point for the life of the process.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => registerAgentLocales(ctx as unknown as { locale?: LocaleRegistrar }), 'dsh-agents: dictionaries')
 
   const transport = createAgentsTransport()
-  const openSession = sessionOpener(ctx)
-  const teamSource = teamSourceOf(ctx, transport)
-  ctx.effect(() => registerAgentsPanel(ctx, transport, openSession, teamSource), 'dsh-agents: sidebar row and page')
+  const faces = createSessionFaces(transport)
+  bridgeSessionFaces(ctx, faces)
+  ctx.effect(() => registerAgentsPanel(ctx, transport, faces), 'dsh-agents: sidebar row and page')
 
   // Plugin configuration card: one staged form over the `dsh-agents` settings
   // namespace, contributed to the Web UI plugin group beside the other family

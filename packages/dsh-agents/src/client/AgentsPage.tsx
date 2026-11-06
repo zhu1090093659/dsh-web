@@ -280,7 +280,7 @@ export function AgentsPage({ transport, openSession, teamSource }: AgentsPagePro
             },
             run: (memberId: string) => { runMember(selectedTeam.id, memberId) },
             runSquad: (request: SquadRunRequest) => { runSquad(selectedTeam, request) },
-            ...(openSession === undefined ? {} : { openSession }),
+            openSession,
           }}
         />
       )

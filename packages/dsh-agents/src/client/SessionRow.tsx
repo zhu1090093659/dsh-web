@@ -15,6 +15,7 @@
  */
 import type { ReactNode } from 'react'
 import { StatusGlyph } from './icons.tsx'
+import { t } from './locales.ts'
 import type { StatusTone } from './runs.ts'
 import css from './agents.module.css'
 
@@ -40,9 +41,9 @@ export interface SessionRowProps {
   detail?: string
   /** When the run was recorded; absent on live roster rows. */
   time?: { iso: string; label: string }
-  /** Switch the GUI to this session; absent when the deployment has no opener. */
+  /** Switch the GUI to this session; absent when the deployment serves no opener, and the action is then disabled. */
   onOpenSession?: () => void
-  /** Label of the open-session action, resolved by the caller. */
+  /** Label of the open-session action; defaults to the shared label. */
   openLabel?: string
 }
 
@@ -89,11 +90,21 @@ export function SessionRow({ variant, title, badge, status, facts, detail, time,
       )}
       {detail === undefined || detail === '' ? null : <p className={css.rowDetail} data-dsh-part="squad-row-detail">{detail}</p>}
       {time === undefined ? null : <time className={css.rowTime} dateTime={time.iso}>{time.label}</time>}
-      {onOpenSession === undefined || openLabel === undefined ? null : (
-        <div className={css.rowActions}>
-          <button type="button" className={css.secondary} onClick={onOpenSession}>{openLabel}</button>
-        </div>
-      )}
+      {/* Every row here names a real session, so the action is always present.
+          When no opener serves this deployment it stays visible and disabled,
+          carrying the reason: a row whose session cannot be opened must not
+          read as a row without a session. */}
+      <div className={css.rowActions}>
+        <button
+          type="button"
+          className={css.secondary}
+          disabled={onOpenSession === undefined}
+          {...(onOpenSession === undefined ? { title: t('member.openSessionUnavailable') } : {})}
+          onClick={onOpenSession}
+        >
+          {openLabel ?? t('member.openSession')}
+        </button>
+      </div>
     </article>
   )
 }

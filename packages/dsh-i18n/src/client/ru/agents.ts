@@ -77,6 +77,7 @@ export const ru: Record<string, string> = {
   'member.runAgain': 'Запустить снова',
   'member.running': 'Запускаю…',
   'member.openSession': 'Открыть сессию',
+  'member.openSessionUnavailable': 'В этом развёртывании нет навигации по сессиям, поэтому открыть сессию сейчас нельзя.',
   'member.edit': 'Изменить участника',
   'member.delete': 'Удалить участника',
   'member.deleteConfirm': 'Подтвердить удаление',

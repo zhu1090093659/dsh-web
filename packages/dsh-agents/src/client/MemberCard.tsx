@@ -96,8 +96,18 @@ export function MemberCard({ member, run, busy, notice, onRun, onOpenSession, on
         <button type="button" className={css.primary} disabled={busy} onClick={onRun}>
           {busy ? t('member.running') : run === undefined ? t('member.run') : t('member.runAgain')}
         </button>
-        {run === undefined || onOpenSession === undefined ? null : (
-          <button type="button" className={css.secondary} onClick={() => { onOpenSession(run.sessionId) }}>
+        {run === undefined ? null : (
+          // The action is present whenever the member HAS a session, and it is
+          // disabled - with the reason stated on it - when nothing serves an
+          // opener. Hiding it made a load-order accident look like "this member
+          // never ran"; a disabled button says which capability is missing.
+          <button
+            type="button"
+            className={css.secondary}
+            disabled={onOpenSession === undefined}
+            {...(onOpenSession === undefined ? { title: t('member.openSessionUnavailable') } : {})}
+            onClick={onOpenSession === undefined ? undefined : () => { onOpenSession(run.sessionId) }}
+          >
             {t('member.openSession')}
           </button>
         )}

@@ -15,6 +15,7 @@
  *
  * @module @linxin666/dsh-agents/client
  */
+import { useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 // The renderer package is what merges `slots` onto the cordis Context; the
@@ -26,7 +27,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import { AgentsPage } from './AgentsPage.tsx'
 import type { AgentsTransport } from './host-api.ts'
 import { t } from './locales.ts'
-import type { SquadTeamSource } from './team-source.ts'
+import type { SessionFacesStore } from './session-faces.ts'
 
 /** The panel id shared by the sidebar row and the main-slot occupant. */
 export const AGENTS_PANEL_ID = 'agents'
@@ -72,9 +73,12 @@ export function AgentsPanelIcon({ size }: { size: number; active: boolean }): Re
 /** The injected face the main-slot page receives from its own registration. */
 export interface AgentsPanelFace {
   transport: AgentsTransport
-  openSession?: (sessionId: string) => void
-  /** Where the live team of a squad run is read from. */
-  teamSource?: SquadTeamSource
+  /**
+   * The per-instance capability store. The page SUBSCRIBES to it rather than
+   * reading it once, so an opener or session catalog that appears after this
+   * page mounted turns the session entry points on without a reload.
+   */
+  faces: SessionFacesStore
 }
 
 /**
@@ -84,23 +88,22 @@ export interface AgentsPanelFace {
  * @param props - this entry's injected face.
  * @returns the agents page.
  */
-export function AgentsPanelPage({ transport, openSession, teamSource }: AgentsPanelFace): ReactNode {
-  return <AgentsPage transport={transport} openSession={openSession} teamSource={teamSource} />
+export function AgentsPanelPage({ transport, faces }: AgentsPanelFace): ReactNode {
+  const snapshot = useSyncExternalStore(faces.subscribe, faces.getSnapshot, faces.getSnapshot)
+  return <AgentsPage transport={transport} openSession={snapshot.openSession} teamSource={snapshot.teamSource} />
 }
 
 /**
  * Register the agents sidebar row and center-column page.
  * @param ctx - client root context (service: slots).
  * @param transport - the frozen-contract transport the page drives.
- * @param openSession - optional opener for an existing member session.
- * @param teamSource - optional live-team surface for a squad run.
+ * @param faces - the per-instance capability store the page subscribes to.
  * @returns disposer releasing both registrations.
  */
 export function registerAgentsPanel(
   ctx: ClientContext,
   transport: AgentsTransport,
-  openSession?: (sessionId: string) => void,
-  teamSource?: SquadTeamSource,
+  faces: SessionFacesStore,
 ): () => void {
   const slots = ctx.slots as {
     inject(key: string, callback: () => () => void): () => void
@@ -120,11 +123,7 @@ export function registerAgentsPanel(
   disposers.push(slots.inject('main', () => slots.register({
     name: 'main',
     key: AGENTS_PANEL_ID,
-    inject: (): AgentsPanelFace => ({
-      transport,
-      ...(openSession === undefined ? {} : { openSession }),
-      ...(teamSource === undefined ? {} : { teamSource }),
-    }),
+    inject: (): AgentsPanelFace => ({ transport, faces }),
   }, AgentsPanelPage as never)))
 
   return () => {

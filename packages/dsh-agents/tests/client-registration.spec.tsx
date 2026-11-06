@@ -11,6 +11,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { apply, inject } from '../src/client/index.ts'
 import { AGENTS_PANEL_ID, AgentsPanelIcon, registerAgentsPanel } from '../src/client/panel.tsx'
+import { createSessionFaces } from '../src/client/session-faces.ts'
 import { en, registerAgentLocales, setRuntimeTranslate, t, zh } from '../src/client/locales.ts'
 import type { LocaleRegistrar } from '../src/client/locales.ts'
 import { createAgentsTransport } from '../src/client/host-api.ts'
@@ -45,6 +46,11 @@ function captureContext(): { ctx: { slots: unknown }; capture: Capture } {
 
 const transport = createAgentsTransport()
 
+/** The capability store one registration hands the page: no faces yet. */
+function faces() {
+  return createSessionFaces(transport)
+}
+
 afterEach(() => {
   setRuntimeTranslate(undefined)
   unmountAll()
@@ -55,7 +61,7 @@ describe('agents panel registration', () => {
     // Given a shell that declares both seats
     const { ctx, capture } = captureContext()
     // When the plugin registers itself
-    registerAgentsPanel(ctx as never, transport)
+    registerAgentsPanel(ctx as never, transport, faces())
     // Then the row is a list entry with the shell's required options
     expect(capture.injected).toEqual(['sidebar.panellist', 'main'])
     const row = capture.registrations[0].options
@@ -69,7 +75,7 @@ describe('agents panel registration', () => {
     // Given the capture context
     const { ctx, capture } = captureContext()
     // When the plugin registers itself
-    registerAgentsPanel(ctx as never, transport)
+    registerAgentsPanel(ctx as never, transport, faces())
     // Then the page is addressed by the row id, so selecting the row shows it
     const page = capture.registrations[1].options
     expect(page.name).toBe('main')
@@ -80,7 +86,7 @@ describe('agents panel registration', () => {
   it('operator sees the sidebar label follow a language switch without a reload', () => {
     // Given a shell whose translate seat follows the active language
     const { ctx, capture } = captureContext()
-    registerAgentsPanel(ctx as never, transport)
+    registerAgentsPanel(ctx as never, transport, faces())
     let lang: 'zh' | 'en' = 'zh'
     setRuntimeTranslate((key: keyof typeof zh) => (lang === 'en' ? en : zh)[key])
     const label = capture.registrations[0].options.label as () => string
@@ -97,7 +103,7 @@ describe('agents panel registration', () => {
   it('operator sees unmount release both seats', () => {
     // Given one registration
     const { ctx, capture } = captureContext()
-    const dispose = registerAgentsPanel(ctx as never, transport)
+    const dispose = registerAgentsPanel(ctx as never, transport, faces())
     // When the plugin unloads
     dispose()
     // Then both registrations are released, so a reload can claim them again
@@ -133,6 +139,9 @@ describe('agents entry services', () => {
       ...ctx,
       get locale(): never { throw new Error('cannot get locale without inject') },
       effect(execute: () => () => void): () => void { return execute() },
+      // The capability bridges go through cordis' own inject; this fake serves
+      // neither face, so the page keeps its initial snapshot.
+      inject(): undefined { return undefined },
     }
     // When the plugin applies
     // Then the absent seat degrades instead of failing boot...

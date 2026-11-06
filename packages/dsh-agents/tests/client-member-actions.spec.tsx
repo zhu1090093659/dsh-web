@@ -81,8 +81,8 @@ describe('agents member actions', () => {
     expect(opened).toEqual(['session-7'])
   })
 
-  it('operator sees a deployment without a session opener hide the action instead of failing', async () => {
-    // Given a member with a run, and no opener wired into the page
+  it('operator sees the action present but disabled, with the reason, when the deployment serves no opener', async () => {
+    // Given a member with a run, and a deployment that wires no session opener
     const transport = fakeTransport({
       state: async () => stateOf([teamOf({ members: [memberOf()] })], [runOf({ sessionId: 'session-7' })]),
     })
@@ -90,8 +90,23 @@ describe('agents member actions', () => {
     const view = mount(<AgentsPage transport={transport} />)
     await flush()
     openSquad(view.container)
-    // Then the card shows the run but offers no dead button
+    // Then the card still shows the run and the action, so the session it names
+    // is visible...
     expect(must(view.container, '[data-dsh-part="member-card"]').textContent).toContain(t('member.status.running'))
+    const action = buttonByText(view.container, t('member.openSession'))
+    // ...and the action is disabled and says WHY it cannot open anything
+    expect(action.disabled).toBe(true)
+    expect(action.getAttribute('title')).toBe(t('member.openSessionUnavailable'))
+  })
+
+  it('operator sees the action stay absent on a member that never ran', async () => {
+    // Given a member with no recorded run and an opener the page could use
+    const transport = fakeTransport({ state: async () => stateOf([teamOf({ members: [memberOf()] })]) })
+    // When the card renders
+    const view = mount(<AgentsPage transport={transport} openSession={() => {}} />)
+    await flush()
+    openSquad(view.container)
+    // Then there is no session to open, so no action is offered at all
     expect(view.container.textContent).not.toContain(t('member.openSession'))
   })
 

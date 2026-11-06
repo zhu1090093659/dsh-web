@@ -287,6 +287,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://dsh-market.com/tryon/?skin=md3</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://dsh-market.com/tryon/?skin=wallpaper-exclusive</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

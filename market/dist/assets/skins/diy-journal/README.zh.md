@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-适用于 DeepSeek Harness 的纸张、胶带和手绘风皮肤。1.14.1 包含 14 张
+适用于 DeepSeek Harness 的纸张、胶带和手绘风皮肤。1.14.2 包含 14 张
 ChatGPT 生成的鲸鱼娘配图、手写标题、电话簿远程访问窗口和浅色／深色配色。
 
 ## 安装
@@ -22,12 +22,15 @@ ChatGPT 生成的鲸鱼娘配图、手写标题、电话簿远程访问窗口和
 
 ## 素材及角色声明
 
-插画来源：**ChatGPT 生成**，生成日期为 2026-10-21。
-角色：**Whale-chan／DeepSeek 鲸鱼娘（大肥鱼）**，社区二创形象。
-参考视频介绍署名为 @ZipZipPipe、@上善无形；完整权利人和再分发授权尚未核实。
-本项目不宣称 DeepSeek 官方美术或官方授权。详细声明见 [NOTICE](NOTICE)，
-逐图主题与哈希见 [ARTWORK.json](ARTWORK.json)。字体保留各自的 OFL 授权文件。
-旧版 Koe 插画、个人照片输入目录及恢复资料均未包含在发布包中。
+本皮肤使用 **DeepSeek 鲸鱼娘（大肥鱼）/ Whale-chan** 二创形象，署名如下：
+
+- **原始角色设计：** [上善](https://www.pixiv.net/users/62155430)，鲸鱼娘形象。
+- **DeepSeek 女仆再设计：** [ZipZipPipe](https://www.pixiv.net/users/18604994)，加入 DeepSeek 元素的女仆形象，使用 GPT Image 2 生成。
+- **本皮肤制作：** [Alphazerolan](https://github.com/Alphazerolan/diy-journal-skin)，于 2026-10-21 使用 ChatGPT 分别生成 14 张主题配图，并完成手账本布局、装饰及适配。
+
+本项目为非官方二创，角色设计权利归相应创作者；角色再分发授权尚未独立核实。
+署名来源和授权范围见 [NOTICE](NOTICE)，逐图主题与哈希见 [ARTWORK.json](ARTWORK.json)。
+字体保留各自的 OFL 授权。发布包不包含参考视频画面、其他皮肤的插画文件或个人照片。
 
 本皮肤随附的插画及角色画面仅限个人非商业使用；角色及其他第三方权利仍归相应权利人，本声明不授予第三方权利或官方授权。
 

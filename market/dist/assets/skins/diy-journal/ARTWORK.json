@@ -8,85 +8,225 @@
       "id": "home",
       "region": "主界面",
       "theme": "云海里的鲸鱼娘",
-      "sha256": "9bbddbbe67d5a9a732441ec1ec5c3f614e65c2f88a55a52d9af03e2f1c2e50a6"
+      "sourceSha256": "9bbddbbe67d5a9a732441ec1ec5c3f614e65c2f88a55a52d9af03e2f1c2e50a6",
+      "sha256": "6411f3d6d1a30b103f3ab59cdefee94568dfe171d5e710d3121d7aee28866f41",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1672,
+          941
+        ],
+        "alpha": "lossless"
+      }
     },
     {
       "id": "account",
       "region": "设置-账号与余额",
       "theme": "鲸鱼存钱罐",
-      "sha256": "2adbf91eff529c103d89645a37adbb23dfc6f5d6cbef77992145420d69aabcd7"
+      "sourceSha256": "2adbf91eff529c103d89645a37adbb23dfc6f5d6cbef77992145420d69aabcd7",
+      "sha256": "018d48de1f5f1fed517ab0e42c7354991d6b2fbce86cdcb65d290653118ff130",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1774,
+          887
+        ],
+        "alpha": "lossless"
+      }
     },
     {
       "id": "general",
       "region": "设置-通用设置",
       "theme": "整理晨间小屋",
-      "sha256": "2623db5f49c2b5f887e8b8e91cab8efb3b6c9df6d04e2c822b093222b44eec2a"
+      "sourceSha256": "2623db5f49c2b5f887e8b8e91cab8efb3b6c9df6d04e2c822b093222b44eec2a",
+      "sha256": "0f5fb4a84da34bf5e8020b8d0a83182f904e3b896ebb9428af55157db1029dae",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1619,
+          971
+        ],
+        "alpha": "lossless"
+      }
     },
     {
       "id": "models",
       "region": "设置-模型",
       "theme": "星图学习时间",
-      "sha256": "08b45b42b0d533006193a74e0d226d320ec3ae2b1a8f13fd371c3957c566befd"
+      "sourceSha256": "08b45b42b0d533006193a74e0d226d320ec3ae2b1a8f13fd371c3957c566befd",
+      "sha256": "84fc2ddc22d6814bf1072096422e6f20b2801df642572497edd29fe8995e3793",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1484,
+          1060
+        ],
+        "alpha": "lossless"
+      }
     },
     {
       "id": "plugins",
       "region": "设置-内置插件",
       "theme": "拼好一只小鲸鱼",
-      "sha256": "10abb847b17591b2fda5fad9e5e2dd75ecfcba357406ecbf1379244d5e2b8ff7"
+      "sourceSha256": "10abb847b17591b2fda5fad9e5e2dd75ecfcba357406ecbf1379244d5e2b8ff7",
+      "sha256": "6dfe0d36618a240c09a02b82bc8a3e770040c9a35bb954a670f594a1acdf2b91",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1564,
+          1006
+        ],
+        "alpha": "lossless"
+      }
     },
     {
       "id": "presets",
       "region": "设置-Agent预设",
       "theme": "准备下一次冒险",
-      "sha256": "b9447cf111ba63c39ff84c08ca26865d0db3fdf59a787998b7af726d0229074b"
+      "sourceSha256": "b9447cf111ba63c39ff84c08ca26865d0db3fdf59a787998b7af726d0229074b",
+      "sha256": "6a4566db2158b8ca3cf52d15354f567353e93fbf9eaefc8b414816ec770c6ba7",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1448,
+          1086
+        ],
+        "alpha": "lossless"
+      }
     },
     {
       "id": "archive",
       "region": "设置-已归档会话",
       "theme": "收藏温柔回忆",
-      "sha256": "6691e4358ad0f6dd8c6e608abbe4777b5a148c38d05c4e6a280fcb5187cbed72"
+      "sourceSha256": "6691e4358ad0f6dd8c6e608abbe4777b5a148c38d05c4e6a280fcb5187cbed72",
+      "sha256": "31b0a203b12ca2a7852327341d0e659d9865535b3e673f61ac75642fbfc2ca30",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1448,
+          1086
+        ],
+        "alpha": "lossless"
+      }
     },
     {
       "id": "web",
       "region": "设置-Web插件",
       "theme": "海边电话",
-      "sha256": "bd225dae35b1fe7d9067a5d6db1a977afd23df811934d5d2089662d9cc9db154"
+      "sourceSha256": "bd225dae35b1fe7d9067a5d6db1a977afd23df811934d5d2089662d9cc9db154",
+      "sha256": "9d133346a0f2294b13acf13ad41d31d1d13dd48f6c36e63bbc1d7aa52f039493",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1402,
+          1122
+        ],
+        "alpha": "lossless"
+      }
     },
     {
       "id": "skins",
       "region": "设置-皮肤",
       "theme": "挑选今日配色",
-      "sha256": "c80b1c754762405d9ba6340c4817011e95ce76d530b9ec9cccc89ca67477c2a5"
+      "sourceSha256": "c80b1c754762405d9ba6340c4817011e95ce76d530b9ec9cccc89ca67477c2a5",
+      "sha256": "4de60ef613061a03dbf4273f175a177ddf381c085c631dcf950e59505dd860e1",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1774,
+          887
+        ],
+        "alpha": "lossless"
+      }
     },
     {
       "id": "pets",
       "region": "设置-宠物",
       "theme": "草地上的小伙伴",
-      "sha256": "4b20c13159e468edd245ce93a57bda55f9c80f666fe3dbf12ff0ef3335f69477"
+      "sourceSha256": "4b20c13159e468edd245ce93a57bda55f9c80f666fe3dbf12ff0ef3335f69477",
+      "sha256": "3e2d1c785abd1824db2d033f4a8bde8e0fab5beeaa0cd320d22ffc1bc35729c1",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1672,
+          941
+        ],
+        "alpha": "lossless"
+      }
     },
     {
       "id": "workshop",
       "region": "设置-创意工坊",
       "theme": "手账文具小摊",
-      "sha256": "e0b5877a642a743e58fc991a2140fa82111e8e23ccf19886e521e2634be3735a"
+      "sourceSha256": "e0b5877a642a743e58fc991a2140fa82111e8e23ccf19886e521e2634be3735a",
+      "sha256": "541495c17882c3244cc7f33f0e6063b6e8ae9b33c4c5da7acaf1a6924c49c337",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1774,
+          887
+        ],
+        "alpha": "lossless"
+      }
     },
     {
       "id": "usage",
       "region": "设置-使用统计",
       "theme": "数一数今日星光",
-      "sha256": "8ab28c7ddace0fe4ec03d8658fc52bcdf5acda0f40f738b2300c2e28fd1dc849"
+      "sourceSha256": "8ab28c7ddace0fe4ec03d8658fc52bcdf5acda0f40f738b2300c2e28fd1dc849",
+      "sha256": "accfa3f08c9cd27731223a4d4f4a6dc56bb08e46fc4125f95520cb2c2474aa66",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1563,
+          1006
+        ],
+        "alpha": "lossless"
+      }
     },
     {
       "id": "settings-sidebar",
       "region": "设置界面左栏",
       "theme": "拿手账招手的透明贴纸",
-      "sha256": "07de11b68167d7c7c0018847472a81b2a6f84ba3f0e5015358c33a5e97436aa9"
+      "sourceSha256": "07de11b68167d7c7c0018847472a81b2a6f84ba3f0e5015358c33a5e97436aa9",
+      "sha256": "f8508c5c7d5834571c90e274a677010755c529827dcce5d91e99b1d39ab6e11b",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1178,
+          1335
+        ],
+        "alpha": "lossless"
+      }
     },
     {
       "id": "main-sidebar",
       "region": "主界面左栏",
       "theme": "休息一小会",
-      "sha256": "ab37c2c93eee8c04f47fe323619ee7390a15739937accfbe9aa2de1b1a80d06c"
+      "sourceSha256": "ab37c2c93eee8c04f47fe323619ee7390a15739937accfbe9aa2de1b1a80d06c",
+      "sha256": "6580b0e3145200ced69da6e1e552b605d3e050926afe6173e6162fa5bfa081f1",
+      "encoding": {
+        "format": "WebP",
+        "quality": 92,
+        "dimensions": [
+          1564,
+          1006
+        ],
+        "alpha": "lossless"
+      }
     }
   ],
   "usage": {

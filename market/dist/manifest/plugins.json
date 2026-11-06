@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-05",
+  "generated": "2026-11-06",
   "items": [
     {
       "id": "dsh-quick-ask",
@@ -1316,6 +1316,19 @@
       "npm": "dsh-character-cards",
       "category": "ui",
       "subcategory": "chat"
+    },
+    {
+      "id": "dsh-power-menu-mac",
+      "name": "电源菜单（macOS）",
+      "rank": 104,
+      "nameEn": "Power Menu (macOS)",
+      "author": "DDDMUC",
+      "description": "给 DSH 桌面版（macOS）加一个右上角电源按钮：关闭 DSH / 重启 DSH。重启会把窗口拉回来，并确认新进程真的注册到窗口服务器。接口注册在宿主自带的 web 服务器上，只在本机回环地址上应答；启用后会往会话注入一段全局提示，说明这几个按钮怎么用。仅支持 macOS。",
+      "descriptionEn": "Adds a top-right power button to the DSH desktop app on macOS: Shut Down / Restart. Restart brings the window back and verifies the new process registered with the window server. Its routes live on the host's own web server and answer only on the loopback address, and enabling the plugin injects a short global prompt explaining the buttons. macOS only.",
+      "repo": "https://github.com/DDDMUC/dsh-power-menu-mac",
+      "npm": "dsh-power-menu-mac",
+      "category": "ui",
+      "subcategory": "panel"
     }
   ]
 }

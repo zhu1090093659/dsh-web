@@ -1,0 +1,178 @@
+/* ============================================================================
+ * Material 3 — L3 自由 selector 补丁
+ * MD3 的招牌是「状态层」（state layer）与色调高程，不是阴影：
+ * hover / active 用前景色的 8%–12% 叠一层，形状走 4–28 的尺度。
+ * 全部为静态声明，无动画关键帧、无滤镜、无外部资源。
+ * ========================================================================== */
+
+/* ---- 正文：MD3 body-medium 的 0.25px 字距，读起来比默认松一口气 ---- */
+body {
+  letter-spacing: 0.15px;
+}
+
+/* ---- 状态层：hover 叠 8%，按下叠 12%（用渐变冒充单色叠加，不动布局） ---- */
+button,
+[role="button"],
+[role="menuitem"],
+[role="tab"],
+[role="option"] {
+  transition:
+    background-color 0.15s cubic-bezier(0.2, 0, 0, 1),
+    border-color 0.15s cubic-bezier(0.2, 0, 0, 1),
+    color 0.15s cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 0.15s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* 状态层必须叠「带 alpha 的颜色」。写成 currentColor 8% 是色标位置不是透明度，
+ * 那样会把整块填成实心前景色，文字直接糊没（md3 1.0.1 修）。
+ * 先在两个主题里写死 rgba 兜底，支持 color-mix 的浏览器再换成前景色 8% / 12%。 */
+button:hover,
+[role="button"]:hover,
+[role="menuitem"]:hover,
+[role="tab"]:hover,
+[role="option"]:hover {
+  background-image: linear-gradient(rgba(29, 27, 32, 0.08), rgba(29, 27, 32, 0.08));
+}
+
+button:active,
+[role="button"]:active,
+[role="menuitem"]:active,
+[role="tab"]:active,
+[role="option"]:active {
+  background-image: linear-gradient(rgba(29, 27, 32, 0.12), rgba(29, 27, 32, 0.12));
+}
+
+body[data-ds-dark-theme] button:hover,
+body[data-ds-dark-theme] [role="button"]:hover,
+body[data-ds-dark-theme] [role="menuitem"]:hover,
+body[data-ds-dark-theme] [role="tab"]:hover,
+body[data-ds-dark-theme] [role="option"]:hover {
+  background-image: linear-gradient(rgba(230, 224, 233, 0.08), rgba(230, 224, 233, 0.08));
+}
+
+body[data-ds-dark-theme] button:active,
+body[data-ds-dark-theme] [role="button"]:active,
+body[data-ds-dark-theme] [role="menuitem"]:active,
+body[data-ds-dark-theme] [role="tab"]:active,
+body[data-ds-dark-theme] [role="option"]:active {
+  background-image: linear-gradient(rgba(230, 224, 233, 0.12), rgba(230, 224, 233, 0.12));
+}
+
+@supports (background: color-mix(in srgb, red 8%, transparent)) {
+  button:hover,
+  [role="button"]:hover,
+  [role="menuitem"]:hover,
+  [role="tab"]:hover,
+  [role="option"]:hover {
+    background-image: linear-gradient(
+      color-mix(in srgb, currentColor 8%, transparent),
+      color-mix(in srgb, currentColor 8%, transparent)
+    );
+  }
+
+  button:active,
+  [role="button"]:active,
+  [role="menuitem"]:active,
+  [role="tab"]:active,
+  [role="option"]:active {
+    background-image: linear-gradient(
+      color-mix(in srgb, currentColor 12%, transparent),
+      color-mix(in srgb, currentColor 12%, transparent)
+    );
+  }
+}
+
+/* ---- 焦点指示器：MD3 focus indicator 就是 3px 主色描边 ---- */
+:focus-visible {
+  outline: 3px solid var(--dsw-focus-ring-color);
+  outline-offset: 2px;
+}
+
+/* ---- 链接：主色，下划线细一档 ---- */
+
+/* ---- 标题：MD3 用字重和层级说话，不画装饰线 ---- */
+h1,
+h2,
+h3 {
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+h2 {
+  font-size: 1.32em;
+  margin: 0.6em 0 0.3em;
+}
+
+h3 {
+  font-size: 1.12em;
+  margin: 0.5em 0 0.2em;
+}
+
+/* ---- 行内代码：secondary-container 底 + on-secondary-container 字 ---- */
+:not(pre) > code {
+  color: #1d192b;
+}
+
+body[data-ds-dark-theme] :not(pre) > code {
+  color: #e8def8;
+}
+
+/* ---- 代码块：MD3 的 container-lowest 面，不描边，靠色调分层 ---- */
+pre {
+  border-radius: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  [role="button"],
+  [role="menuitem"],
+  [role="tab"],
+  [role="option"] {
+    transition: none;
+  }
+}
+/* ---- 为什么这里不写 `a { color }` ----
+ * 皮肤加载器会把每条选择器强制加上 html[data-dsh-skin="<id>"] 前缀，
+ * 于是 `a`（0,0,1）变成（0,1,1），压过组件自己的 .Xxx_primary（0,1,0）：
+ * 设置 → 账号与余额 里那颗填充按钮的 <a> 会被染成链接色，
+ * 白字变蓝底同色 → 按钮看起来是空的（md3 1.1.7 修）。
+ * 链接颜色交给 --dsw-alias-link 令牌，不再用元素选择器全局改色。
+ */
+
+/* ---- 禁用态按钮不要糊成一团 ----
+ * 组件的 Button 原语写死了 `button:disabled { opacity: .4 }`，发送键（实心主按钮）
+ * 在空输入时整颗 40% 透明，圆底和箭头一起灰掉，看起来像坏图。
+ * 这里把禁用态抬到 58%：仍然明显弱于可用态，但圆底和图标都看得清。
+ */
+button:disabled {
+  opacity: 0.58;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:disabled {
+    opacity: 0.58;
+  }
+}
+
+/* ---- 行内图标对齐 ----
+ * 宿主把内联 SVG 放在文字基线上，下拉箭头因此比同行文字低 1–2px。
+ * 统一改按文字中线对齐，只影响行内图标的垂直位置，不动尺寸与颜色。
+ */
+svg {
+  vertical-align: middle;
+}
+
+/* ---- 输入区局部实色 ----
+ * 宿主在输入区上方叠了一层渐隐：
+ *   background: color-mix(in srgb, var(--dsw-alias-bg-base) 72%, transparent)
+ * 画布是半透明的，这层跟着半透明，正文就穿过输入框透上来了。
+ * 不去改宿主的选择器，只在输入区停靠容器里把画布令牌就地改成实色：
+ * 渐隐层当场变成不透明，画布其他区域的底板不受影响。
+ */
+[data-composer-dock] {
+  --dsw-alias-bg-base: #fcfcff;
+}
+
+body[data-ds-dark-theme] [data-composer-dock] {
+  --dsw-alias-bg-base: #14121a;
+}

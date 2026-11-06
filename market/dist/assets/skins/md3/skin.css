@@ -1,0 +1,397 @@
+/* ============================================================================
+ * Material 3 (MD3) — dsh 皮肤
+ *   亮色 = MD3 Baseline light，暗色 = MD3 Baseline dark
+ *   surface 五级容器 / primary · secondary · tertiary · error 各自的 container 与 on-*
+ *   状态层（state layer）用 8%–12% 的前景色叠加模拟，高程靠色调层级而不是阴影
+ *
+ * 皮肤中心会把所有 selector 强制作用域到 html[data-dsh-skin="md3"]。
+ * 未在此重映射的 --dsw-* 令牌由加载器按本皮肤母色自动衍生补全。
+ * 无背景图、无动画、无滤镜：全部为静态色值。
+ * ========================================================================== */
+
+/* ---- 画布：MD3 surface / onSurface ---- */
+:root {
+  color: #1d1b20;
+  background-color: #fef7ff;
+}
+
+body[data-ds-dark-theme] {
+  color: #e6e0e9;
+  background-color: #141218;
+}
+
+/* ============================================================================
+ * 亮色令牌区 — MD3 Baseline light
+ * ========================================================================== */
+:root {
+  /* surface 容器层级（MD3 tonal surface） */
+  --dsw-alias-bg-base: rgba(254, 247, 255, calc(0.26 + var(--dsw-skin-scrim, 0.5) * 0.54));
+  --dsw-alias-bg-layer-1: #f7f2fa;
+  --dsw-alias-bg-layer-2: #f3edf7;
+  --dsw-alias-bg-layer-3: #ece6f0;
+  --dsw-alias-bg-layer-4: #e6e0e9;
+  --dsw-alias-bg-overlay: #fef7ff;
+  --dsw-alias-bg-skeleton: #1d1b2012;
+  --dsw-alias-bg-mask-1: #0000003d;
+  --dsw-alias-bg-mask-2: #0000001f;
+  --dsw-alias-bg-mask-3: #00000059;
+  --dsw-alias-bg-mask-drop: #00000066;
+  --dsw-alias-bg-mask-photo: #fef7ffe0;
+  --dsw-alias-bg-module-platform: #f3edf7;
+  --dsw-alias-bg-multi-select: #cac4d0dd;
+  --dsw-alias-bg-document-preview: #f7f2fa;
+  --dsw-alias-bg-document-selection: #6550a44d;
+
+  /* 边框：MD3 outline-variant */
+  --dsw-alias-border-l1: #cac4d066;
+  --dsw-alias-border-l2: #cac4d099;
+  --dsw-alias-border-l2-darkmode-thin: #cac4d080;
+  --dsw-alias-border-l3: #cac4d0cc;
+  --dsw-alias-border-l4: #79747e;
+  --dsw-alias-border-inverted: #ffffff66;
+  --dsw-alias-border-inverted2: #ffffff99;
+
+  /* 品牌 = primary */
+  --dsw-alias-brand-primary: #6750a4;
+  --dsw-alias-brand-primary-invert: #ffffff;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #6750a4;
+  --dsw-alias-brand-text: #1d1b20;
+
+  /* 按钮：MD3 filled button + 8% on-surface 状态层 */
+  --dsw-alias-button-primary-fill: #6750a4;
+  --dsw-alias-button-primary-hover: #715eab;
+  --dsw-alias-button-primary-dimmed: #1d1b201f;
+  --dsw-alias-button-contrast-fill: #625b71;
+  --dsw-alias-button-elevated-fill: #f7f2fa;
+  --dsw-alias-button-floating-fill: #f7f2fa;
+  --dsw-alias-button-floating-hover: #ece6f0;
+  --dsw-alias-button-ghost-active-fill: #e8def8;
+  --dsw-alias-button-ghost-active-hover: #ded3f3;
+  --dsw-alias-button-ghost-active-border: #6750a480;
+  --dsw-alias-button-info-fill: #6750a4;
+  --dsw-alias-button-info-hover: #715eab;
+  --dsw-alias-button-tool-bar-fill: #6750a480;
+  --dsw-alias-button-tool-bar-fill-invisible: #6750a45c;
+  --dsw-alias-button-tool-bar-hover: #6750a499;
+
+  /* 交互态层 */
+  --dsw-alias-interactive-bg-hover: #1d1b2014;
+  --dsw-alias-interactive-bg-hover-solid: #ece6f0;
+  --dsw-alias-interactive-bg-hover-accent: #6750a41f;
+  --dsw-alias-interactive-bg-hover-danger: #b3261e1f;
+  --dsw-alias-interactive-bg-active: #1d1b201f;
+
+  /* 文字：on-surface 阶梯 */
+  --dsw-alias-label-primary: #1d1b20;
+  --dsw-alias-label-secondary: #49454f;
+  --dsw-alias-label-tertiary: #625b71;
+  --dsw-alias-label-caption: #79747e;
+  --dsw-alias-label-dimmed: #938f99;
+  --dsw-alias-label-primary-dimmed: #49454f;
+  --dsw-alias-label-primary-foreground: #ffffff;
+  --dsw-alias-label-primary-inverted: #f5eff7;
+  --dsw-alias-label-primary-bluish: #6750a4;
+  --dsw-alias-label-error: #b3261e;
+  --dsw-alias-label-document-preview: #49454f;
+  --dsw-alias-label-deep-diving: #6750a4;
+  --dsw-alias-label-deep-diving-shimmer: #d0bcff;
+  --dsw-alias-label-shimmer: #d0bcff;
+  --dsw-alias-link: #6750a4;
+
+  /* 代码 / markdown：surface-container 系 + secondary-container */
+  --dsw-alias-markdown-code-block: #ece6f0;
+  --dsw-alias-markdown-code-block-banner: #e6e0e9;
+  --dsw-alias-markdown-inline-code: #e8def8;
+  --dsw-alias-markdown-placeholder: #f3edf7;
+  --dsw-alias-markdown-tag: #e8def8;
+  --dsw-alias-markdown-citation: #ece6f0cc;
+  --dsw-alias-markdown-code-segment-selected: #fef7ff;
+  --dsw-alias-markdown-code-segment-unselected: #e6e0e9;
+
+  /* 滚动条：outline-variant → primary */
+  --dsw-alias-scrollbar-bg-l1: #cac4d0;
+  --dsw-alias-scrollbar-bg-l2: #b3adb9;
+  --dsw-alias-scrollbar-hover-l1: #6750a4;
+  --dsw-alias-scrollbar-hover-l2: #6750a4;
+
+  /* 状态色：error 用 MD3 原生，success / warn 用 MD3 扩展角色 */
+  --dsw-alias-state-business-primary: #6750a4;
+  --dsw-alias-state-business-tertiary: #eaddff;
+  --dsw-alias-state-idle-primary: #79747e;
+  --dsw-alias-state-error-primary: #b3261e;
+  --dsw-alias-state-error-secondary: #8c1d18;
+  --dsw-alias-state-success-primary: #146c2e;
+  --dsw-alias-state-success-secondary: #1e6f30;
+  --dsw-alias-state-success-tertiary: #c4eed0;
+  --dsw-alias-state-warn-primary: #8a5100;
+  --dsw-alias-state-warn-secondary: #a36a00;
+  --dsw-alias-state-warn-tertiary: #ffdfb0;
+  --dsw-alias-state-warn-label: #6b3f00;
+
+  /* 提示：MD3 inverse-surface / inverse-on-surface */
+  --dsw-alias-toast-bg: #322f35;
+  --dsw-alias-toast-label: #f5eff7;
+  --dsw-alias-tooltip-bg: #322f35;
+  --dsw-alias-tooltip-key-bg: #49454f;
+
+  /* 面板角色 */
+  --dsw-specific-bubble: #eaddff;
+  --dsw-specific-bubble-highlight: #e8def8;
+  --dsw-specific-input-major: #e6e0e9;
+  --dsw-specific-login-input: rgba(230, 224, 233, calc(0.93 + var(--dsw-skin-scrim, 0.5) * 0.07));
+  --dsw-specific-menu: #f3edf7;
+  --dsw-specific-selector: #ece6f0fc;
+  --dsw-specific-sidebar-fill: rgba(243, 237, 247, calc(0.5 + var(--dsw-skin-scrim, 0.5) * 0.35));
+  --dsw-specific-sidebar-nav-item-active: #e8def8;
+  --dsw-specific-sidebar-nav-item-active-accent: #6750a4;
+  --dsw-specific-sidebar-nav-item-hover: #ece6f0;
+  --dsw-specific-tip: #eaddff;
+  --dsw-alias-settings-card-fill: #f7f2fa;
+  --dsw-alias-settings-card-stroke: #cac4d099;
+  --dsw-alias-menu-icon: #49454f;
+  --dsw-alias-menu-group-header-fill: #f3edf7f0;
+  --dsw-hovercard-bg: #ece6f0;
+  --dsw-alias-turn-trigger-bg: #ece6f0;
+  --dsw-alias-turn-trigger-bg-hover: #e6e0e9;
+  --dsw-alias-onboarding-card-fill: #f7f2fa;
+  --dsw-alias-onboarding-secondary-fill: #e8def8;
+  --dsw-alias-onboarding-accent: #6750a4;
+  --dsw-alias-onboarding-checkbox-border: #79747e;
+  --dsw-alias-switch-thumb: #79747e;
+
+  /* diff */
+  --dsw-alias-code-diff-added: #146c2e1f;
+  --dsw-alias-code-diff-deleted: #b3261e1f;
+  --dsw-alias-file-diff-added-bg: #dcf3e3;
+  --dsw-alias-file-diff-added-gutter: #c9ebd4;
+  --dsw-alias-file-diff-added-marker: #146c2e;
+  --dsw-alias-file-diff-deleted-bg: #f9dedc;
+  --dsw-alias-file-diff-deleted-gutter: #f2cecb;
+  --dsw-alias-file-diff-deleted-marker: #b3261e;
+
+  /* MD3 形状尺度：4 / 8 / 12 / 16 / 28 */
+  --dsw-radius-xs: 4px;
+  --dsw-radius-sm: 8px;
+  --dsw-radius-md: 12px;
+  --dsw-radius-lg: 16px;
+  --dsw-radius-xl: 28px;
+  --dsw-radius-panel: 28px;
+  --dsw-focus-ring-color: #6750a4;
+  --dsw-focus-ring-width: 3px;
+}
+
+/* ============================================================================
+ * 暗色令牌区 — MD3 Baseline dark
+ * ========================================================================== */
+body[data-ds-dark-theme] {
+  /* surface 容器层级 */
+  --dsw-alias-bg-base: rgba(20, 18, 24, calc(0.26 + var(--dsw-skin-scrim, 0.5) * 0.54));
+  --dsw-alias-bg-layer-1: #1d1b20;
+  --dsw-alias-bg-layer-2: #211f26;
+  --dsw-alias-bg-layer-3: #2b2930;
+  --dsw-alias-bg-layer-4: #36343b;
+  --dsw-alias-bg-overlay: #141218;
+  --dsw-alias-bg-skeleton: #e6e0e912;
+  --dsw-alias-bg-mask-1: #00000080;
+  --dsw-alias-bg-mask-2: #00000040;
+  --dsw-alias-bg-mask-3: #000000a6;
+  --dsw-alias-bg-mask-drop: #000000b3;
+  --dsw-alias-bg-mask-photo: #141218e0;
+  --dsw-alias-bg-module-platform: #211f26;
+  --dsw-alias-bg-multi-select: #49454fdd;
+  --dsw-alias-bg-document-preview: #1d1b20;
+  --dsw-alias-bg-document-selection: #d0bcff40;
+
+  /* 边框：outline-variant */
+  --dsw-alias-border-l1: #49454f66;
+  --dsw-alias-border-l2: #49454f99;
+  --dsw-alias-border-l2-darkmode-thin: #49454f80;
+  --dsw-alias-border-l3: #49454fcc;
+  --dsw-alias-border-l4: #938f99;
+  --dsw-alias-border-inverted: #00000066;
+  --dsw-alias-border-inverted2: #00000099;
+
+  /* 品牌 = primary（暗色 primary 是 80 号色调） */
+  --dsw-alias-brand-primary: #d0bcff;
+  --dsw-alias-brand-primary-invert: #381e72;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #d0bcff;
+  --dsw-alias-brand-text: #e6e0e9;
+
+  /* 按钮 */
+  --dsw-alias-button-primary-fill: #d0bcff;
+  --dsw-alias-button-primary-hover: #d8c7ff;
+  --dsw-alias-button-primary-dimmed: #e6e0e91f;
+  --dsw-alias-button-contrast-fill: #ccc2dc;
+  --dsw-alias-button-elevated-fill: #211f26;
+  --dsw-alias-button-floating-fill: #211f26;
+  --dsw-alias-button-floating-hover: #2b2930;
+  --dsw-alias-button-ghost-active-fill: #4a4458;
+  --dsw-alias-button-ghost-active-hover: #554e63;
+  --dsw-alias-button-ghost-active-border: #d0bcff80;
+  --dsw-alias-button-info-fill: #d0bcff;
+  --dsw-alias-button-info-hover: #d8c7ff;
+  --dsw-alias-button-tool-bar-fill: #d0bcff80;
+  --dsw-alias-button-tool-bar-fill-invisible: #d0bcff5c;
+  --dsw-alias-button-tool-bar-hover: #d0bcff99;
+
+  /* 交互态层 */
+  --dsw-alias-interactive-bg-hover: #e6e0e914;
+  --dsw-alias-interactive-bg-hover-solid: #2b2930;
+  --dsw-alias-interactive-bg-hover-accent: #d0bcff1f;
+  --dsw-alias-interactive-bg-hover-danger: #f2b8b51f;
+  --dsw-alias-interactive-bg-active: #e6e0e91f;
+
+  /* 文字 */
+  --dsw-alias-label-primary: #e6e0e9;
+  --dsw-alias-label-secondary: #cac4d0;
+  --dsw-alias-label-tertiary: #b3adc0;
+  --dsw-alias-label-caption: #938f99;
+  --dsw-alias-label-dimmed: #79747e;
+  --dsw-alias-label-primary-dimmed: #cac4d0;
+  --dsw-alias-label-primary-foreground: #381e72;
+  --dsw-alias-label-primary-inverted: #322f35;
+  --dsw-alias-label-primary-bluish: #d0bcff;
+  --dsw-alias-label-error: #ffd6d2;
+  --dsw-alias-label-document-preview: #cac4d0;
+  --dsw-alias-label-deep-diving: #d0bcff;
+  --dsw-alias-label-deep-diving-shimmer: #eadcff;
+  --dsw-alias-label-shimmer: #eadcff;
+  --dsw-alias-link: #d0bcff;
+
+  /* 代码 / markdown */
+  --dsw-alias-markdown-code-block: #0f0d13;
+  --dsw-alias-markdown-code-block-banner: #1d1b20;
+  --dsw-alias-markdown-inline-code: #4a4458;
+  --dsw-alias-markdown-placeholder: #211f26;
+  --dsw-alias-markdown-tag: #4a4458;
+  --dsw-alias-markdown-citation: #0f0d1399;
+  --dsw-alias-markdown-code-segment-selected: #36343bbf;
+  --dsw-alias-markdown-code-segment-unselected: #1d1b2099;
+
+  /* 滚动条 */
+  --dsw-alias-scrollbar-bg-l1: #49454f;
+  --dsw-alias-scrollbar-bg-l2: #5c5866;
+  --dsw-alias-scrollbar-hover-l1: #d0bcff;
+  --dsw-alias-scrollbar-hover-l2: #d0bcff;
+
+  /* 状态色 */
+  --dsw-alias-state-business-primary: #d0bcff;
+  --dsw-alias-state-business-tertiary: #4f378b;
+  --dsw-alias-state-idle-primary: #938f99;
+  --dsw-alias-state-error-primary: #ffd6d2;
+  --dsw-alias-state-error-secondary: #ffe9e7;
+  --dsw-alias-state-success-primary: #6dd58c;
+  --dsw-alias-state-success-secondary: #8ae39f;
+  --dsw-alias-state-success-tertiary: #17361f;
+  --dsw-alias-state-warn-primary: #ffb951;
+  --dsw-alias-state-warn-secondary: #ffd18c;
+  --dsw-alias-state-warn-tertiary: #3a2a10;
+  --dsw-alias-state-warn-label: #ffd18c;
+
+  /* 提示：inverse */
+  --dsw-alias-toast-bg: #e6e0e9;
+  --dsw-alias-toast-label: #322f35;
+  --dsw-alias-tooltip-bg: #36343b;
+  --dsw-alias-tooltip-key-bg: #49454f;
+
+  /* 面板角色 */
+  --dsw-specific-bubble: #4f378b;
+  --dsw-specific-bubble-highlight: #4a4458;
+  --dsw-specific-input-major: #36343b;
+  --dsw-specific-login-input: rgba(54, 52, 59, calc(0.93 + var(--dsw-skin-scrim, 0.5) * 0.07));
+  --dsw-specific-menu: #211f26;
+  --dsw-specific-selector: #2b2930fc;
+  --dsw-specific-sidebar-fill: rgba(33, 31, 38, calc(0.52 + var(--dsw-skin-scrim, 0.5) * 0.35));
+  --dsw-specific-sidebar-nav-item-active: #4a4458;
+  --dsw-specific-sidebar-nav-item-active-accent: #d0bcff;
+  --dsw-specific-sidebar-nav-item-hover: #2b2930;
+  --dsw-specific-tip: #4f378b;
+  --dsw-alias-settings-card-fill: #1d1b20;
+  --dsw-alias-settings-card-stroke: #49454f99;
+  --dsw-alias-menu-icon: #cac4d0;
+  --dsw-alias-menu-group-header-fill: #211f26f0;
+  --dsw-hovercard-bg: #2b2930;
+  --dsw-alias-turn-trigger-bg: #2b2930;
+  --dsw-alias-turn-trigger-bg-hover: #36343b;
+  --dsw-alias-onboarding-card-fill: #1d1b20;
+  --dsw-alias-onboarding-secondary-fill: #4a4458;
+  --dsw-alias-onboarding-accent: #d0bcff;
+  --dsw-alias-onboarding-checkbox-border: #938f99;
+  --dsw-alias-switch-thumb: #938f99;
+
+  /* diff */
+  --dsw-alias-code-diff-added: #6dd58c1f;
+  --dsw-alias-code-diff-deleted: #f2b8b51f;
+  --dsw-alias-file-diff-added-bg: #17361f;
+  --dsw-alias-file-diff-added-gutter: #14301b;
+  --dsw-alias-file-diff-added-marker: #6dd58c;
+  --dsw-alias-file-diff-deleted-bg: #3d1a18;
+  --dsw-alias-file-diff-deleted-gutter: #351614;
+  --dsw-alias-file-diff-deleted-marker: #f2b8b5;
+}
+
+/* ---- 滚动条：MD3 细轨，圆头，hover 走 primary ---- */
+body::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+body::-webkit-scrollbar-track {
+  background: #f3edf7;
+}
+
+body::-webkit-scrollbar-thumb {
+  background: #cac4d0;
+  border: 3px solid #f3edf7;
+  border-radius: 6px;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+  background: #6750a4;
+}
+
+body::-webkit-scrollbar-corner {
+  background: #f3edf7;
+}
+
+body[data-ds-dark-theme]::-webkit-scrollbar-track,
+body[data-ds-dark-theme]::-webkit-scrollbar-corner {
+  background: #0f0d13;
+}
+
+body[data-ds-dark-theme]::-webkit-scrollbar-thumb {
+  background: #49454f;
+  border-color: #0f0d13;
+}
+
+body[data-ds-dark-theme]::-webkit-scrollbar-thumb:hover {
+  background: #d0bcff;
+}
+
+/* ---- 选中文本：primary 的 30% 状态层 ---- */
+body::selection {
+  background: #6750a44d;
+  color: #1d1b20;
+}
+
+body[data-ds-dark-theme]::selection {
+  background: #d0bcff4d;
+  color: #e6e0e9;
+}
+
+/* ---- 首帧底色：夜间黑、白天灰 ----
+ * 刷新时皮肤样式与底板还没就位，最先画出来的是 html 的底色。
+ * 用 prefers-color-scheme 按系统选一个"接近成品"的实色，避免闪白。
+ * 放在文件末尾：与 :root 同特异性时后者胜出。
+ */
+@media (prefers-color-scheme: dark) {
+  html {
+    background-color: #14121a;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  html {
+    background-color: #e9e8ee;
+  }
+}

@@ -2333,7 +2333,7 @@ body[data-ds-dark-theme] ._7D6uKa_columnEmpty {background:#ffffff06}
 
 /* SJ-BRUSH-BLUE-V88: handwritten navigation and native plugin heading. */
 @font-face {
- font-family:"SJ WenKai";src:url(assets/LXGWWenKai-Medium.ttf) format("truetype");
+ font-family:"SJ WenKai";src:url(assets/LXGWWenKai-Medium.woff2) format("woff2");
  font-style:normal;font-weight:500;font-display:swap;
 }
 body {--sj-hand-font:"SJ WenKai","Microsoft YaHei",sans-serif;--sj-brush-blue:#075bb5;--sj-brush-icon:#126fe4;}
@@ -6071,7 +6071,7 @@ body .yoSR5W_modal:has(> .yoSR5W_previewBody) > .yoSR5W_modalActions .yoSR5W_but
 
 /* SJ-PREVIEW-HANDLETTER-V215: a dedicated handwritten title face. */
 @font-face {
- font-family:"SJ Long Cang";src:url(assets/LongCang-Regular-v215.ttf) format("truetype");
+ font-family:"SJ Long Cang";src:url(assets/LongCang-Regular-v215.woff2) format("woff2");
  font-style:normal;font-weight:400;font-display:swap;
 }
 body .yoSR5W_modal:has(> .yoSR5W_previewBody) > .yoSR5W_modalTitle {

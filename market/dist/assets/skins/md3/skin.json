@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "md3",
+  "name": "物料三 · 紫调",
+  "nameEn": "Material 3 · Violet (Baseline)",
+  "version": "1.3.1",
+  "author": "Little Code Sauce（自用皮肤）",
+  "tagline": "MD3 Baseline 官方紫调 · surface 五级容器 + 状态层 · 线框几何缓慢漂浮",
+  "description": "把 Material Design 3 的官方 Baseline 配色搬进 dsh（紫调原版）：亮暗两套都是官方 Baseline 调色板，primary / secondary / tertiary / error 各自带 container 与 on-* 前景，surface 走五级容器（lowest → highest），高程用色调分层而不是投影。形状按 MD3 尺度 4 / 8 / 12 / 16 / 28，hover 与按下用 8% / 12% 的前景状态层。底板为亮暗各一段 20 秒无缝循环的线框几何漂浮视频，可退回静态首帧。",
+  "tags": [
+    "material",
+    "md3",
+    "material-3",
+    "tonal",
+    "baseline",
+    "violet",
+    "light-and-dark",
+    "video-background",
+    "surface-containers"
+  ],
+  "accent": "#6750A4",
+  "order": 120,
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css",
+    "backgroundMedia": {
+      "light": {
+        "type": "video",
+        "src": "assets/float-light.mp4",
+        "scrim": "linear-gradient(180deg, rgba(254, 247, 255, 0.06) 0%, rgba(253, 250, 255, 0.1) 55%, rgba(247, 242, 250, 0.14) 100%)"
+      },
+      "dark": {
+        "type": "video",
+        "src": "assets/float-dark.mp4",
+        "scrim": "linear-gradient(180deg, rgba(20, 18, 24, 0.08) 0%, rgba(18, 16, 22, 0.12) 55%, rgba(15, 13, 19, 0.16) 100%)"
+      }
+    }
+  },
+  "license": "MIT",
+  "licenseUrl": "https://opensource.org/licenses/MIT",
+  "attribution": "原创素材：底板线框几何由脚本按 3D 顶点建模、透视投影后写成 SVG，再逐帧渲染（1440×810、10fps、200 帧 = 20 秒无缝循环，位移取 20s 的整数倍频正弦，ffmpeg libx264 crf 30 编码，亮/暗两段各约 200KB）。配色取自 Material Design 3 官方 Baseline 调色板。无第三方美术素材，无角色，无既有作品。"
+}

@@ -69,7 +69,10 @@ test('copies cover the settings trio for all consumers plus host and http helper
   // pair-access, loopback, http) and the package-root vitest setup.
   // dsh-diagrams adds the mount-once, loopback and pair-access copies its
   // vendor route needs.
-  // totals below are 134 / 76 / 44.
+  // dsh-update left the family (the package is deleted), taking its six copies
+  // with it: mount-once, client telemetry, loopback, http, the package-root
+  // vitest setup and the console-output capture.
+  // totals below are 128 / 75 / 42.
   // dsh-browser-view's real-browser settings card adds seven client copies:
   // the card chrome, form primitives, stylesheet, entry fallback, card seat,
   // segmented control and slider bubble. dsh-task-board-team fills the board's
@@ -77,9 +80,9 @@ test('copies cover the settings trio for all consumers plus host and http helper
   // derivations (chrome, form primitives, stylesheet, segmented control, slider
   // bubble) and deliberately none of the entry-bound form fallback: its fields
   // are written through the board, not a family settings namespace.
-  assert.equal(entries.length, 134)
+  assert.equal(entries.length, 128)
   const clientTrio = entries.filter(entry => entry.target.includes('/src/client/'))
-  assert.equal(clientTrio.length, 76)
+  assert.equal(clientTrio.length, 75)
   const hostCopies = entries.filter(entry => entry.target.includes('/src/host/')
     || entry.target.includes('/src/dsh-home.ts')
     || entry.target.includes('/src/mount-once.ts')
@@ -87,7 +90,7 @@ test('copies cover the settings trio for all consumers plus host and http helper
     || entry.target.includes('/src/pair-access.ts')
     || entry.target.includes('/src/agent/')
     || entry.target.endsWith('/packages/dsh-task-board/src/http.ts'))
-  assert.equal(hostCopies.length, 44)
+  assert.equal(hostCopies.length, 42)
 })
 
 test('checkSync detects drift and applySync repairs it', async () => {

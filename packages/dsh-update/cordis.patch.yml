@@ -1,8 +1,0 @@
-# dsh-update bundle patch: inserts the family self-update row into the web
-# plugin roster. It is deliberately its own row (not part of
-# dsh-remote-web-ui) so turning remote access off — or disabling that whole
-# plugin — never takes the update trigger away.
-# Install with `dsh plugin --profile <name> add link:<repo>/packages/dsh-update`.
-- insert:
-    - id: update
-      name: '@linxin666/dsh-update'

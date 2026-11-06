@@ -1385,66 +1385,6 @@ importers:
         specifier: ^4.1.11
         version: 4.1.12(@types/node@22.20.5)(@vitest/coverage-v8@4.1.12)(jsdom@29.1.1)(yaml@2.9.1)
 
-  packages/dsh-update:
-    devDependencies:
-      '@deepseek-ai/cordis':
-        specifier: ^4.1.0
-        version: 4.1.0(@deepseek-ai/cordis-plugin-loader@1.1.0)
-      '@deepseek-ai/dsh-client-locale':
-        specifier: ^0.2.2-rc.1
-        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
-      '@deepseek-ai/dsh-client-ui-primitives':
-        specifier: 0.2.2-rc.1
-        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)(supports-color@7.2.0)
-      '@deepseek-ai/dsh-client-ui-renderer':
-        specifier: ^0.2.2-rc.1
-        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
-      '@deepseek-ai/dsh-client-ui-sidebar':
-        specifier: ^0.2.2-rc.1
-        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
-      '@deepseek-ai/dsh-client-ui-slots':
-        specifier: 0.2.2-rc.1
-        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)
-      '@deepseek-ai/dsh-host-webserver':
-        specifier: ^0.2.2-rc.1
-        version: 0.2.2-rc.1(@deepseek-ai/cordis@4.1.0)(supports-color@7.2.0)
-      '@testing-library/dom':
-        specifier: ^10.4.1
-        version: 10.4.2
-      '@testing-library/react':
-        specifier: ^16.3.2
-        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@types/node':
-        specifier: ^22.20.0
-        version: 22.20.5
-      '@types/react':
-        specifier: ~18.3.1
-        version: 18.3.31
-      '@types/react-dom':
-        specifier: ~18.3.0
-        version: 18.3.7(@types/react@18.3.31)
-      jsdom:
-        specifier: 29.1.1
-        version: 29.1.1
-      react:
-        specifier: ^18.2.0
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.2.0
-        version: 18.3.1(react@18.3.1)
-      tsdown:
-        specifier: ^0.22.2
-        version: 0.22.2(@typescript/native-preview@7.0.0-dev.20260707.2)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite-tsconfig-paths:
-        specifier: ^6.1.1
-        version: 6.1.1(supports-color@7.2.0)(typescript@6.0.3)(vite@8.3.4(@types/node@22.20.5)(yaml@2.9.1))
-      vitest:
-        specifier: ^4.1.8
-        version: 4.1.12(@types/node@22.20.5)(@vitest/coverage-v8@4.1.12)(jsdom@29.1.1)(yaml@2.9.1)
-
   packages/dsh-usage:
     dependencies:
       '@deepseek-ai/schemastery':

@@ -33,8 +33,9 @@ patchFrom:
   - ../dsh-agents
   # dsh-git-graph 已彻底移除（包目录删除）：Git 变更视图由官方 workspace-changes 插件
   # 承接，聚合不再挂载它的行、也不再依赖它；子路径导出按 tombstones 段留作退役空壳。
-  # dsh-update 已从本聚合退役（包目录保留、仍可独立安装）：聚合不再挂载它的自更新行，
-  # 侧栏 footer action 席位上不再有任何家族行。
+  # dsh-update 已整包移除（2026-11-06）：聚合此前就退役了它的自更新行，包目录与发布线一并
+  # 删除，侧栏 footer action 席位上不再有任何家族行；`update` 子路径与 retiredPlugins
+  # 登记保留，老 profile 的旧行名照旧静默解析。
   # dsh-remote-bridge 是家族仅剩的远程面（原生手机端的协议
   # v1 通道），但 inject 只要官方的 typertGateway / webServer
   # （浏览器半区 inject 官方的 locale / renderer / sidebar），不依赖任何家族行的席位

@@ -41,7 +41,6 @@ The plugin is a pure browser bundle (the host half intentionally has no behavior
 | `dsh-ssh` | dsh-ssh |
 | `task-board` | dsh-task-board |
 | `task-board-github` | dsh-task-board-github |
-| `update` | dsh-update |
 | `dsh-web-ui-usage` | dsh-usage |
 | `web-ui-plugins` | dsh-web-settings |
 

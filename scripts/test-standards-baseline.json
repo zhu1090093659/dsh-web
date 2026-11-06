@@ -156,8 +156,6 @@
     "packages/dsh-task-board/tests/task-detail-edit.spec.tsx": {"bdd-title":8,"given-when-then":8,"tautological-assertion":5},
     "packages/dsh-task-board/tests/task-duplicate.spec.ts": {"bdd-title":2,"given-when-then":2,"tautological-assertion":5},
     "packages/dsh-task-board/tests/tasks.spec.ts": {"bdd-title":20,"given-when-then":20},
-    "packages/dsh-update/tests/update-entry.spec.tsx": {"no-ad-hoc-mock":1,"bdd-title":11,"given-when-then":11,"tautological-assertion":21},
-    "packages/dsh-update/tests/update.spec.ts": {"bdd-title":58,"given-when-then":57},
     "packages/dsh-usage/tests/adapters.spec.ts": {"bdd-title":22,"given-when-then":22,"tautological-assertion":1},
     "packages/dsh-usage/tests/apply.spec.ts": {"no-arbitrary-sleep":1,"bdd-title":5,"given-when-then":5},
     "packages/dsh-usage/tests/ledger.spec.ts": {"bdd-title":11,"given-when-then":11,"tautological-assertion":3},

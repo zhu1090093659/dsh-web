@@ -128,7 +128,7 @@ active panel (#76 #87)`。提交信息禁止 emoji（全仓规则）。
    `README.zh.md` + `README.i18n.yaml`），改完任一侧后重录配对记录：
 
 ```sh
-pnpm docs:write-pair <包目录名>   # 如 dsh-ssh 或 dsh-update
+pnpm docs:write-pair <包目录名>   # 如 dsh-ssh 或 dsh-usage
 ```
 
 3. **无 emoji**：代码、注释、文档、提交信息均不得出现 emoji（CI 有全树

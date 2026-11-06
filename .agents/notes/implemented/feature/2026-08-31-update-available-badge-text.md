@@ -2,9 +2,11 @@
 
 Status: implemented
 
+> Superseded: the package this note describes has been deleted — see [The family removes the self-update package](../simplification/2026-11-06-remove-dsh-update-package.md). The note is kept for the badge's visual rationale only.
+
 ## Problem
 
-The `dsh-update` plugin renders the check-for-updates trigger in the sidebar footer (it was `dsh-remote-web-ui` before the self-update split; see [the split note](../architecture/2026-09-25-self-update-own-plugin-row.md)). When the background probe detected a newer release (`updateAvailable === true`), it only showed a small dot badge (`::after`) on the download icon. The visual indicator was subtle and easy to overlook.
+The `dsh-update` plugin rendered the check-for-updates trigger in the sidebar footer (it was `dsh-remote-web-ui` before the self-update split). When the background probe detected a newer release (`updateAvailable === true`), it only showed a small dot badge (`::after`) on the download icon. The visual indicator was subtle and easy to overlook.
 
 ## Decision
 

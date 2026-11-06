@@ -41,7 +41,6 @@ dsh Web GUI 与桌面客户端的家族字典包。DSH 自带俄语语言定义�
 | `dsh-ssh` | dsh-ssh |
 | `task-board` | dsh-task-board |
 | `task-board-github` | dsh-task-board-github |
-| `update` | dsh-update |
 | `dsh-web-ui-usage` | dsh-usage |
 | `web-ui-plugins` | dsh-web-settings |
 

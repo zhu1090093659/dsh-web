@@ -276,7 +276,7 @@ The plugin is configured through profile YAML (`cordis.patch.yml` or profile con
 
 ## Web GUI pairing panel
 
-The browser half exists so that an operator who never opens a terminal still has a way to start pairing. It follows the family's sidebar-foot convention: the trigger registers into the official `sidebar.footer.action` list slot (declared by ui-sidebar, sharing this list slot with `dsh-update`'s updater) and opens the official `Modal`, whose headless card this package fills. Every control it renders is a library primitive — the dialog, the three actions and their glyphs — so the mask, the card, the focus trap, Escape, focus restoration and each hover/focus/disabled state are the shell's behavior rather than a copy of it. It is delivered by the same plugin row: `exports["./client"]` is the artifact and `dsh.client` declares the client modules that must be live first.
+The browser half exists so that an operator who never opens a terminal still has a way to start pairing. It follows the family's sidebar-foot convention: the trigger registers into the official `sidebar.footer.action` list slot (declared by ui-sidebar, the same list slot the family's other foot triggers use) and opens the official `Modal`, whose headless card this package fills. Every control it renders is a library primitive — the dialog, the three actions and their glyphs — so the mask, the card, the focus trap, Escape, focus restoration and each hover/focus/disabled state are the shell's behavior rather than a copy of it. It is delivered by the same plugin row: `exports["./client"]` is the artifact and `dsh.client` declares the client modules that must be live first.
 
 The panel has one job — put the live one-time code in front of the operator, in one reading order:
 

@@ -28,7 +28,7 @@ Status: implemented
 
 ## Consequences
 
-- 桌面宽栏下「设置」触发器不再独占一行，脚部动作占用者（远程触发器与 dsh-update 触发器）与之并列；栏轨不受影响。
+- 桌面宽栏下「设置」触发器不再独占一行，脚部动作占用者（远程触发器）与之并列；栏轨不受影响。
 - 共享底行在 `sidebar.footer.action` 中出现任意第三方注册时仍然成立：陌生注册方在它之上各占一整行，「设置」触发器保持宽度而不会被挤成窄柱。本插件的规则不再依赖拥有该容器。
 - 布局依赖官方后缀类 `footArea` / `settingsArea` / `footerActions`、框架上的 `data-sidebar-collapsed` 标记，以及家族的 `data-dsh-part='entry'` / `entryRow` 标记——与竖屏层相同的存活契约，每轮官方 GUI 升级都要重新视觉 QA。
 - 任何向脚部追加块的插件都自动获得一整行；想让自己的块加入共享行的插件需要接受同样的 order/basis 契约。

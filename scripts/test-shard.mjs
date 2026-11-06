@@ -41,7 +41,6 @@ export const PACKAGE_WEIGHTS = Object.freeze({
   'packages/dsh-usage': 5,
   'packages/dsh-skill-explorer': 5,
   'packages/dsh-liangshen': 5,
-  'packages/dsh-update': 4,
   'packages/dsh-session-archive': 4,
   'packages/dsh-market': 4,
   'packages/dsh-session-id': 2,

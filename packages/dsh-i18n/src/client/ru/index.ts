@@ -22,7 +22,6 @@ import { ru as ssh } from './ssh.ts'
 import { ru as taskBoard } from './task-board.ts'
 import { ru as taskBoardGithub } from './task-board-github.ts'
 import { ru as taskBoardTeam } from './task-board-team.ts'
-import { ru as update } from './update.ts'
 import { ru as usage } from './usage.ts'
 import { ru as webSettings } from './web-settings.ts'
 
@@ -44,7 +43,6 @@ export const ruDictionaries: Record<string, Record<string, string>> = {
   'task-board': taskBoard,
   'task-board-github': taskBoardGithub,
   'task-board-team': taskBoardTeam,
-  'update': update,
   'dsh-web-ui-usage': usage,
   'web-ui-plugins': webSettings,
 }

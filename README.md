@@ -205,7 +205,6 @@ dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方�
 - **Skill 中心**（[`@linxin666/dsh-client-ui-skill-explorer`](packages/dsh-skill-explorer/README.zh.md)）：按来源集中查看与管理已加载的 agent skills，支持按名称与功能描述实时搜索过滤，多工作区独立呈现，支持一键启停、新建与删除。
 - **插件增强（更新与开关）**（[`@linxin666/dsh-client-ui-plugin-manager`](packages/dsh-plugin-manager/README.zh.md)）：为官方插件页补充注册表新版本检测、DSH 运行时最低版本门控与一键升级，并支持插件可视化启停与配置编辑。
 - **创意工坊与综合设置面板**：含 [**创意工坊客户端**](packages/dsh-market/README.zh.md)（`@linxin666/dsh-client-ui-market`，在线浏览与一键安装皮肤、宠物、插件与预设）与 [**综合设置面板**](packages/dsh-web-settings/README.zh.md)（`@linxin666/dsh-client-ui-web-ui-settings`，集中承载家族插件开关与配置表单）。
-- **插件自更新**（[`@linxin666/dsh-update`](packages/dsh-update/README.zh.md)，全家桶不含，需单独安装）：自动检测 npm 家族新版本并在侧边栏底部提供更新日志面板与一键原地升级。
 - **会话 ID 辅助**（[`@linxin666/dsh-client-ui-session-id`](packages/dsh-session-id/README.zh.md)）：侧边栏底部提供全部会话完整 ID 的一键复制与快速检索定位。
 - **俄语语言包**（[`@linxin666/dsh-i18n`](packages/dsh-i18n/README.zh.md)）：集中承载全家族插件命名空间的俄语（`ru`）多语言字典支持。
 
@@ -295,7 +294,6 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-preset-center@latest      
 dsh plugin --profile web add @linxin666/dsh-client-ui-plugin-manager@latest        # 插件增强（更新与开关）
 dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest        # Skill 中心
 dsh plugin --profile web add @linxin666/dsh-client-ui-web-ui-settings@latest       # 综合设置面板
-dsh plugin --profile web add @linxin666/dsh-update@latest                          # 插件自更新（全家桶不含）
 dsh plugin --profile web add @linxin666/dsh-client-ui-session-id@latest            # 会话 ID 复制
 dsh plugin --profile web add @linxin666/dsh-i18n@latest                            # 俄语语言包
 ```
@@ -326,7 +324,6 @@ dsh plugin --profile web add @linxin666/dsh-i18n@latest                         
 | [@linxin666/dsh-client-ui-plugin-manager](https://www.npmjs.com/package/@linxin666/dsh-client-ui-plugin-manager) | [README](packages/dsh-plugin-manager/README.zh.md) | 插件增强（更新与开关）：官方插件页注册表版本检测、运行时版本门控升级与可视化状态配置 |
 | [@linxin666/dsh-client-ui-skill-explorer](https://www.npmjs.com/package/@linxin666/dsh-client-ui-skill-explorer) | [README](packages/dsh-skill-explorer/README.zh.md) | Skill 中心：按来源集中浏览、检索、启停、新建与管理已加载的 agent skills |
 | [@linxin666/dsh-client-ui-web-ui-settings](https://www.npmjs.com/package/@linxin666/dsh-client-ui-web-ui-settings) | [README](packages/dsh-web-settings/README.zh.md) | 综合设置面板：集中承载 dsh-web 家族插件启用开关与配置表单的一级设置分区 |
-| [@linxin666/dsh-update](https://www.npmjs.com/package/@linxin666/dsh-update) | [README](packages/dsh-update/README.zh.md) | 插件自更新（全家桶不含，需单独安装）：侧边栏版本检测、更新日志面板与一键原地升级 |
 | [@linxin666/dsh-client-ui-session-id](https://www.npmjs.com/package/@linxin666/dsh-client-ui-session-id) | [README](packages/dsh-session-id/README.zh.md) | 会话 ID 辅助：侧边栏底部快速查看、搜索与一键复制会话完整 ID |
 | [@linxin666/dsh-i18n](https://www.npmjs.com/package/@linxin666/dsh-i18n) | [README](packages/dsh-i18n/README.zh.md) | 俄语语言包：集中承载家族全部插件命名空间的俄语（`ru`）多语言字典 |
 | [@linxin666/dsh-remote-web-ui](https://www.npmjs.com/package/@linxin666/dsh-remote-web-ui) | [README](packages/dsh-remote-web-ui/README.zh.md) | 跨设备浏览器远程访问（已弃用，由 dsh-remote-bridge 承接，切勿与 remote-bridge 同时启用中继） |
@@ -502,7 +499,7 @@ dsh-web 针对主流操作系统、现代化浏览器及网络拓扑进行了深
 
 **插件**
 
-- **dsh-task-board / dsh-task-board-github / dsh-task-board-remote / dsh-task-board-team / dsh-agents / dsh-browser-view / dsh-message-edit / dsh-win-bash / dsh-pet / dsh-remote-bridge / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-update / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n / dsh-diagrams** — 本仓库原创（zhu1090093659），Apache-2.0（zhu1090093659；`dsh-win-bash` 随包分发的 Git for Windows / MSYS2 运行时载荷许可证与来源清单见 [PROVENANCE.md](packages/dsh-win-bash/PROVENANCE.md)）
+- **dsh-task-board / dsh-task-board-github / dsh-task-board-remote / dsh-task-board-team / dsh-agents / dsh-browser-view / dsh-message-edit / dsh-win-bash / dsh-pet / dsh-remote-bridge / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n / dsh-diagrams** — 本仓库原创（zhu1090093659），Apache-2.0（zhu1090093659；`dsh-win-bash` 随包分发的 Git for Windows / MSYS2 运行时载荷许可证与来源清单见 [PROVENANCE.md](packages/dsh-win-bash/PROVENANCE.md)）
 - **dsh-diagrams** — 随包分发 [mermaid](https://github.com/mermaid-js/mermaid) 运行库（MIT）：构建时从 npm 的 `mermaid` 包复制到 `lib/assets/mermaid.min.js` 并由宿主路由伺服，仓库不提交任何第三方源码；本包自身代码为本仓库 Apache-2.0（zhu1090093659）
 - **dsh-ssh** — 依据 [badseal/ssh-skill](https://github.com/badseal/ssh-skill) 的能力清单实现；代码为本仓库 Apache-2.0（zhu1090093659），上游能力清单归属 badseal/ssh-skill
 - **社区插件索引** — 100+ 项外部插件，来源与版权由各作者声明，登记于 [community.json](https://github.com/zhu1090093659/dsh-community-plugins/blob/main/community.json)，可在「设置 → 社区插件」与 dsh-market.com 查看

@@ -158,7 +158,6 @@ const MANIFEST = [
       'packages/dsh-market/src/mount-once.ts',
       'packages/dsh-usage/src/mount-once.ts',
       'packages/dsh-session-archive/src/mount-once.ts',
-      'packages/dsh-update/src/mount-once.ts',
       'packages/dsh-diagrams/src/mount-once.ts',
     ],
   },
@@ -175,7 +174,6 @@ const MANIFEST = [
       'packages/dsh-ssh/src/client/telemetry.ts',
       'packages/dsh-task-board/src/client/telemetry.ts',
       'packages/dsh-web-settings/src/client/telemetry.ts',
-      'packages/dsh-update/src/client/telemetry.ts',
     ],
   },
   {
@@ -200,7 +198,7 @@ const MANIFEST = [
   {
     file: 'loopback.ts',
     source: 'shared/host/loopback.ts',
-    targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-task-board/src/loopback.ts', 'packages/dsh-task-board-github/src/loopback.ts', 'packages/dsh-skill-explorer/src/loopback.ts', 'packages/dsh-plugin-manager/src/host/loopback.ts', 'packages/dsh-market/src/loopback.ts', 'packages/dsh-usage/src/host/loopback.ts', 'packages/dsh-session-archive/src/host/loopback.ts', 'packages/dsh-update/src/loopback.ts', 'packages/dsh-browser-view/src/host/loopback.ts', 'packages/dsh-diagrams/src/host/loopback.ts'],
+    targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-task-board/src/loopback.ts', 'packages/dsh-task-board-github/src/loopback.ts', 'packages/dsh-skill-explorer/src/loopback.ts', 'packages/dsh-plugin-manager/src/host/loopback.ts', 'packages/dsh-market/src/loopback.ts', 'packages/dsh-usage/src/host/loopback.ts', 'packages/dsh-session-archive/src/host/loopback.ts', 'packages/dsh-browser-view/src/host/loopback.ts', 'packages/dsh-diagrams/src/host/loopback.ts'],
   },
   {
     file: 'http.ts',
@@ -215,7 +213,6 @@ const MANIFEST = [
       'packages/dsh-task-board-github/src/host/http.ts',
       'packages/dsh-usage/src/host/http.ts',
       'packages/dsh-session-archive/src/host/http.ts',
-      'packages/dsh-update/src/http.ts',
     ],
   },
   {
@@ -228,7 +225,6 @@ const MANIFEST = [
       'packages/dsh-web-settings/vitest.setup.ts',
       'packages/dsh-task-board/vitest.setup.ts',
       'packages/dsh-task-board-github/vitest.setup.ts',
-      'packages/dsh-update/vitest.setup.ts',
     ],
   },
   {
@@ -260,7 +256,6 @@ const MANIFEST = [
     source: 'shared/host/console-output.ts',
     targets: [
       'packages/dsh-plugin-manager/src/host/console-output.ts',
-      'packages/dsh-update/src/console-output.ts',
     ],
   },
   {

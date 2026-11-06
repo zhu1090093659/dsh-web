@@ -4,9 +4,9 @@
  * Mermaid's strict security level already escapes label content, but the SVG is
  * third-party output injected into the page, so it is parsed in a detached
  * document first and stripped of anything executable: script-ish elements,
- * `on*` handlers and `javascript:` URLs. Cleaned markup is returned; input that
- * still carries a dangerous token after cleaning throws, and the caller falls
- * back to the untouched code block.
+ * `on*` handlers and URL attributes with an executable scheme. Cleaned markup is
+ * returned; input that still carries a dangerous token after cleaning throws, and
+ * the caller falls back to the untouched code block.
  *
  * One walk does both removals: dropping a disallowed element drops everything
  * beneath it, so a second pass would only re-examine nodes that are already
@@ -27,9 +27,36 @@ function isEventHandler(name: string): boolean {
   return /^on/i.test(name)
 }
 
-/** A href-like value that executes script when followed. */
-function isScriptUrl(value: string): boolean {
-  return /^\s*javascript:/i.test(value)
+/**
+ * URL schemes that can carry or turn into executable content.
+ *
+ * `javascript:` and `vbscript:` run script when the link is followed; `data:` can
+ * navigate to attacker-authored markup (`data:text/html,...`), and the mermaid
+ * runtime's own `@braintree/sanitize-url` already blocks all three, so nothing it
+ * renders depends on a `data:` target.
+ */
+const EXECUTABLE_SCHEMES = new Set(['javascript:', 'vbscript:', 'data:'])
+
+/**
+ * A URL attribute value whose scheme is executable once the browser parses it.
+ *
+ * The value is parsed instead of prefix-matched: a browser removes ASCII tab, line
+ * feed and carriage return characters anywhere in a URL and leading C0 controls and
+ * spaces before it reads the scheme, so `java<TAB>script:` and ` javascript:` both
+ * execute while a `^\s*javascript:` test sees neither. Parsing also sees the
+ * entity-decoded form, because the attribute is already decoded by the time the
+ * template parses the markup. A value without a colon carries no scheme, so it skips
+ * the parse; the base only makes a relative value absolute and is never fetched.
+ */
+function isExecutableUrl(value: string): boolean {
+  if (!value.includes(':')) {
+    return false
+  }
+  try {
+    return EXECUTABLE_SCHEMES.has(new URL(value, 'https://diagram.invalid/').protocol)
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -49,7 +76,7 @@ export function sanitizeSvg(svg: string): string {
       continue
     }
     for (const attribute of Array.from(element.attributes)) {
-      if (isEventHandler(attribute.name) || isScriptUrl(attribute.value)) {
+      if (isEventHandler(attribute.name) || isExecutableUrl(attribute.value)) {
         element.removeAttribute(attribute.name)
       }
     }

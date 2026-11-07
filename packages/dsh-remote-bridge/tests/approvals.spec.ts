@@ -383,6 +383,7 @@ describe('approval: the panel and the phone share one question', () => {
     await settle()
     // Then nothing was announced as over and the phone still decides
     expect(approvalPayloads(harness.transport)).toHaveLength(1)
+    // When the phone rejects it, that decision is the one the agent receives
     await harness.connection.handleText(requestFrame(5, 'approval.resolve', { id: publishedQuestion(harness.transport).id, decision: 'rejected' }))
     expect(await pending).toBe('rejected')
   })

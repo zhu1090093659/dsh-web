@@ -89,6 +89,15 @@ function notifierAt(
   })
 }
 
+/**
+ * The host's own answerer with the panel open and nobody having clicked it.
+ *
+ * Both surfaces hold the same question now and the first answer settles it, so a
+ * card a human has not touched is the state that leaves the phone's the one that
+ * decides.
+ */
+const panelWaiting = (): Promise<never> => new Promise<never>(() => {})
+
 /** One roster row in the shape every probe entry of a real table has. */
 function rosterRow(deviceId = 'dev_probe0'): Record<string, unknown> {
   return {
@@ -566,7 +575,7 @@ describe('live activity: the state the bridge projects', () => {
         options: [{ label: 'Alpha' }, { label: 'Bravo' }, { label: 'Charlie' }],
         multiSelect: false,
       }],
-    }, async () => ({ answers: [] }))
+    }, panelWaiting)
     await settle()
     // Then the card is waiting for an answer, with the header and two choices
     expect(sink.sent).toHaveLength(1)

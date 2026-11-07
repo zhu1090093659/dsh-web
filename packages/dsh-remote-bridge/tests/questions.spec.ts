@@ -37,6 +37,34 @@ const ANSWER: QuestionAnswer = { answers: [{ id: 'q-1', selected: ['Alpha'] }] }
  */
 const desktopWaiting = (): Promise<QuestionAnswer> => new Promise<QuestionAnswer>(() => {})
 
+/**
+ * The same answerer with the click the suite decides on.
+ *
+ * `calls` is how many times the panel was offered the question — the claim is
+ * supposed to hand it over exactly once — and `answer` is the click that settles
+ * it, whether that lands before or long after the phone's own answer.
+ */
+interface DesktopCard {
+  readonly next: () => Promise<QuestionAnswer>
+  readonly calls: () => number
+  readonly answer: (value: QuestionAnswer) => void
+}
+
+/** Build one {@link DesktopCard}: a chain that answers only when the suite clicks. */
+function desktopCard(): DesktopCard {
+  let clicks = 0
+  let settle: (value: QuestionAnswer) => void = () => undefined
+  const pending = new Promise<QuestionAnswer>(resolve => { settle = resolve })
+  return {
+    next: () => {
+      clicks += 1
+      return pending
+    },
+    calls: () => clicks,
+    answer: (value) => { settle(value) },
+  }
+}
+
 /** Declare the question capability on one connection. */
 async function declareQuestions(connection: { handleText(text: string): Promise<void> }, id = 1): Promise<void> {
   await connection.handleText(requestFrame(id, 'hello', { proto: 1, cap: ['questions.v1'] }))
@@ -121,6 +149,54 @@ describe('user question bridge', () => {
     expect(harness.gateway.invocations).toEqual([])
   })
 
+  it('operator the panel answers first and the phone is told the question is over', async () => {
+    // Given a paired phone that announced the channel, and the panel that was
+    // offered the same question the instant the claim existed
+    const harness = makeHub()
+    await declareQuestions(harness.connection)
+    const desktop = desktopCard()
+    const pending = harness.hub.question(hostRequest(), desktop.next)
+    await settle()
+    expect(desktop.calls()).toBe(1)
+    expect(questionPayloads(harness.transport).map(payload => payload.state)).toEqual(['open'])
+    // When the panel's click lands first
+    const fromPanel: QuestionAnswer = { answers: [{ id: 'q-1', selected: ['Beta'] }] }
+    desktop.answer(fromPanel)
+    // Then that answer is the one the host is answered with
+    expect(await pending).toEqual(fromPanel)
+    // And the phone's card is over
+    expect(questionPayloads(harness.transport).map(payload => payload.state)).toEqual(['open', 'settled'])
+    // And the claim is released, so nothing lists it and a tap that arrives late
+    // is refused instead of being forwarded a second time
+    expect(harness.questions.size).toBe(0)
+    expect(harness.questions.listed()).toEqual([])
+    await harness.connection.handleText(requestFrame(2, 'question.answer', { sessionId: 's-1', callId: 'c-1', answers: ANSWER.answers }))
+    expect(answerOf(harness, 2).e?.code).toBe('question-unknown')
+  })
+
+  it('user the panel chain refusing is not a verdict and the phone still answers', async () => {
+    // Given a paired phone and a host whose own answerer chain refuses outright,
+    // which is what a host with no panel on the wire raises
+    const harness = makeHub()
+    await declareQuestions(harness.connection)
+    let calls = 0
+    const pending = harness.hub.question(hostRequest(), async () => {
+      calls += 1
+      throw Object.assign(new Error('no user-questions answerer accepted the request'), { code: 'NO_PROVIDER' })
+    })
+    await settle()
+    // Then the claim is untouched: nothing was announced as over and the phone's
+    // card is still the one that decides
+    expect(calls).toBe(1)
+    expect(harness.questions.stateOf('c-1')).toBe('open')
+    expect(questionPayloads(harness.transport).map(payload => payload.state)).toEqual(['open'])
+    // When the phone answers it
+    await harness.connection.handleText(requestFrame(4, 'question.answer', { sessionId: 's-1', callId: 'c-1', answers: ANSWER.answers }))
+    // Then the host receives the phone's answer rather than the chain's refusal
+    expect(await pending).toEqual(ANSWER)
+    expect(harness.questions.size).toBe(0)
+  })
+
   it('user answers a continued question and the host receives the answer method call', async () => {
     // Given a claimed question whose foreground deadline is the host's own
     const harness = makeHub()
@@ -188,17 +264,23 @@ describe('user question bridge', () => {
   })
 
   it('operator unloads the bridge and every held question is delegated', async () => {
-    // Given two claimed questions
+    // Given two claimed questions whose panels have not answered them
     const harness = makeHub()
     await declareQuestions(harness.connection)
-    const first = harness.hub.question(hostRequest(), async () => ({ answers: [{ id: 'q-1', selected: [] }] }))
-    const second = harness.hub.question(hostRequest({ wait: { callId: 'c-2', timed: true } }), async () => ({ answers: [{ id: 'q-1', selected: [] }] }))
+    const firstPanel = desktopCard()
+    const secondPanel = desktopCard()
+    const first = harness.hub.question(hostRequest(), firstPanel.next)
+    const second = harness.hub.question(hostRequest({ wait: { callId: 'c-2', timed: true } }), secondPanel.next)
+    await settle()
+    expect(harness.questions.size).toBe(2)
     // When the plugin is torn down
     harness.hub.dispose()
-    // Then both are delegated and nothing is left holding them
+    // Then both were handed back to the chains that were already holding them
+    expect(harness.questions.size).toBe(0)
+    firstPanel.answer({ answers: [{ id: 'q-1', selected: [] }] })
+    secondPanel.answer({ answers: [{ id: 'q-1', selected: [] }] })
     expect(await first).toEqual({ answers: [{ id: 'q-1', selected: [] }] })
     expect(await second).toEqual({ answers: [{ id: 'q-1', selected: [] }] })
-    expect(harness.questions.size).toBe(0)
   })
 
   it('user answers a call this bridge never claimed and is refused as unknown', async () => {
@@ -350,17 +432,20 @@ describe('user question bridge', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const harness = makeHub()
     await declareQuestions(harness.connection)
-    // Here the desktop panel is what answers once the phone is gone, so it settles
-    // rather than hanging: this case is about the hand-back, not about a race.
-    const pending = harness.hub.question(hostRequest(), async () => ({ answers: [] }))
+    // The panel holds the same card and nobody has clicked it: this case is about
+    // the hand-back, not about which surface answers first.
+    const desktop = desktopCard()
+    const pending = harness.hub.question(hostRequest(), desktop.next)
     await settle()
     // When the connection closes, and the grace window it leaves behind runs out
     harness.hub.detach(harness.connection)
     await vi.advanceTimersByTimeAsync(QUESTION_CLAIM_GRACE_MS)
-    // Then the question was handed to the next answerer rather than refused or left hanging
-    expect(await pending).toEqual({ answers: [] })
+    // Then the question went back to that panel rather than being refused or left
+    // hanging, and its answer is the one the agent receives
     expect(harness.questions.size).toBe(0)
     expect(harness.logs).toContain('1 user question(s) released: no paired device is connected')
+    desktop.answer({ answers: [] })
+    expect(await pending).toEqual({ answers: [] })
   })
 
   it('user answers a blocking ask and the phone was given a bridge-minted call id', async () => {
@@ -448,22 +533,27 @@ describe('user question bridge', () => {
     expect(harness.transport.ofType('ev')).toEqual([])
   })
 
-  it('operator a paired phone takes the question and the desktop is never consulted', async () => {
-    // Given a paired phone that announced the channel
+  it('user the phone answers first and the panel answer that arrives afterwards is ignored', async () => {
+    // Given a paired phone that announced the channel, and the panel holding the
+    // same question
     const harness = makeHub()
     await declareQuestions(harness.connection)
-    let desktopConsulted = 0
-    const desktop = async (): Promise<QuestionAnswer> => {
-      desktopConsulted += 1
-      return { answers: [] }
-    }
-    // When the host asks, and the phone answers it
-    const pending = harness.hub.question(hostRequest(), desktop)
+    const desktop = desktopCard()
+    const pending = harness.hub.question(hostRequest(), desktop.next)
+    await settle()
+    // The panel was offered the question the instant the claim existed
+    expect(desktop.calls()).toBe(1)
+    // When the phone answers it, and the panel's click lands afterwards
     await harness.connection.handleText(requestFrame(2, 'question.answer', { sessionId: 's-1', callId: 'c-1', answers: ANSWER.answers }))
     expect(await pending).toEqual(ANSWER)
-    // Then the host's own panel was never started: it could not be closed again
-    expect(desktopConsulted).toBe(0)
     expect(harness.questions.size).toBe(0)
+    const cards = questionPayloads(harness.transport).length
+    desktop.answer({ answers: [{ id: 'q-1', selected: ['Beta'] }] })
+    await settle()
+    // Then the phone's answer is the one the host received: the late panel answer
+    // settled nothing a second time and announced no second card
+    expect(questionPayloads(harness.transport)).toHaveLength(cards)
+    expect(questionPayloads(harness.transport).map(payload => payload.state)).toEqual(['open'])
   })
 
   it('operator the phone goes away and the claim is handed back with a settled notice', async () => {
@@ -557,12 +647,14 @@ describe('user question bridge', () => {
     await declareQuestions(harness.connection)
     const waitStream = new ControllableStream()
     followWaitStream(harness.gateway, waitStream)
-    const pending = harness.hub.question(hostRequest(), async () => ANSWER)
+    const desktop = desktopCard()
+    const pending = harness.hub.question(hostRequest(), desktop.next)
     await settle()
     waitStream.push({ remainingMs: 4000 })
     await settle()
     // When the bridge unloads and the claim is handed back at once
     harness.hub.dispose()
+    desktop.answer(ANSWER)
     expect(await pending).toEqual(ANSWER)
     // The phone is already gone, so nothing can carry the settled notice to it
     const afterWithdraw = questionPayloads(harness.transport)

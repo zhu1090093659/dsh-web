@@ -133,6 +133,19 @@ export class ApprovalRegistry {
   }
 
   /**
+   * Release one question the host's own panel answered first.
+   *
+   * The release is not a decision: the panel's answer travels back through the
+   * answerer chain it came from, so the claim only has to stop being pending —
+   * which is what also makes a later answer from the phone refuse as unknown
+   * instead of settling a question that is already over.
+   * @returns whether this call released it; false when the phone already had.
+   */
+  releaseToHost(id: string): boolean {
+    return this.#settle(id, undefined) === true
+  }
+
+  /**
    * Withdraw the named questions, delegating each to the next answerer.
    * @returns how many were still pending.
    */

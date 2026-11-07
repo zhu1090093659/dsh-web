@@ -57,6 +57,15 @@ function notifierAt(sender: Recorder['sender'] | undefined, clock: { now: number
   })
 }
 
+/**
+ * The host's own answerer with the panel open and nobody having clicked it.
+ *
+ * Both surfaces hold the same question now and the first answer settles it, so a
+ * card a human has not touched is the state that leaves the phone's the one that
+ * decides.
+ */
+const panelWaiting = (): Promise<never> => new Promise<never>(() => {})
+
 /** A registration as a phone would send it. */
 const REGISTRATION: PushRegistration = {
   deviceToken: 'aabbccdd',
@@ -540,7 +549,7 @@ describe('push channel: the payload carries no session content', () => {
         options: [{ label: 'Alpha' }],
         multiSelect: false,
       }],
-    }, async () => ({ answers: [] }))
+    }, panelWaiting)
     await settle()
     // Then one notification says something is waiting
     expect(sink.sent).toHaveLength(1)
@@ -610,5 +619,35 @@ describe('push channel: the payload carries no session content', () => {
     // Then both are the published ones
     expect(MINOR).toBe(21)
     expect(CAP_PUSH).toBe('push.v1')
+  })
+})
+
+describe('push channel: the panel on the wire is the delivery', () => {
+
+  it('operator is not notified while a browser client that can answer is open', async () => {
+    // Given a hub whose bridge can deliver and whose browser panel is open in front
+    // of the operator
+    const clock = { now: 1_000 }
+    const sink = recorder()
+    const push = notifierAt(sink.sender, clock)
+    const harness = makeHub({ push, liveClient: true })
+    await harness.connection.handleText(requestFrame(1, 'hello', { proto: 1, cap: ['questions.v1', 'approvals.v1'] }))
+    // When a question and an approval are both claimed for the phone
+    void harness.hub.question({
+      agent: { id: 's-1' },
+      questions: [{ id: 'q-1', question: 'Which deck should ship?' }],
+    }, panelWaiting)
+    void harness.hub.approve({ agent: { id: 's-2' }, toolName: 'bash' }, panelWaiting)
+    await settle()
+    // Then the panel is the delivery and not one notification was sent
+    expect(sink.sent).toEqual([])
+    // And when that panel goes away, the alert takes over again
+    harness.gateway.liveClient = false
+    void harness.hub.question({
+      agent: { id: 's-3' },
+      questions: [{ id: 'q-1', question: 'Which deck should ship?' }],
+    }, panelWaiting)
+    await settle()
+    expect(sink.sent.map(alert => alert.notification.st)).toEqual(['question'])
   })
 })

@@ -104,6 +104,17 @@ export class FakeGateway implements BridgeGateway {
   follow: (call: RecordedCall) => AsyncIterable<unknown> = (call) => (
     call.method === 'attachWait' ? new ControllableStream().end().iterable() : new ControllableStream().iterable()
   )
+  /**
+   * Whether a browser client that can answer these waterfalls is on the wire.
+   *
+   * The host's own `ctx.typertGateway.hasLiveClient`: true models the Web GUI
+   * sitting in front of the operator, which is what silences a notification.
+   */
+  liveClient = false
+
+  hasLiveClient(): boolean {
+    return this.liveClient
+  }
 
   invoke(request: GatewayInvokeRequest): Promise<unknown> {
     const call: RecordedCall = { namespace: request.namespace, method: request.method, args: request.args, peer: request.peer, signal: request.signal }
@@ -296,8 +307,8 @@ export interface HarnessOptions {
   readonly squads?: SquadTransport
   /** The outbound notification path; the default models a bridge with no APNs key. */
   readonly push?: PushNotifier
-  /** The offline claim window; the default is the production one. */
-  readonly offlineClaimTtlMs?: number
+  /** Whether a browser client that answers these waterfalls is on the wire; the default is none. */
+  readonly liveClient?: boolean
   /** The lock-screen card path; the default models a bridge that sends no card. */
   readonly liveActivity?: LiveActivityNotifier
   /** The gate a finished turn is announced through; the default reports at the frame. */
@@ -402,6 +413,7 @@ function jobsOf(options: HarnessOptions, log: (message: string) => void): JobRos
 export function makeConnection(options: HarnessOptions = {}): ConnectionHarness {
   const transport = new RecordingTransport()
   const gateway = new FakeGateway()
+  gateway.liveClient = options.liveClient === true
   const pairing = new PairingService()
   const roster = options.roster ?? new DeviceRoster({ file: options.rosterFile ?? '/tmp/dsh-remote-bridge-test/not-loaded.json' })
   const modelEfforts = options.modelEfforts ?? effortTableOf()
@@ -519,6 +531,7 @@ export interface BareHubHarness {
 /** Build one hub with nothing attached, for suites that bring their own carrier. */
 export function makeBareHub(options: HarnessOptions = {}): BareHubHarness {
   const gateway = new FakeGateway()
+  gateway.liveClient = options.liveClient === true
   const approvals = new ApprovalRegistry()
   const logs: string[] = []
   const ownerPeer = createOwnerPeer(new Context())
@@ -550,7 +563,6 @@ export function makeBareHub(options: HarnessOptions = {}): BareHubHarness {
     ...(options.liveActivity === undefined ? {} : { liveActivity: options.liveActivity }),
     ...(options.turnEndQuiet === undefined ? {} : { turnEndQuiet: options.turnEndQuiet }),
     ...(options.onPushRegistered === undefined ? {} : { onPushRegistered: options.onPushRegistered }),
-    ...(options.offlineClaimTtlMs === undefined ? {} : { offlineClaimTtlMs: options.offlineClaimTtlMs }),
     ...(options.relay === undefined ? {} : { relay: options.relay }),
     now: () => Date.now(),
     clientTimeZone: () => undefined,

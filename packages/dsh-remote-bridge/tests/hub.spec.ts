@@ -37,6 +37,34 @@ const ANSWER: QuestionAnswer = { answers: [{ id: 'q-1', selected: ['Alpha'] }] }
 /** The host's own answerer with its panel open: in the desktop client this settles on a click. */
 const desktopWaiting = (): Promise<QuestionAnswer> => new Promise<QuestionAnswer>(() => {})
 
+/**
+ * The host's own answerer as the panel shows it: a card that answers on a click.
+ *
+ * The panel is offered the same question at claim time, so most cases below have
+ * two answerers. `calls` is how many times the panel was handed the question — one
+ * card, shown once — and `answer` is the click that settles it.
+ */
+interface DesktopCard {
+  readonly next: () => Promise<QuestionAnswer>
+  readonly calls: () => number
+  readonly answer: (value: QuestionAnswer) => void
+}
+
+/** Build one {@link DesktopCard}: a chain that answers only when the suite clicks. */
+function desktopCard(): DesktopCard {
+  let clicks = 0
+  let settle: (value: QuestionAnswer) => void = () => undefined
+  const pending = new Promise<QuestionAnswer>(resolve => { settle = resolve })
+  return {
+    next: () => {
+      clicks += 1
+      return pending
+    },
+    calls: () => clicks,
+    answer: (value) => { settle(value) },
+  }
+}
+
 /** Declare the question channel on one connection. */
 async function declareQuestions(connection: { handleText(text: string): Promise<void> }, id = 1): Promise<void> {
   await connection.handleText(requestFrame(id, 'hello', { proto: 1, cap: ['questions.v1'] }))
@@ -65,20 +93,17 @@ describe('question claim grace window', () => {
     // Given a claimed question and the only paired phone going away
     const harness = makeHub()
     await declareQuestions(harness.connection)
-    let delegated = 0
-    harness.hub.question(hostRequest(), async (): Promise<QuestionAnswer> => {
-      delegated += 1
-      return { answers: [] }
-    })
+    const desktop = desktopCard()
+    harness.hub.question(hostRequest(), desktop.next)
     await settle()
     // When it goes away
     harness.hub.detach(harness.connection)
     await settle()
     // Then nothing was withdrawn: the claim is still held and still open, and the
-    // host's own answerer was never started on it
+    // panel that was offered the same question has not answered it
     expect(harness.questions.size).toBe(1)
     expect(harness.questions.stateOf('c-1')).toBe('open')
-    expect(delegated).toBe(0)
+    expect(desktop.calls()).toBe(1)
     expect(releaseLines(harness.logs)).toEqual([])
     // And a phone that declares on that hub afterwards is handed the claim again,
     // the way the original broadcast handed it to the phones that were there
@@ -102,11 +127,8 @@ describe('question claim grace window', () => {
     // through the window
     const harness = makeHub()
     await declareQuestions(harness.connection)
-    let delegated = 0
-    harness.hub.question(hostRequest(), async (): Promise<QuestionAnswer> => {
-      delegated += 1
-      return { answers: [] }
-    })
+    const desktop = desktopCard()
+    harness.hub.question(hostRequest(), desktop.next)
     await settle()
     const timersBefore = vi.getTimerCount()
     harness.hub.detach(harness.connection)
@@ -121,10 +143,10 @@ describe('question claim grace window', () => {
     // When the instant the window would have ended passes, twice over
     await vi.advanceTimersByTimeAsync(QUESTION_CLAIM_GRACE_MS * 2)
     // Then the claim is still held: the release was cancelled, not postponed, and
-    // the host's own answerer was never started on it
+    // the panel that was offered the question has not answered it
     expect(harness.questions.size).toBe(1)
     expect(harness.questions.stateOf('c-1')).toBe('open')
-    expect(delegated).toBe(0)
+    expect(desktop.calls()).toBe(1)
     expect(releaseLines(harness.logs)).toEqual([])
     // And it is still the phone's to answer
     await returned.handleText(requestFrame(2, 'question.answer', { sessionId: 's-1', callId: 'c-1', answers: ANSWER.answers }))
@@ -136,26 +158,24 @@ describe('question claim grace window', () => {
     // Given a claimed question whose phone left with the window running
     const harness = makeHub()
     await declareQuestions(harness.connection)
-    let delegated = 0
-    const released = harness.hub.question(hostRequest(), async (): Promise<QuestionAnswer> => {
-      delegated += 1
-      return { answers: [] }
-    })
+    const desktop = desktopCard()
+    const released = harness.hub.question(hostRequest(), desktop.next)
     await settle()
     const timersBefore = vi.getTimerCount()
     harness.hub.detach(harness.connection)
     expect(vi.getTimerCount()).toBe(timersBefore + 1)
     // When the window runs out
     await vi.advanceTimersByTimeAsync(QUESTION_CLAIM_GRACE_MS)
-    // Then the question went back to the host's own answerer chain, once
-    expect(await released).toEqual({ answers: [] })
-    expect(delegated).toBe(1)
+    // Then the question went back to the host's own answerer chain, which was
+    // already showing it, and that chain's answer is what the agent receives
     expect(harness.questions.size).toBe(0)
     expect(releaseLines(harness.logs)).toHaveLength(1)
+    desktop.answer({ answers: [] })
+    expect(await released).toEqual({ answers: [] })
+    expect(desktop.calls()).toBe(1)
     // And the timer that did it is gone, so a second window changes nothing
     expect(vi.getTimerCount()).toBe(timersBefore)
     await vi.advanceTimersByTimeAsync(QUESTION_CLAIM_GRACE_MS)
-    expect(delegated).toBe(1)
     expect(releaseLines(harness.logs)).toHaveLength(1)
   })
 
@@ -164,25 +184,24 @@ describe('question claim grace window', () => {
     // Given a blocking claim whose phone left with the window running
     const harness = makeHub({ questionIds: () => 'minted-1' })
     await declareQuestions(harness.connection)
-    let delegated = 0
-    const held = harness.hub.question(hostRequest({ wait: undefined }), async (): Promise<QuestionAnswer> => {
-      delegated += 1
-      return { answers: [] }
-    })
+    const desktop = desktopCard()
+    const held = harness.hub.question(hostRequest({ wait: undefined }), desktop.next)
     await settle()
     const timersBefore = vi.getTimerCount()
     harness.hub.detach(harness.connection)
     expect(vi.getTimerCount()).toBe(timersBefore + 1)
     // When the bridge unloads rather than waiting the window out
     harness.hub.dispose()
-    // Then the claim was released on the spot, not deferred to the window
-    expect(await held).toEqual({ answers: [] })
-    expect(delegated).toBe(1)
+    // Then the claim was released on the spot, not deferred to the window, and
+    // the chain that was already offered the question settles the agent
     expect(harness.questions.size).toBe(0)
+    desktop.answer({ answers: [] })
+    expect(await held).toEqual({ answers: [] })
+    expect(desktop.calls()).toBe(1)
     // And nothing was left scheduled that could release it a second time
     expect(vi.getTimerCount()).toBe(timersBefore)
     await vi.advanceTimersByTimeAsync(QUESTION_CLAIM_GRACE_MS * 2)
-    expect(delegated).toBe(1)
+    expect(desktop.calls()).toBe(1)
   })
 
   it('user a continued claim is replayed as continued', async () => {

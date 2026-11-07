@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApprovalRegistry } from '../src/core/approvals.ts'
 import { IDLE_PING_MS } from '../src/core/connection.ts'
 import { approvalSummary, type ApprovalRequestLike } from '../src/core/hub.ts'
-import { answerOf, makeBareHub, makeConnection, makeHub, RecordingTransport, requestFrame } from './support/harness.ts'
+import { answerOf, makeBareHub, makeConnection, makeHub, RecordingTransport, requestFrame, settle } from './support/harness.ts'
 
 /** The one approval question a hub published, as a phone reads it. */
 function publishedQuestion(transport: RecordingTransport): { sessionId: string; id: string; summary: string; toolName: string } {
@@ -305,5 +305,105 @@ describe('approval replay', () => {
     // Then no release path leaves a question in the set a replay would read
     expect(registry.openPrompts()).toEqual([])
     expect(registry.size).toBe(0)
+  })
+})
+
+/**
+ * The host's own answerer as the panel shows it: a card that answers on a click.
+ *
+ * The claim offers the panel the same question the moment it is created, so every
+ * case below has two answerers. `calls` is how many times the panel was offered
+ * the question and `answer` is the click that settles it.
+ */
+interface PanelCard {
+  readonly next: () => Promise<'allowed-once' | 'rejected'>
+  readonly calls: () => number
+  readonly answer: (outcome: 'allowed-once' | 'rejected') => void
+}
+
+/** Build one {@link PanelCard}: a chain that answers only when the suite clicks. */
+function panelCard(): PanelCard {
+  let clicks = 0
+  let settle: (outcome: 'allowed-once' | 'rejected') => void = () => undefined
+  const pending = new Promise<'allowed-once' | 'rejected'>(resolve => { settle = resolve })
+  return {
+    next: () => {
+      clicks += 1
+      return pending
+    },
+    calls: () => clicks,
+    answer: (outcome) => { settle(outcome) },
+  }
+}
+
+describe('approval: the panel and the phone share one question', () => {
+  afterEach(() => { vi.useRealTimers() })
+
+  it('user the panel decides first and the phone is told the card is over', async () => {
+    // Given a paired phone and the host's own panel holding the same question
+    const harness = makeHub()
+    const desktop = panelCard()
+    const pending = harness.hub.approve(hostApproval(), desktop.next)
+    const open = approvalPayloads(harness.transport)
+    // Then one card went out, with no state field: absent means still open
+    expect(open).toHaveLength(1)
+    expect(open[0]).not.toHaveProperty('state')
+    expect(desktop.calls()).toBe(1)
+    // When the panel allows it once
+    desktop.answer('allowed-once')
+    // Then that decision is the one the agent receives
+    expect(await pending).toBe('allowed-once')
+    // And the phone's card is over, with the one field that says so
+    const frames = approvalPayloads(harness.transport)
+    expect(frames).toHaveLength(2)
+    expect(frames[1]).toEqual({ ...open[0], state: 'settled' })
+    // And the claim is released: the id is refused and no replay hands it out again
+    expect(harness.approvals.openPrompts()).toEqual([])
+    await harness.connection.handleText(requestFrame(2, 'approval.resolve', { id: open[0]?.id as string, decision: 'rejected' }))
+    expect(answerOf(harness, 2).e?.code).toBe('approval-unknown')
+  })
+
+  it('operator the fail-closed default the chain returns is not a decision', async () => {
+    // Given a phone holding an approval and a host whose own answerers fall through
+    const harness = makeHub()
+    const pending = harness.hub.approve(hostApproval(), async () => 'unavailable')
+    await settle()
+    // Then nothing was announced as over and the phone's card is still answerable
+    expect(approvalPayloads(harness.transport)).toHaveLength(1)
+    expect(harness.approvals.size).toBe(1)
+    // When the phone answers it, that decision is the one the agent receives
+    await harness.connection.handleText(requestFrame(3, 'approval.resolve', { id: publishedQuestion(harness.transport).id, decision: 'allowed-once' }))
+    expect(await pending).toBe('allowed-once')
+  })
+
+  it('operator a chain that throws is not a decision either', async () => {
+    // Given a phone holding an approval and a host whose own answerers throw
+    const harness = makeHub()
+    const pending = harness.hub.approve(hostApproval(), async () => { throw new Error('no approval answerer accepted the request') })
+    await settle()
+    // Then nothing was announced as over and the phone still decides
+    expect(approvalPayloads(harness.transport)).toHaveLength(1)
+    await harness.connection.handleText(requestFrame(5, 'approval.resolve', { id: publishedQuestion(harness.transport).id, decision: 'rejected' }))
+    expect(await pending).toBe('rejected')
+  })
+
+  it('user the phone answers first and the panel answer landing afterwards is ignored', async () => {
+    // Given both surfaces holding the same question
+    const harness = makeHub()
+    const desktop = panelCard()
+    const pending = harness.hub.approve(hostApproval(), desktop.next)
+    const open = approvalPayloads(harness.transport)
+    expect(desktop.calls()).toBe(1)
+    // When the phone rejects it first
+    await harness.connection.handleText(requestFrame(4, 'approval.resolve', { id: open[0]?.id as string, decision: 'rejected' }))
+    expect(await pending).toBe('rejected')
+    // And the panel's click lands afterwards
+    const before = approvalPayloads(harness.transport).length
+    desktop.answer('allowed-once')
+    await settle()
+    // Then no second decision was taken and nothing was announced a second time
+    expect(await pending).toBe('rejected')
+    expect(approvalPayloads(harness.transport)).toHaveLength(before)
+    expect(harness.approvals.size).toBe(0)
   })
 })

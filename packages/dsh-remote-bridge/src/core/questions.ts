@@ -201,6 +201,14 @@ export interface ClaimedQuestion extends ClaimedQuestionView {
   /** The host's ask: the phone's answer, or whatever the next answerer says. */
   readonly answer: Promise<QuestionAnswer>
   /**
+   * Hand the same question to the host's own answerer chain, once.
+   *
+   * Called by the hub the instant a claim exists, in every mode: the phone is
+   * not the only surface any more, so the host's own panel shows the card too
+   * and the first answer settles it.
+   */
+  readonly startHostChain: () => void
+  /**
    * Epoch milliseconds at which the host's own deadline falls, from the first
    * wait frame of this claim.
    *
@@ -425,11 +433,11 @@ export class QuestionClaims {
     })
     const signal = input.signal
     const onAbort = (): void => { this.#expire(input.callId, signal?.reason) }
-    // The rest of the answerer chain is the host's own UI, and it must keep
-    // showing the question: claiming here used to swallow it. Started once, at
-    // claim time, so both surfaces display it and the first answer settles it.
-    // A rejection is not a verdict — the phone may still answer — so it is
-    // remembered for a later withdraw instead of failing the claim now.
+    // The rest of the answerer chain is the host's own UI. Started once and
+    // memoized, because both paths that yield to it — the claim itself, and the
+    // withdraw that hands a question back — have to reach the same panel rather
+    // than open a second one. A rejection is not a verdict (the phone may still
+    // answer), so only the withdraw path turns one into this claim's failure.
     let nextStarted: Promise<QuestionAnswer> | undefined
     const startNext = (): Promise<QuestionAnswer> => {
       if (nextStarted === undefined) {
@@ -547,17 +555,27 @@ export class QuestionClaims {
         resolveDeadline(undefined)
       }
     }
+    /**
+     * Hand this claim to the host's own answerers, once.
+     *
+     * Both surfaces are shown the question and the first answer settles it: an
+     * answer from the chain ends the claim here, and an answer from the phone
+     * ends it in {@link answer} — which leaves the chain's later answer ignored
+     * instead of settling or broadcasting a second time.
+     */
+    const startHostChain = (): void => {
+      void startNext().then(answer => { this.#settleFromHost(input.callId, answer) }, () => undefined)
+    }
     this.#claims.set(input.callId, record)
-    // The rest of the chain is NOT started here. A connected phone takes the
-    // question on its own, and the host's own panel would otherwise stay open
-    // after the phone answered it — the bridge has no way to close that panel.
-    // A phone that is absent, or a claim that is withdrawn, still delegates.
+    // The chain itself is started by the hub through {@link startHostChain} the
+    // instant this claim exists, so the panel and the phone are shown the same
+    // question and whichever answers first settles both.
     if (signal?.aborted === true) onAbort()
     else signal?.addEventListener('abort', onAbort, { once: true })
     if (input.hosted) void trackWait()
     // A blocking ask carries no host deadline at all: nothing to follow, nothing to publish.
     else resolveDeadline(undefined)
-    return { ...viewOf(record), answer, deadline }
+    return { ...viewOf(record), answer, deadline, startHostChain }
   }
 
   /**
@@ -668,6 +686,27 @@ export class QuestionClaims {
       this.#log(`userQuestions/answer failed: ${failureText(error)}`)
       return { ok: false, code: errorCodeOf(error, CODE_INTERNAL), msg: failureText(error) }
     }
+  }
+
+  /**
+   * Settle one claim from the host's own answerer chain.
+   *
+   * Only a claim this bridge still holds can be ended this way: a phone that
+   * answered first deletes it, and the chain's late answer must not settle it a
+   * second time or announce a card that is already gone. A claim the host's own
+   * deadline turned into `continued` is left alone as well — its answer promise
+   * is that deadline, and the phone's late answer still has its own road.
+   * @param callId - the claim the host answered.
+   * @param answer - the host's own answer.
+   */
+  #settleFromHost(callId: string, answer: QuestionAnswer): void {
+    const record = this.#claims.get(callId)
+    if (record === undefined || record.state !== 'open') return
+    this.#claims.delete(callId)
+    record.detach()
+    record.stopWait()
+    record.notifySettled()
+    record.settle(answer)
   }
 
   /**

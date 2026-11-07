@@ -665,12 +665,13 @@ describe('relay: the question that is held for a phone the centre can reach', ()
     // When the host asks a question
     void bare.hub.question(hostRequest(), async (): Promise<QuestionAnswer> => {
       delegated += 1
-      return { answers: [] }
+      return new Promise<QuestionAnswer>(() => {})
     })
     await settle()
-    // Then the bridge claimed it for that phone instead of handing it on
+    // Then the bridge claimed it for that phone, and the panel was offered the
+    // same question without being the one that answered it
     expect(bare.questions.stateOf('c-1')).toBe('open')
-    expect(delegated).toBe(0)
+    expect(delegated).toBe(1)
     // And the centre was asked to tell it
     expect(centre.requests.map(request => request.body.event)).toEqual(['question'])
   })

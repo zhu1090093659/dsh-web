@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-06",
+  "generated": "2026-11-07",
   "items": [
     {
       "id": "dsh-quick-ask",
@@ -1329,6 +1329,19 @@
       "npm": "dsh-power-menu-mac",
       "category": "ui",
       "subcategory": "panel"
+    },
+    {
+      "id": "dsh-llm-verifier",
+      "name": "LLM 裁判复核",
+      "rank": 105,
+      "nameEn": "LLM Verifier",
+      "author": "Aa728848",
+      "description": "DSH 原生可配置 LLM 裁判复核插件：成对比较、锦标赛择优、进度判定与自动验收门控（verifier_compare/select/track/current_session），A–T 标尺 + 期望评分，自带 Web 设置面板。",
+      "descriptionEn": "Configurable DSH-native LLM verifier plugin: pairwise comparison, pivot tournament selection, progress tracking and auto-acceptance gating (verifier_compare/select/track/current_session) with A-T scale scoring and a Web settings page.",
+      "repo": "https://github.com/Aa728848/dsh-llm-verifier",
+      "npm": "dsh-llm-verifier",
+      "category": "tools",
+      "subcategory": "model"
     }
   ]
 }

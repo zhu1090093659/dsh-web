@@ -19,7 +19,7 @@ Status: implemented
 ### 单卡运行与父卡派发
 
 - `run` 与 `rerun` 只开一条 execution——被请求的那张卡——并在一个恒为单成员的 `runGroupId` 下开启。任何后代都不会被开 execution，子卡也不会因为父卡执行而进入运行列。直接执行某张子卡是同一个操作：无论它是否带父卡、自己是否带子任务，它都是这次运行的 root，它下面的东西也不展开。
-- 树里还有活的卡按「自治派发者」执行。「还有活」指存在不在「完成」列、且未归档的后代；`src/core/subtask.ts` 的 `hasOutstandingDescendants` 是强制预设与 Prompt 派发段共同的唯一判定。这时执行在启动时强制改用 `LIANGSHEN_PRESET_ID`（`liangshen`，由 `packages/dsh-liangshen` 提供），按次覆盖、绝不写进卡片的 `mode`，并跳过 session 复用、新开会话。部署没有注册 `liangshen` 预设时 fail closed，卡片上写明缺少该预设。没有未完成后代的卡执行形态与平常一致。
+- 树里还有活的卡按「自治派发者」执行。「还有活」指存在不在「完成」列、且未归档的后代；`src/core/subtask.ts` 的 `hasOutstandingDescendants` 是强制预设与 Prompt 派发段共同的唯一判定。这时执行在启动时强制改用 `LIANGSHEN_PRESET_ID`（`liangshen`，由 `packages/dsh-liangshen` 提供），按次覆盖、绝不写进卡片的 `mode`，并跳过 session 复用、新开会话。部署没有注册 `liangshen` 预设时 fail closed，卡片上写明缺少该预设；运行 legacy Agent Teams 那一代的部署同样 fail closed，判据是 `LEGACY_AGENT_TEAMS_TOOL` 这一个指纹——该部署上调度预设无法编排（它会停下来等人回复，而无人值守运行永远等不到），因此启动在任何 session 存在之前就被拒绝，卡片携带 `LEGACY_AGENT_TEAMS_REASON`，不会一直停在运行列（issue #2031）。部署的工具注册表读不到时探测回答 false，因此不提供注册表的部署强制行为与从前完全一致。没有未完成后代的卡执行形态与平常一致。
 - 派发段按标题、任务 id 与状态列出每张未完成子卡，说明 Host 不为它们开会话，并要求这个会话用 `task_board_get` 逐张读卡、用 `subagent` 按依赖顺序派发（互不依赖的可以并发）、完工前用 `task_board_manage({action:'record-external-outcome'})` 把结论写回。
 - 始终没到的结论由 Host 补：父卡自身执行一旦落到决定性判定，未完成集合里仍未回填的后代全部继承该判定，记为一条 external 记录，`initiatedBy` 带 `parent-run:` 前缀，原因写明本卡未单独开会话执行、结论继承自父卡运行。回填幂等——同一 run group 已有 execution、存在未结算执行、或已有更晚终态记录的卡都不动；`cancelled` 的父判定什么都没判，因此什么都不写。
 - cron 走同一条路径：到期的卡只开自己的运行，拦住它的仍是单卡门禁（正在运行、权限未确认、额度上限）。

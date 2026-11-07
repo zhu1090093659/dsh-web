@@ -8,6 +8,7 @@ import { TaskBoardHostService, installStreamErrorGuards, safeConsoleError } from
 import type { TaskBoardWorkspaceRegistry } from '../src/host-runner.ts'
 import { PowerInhibitor } from '../src/power-inhibitor.ts'
 import { createTask, EXECUTION_HISTORY_LIMIT, startExecution, withSchedule } from '../src/core/tasks.ts'
+import { LEGACY_AGENT_TEAMS_REASON } from '../src/core/subtask.ts'
 import { fixtureWorkspaces } from './workspace-fixture.ts'
 
 const roots: string[] = []
@@ -126,12 +127,17 @@ describe('single-session runs', () => {
     return { gateway, prompts, creates }
   }
 
-  function serviceFor(ledger: HostTaskLedger, gateway: ReturnType<typeof launchGateway>['gateway']): TaskBoardHostService {
+  function serviceFor(
+    ledger: HostTaskLedger,
+    gateway: ReturnType<typeof launchGateway>['gateway'],
+    extra: { legacyAgentTeams?: () => boolean } = {},
+  ): TaskBoardHostService {
     return new TaskBoardHostService(gateway, {
       ledger,
       power: new PowerInhibitor({ platform: 'linux' }),
       now: () => NOW,
       workspaceRegistry: fixtureWorkspaces(),
+      ...extra,
     })
   }
 
@@ -232,6 +238,49 @@ describe('single-session runs', () => {
     expect(rootCard?.status).toBe('failed')
     expect(rootCard?.executions.at(-1)?.error).toContain('liangshen')
     expect(rootCard?.executions.at(-1)?.error).toContain('unfinished subtasks')
+    service.dispose()
+  })
+
+  it('user on a legacy Agent Teams deployment sees the forced run fail closed before a session exists', async () => {
+    // Given a root with one unfinished subtask, on a deployment that registers
+    // the legacy team tool the dispatcher preset refuses to orchestrate beside
+    const ledger = new HostTaskLedger(root(), () => NOW)
+    seedTree(ledger)
+    const { gateway, prompts, creates } = launchGateway()
+    const service = serviceFor(ledger, gateway, { legacyAgentTeams: () => true })
+
+    // When the user runs the parent
+    service.apply('run-1', { kind: 'run', taskId: 'root' })
+    await flushLaunchChain()
+
+    // Then no session was created or prompted at all, and the card carries the
+    // refusal the browser renders in the reader's own language
+    expect(creates).toHaveLength(0)
+    expect(prompts).toHaveLength(0)
+    const rootCard = ledger.state().tasks.find(task => task.id === 'root')
+    expect(rootCard?.status).toBe('failed')
+    expect(rootCard?.executions.at(-1)?.error).toBe(LEGACY_AGENT_TEAMS_REASON)
+    service.dispose()
+  })
+
+  it('operator on that same legacy deployment still runs a card with no unfinished subtasks', async () => {
+    // Given a root whose only subtask is already in the done column, so this run
+    // is not forced under the dispatcher preset
+    const ledger = new HostTaskLedger(root(), () => NOW)
+    seedTree(ledger)
+    ledger.applyRequest('finish-a', { kind: 'move', taskId: 'a', status: 'done' })
+    const { gateway, creates } = launchGateway()
+    const service = serviceFor(ledger, gateway, { legacyAgentTeams: () => true })
+
+    // When the user runs it
+    service.apply('run-1', { kind: 'run', taskId: 'root' })
+    await flushLaunchChain()
+
+    // Then the run is the card's own plain execution: the compatibility probe
+    // only refuses the runs it would otherwise force
+    expect(creates).toHaveLength(1)
+    expect(creates[0].agentPreset).toBeUndefined()
+    expect(ledger.state().tasks.find(task => task.id === 'root')?.status).toBe('running')
     service.dispose()
   })
 

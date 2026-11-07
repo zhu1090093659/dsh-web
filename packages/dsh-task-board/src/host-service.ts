@@ -370,6 +370,14 @@ export class TaskBoardHostService {
      * unknown is allowed.
      */
     modelInfo?: () => ModelInfoResolver | undefined
+    /**
+     * Whether this deployment runs the legacy Agent Teams runtime. Read at
+     * launch, only for a run the board is about to force under the dispatcher
+     * preset: such a deployment cannot orchestrate, so the run fails closed on
+     * the card instead of deadlocking in a session nobody answers (issue #2031).
+     * Absent means "not proven legacy", which keeps the force exactly as it is.
+     */
+    legacyAgentTeams?: () => boolean
   } = {}) {
     this.ledger = options.ledger ?? new HostTaskLedger(undefined, undefined, {
       sessionDefaultPermission: options.sessionDefaultPermission,
@@ -382,6 +390,7 @@ export class TaskBoardHostService {
     this.runner = new HostExecutionRunner(gateway, options.commandDispatcher, options.workspaceRegistry, undefined, options.ownerPeer, {
       attachments: this.attachmentStore,
       llm: options.modelInfo,
+      ...(options.legacyAgentTeams === undefined ? {} : { legacyAgentTeams: options.legacyAgentTeams }),
     })
     this.workspaceRegistry = options.workspaceRegistry
     this.timers = options.timers ?? PROCESS_TIMERS

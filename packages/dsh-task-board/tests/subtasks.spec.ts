@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest'
 import { parseActionEnvelope } from '../src/protocol.ts'
 import {
   DEFAULT_SUBTASK_DEPTH,
+  LEGACY_AGENT_TEAMS_REASON,
+  LEGACY_AGENT_TEAMS_TOOL,
   LIANGSHEN_PRESET_ID,
   SUBTASK_DEPTH_MAX,
   ancestorChain,
@@ -15,6 +17,7 @@ import {
   combineCascadeOutcome,
   directSubtasks,
   hasOutstandingDescendants,
+  isLegacyAgentTeamsReason,
   joinsCascadeRun,
   normalizeSubtaskDepth,
   outstandingDescendants,
@@ -417,6 +420,21 @@ describe('the run a card request opens', () => {
     // When the board's forced dispatch preset constant is read
     // Then it is that same id, so a forced run composes the preset that package ships
     expect(LIANGSHEN_PRESET_ID).toBe('liangshen')
+  })
+
+  it('operator reads the legacy-runtime refusal off the one tool generation that blocks dispatch', () => {
+    // Given the tool a legacy Agent Teams runtime registers instead of the
+    // coordination tools this mode reuses
+    // When the board's compatibility fingerprint and refusal sentence are read
+    // Then the fingerprint is exactly that tool, and the sentence names both the
+    // forced preset and the fix, and recognizes itself
+    expect(LEGACY_AGENT_TEAMS_TOOL).toBe('spawn_teammate')
+    expect(LEGACY_AGENT_TEAMS_REASON).toContain(LIANGSHEN_PRESET_ID)
+    expect(LEGACY_AGENT_TEAMS_REASON).toContain('legacy Agent Teams')
+    expect(LEGACY_AGENT_TEAMS_REASON).toContain('restart the Host')
+    expect(isLegacyAgentTeamsReason(LEGACY_AGENT_TEAMS_REASON)).toBe(true)
+    expect(isLegacyAgentTeamsReason('agent preset not found: liangshen')).toBe(false)
+    expect(isLegacyAgentTeamsReason('')).toBe(false)
   })
 
   it('operator running a parent whose own column is done still runs that parent', () => {

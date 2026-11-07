@@ -16,7 +16,7 @@ importers:
   .:
     dependencies:
       '@linxin666/dsh-web-all':
-        specifier: ^0.4.15
+        specifier: ^0.4.16
         version: link:packages/dsh-web-all
     devDependencies:
       '@deepseek-ai/cordis':
@@ -1479,8 +1479,8 @@ importers:
         specifier: workspace:*
         version: link:../dsh-browser-view
       '@linxin666/dsh-client-ui-community-plugins':
-        specifier: ^0.4.15
-        version: 0.4.15(react@18.3.1)
+        specifier: ^0.4.16
+        version: 0.4.16(react@18.3.1)
       '@linxin666/dsh-client-ui-diagrams':
         specifier: workspace:*
         version: link:../dsh-diagrams
@@ -1494,14 +1494,14 @@ importers:
         specifier: workspace:*
         version: link:../dsh-plugin-manager
       '@linxin666/dsh-client-ui-preset-center':
-        specifier: ^0.4.15
-        version: 0.4.15(react@18.3.1)
+        specifier: ^0.4.16
+        version: 0.4.16(react@18.3.1)
       '@linxin666/dsh-client-ui-skill-explorer':
         specifier: workspace:*
         version: link:../dsh-skill-explorer
       '@linxin666/dsh-client-ui-skin-center':
-        specifier: ^0.4.15
-        version: 0.4.15(react@18.3.1)
+        specifier: ^0.4.16
+        version: 0.4.16(react@18.3.1)
       '@linxin666/dsh-client-ui-task-board':
         specifier: workspace:*
         version: link:../dsh-task-board
@@ -1521,8 +1521,8 @@ importers:
         specifier: workspace:*
         version: link:../dsh-liangshen
       '@linxin666/dsh-pet':
-        specifier: ^0.4.15
-        version: 0.4.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^0.4.16
+        version: 0.4.16(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@linxin666/dsh-remote-bridge':
         specifier: workspace:*
         version: link:../dsh-remote-bridge
@@ -2414,26 +2414,26 @@ packages:
     resolution: {integrity: sha512-hloP58zRVCRSpgDxmqCWJNlizAlUgJFqG2ypq79DCvyv9tHjRYMDOcPFjzfl/A1/YxDvRCZz8wvZvmapQnKwFQ==}
     engines: {node: '>=12'}
 
-  '@linxin666/dsh-client-ui-community-plugins@0.4.15':
-    resolution: {integrity: sha512-HJ4S4oQCWBxp20+UDRXzLyyK5R/flb4zyRLQ/M/vLCI1Ril2QBb483/livPhEGnCbmUFSLLPSL/3H609PJ/+Tw==}
+  '@linxin666/dsh-client-ui-community-plugins@0.4.16':
+    resolution: {integrity: sha512-2UI4xUTR7LDPVvCS9Vzt/JpF1LDUixailTu1qeMWouABwfDgT8FWX8KVZ9wVbD6iL1vRn9sCkn/7r5O8gcWS9A==}
     peerDependencies:
       '@deepseek-ai/dsh': '>=0.2.2-rc.1'
       react: ^18.2.0
 
-  '@linxin666/dsh-client-ui-preset-center@0.4.15':
-    resolution: {integrity: sha512-vU3J9iAW1WQ1uEsVmq968kkn5LwFYgLRXIheShxzWQRc4WtRjAaj6FJhh9/FEZDMPSsWKTT005ELcJr9w6cPTw==}
+  '@linxin666/dsh-client-ui-preset-center@0.4.16':
+    resolution: {integrity: sha512-OprDy4zTkI3PY1I4naM0Hq5eH7f2r+7v2lfXirzjc7nL1IOs+J7rIwHxRGMlOsYDoRdG7Nuwzxw+7Mh9yi7pqw==}
     peerDependencies:
       '@deepseek-ai/dsh': '>=0.2.2-rc.1'
       react: ^18.2.0
 
-  '@linxin666/dsh-client-ui-skin-center@0.4.15':
-    resolution: {integrity: sha512-6qQvl39hZ0DLw0O4AR+WThlIoFBJChvYUyDOEZdugc5RfBeoTEarqTbu5y1LhG/BraGsd0Aa6G8FhhJv2piIEQ==}
+  '@linxin666/dsh-client-ui-skin-center@0.4.16':
+    resolution: {integrity: sha512-Swpwfj4ZZyw+EH0+9V+wQ+T7BJxxwgkSSFwMpEC5eiT8KSkBN/O2DHOHPapH+lfuSBNRbbD3PCyBqSbgI4folA==}
     peerDependencies:
       '@deepseek-ai/dsh': '>=0.2.2-rc.1'
       react: ^18.2.0
 
-  '@linxin666/dsh-pet@0.4.15':
-    resolution: {integrity: sha512-Th0TdYxedPCmqkg7c3zoWJiEc93YDS3LWuo6RRetUTFNdX6G4SQ8C1CXOwPLQpG6kRS11KHluzZLt+VeYEZnrg==}
+  '@linxin666/dsh-pet@0.4.16':
+    resolution: {integrity: sha512-xJomEZAwgneCjCg8I+EAFn/arSYjWzTpfRKk7Pz6vX+dnjIIkIxUeceFeqfjVDrEUf5ZfLPI6PKdfFzGlaEo7w==}
     engines: {node: '>=24.9.0'}
     peerDependencies:
       '@deepseek-ai/dsh': '>=0.2.2-rc.1'
@@ -5348,23 +5348,23 @@ snapshots:
     dependencies:
       jsbi: 4.3.2
 
-  '@linxin666/dsh-client-ui-community-plugins@0.4.15(react@18.3.1)':
+  '@linxin666/dsh-client-ui-community-plugins@0.4.16(react@18.3.1)':
     dependencies:
       react: 18.3.1
       schemastery: 3.18.0
 
-  '@linxin666/dsh-client-ui-preset-center@0.4.15(react@18.3.1)':
+  '@linxin666/dsh-client-ui-preset-center@0.4.16(react@18.3.1)':
     dependencies:
       react: 18.3.1
       schemastery: 3.18.0
 
-  '@linxin666/dsh-client-ui-skin-center@0.4.15(react@18.3.1)':
+  '@linxin666/dsh-client-ui-skin-center@0.4.16(react@18.3.1)':
     dependencies:
       '@deepseek-ai/schemastery': 3.19.0
       lightningcss: 1.33.0
       react: 18.3.1
 
-  '@linxin666/dsh-pet@0.4.15(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@linxin666/dsh-pet@0.4.16(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@deepseek-ai/schemastery': 3.19.0
       clsx: 2.1.1
@@ -5847,7 +5847,7 @@ snapshots:
       obug: 2.2.1
       std-env: 4.3.0
       tinyrainbow: 3.2.0
-      vitest: 4.1.12(@types/node@22.20.5)(@vitest/coverage-v8@4.1.12)(jsdom@25.0.1(supports-color@7.2.0))(yaml@2.9.1)
+      vitest: 4.1.12(@types/node@22.20.5)(@vitest/coverage-v8@4.1.12)(jsdom@29.1.1)(yaml@2.9.1)
 
   '@vitest/expect@4.1.12':
     dependencies:

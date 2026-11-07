@@ -34,7 +34,7 @@
 
 - alpha 分支的聚合包没有任何外部依赖：`dsh-better-sidebar@0.19.1`（2026-09-11 发布的稳定版本）的 peer 区间 `^0.1.5-rc.1` 不覆盖本分支的 `0.2.2-rc.1` cohort，故 `aggregate.yml` 不再声明该行、`package.json` 不再依赖它、锁定它的 `minimumReleaseAgeExclude` 条目也已删除；右侧面板改为按需安装。稳定线 `dev` 仍内置 0.19.1 并保留对应锁定条目。
 - 历史聚合包命名迁移：从 `@linxin666/dsh-web-ui-all` 向 `@linxin666/dsh-web-all` 的迁移已在 0.3.3 完成并弃用旧包名，当前统一发布 `@linxin666/dsh-web-all`。
-- 自更新组件移除：`dsh-update`（`@linxin666/dsh-update`）已整包删除（2026-11-06），不再随本仓发布；注册表上保留的最后版本 `0.4.15` 由包所有者标记 deprecated。插件更新的能力由 DSH 0.2.2-rc.1 起的官方插件页版本检查承担，聚合侧只留 `update` tombstone 子路径与 `retiredPlugins` 登记。
+- 自更新组件移除：`dsh-update`（`@linxin666/dsh-update`）已整包删除（2026-11-06），不再随本仓发布；注册表上保留的最后版本 `0.4.15` 仍可解析且未标记弃用；需要弃用时由包所有者执行 `npm deprecate @linxin666/dsh-update`。插件更新的能力由 DSH 0.2.2-rc.1 起的官方插件页版本检查承担，聚合侧只留 `update` tombstone 子路径与 `retiredPlugins` 登记。
 - 远程访问组件演进与弃用：`dsh-remote-web-ui`（`@linxin666/dsh-remote-web-ui`）已从聚合包 `dsh-web-all` 摘除并进入弃用期（以 tombstone 导出与 `retiredPlugins` 登记静默退役，计划下一版本删除），当前版本仍作为独立包发布供过渡期独立安装；公网与局域网接入栈（中继与隧道）已迁入 `@linxin666/dsh-remote-bridge`。
 
 ## 兼容性边界

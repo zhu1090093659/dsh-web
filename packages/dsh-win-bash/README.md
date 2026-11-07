@@ -47,6 +47,7 @@ session is what makes that true.
   job settles. Directories a killed host never got to delete are reclaimed on the
   next start, by the pid in their name, so the temp root does not grow one
   directory per shell.
+- Supplies every shell with an explicit `HOME`: an existing host value is preserved, otherwise Node's Unicode user-home path is used so a non-ASCII Windows profile does not pass through MSYS's ANSI inference.
 - Verifies the vendored payload against its SHA256 manifest and publishes a
   verified copy under the DSH home before the tool is registered at all; a
   mismatch refuses the mount, and every shell runs from that copy rather than

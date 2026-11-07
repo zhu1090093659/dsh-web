@@ -20,7 +20,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdirSync, readdirSync, type Dirent } from 'node:fs'
 import { rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { SubprocessHandle, SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
 import { buildFrame, markerFor, parseFrame, type FrameMarker, type FrameOutcome } from './protocol.ts'
@@ -85,7 +85,7 @@ export function shellArgv(runtime: { bash: string }): string[] {
  * The environment contract every pinned shell starts with.
  * @param runtime - the verified payload paths.
  * @param temp - the private temp directory that shell owns.
- * @param base - the ambient environment the PATH is appended to.
+ * @param base - the ambient environment whose PATH and HOME are inherited.
  * @returns the entries this tool sets explicitly.
  */
 export function shellEnvironment(
@@ -94,6 +94,9 @@ export function shellEnvironment(
   base: NodeJS.ProcessEnv = process.env,
 ): NodeJS.ProcessEnv {
   return {
+    // MSYS derives a missing HOME from USERPROFILE through the active ANSI
+    // code page, which corrupts non-ASCII profiles. Supply Node's Unicode path.
+    HOME: base.HOME ?? homedir(),
     // The vendored usr/bin goes FIRST on PATH: the payload's own userland
     // is what commands resolve to, and no host Git for Windows, WSL or
     // per-user shim later in the inherited PATH can shadow it.

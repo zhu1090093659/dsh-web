@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { gzipSync } from 'node:zlib'
 
 /**
  * The relay bridge's two halves: the Worker that stays at the door and the
@@ -275,6 +276,35 @@ test('a bridge-mode instance is served by its object and the quick tunnel is not
     assert.equal(response.headers.get(RELAY_TRANSPORT_HEADER), 'bridge')
     assert.deepEqual(namespace.named, [ID])
     assert.deepEqual(forwarded, [])
+  } finally {
+    globalThis.fetch = realFetch
+  }
+})
+
+test('a bridged answer states its encoding before the phone decodes it', async () => {
+  // Given an object forwarding the origin's bytes: a gzip body the origin never
+  // declared, the shape issue #2030 measured on the quick path
+  const db = bridgeDb({
+    registration: { id: ID, secret_hash: 'unused', target: TARGET },
+    lease: { id: ID, secret_hash: 'unused', mode: 'bridge' },
+  })
+  const refusal = 'dsh web authentication required; reopen the URL printed by dsh web.'
+  const namespace = bridgeNamespace(async () => new BridgeResponse(gzipSync(Buffer.from(refusal, 'utf8')), {
+    status: 401,
+    headers: { 'content-type': 'text/plain; charset=utf-8', [RELAY_TRANSPORT_HEADER]: 'bridge' },
+  }))
+  const realFetch = globalThis.fetch
+  globalThis.fetch = async () => { throw new Error('the quick tunnel must not be dialed') }
+  try {
+    // When the phone asks through its relay hostname
+    const response = await worker.fetch(phone(), { DB: db, RELAY_BRIDGE: namespace })
+
+    // Then the bridge still served it, but the body arrives as the text it was
+    // declared to be rather than compressed bytes under a plain-text header
+    assert.equal(response.status, 401)
+    assert.equal(response.headers.get(RELAY_TRANSPORT_HEADER), 'bridge')
+    assert.equal(response.headers.get('content-encoding'), null)
+    assert.equal(await response.text(), refusal)
   } finally {
     globalThis.fetch = realFetch
   }

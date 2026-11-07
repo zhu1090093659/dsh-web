@@ -13,11 +13,12 @@ Status: implemented
 - **配置与界面**：`relay`（默认 true）在设置卡片呈现为「固定域名中继」；配对快照新增 `relay` 状态帧，面板据其渲染注册中/失败提示。命名隧道模式保持不变（自带域名的替代路径）。
 - **滥用面**：密钥只存哈希（SHA-256）、目标限定 `*.trycloudflare.com`、注册按 IP 与 id 限流、行空闲 90 天 GC、所有中继响应 `noindex`。
 - **带内容哈希的构建产物在本跳被永久缓存。** 隧道后的实例对 `/assets/**` 不发任何 `Cache-Control`、`ETag` 或 `Last-Modified`，而原样透传让手机手里没有任何可缓存依据：每次加载都重下整个外壳——实测每请求 237502 B、经中继 TTFB 1.3–2.3 秒、字节每次都完全相同。代理现在只对 `GET`/`HEAD` 且路径为 `/assets/` 下带内容哈希的构建产物的 200 响应盖上 `public, max-age=31536000, immutable`；其余路径（`/api/*`、文档、未哈希名、WebSocket 升级、非 200）一律保留源站自己的响应头。
+- **本跳会声明源端没有声明的线编码。** 隧道后的宿主不管请求要不要都会压缩一部分响应，而且并不总是声明这件事，于是原样透传让边缘把已经是 gzip 的 body 再压一层：手机只解开了两层中的一层，页面渲染成乱码（issue #2030）。`market/worker/src/relay-encoding.js` 读取未声明 body 的第一个分块，解出 gzip 成员后按 identity 字节下发并盖上 `cache-control: no-transform`；已声明的编码、明文 body 与无 body 的应答（101/204/304/HEAD）一律原样通过，quick 与 bridge 两条通道都从这一个函数离开。
 - 让「纯字节转发代理」足够成立的结构性事实：手机从不面对 harness browser-auth——`/pair-app` 是插件精确路由，手机全部流量走门控 `/remote` 通道、由进程 inner 凭据回注到回环——所以中继只需搬运字节；Cookie 与 sessionStorage 按源隔离，而这个源永不变化。
 
 ## 测试
 
-- `scripts/market-relay.test.mjs`：id 提取、铸造/刷新的密钥哈希认证、非法目标/密钥拒绝、代理的 Host 重写、只对带哈希资源生效的永久缓存（含嵌套 chunk 路径与非 200）、离线页、注销、按 id 限流、非中继流量隔离（10 个 node 测试）。
+- `scripts/market-relay.test.mjs`：id 提取、铸造/刷新的密钥哈希认证、非法目标/密钥拒绝、代理的 Host 重写、只对带哈希资源生效的永久缓存（含嵌套 chunk 路径与非 200）、离线页、注销、按 id 限流、非中继流量隔离（10 个 node 测试）。`scripts/market-relay-encoding.test.mjs` 覆盖归一模块本身——明文且头不变、分块重放、已声明编码、未声明 gzip 成员、显式 `identity` 声明、无 body 应答（6 个 node 测试）——`scripts/market-relay.test.mjs` 与 `scripts/market-relay-bridge.test.mjs` 各自带一条经 `worker.fetch` 的端到端未声明 gzip 用例。
 - `packages/dsh-remote-web-ui/tests/relay-registry.spec.ts`：身份文件构造/铸造/持久化/隔离、固定源形态、注册器 announce/刷新/退避/重新认领/销毁/注销（12 个 vitest 用例）。
 - 插件全套 333 用例通过；`i18n:check`、`docs:check` 与包类型检查通过。线上验证（wrangler dev 注册 → 反代 → 配对往返；随后真实重启 + 手机验证）是交付门槛。
 

@@ -15,6 +15,7 @@
  */
 import { useId, useState } from 'react'
 import type { ExecutionRecord } from '../../core/tasks.ts'
+import { isLegacyAgentTeamsReason } from '../../core/subtask.ts'
 import { isMissingWorkspaceReason } from '../../core/workspace-target.ts'
 import { t, type TaskBoardKey } from '../locales.ts'
 import css from '../board.module.css'
@@ -27,6 +28,19 @@ import { VerificationReport } from './VerificationReport.tsx'
 export const VISIBLE_EXECUTIONS = 5
 
 /** Execution outcome → locale key, shared with the history's folded summary. */
+/**
+ * A recorded failure text in the reader's own language, for the refusals the
+ * board itself produces and can therefore translate. Any other text is the
+ * Host's own sentence and is printed verbatim.
+ * @param error - the execution's recorded failure text.
+ * @returns the localized refusal, or the original text.
+ */
+export function failureText(error: string): string {
+  if (isMissingWorkspaceReason(error)) return t('exec.error.noWorkspace')
+  if (isLegacyAgentTeamsReason(error)) return t('exec.error.legacyAgentTeams')
+  return error
+}
+
 export const EXECUTION_RESULT_KEY: Record<NonNullable<ExecutionRecord['result']>, TaskBoardKey> = {
   succeeded: 'detail.result.succeeded',
   failed: 'detail.result.failed',
@@ -85,7 +99,7 @@ function ExecutionRow({ execution, timeZone, onOpen }: {
         {execution.verification !== undefined && <VerificationReport verification={execution.verification} />}
         {execution.error !== undefined && execution.error !== '' && (
           <span className={css.executionError}>
-            {isMissingWorkspaceReason(execution.error) ? t('exec.error.noWorkspace') : execution.error}
+            {failureText(execution.error)}
           </span>
         )}
       </div>

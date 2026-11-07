@@ -21,7 +21,7 @@ import { TaskBoardHostService, type HostTimerFace } from './host-service.ts'
 import { createOwnerPeer } from './host-runner.ts'
 import { parseTaskDraft, TaskParseError } from './host-ai.ts'
 import { TASK_PERMISSIONS, isTaskPermission, type TaskPermission } from './core/tasks.ts'
-import { DEFAULT_SUBTASK_DEPTH, SUBTASK_DEPTH_MAX, SUBTASK_DEPTH_MIN } from './core/subtask.ts'
+import { LEGACY_AGENT_TEAMS_TOOL, DEFAULT_SUBTASK_DEPTH, SUBTASK_DEPTH_MAX, SUBTASK_DEPTH_MIN } from './core/subtask.ts'
 import { DEFAULT_SESSION_POLL_SECONDS, SESSION_POLL_MAX_SECONDS, SESSION_POLL_MIN_SECONDS } from './core/poll-cadence.ts'
 import { DEFAULT_RUN_LAUNCH_WIDTH, RUN_LAUNCH_WIDTH_MAX, RUN_LAUNCH_WIDTH_MIN } from './core/launch-width.ts'
 import { DEFAULT_SPEND_BUDGET_TOKENS } from './core/spend-budget.ts'
@@ -714,6 +714,22 @@ function applyImpl(ctx: Context, config?: Config): void {
   // the board calls as the host-local owner, so its peer is minted on this
   // fiber and aborts with it (see createOwnerPeer).
   const ownerPeer = createOwnerPeer(ctx)
+  // A deployment that registers the legacy Agent Teams fingerprint cannot
+  // orchestrate under the dispatcher preset: the preset's own compatibility
+  // gate stops and waits for a human reply, which a scheduled or unattended run
+  // never brings (issue #2031). Read at launch, so a runtime mounted after this
+  // row is still judged, and read tolerantly: no registry, no lookup half, or a
+  // throw all answer false, which keeps today's behaviour rather than refusing
+  // cards on a guess.
+  const legacyAgentTeams = (): boolean => {
+    const lookup = lookupOf(resolveToolRegistry(ctx))
+    if (lookup === undefined) return false
+    try {
+      return lookup.get(LEGACY_AGENT_TEAMS_TOOL) !== undefined
+    } catch {
+      return false
+    }
+  }
   const host = new TaskBoardHostService(ctx.typertGateway, {
     workspaceRegistry: ctx.workspaceRegistry,
     ownerPeer,
@@ -727,6 +743,7 @@ function applyImpl(ctx: Context, config?: Config): void {
     verificationCatalog,
     attachments: () => resolveAttachmentStore(ctx),
     modelInfo: () => resolveModelInfoReader(ctx),
+    legacyAgentTeams,
     timers: resolveHostTimers(ctx),
     commandDispatcher: {
       async execute(sessionId, line, signal) {

@@ -16,6 +16,7 @@
  * still gets the offline page.
  */
 
+import { normalizeWireEncoding } from './relay-encoding.js'
 import { relayFailure } from './relay-failure.js'
 import {
   RATE_LIMIT_RETENTION_MS,
@@ -356,7 +357,10 @@ async function fetchThroughBridge(request, env, id, pathname) {
   // object hands the connector's own headers through, and the tunneled instance
   // sends no Cache-Control on its content-hashed build assets, so without this
   // a phone re-fetches the whole shell on every load through the bridge too.
-  return withImmutableAssetCache(response, pathname, request.method)
+  // The encoding is stated here exactly as on the quick path: the connector
+  // forwards the origin's bytes, including a gzip body the origin never
+  // declared (issue #2030).
+  return await normalizeWireEncoding(withImmutableAssetCache(response, pathname, request.method))
 }
 
 /** The same headers without the bridge attach marker. */
@@ -444,7 +448,10 @@ export async function handleRelayProxy(request, env, id) {
     return relayFailure('instance-offline', { message: 'the instance tunnel did not answer' })
   }
   const shaped = withImmutableAssetCache(response, target.pathname, request.method)
-  return transport === 'bridge' ? withFallbackMark(shaped) : shaped
+  // The origin gzips whatever `accept-encoding` a request carried and does not
+  // always declare it, so the hop states what the bytes are before the edge can
+  // compress an already-compressed body (issue #2030).
+  return await normalizeWireEncoding(transport === 'bridge' ? withFallbackMark(shaped) : shaped)
 }
 
 /** Dispatch for relay traffic: returns a Response, or undefined when the

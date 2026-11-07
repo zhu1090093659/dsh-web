@@ -254,6 +254,42 @@ export function hasOutstandingDescendants(
 export const LIANGSHEN_PRESET_ID = 'liangshen'
 
 /**
+ * The tool a legacy Agent Teams runtime registers, and the one fingerprint
+ * this board reads off a deployment: the pre-#7519 generation registers
+ * `spawn_teammate` and replaces `send_message` / `list_agents` /
+ * `interrupt_agent` with team-scoped variants, so children exist but are
+ * unreachable. The current runtime adds a shared task board instead and reuses
+ * the coordination tools, so those three names prove nothing and are never
+ * gated on (the criterion is the same one
+ * `packages/dsh-liangshen/presets/liangshen/dispatcher-rules.mjs` states).
+ */
+export const LEGACY_AGENT_TEAMS_TOOL = 'spawn_teammate'
+
+/**
+ * The failure text the Host records when a run would have been forced under
+ * the dispatcher preset on a deployment that cannot orchestrate.
+ *
+ * A finished sentence rather than a code (the shape `core/workspace-target.ts`
+ * gives its missing-workspace refusal): the ledger stores it as the
+ * execution's failure text, the agent tools serve it to a model, and any
+ * client prints it verbatim. It names the fix, not the mechanism. The launch
+ * is refused before any session exists, because the dispatcher preset would
+ * otherwise stop and wait for a human reply that an unattended run never
+ * brings.
+ */
+export const LEGACY_AGENT_TEAMS_REASON = 'this deployment runs the legacy Agent Teams runtime, which cannot dispatch a card that has unfinished subtasks under the ' + LIANGSHEN_PRESET_ID + ' preset; disable that runtime and restart the Host, or finish the subtasks before running'
+
+/**
+ * Whether a recorded failure text is the legacy-runtime refusal, which the
+ * browser half renders in the reader's own language.
+ * @param reason - the execution's recorded failure text.
+ * @returns true when that run was refused for a deployment that cannot orchestrate.
+ */
+export function isLegacyAgentTeamsReason(reason: string): boolean {
+  return reason === LEGACY_AGENT_TEAMS_REASON
+}
+
+/**
  * Whether a card belongs to a run's dispatch set: the card the request named,
  * or a card whose work is still outstanding. Kept for the browser's subtask
  * preview; the Host run itself opens the clicked card alone

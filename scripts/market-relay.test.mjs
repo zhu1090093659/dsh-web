@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { gzipSync } from 'node:zlib'
 
 import worker from '../market/worker/src/index.js'
 import { REGISTER_MAX_PER_ID, relayIdOf } from '../market/worker/src/relay.js'
@@ -7,6 +8,11 @@ import { REGISTER_MAX_PER_ID, relayIdOf } from '../market/worker/src/relay.js'
 const RELAY_HOST = 'abcd1234abcd1234.dsh-market.com'
 const SECRET = 'A'.repeat(43)
 const TARGET = 'https://minted-tunnel-name.trycloudflare.com'
+
+/** One gzip member of the given text, as the tunneled host sends it. */
+function gzipped(text) {
+  return gzipSync(Buffer.from(text, 'utf8'))
+}
 
 function context() { return { waitUntil() {} } }
 
@@ -157,6 +163,32 @@ test('relay proxy forwards to the registered target with a rewritten Host', asyn
     assert.equal(seen.url, TARGET + '/api/pair/status')
     assert.equal(seen.host, new URL(TARGET).host, 'the origin sees its own tunnel host')
     assert.equal(seen.method, 'GET')
+  } finally {
+    globalThis.fetch = realFetch
+  }
+})
+
+test('relay proxy decompresses a gzip body the origin never declared', async () => {
+  // Given an origin that answers a login refusal as gzip bytes under no
+  // content-encoding, the shape issue #2030 measured through the relay
+  const refusal = 'dsh web authentication required; reopen the URL printed by dsh web.'
+  const realFetch = globalThis.fetch
+  globalThis.fetch = async () => new Response(gzipped(refusal), {
+    status: 401,
+    headers: { 'content-type': 'text/plain; charset=utf-8' },
+  })
+  try {
+    const db = relayDb({ registrations: { abcd1234abcd1234: { secret_hash: 'x', target: TARGET } } })
+
+    // When a phone asks for the page through the relay
+    const response = await proxy(db, '/', { method: 'GET', headers: { host: RELAY_HOST, 'accept-encoding': 'gzip' } })
+
+    // Then the hop hands on text it declared as text, not compressed bytes
+    // under a header that promises plain text
+    assert.equal(response.status, 401)
+    assert.equal(response.headers.get('content-encoding'), null)
+    assert.equal(response.headers.get('cache-control'), 'no-transform')
+    assert.equal(await response.text(), refusal)
   } finally {
     globalThis.fetch = realFetch
   }

@@ -3,7 +3,7 @@ import type { InvokeRemoteRequest, TypertGateway } from '@deepseek-ai/dsh-api-ga
 import type { SessionAddress, SessionHistoryRecord, SessionListValue, SessionPage, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { CommandResult } from '@deepseek-ai/dsh-commands/types'
 import type { Workspace } from '@deepseek-ai/dsh-workspace/types'
-import { LIANGSHEN_PRESET_ID } from './core/subtask.ts'
+import { LEGACY_AGENT_TEAMS_REASON, LIANGSHEN_PRESET_ID } from './core/subtask.ts'
 import { MISSING_WORKSPACE_REASON, mostRecentWorkspaceId } from './core/workspace-target.ts'
 import { declaredRoute, normalizeReasoningEffort, resolveReasoningEffort, type ReasoningRoute } from './core/reasoning-effort.ts'
 import type { ModelCatalogView } from './core/verification.ts'
@@ -427,6 +427,15 @@ export interface TaskBoardRuntimeFaces {
   attachments?: () => TaskBoardAttachmentStore | undefined
   /** The model-info reader, or undefined when the deployment serves no model information. */
   llm?: () => ModelInfoResolver | undefined
+  /**
+   * Whether this deployment runs the legacy Agent Teams runtime, read live
+   * from the agent tool registry. Absent, or answering false, means the
+   * deployment is not PROVEN legacy: the dispatcher preset is then forced as
+   * before. Only a positive answer refuses the run, so a deployment whose
+   * registry cannot be read keeps its current behaviour instead of losing the
+   * ability to dispatch a subtask tree.
+   */
+  legacyAgentTeams?: () => boolean
 }
 
 export class HostExecutionRunner {
@@ -553,6 +562,17 @@ export class HostExecutionRunner {
       }
       if (preset === undefined) throw new Error('agent preset not found: ' + mode)
       if (preset.broken !== undefined) throw new Error('agent preset is unavailable: ' + preset.broken)
+      // A forced preset is the run's shape, so the deployment must also be
+      // able to orchestrate under it: the dispatcher preset's own compatibility
+      // gate judges the tool surface at session start and, when the legacy
+      // Agent Teams runtime shadows the coordination tools, stops and waits for
+      // a human reply. A card with unfinished subtasks may be launched by a
+      // schedule, so that reply never comes and the card would sit in running
+      // forever (issue #2031). Refuse here instead, with the reason readable on
+      // the card, rather than minting a session that can only deadlock.
+      if (options.agentPreset !== undefined && this.faces.legacyAgentTeams?.() === true) {
+        throw new Error(LEGACY_AGENT_TEAMS_REASON)
+      }
     }
     // The ledger only ever stores ids minted by this runner (or the roster),
     // so the brand is reasserted at this boundary instead of re-deriving it.

@@ -44,7 +44,7 @@ dsh Web GUI 的 Host 权威多列任务看板。任务通过真实 DSH 会话执
 ## 父卡自治派发
 
 - 执行一张卡片只开它自己一个会话：父卡执行不为任何子任务创建 execution，子卡也不进入运行列，这次运行开出的 run group 恒为单成员。直接点某张子卡执行时它自己就是这次的 root，照旧单独开一个会话——即使它有父卡、自己也有子任务，也不展开。
-- root 存在未完成后代时（任一后代不在「完成」列且未归档，口径唯一来源是 `src/core/subtask.ts` 的 `hasOutstandingDescendants` / `outstandingDescendants`），这次执行在启动时强制改用 `LIANGSHEN_PRESET_ID`（`liangshen`，梁神模式，预设来自 `packages/dsh-liangshen`）：这是执行时的覆盖，绝不写进卡片的 `mode`。强制生效时跳过 session 复用、新开会话。部署没有注册该预设时 fail closed：卡片进失败列，原因写明缺少 `liangshen` 预设。没有未完成后代的卡不受影响，执行形态与平常一致。
+- root 存在未完成后代时（任一后代不在「完成」列且未归档，口径唯一来源是 `src/core/subtask.ts` 的 `hasOutstandingDescendants` / `outstandingDescendants`），这次执行在启动时强制改用 `LIANGSHEN_PRESET_ID`（`liangshen`，梁神模式，预设来自 `packages/dsh-liangshen`）：这是执行时的覆盖，绝不写进卡片的 `mode`。强制生效时跳过 session 复用、新开会话。部署没有注册该预设时 fail closed：卡片进失败列，原因写明缺少 `liangshen` 预设；部署运行 legacy Agent Teams 那一代时同样 fail closed（指纹是 `LEGACY_AGENT_TEAMS_TOOL`，即 `spawn_teammate` 这个工具）：该预设的 R0.5 闸门会把会话判为不可编排、弹一次提问后停下等人回复，而定时 / 无人值守执行没有人可回复，因此启动在任何会话存在之前就被拒绝，卡片上写明 `LEGACY_AGENT_TEAMS_REASON`。探测读不到工具注册表时一律按「不是 legacy」处理，强制行为与从前一致。没有未完成后代的卡不受影响，执行形态与平常一致。
 - 启动 Prompt 多一段派发指令：列出各未完成子卡的标题、任务 id 与状态，说明本次不为它们额外开会话，要求先用 `task_board_get` 读子卡，再用 `subagent` 按依赖顺序派发（互不依赖的可以并发），完工前用 `task_board_manage({action:'record-external-outcome'})` 一次性回填结论。
 - 结论兜底：root 自身执行终结时，对本次运行仍未回填、且属于 root 未完成后代的卡片，Host 写一条 external 记录（`initiatedBy` 前缀 `parent-run:`，说明「本卡未单独开会话执行、结论继承自父卡运行」）。同一张卡已有本 run group 的 execution、仍有未结算执行、或已有更晚的终态记录时跳过，因此幂等；`cancelled` 的父判定不写。
 - 为什么这样定：子任务之间有串行依赖，Host 侧并发开会话只能把依赖顺序变成运气；Agent Team 的 teammate 同样是一次性全派生，解决不了串行，还在看板上多压一层语义。因此该模式整体退役：协议的 create/patch 团队字段、快照里的团队可用性标志、agent 工具的团队运行参数、团队 provider 配置项与 Host 侧 `spawnTeammate` 调度面全部移除；`TaskRecord.teamRun` 只为读历史保留，不迁移、不写新值。

@@ -4,12 +4,10 @@
  * 设计前提
  *   背景是黑底星海（原画 74% 的像素比 #202020 更暗，吸积盘高光接近 255）。
  *   面板必须是半透明玻璃，否则背景看不见；但玻璃必须够厚，否则文字压不住。
- *   所有 alpha 都用 WCAG 相对亮度算过，明细见 README「可读性」。
- *   合成分两层：画布（bg-base，46%）先压一道，会话与面板（layer-1..4）
- *   再叠在上面，所以文字背后不是生背景，而是 base+layer 的合成色。
- *   结果：星海典型区域正文 ≥13.0:1；即使背景是最亮的镜面高光，
- *   正文仍有 6.0:1。只有次要文字在最亮像素上会掉到 3.6:1，
- *   由 patches.css 的文字投影与「背景遮挡」滑块兜底（滑块 20% 即回到 AA）。
+ *   所有 alpha 都用 WCAG 相对亮度算过（scrim=0 的最坏情况）：
+ *   暗色看背景**最亮**像素（吸积盘高光 255），亮色看羊皮纸**最暗**像素（约 133）。
+ *   会话区、右侧栏、插件市场卡片三处的正文与所有提示文字均 ≥ 4.5:1（AA）。
+ *   右侧栏比会话区透，所以在 [data-dsh-surface="details"] 内单独加深了次要文字。
  *
  *   --dsw-skin-scrim 是皮肤中心「背景遮挡」滑块的 0–1 值：
  *   scrim=0 背景最透，scrim=1 基本回到实心。默认值下的可读性由下面的
@@ -24,8 +22,9 @@
   --eq-glass-4: calc(0.44 + var(--dsw-skin-scrim, 0) * 0.50);
   --eq-blur: 18px;
   --eq-hairline: rgba(90, 70, 45, 0.20);
-  --eq-accent: #9c3b2a;
-  --eq-accent-soft: rgba(156, 59, 42, 0.14);
+  /* #9c3b2a 在最暗羊皮纸上只有 3.8:1，压深到 #8a3222（4.6:1） */
+  --eq-accent: #8a3222;
+  --eq-accent-soft: rgba(138, 50, 34, 0.14);
 }
 
 /* 画布本身几乎透明，让星海透出来；真正的可读性由面板层负责 */
@@ -56,23 +55,35 @@
   --dsw-alias-markdown-code-block: rgba(250, 243, 228, 0.93);
   --dsw-alias-markdown-code-block-banner: rgba(240, 229, 206, 0.96);
 
-  --dsw-alias-label-primary: #3a2a1c;
-  --dsw-alias-label-primary-bluish: #3a2a1c;
-  --dsw-alias-label-primary-dimmed: #63482f;
+  /* 文字：墨褐四级，会话区最暗像素上 正文 9.1 / 次要 6.2 / 提示 5.0 / dimmed 4.7 */
+  --dsw-alias-label-primary: #2b1f14;
+  --dsw-alias-label-primary-bluish: #2b1f14;
+  --dsw-alias-label-primary-dimmed: #4a3a2a;
   --dsw-alias-label-primary-foreground: #ffffff;
   --dsw-alias-label-primary-inverted: #ffffff;
-  --dsw-alias-label-secondary: #6b5741;
-  --dsw-alias-label-tertiary: #8a7355;
-  --dsw-alias-label-caption: #8a7355;
-  --dsw-alias-label-dimmed: #8a7355;
+  --dsw-alias-label-secondary: #4a3a2a;
+  --dsw-alias-label-tertiary: #5a4733;
+  --dsw-alias-label-caption: #5a4733;
+  --dsw-alias-label-dimmed: #5c4a36;
 
   --dsw-alias-brand-primary: var(--eq-accent);
   --dsw-alias-brand-primary-invert: #ffffff;
   --dsw-alias-button-primary-fill: var(--eq-accent);
-  --dsw-alias-button-primary-hover: #7d2f21;
-  --dsw-alias-button-primary-dimmed: rgba(156, 59, 42, 0.20);
+  --dsw-alias-button-primary-hover: #6f281b;
+  --dsw-alias-button-primary-dimmed: rgba(138, 50, 34, 0.20);
   --dsw-alias-button-info-fill: var(--eq-accent);
-  --dsw-alias-button-info-hover: #7d2f21;
+  --dsw-alias-button-info-hover: #6f281b;
+
+  /* 阅读面纱：会话区与右侧栏共用，替代原来 5% 的白雾 */
+  --eq-read-veil: rgba(241, 234, 220, 0.40);
+  --eq-rail-veil: rgba(241, 234, 220, 0.22);
+  /* 卡片：比页面亮一档、更实，叠在卡片上也分得开 */
+  --dsw-alias-settings-card-fill: rgba(250, 246, 238, 0.66);
+  --dsw-alias-settings-card-stroke: rgba(90, 70, 45, 0.30);
+  /* 吸顶头比卡片深约 8 个 L*，卡片滑进去时边界清楚 */
+  --eq-sticky-fill: rgba(226, 214, 190, 0.98);
+  /* 用户气泡：和模型正文分开，避免看错说话人 */
+  --dsw-specific-bubble: rgba(255, 250, 240, 0.72);
   --dsw-alias-button-floating-fill: rgba(255, 255, 255, 0.92);
   --dsw-alias-button-floating-hover: rgba(255, 255, 255, 1);
   --dsw-alias-button-elevated-fill: rgba(255, 255, 255, var(--eq-glass-3));
@@ -120,15 +131,24 @@ body[data-ds-dark-theme] {
   --dsw-alias-markdown-code-block: rgba(2, 3, 6, 0.90);
   --dsw-alias-markdown-code-block-banner: rgba(10, 13, 18, 0.92);
 
-  --dsw-alias-label-primary: #e9eef6;
-  --dsw-alias-label-primary-bluish: #eaf0f9;
-  --dsw-alias-label-primary-dimmed: #c8d2e0;
+  /* 文字：冷白换成象牙暖灰，降低在黑白背景上的眩光；
+     会话区最亮像素（吸积盘高光 255）上 正文 7.0 / 次要 5.3 / 提示 4.75 / dimmed 4.6 */
+  --dsw-alias-label-primary: #dcd6ca;
+  --dsw-alias-label-primary-bluish: #dcd6ca;
+  --dsw-alias-label-primary-dimmed: #c2bbad;
   --dsw-alias-label-primary-foreground: #06080c;
   --dsw-alias-label-primary-inverted: #06080c;
-  --dsw-alias-label-secondary: #b0bac8;
-  --dsw-alias-label-tertiary: #97a3b5;
-  --dsw-alias-label-caption: #97a3b5;
-  --dsw-alias-label-dimmed: #97a3b5;
+  --dsw-alias-label-secondary: #c2bbad;
+  --dsw-alias-label-tertiary: #b8b1a1;
+  --dsw-alias-label-caption: #b8b1a1;
+  --dsw-alias-label-dimmed: #b5ae9e;
+
+  --eq-read-veil: rgba(4, 5, 9, 0.48);
+  --eq-rail-veil: rgba(4, 5, 9, 0.32);
+  --dsw-alias-settings-card-fill: rgba(30, 35, 45, 0.72);
+  --dsw-alias-settings-card-stroke: rgba(180, 205, 240, 0.30);
+  --eq-sticky-fill: rgba(4, 5, 8, 0.98);
+  --dsw-specific-bubble: rgba(28, 34, 44, 0.72);
 
   --dsw-alias-brand-primary: var(--eq-accent);
   --dsw-alias-brand-primary-invert: #06080c;
@@ -150,11 +170,34 @@ body[data-ds-dark-theme] {
 }
 
 /* ---- 玻璃质感：只加在真正的大面上，避免污染布局 ------------------------- */
-[data-dsh-surface="sidebar"],
-[data-dsh-surface="details"] {
+[data-dsh-surface="sidebar"] {
   backdrop-filter: blur(var(--eq-blur)) saturate(115%);
   -webkit-backdrop-filter: blur(var(--eq-blur)) saturate(115%);
   border-color: var(--eq-hairline);
+}
+
+/* 右侧栏改为透明：去掉毛玻璃（它让右栏看起来是实心的，
+ * 还会把右栏变成 fixed tooltip 的包含块，tooltip 被推出屏幕），
+ * 只留一层很薄的阅读面纱，比会话区更透。 */
+[data-dsh-surface="details"] {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: var(--eq-hairline);
+  background-image: linear-gradient(var(--eq-rail-veil), var(--eq-rail-veil));
+  /* 右栏遮挡比会话区少，次要文字和强调色在这里再加深一档才能在最坏像素上过 AA */
+  --dsw-alias-label-tertiary: #4f3e2c;
+  --dsw-alias-label-caption: #4f3e2c;
+  --dsw-alias-label-dimmed: #4f3e2c;
+  --dsw-alias-brand-primary: #742818;
+}
+
+body[data-ds-dark-theme] [data-dsh-surface="details"] {
+  --dsw-alias-label-primary-dimmed: #d6d0c3;
+  --dsw-alias-label-secondary: #d6d0c3;
+  --dsw-alias-label-tertiary: #d2cbbd;
+  --dsw-alias-label-caption: #d2cbbd;
+  --dsw-alias-label-dimmed: #d2cbbd;
+  --dsw-alias-brand-primary: #b2cdff;
 }
 
 [data-dsh-surface="session-header"] {
@@ -162,14 +205,8 @@ body[data-ds-dark-theme] {
   -webkit-backdrop-filter: blur(14px) saturate(110%);
 }
 
-/* 会话主体保持通透，文字靠 bg-base 的暗度压住；这里只补一层很轻的雾 */
+/* 会话主体：bg-base 之上再叠一层阅读面纱，保证吸积盘高光处正文仍过 AA。
+ * 想让星海更亮，只改 --eq-read-veil 的 alpha 一处即可。 */
 [data-dsh-surface="conversation"] {
-  background-image: linear-gradient(
-    rgba(255, 255, 255, 0.05),
-    rgba(255, 255, 255, 0.05)
-  );
-}
-
-body[data-ds-dark-theme] [data-dsh-surface="conversation"] {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.10), rgba(0, 0, 0, 0.10));
+  background-image: linear-gradient(var(--eq-read-veil), var(--eq-read-veil));
 }

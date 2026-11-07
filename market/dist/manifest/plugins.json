@@ -1342,6 +1342,19 @@
       "npm": "dsh-llm-verifier",
       "category": "tools",
       "subcategory": "model"
+    },
+    {
+      "id": "dsh-keenable",
+      "name": "Keenable 联网搜索",
+      "rank": 106,
+      "nameEn": "Keenable Web Search",
+      "author": "keenableai",
+      "description": "把 DSH 内置的 web_search 与 web_fetch 工具接到 Keenable：无需 API key、无需账号，任何模型（包括本地模型）都能联网搜索，不新增工具。web_search 返回排序后的结果、页面摘录和已知的发布日期；web_fetch 在 Keenable 服务器端抓取页面并返回 markdown，不抓取 localhost 与内网地址。安装时把宿主的 searchProvider 和 fetchProvider 固定为 keenable，卸载后恢复宿主默认值。免 key 调用每个 IP 限 10 次/秒、1000 次/小时（同一出口 IP 下的用户共用这一额度），启动 DSH 前设置可选的环境变量 KEENABLE_API_KEY 即可解除限制。搜索词和抓取的 URL 会发送给 Keenable。",
+      "descriptionEn": "Points DSH's built-in web_search and web_fetch tools at Keenable, with no API key or account, so web search works with any model, local ones included; it adds no new tools. web_search returns ranked results with a page excerpt and the publication date when known; web_fetch retrieves the page on Keenable's servers and returns it as markdown, refusing localhost and private addresses. Installing pins the host's searchProvider and fetchProvider to keenable; uninstalling restores the host defaults. Keyless use is limited to 10 requests per second and 1,000 per hour per IP, shared by everyone behind the same egress IP; setting the optional KEENABLE_API_KEY environment variable before starting DSH lifts the limit. Queries and fetched URLs are sent to Keenable.",
+      "repo": "https://github.com/keenableai/dsh-keenable",
+      "npm": "@keenable/dsh-keenable",
+      "category": "tools",
+      "subcategory": "dev"
     }
   ]
 }

@@ -76,3 +76,76 @@ body[data-ds-dark-theme] [data-dsh-surface="conversation"] {
 [data-dsh-surface="conversation"] code * {
   text-shadow: none;
 }
+
+/* ============================================================================
+ * 以下为 2026-11 可读性修订（右侧栏透明 / 文字配色 / 卡片层叠）
+ * 例外说明：本节有两处改了底色，都是为了**去掉**宿主重复叠加的实心层，
+ * 或给"压在别的内容上面"的浮层补足遮挡；普通面板仍只走 skin.css 的令牌。
+ * ========================================================================== */
+
+/* ---- 1. 右侧栏透明 -------------------------------------------------------
+ * 宿主在右栏画了两层 bg-base：布局层 .pI_x6G_rightbarCol 一层，
+ * dockkit 的 ._tabHost_*:not(._float_*) 再一层。去掉 dockkit 那层，
+ * 只保留布局层 + skin.css 的 --eq-rail-veil。
+ * 只在右栏内生效；浮动窗（_float）和其他 dock 区域不受影响。 */
+[data-dsh-surface="details"] [class*="_tabHost_"]:not([class*="_float_"]),
+[data-dsh-surface="details"] [class*="_emptyTabHost_"] {
+  background: transparent;
+}
+
+/* 透明后右栏文字直接压在星海上，补和会话区同款的笔画投影 */
+[data-dsh-surface="details"] {
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.70), 0 0 2px rgba(255, 255, 255, 0.50);
+}
+
+body[data-ds-dark-theme] [data-dsh-surface="details"] {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.70), 0 0 3px rgba(0, 0, 0, 0.55);
+}
+
+[data-dsh-surface="details"] pre,
+[data-dsh-surface="details"] pre *,
+[data-dsh-surface="details"] code,
+[data-dsh-surface="details"] [class*="xterm"],
+[data-dsh-surface="details"] [class*="xterm"] * {
+  text-shadow: none;
+}
+
+/* ---- 2. 用户消息与模型消息分开 -------------------------------------------
+ * 用户气泡底色来自 skin.css 的 --dsw-specific-bubble；这里只补一条发丝边，
+ * 让"谁说的"在黑白背景上一眼可辨。 */
+[data-dsh-part="message-row"] [class~="Sixlwa_bubble"] {
+  box-shadow: inset 0 0 0 1px var(--eq-hairline);
+}
+
+/* ---- 3. 卡片层叠：上层内容必须遮住下层 -----------------------------------
+ * 插件市场的吸顶头（标签/搜索/分类）原本用半透明 bg-base，
+ * 卡片滚到它下面时两层文字重叠。改为近实心，并加一条分隔阴影。 */
+[class~="nUhMVa_stickyHead"] {
+  background: var(--eq-sticky-fill);
+  box-shadow: 0 1px 0 var(--eq-hairline), 0 8px 16px -12px rgba(0, 0, 0, 0.45);
+}
+
+/* 卡片：底色已在 skin.css 走 --dsw-alias-settings-card-fill，
+ * 这里加内高光 + 外阴影，让卡片边缘和下层分开。
+ * 注意：nUhMVa_/bkhjFa_/RcIGlq_ 是插件的 CSS-module 哈希前缀，
+ * 插件大版本升级后可能变，失效时在 DevTools 里查新前缀替换即可。 */
+[class~="nUhMVa_card"],
+[class~="bkhjFa_card"],
+[class~="RcIGlq_card"] {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 6px 18px -10px rgba(0, 0, 0, 0.55);
+}
+
+/* 卡片里再嵌卡片（展开态/嵌套态）：内层再实一档 */
+[class~="RcIGlq_cardNested"] {
+  background: var(--dsw-alias-bg-overlay);
+}
+
+/* 压在卡片之上的市场浮层：操作面板、回到顶部。
+ * 卡片的"…"菜单是宿主通用菜单（role="menu"），由 --dsw-menu-* 变量控制，
+ * 这里不动它，以免波及全站下拉菜单。 */
+[class~="nUhMVa_opPanel"],
+[class~="nUhMVa_top"] {
+  background: var(--dsw-alias-bg-overlay);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}

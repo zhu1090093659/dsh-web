@@ -2518,7 +2518,7 @@
         "dark",
         "monochrome"
       ],
-      "version": "1.0.0",
+      "version": "1.1.0",
       "accent": "#8fb6ff",
       "preview": {
         "light": "assets/skins/equation-sea/preview/light.jpg",

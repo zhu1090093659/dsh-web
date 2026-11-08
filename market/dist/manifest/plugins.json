@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-07",
+  "generated": "2026-11-08",
   "items": [
     {
       "id": "dsh-quick-ask",
@@ -1355,6 +1355,19 @@
       "npm": "@keenable/dsh-keenable",
       "category": "tools",
       "subcategory": "dev"
+    },
+    {
+      "id": "dsh-archived-chats",
+      "name": "归档管理",
+      "rank": 107,
+      "nameEn": "Archive Management",
+      "author": "Ultronen",
+      "description": "按工作区管理已归档与未归档会话，支持独立范围正文搜索、只读预览、标签备注、ZIP 备份、来源分支关系图和永久删除确认与重试。最低要求 DeepSeek Harness 0.2.2-rc.1。",
+      "descriptionEn": "Workspace-based archive management with scoped content search, read-only previews, tags and notes, ZIP backups, lineage graphs, and confirmed permanent deletion with retries. Requires DeepSeek Harness 0.2.2-rc.1 or later.",
+      "repo": "https://github.com/Ultroncn/dsh-archived-chats",
+      "npm": "dsh-archived-chats",
+      "category": "utility",
+      "subcategory": "cleanup"
     }
   ]
 }

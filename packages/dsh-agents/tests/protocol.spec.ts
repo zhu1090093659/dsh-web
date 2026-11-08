@@ -11,6 +11,10 @@ import {
   FIRST_MESSAGE_MAX_LENGTH,
   DESCRIBE_INTENT_MAX_LENGTH,
   NAME_MAX_LENGTH,
+  gateMemberDraft,
+  gateMemberRequestBody,
+  gateTeamDraft,
+  gateTeamRequestBody,
   isAgentsPermission,
   parseDescribeRequestBody,
   parseMemberDeleteRequestBody,
@@ -119,6 +123,52 @@ describe('member draft gate', () => {
     expect(parseMemberRequestBody({ teamId: 'team-1', member: { name: 'A' } })).toEqual({ teamId: 'team-1', member: { name: 'A' } })
     expect(parseMemberRequestBody({ member: { name: 'A' } })).toBeUndefined()
     expect(parseMemberRequestBody({ teamId: 'team-1' })).toBeUndefined()
+  })
+})
+
+describe('a refused draft names the field that failed', () => {
+  it('user learns which field of a member draft went over its cap, and by how much', () => {
+    // Given a brief one character past its cap, When the draft is gated, Then the reason states both numbers.
+    expect(gateMemberDraft({ name: 'A', brief: 'x'.repeat(BRIEF_MAX_LENGTH + 1) })).toEqual({
+      reason: 'the brief is ' + (BRIEF_MAX_LENGTH + 1) + ' characters and the cap is ' + BRIEF_MAX_LENGTH,
+    })
+    // Given a pin past its cap, When the draft is gated, Then the reason names that pin.
+    expect(gateMemberDraft({ name: 'A', model: 'x'.repeat(201) })).toEqual({
+      reason: 'the model is 201 characters and the cap is 200',
+    })
+  })
+
+  it('user learns which field the Host did not expect, instead of a bare refusal', () => {
+    // Given a client that spells the effort field "effort", When the draft is gated, Then the reason names the stray field.
+    expect(gateMemberDraft({ name: 'A', effort: 'max' })).toEqual({
+      reason: 'the member draft carries a field this Host does not accept: effort',
+    })
+    // Given a body carrying a field outside the contract, When it is gated, Then the reason names it too.
+    expect(gateMemberRequestBody({ teamId: 'team-1', member: { name: 'A' }, reason: 'x' })).toEqual({
+      reason: 'the request carries a field this Host does not accept: reason',
+    })
+  })
+
+  it('user learns that a name is blank and that a body names no squad', () => {
+    // Given a whitespace name, When the draft is gated, Then the reason says it is blank rather than unusable.
+    expect(gateMemberDraft({ name: '   ' })).toEqual({ reason: 'the name must not be blank' })
+    // Given a name past its cap, When the draft is gated, Then the measured length travels with the refusal.
+    expect(gateMemberDraft({ name: 'n'.repeat(NAME_MAX_LENGTH + 1) })).toEqual({
+      reason: 'the name is ' + (NAME_MAX_LENGTH + 1) + ' characters and the cap is ' + NAME_MAX_LENGTH,
+    })
+    // Given a body with no team id, When it is gated, Then the reason names the missing squad id.
+    expect(gateMemberRequestBody({ member: { name: 'A' } })).toEqual({
+      reason: 'the request must name a squad id of at most 128 characters',
+    })
+  })
+
+  it('operator keeps a usable draft intact and refuses a squad draft with its own reason', () => {
+    // Given a usable member draft, When it is gated, Then the normalized draft is what the ledger receives.
+    expect(gateMemberDraft({ name: ' A ', preset: ' ' })).toEqual({ value: { name: 'A' } })
+    expect(gateTeamDraft({ name: 'A', description: 'x'.repeat(2_001) })).toEqual({
+      reason: 'the description is 2001 characters and the cap is 2000',
+    })
+    expect(gateTeamRequestBody({ team: { name: 'A' } })).toEqual({ value: { team: { name: 'A' } } })
   })
 })
 

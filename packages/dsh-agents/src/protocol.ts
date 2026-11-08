@@ -367,73 +367,169 @@ function definitionId(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() !== '' && value.trim().length <= ID_MAX_LENGTH ? value.trim() : undefined
 }
 
+/** What one wire gate decided: the accepted value, or the single reason it was refused. */
+export type Gate<T> = { value: T } | { reason: string }
+
 /**
- * Gate one member draft from the wire. Unknown fields are refused rather than
- * ignored, so a caller cannot smuggle a timestamp or an id the Host did not
- * mint into a definition.
+ * The wire fields outside an allowlist, as one bounded clause.
+ *
+ * Naming the field is the point: a client that renames or adds a draft field is
+ * otherwise refused with no way to tell which field the Host did not expect.
+ * @param value - the decoded object.
+ * @param allowed - the fields the contract accepts.
+ * @param subject - what the object is, for the sentence ("member draft").
+ * @returns the clause, or undefined when every field is allowed.
+ */
+function unknownFieldReason(value: Record<string, unknown>, allowed: readonly string[], subject: string): string | undefined {
+  const unknown = Object.keys(value).filter(key => !allowed.includes(key))
+  if (unknown.length === 0) return undefined
+  const names = unknown.slice(0, 3).map(key => key.length > 24 ? key.slice(0, 24) + '...' : key)
+  return 'the ' + subject + ' carries a field this Host does not accept: ' + names.join(', ')
+}
+
+/**
+ * Read one optional bounded text field, trimming it and collapsing blank to
+ * absent: the ledger never stores "" for a pin the user cleared. Unlike
+ * {@link optionalText} this names the field and its measured length when it
+ * refuses, which is the whole reason the gate explains itself.
+ * @param value - the decoded value.
+ * @param field - the field's name, for the sentence.
+ * @param max - the cap in characters.
+ * @returns the trimmed text (undefined for blank), or the refusal reason.
+ */
+function textField(value: unknown, field: string, max: number): Gate<string | undefined> {
+  if (value === undefined) return { value: undefined }
+  if (typeof value !== 'string') return { reason: 'the ' + field + ' must be text' }
+  if (value.length > max) return { reason: 'the ' + field + ' is ' + value.length + ' characters and the cap is ' + max }
+  const trimmed = value.trim()
+  return { value: trimmed === '' ? undefined : trimmed }
+}
+
+/** The fields one member draft may carry, in contract order. */
+const MEMBER_DRAFT_FIELDS = ['id', 'name', 'preset', 'permission', 'model', 'reasoningEffort', 'brief'] as const
+
+/** The fields one squad draft may carry, in contract order. */
+const TEAM_DRAFT_FIELDS = ['id', 'name', 'description', 'workspaceId', 'leadPreset', 'order'] as const
+
+/**
+ * Gate one member draft from the wire, naming the field that refuses it.
+ *
+ * Unknown fields are refused rather than ignored, so a caller cannot smuggle a
+ * timestamp or an id the Host did not mint into a definition; the refusal names
+ * them because a silently renamed field is otherwise undiagnosable.
+ * @param value - decoded JSON value.
+ * @returns the normalized draft, or the one reason it is not usable.
+ */
+export function gateMemberDraft(value: unknown): Gate<MemberDraft> {
+  const draft = record(value)
+  if (draft === undefined) return { reason: 'the member draft must be an object' }
+  const unknown = unknownFieldReason(draft, MEMBER_DRAFT_FIELDS, 'member draft')
+  if (unknown !== undefined) return { reason: unknown }
+  if (typeof draft.name !== 'string') return { reason: 'the name must be text' }
+  const name = draft.name.trim()
+  if (name === '') return { reason: 'the name must not be blank' }
+  if (name.length > NAME_MAX_LENGTH) return { reason: 'the name is ' + name.length + ' characters and the cap is ' + NAME_MAX_LENGTH }
+  const id = draft.id === undefined ? undefined : definitionId(draft.id)
+  if (draft.id !== undefined && id === undefined) return { reason: 'the member id must be a non-empty id of at most ' + ID_MAX_LENGTH + ' characters' }
+  if (draft.permission !== undefined && !isAgentsPermission(draft.permission)) {
+    return { reason: 'the permission must be one of ' + AGENTS_PERMISSIONS.join(', ') }
+  }
+  const preset = textField(draft.preset, 'preset', PIN_MAX_LENGTH)
+  if ('reason' in preset) return preset
+  const model = textField(draft.model, 'model', PIN_MAX_LENGTH)
+  if ('reason' in model) return model
+  const reasoningEffort = textField(draft.reasoningEffort, 'reasoning effort', PIN_MAX_LENGTH)
+  if ('reason' in reasoningEffort) return reasoningEffort
+  const brief = textField(draft.brief, 'brief', BRIEF_MAX_LENGTH)
+  if ('reason' in brief) return brief
+  return {
+    value: {
+      ...(id === undefined ? {} : { id }),
+      name,
+      ...(preset.value === undefined ? {} : { preset: preset.value }),
+      ...(draft.permission === undefined ? {} : { permission: draft.permission }),
+      ...(model.value === undefined ? {} : { model: model.value }),
+      ...(reasoningEffort.value === undefined ? {} : { reasoningEffort: reasoningEffort.value }),
+      ...(brief.value === undefined ? {} : { brief: brief.value }),
+    },
+  }
+}
+
+/**
+ * Gate one member draft from the wire.
  * @param value - decoded JSON value.
  * @returns the normalized draft, or undefined when the request is rejected.
  */
 export function parseMemberDraft(value: unknown): MemberDraft | undefined {
+  const gated = gateMemberDraft(value)
+  return 'reason' in gated ? undefined : gated.value
+}
+
+/**
+ * Gate one squad draft from the wire. Same rules as {@link gateMemberDraft}:
+ * exact keys, bounded text, and `order` only as an integer.
+ * @param value - decoded JSON value.
+ * @returns the normalized draft, or the one reason it is not usable.
+ */
+export function gateTeamDraft(value: unknown): Gate<TeamDraft> {
   const draft = record(value)
-  if (draft === undefined || !exactKeys(draft, ['id', 'name', 'preset', 'permission', 'model', 'reasoningEffort', 'brief'])) return undefined
-  if (typeof draft.name !== 'string') return undefined
+  if (draft === undefined) return { reason: 'the squad draft must be an object' }
+  const unknown = unknownFieldReason(draft, TEAM_DRAFT_FIELDS, 'squad draft')
+  if (unknown !== undefined) return { reason: unknown }
+  if (typeof draft.name !== 'string') return { reason: 'the name must be text' }
   const name = draft.name.trim()
-  if (name === '' || name.length > NAME_MAX_LENGTH) return undefined
+  if (name === '') return { reason: 'the name must not be blank' }
+  if (name.length > NAME_MAX_LENGTH) return { reason: 'the name is ' + name.length + ' characters and the cap is ' + NAME_MAX_LENGTH }
   const id = draft.id === undefined ? undefined : definitionId(draft.id)
-  if (draft.id !== undefined && id === undefined) return undefined
-  if (draft.permission !== undefined && !isAgentsPermission(draft.permission)) return undefined
-  const preset = optionalText(draft.preset, PIN_MAX_LENGTH)
-  const model = optionalText(draft.model, PIN_MAX_LENGTH)
-  const reasoningEffort = optionalText(draft.reasoningEffort, PIN_MAX_LENGTH)
-  const brief = optionalText(draft.brief, BRIEF_MAX_LENGTH)
-  if (preset === null || model === null || reasoningEffort === null || brief === null) return undefined
+  if (draft.id !== undefined && id === undefined) return { reason: 'the squad id must be a non-empty id of at most ' + ID_MAX_LENGTH + ' characters' }
+  if (draft.order !== undefined && (typeof draft.order !== 'number' || !Number.isInteger(draft.order))) return { reason: 'the order must be a whole number' }
+  const description = textField(draft.description, 'description', DESCRIPTION_MAX_LENGTH)
+  if ('reason' in description) return description
+  const workspaceId = textField(draft.workspaceId, 'workspace id', PIN_MAX_LENGTH)
+  if ('reason' in workspaceId) return workspaceId
+  const leadPreset = textField(draft.leadPreset, 'lead preset', PIN_MAX_LENGTH)
+  if ('reason' in leadPreset) return leadPreset
   return {
-    ...(id === undefined ? {} : { id }),
-    name,
-    ...(preset === undefined ? {} : { preset }),
-    ...(draft.permission === undefined ? {} : { permission: draft.permission }),
-    ...(model === undefined ? {} : { model }),
-    ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
-    ...(brief === undefined ? {} : { brief }),
+    value: {
+      ...(id === undefined ? {} : { id }),
+      name,
+      ...(description.value === undefined ? {} : { description: description.value }),
+      ...(workspaceId.value === undefined ? {} : { workspaceId: workspaceId.value }),
+      ...(leadPreset.value === undefined ? {} : { leadPreset: leadPreset.value }),
+      ...(draft.order === undefined ? {} : { order: draft.order }),
+    },
   }
 }
 
 /**
- * Gate one team draft from the wire. Same rules as {@link parseMemberDraft}:
- * exact keys, bounded text, and `order` only as a finite integer.
+ * Gate one squad draft from the wire.
  * @param value - decoded JSON value.
  * @returns the normalized draft, or undefined when the request is rejected.
  */
 export function parseTeamDraft(value: unknown): TeamDraft | undefined {
-  const draft = record(value)
-  if (draft === undefined || !exactKeys(draft, ['id', 'name', 'description', 'workspaceId', 'leadPreset', 'order'])) return undefined
-  if (typeof draft.name !== 'string') return undefined
-  const name = draft.name.trim()
-  if (name === '' || name.length > NAME_MAX_LENGTH) return undefined
-  const id = draft.id === undefined ? undefined : definitionId(draft.id)
-  if (draft.id !== undefined && id === undefined) return undefined
-  if (draft.order !== undefined && (typeof draft.order !== 'number' || !Number.isInteger(draft.order))) return undefined
-  const description = optionalText(draft.description, DESCRIPTION_MAX_LENGTH)
-  const workspaceId = optionalText(draft.workspaceId, PIN_MAX_LENGTH)
-  const leadPreset = optionalText(draft.leadPreset, PIN_MAX_LENGTH)
-  if (description === null || workspaceId === null || leadPreset === null) return undefined
-  return {
-    ...(id === undefined ? {} : { id }),
-    name,
-    ...(description === undefined ? {} : { description }),
-    ...(workspaceId === undefined ? {} : { workspaceId }),
-    ...(leadPreset === undefined ? {} : { leadPreset }),
-    ...(draft.order === undefined ? {} : { order: draft.order }),
-  }
+  const gated = gateTeamDraft(value)
+  return 'reason' in gated ? undefined : gated.value
+}
+
+/**
+ * Gate the `POST /team` body, naming the field that refuses it.
+ * @param value - decoded JSON value.
+ * @returns the body, or the one reason it is not usable.
+ */
+export function gateTeamRequestBody(value: unknown): Gate<TeamRequestBody> {
+  const body = record(value)
+  if (body === undefined) return { reason: 'the request body must be an object' }
+  const unknown = unknownFieldReason(body, ['team'], 'request')
+  if (unknown !== undefined) return { reason: unknown }
+  const team = gateTeamDraft(body.team)
+  if ('reason' in team) return team
+  return { value: { team: team.value } }
 }
 
 /** Gate the `POST /team` body. */
 export function parseTeamRequestBody(value: unknown): TeamRequestBody | undefined {
-  const body = record(value)
-  if (body === undefined || !exactKeys(body, ['team'])) return undefined
-  const team = parseTeamDraft(body.team)
-  return team === undefined ? undefined : { team }
+  const gated = gateTeamRequestBody(value)
+  return 'reason' in gated ? undefined : gated.value
 }
 
 /** Gate the `POST /team/delete` body. */
@@ -444,14 +540,27 @@ export function parseTeamDeleteRequestBody(value: unknown): TeamDeleteRequestBod
   return teamId === undefined ? undefined : { teamId }
 }
 
+/**
+ * Gate the `POST /member` body, naming the field that refuses it.
+ * @param value - decoded JSON value.
+ * @returns the body, or the one reason it is not usable.
+ */
+export function gateMemberRequestBody(value: unknown): Gate<MemberRequestBody> {
+  const body = record(value)
+  if (body === undefined) return { reason: 'the request body must be an object' }
+  const unknown = unknownFieldReason(body, ['teamId', 'member'], 'request')
+  if (unknown !== undefined) return { reason: unknown }
+  const teamId = definitionId(body.teamId)
+  if (teamId === undefined) return { reason: 'the request must name a squad id of at most ' + ID_MAX_LENGTH + ' characters' }
+  const member = gateMemberDraft(body.member)
+  if ('reason' in member) return member
+  return { value: { teamId, member: member.value } }
+}
+
 /** Gate the `POST /member` body. */
 export function parseMemberRequestBody(value: unknown): MemberRequestBody | undefined {
-  const body = record(value)
-  if (body === undefined || !exactKeys(body, ['teamId', 'member'])) return undefined
-  const teamId = definitionId(body.teamId)
-  if (teamId === undefined) return undefined
-  const member = parseMemberDraft(body.member)
-  return member === undefined ? undefined : { teamId, member }
+  const gated = gateMemberRequestBody(value)
+  return 'reason' in gated ? undefined : gated.value
 }
 
 /** Gate the `POST /member/delete` body. */

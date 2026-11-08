@@ -16,13 +16,13 @@ import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { AgentsError, isAgentsError, statusForCode } from '../core/errors.ts'
 import {
   DSH_AGENTS_API_PREFIX,
+  gateMemberRequestBody,
+  gateTeamRequestBody,
   parseDescribeRequestBody,
   parseMemberDeleteRequestBody,
-  parseMemberRequestBody,
   parseRunRequestBody,
   parseSquadRunRequestBody,
   parseTeamDeleteRequestBody,
-  parseTeamRequestBody,
   type AgentsErrorBody,
 } from '../protocol.ts'
 import type { AgentsHostService } from './service.ts'
@@ -159,9 +159,9 @@ export function makeAgentsRoutes(service: AgentsHostService): WebRoute[] {
         if (req.method !== 'POST') return refuse(res, 405, 'method-not-allowed', 'this route serves POST only')
         if (!guard(req, res)) return
         try {
-          const body = parseTeamRequestBody(await post(req, res))
-          if (body === undefined) return refuse(res, 400, 'invalid-request', 'the team draft is not a usable definition')
-          writeJson(res, 200, { team: service.saveTeam(body.team) })
+          const gated = gateTeamRequestBody(await post(req, res))
+          if ('reason' in gated) return refuse(res, 400, 'invalid-request', gated.reason)
+          writeJson(res, 200, { team: service.saveTeam(gated.value.team) })
         } catch (error) {
           replyFailure(res, error)
         }
@@ -190,9 +190,9 @@ export function makeAgentsRoutes(service: AgentsHostService): WebRoute[] {
         if (req.method !== 'POST') return refuse(res, 405, 'method-not-allowed', 'this route serves POST only')
         if (!guard(req, res)) return
         try {
-          const body = parseMemberRequestBody(await post(req, res))
-          if (body === undefined) return refuse(res, 400, 'invalid-request', 'the member draft is not a usable definition')
-          writeJson(res, 200, { team: service.saveMember(body.teamId, body.member) })
+          const gated = gateMemberRequestBody(await post(req, res))
+          if ('reason' in gated) return refuse(res, 400, 'invalid-request', gated.reason)
+          writeJson(res, 200, { team: service.saveMember(gated.value.teamId, gated.value.member) })
         } catch (error) {
           replyFailure(res, error)
         }

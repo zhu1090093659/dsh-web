@@ -24,6 +24,24 @@
 
 本皮肤是纯声明式实现：不含 `hooks.mjs`，背景与弹窗全部经 `contributes` 与 CSS 承载。
 
+## 变更
+
+### 0.1.1
+
+- 修复亮色与暗色的可读性对比度。暗色块不再镜像反转 `--dsw-static-neutral-*`
+  梯度：这组 token 在官方主题里是与主题无关的绝对色板，而宿主用它们铺面的
+  组件（deliverables / plan / schedule / forge / changed-files 卡片的底板取自
+  `--dsw-static-neutral-850`）在反转后成了浅底配浅字。`--dsw-static-neutral-00`
+  保持白色，因为宿主把它当白色叠加层用（图标底板、阴影发光、侧栏闪烁高亮）。
+- 亮色半透明表面降低透明程度（`bg-base` 0.42 提到 0.62，`sidebar-fill` 0.60
+  提到 0.74，以及 `layer-1..3`、气泡、输入框、选择器），使三级与说明文字压在
+  背景图较暗区域时仍然可读；相应地加深了这三档文字色。
+- 补齐 `--dsw-alias-link` 与 `--dsw-alias-toast-label`。这两个此前从未重映射，
+  链接因此落到官方那套在本皮肤表面上发灰的粉色上。
+
+实测：暗色卡片底板与 `label-primary` 由 1.28:1 提升到 11.07:1，全部表面/文字/
+主题组合均通过 WCAG AA 4.5:1。
+
 ## 预览
 
 亮色（[preview/light.jpg](preview/light.jpg)）· 暗色（[preview/dark.jpg](preview/dark.jpg)）

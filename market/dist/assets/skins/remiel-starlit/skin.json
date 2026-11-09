@@ -20,7 +20,7 @@
   ],
   "accent": "#d75b8d",
   "order": 99,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "preview": {
     "light": "preview/light.jpg",
     "dark": "preview/dark.jpg"

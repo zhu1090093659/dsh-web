@@ -1,0 +1,2206 @@
+/**
+ * 鲸鱼娘 · 清透水彩 (Whale Girl · Clear Watercolour) — L3 atmosphere layer.
+ *
+ * Pure CSS, no hooks. The loader force-scopes every selector under
+ * html[data-dsh-skin="whale-watercolour"], so rules here are written unscoped on purpose.
+ *
+ * Every hook below is one the shell actually emits, verified against the
+ * installed shell and the loader's own surface registry — not guessed:
+ *   · canvas      body::after              the theme's ground
+ *   · sidebar     [data-slot="sidebar"], [data-dsh-surface="sidebar"],
+ *                 [data-pane="sidebar"], aside
+ *   · details     [data-slot="details"], [data-dsh-surface="details"]
+ *   · conversation [data-conversation-scroll], [data-chat-flow]
+ *   · rows        [data-chat-flow-kind="user" | "assistant-step" | ...]
+ *   · composer    [data-composer-card], [data-input-scroll],
+ *                 [data-composer-placeholder]
+ *   · hero        [data-phase="hero"]
+ *
+ * Deliberately NOT touched: html[data-dsh-wallpaper-active] and
+ * html[data-dsh-backdrop-active]. The loader owns those — it neutralises scene
+ * backgrounds behind a wallpaper and re-blurs the composer card itself — so the
+ * canvas rule below steps aside instead of fighting it.
+ */
+
+/* ── custom properties, per mode ─────────────────────────────────────────── */
+
+body {
+  --sk-ground: #F2F1EC;
+  --sk-pane: radial-gradient(140% 90% at 50% 0%, #faf9f56b 0%, transparent 72%);;
+  --sk-wall: #E7EEF4;
+  --sk-wall-edge: #b0c8d852;
+  --sk-card-top: #faf9f5b8;
+  --sk-composer-ring: 0 0 0 3px #1b5d9a24;
+  --sk-bubble: #f7f8f4;
+  --sk-bubble-edge: #1b5d9a38;
+  --sk-approval-edge: #b4525e73;
+}
+
+body[data-ds-dark-theme] {
+  --sk-ground: #F2F1EC;
+  --sk-pane: radial-gradient(140% 90% at 50% 0%, #faf9f56b 0%, transparent 72%);;
+  --sk-wall: #E7EEF4;
+  --sk-wall-edge: #b0c8d85c;
+  --sk-card-top: #b0c8d84d;
+  --sk-composer-ring: 0 0 0 3px #1b5d9a33;
+  --sk-bubble: #f7f8f4;
+  --sk-bubble-edge: #1b5d9a47;
+  --sk-approval-edge: #b4525e80;
+  --bk-frame: 50% 50%;
+}
+
+/* ── the illustration: a local scrim where the interface lands ───────────── */
+/*
+ * The manifest background fills a fixed layer with `object-fit: cover`. The
+ * illustration is 2560x1437 and the shell is about 16:9, so the crop budget is
+ * zero on both axes: `object-position` cannot move her. At the shell's aspect
+ * the picture lands exactly where the interface is densest, and that is a real
+ * defect rather than a look: the empty-session title crosses her eyes, the
+ * branch chip sits on the left iris, the composer cuts through her nose
+ * (2026-10-28 intake note).
+ *
+ * Re-framing the asset was the other way out and is the wrong one: her face is
+ * the densest area of a busy 2.1 MB illustration, so shifting it anywhere in
+ * the viewport only swaps one high-detail region for another under the text
+ * (a zoomed-out recentre still leaves 65 % of the face inside the interface
+ * column and opens an unfilled band at the edges).
+ *
+ * So the picture keeps its composition and the *interface* gets its own local
+ * scrim: the same cream veil as everywhere else, painted above the media and
+ * under the text, thick over the conversation column, the composer and the
+ * header band. No new colour enters the palette.
+ *
+ * The veil is a band, not a wash over the whole frame (2026-11-05 intake note:
+ * the first cut faded out too late, so the picture-only columns left and right
+ * of the interface were veiled as well and the illustration went milky). The
+ * band is 980 px wide, centred like the shell's content column, and dies inside
+ * a 10 % ramp at each end; everything outside it keeps the illustration's own
+ * detail, so the scrim's boundary is visible and the painting stays a painting.
+ */
+body [data-dsh-skin-layer='background'] > img,
+body [data-dsh-skin-layer='background'] > video {
+  object-position: var(--bk-frame);
+}
+
+body [data-dsh-skin-layer='background']::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: min(100%, 980px);
+  transform: translateX(-50%);
+  pointer-events: none;
+  background:
+    radial-gradient(120% 92% at 50% 46%, rgba(250, 249, 245, 0.62) 0%, rgba(250, 249, 245, 0.42) 46%, rgba(250, 249, 245, 0.10) 74%, rgba(250, 249, 245, 0) 88%),
+    linear-gradient(180deg, rgba(250, 249, 245, 0.30) 0%, rgba(250, 249, 245, 0.14) 22%, rgba(250, 249, 245, 0.14) 78%, rgba(250, 249, 245, 0.34) 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
+}
+
+/* ── canvas: the theme's ground ──────────────────────────────────────────── */
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--sk-ground);
+  background-image: var(--sk-pane);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+/* When the user runs a wallpaper, the ground layer must disappear entirely,
+   or it paints over the wallpaper. The loader sets these flags itself.
+   Must be written body[...]::after, NOT html[...] body::after: the loader force-scopes
+   every selector as a descendant of html[data-dsh-skin], so the html form becomes
+   html[data-dsh-skin] html[...] body::after and can never match (html is not a
+   descendant of itself). The rule was dead and the canvas painted over the user's
+   wallpaper. The crystal engine was fixed first (see the note further down); the
+   material and anime engines still carried the dead form, which is also why
+   verify() rejected all eleven of them and no theme could be rebuilt. */
+body[data-dsh-wallpaper-active]::after,
+body[data-dsh-backdrop-active]::after {
+  background-color: transparent;
+  background-image: none;
+}
+
+/* ── sidebar: the theme's material as a wall, not a fill ─────────────────── */
+
+/* [data-slot="sidebar"] is the renderer's slot anchor and carries
+   display:contents, so it has no box of its own — the painted element is its
+   child (the sidebar's .root column, a flex container). Style the narrow slot
+   variant for plugin-provided sidebars too. */
+[data-slot='sidebar'] > *,
+[data-dsh-surface='sidebar'],
+[data-pane='sidebar'] {
+  background-color: var(--sk-wall) !important;
+  background-image: none;
+  box-shadow: inset -1px 0 0 var(--sk-wall-edge);
+}
+
+body[data-ds-dark-theme] [data-slot='sidebar'] > *,
+body[data-ds-dark-theme] [data-dsh-surface='sidebar'],
+body[data-ds-dark-theme] [data-pane='sidebar'] {
+  background-image: none;
+}
+
+/* the sidebar's own workspace list keeps the wall colour, not a raised card */
+[data-slot='sidebar.workspaces'] {
+  background-color: transparent !important;
+}
+
+/* ── details pane ────────────────────────────────────────────────────────── */
+
+[data-slot='details'],
+[data-slot='details'] > *,
+[data-dsh-surface='details'],
+[data-pane='details'] {
+  background-color: #f2f1ecdb !important;
+}
+
+body[data-ds-dark-theme] [data-slot='details'],
+body[data-ds-dark-theme] [data-slot='details'] > *,
+body[data-ds-dark-theme] [data-dsh-surface='details'],
+body[data-ds-dark-theme] [data-pane='details'] {
+  background-color: #f2f1ecdb !important;
+}
+
+/* ── hero: the empty-session screen ──────────────────────────────────────── */
+
+[data-phase='hero'] {
+  position: relative;
+  background-image: none;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+body[data-ds-dark-theme] [data-phase='hero'] {
+  background-image: none;
+}
+
+/* ── composer: the theme's object ────────────────────────────────────────── */
+
+[data-composer-card] {
+  border-radius: 14px;
+  box-shadow: var(--sk-composer-ring), inset 0 1px 0 var(--sk-card-top);
+}
+
+body[data-ds-dark-theme] [data-composer-card] {
+  box-shadow: var(--sk-composer-ring), inset 0 1px 0 var(--sk-card-top);
+}
+
+/* the editable surface itself stays transparent so the card reads as one piece */
+[data-input-scroll] {
+  background-color: transparent;
+}
+
+[data-composer-placeholder] {
+  color: #2D425C;
+}
+
+body[data-ds-dark-theme] [data-composer-placeholder] {
+  color: #2D425C;
+}
+
+/* ── conversation rows: the material edge ────────────────────────────────── */
+
+/* the user's own turn gets the metal; the assistant stays quiet so the reading
+   column does not turn into a stripe of colour */
+[data-chat-flow-kind='user'] {
+  box-shadow: inset 3px 0 0 var(--sk-bubble-edge);
+}
+
+[data-chat-flow-kind='assistant-step'] {
+  background-color: transparent;
+}
+
+/* tool / context rows are furniture: give them the paper's edge, not the ink's */
+[data-chat-flow-kind='tool-call'],
+[data-chat-flow-kind='context'] {
+  border-radius: 10px;
+  background-color: #e7eef480;
+}
+
+body[data-ds-dark-theme] [data-chat-flow-kind='tool-call'],
+body[data-ds-dark-theme] [data-chat-flow-kind='context'] {
+  background-color: #e7eef480;
+}
+
+/* ── selection carries the metal ─────────────────────────────────────────── */
+
+::selection {
+  background-color: #1b5d9a40;
+}
+
+body[data-ds-dark-theme] ::selection {
+  background-color: #1b5d9a52;
+}
+
+/* ── approvals: the one place the warning ramp is allowed to shout ───────── */
+
+[data-approval-key],
+[data-question-key],
+[data-plan-review-key] {
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px var(--sk-approval-edge), var(--dsw-shadow-lv2);
+}
+
+/* ── links keep the theme's metal rather than the shell's blue ───────────── */
+
+a {
+  color: #1B5D9A;
+}
+
+body[data-ds-dark-theme] a {
+  color: #1B5D9A;
+}
+
+/* ── scrollbars ──────────────────────────────────────────────────────────── */
+
+* {
+  scrollbar-color: #2d425c59 transparent;
+}
+
+body[data-ds-dark-theme] * {
+  scrollbar-color: #2d425c66 transparent;
+}
+
+/* ── 暗色专用：钉死原生配色方案（材质引擎本来没有这条，anime 引擎有）────────
+   必须写 :root 而不是 html：作用域转换把每条选择器当成 skin root 的后代加前缀，
+   html { … } 会变成 html[data-dsh-skin] html { … }，永远匹配不上；
+   :root 被特判成 html[data-dsh-skin="<id>"] 本身，正好落在 html 元素上 ——
+   这正是 color-scheme 需要的位置（它必须作用在根元素上才管得住原生控件）。 */
+
+
+/* ── per-theme extra chrome ────────────────────────────────────────────────
+   A theme may append its own rules here — the frame, the workspace plaque, the
+   new-session plate. Kept as a *function* so it derives colours from the same
+   palette through the same alpha()/mix() helpers instead of hard-coding hexes.
+   verify() scans the result for the fragility patterns (hashed class names,
+   :global, nested :has, backticks, unresolved interpolation). */
+/* ══ 鲸鱼娘 · 清透水彩 · 机壳 ═══════════════════════════════════════════ */
+
+/* ── 0 · 接口：自定义属性（分片只许引用这些名字）──────────────────────────── */
+body {
+  --bk-paper: #FAF9F5;
+  --bk-surf: #F2F1EC;
+  --bk-mist: #E7EEF4;
+  --bk-ice: #B0C8D8;
+  --bk-ink: #0d2045f5;
+  --bk-ink-soft: #253a56;
+  --bk-ink-faint: #2c415c;
+  --bk-muted: #2D425C;
+  --bk-sky: #1B5D9A;
+  --bk-sky-lt: #4A90C8;
+  --bk-sky-deep: #12436B;
+  --bk-jade: #186654;
+  --bk-jade-lt: #4FB79A;
+  --bk-jade-deep: #0F493C;
+  --bk-ok: #2E8B62;
+  --bk-warn: #A87718;
+  --bk-bad: #B4525E;
+  --bk-accent-bg: #EAF2EF;
+  --bk-line: #b0c8d8d9;
+  --bk-line-faint: #b0c8d873;
+  --bk-edge: #1b5d9ab8;
+  --bk-edge-soft: #1b5d9a57;
+  --bk-jade-soft: #1866544d;
+  --bk-jade-faint: #4fb79a2e;
+  --bk-veil-sidebar: #faf9f58f;
+  --bk-veil-head: #faf9f58f;
+  --bk-veil-card: #faf9f585;
+  --bk-veil-sheet: #faf9f561;
+  --bk-veil-menu: #faf9f5cc;
+  --bk-glow: 0 1px 0 #faf9f5eb, 0 0 8px #faf9f5e0, 0 0 18px #faf9f59e;
+  /* 收笔线：所有横线都走它，不用 border */
+  --bk-stroke: linear-gradient(90deg, transparent 0%, #b0c8d8d9 22%, #b0c8d8d9 78%, transparent 100%);
+  --bk-stroke-faint: linear-gradient(90deg, transparent 0%, #b0c8d873 30%, #b0c8d873 70%, transparent 100%);
+  --bk-bleed: 0 1px 0 #b0c8d88c, 0 12px 32px -18px #0d204538;
+  --bk-r-xs: 4px;
+  --bk-r-sm: 8px;
+  --bk-r-md: 12px;
+  --bk-r-lg: 18px;
+  --bk-r-xl: 24px;
+  --bk-r-pill: 999px;
+  --bk-font: 'Segoe UI Variable Text', 'Noto Sans SC', 'Source Han Sans CN', DengXian, 'Microsoft YaHei UI', system-ui, sans-serif;
+  --bk-font-display: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'Microsoft YaHei UI', serif;
+  --bk-ease: 160ms ease;
+
+  /* 外壳原样抄来的浅色取值（第 0b 节把它们钉回去）。它们全都**不在**本皮的
+     95 支重映射里 —— 要么不在官方 299 契约（--sk-* / --shiki-* / --dsw-alias-link
+     那一批），要么在契约里但 build-skin 的重映射表没覆盖。抄的是浅色侧的字面值，
+     所以**浅色下观感零变化**；抄得对不对由暗色比对来判（见第 0b 节判据）。 */
+  --bk-out-wall-edge: #b0c8d852;
+  --bk-out-card-top: #faf9f5b8;
+  --bk-out-composer-ring: 0 0 0 3px #1b5d9a24;
+  --bk-out-bubble-edge: #1b5d9a38;
+  --bk-out-approval-edge: #b4525e73;
+  --bk-out-deep-diving: color-mix(in srgb, #4176e6 70%, #172554);
+  --bk-out-deep-diving-shimmer: color-mix(in srgb, #4176e6 30%, #172554);
+  --bk-out-shimmer: color-mix(in srgb, #000 30%, transparent);
+  --bk-out-menu-icon: #353638;
+  --bk-out-link: #4176e6;
+  --bk-out-code-diff-added: #22c55e14;
+  --bk-out-code-diff-deleted: #ec131314;
+  --bk-out-file-diff-added-bg: #e6f4e7;
+  --bk-out-file-diff-added-gutter: #edf7ed;
+  --bk-out-file-diff-added-marker: #01a241;
+  --bk-out-file-diff-deleted-bg: #fce6e2;
+  --bk-out-file-diff-deleted-gutter: #fdece9;
+  --bk-out-file-diff-deleted-marker: #ba2723;
+  --bk-out-state-idle: #d4d4d4;
+  --bk-out-switch-thumb: #fff;
+  --bk-out-turn-trigger: #e7eef4c2;
+  --bk-out-turn-trigger-hover: #1b5d9a1a;
+  --bk-out-menu-surface: #f8f9fa94;
+  --bk-out-menu-group-header: #f8f9faf0;
+  --bk-out-onboarding-card: color-mix(in srgb, #fff 80%, transparent);
+  --bk-out-onboarding-secondary: #fff;
+  --bk-out-onboarding-checkbox: color-mix(in srgb, #0f1115 20%, transparent);
+  --bk-out-tile: color-mix(in srgb, #fff 50%, transparent);
+  --bk-out-guide-hero: #e5e5e5;
+  --bk-out-shiki-constant: #1c7ed6;
+  --bk-out-shiki-string: #2f9e44;
+  --bk-out-shiki-comment: #868e96;
+  --bk-out-shiki-keyword: #d6336c;
+  --bk-out-shiki-parameter: #e8590c;
+  --bk-out-shiki-function: #6741d9;
+  --bk-out-shiki-string-expression: #2b8a3e;
+  --bk-out-shiki-punctuation: #495057;
+  --bk-out-shiki-link: #1971c2;
+}
+
+/* ── 0b · 浅色专用：把「会随明暗变」的取值全部钉回浅色 ───────────────────────
+   manifest 层是浅色专用（90-tail 的 light / dark 逐字节相同），**像素层原来不是**。
+   壳里有四处会在暗色下另出一套值，皮不管的话用户切暗色界面就变了：
+
+     A. 引擎无条件给 --sk-* 生成一条 body[data-ds-dark-theme] 分支，其中 5 支的
+        alpha / 色相与浅色不同（--sk-wall-edge 0.32→0.36、--sk-card-top 从奶白
+        变成冰蓝 0.30 …）。extraPatches 追加在模板**最后**，同权重下后写的是赢家。
+     B. 外壳自己那批 token：不在官方 299 契约里的（--dsw-alias-label-deep-diving /
+        --dsw-alias-menu-icon / --shiki-token-* / onboarding …），以及**在契约里但
+        本皮 95 支重映射没覆盖**的（--dsw-alias-link / file-diff-* / code-diff-* /
+        state-idle-primary）共 22 支，暗色各有一套。
+     C. 两条**不是 token** 的暗色规则（.kuvljq_tile 的底、.unKlVG_hero 的色），
+        它们写在分片里（40-conversation / 10-ground 第 1b 节）。
+     D. 原生配色方案：skin.css 的暗色分支写着 color-scheme: dark，于是所有**没有
+        作者色**的原生控件跟着 UA 变白字（buttontext）。下面用更高的权重钉成 light。
+
+   判据（2026-10-17，:19387 实壳，两态逐元素 computed 对比 + 逐 token 比对）：
+     node scripts/probe-bk-themeparity.mjs --scene=home,session,rightbar,settings,menu,composer,filelink
+     node scripts/probe-bk-tokendiff.mjs
+   修完这两支量具的「明暗差异」都应报 0；同时浅色侧截图应与修前逐像素相同。 */
+
+body:not(:root) {
+  /* A · 引擎那 5 支：与 build-skin.mjs 浅色侧同一个表达式，跟着色板走 */
+  --sk-wall-edge: var(--bk-out-wall-edge);
+  --sk-card-top: var(--bk-out-card-top);
+  --sk-composer-ring: var(--bk-out-composer-ring);
+  --sk-bubble-edge: var(--bk-out-bubble-edge);
+  --sk-approval-edge: var(--bk-out-approval-edge);
+  /* B · 外壳那 22 支：原样抄它在浅色下的取值 */
+  --dsw-alias-label-deep-diving: var(--bk-out-deep-diving);
+  --dsw-alias-label-deep-diving-shimmer: var(--bk-out-deep-diving-shimmer);
+  --dsw-alias-label-shimmer: var(--bk-out-shimmer);
+  --dsw-alias-menu-icon: var(--bk-out-menu-icon);
+  --dsw-alias-link: var(--bk-out-link);
+  --dsw-alias-code-diff-added: var(--bk-out-code-diff-added);
+  --dsw-alias-code-diff-deleted: var(--bk-out-code-diff-deleted);
+  --dsw-alias-file-diff-added-bg: var(--bk-out-file-diff-added-bg);
+  --dsw-alias-file-diff-added-gutter: var(--bk-out-file-diff-added-gutter);
+  --dsw-alias-file-diff-added-marker: var(--bk-out-file-diff-added-marker);
+  --dsw-alias-file-diff-deleted-bg: var(--bk-out-file-diff-deleted-bg);
+  --dsw-alias-file-diff-deleted-gutter: var(--bk-out-file-diff-deleted-gutter);
+  --dsw-alias-file-diff-deleted-marker: var(--bk-out-file-diff-deleted-marker);
+  --dsw-alias-state-idle-primary: var(--bk-out-state-idle);
+  --dsw-alias-switch-thumb: var(--bk-out-switch-thumb);
+  --dsw-alias-turn-trigger-bg: var(--bk-out-turn-trigger);
+  --dsw-alias-turn-trigger-bg-hover: var(--bk-out-turn-trigger-hover);
+  --dsw-menu-surface-fill: var(--bk-out-menu-surface);
+  --dsw-alias-menu-group-header-fill: var(--bk-out-menu-group-header);
+  --dsw-alias-onboarding-card-fill: var(--bk-out-onboarding-card);
+  --dsw-alias-onboarding-secondary-fill: var(--bk-out-onboarding-secondary);
+  --dsw-alias-onboarding-checkbox-border: var(--bk-out-onboarding-checkbox);
+  --shiki-token-constant: var(--bk-out-shiki-constant);
+  --shiki-token-string: var(--bk-out-shiki-string);
+  --shiki-token-comment: var(--bk-out-shiki-comment);
+  --shiki-token-keyword: var(--bk-out-shiki-keyword);
+  --shiki-token-parameter: var(--bk-out-shiki-parameter);
+  --shiki-token-function: var(--bk-out-shiki-function);
+  --shiki-token-string-expression: var(--bk-out-shiki-string-expression);
+  --shiki-token-punctuation: var(--bk-out-shiki-punctuation);
+  --shiki-token-link: var(--bk-out-shiki-link);
+}
+
+/* D · 原生控件：暗色下也走浅色配色（skin.css 那条同权重但更早，这条权重更高） */
+body:not(:root)[data-ds-dark-theme] {
+  color-scheme: light;
+}
+/* 分片接在这里。90-tail.mjs 的**首字符**是模板字面量的闭引号 —— 谁都不许在这里收尾。 */
+
+/* ══ B · 地面 / 会话纸 / 全局交互色 ═══════════════════════════════════════════
+   分片 B 的内容，接在 00-head.mjs 那个开引号之后（90-tail.mjs 负责收尾，这里不许收）。
+   四件事：
+     1  让出地面   —— 引擎那两支实底变量归零，壁纸整幅透出来；
+     2  撤两层压暗 —— 外壳写在会话相位与整框上的那层黑；
+     3  会话正文纸 —— 一层 fixed 的纱，纱自己在视口底部收干（输入卡坐在那儿）；
+     4  全局交互色 —— 选区 / 滚动条 / 光标 / 表单强调 / 链接 / 聚焦环。
+
+   本片的纪律（对 SPEC 第 6 节的自我约束）：
+     · 只引用 00-head.mjs 的 --bk-* 令牌，正文里一个十六进制都不出现；
+     · 不碰侧栏 / 输入卡 / 会话头部 / 消息 / 浮层 —— 让出侧栏那堵墙是靠**改变量**
+       而不是写侧栏选择器（那条墙的值就是 var(--sk-wall)）；
+     · 不用 :has()、不以 html 开头、不写 [class*=…]；
+     · 碰 [data-phase] 时只认 'active'，绝不含 'hero'（首屏那层纸白晕染是
+       00-head 的氛围层，归分片以外的人）。
+
+   所有「真壳上哪个元素在铺底、铺的是什么值」都在装机前量过，量具与逐层数见回报。 */
+
+/* ── 1 · 让出地面：引擎的两支实底变量 ──────────────────────────────────────
+   真壳 1680x1000 逐层量下来，引擎真正铺实底的只有两处，都由这两支变量供值：
+     · body::after                     引擎画布 background-color: var(--sk-ground)
+                                       （挂上底图后引擎自己会把它置透明 —— 量的是一张
+                                        不挂底图的皮时它才现形，所以这条是兜底不是主力）
+     · [data-slot='sidebar'] > * 等三条 background-color: var(--sk-wall) !important
+                                       ← **这一条才是主力**：它不跟着底图让路，
+                                         换成不透明值就是一面盖住整幅画的墙
+   其余处（html / body / #root / [data-conversation-content] / 侧栏插槽本身）量下来
+   本来就是 rgba(0,0,0,0)，外壳自己那份 body 底也被 glassBase: 0.06 放掉了。
+   让出侧栏那堵墙**只改变量、不碰侧栏选择器**，所以和分片 C 不冲突。
+
+   body:not(:root) 而不是光写 body：引擎还有一条**同一对变量**的暗色分支挂在
+   body[data-ds-dark-theme] 上。本皮浅色专用、两组色板数值完全相同，所以那条分支
+   会照样命中并把两支变量重新写成不透明值（这台壳上 data-ds-dark-theme 是带着的）。
+   :not(:root) 的权重比它高，而 body 永远不是根元素、判据恒真，于是这条规则在明暗
+   两态下都成立 —— 这也正合 C1「系统切暗色时界面保持这套清透浅色」。 */
+body:not(:root) {
+  --sk-ground: transparent;
+  --sk-wall: transparent;
+}
+
+/* ── 1b · 右侧详情栏那一面（引擎写死的实底）─────────────────────────────────
+   引擎给 details 那一族写了一条**写死的实底**（不是令牌，改不了值只能盖）：
+     [data-slot='details'], [data-slot='details'] > *,
+     [data-dsh-surface='details'], [data-pane='details'] {
+       background-color: <纸的 86%> !important;
+     }
+   量下来只有第三条是活的（:19387，1680x1000）：
+     · [data-slot='details']          匹配 0 个节点（死钩子）
+     · [data-pane='details']          匹配 0 个节点（死钩子）
+     · [data-dsh-surface='details']   右栏**收起时 0x1000 @x1680** —— 0 宽，等于不存在；
+       点侧栏那颗「打开右侧边栏」之后变成 **756x1000 @x924**，
+       bgc = rgba(242,241,236,0.86)，而且是那一带 elementsFromPoint 的**最底层**。
+       右栏一开，这一整条就在压壁纸 —— 所以它要写规则，不是死钩子。
+   取 --bk-veil-sidebar(0.82) 的道理：它是一整条通高面板，和侧栏同量级。
+   这一档的对比度是照**侧栏那个落点**算的（SPEC 第 2 节量到的最暗 1%）：ink 10.70 /
+   ink-soft 6.83 / muted 5.69 / sky-deep 6.30 / jade-deep 5.49，全部过线。
+   **右栏这一条底下没有单独量过**（SPEC 第 2 节没有这一行），这里是借同一支令牌的
+   同一档，不是右栏自己的实测值 —— 装机后若要收紧，先补一条这一带的像素量具。
+   只改背景色，圆角与边保留引擎给的（实测引擎本来也没给半径/阴影，是 0px / none）。
+   必须带 !important：引擎那条本身就是 !important，光靠权重压不过；
+   而本选择器（带 loader 前缀后）权重与它的暗色分支打平、比浅色那条高，靠「在后面」拿下。
+   实测：注入终稿前 bgc = rgba(242,241,236,0.86)，注入后 = rgba(250,249,245,0.82) = 令牌值。 */
+body:not(:root) [data-dsh-surface='details'] {
+  background-color: var(--bk-veil-sidebar) !important;
+}
+
+/* 右栏「导引」页顶上那只 56x56 的图形（实测元素：[data-sidebar-right-guide] 的
+   第 0 个子元素，一个 aria-hidden 的 span，里面是 currentColor 画的 svg）。
+   外壳给它的是**两支静态色**、不是可钉的 token（--dsw-static-* 被契约排除）：
+     .unKlVG_hero                         { color: var(--dsw-static-neutral-200) }  ← #E5E5E5
+     body[data-ds-dark-theme] .unKlVG_hero { color: var(--dsw-static-neutral-700) } ← #3C3C3D
+   浅色那档是一块几乎看不见的淡灰水印（正合本皮），暗色那档会在浅纸上变成一块深灰，
+   所以按语义钩子 + 结构钉回浅色。不写 hash 类名。 */
+body:not(:root) [data-sidebar-right-guide] > span:first-of-type {
+  color: var(--bk-out-guide-hero);
+}
+
+/* ── 2 · 撤掉外壳铺在画面上的那层黑 ────────────────────────────────────────
+   外壳自己写的全局压暗（不是令牌，是写死的主题色），姊妹皮（未至之境 / 水墨丹青 /
+   雨夜 / 像素 / 星辉）每一套都常备这一条。
+   本片只认 [data-phase='active'] —— 它只在会话里出现，光看首屏永远发现不了；
+   [data-phase='hero'] 那层不在这里，它是首屏的氛围层，碰了会和 00-head 冲突。
+
+   这一条和下面第 4 节那三条为什么要写成 body:not(:root)：引擎有一条平行分支
+   body[data-ds-dark-theme] 给同一批东西写第二套值（build-skin.mjs 无条件生成，
+   而本皮浅色专用、两组色板同值，所以那条分支在这台机器上**是真会命中的**）。
+   实测（:19387 已部署那张 patches.css，159 条规则；body 上带着 data-ds-dark-theme）：
+     html[data-dsh-skin="whale-watercolour"] body                  { --sk-wall: #E7EEF4 }
+     html[data-dsh-skin="whale-watercolour"] body[data-ds-dark-theme] { --sk-wall: #E7EEF4 }   ← 不透明，会盖住壁纸
+     html[data-dsh-skin="whale-watercolour"] body:not(:root)       { --sk-wall: transparent }
+   权重 0,2,2 压过那条分支的 0,2,1，最终 computed 就是 transparent。
+   :not(:root) 的判据恒真（body 永远不是根元素），所以它只是「body + 一点权重」，
+   不改变任何匹配范围。 */
+body:not(:root) [data-phase='active'],
+body:not(:root) [data-dsh-frame] {
+  background-color: transparent !important;
+}
+
+/* 2b · 整框那一层 24% 黑：**只撤压暗与命中，不动 content** ──────────────────
+   归属查明（:19387，一张 owner=STYLE、无 id 的注入样式 sheet#26，非皮肤产物）：
+     [data-dsh-frame]:not([data-sidebar-collapsed])::after {
+       content: ""; position: fixed; inset: 0; z-index: 1050;
+       background: rgb(0 0 0 / 24%);
+     }
+   旁边还有一条同族的抽屉规则（transform 160ms），文中自述是「installs with no
+   active visual」的视口锁。今天两态实测都是 content:none / inset:auto —— **没有渲染**。
+   但一旦渲染就是整框压暗 + 吃掉点击（z-index 1050、没有 pointer-events 限制），
+   对浅色皮是灾难级的可见失败，所以留一条最小防御。
+
+   为什么**不写 content 也不写 !important**：
+     · content 是那条锁自己的开关，抢过来等于替它决定「什么时候生成」；
+     · 不写 !important 也够 —— 本选择器（带 loader 前缀后）的权重高过它那条
+       [data-dsh-frame]:not([data-sidebar-collapsed])::after，而且只声明
+       background / pointer-events 两个属性：生成时生效、不生成时零影响。
+
+   实测（:19387；把那条 24% 黑**原样复制**注入、让伪元素真生成，再注入本分片原文，
+   逐次读 [data-dsh-frame]::after 的 computed 与 elementFromPoint）：
+     只有那条黑      content=""  background=rgba(0,0,0,0.24)  z=1050
+                     pointer-events=auto   elementFromPoint(840,500) → frame 自己（吃点击）
+     再注入本分片    content=""（**没动它**）  background=rgba(0,0,0,0)
+                     pointer-events=none   elementFromPoint(840,500) → 内容卡（点击穿透）
+   压暗与命中都被拆掉，那个锁还照旧生成。 */
+body:not(:root) [data-dsh-frame]::after {
+  background: transparent;
+  pointer-events: none;
+}
+
+/* ── 3 · 会话正文纸 ────────────────────────────────────────────────────────
+   一层 fixed 的纱。首屏不受影响：[data-conversation-content] 在首屏带
+   data-content-phase='hero'（实测两者是同一个元素，会话里该属性变成 active），
+   :not() 直接把它排除，所以这条规则在首屏是死规则。
+
+   ⚠️ 实测留档（:19387，纱压 SPEC 第 2 节给会话正文纸量的最暗 1% 那一档）：
+   0.68 之下六个色档里，ink 7.5 过；ink-soft 4.9 过；而 **muted 4.10 / sky-deep 4.06 /
+   jade-deep 4.07 都差在 4.5 线下**；图形档 sky 2.86 / jade 2.68 也在 3:1 线下。
+   反解「要全部过线」所需的最低 α：muted 0.766 / sky-deep 0.768 / jade-deep 0.768 /
+   sky 图形 0.744 / jade 图形 0.765 —— 也就是说压深那三支只把门槛从 0.79 买到 0.77，
+   而 0.68 与 0.77 之间那 0.09 就是用户要的「更透」。**这是取舍不是 bug，但要在飞书上
+   说清楚**：静止正文落在画面中位处不受影响（那里比值高得多），受影响的只有正文正好
+   压在她那撮最深头发上的那一条带。要收紧只需把令牌往上调到 0.77，本片一个字不用改。
+
+   为什么是 fixed：输入卡是视口固定的，纱的收干位置也必须跟着视口走，不能跟着
+   正文纸走（正文纸会随着会话变长而变高，跟着它走的话收干位置会掉到屏幕外）。
+
+   为什么不是 linear-gradient(纱, transparent)：transparent 是零 alpha 的黑，
+   直接插值会往灰里走。这里每一站都是同一支令牌，只用 color-mix(…, N%, transparent)
+   把 alpha 按比例缩下来 —— 实测 color-mix 保持同一组 RGB、只缩 alpha
+   （纱底层 FA F9 F5 AD 取 40% 之后合成的像素与「同色 alpha 0.27」逐位一致），
+   所以相邻两站之间无论怎么插值都是同一个色相，只淡不灰。
+
+   纱底用 --bk-veil-sheet（**用户第三轮之后 0.68**，00-head 第三轮降下来的那一档），
+   **不是** --bk-veil-card（那是输入卡的 0.74）。这里只写令牌，一个 alpha 都不硬编码 ——
+   第三轮「改令牌没传导过来」那次不是硬编码造成的：getComputedStyle 读到的
+   rgba(250,249,245,0.8) 是**解析后的值**，声明原文一直是
+   var(--bk-veil-sheet)（真壳上把规则原文打出来核对过），真正的原因是那一份是旧构建。
+
+   六站（都是视口百分比，因为 background-attachment 是 fixed，100% = 视口高）：
+   视口 86% 以上是完整的 --bk-veil-sheet；86% 往下到 100% 收干。
+   为什么断在 86%：会话里输入卡是贴底的 —— 实测（真壳 1680x1000 会话态）
+     座位 [data-composer-seat] y 860~1000，卡片本体 [data-composer-card] y 860~958（98 高）。
+   86% = 860 **正好就是卡片的顶边**：纱开始收干的那一段整段落在卡片背后，
+   卡片自己那层 0.74 接着顶（那是分片 D 的活）；正文在静止位置读到的是完整的纱。
+   底部最后一段（96%~100%）几乎全透，正是「输入卡那一块让画面透出来」。
+   （首屏那张卡是居中排的、不贴底，但首屏走的是 :not() 的死规则，与这里无关。） */
+body [data-conversation-content]:not([data-content-phase='hero']) {
+  border-radius: var(--bk-r-lg);
+  box-shadow: var(--bk-bleed);
+  background-image: linear-gradient(180deg,
+    var(--bk-veil-sheet) 0%,
+    var(--bk-veil-sheet) 86%,
+    color-mix(in srgb, var(--bk-veil-sheet) 55%, transparent) 92%,
+    color-mix(in srgb, var(--bk-veil-sheet) 26%, transparent) 96%,
+    color-mix(in srgb, var(--bk-veil-sheet) 8%, transparent) 99%,
+    color-mix(in srgb, var(--bk-veil-sheet) 0%, transparent) 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  /* The sheet is the same 980 px band as the scrim: the picture-only columns
+     left and right of the interface keep their own detail, and the sheet's
+     edge reads as the scrim's edge (2026-11-07 intake note: a full-width sheet
+     turned those two columns into blue-white fog and hid the scrim boundary). */
+  background-size: min(100%, 980px) 100%;
+  background-position: center top;
+}
+
+/* 3b · 毛玻璃：挂在一个**空伪元素**上，不挂本体 ──────────────────────────────
+   用户第三轮要「会话区背景是透明毛玻璃，不要一大片白」。透是令牌 α 降下来的
+   （0.80 → 0.68），毛玻璃是这一层模糊补的观感。
+
+   模糊**不是**用来救对比度的：00-head 的 σ 扫描说得很清楚 —— 会话纸底下是她那一大片
+   深蓝头发，σ 从 0 加到 26，最薄比值只从 0.79 抬到 0.96。模糊抹得开细发丝，抹不掉
+   大面积暗部。所以对比度靠的是 α + 三支压深色，模糊只管观感。
+
+   **为什么不能挂在本体上**（这条是量出来的，不是怕事）：
+   backdrop-filter 会让元素成为 position:fixed 后代的包含块。在本会话子树上合成一个
+   fixed 子节点再挂 filter，它的位置从 40,40 被改写成了 320,116（= 变成相对会话纸定位）。
+   今天真会话里这棵子树 3655 个节点、fixed 恰好 0 个（sticky 有 4 个，但包含块只影响
+   fixed），所以挂本体今天也不会出事 —— 可消息动作菜单 / 提示这类东西随时可能在别的
+   状态里落进来，而本仓在侧栏那片已经因为同一个包含块问题把设置面板关进过背景层。
+   伪元素没有后代，这个风险直接归零。**像素上和挂本体完全一致**（同一个取样带上
+   sd×0.849 / hf×0.117，两项同值）。
+
+   为什么是 absolute 而不是 fixed：fixed 的伪元素不受滚动容器裁剪，会连侧栏那一条
+   也一起糊掉（会话列在 DOM 里排在侧栏之后，会盖在它上面）。absolute + inset:0 的
+   尺寸就是会话纸自己的盒子，被滚动容器裁掉，正好只盖会话列。
+   z-index:-1 让它落在本体背景（那层纱）**下面** —— 纱压在糊过的画面上，才是毛玻璃；
+   pointer-events:none 保证它不吃点击。 */
+body [data-conversation-content]:not([data-content-phase='hero'])::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: min(100%, 980px);
+  transform: translateX(-50%);
+  z-index: -1;
+  pointer-events: none;
+  backdrop-filter: blur(10px) saturate(1.05);
+  -webkit-backdrop-filter: blur(10px) saturate(1.05);
+  /* The frost is the same band as the sheet, so the frosting never reaches the
+     picture-only columns either; the ramp keeps its edge from cutting a line. */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
+}
+
+/* ── 4 · 全局交互色 ──────────────────────────────────────────────────────── */
+
+/* 选区：翡翠的极淡底 + 墨字。底色不动文字色的话，暗色系统里选中一段会变成
+   深底深字；钉住墨字之后这一段任何底色下都可读（实测 12.43:1）。
+   这里也必须抬到 body:not(:root)：引擎那两条分支（浅色 25% / 暗色 32% 的品牌底）
+   权重比 body ::selection 高。像素复核（:19387，截图上量选中的那一段）：
+   已经部署的那一版里选区底落在 rgb(180,202,220) —— 是品牌蓝兑纸的调子，
+   不是 --bk-accent-bg（234,242,239）；抬权重后这一条才拿得回来。 */
+body:not(:root) ::selection {
+  background-color: var(--bk-accent-bg);
+  color: var(--bk-ink);
+}
+
+/* 光标与表单强调：都走可交互边界那一支（蔚蓝）。accent-color 是继承属性，
+   下在 body 上，复选框 / 单选 / 进度条一次生效，不用逐个控件写。
+   同样用 body:not(:root)，理由见第 1 节。 */
+body:not(:root) {
+  caret-color: var(--bk-sky);
+  accent-color: var(--bk-sky);
+}
+
+/* 滚动条：静息冰蓝、悬停翡翠。
+   注意必须先写 scrollbar-color: auto —— 引擎在 * 上写了非 auto 的
+   scrollbar-color，而 Chrome 121 起标准属性非 auto 时**整条忽略
+   ::-webkit-scrollbar 伪元素**，悬停变翡翠就永远做不出来。让回 auto 之后，
+   Chrome 走下面的伪元素（这也是壳真正跑的那条路），Firefox 走 UA 默认。
+   滚动条本身是控件不是文字，冰蓝对纸只有 1.65:1，这里按装饰件处理。
+   抬到 body:not(:root) * 的理由同第 1 节：部署那张表里三条并存 ——
+   引擎浅色 html[…] * / 引擎暗色 html[…] body[data-ds-dark-theme] * / 本片这一条；
+   写成 body:not(:root) * 才能稳稳排在最前面。 */
+body:not(:root) * {
+  scrollbar-color: auto;
+  scrollbar-width: auto;
+}
+body ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+body ::-webkit-scrollbar-track,
+body ::-webkit-scrollbar-corner {
+  background-color: transparent;
+}
+body ::-webkit-scrollbar-thumb {
+  background-color: var(--bk-ice);
+  border-radius: var(--bk-r-pill);
+}
+body ::-webkit-scrollbar-thumb:hover {
+  background-color: var(--bk-jade);
+}
+
+/* 链接：走蔚蓝的深档（压不透明纸 8.02:1），悬停转翡翠深档并补一条收笔线。
+   实测（:19387，造一个挂在 body 下的 a）：color = rgb(21,80,127) = --bk-sky-deep ✓；
+   同一批规则里引擎那两条（a 上一支品牌蓝、暗色分支再一支）权重都更低。
+   抬到 body:not(:root) 是为了把「暗色分支」这条路也一起堵死，不是因为它今天输了。
+   收笔线按 SPEC 第 4 节第 1 条用两端淡出的 1px 渐变，不用 border / 不用
+   text-decoration；text-decoration-color: transparent 是为了不让外壳自带的下划线
+   跟这条线叠成双线（保留它占位，所以行盒度量不变，不会把文字挤动）。 */
+body:not(:root) a {
+  color: var(--bk-sky-deep);
+}
+body:not(:root) a:hover {
+  color: var(--bk-jade-deep);
+  text-decoration-color: transparent;
+  background-image: linear-gradient(90deg,
+    transparent 0%,
+    var(--bk-jade-deep) 22%,
+    var(--bk-jade-deep) 78%,
+    transparent 100%);
+  background-repeat: no-repeat;
+  background-size: 100% 1px;
+  background-position: 0 100%;
+}
+
+/* 全屏统一的聚焦环：2px 翡翠实环 + 4px 翡翠柔环。
+   实环走 outline（不参与布局，也不会被容器的 overflow 吃掉半圈），放在 offset 2px 处、
+   占 2~4px；柔环走 box-shadow，spread 8px 覆盖 0~8px。两环一叠，环**外**露出来的是
+   4~8px 这 4px（0~2px 那一线也在，贴着元素自身边缘，读成加深不是加环）。
+   翡翠对纸 4.65:1，过 UI 组件那道 3:1。
+   代价写在这里：聚焦瞬间元素的 box-shadow 会被这条顶掉，外壳有拿 box-shadow 当描边的
+   组件，聚焦时那圈描边会暂时消失 —— 这是「2px 环 + 4px 柔环」用两个机制实现的必然代价，
+   要免掉它就只能砍掉柔环。 */
+body :focus-visible {
+  outline: 2px solid var(--bk-jade);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 8px var(--bk-jade-faint);
+}
+/* ── 7 · 首屏标题带的柔光托底（替换掉原来那块纸白晕染）──────────────────────
+   用户第五轮原话：「主页上的那个白雾还在」。那块 24% x 13% / 中心 0.78 的
+   radial-gradient 在 00-head.mjs 的 bkAtmosphere().hero 里，现在整块撤掉
+   （背景image: none），保险改挂到标题文字自己的柔光上 —— 一样能把暗底抬起来，
+   但只在笔画周围几像素，不再是画面上的一块白斑。
+
+   钩子：标题是 [data-phase='hero'] 下 div:has(> span > span) 里的 span
+   （实测链：span < span.titleGroup < div.headline < div.stack < div.root）。
+   text-shadow 是继承属性，下在这一层就够。扁平 :has()，不是嵌套，构建期守卫放行。
+
+   数值：两层，半径 14/34px。比 --bk-glow（8/18px）大一档，因为标题是 26px 字，
+   笔画比正文粗、模糊半径要跟着上。paper 不透明，所以暗底上是白晕；
+   亮底上白压白，看不出来 —— 实测用户这台（2560x1400）标题背后的纸底 p75 = 0.911，
+   这层几乎不可见；真落到她的深发上时才是主承重。 */
+[data-phase='hero'] div:has(> span > span) {
+  text-shadow:
+    0 0 14px var(--bk-paper),
+    0 0 34px var(--bk-paper);
+}
+
+/* ══ C · 侧栏那一棵树 ═══════════════════════════════════════════════════════
+ * 拥有：[data-pane='sidebar'] 里的一切 —— 侧栏面 / 工作区树 / 分区标题 /
+ *       三条入口 / 新会话 / 侧栏图标键 / 用量脚卡 / 品牌行。
+ * 不碰：输入卡、会话列、会话头部、消息、浮层菜单。
+ *
+ * 这一片全部的颜色都走 --bk-* 令牌（00-head 的 §0 已经下好），
+ * 一个十六进制都不写；横线一律「收笔」（两端淡出的渐变，不用 border）。
+ * 真壳默认是暗色主题，所以壳自己的 label 是近白的 rgb(249,250,251)，
+ * 压在这层 0.82 奶白纱上等于看不见 —— 下面每一条 color 都是在修这件事。
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* ── ① 侧栏面：0.82 的奶白纱 + 轻模糊 + 右缘一根收笔的冰蓝发丝 ───────────────
+ * 两套方言都写，但**各画一半**，谁也不叠在谁身上 —— 两个钩子今天同时命中同一块
+ * 280x1000 的面积，两边都铺纱会复合成 0.97，把画面闷死：
+ *   [data-pane='sidebar']        → 纱（background-color）+ 轻模糊。它是真盒子，
+ *                                  实测 0,0 280x1000。
+ *   [data-slot='sidebar'] > *    → 右缘那根发丝。slot 自己是 0x0 的戳
+ *                                  （display:contents），样式只能下在子元素上；
+ *                                  子元素同样是那层 280x1000 的 flex 盒子。
+ *
+ * 发丝为什么用背景层而不是绝对定位的伪元素：真壳里 [data-pane='sidebar'] 有时
+ * 是 position:static（实测 3080 那台），绝对定位会挂到别的祖先上 —— 量到过
+ * left:278px 这种「碰巧对」，也可能跑到窗口最右边。背景层不需要定位，跟着盒子走，
+ * 而且天生没有命中问题（它画在子元素自己的背景里，不吃点击）。
+ * 收笔：两端淡出的渐变，不是通线。 */
+
+[data-pane='sidebar'] {
+  background-color: var(--bk-veil-sidebar) !important;
+  backdrop-filter: blur(12px) saturate(1.04);
+}
+
+/* 发丝这一条必须抬权重 —— 引擎有一条**暗色分支**专门抹它：
+ *   body[data-ds-dark-theme] [data-slot='sidebar'] > *,
+ *   body[data-ds-dark-theme] [data-dsh-surface='sidebar'],
+ *   body[data-ds-dark-theme] [data-pane='sidebar']  { background-image: none; }
+ * 这台壳的 body **确实带着** data-ds-dark-theme（本皮浅色专用、两组色板同值，
+ * 所以引擎那条无条件生成的暗色分支是真会命中的）。带加载器前缀后它是 (0,3,2)，
+ * 而只写 [data-slot='sidebar'] > * 的我只有 (0,2,0) —— 实测 computed
+ * background-image = none，发丝根本没画出来。
+ * 它**不是** !important，所以按 SPEC 的纪律不掏 !important（那是对付 !important 用的，
+ * 隔壁 --sk-wall 那条才是那种情形），改用地面片同款的 body:not(:root) 把权重抬到
+ * (0,3,2) 与它打平，再靠「extraPatches 永远追加在引擎之后」的先后顺序拿下。
+ * :not(:root) 的判据恒真（body 永远不是根元素），只加权重、不改匹配范围。 */
+body:not(:root) [data-slot='sidebar'] > * {
+  background-color: transparent;
+  background-image: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--bk-line) 9%,
+    var(--bk-line) 91%,
+    transparent 100%
+  );
+  background-size: 1px 100%;
+  background-position: right top;
+  background-repeat: no-repeat;
+}
+
+/* ── ② 工作区树 ──────────────────────────────────────────────────────────── */
+
+[data-pane='sidebar'] [role='tree'] {
+  color: var(--bk-ink);
+}
+
+[data-pane='sidebar'] [role='treeitem'] {
+  position: relative;
+  border-radius: var(--bk-r-md);
+  color: var(--bk-ink);
+  transition: box-shadow var(--bk-ease), opacity var(--bk-ease);
+}
+
+/* 壳给行内文字与图标下的是暗色主题的近白色，这里统一拉回墨 / 次级。 */
+[data-pane='sidebar'] [role='treeitem'] > span {
+  color: inherit;
+}
+
+[data-pane='sidebar'] [role='treeitem'] svg {
+  color: var(--bk-muted);
+}
+
+/* 静息无底。悬停只认「未展开」这一态 —— 写 [aria-expanded]:hover 是 4 个 class 级，
+   会盖掉展开态的 3 个 class 级，展开行一悬停就掉竖条。 */
+[data-pane='sidebar'] [role='treeitem'][aria-expanded='false'] {
+  background-color: transparent;
+}
+
+[data-pane='sidebar'] [role='treeitem'][aria-expanded='false']:hover {
+  background-color: var(--bk-mist);
+  box-shadow: 0 0 0 1px var(--bk-line-faint);
+}
+
+/* 展开态：左缘 2px 翡翠竖条。 */
+[data-pane='sidebar'] [role='treeitem'][aria-expanded='true'] {
+  background-color: transparent;
+}
+
+[data-pane='sidebar'] [role='treeitem'][aria-expanded='true']::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 22%;
+  bottom: 22%;
+  width: 2px;
+  border-radius: var(--bk-r-pill);
+  background-color: var(--bk-jade);
+  pointer-events: none;
+}
+
+/* 展开行也可以悬停：浮一档雾，竖条留着。 */
+[data-pane='sidebar'] [role='treeitem'][aria-expanded='true']:hover {
+  background-color: var(--bk-mist);
+  box-shadow: 0 0 0 1px var(--bk-line-faint);
+}
+
+/* 会话行：静息无底。同样只在「未选中」那一态写 hover。 */
+[data-pane='sidebar'] [role='treeitem'][aria-selected='false'] {
+  background-color: transparent;
+}
+
+[data-pane='sidebar'] [role='treeitem'][aria-selected='false']:hover {
+  background-color: var(--bk-mist);
+  box-shadow: 0 0 0 1px var(--bk-line-faint);
+}
+
+/* 选中态：翡翠竖条 + 翡翠的极淡底。 */
+[data-pane='sidebar'] [role='treeitem'][aria-selected='true'] {
+  background-color: var(--bk-accent-bg);
+  box-shadow: inset 0 0 0 1px var(--bk-jade-faint);
+}
+
+[data-pane='sidebar'] [role='treeitem'][aria-selected='true']::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 22%;
+  bottom: 22%;
+  width: 2px;
+  border-radius: var(--bk-r-pill);
+  background-color: var(--bk-jade);
+  pointer-events: none;
+}
+
+/* 选中行悬停：底不变，只补一圈细环。 */
+[data-pane='sidebar'] [role='treeitem'][aria-selected='true']:hover {
+  box-shadow: inset 0 0 0 1px var(--bk-jade-soft);
+}
+
+/* ── ③ 分区标题（「工作区」那一枚小标）────────────────────────────────────── */
+
+[data-slot='sidebar.workspaces'] > * > *:first-child > span:first-child {
+  color: var(--bk-sky-deep);
+  font-family: var(--bk-font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-shadow: var(--bk-glow);
+}
+
+/* ── ④ 三条入口 ──────────────────────────────────────────────────────────── */
+
+[data-dsh-part='sidebar-entry'] {
+  border-radius: var(--bk-r-md);
+  background-color: transparent;
+  box-shadow: 0 0 0 1px transparent;
+  color: var(--bk-ink);
+  transition: box-shadow var(--bk-ease), opacity var(--bk-ease);
+}
+
+[data-dsh-part='sidebar-entry'] svg {
+  color: var(--bk-muted);
+}
+
+[data-dsh-part='sidebar-entry'] > span:last-child {
+  color: var(--bk-ink);
+  letter-spacing: 0.02em;
+}
+
+[data-dsh-part='sidebar-entry']:hover {
+  background-color: var(--bk-mist);
+  box-shadow: 0 0 0 1px var(--bk-edge-soft);
+}
+
+[data-dsh-part='sidebar-entry']:hover svg {
+  color: var(--bk-jade);
+}
+
+[data-dsh-part='sidebar-entry']:hover > span:last-child {
+  color: var(--bk-jade-deep);
+}
+
+/* 新会话 —— 毛玻璃（用户第三轮：原来那层实心蔚蓝渐变「太丑」）。
+ *
+ * ⚠️ 设计语言后果：SPEC 第 4 节第 3 条**原写**「全屏只有两处实心（新会话 + 发送键）」，
+ * 新会话改成纱底压线之后实心只剩发送键一处（见第 5 节）；SPEC 由调度者同步，skin.json 与两语 README 已按实际改写。
+ *
+ * 底 = --bk-veil-card 的纱 + backdrop-filter，不再是 background-image 的渐变。
+ * 字色必须跟着翻：原来是「纸白字压深蓝」，底一变浅，纸白字压纸白就全废 ——
+ * 正文改 --bk-ink、图标改 --bk-sky（品牌色/交互边界那一支）、提示改 --bk-muted，
+ * 三支都在真壳上量过（见回报）。
+ * 边界不能用 --bk-edge / --bk-edge-soft：它们兑在纱上只有 2.8:1，不到 3:1；
+ * 而 --bk-sky 是这套皮的「可交互边界」档（4.44:1）。
+ *
+ * 字距仍然绝不下在这颗按钮上：里面藏着一颗悬停才出现的快捷键提示（Ctrl+Alt+N），
+ * 按钮上的 letter-spacing 会继承下去把提示撑宽，标签遮罩被挤窄，「新会话」被切掉。
+ * 所以下面只在文字那一层写字距。 */
+[data-dsh-part='new-session'] {
+  border-color: transparent;
+  border-radius: var(--bk-r-md);
+  background-image: none;
+  background-color: var(--bk-veil-card);
+  backdrop-filter: blur(14px) saturate(1.06);
+  color: var(--bk-ink);
+  box-shadow:
+    0 0 0 1px var(--bk-sky),
+    0 1px 0 var(--bk-paper),
+    0 12px 26px -18px var(--bk-ink);
+  transition: box-shadow var(--bk-ease), opacity var(--bk-ease);
+}
+
+[data-dsh-part='new-session'] svg {
+  color: var(--bk-sky);
+}
+
+[data-dsh-part='new-session'] > span:first-child span:last-child {
+  color: var(--bk-ink);
+  letter-spacing: 0.04em;
+  text-shadow: var(--bk-glow);
+}
+
+/* 快捷键提示：原来是「压在实心蓝上的纸白字」，现在是纱上的次级墨。 */
+[data-dsh-part='new-session'] > span:last-child {
+  color: var(--bk-muted);
+}
+
+[data-dsh-part='new-session']:hover {
+  box-shadow:
+    0 0 0 1px var(--bk-sky),
+    0 0 0 3px var(--bk-jade-faint),
+    0 1px 0 var(--bk-paper),
+    0 14px 30px -18px var(--bk-ink);
+}
+
+/* ── ⑤ 侧栏图标键（工作区面板里那几颗）──────────────────────────────────── */
+
+[data-pane='sidebar'] [data-slot='sidebar.workspaces'] button {
+  border-radius: var(--bk-r-sm);
+  background-color: transparent;
+  color: var(--bk-muted);
+  box-shadow: 0 0 0 1px transparent;
+  transition: box-shadow var(--bk-ease), opacity var(--bk-ease);
+}
+
+[data-pane='sidebar'] [data-slot='sidebar.workspaces'] button:hover {
+  background-color: var(--bk-mist);
+  color: var(--bk-jade);
+  box-shadow: 0 0 0 1px var(--bk-edge-soft);
+}
+
+[data-pane='sidebar'] [data-slot='sidebar.workspaces'] button:hover svg {
+  color: var(--bk-jade);
+}
+
+/* ── ⑥ 用量脚卡（[data-dsh-usage-foot-card]）：本片不碰 ─────────────────────
+ * 这块卡的面 / 字 / 圆角 / 影 / 顶亮线**全部归浮层片**
+ * （[data-dsh-plugin='usage']，50-overlays.css 已经给足：veil-card 的纱、
+ * ink 的字、r-lg 的圆角、bleed + 内环的影、把插件自带那几档 opacity 收掉，
+ * 以及卡片自己顶边上那条 background-size: 100% 1px 的收笔亮线）。
+ * 所以这里**一条规则都没有**，只剩这段历史 —— grep 不到 [data-dsh-usage-foot-card]
+ * 是对的，不是漏写。
+ *
+ * 曾经有两条，都因为跨片重叠删掉了：
+ *   1) 外壳直接子元素上的 veil-menu(0.95) 纱与自己的 box-shadow —— 和插件根那层
+ *      纱嵌着，sRGB 合成后有效不透明度 ≈ 0.987，半透明纸片变成近纯白；
+ *   2) 本片自己的 ::before 顶亮线 —— 与 F 那条只差一行像素（实测绝对 Y
+ *      846 vs 847，横向还各缩 8px），是一条错位双线。它原先在 y=847 上，
+ *      靠外壳上一条 position: relative 做定位锚；两条一起删，锚没有消费者了。
+ * 判据留在 SPEC 第 6 节的重叠裁定表里。 */
+
+/* ── ⑦ 品牌行：只换字，不动行盒 ────────────────────────────────────────────
+ * 那一整块只有 24px 高（外面套着 overflow:hidden 的按钮），标题 13px + 版号 10px
+ * 已经把 24px 用完。所以：原文留位（visibility: hidden，不删、不改度量），
+ * 替换字用绝对定位的 ::after 盖上去 —— 绝对定位不参与行盒，基线与高度都不动。
+ *
+ * 三条硬约束的落点：
+ *   1) 不许改行盒度量：所以没有 font-size:0、没有 display:block；
+ *   2) ::after 必须自己 visibility: visible —— 父层 hidden 会继承下去；
+ *   3) 判别器 :not(:only-child) 排除插槽里那层 wrapper：
+ *      wrapper 是 slot 的独子（= :only-child），版本号 pill 因此不会被一起藏掉、
+ *      替换字也不会渲染两遍叠在一起。:first-child 再把版本号那一颗挡掉。 */
+
+div[data-slot='sidebar.brand.name'] span:not(:only-child):first-child {
+  position: relative;
+  visibility: hidden;
+}
+
+div[data-slot='sidebar.brand.name'] span:not(:only-child):first-child::after {
+  content: '鲸鱼娘 · 清透水彩';
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: visible;
+  white-space: nowrap;
+  color: var(--bk-ink);
+  font-family: var(--bk-font-display);
+  letter-spacing: 0.01em;
+  text-shadow: var(--bk-glow);
+}
+
+/* ── ⑧ 折叠键：移出文档流，钉到 logoRow 的右上角 ──────────────────────────
+ * 用户第三轮：那颗键和品牌行挤在一起（贴的图是 _2H3hWW_panelIcon）。
+ * 实测余量只有 8px（品牌按钮 16..232，折叠键 240..268；品牌 216 + 键 28 = 244，
+ * logoRow 只有 256），侧栏再窄一点就真挤上去了。
+ *
+ * ── 状态判据：**用行里的孩子位置，不用 data-sidebar-collapsed** ──
+ * 派来的判据是 [data-dsh-frame][data-sidebar-collapsed='false']，但**这台壳上没有
+ * 这个属性**：实测 [data-dsh-frame] 只有 data-rightbar-collapsed=true，
+ * 全文档 querySelector('[data-sidebar-collapsed]') = 0 个节点 —— 照抄会是一条死规则，
+ * 用户的抱怨根本不会变。改用它给的另一个事实（收起态**品牌按钮不渲染**）来判：
+ *
+ *   展开：logoRow 的 2 个孩子 = [品牌 button, 折叠键 button]   （实测 rowKids=2）
+ *   收起：logoRow 的 1 个孩子 = [折叠键 button]（label 变「打开侧边栏」，
+ *         里面装 span._2H3hWW_railMark 24x18）                （实测 rowKids=1）
+ *
+ * 于是三条判据都写成「按 button 数」而不是外部属性，**两态各自自洽、互斥**：
+ *   logoRow            position: relative + overflow: visible（无条件，见下）
+ *   品牌键             button:first-of-type:not(:last-of-type)  → 行里有 2 个 button
+ *   展开态折叠键       button:nth-of-type(2):last-of-type       → 行里有 2 个 button
+ *   收起态那颗         button:first-of-type:last-of-type        → 行里只有 1 个 button
+ *
+ * ── 为什么要给品牌键留右侧那条带 ──
+ * 键一旦脱离文档流，品牌键（flex: 1 1 0%）会把空出来的 28px 一路吃掉、钻到键底下，
+ * 从「余量小」变成真重叠。所以让品牌键带 margin-right: 36px 把那条带**占住**：
+ * logoRow 内容 252 = 品牌 margin 盒 252 → 品牌本体 = 252 - 36 = **216（与改前逐位相同）**，
+ * 它的 margin 区 232..268 是空的（margin 不绘制、不接点击），键落在下面的坐标。
+ * 第四轮起把键**顶到右上角**：logoRow 是 12..268，侧栏 pane 是 0..280 ——
+ * logoRow 左右各让出 12px（实测两台壳上都是 12..268，这是壳的固定内让，不是 padding）。
+ *
+ * ⚠️ 右缘停在 276，不许再往右 —— 那里有一块**按下去会做另一件事**的死区。
+ * div.BynINW_handle 是**拖拽侧栏宽度**的手柄，它自己的矩形实测是 x=276 宽 8（276..284）。
+ * 于是：right: -12px → 键右缘 280，最右 4px 落进手柄；right: -10px → 278，还撞 2px。
+ * 在 28px 宽的键上，4px 就是**右端 1/7 的面积按下去触发的是拖拽而不是折叠** —— 用户
+ * 这一轮抱怨的正是「点了它结果做了别的事」，不能再留一个同类边角。
+ * 取 right: -8px → 键 248..276，**右缘正好停在与手柄相接的分界线 276 上**，不重叠也不留缝。
+ * 代价只是离侧栏缘差 4px，观感上看不出来。
+ * （方法论：判「两个元素有没有让开」要**量双方各自的矩形**，不能拿一条边的差值推 ——
+ *  这里最初就是拿「键右缘 280 − 手柄起点 278」估出 2px，实际是 4px。）
+ * 垂直 top: 4px → 键 y=10（原 22）。 横向 248..276 vs 品牌右缘 232 → 16px 间隙。
+ *
+ * ⚠️ 另一个不能用的钩子：[data-dsh-responsive-part='sidebar-toggle']。那个属性值
+ * **会换主** —— 实测 :3080 那台挂在 new-session 按钮上，:19387 这台上才挂在折叠键上；
+ * 拿它当钩子会在 :3080 上把「新会话」整颗钉到右上角去。
+ * ⚠️ 判据必须是「**同类型**的首/尾」而不是 :first-child / :last-child ——
+ * 收起态把鼠标移到那颗键上时，壳会往 logoRow 里**追加一个孩子**
+ * （实测 span._bubble_12mhf_1[role=tooltip]，position: fixed，还带着 SPEC 第 5 节
+ *  记的那个误挂的 data-dsh-part='resize-handle'）。它是 span、不是 button，所以
+ * :first-child:last-child 在 hover 那一瞬间就失效（实测 firstLast 由 true 变 false），
+ * 我的静息样式会当场掉掉；而 button:first-of-type:last-of-type 不受影响。
+ * 三条判据全部改成按 button 数：
+ *   收起态那颗   button:first-of-type:last-of-type   （行里只有 1 个 button）
+ *   品牌键       button:first-of-type:not(:last-of-type)（行里有 2 个 button，它是第 1 个）
+ *   展开态折叠键 button:nth-of-type(2):last-of-type   （行里有 2 个 button，它是第 2 个）
+ * 三者互斥，且对那个 tooltip span 免疫。
+ *
+ * ⚠️ 还有 header[data-window-drag='true'] 是会话头部（280,0,1400,40），
+ * 同一个属性值挂在两个东西上 —— 所以这里显式写 div 标签 + 用 [data-pane='sidebar'] 兜住。
+ *
+ * ⚠️ 为什么要 overflow: visible：logoRow 在**展开态**被壳设成 overflow: hidden
+ * （实测 expanded=hidden / collapsed=visible），右缘 268 —— 键放到 248..276 会被它
+ * 静默切掉右边 8px（实测命中判据：x=267 命中键、x=269 与 x=274 都不是键），
+ * 结果比改前（240..268 = 28px 宽）还窄。放开之后键才真的画完整。
+ * 展开态放开裁切是安全的：行里唯一会越界的就是这张键本身，而品牌按钮自带
+ * overflow: hidden（它的内容不会糊出来）。
+ * **残余风险（已知、有记录）**：这条是对壳裁切的覆写 —— 将来若壳往这一行里放
+ * 别的东西、并依赖那条 overflow: hidden 把它裁住，那样东西会露出来。真到那天，
+ * 该还给壳的是「把那张键移出这一行」而不是把裁切收回来。 */
+
+[data-pane='sidebar'] div[data-window-drag='true'] {
+  position: relative;
+  overflow: visible;
+}
+
+[data-pane='sidebar'] div[data-window-drag='true'] > button:first-of-type:not(:last-of-type) {
+  margin-right: 36px;
+}
+
+/* 展开态那颗「收起侧边栏」：顶到行顶、右缘停在拖拽手柄 276 的分界线上（见上）。 */
+[data-pane='sidebar'] div[data-window-drag='true'] > button:nth-of-type(2):last-of-type {
+  position: absolute;
+  top: 4px;
+  right: -8px;
+}
+
+/* ── ⑨ 收起态那颗「打开侧边栏」：让它看起来像按钮 ──────────────────────────
+ * 用户第四轮的原话：「我就是想收起侧栏，但收起来后找不到地方再展开」。
+ * 实测改前（:19387 收起态，box 10,18 36,36）：
+ *   background-color rgba(0,0,0,0)   box-shadow none   border 0 none   radius 12px
+ * 里面只有一个 span._2H3hWW_railMark（24x17.66 的鲸鱼标）—— **零可点暗示**，
+ * 读起来就是侧栏轨上的一个 logo。所以静息就得给形状。
+ *
+ * 判据：收起态 logoRow 里**只有一个 button**，于是它同时是 button 的首与尾
+ * （见 ⑧ 顶部那段：为什么不能用 :first-child / :last-child）。展开态有 2 个 button，
+ * 两条都不成立 —— 判据互斥。
+ *
+ * 三条约束的落点：
+ *   ① 不许变大或位移 —— 只写 background / color / box-shadow（全不参与布局），
+ *      尺寸仍是 36x36 @ 10,18；radius 显式钉成 --bk-r-md（= 壳原本给的 12px，数值不变）；
+ *   ② 不许绝对定位 —— 这里一个 position 都不写，它保持壳给的 relative；
+ *   ③ 展开态那颗键不被波及 —— 判据互斥（见上）。
+ *
+ * 静息为什么用 --bk-sky 描边而不是派来的 --bk-edge / --bk-edge-soft：
+ * 它俩兑在纱上只有 2.81:1 / 1.56:1，达不到「可交互边界」那道 3:1；而 --bk-sky
+ * 正是 SPEC 第 1 节划给「可交互边界」的那一档（4.44:1）。用户找不到入口这件事
+ * 本身就是边界太弱的后果，所以这里用足。 */
+
+[data-pane='sidebar'] div[data-window-drag='true'] > button:first-of-type:last-of-type {
+  border-radius: var(--bk-r-md);
+  background-color: var(--bk-mist);
+  color: var(--bk-sky);
+  box-shadow: 0 0 0 1px var(--bk-sky);
+  transition: box-shadow var(--bk-ease), opacity var(--bk-ease);
+}
+
+[data-pane='sidebar'] div[data-window-drag='true'] > button:first-of-type:last-of-type:hover {
+  background-color: var(--bk-accent-bg);
+  color: var(--bk-jade-deep);
+  box-shadow: 0 0 0 1px var(--bk-jade), 0 0 0 3px var(--bk-jade-faint);
+}
+
+/* ── ⑩ 桌面壳的标题栏形态 ──────────────────────────────────────────────────
+ * ⚠️⚠️ 用户连报八轮的「两个图标叠在一起」真因就在这里（2026-10-16 实测复现）。
+ *
+ * 桌面壳在 Windows 上给 html 打 data-windows-titlebar，整个应用内容下移
+ * var(--dsh-windows-titlebar-height)（40px，preload 写下），那道标题栏里由
+ * preload 塞了一个 [data-windows-menu] 菜单栏（「应用」「编辑」，left: 48px）。
+ * 侧栏那颗折叠键被壳自己的规则钉进标题栏左上角：
+ *   [data-windows-titlebar] .toggle { position: fixed; left: 12px; top: 6px; z-index: 30 }
+ *
+ * 而第 ⑧ 段那条覆写是 absolute + right: -8px —— 它把 position 换掉了，壳留下的
+ * left: 12px 却还在；键宽写死 28px（left + width 赢过 right），于是键落到**面板左端**：
+ * 实测键盒 24,50,28,28，而品牌鲸鱼标在 17,58,24,18 —— 两个图形叠在一起，
+ * 正是用户说的「一团糊」。浏览器形态下没有这个属性，所以此前所有 headless 量具
+ * 都量不到（八轮都没量到，这是唯一原因）。
+ *
+ * 修法两条，缺一不可：
+ *   ① 把几何还给壳（本段最后一条）；
+ *   ② **关掉侧栏那层 backdrop-filter**：backdrop-filter 会让 [data-pane='sidebar']
+ *      成为 position:fixed 后代的**包含块**，壳那句 left/top 就会以侧栏顶（y=40）
+ *      为原点，键落到 y=46，照样压在鲸鱼标上（实测强制 fixed 之后是 12,46,28,28）。
+ *      关掉之后才回到窗口左上角（12,6）。代价：桌面形态下侧栏没有那层 12px 模糊了
+ *      —— 纱（0.82）还在，而 SPEC 第 2 节的 α 本来就是按 σ=0 定的，对比度不受影响；
+ *      实测侧栏取样带的边缘能量只从 0.0197 变到 0.0204，观感差别很小。
+ *
+ * 判据用 body:has([data-windows-menu])：那个菜单栏只在桌面 preload 下存在，
+ * 浏览器形态里一个都没有。⚠️ 不能写 html[data-windows-titlebar] —— 加载器把每条
+ * 选择器都当成 skin root（html[data-dsh-skin]）的**后代**加前缀，而那个属性挂在
+ * html 自己身上，写它永远匹配不到（转换器只特判 ":root" 与 ":root " 开头的形式，
+ * ":root:not(...)" 会掉进普通后代分支）。 */
+
+body:has([data-windows-menu]) [data-pane='sidebar'] {
+  backdrop-filter: none;
+}
+
+body:has([data-windows-menu]) [data-pane='sidebar'] div[data-window-drag='true'] > button:nth-of-type(2):last-of-type {
+  position: fixed;
+  left: 12px;
+  right: auto;
+  top: calc((var(--dsh-windows-titlebar-height, 40px) - 28px) / 2);
+}
+
+/* ══ D · 输入卡（30-composer）：一扇半透明的纸窗 ═════════════════════════════
+ *
+ * 她在卡后透出来，卡里的字要清清楚楚。所以卡 = 0.68 的奶白纱 + 轻模糊，
+ * 结构 = 冰蓝发丝，状态 = 翡翠，文字 = 墨蓝两档 + 一层单向柔光。
+ *
+ * 卡高会变：首屏 114、进会话 98（SPEC 第 2 节那两行盒子），宽 712~952。
+ * 所以这一片**不碰任何间距、内边距、高度**，只做面、线、圆角、字色 ——
+ * 也不给卡铺 100% 100% 的底图。 */
+
+/* ── 1 · 卡：纱 + 纸边 + 改写那条 blur ────────────────────────────────────────
+ *
+ * 壳对卡片只写了一条 background: var(--dsw-specific-input-major)（:root 上定死，
+ * 在卡上重下 alias 那支没有用）；而机壳皮肤会再压一条
+ *   html[data-dsh-skin="X"] body [data-composer-card] { ... !important }   == (0,2,2)
+ * 本片要赢它，就得把特异性顶上去。**必须以 body 开头**（官方关卡拦以 html 开头的选择器），
+ * 于是这里写 body + div + 三个属性 = (0,3,2)，再叠上加载器强制前缀 html[data-dsh-skin]，
+ * 有效值 (0,4,3)，稳过。
+ *
+ * backdrop-filter 是**改写**不是删掉：会话里 + 背景激活时壳会自己挂一条
+ * blur(10px)（skin-center 的「输入卡模糊」），这里统一成 6px。 */
+body div[data-composer-card][data-dsh-responsive-part='composer'][data-composer-card] {
+  --dsh-composer-accessory-radius: var(--bk-r-md);
+  background-color: var(--bk-veil-card) !important;
+  background-image: none !important;
+  backdrop-filter: blur(12px) saturate(1.05) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.05) !important;
+  border-radius: var(--bk-r-lg);
+  box-shadow: var(--bk-bleed) !important;
+  color: var(--bk-ink);
+  /* 卡内柔光托底（SPEC 第 4 节第 4 条）：单向，一层；四向硬描边会让字变胖。 */
+  text-shadow: var(--bk-glow);
+  /* 工具栏那几颗小字没有 data 钩子，颜色是从这三支**继承**来的：在卡上重下一次，全卡生效。 */
+  --dsw-alias-label-secondary: var(--bk-ink-soft);
+  --dsw-alias-label-caption: var(--bk-ink-faint);
+  --dsw-alias-label-tertiary: var(--bk-ink-faint);
+}
+
+/* ── 2 · 输入框与占位符 ─────────────────────────────────────────────────────── */
+body div[data-composer-card] [data-composer-input] {
+  color: var(--bk-ink);
+  caret-color: var(--bk-jade);
+  background: none;
+  box-shadow: none;
+  text-shadow: var(--bk-glow);
+}
+body div[data-composer-card] [data-composer-input]::placeholder,
+body div[data-composer-card] [data-composer-placeholder] {
+  color: var(--bk-ink-faint);
+  text-shadow: var(--bk-glow);
+}
+
+/* ── 3 · 下缘四颗下拉：药丸 + 一圈冰蓝发丝 ────────────────────────────────────
+ * 定位一律用 aria-haspopup，**不用 aria-label**（那是中文文案，跟着语言变）。
+ * 注意 [data-slot='conversation.composer'] 是**卡的祖先**（display: contents 的戳），
+ * 所以这里不能写成「卡的后代」，只能照 SPEC 钩子表那样从它自身往下找。
+ * 线走 box-shadow 不走 border：border 会改变盒模型，卡高本来就在变。 */
+body [data-slot='conversation.composer'] button[aria-haspopup] {
+  border-radius: var(--bk-r-pill);
+  /* 壳给「禁用」的图标键留了一条深色实心（实测 rgba(61,68,78,0.62) + opacity .5，
+     压过普通声明，多半是行内样式），纱要压过它只能带 !important。 */
+  background-color: transparent !important;
+  background-image: none;
+  color: var(--bk-ink-soft);
+  box-shadow: 0 0 0 1px var(--bk-edge-soft);
+  transition: background-color var(--bk-ease), box-shadow var(--bk-ease);
+}
+body [data-slot='conversation.composer'] button[aria-haspopup]:hover {
+  background-color: var(--bk-mist) !important;
+  box-shadow: 0 0 0 1px var(--bk-edge), 0 0 0 4px var(--bk-jade-faint);
+}
+
+/* ── 4 · 加号：接入键，方角一档（同特异性，靠顺序压过药丸那条） ─────────────── */
+body [data-slot='conversation.composer'] button[aria-haspopup='listbox'] {
+  border-radius: var(--bk-r-sm);
+}
+
+/* ── 5 · 发送键：全屏唯一的实心 ──────────────────────────────────────────────
+ *
+ * 它身上**没有任何 data 钩子**，只能用排除法：卡里唯一没有 aria-haspopup 的按钮。
+ * 权限药丸会跟它一起命中 —— 本片末尾（第 7 节）用更高特异性的规则把权限那颗还原成药丸。
+ * 「还没画完」是线，可以按了才是实心。 */
+body div[data-composer-card] button:not([aria-haspopup]) {
+  border-radius: var(--bk-r-sm);
+  background-color: var(--bk-sky);
+  background-image: linear-gradient(180deg, var(--bk-sky-lt) 0%, var(--bk-sky) 100%);
+  box-shadow: 0 0 0 1px var(--bk-jade-soft), inset 0 1px 0 var(--bk-jade-lt);
+  color: var(--bk-paper);
+  text-shadow: none;
+  transition: box-shadow var(--bk-ease), opacity var(--bk-ease);
+}
+body div[data-composer-card] button:not([aria-haspopup]):hover:enabled {
+  box-shadow: 0 0 0 1px var(--bk-jade), inset 0 1px 0 var(--bk-jade-lt);
+}
+
+/* ── 6 · 发送键的禁用态：退成一根细线圈 + 暗青箭头 ─────────────────────────── */
+body div[data-composer-card] button:not([aria-haspopup]):disabled {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: inset 0 0 0 1px var(--bk-jade-soft);
+  color: var(--bk-jade-deep);
+  opacity: 1;
+}
+
+/* ── 7 · 统计条：细读数，走三级字色，**不用等宽字体**（本皮没有 HUD 语汇） ──── */
+body div[data-composer-card] [data-composer-stats],
+body [data-composer-stats],
+body [data-composer-stats] * {
+  --dsh-composer-accessory-radius: var(--bk-r-md);
+  color: var(--bk-ink-faint);
+  font-family: var(--bk-font);
+  font-variant-numeric: normal;
+  letter-spacing: 0;
+  text-shadow: var(--bk-glow);
+}
+
+/* ── 8 · 权限药丸：把第 5 节的排除法还原成药丸 ───────────────────────────────
+ *
+ * 放在最后、且特异性高过第 5 节（也高过它的禁用态，两者同分时靠顺序取胜）。
+ * 插槽属性可能挂在这颗按钮上、也可能挂在它外面的 wrapper 上，两种都写。 */
+body div[data-composer-card][data-composer-card][data-dsh-responsive-part='composer'] [data-slot='conversation.input.permission'],
+body div[data-composer-card][data-composer-card][data-dsh-responsive-part='composer'] [data-slot='conversation.input.permission'] button,
+body div[data-composer-card][data-composer-card][data-dsh-responsive-part='composer'] button[data-slot='conversation.input.permission'] {
+  border-radius: var(--bk-r-pill);
+  background-color: transparent;
+  background-image: none;
+  box-shadow: inset 0 0 0 1px var(--bk-edge-soft);
+  color: var(--bk-ink-soft);
+  text-shadow: var(--bk-glow);
+  opacity: 1;
+}
+
+/* ══ 40-conversation.css · 分片 E：会话头部 + 消息轮 ═══════════════════════════
+ * 归属（SPEC 第 6 节）：会话头部、[data-chat-flow] 里的消息轮与过程行、代码块、
+ * 交付卡、时间与用量、消息动作图标、展开更多。
+ * 不碰：侧栏、输入卡、地面（10-ground.css）、浮层菜单与卡片（50 / 60）。
+ *
+ * 三条纪律
+ *   1. 定位一律走 data 钩子 —— 真壳类名是哈希，直系链层数不可靠（老坑 23）。
+ *   2. 横线不用 border，用两端淡出的 1px 渐变（SPEC 第 4 节第 1 条）。
+ *   3. 结构线 = 冰蓝（--bk-line / --bk-ice），状态 = 翡翠（--bk-jade / --bk-jade-deep）。
+ *
+ * 真壳实测（127.0.0.1:19387；量的时候挂在身上的是 shuimo-danqing，深色 + body 带 dark 属性）
+ *   · 会话头部 = header[data-window-drag]：窗口 1000 / 1640 / 2280 时为
+ *     944x76 / 1360x76 / 2000x76（1000 那档侧栏收成 56px 图标轨，所以从 x=56 起）。
+ *   · [data-dsh-surface='session-header'] 是 display:contents（0x0，不下底，只吃变量）；
+ *     [data-dsh-responsive-part='conversation-header'] 在本壳里**不存在**（照写，作别名）。
+ *   · 头部四支字色（哨兵法实测）：标题吃 --dsw-alias-label-primary；
+ *     [data-slot='conversation.session.header.actions'] 的读数与 [data-clock] 的读数吃
+ *     --dsw-alias-label-tertiary；三个标签页**不吃任何变量**（颜色是继承来的），
+ *     所以标签页必须直接下 color，不能只改变量。
+ *   · 行钩子 = [data-dsh-part='message-row'][data-chat-flow-kind=...]，
+ *     kind 实测只有 6 种：user / assistant-step / turn-process / tool-call / model-retry / turn-tail；
+ *     正文（p / table / pre）全部落在 assistant-step 里，所以那一档**不许**当过程行处理。
+ *   · 过程 / 工具 / 上下文行的可定位元素：  [data-disclosure-row]（思考 / 运行命令，95 个）
+ *     、[data-turn-process]（组摘要那颗 button，带 data-turn-process-* 全家族）、[data-turn-tail]。
+ *   · 代码块 = [data-code-wrap] > [data-code-block-banner] + [data-code-block-content] > pre > code；
+ *     本壳里**没有** message-body 元素，那句选择器当别名留着。
+ *   · button[data-row-key] 实测就是侧栏底部那颗「展开其余 N 个会话」。
+ *
+ * 一条教训（别退回变量法）：那套 --dsw-alias-* 是**当时生效的那张皮**读走的，皮一换就断。
+ * 所以本片里凡是「必须有颜色」的文字都直接下 color，变量只是搭把手 —— 标题就是这么被抓住的。
+ *
+ * 特异性的两条顺序约定（同级靠源码顺序决胜，故不能随便挪段落）
+ *   · 用户轮的 span 规则在前，[data-clock] 的 span 规则在后 —— 让时间读数是三级色而不是正文墨色。
+ *   · 行级通用色在前，[data-chat-flow-kind] 的过程色在后 —— 让工具行压过通用行。
+ */
+
+/* ── 1 · 会话头部：0.72 的纱 + 四支字色变量 + 底缘收笔线 ────────────────────── */
+header[data-window-drag],
+[data-slot='conversation.header'] > header,
+[data-dsh-responsive-part='conversation-header'],
+[data-dsh-surface='session-header'] {
+  --dsw-alias-label-primary: var(--bk-ink);
+  --dsw-alias-label-secondary: var(--bk-ink-soft);
+  --dsw-alias-label-tertiary: var(--bk-ink-faint);
+  --dsw-alias-state-business-primary: var(--bk-jade-deep);
+  background-color: var(--bk-veil-head);
+  backdrop-filter: blur(12px) saturate(1.04);
+  border-bottom-color: transparent;
+  background-image: linear-gradient(90deg, transparent 0%, var(--bk-line) 12%, var(--bk-line) 88%, transparent 100%);
+  background-size: 100% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  font-family: var(--bk-font);
+}
+
+/* 标题：墨色 + 思源宋体。只改变量不够 —— 把那支变量真正读走的规则属于**当时生效的那张皮**，
+ * 皮一换标题就掉回壳的默认色（实测：哨兵法下发 --dsw-alias-label-primary 标题会跟着变，
+ * 但把皮摘掉后标题变回壳的浅灰）。所以这里直接下 color。 */
+header[data-window-drag] nav span,
+[data-dsh-surface='session-header'] nav span {
+  color: var(--bk-ink);
+  font-family: var(--bk-font-display);
+}
+/* 读数走正文黑体（界面读数不许等宽，SPEC 第 0 节 C3）；右边那排图标键也归头部。 */
+[data-slot='conversation.session.header.actions'],
+[data-slot='conversation.session.header.actions'] span {
+  color: var(--bk-ink-soft);
+  font-family: var(--bk-font);
+}
+[data-slot='conversation.session.header.actions'] svg,
+[data-slot='conversation.session.header.utilities'],
+[data-slot='conversation.session.header.utilities'] button,
+[data-slot='conversation.session.header.utilities'] svg {
+  color: var(--bk-muted);
+}
+
+/* ── 2 · 标签页：非当前 = 三级色，当前 = 翡翠（状态），底线是收笔渐变 ───────── */
+[data-conversation-tabs] {
+  font-family: var(--bk-font);
+}
+[data-conversation-tabs] button {
+  color: var(--bk-ink-faint);
+  font-family: var(--bk-font);
+  text-shadow: var(--bk-glow);
+}
+[data-conversation-tabs] button[aria-selected='true'] {
+  color: var(--bk-jade-deep);
+  background-image: linear-gradient(90deg, transparent 0%, var(--bk-jade) 16%, var(--bk-jade) 84%, transparent 100%);
+  background-size: 100% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+}
+
+/* ── 3 · 正文排版：黑体正文 / 宋体标题 + 单层白色柔光（SPEC 第 4 节第 4 条）──
+ * text-shadow 是继承属性：下在块级正文上，行内的 strong / a / 小字自然跟着走，
+ * 不需要碰子树。代码那两支单独豁免 —— 例外只给到那一支元素（老坑 19）。 */
+[data-chat-flow] {
+  color: var(--bk-ink);
+  font-family: var(--bk-font);
+}
+[data-dsh-part='message-row'] {
+  color: var(--bk-ink);
+}
+[data-chat-flow] p,
+[data-chat-flow] li,
+[data-chat-flow] td,
+[data-chat-flow] th,
+[data-chat-flow] summary,
+[data-chat-flow] blockquote {
+  color: var(--bk-ink);
+  font-family: var(--bk-font);
+  text-shadow: var(--bk-glow);
+}
+[data-chat-flow] h1,
+[data-chat-flow] h2,
+[data-chat-flow] h3,
+[data-chat-flow] h4 {
+  color: var(--bk-ink);
+  font-family: var(--bk-font-display);
+  text-shadow: var(--bk-glow);
+}
+[data-chat-flow] pre,
+[data-chat-flow] code {
+  text-shadow: none;
+}
+
+/* ── 4 · 用户那一轮：左缘 2px 翡翠竖条 + 极淡的 accent 底 ──────────────────
+ * 底用不透明的 --bk-accent-bg：这一块文字在最上层的对比度因此与画面无关（12.36:1）。*/
+[data-dsh-part='message-row'][data-chat-flow-kind='user'] {
+  color: var(--bk-ink);
+  background-color: var(--bk-accent-bg);
+  background-image: linear-gradient(180deg, transparent 0%, var(--bk-jade) 12%, var(--bk-jade) 88%, transparent 100%);
+  background-size: 2px 100%;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  border-radius: var(--bk-r-sm);
+  box-shadow: none;
+  text-shadow: var(--bk-glow);
+}
+[data-dsh-part='message-row'][data-chat-flow-kind='user'] span {
+  color: var(--bk-ink);
+}
+
+/* ── 5 · 过程行 / 工具行 / 上下文行：清掉旧皮的竖带 + 小一号二级色 ──────────
+ * assistant-step 只清带子不换色 —— 正文就住在那一档里。 */
+[data-chat-flow-kind='assistant-step'],
+[data-chat-flow-kind='tool-call'],
+[data-chat-flow-kind='model-retry'] {
+  background-image: none;
+}
+[data-chat-flow-kind='turn-process'],
+[data-chat-flow-kind='tool-call'],
+[data-chat-flow-kind='model-retry'],
+[data-chat-flow-kind='turn-tail'] {
+  color: var(--bk-ink-soft);
+  font-size: 12.5px;
+  text-shadow: var(--bk-glow);
+}
+/* 这几个 kind 里的读数 span 自己带皮肤类（实测 cJsG2q_retryText、_text_1rdzk_17 那种），
+ * 只下在行上盖不住它；而过程组的行头根本不是 kind，是 [data-step-process] / [data-process-activity]。
+ * 所以：颜色下到「过程类钩子的文字后代」上，钩子进 :where() —— 本体只剩 [data-chat-flow] 那一档，
+ * 压得过壳的组件类（0,1,0），又不会反压我后面那几支更精确的规则（交付卡 / 时间）。
+ * 只列 span / div / p：代码块（pre）与表格（td / th / li）不在这里面，各有各的尺。 */
+[data-chat-flow] :where([data-disclosure-row], [data-step-process], [data-process-activity], [data-turn-process], [data-chat-flow-kind='turn-process'], [data-chat-flow-kind='tool-call'], [data-chat-flow-kind='model-retry']) :where(span, div, p) {
+  color: var(--bk-ink-soft);
+  font-size: 13px;
+}
+/* 尾部那一行是「时间与用量」，按 SPEC 的尺走三级色。 */
+[data-chat-flow] :where([data-turn-tail], [data-chat-flow-kind='turn-tail']) :where(span, div, p) {
+  color: var(--bk-ink-faint);
+}
+
+/* 左缘一条冰蓝细线：竖着收笔，1px，两端淡出。
+ * 只画在「行」上；组容器与组标题键（[data-step-process] / [data-process-activity]）只吃字色，
+ * 否则组和组里的行会画出两条平行线。 */
+[data-chat-flow] [data-disclosure-row],
+[data-chat-flow] [data-turn-process],
+[data-chat-flow] [data-turn-tail] {
+  color: var(--bk-ink-soft);
+  font-family: var(--bk-font);
+  font-size: 12.5px;
+  text-shadow: var(--bk-glow);
+  background-image: linear-gradient(180deg, transparent 0%, var(--bk-line) 14%, var(--bk-line) 86%, transparent 100%);
+  background-size: 1px 100%;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+}
+[data-chat-flow] [data-step-process],
+[data-chat-flow] [data-process-activity] {
+  color: var(--bk-ink-soft);
+  font-family: var(--bk-font);
+}
+[data-chat-flow] [data-disclosure-row] span,
+[data-chat-flow] [data-turn-process] span {
+  color: var(--bk-ink-soft);
+}
+
+/* ── 6 · 代码块：一张深一点的纸（不是终端窗）────────────────────────────────
+ * 代码本身留等宽；只有「代码块」这行界面读数换成正文黑体。 */
+[data-chat-flow] [data-code-wrap] {
+  background-color: var(--bk-surf);
+  border-radius: var(--bk-r-md);
+  box-shadow: inset 0 0 0 1px var(--bk-line-faint), var(--bk-bleed);
+}
+[data-chat-flow] pre,
+message-body pre {
+  background-color: var(--bk-surf);
+  background-image: none;
+  color: var(--bk-ink);
+  border-radius: 0 0 var(--bk-r-md) var(--bk-r-md);
+  box-shadow: none;
+}
+[data-chat-flow] [data-code-block-banner] {
+  background-color: transparent;
+  color: var(--bk-ink-faint);
+  font-family: var(--bk-font);
+  font-size: 11.5px;
+  border-radius: var(--bk-r-md) var(--bk-r-md) 0 0;
+  background-image: linear-gradient(90deg, transparent 0%, var(--bk-line) 18%, var(--bk-line) 82%, transparent 100%);
+  background-size: 100% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+}
+/* 行头里的语言标（实测 span._language_1pq26_30）自己带颜色与字族，得单独给一支。 */
+[data-chat-flow] [data-code-block-banner] :where(span, div) {
+  color: var(--bk-ink-faint);
+  font-family: var(--bk-font);
+}
+[data-chat-flow] [data-code-block-banner] button,
+[data-chat-flow] [data-code-block-banner] svg {
+  color: var(--bk-muted);
+}
+/* 行内 code（实测 101 个，父级是 p / td / li / strong）：纸片底自己给，
+ * 免得它落到壳的深底上变成墨压墨。代码块里那一支例外单独还原（老坑 19：只给那一支元素）。 */
+[data-chat-flow] code {
+  color: var(--bk-ink);
+  background-color: var(--bk-mist);
+  border-radius: var(--bk-r-xs);
+}
+[data-chat-flow] pre code {
+  background-color: transparent;
+  border-radius: 0;
+}
+
+/* ── 7 · 时间与用量：小一号三级色；动作图标圆角走令牌，悬停转翡翠 ───────────
+ * 这一段必须排在用户轮之后：两者与 [data-clock] span 同级，靠源码顺序决胜。 */
+[data-chat-flow] [data-clock] {
+  color: var(--bk-ink-faint);
+  font-family: var(--bk-font);
+  font-size: 12px;
+  text-shadow: var(--bk-glow);
+}
+[data-chat-flow] [data-clock] span {
+  color: var(--bk-ink-faint);
+  font-family: var(--bk-font);
+}
+[data-chat-flow] [data-clock] button {
+  color: var(--bk-ink-faint);
+  background-color: transparent;
+  border-radius: var(--bk-r-sm);
+  transition: box-shadow var(--bk-ease), background-position var(--bk-ease), opacity var(--bk-ease);
+}
+[data-chat-flow] [data-clock] button:hover {
+  color: var(--bk-jade);
+  background-color: var(--bk-mist);
+}
+
+/* ── 8 · 交付卡 / 附件卡：一张纸片 —— 细边 + 左缘 2px 冰蓝竖条 + 顶上收笔亮线 ──
+ * 底走 --bk-veil-sheet（= 那层「不依赖模糊的纸」，SPEC 第 2 节）：交付卡长在会话正文里，
+ * 语义归位到它身上，也就不必为一张静态小卡新增 backdrop-filter 这套机制。
+ * 不用实底：纸片是「画从纸背透出来」，顶上那条亮线才读得出来。
+ * 悬停：竖条与细边一起转翡翠（图形级翡翠，不是文字级）。 */
+[data-presented-file] {
+  color: var(--bk-ink);
+  background-color: var(--bk-veil-sheet);
+  border-radius: var(--bk-r-lg);
+  background-image:
+    linear-gradient(90deg, transparent 0%, var(--bk-paper) 14%, var(--bk-paper) 86%, transparent 100%),
+    linear-gradient(180deg, transparent 0%, var(--bk-ice) 10%, var(--bk-ice) 90%, transparent 100%);
+  background-size: 100% 1px, 2px 100%;
+  background-position: 0 0, 0 0;
+  background-repeat: no-repeat, no-repeat;
+  box-shadow: inset 0 0 0 1px var(--bk-line-faint), var(--bk-bleed);
+  transition: box-shadow var(--bk-ease);
+}
+[data-presented-file] span {
+  color: var(--bk-ink);
+}
+[data-presented-file]:hover {
+  background-image:
+    linear-gradient(90deg, transparent 0%, var(--bk-jade) 16%, var(--bk-jade) 84%, transparent 100%),
+    linear-gradient(180deg, transparent 0%, var(--bk-jade) 10%, var(--bk-jade) 90%, transparent 100%);
+  background-size: 100% 1px, 2px 100%;
+  background-position: 0 0, 0 0;
+  background-repeat: no-repeat, no-repeat;
+  box-shadow: inset 0 0 0 1px var(--bk-jade), var(--bk-bleed);
+}
+
+/* ── 9 · 展开其余 N 个会话：悬停转翡翠 ─────────────────────────────────────
+ * 实测这颗就是侧栏会话列表底部那颗（文字「展开其余 2 个会话」，data-row-key 是 overflow:）。
+ * 它自己已经是 11.5px 的小字，**不动字号** —— 免得改到侧栏的行盒度量（SPEC 第 7 节老坑 9）。 */
+button[data-row-key] {
+  color: var(--bk-muted);
+  font-family: var(--bk-font);
+  text-shadow: var(--bk-glow);
+}
+button[data-row-key]:hover {
+  color: var(--bk-jade-deep);
+}
+
+/* ── 10 · 文件改动卡（[data-changed-files]）：壳给它的底是近黑，文字却已吃到我们的令牌 ──
+ * 实测（真壳 19387）：这张卡住在会话流的 turn-tail 行里，button 的 computed bg = rgb(33,33,35)
+ * （L 0.015）、悬停 rgb(41,41,41)，而文字已是 --bk-ink-faint → 2.07 : 1，就是用户说的「深色重叠」。
+ * 那支近黑在 181 张 / 6709 条可读规则里搜不到字面值，也不是暗色自定义属性、不是影子根、不是内联；
+ * 但**普通作者声明就压得住**（实测：加底即 rgb(242,241,236)），所以这里直接给它一张纸。
+ * 卡片自带 data-changed-files 钩子；同元素上另有一支随文件数变的属性，故意不认它。 */
+[data-chat-flow] [data-changed-files] {
+  background-color: var(--bk-surf);
+  color: var(--bk-ink);
+}
+[data-chat-flow] [data-changed-files] button {
+  background-color: transparent;
+  color: var(--bk-ink);
+}
+[data-chat-flow] [data-changed-files] button:hover {
+  background-color: var(--bk-mist);
+}
+/* 卡头那颗 40x40 的图标砖：外壳给它一条**只在暗色生效**的底
+     body[data-ds-dark-theme] .kuvljq_tile { background: 白 5% }   （浅色是白 50%）
+   它不是自定义属性、skin.css 管不到，所以在这里按「语义祖先 + 结构」钉回浅色那一档：
+   砖是卡头 button 的第一个 span（实测 childIndex 0；用 first-of-type 而不是 first-child，
+   悬停时壳会往 button 里追加 span[role=tooltip]，first-child 会有掉的风险）。
+   选择器不写 hash 类名 —— 壳一重建就换了。 */
+[data-chat-flow] [data-changed-files] > button > span:first-of-type {
+  background-color: var(--bk-out-tile);
+}
+
+/* ── 11 · 改动 diff（悬停预览门户 + 右侧改动面板）：全皮最难看的一处 ────────────
+ * 实测：add 行 bg rgb(31,49,36)（L 0.026）+ 我们的墨字 → **1.13 : 1**；行号列 bg rgb(19,32,22)。
+ * 改后实测：add → --bk-accent-bg（computed rgb(234,242,239)），墨字 **13.73 : 1**；
+ * 行号列改透明底 + 三级色，**6.81 : 1**（改前 7.9 是压在那条暗行上，行本身是黑的）。
+ * del 侧本样本**没有实例**（这张卡 +29 -0，右舱同一批文件也全是增），所以按你的备选走「一支淡暖」：
+ * --bk-bad 24% 混纸，实测 computed color(srgb 0.9145 0.8193 0.8187)、L 0.675、墨字 10.79 : 1，
+ * 与 add 的 RGB 距离 45（绿 hue 158 / 玫红 hue 0）—— 增删分得出，且不占用「雾蓝＝结构」那支语义。
+ * 面（卡片那层纸）不在这里给，见第 13 节：统一由 HoverCard 外壳给，免得叠两层纱。
+ * 右舱那份不铺底（它有自己的面），免得叠成近纯白。 */
+[data-changes-hover-preview] {
+  background-color: transparent;
+  color: var(--bk-ink);
+}
+[data-changes-review] {
+  color: var(--bk-ink);
+}
+[data-changes-hover-preview] [data-diff-line='add'],
+[data-changes-review] [data-diff-line='add'] {
+  background-color: var(--bk-accent-bg);
+}
+[data-changes-hover-preview] [data-diff-line='del'],
+[data-changes-review] [data-diff-line='del'] {
+  background-color: color-mix(in srgb, var(--bk-bad) 24%, var(--bk-paper));
+}
+[data-changes-hover-preview] [data-diff-line='context'],
+[data-changes-review] [data-diff-line='context'] {
+  background-color: transparent;
+}
+[data-changes-hover-preview] [data-diff-line] span,
+[data-changes-review] [data-diff-line] span {
+  background-color: transparent;
+  color: var(--bk-ink-faint);
+}
+
+/* ── 12 · 轨迹视图的时间轴刻度（[data-timeline-span]）：50 个 8px 的类型色块 ────
+ * 实测：它们**没有文字**（innerText 全空），底是壳给的类型色（tool amber L 0.123 / user 天蓝 /
+ * context 翡翠），位置与宽度走内联变量；我的普通声明**压不过**它（壳那条更具体），
+ * 加 !important 才赢。既然门禁按亮度判，就把类型色**按同一色相与纸混淡**（保留编码、变成水彩淡彩），
+ * 而不是换成一色 —— 换一色等于把轨迹的类型编码抹掉。 */
+[data-timeline-span='tool'] {
+  background-color: color-mix(in srgb, var(--bk-warn) 42%, var(--bk-paper)) !important;
+}
+[data-timeline-span='user'] {
+  background-color: color-mix(in srgb, var(--bk-sky) 42%, var(--bk-paper)) !important;
+}
+[data-timeline-span='context'] {
+  background-color: color-mix(in srgb, var(--bk-jade) 42%, var(--bk-paper)) !important;
+}
+
+/* ── 13 · 悬停卡（HoverCard）的**非 copyable** 两条分支：媒体预览 / 正文内联预览 ──
+ * 壳源码与结构（从 index-5SrrfWpU.js 读出来，不是猜的）：
+ *   卡片元素恒设内联 style 里的 --dsh-hover-preview-fade（100ms），
+ *   role / tabindex / aria-label **只有 copyText 存在时才有** → 非 copyable 那两条没有任何属性钩子；
+ *   卡片类名 = 外壳 card +（variant 为 preview 时加 preview）+（inline 时加 media）+（copyable 时加 copyable）；
+ *   inline 分支的触发条件写死成「正文里的文件 mention 且扩展名是图片」，媒体分支要消息里有图/视频。
+ * 本机可达性：真壳里会话内 0 个图/视频、文件 mention 只有 .md 与目录 → **这两条分支在本机打不开**，
+ * 能打开的只有「改动 diff 那张悬停卡」——它同属这个组件（类前缀 38jqx、无那三个属性）= 非 copyable 的一条。
+ * 所以这里按**组件级**收口：把纸给到外壳那一支，三条分支一起受益；内层 diff 面板改成透明（见第 11 节）
+ * 避免两层纱叠成 ~0.9975。
+ * 选择器用内联属性自证：开卡时实测全页命中数（strictHits）= 1；加 :not([role='button']) 后
+ * 非 copyable 命中 1、copyable 命中 0 —— 把 copyable 那条留给插件片，互不打架。
+ * （括号里的属性名是 HoverCard 恒设的那一支；本皮浅色专用，不写暗色分支。） */
+[style*='--dsh-hover-preview-fade']:not([role='button']) {
+  background-color: var(--bk-veil-menu);
+  color: var(--bk-ink);
+}
+
+/* ══ 50-overlays · 浮层 ═════════════════════════════════════════════════════
+ * 菜单 / 下拉、工具提示、标签页、审批与提问卡、设置弹窗、用量面板、窗口图标。
+ * 浮层是 portal 到 document.body 的，背后可能是任意内容，所以它穿的是最厚的
+ * 那一档纱（--bk-veil-menu 0.95），不跟面板一样薄。
+ * 侧栏 / 输入卡 / 会话列 / 会话头部容器本身各有其人，这里一律不碰。
+ *
+ * 两个在真壳上量到过的坑，写的时候别忘：
+ *   1 菜单的填充不在壳的 role=menu 那个元素上，而在它内部若干层 div 上。
+ *     MenuSurface 先渲染一层 aria-hidden 的 material 分层（读
+ *     --dsw-menu-surface-fill），再是 viewport / footer，所以壳那条中性灰
+ *     会落到每一层 div 上。子菜单是同一套结构 —— 一条规则两处都修。
+ *   2 role=tooltip 身上被语义适配器误挂了 data-dsh-part=resize-handle
+ *     （适配器拿 [data-side] 找分栏手柄，而 tooltip 自带 data-side）。
+ *     实测确认，所以定位一律用 role=tooltip，绝不信它身上的 data-dsh-part。
+ */
+
+/* ── 1 · 弹出菜单 / 下拉 ────────────────────────────────────────────────────
+ * 厚纸 + 圆角 --bk-r-xl + 纸边 --bk-bleed + 顶上一条收笔亮线。
+ * 先把壳的 --dsw-menu-surface-fill 接到我们的厚纱上（优先级打不过时先找变量），
+ * 再显式下到内层 div 上 —— 两条都要，缺一条菜单里还是中性灰。 */
+[role='menu'],
+[role='listbox'] {
+  --dsw-menu-surface-fill: var(--bk-veil-menu);
+  --dsw-menu-backdrop-filter: blur(18px) saturate(1.2);
+  /* 厚纸上的三级小字：壳那支会发白，换成次级墨（paper 上 7.25:1）。 */
+  --dsw-alias-label-tertiary: var(--bk-muted);
+  --dsw-alias-label-caption: var(--bk-muted);
+  --dsw-alias-interactive-bg-hover: var(--bk-mist);
+  border: 0;
+  border-radius: var(--bk-r-xl);
+  box-shadow: var(--bk-bleed);
+}
+
+/* 顶上那条收笔亮线：两端淡出的 1px，不用 border，也不给 role 元素本身定位
+ * （壳的 .list / .portal 各自带 position，别去盖它）。
+ * material 分层自己就是 position: absolute，把线挂在它身上最稳。 */
+[role='menu'] > div[aria-hidden='true']::after,
+[role='listbox'] > div[aria-hidden='true']::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background-image: var(--bk-stroke);
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+/* 内层填充：壳把中性灰写在 role 元素的每一层 div 上，不写这一条菜单里还是灰的。
+ * 子菜单同一处，一条规则两处都修。 */
+[role='menu'] > div,
+[role='listbox'] > div {
+  background-color: var(--bk-veil-menu);
+  background-image: none;
+  border-radius: inherit;
+}
+
+/* 条目：圆角 --bk-r-md，悬停浮 --bk-mist，左缘 2px 翡翠。
+ * 左缘用 inset 阴影而不是 border —— border 会改行盒宽度，也会被半径规则盖掉。 */
+[role='menu'] [role='menuitem'],
+[role='menu'] [role='menuitemcheckbox'],
+[role='menu'] [role='menuitemradio'],
+[role='listbox'] [role='option'] {
+  border-radius: var(--bk-r-md);
+  color: var(--bk-ink);
+}
+
+[role='menu'] [role='menuitem']:hover,
+[role='menu'] [role='menuitem']:focus-visible,
+[role='menu'] [role='menuitemcheckbox']:hover,
+[role='menu'] [role='menuitemradio']:hover,
+[role='listbox'] [role='option']:hover,
+[role='listbox'] [role='option'][aria-selected='true'] {
+  background-color: var(--bk-mist);
+  background-image: none;
+  box-shadow: inset 2px 0 0 var(--bk-jade);
+  color: var(--bk-ink);
+}
+
+/* 菜单里的分隔线也走收笔：壳给的是 0.5px 通线。 */
+[role='menu'] [role='separator'],
+[role='listbox'] [role='separator'] {
+  height: 1px;
+  background: none;
+  background-image: var(--bk-stroke-faint);
+  background-repeat: no-repeat;
+}
+
+/* ── 2 · 工具提示 ──────────────────────────────────────────────────────────
+ * 壳给的是米白底 + 深色字，在一张浅色纸上像块补丁。换成我们的厚纸 + 冰蓝边，
+ * 字小一号。 */
+[role='tooltip'] {
+  --dsw-alias-tooltip-key-bg: transparent;
+  background-color: var(--bk-veil-menu);
+  background-image: none;
+  backdrop-filter: blur(14px) saturate(1.15);
+  color: var(--bk-ink);
+  border-radius: var(--bk-r-sm);
+  box-shadow: var(--bk-bleed), inset 0 0 0 1px var(--bk-line);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/* 包住键帽的那层 span 被壳上了近白底（.joined 读 --dsw-alias-tooltip-key-bg），
+ * 要置透明。单个 :has() 允许，嵌套 :has() 会被构建守卫拒绝 —— 这里只有一层。 */
+[role='tooltip'] span:has(> kbd) {
+  background-color: transparent;
+  background-image: none;
+}
+
+/* 键帽本身走翡翠药丸。壳的 .tooltip .key 与 .joined .key（两个类）也读同一支
+ * 近白底，所以这里必须多带一个属性才压得住 —— 实测 data-has-shortcut 就是
+ * 键帽存在与否的那个事实（Tooltip 自己那条 bubble[data-has-shortcut] 也用它）。 */
+[role='tooltip'][data-has-shortcut] kbd {
+  background-color: var(--bk-accent-bg);
+  background-image: none;
+  color: var(--bk-jade-deep);
+  border: 0;
+  border-radius: var(--bk-r-pill);
+}
+
+/* ── 3 · 标签页 ────────────────────────────────────────────────────────────
+ * 只做 role=tab 本身；头部容器的纱不归这一片。
+ * 当前页一条收笔的翡翠底线：用伪元素画两端淡出的 1px，只动 opacity，
+ * 不引入 background-size 过渡（本皮只允许 background-position /
+ * box-shadow / opacity 的 160ms 过渡）。 */
+[role='tab'] {
+  position: relative;
+  background-color: transparent;
+  background-image: none;
+  border-bottom-color: transparent;
+  box-shadow: none;
+  color: var(--bk-muted);
+  /* 插件把未选中页签压在 opacity 0.65 上来表达层级，实测只剩 3.13:1 ——
+   * 不透明度收上去，层级改由色阶（次级墨 / 墨）表达。 */
+  opacity: 1;
+}
+
+[role='tab']::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  background-image: linear-gradient(90deg, transparent 0%, var(--bk-jade) 24%, var(--bk-jade) 76%, transparent 100%);
+  background-repeat: no-repeat;
+  border-radius: var(--bk-r-pill);
+  opacity: 0;
+  transition: opacity var(--bk-ease);
+  pointer-events: none;
+}
+
+[role='tab'][aria-selected='true'] {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  color: var(--bk-ink);
+}
+
+[role='tab'][aria-selected='true']::after {
+  opacity: 1;
+}
+
+/* ── 4 · 审批卡 / 提问卡 ───────────────────────────────────────────────────
+ * 纸卡：细边 + 左缘 2px 翡翠竖条 + 圆角 --bk-r-lg。
+ * --bk-bleed 是一段完整的阴影表，可以并列追加一条 inset，两件事一次写完。 */
+[data-approval-key],
+[data-question-reply] {
+  background-color: var(--bk-veil-card);
+  background-image: none;
+  color: var(--bk-ink);
+  border-radius: var(--bk-r-lg);
+  box-shadow: var(--bk-bleed), inset 0 0 0 1px var(--bk-line), inset 2px 0 0 var(--bk-jade);
+}
+
+/* ── 5 · 设置弹窗 ──────────────────────────────────────────────────────────
+ * 一圈冰蓝细边 + 厚纸 + 圆角 --bk-r-xl。壳把它钉成不透明是有理由的（浮在任意
+ * 内容上），这里保持不透明：--bk-paper 本来就是实底。 */
+[data-dsh-surface='settings'],
+[data-shortcut-modal='settings'] {
+  background-color: var(--bk-paper);
+  background-image: none;
+  color: var(--bk-ink);
+  border: 0;
+  border-radius: var(--bk-r-xl);
+  box-shadow: var(--bk-bleed), inset 0 0 0 1px var(--bk-line);
+}
+
+/* ── 6 · 使用统计面板（插件自己的面） ──────────────────────────────────────
+ * 这个插件的每张面都是 currentColor 调出来的，所以先把字色拉回墨、再铺纸。
+ * 侧栏那张用量脚卡身上也挂 data-dsh-plugin=usage（实测 254x89 在侧栏里），
+ * 卡壳归侧栏那一片，卡里的字与面归这里 —— 一条规则两个位置都吃到。 */
+[data-dsh-plugin='usage'] {
+  background-color: var(--bk-veil-card);
+  background-image: var(--bk-stroke);
+  background-repeat: no-repeat;
+  background-size: 100% 1px;
+  background-position: top;
+  color: var(--bk-ink);
+  box-shadow: var(--bk-bleed), inset 0 0 0 1px var(--bk-line);
+}
+
+[data-dsh-plugin='usage'][data-dsh-part='foot-card'] {
+  border-radius: var(--bk-r-lg);
+}
+
+[data-dsh-plugin='usage']:not([data-dsh-part='foot-card']) {
+  border-radius: var(--bk-r-xl);
+}
+
+/* 插件的小字靠元素自身的 opacity 表达层级（实测 0.65 / 0.7 / 0.5 / 0.55，脚卡与
+ * 设置面板里都是这一套），这一层不透明度会把任何文字色再砍一刀 —— 光改 color
+ * 不够，必须收上去，层级改由色阶（墨 / 次级墨）表达。实测三处不过线的小字：
+ * 脚卡「今日用量」3.17:1、脚卡「次调用 / 余额」3.53:1、脚卡「更新于」2.32:1，
+ * 面板里「近 30 天」3.87:1、「3.86B · 次调用」4.47:1。 */
+[data-dsh-plugin='usage'] span {
+  opacity: 1;
+}
+
+[data-dsh-plugin='usage'] [data-dsh-part='foot-card-main'] > span,
+[data-dsh-plugin='usage'] [data-dsh-part='foot-card-main'] > span > span,
+[data-dsh-plugin='usage'] [data-dsh-part='foot-card-usage'],
+[data-dsh-plugin='usage'] [data-dsh-part='foot-card-balances'],
+[data-dsh-plugin='usage'] [data-dsh-part='foot-card-toggle'] {
+  color: var(--bk-muted);
+}
+
+/* 数字那格是这块卡里最该被读到的一行，给正文墨。 */
+[data-dsh-plugin='usage'] [data-dsh-part='foot-card-main'] > span > span:last-child {
+  color: var(--bk-ink);
+}
+
+/* 面板里的每张卡也回到纸面；插件原本靠 currentColor 调出来的边换成冰蓝发丝线。 */
+[data-dsh-part='today-card'],
+[data-dsh-part='balance-card'],
+[data-dsh-part='trend-card'],
+[data-dsh-part='bank-card'],
+[data-dsh-part='plan-card'],
+[data-dsh-part='settings-row'] {
+  background-color: var(--bk-veil-card);
+  background-image: none;
+  color: var(--bk-ink);
+  border: 0;
+  border-radius: var(--bk-r-lg);
+  box-shadow: var(--bk-bleed), inset 0 0 0 1px var(--bk-line);
+}
+
+/* 标签条：底缘走收笔线；当前页的翡翠底线由第 3 节那条 role=tab 规则给。 */
+[data-dsh-part='tabs'] {
+  border-bottom: 0;
+  box-shadow: none;
+  background-image: var(--bk-stroke-faint);
+  background-repeat: no-repeat;
+  background-size: 100% 1px;
+  background-position: bottom;
+}
+
+/* 条形图的柱体：壳给的是很白的银白，上屏是全屏最亮的一块。改成 --bk-sky 到
+ * --bk-jade-lt 的渐变。柱体三层结构（跑道 / 柱体 / 模型子柱体）没有 data 钩子，
+ * 只能顺着 data-dsh-part=usage-chart 的结构走（下面注释里写的是实测结构）：
+ *   div.chartProvider 下依次是 span.chartHead, span.chartBar, span.chartModel 若干
+ *   span.chartBar 里是 span.chartFill
+ *   span.chartModel 的第二个 span 是 chartModelBar，里面是 chartModelFill */
+[data-dsh-part='usage-chart'] > div > span:nth-of-type(2),
+[data-dsh-part='usage-chart'] > div > span:nth-of-type(n + 3) > span:nth-of-type(2) {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: inset 0 0 0 1px var(--bk-line-faint);
+}
+
+[data-dsh-part='usage-chart'] > div > span:nth-of-type(2) > span,
+[data-dsh-part='usage-chart'] > div > span:nth-of-type(n + 3) > span:nth-of-type(2) > span {
+  background-color: transparent;
+  background-image: linear-gradient(90deg, var(--bk-sky) 0%, var(--bk-jade-lt) 100%);
+}
+
+/* ── 7 · 右上那排窗口图标 ──────────────────────────────────────────────────
+ * [data-dsh-surface='overlay'] 是整块浮层容器（实测 1680x1000，无底、无描边），
+ * 不能给它铺面；只把图标的悬停色转成翡翠。 */
+[data-dsh-surface='overlay'] button:hover,
+[data-dsh-surface='overlay'] [role='button']:hover {
+  color: var(--bk-jade);
+}
+
+/* ── 8 · 工作区行的悬停卡（壳的原语被 portal 到 body）─────────────────────
+ * 光标在工作区行上停 500ms 就出这张卡：它是壳自己的 ui-primitives/HoverCard，
+ * 由 createPortal 挂到 document.body 下，所以在 DOM 里它不属于侧栏那棵树。
+ * 壳给它一块深色底 rgb(44,44,46)，三行字是壳写死的浅色（#FFFFFF / #CFD3D6）——
+ * 深底浅字本身读得出来，但在一张水彩纸上它就是一块洞：整屏扫描里它是唯一一个
+ * 可见且 bgL<0.25 的面。
+ *
+ * 实测它身上**没有任何 data-* 钩子**（attrs 只有 class / role / tabindex /
+ * aria-label / style）。特别提醒：[data-dsh-skin-center] 挂在 body 上 —— 皮肤
+ * 中心拿它标记「这份文档归我调色」，对「是哪张卡」没有分辨力；这里只借它把
+ * portal 根钉死（浮层根都是 body 的**直接子元素**，所以那个 > 是真约束）。
+ * 定位因此走组件自己的 ARIA 契约：role=button + tabindex=0 + aria-label，
+ * 三者同时成立只有「可复制的悬停卡」这一种（HoverCard 只在有 copyText 时挂
+ * role/tabindex/aria-label）。绝不碰哈希类名。
+ *
+ * 浮在任意内容上，底给最厚的那一档纱。面与字必须一起改：那三行是壳写死的
+ * 浅色，只改面就会变成白字压纸（约 1.05:1）。 */
+[data-dsh-skin-center] > div[role='button'][tabindex='0'][aria-label] {
+  background-color: var(--bk-veil-menu);
+  background-image: none;
+  backdrop-filter: blur(18px) saturate(1.2);
+  color: var(--bk-ink);
+  border-radius: var(--bk-r-lg);
+  box-shadow: var(--bk-bleed), inset 0 0 0 1px var(--bk-line);
+}
+
+[data-dsh-skin-center] > div[role='button'][tabindex='0'][aria-label] div {
+  color: var(--bk-ink);
+}
+
+/* ══ 60-plugins · 插件自己的面 ═══════════════════════════════════════════════
+ * 任务看板（@linxin666/dsh-client-ui-task-board）与宠物（@linxin666/dsh-pet）。
+ * 这两个插件的配色是写死在插件自己 CSS 里的，不吃皮肤的 --bk-* —— 所以这里
+ * 要把它们拉回色板。
+ *
+ * 两处冲突色的实测出处（读的是插件源码，不是猜的）：
+ *   · 四个状态点写在插件自己的 board.module.css 里，走的是壳的语义令牌：
+ *       .statusDot[data-status='todo']    { background: var(--dsw-alias-state-business-primary) }
+ *       .statusDot[data-status='running'] { background: var(--dsw-alias-state-warn-primary) }
+ *       .statusDot[data-status='done']    { background: var(--dsw-alias-state-success-primary) }
+ *       .statusDot[data-status='failed']  { background: var(--dsw-alias-state-error-primary) }
+ *       .statusDot[data-status='backlog'] { background: var(--dsw-alias-label-tertiary) }
+ *     没有内联 style。所以要改的是令牌本身 —— 在插件根上重下这几支，状态点与
+ *     卡片状态角标一起回到色板。
+ *   · 「+ 新建任务」也走令牌：.primaryButton { background: var(--dsw-alias-button-primary-fill) }，
+ *     同样没有内联 style，所以同样在根上换掉填充与悬停两支。
+ *   · 宠物的气泡边与计数小键是写死的 rgba（偏紫蓝 rgba(126,152,255,...) 与
+ *     靛蓝渐变 rgba(74,104,245,...) → rgba(47,68,184,...)），只能靠元素选择器覆盖。
+ */
+
+/* ── 1 · 任务看板 ──────────────────────────────────────────────────────────
+ * 插件根同时出现在两处方言上：div[data-dsh-taskboard-board] 与
+ * div[data-dsh-taskboard-view]，两处都带 data-dsh-plugin=task-board，
+ * 所以按后者写一条就够。 */
+[data-dsh-plugin='task-board'] {
+  /* 状态色：琥珀 / 薄荷 / 粉红 / 靛蓝 / 三级灰 —— 全部拉回色板。
+   * 这五支同时喂着状态点、卡片左缘与状态角标，所以只改这一处就够。 */
+  --dsw-alias-state-warn-primary: var(--bk-warn);
+  --dsw-alias-state-success-primary: var(--bk-ok);
+  --dsw-alias-state-error-primary: var(--bk-bad);
+  --dsw-alias-state-business-primary: var(--bk-sky);
+  --dsw-alias-label-tertiary: var(--bk-muted);
+  /* 实心主操作：插件自己的实心靛蓝换成我们的品牌蔚蓝（同样实心，只是回到色板），
+   * 悬停走亮档。前景色是 label-primary-foreground，白字压在蔚蓝上 5.95:1。 */
+  --dsw-alias-button-primary-fill: var(--bk-sky);
+  --dsw-alias-button-primary-hover: var(--bk-sky-lt);
+  background-color: var(--bk-veil-card);
+  background-image: none;
+  color: var(--bk-ink);
+  /* 插件在 .board 上重下了 --dsw-font-family，把它拉回本皮的字体栈。 */
+  font-family: var(--bk-font);
+}
+
+/* 四列 kanban：插件自己的素面板回到纸面。纸边一律走 box-shadow，不用 border。 */
+[data-dsh-plugin='task-board'] section[data-dsh-part='column'] {
+  background-color: var(--bk-veil-card);
+  background-image: none;
+  color: var(--bk-ink);
+  border: 0;
+  border-radius: var(--bk-r-lg);
+  box-shadow: var(--bk-bleed), inset 0 0 0 1px var(--bk-line);
+}
+
+/* 四个（加待办是五个）状态点：显式再下一次，令牌被插件或宿主重定义也不会漏。
+ * 定位器取 span[data-status]，因为列本身是 section[data-dsh-part=column][data-status]，
+ * 两者都有 data-status —— 不区分就会把整列染上。 */
+[data-dsh-plugin='task-board'] [data-dsh-part='column'] span[data-status='backlog'] {
+  background-color: var(--bk-muted);
+}
+
+[data-dsh-plugin='task-board'] [data-dsh-part='column'] span[data-status='todo'] {
+  background-color: var(--bk-sky);
+}
+
+[data-dsh-plugin='task-board'] [data-dsh-part='column'] span[data-status='running'] {
+  background-color: var(--bk-warn);
+}
+
+[data-dsh-plugin='task-board'] [data-dsh-part='column'] span[data-status='done'] {
+  background-color: var(--bk-ok);
+}
+
+[data-dsh-plugin='task-board'] [data-dsh-part='column'] span[data-status='failed'] {
+  background-color: var(--bk-bad);
+}
+
+/* 看板上的任务卡：纸卡，比列再收一档半径。 */
+[data-dsh-plugin='task-board'] [data-dsh-part='card'] {
+  background-color: var(--bk-veil-card);
+  background-image: none;
+  color: var(--bk-ink);
+  border: 0;
+  border-radius: var(--bk-r-md);
+  box-shadow: var(--bk-bleed), inset 0 0 0 1px var(--bk-line);
+}
+
+/* ── 2 · 宠物 ──────────────────────────────────────────────────────────────
+ * 本体是 canvas，CSS 碰不到，这条认。能碰的是旁边那几枚按钮与气泡：
+ *   · 台词气泡是 button（PetSprite 里 <button class="bubble bubbleStatus
+ *     bubbleClickable">），进会话时的一只气泡，点它跳会话；
+ *   · 没有会话时改渲染 div[role=status] 的气泡，所以状态气泡也要一起收；
+ *   · 计数小键是 +N 角标（<button class="bubbleMore" aria-expanded=…>），
+ *     插件给它的是靛蓝渐变；用 aria-expanded 这个稳定属性单独点出来，
+ *     给它翡翠药丸的底与深档字。
+ * 骨头面板（.panel）与 gameplay HUD 上没有任何 data / role 钩子，够不着，
+ * 这一条留在回报里说明。 */
+[data-dsh-plugin='pet'] {
+  font-family: var(--bk-font);
+}
+
+[data-dsh-plugin='pet'] button,
+[data-dsh-plugin='pet'] [role='status'] {
+  background-color: var(--bk-veil-menu);
+  background-image: none;
+  border-color: var(--bk-line);
+  color: var(--bk-ink);
+  box-shadow: var(--bk-bleed);
+  backdrop-filter: blur(14px) saturate(1.1);
+}
+
+[data-dsh-plugin='pet'] button[aria-expanded] {
+  background-color: var(--bk-accent-bg);
+  background-image: none;
+  border-color: var(--bk-jade-soft);
+  color: var(--bk-jade-deep);
+}
+
+

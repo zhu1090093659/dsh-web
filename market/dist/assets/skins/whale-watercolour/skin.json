@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schemas.linxin666.org/dsh-skin/v2.json",
+  "skinManifestVersion": 2,
+  "id": "whale-watercolour",
+  "name": "鲸鱼娘 · 清透水彩",
+  "nameEn": "Whale Girl · Clear Watercolour",
+  "version": "1.0.2",
+  "author": "stushansusu",
+  "tagline": "清透天蓝 · 奶白水彩 · 白玫瑰与银坠 · 翡翠绿作眼",
+  "description": "清透水彩的一路：底图是一张日系水彩插画（**AI 生成素材** —— 由作者在本机 ComfyUI 上用开源图像模型产出，提示词与参考图由作者自撰自备；非转载、不含第三方素材。蓝发少女、发间缀满白色小花与白玫瑰、银色菱形吊坠珠链、翡翠绿的眼、水彩质感的蓝天白云与散落花瓣）。配色**不是另配的**，是从那张画里量出来的 —— 奶白 #FAF9F5 占画面 34.6%，最暗 0.2% 的均值是墨蓝 #0E2249，最饱和 2% 的均值是蔚蓝 #1E66A9，而眼睛实测的绿 #6F9C8F 被水彩洗淡了，取同色相压深成翡翠 #1E7F68 做状态色。语言是「**一张水彩纸，画从纸背透出来**」：面是半透明奶白薄纱，结构是两端淡出的冰蓝发丝线，翡翠只给状态，机关上只有一处实心 —— 发送键（新会话是纱底压一圈蔚蓝细线；发送键未启用时也退成线圈）。**浅色专用** —— 系统切暗色时界面保持这套清透浅色。",
+  "tags": [
+    "watercolour",
+    "anime",
+    "whale-girl",
+    "pale-blue",
+    "cream",
+    "emerald",
+    "roses",
+    "petals",
+    "soft",
+    "low-saturation",
+    "light",
+    "light-only",
+    "illustration-background"
+  ],
+  "accent": "#1B5D9A",
+  "order": 54,
+  "license": "CC BY-NC-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+  "attribution": "背景插画 assets/bk-bg.webp 为 AI 生成素材：由作者 stushansusu 在本机 ComfyUI 上用开源图像模型产出，提示词与参考图由作者自撰自备；非转载、不含第三方素材，仓内 WebP 是源图（2732x1534）的缩放重编码，没有调色、没有滤镜。画中角色「鲸鱼娘」是作者自有的角色线（与 whale-fantasy、rainy-night、shuimo-danqing 同一角色）；画面不含任何既有作品的角色、标志或商标，皮肤名与副题「清透水彩」与任何既有作品无关。皮肤工程（skin.css / patches.css、色板与量色流程、几何与水彩装饰语言）为作者原创。素材的版权与合规责任由作者承担；作者声明有权按 CC BY-NC-SA 4.0 分发本皮肤及其素材。",
+  "preview": {
+    "light": "preview/light.jpg",
+    "dark": "preview/dark.jpg"
+  },
+  "contributes": {
+    "stylesheet": "skin.css",
+    "patches": "patches.css",
+    "backgroundMedia": {
+      "light": {
+        "type": "image",
+        "src": "assets/bk-bg.webp",
+        "scrim": "linear-gradient(180deg, rgba(250,249,245,0.00) 0%, rgba(250,249,245,0.00) 74%, rgba(250,249,245,0.16) 92%, rgba(250,249,245,0.26) 100%)"
+      },
+      "dark": {
+        "type": "image",
+        "src": "assets/bk-bg.webp",
+        "scrim": "linear-gradient(180deg, rgba(250,249,245,0.00) 0%, rgba(250,249,245,0.00) 74%, rgba(250,249,245,0.16) 92%, rgba(250,249,245,0.26) 100%)"
+      }
+    }
+  }
+}

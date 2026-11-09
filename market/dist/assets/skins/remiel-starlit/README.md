@@ -27,6 +27,29 @@ then install this skin from the [Creative Workshop](https://dsh-market.com) into
 This skin is declarative only: it ships no `hooks.mjs`; the backdrop and the dialog
 square ride `contributes` and plain CSS.
 
+## Changes
+
+### 0.1.1
+
+- Read contrast fix, dark and light. The dark block no longer mirrors the
+  `--dsw-static-neutral-*` ramp: those tokens are a theme-independent absolute
+  palette in the official theme, and surfaces the shell paints from them (the
+  deliverables / plan / schedule / forge / changed-files cards take their plate
+  from `--dsw-static-neutral-850`) stayed dark-plate with a light label, which
+  rendered white text on a light plate. `--dsw-static-neutral-00` is kept white
+  because the shell uses it as a white overlay (icon plates, elevation glow, the
+  sidebar flash highlight).
+- Light surfaces are less transparent (`bg-base` 0.42 to 0.62, `sidebar-fill`
+  0.60 to 0.74, `layer-1..3`, bubble, input, selector) so tertiary and caption
+  text stays readable over the darker regions of the calm backdrop; those three
+  label tiers are correspondingly deeper.
+- `--dsw-alias-link` and `--dsw-alias-toast-label` are now declared. They were
+  never remapped, so links resolved to the official washed-out pink over this
+  skin's surfaces.
+
+Measured: the dark card plate against `label-primary` goes from 1.28:1 to
+11.07:1, and every surface/label/theme combination now clears WCAG AA 4.5:1.
+
 ## Preview
 
 Light ([preview/light.jpg](preview/light.jpg)) · Dark ([preview/dark.jpg](preview/dark.jpg))

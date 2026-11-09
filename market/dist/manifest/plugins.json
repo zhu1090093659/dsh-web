@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-08",
+  "generated": "2026-11-09",
   "items": [
     {
       "id": "dsh-quick-ask",
@@ -1368,6 +1368,32 @@
       "npm": "dsh-archived-chats",
       "category": "utility",
       "subcategory": "cleanup"
+    },
+    {
+      "id": "dsh-thanks-carl",
+      "name": "谢谢卡尔",
+      "rank": 108,
+      "nameEn": "Thanks, Carl",
+      "author": "gongfpp",
+      "description": "DSH Web 的任务完成彩蛋、可选常驻桌宠与本地喝水、吃饭、休息提醒。正常完成后按概率显示卡尔图片，失败、取消和中断不庆祝；默认概率 15%、冷却 30 分钟。不调用模型或系统通知，只在打开的页面工作，错过的提醒不补放。需要 HTTPS 或 localhost 及 Web Locks；代码 MIT，随包照片仅限随插件个人非商用。",
+      "descriptionEn": "Task-completion easter eggs, an optional resident pet, and local water, meal and break reminders for DSH Web. Shows Carl probabilistically after normal completion, never celebrating failures, cancellations or interruptions; defaults to 15% chance and a 30-minute cooldown. No model calls or system notifications; runs only in an open page, without replaying missed reminders. Requires HTTPS or localhost and Web Locks. Code is MIT; bundled photos are for personal, non-commercial use with this plugin only.",
+      "repo": "https://github.com/gongfpp/dsh-thanks-carl",
+      "npm": "dsh-thanks-carl",
+      "category": "utility",
+      "subcategory": "notify"
+    },
+    {
+      "id": "dsh-logo-golden",
+      "name": "dsh-logo-golden",
+      "rank": 109,
+      "nameEn": "dsh-logo-golden",
+      "author": "devzer0o0",
+      "description": "HDR 黄金 SSR 大肥鱼：把侧栏的鲸鱼、deepseek 字标与 HARNESS 铭牌重绘为抛光黄金材质，并有一道斜向金属光带每三秒完整掠过整个组合。光带按原始矢量生成的几何遮罩判定受光面，暗金笔画与铭牌底板都会反光，铭文与镂空保持不亮；画布走 rgba16float 扩展动态范围，光芯短时峰值瞄准 1600 nit。",
+      "descriptionEn": "HDR gold SSR whale lockup: redraws the sidebar whale, deepseek wordmark and HARNESS plate in polished gold, with a diagonal metal sweep that crosses the whole lockup every three seconds. A geometric mask built from the original vectors decides what is lit, so the dark end of the gold ramp and the plate reflect while the lettering and counters stay dark; the canvas runs rgba16float extended range with a 1600 nit short-time peak at the core.",
+      "repo": "https://github.com/devzer0o0/dsh-logo-golden",
+      "npm": "dsh-logo-golden",
+      "category": "ui",
+      "subcategory": "render"
     }
   ]
 }

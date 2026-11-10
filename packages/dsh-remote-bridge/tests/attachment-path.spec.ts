@@ -7,6 +7,38 @@ import { ATTACHMENT_WHITELIST_SESSIONS, DEEP_HISTORY_WINDOW } from '../src/core/
 import { MAX_FRAME_BYTES } from '../src/core/envelope.ts'
 import { answerOf, makeConnection, requestFrame, type ConnectionHarness } from './support/harness.ts'
 
+/** One durable tool result whose whole content is a JSON image reference. */
+function jsonImageResult(path: string, seq: number, bytes: number): unknown {
+  return record('tool/result', seq, {
+    turn: 2,
+    step: 1,
+    message: {
+      role: 'tool',
+      source: { kind: 'tool', callId: 'call_json' },
+      toolCallId: 'call_json',
+      content: [{
+        type: 'text',
+        text: JSON.stringify({ path, image: { attachmentId: 'sha256:0', mediaType: 'image/png', bytes, width: 660, height: 460, name: 'probe.png' } }, null, 2),
+      }],
+      isError: false,
+    },
+  })
+}
+
+/** One durable tool result whose JSON names a file and publishes no image. */
+function jsonTextResult(path: string, seq: number): unknown {
+  return record('tool/result', seq, {
+    turn: 1,
+    step: 2,
+    message: {
+      role: 'tool',
+      toolCallId: 'call_text',
+      content: [{ type: 'text', text: JSON.stringify({ path, lines: 4 }, null, 2) }],
+      isError: false,
+    },
+  })
+}
+
 /** The head a real PNG declares; every fixture starts with it. */
 const PNG_HEAD = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
@@ -373,6 +405,25 @@ describe('attachment path over protocol v1', () => {
     expect(refused.e?.code).toBe('path-not-in-session')
   })
 
+  it('serves an image a durable tool result published as a JSON reference', async () => {
+    // Given the shape this host persists for a run_code program that returned an image read
+    const file = join(root, 'probe.png')
+    await writeFile(file, png(127748))
+    const harness = attachmentHarness(storeOf([jsonImageResult(file, 34, 127748)], 34))
+    // When the client asks for the path that reference named
+    const answer = await ask(harness, 1, { sessionId: 's-1', path: file })
+    // Then it is served, as the reference alone
+    expect(answer.ok).toBe(true)
+    expect((answer.r as { image: unknown }).image).toEqual({ path: file })
+    // And a JSON result that names a file without publishing an image is still refused
+    const text = join(root, 'probe-text.png')
+    await writeFile(text, png(16))
+    const other = attachmentHarness(storeOf([jsonTextResult(text, 1)], 1))
+    const refused = await ask(other, 1, { sessionId: 's-1', path: text })
+    expect(refused.ok).toBe(false)
+    expect(refused.e?.code).toBe('path-not-in-session')
+  })
+
   it('never reads an assistant message as a whitelist source', async () => {
     // Given a session whose assistant message merely wrote a placeholder down
     const file = join(root, 'written-by-the-model.png')
@@ -480,6 +531,24 @@ describe('the whitelist one durable transcript states', () => {
       record('user/message', 3, { content: [{ type: 'text', text: envelope('/tmp/kept.png', 8) }] }),
     ])
     expect([...found.keys()]).toEqual(['/tmp/kept.png'])
+  })
+
+  it('reads the JSON image reference a durable tool result persisted', () => {
+    const found = attachmentPathsOf([jsonImageResult('/tmp/whale-accept/probe.png', 34, 127748)])
+    expect([...found.keys()]).toEqual(['/tmp/whale-accept/probe.png'])
+    expect(found.get('/tmp/whale-accept/probe.png')).toEqual({ path: '/tmp/whale-accept/probe.png' })
+  })
+
+  it('reads no path from a tool result whose JSON names a file but publishes no image', () => {
+    const found = attachmentPathsOf([jsonTextResult('/home/zcl/code/dsh-web/README.md', 1)])
+    expect(found.size).toBe(0)
+  })
+
+  it('reads no path from a text block that is not JSON at all', () => {
+    const found = attachmentPathsOf([
+      record('tool/result', 1, { message: { content: [{ type: 'text', text: 'path: /tmp/not-json.png' }] } }),
+    ])
+    expect(found.size).toBe(0)
   })
 
   it('keeps the reading that states more when one path is seen twice', () => {

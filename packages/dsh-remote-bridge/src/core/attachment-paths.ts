@@ -12,9 +12,11 @@
  *     followed by `<type>image</type>` — the envelope the harness writes when
  *     it keeps image bytes out of a durable message, and the one a phone already
  *     reads with `OffloadedImages.segments(of:)`;
- *   - the image reference of a durable tool result, `meta.path` — what
- *     `read_image` publishes through its `output.presentationMeta`, and
- *     what a client draws as `ToolBlock.image(ImageRef(path:))`.
+ *   - the image reference of a durable tool result — `meta.path`, what
+ *     `read_image` publishes through its `output.presentationMeta`, or a
+ *     text block that is itself a JSON image reference, which is how a
+ *     `run_code` program's own return value is persisted — and what a client
+ *     draws as `ToolBlock.image(ImageRef(path:))`.
  *
  * A path either source names is kept only when it is a host absolute path: the
  * request side admits nothing else, so a name that could never be asked for —
@@ -142,19 +144,59 @@ function envelopeFacts(body: string | undefined): Omit<AttachmentFacts, 'path'> 
 /**
  * The image reference one durable tool result states, or undefined.
  *
- * The result has to carry an image block of its own: `read` publishes a
- * `meta.path` too, so without that guard a session would whitelist every
- * file it ever read as text. What is read is the reference the tool published,
- * never the call's own argument — an argument is what the model asked for, not an
- * image the session has.
+ * Two readings, the first that hits wins:
+ *   - `meta.path`, what `read_image` publishes through its
+ *     `output.presentationMeta` — kept only when the same result carried the
+ *     image block it names, because `read` publishes a `meta.path` of its
+ *     own and a session must not whitelist every file it ever read as text;
+ *   - a text block that IS a JSON image reference,
+ *     `{path, image:{attachmentId, mediaType, bytes, width, height, name}}` —
+ *     the shape a `run_code` program's own return value is persisted as.
+ *
+ * The JSON reading keeps its gate: the parsed object has to carry an `image`
+ * object whose `mediaType` starts with `image/`. That gate is exactly what
+ * separates a result that published an image from one that merely named a file —
+ * measured over this host's whole store, 83 tool results carry a bare `path`
+ * in the same JSON shape against 10 image references — and a path a tool named is
+ * not an image this session offloaded.
+ *
+ * What is read is the reference the TOOL published, never the call's own argument
+ * and never prose a model wrote: an argument is what the model asked for, and a
+ * model's own words are not a record of anything.
  */
 function toolResultImagePath(data: unknown): string | undefined {
   if (!isRecord(data)) return undefined
   const content = isRecord(data.message) ? data.message.content : data.content
-  if (!Array.isArray(content) || !content.some(block => isRecord(block) && block.type === 'image')) return undefined
-  const meta = data.meta
+  return publishedImagePath(data.meta, content) ?? jsonImageReference(content)
+}
+
+/** `meta.path`, but only when the same result carried the image block it names. */
+function publishedImagePath(meta: unknown, content: unknown): string | undefined {
   const path = isRecord(meta) ? meta.path : undefined
-  return typeof path === 'string' && path !== '' ? path : undefined
+  if (typeof path !== 'string' || path === '') return undefined
+  if (!Array.isArray(content) || !content.some(block => isRecord(block) && block.type === 'image')) return undefined
+  return path
+}
+
+/** The path one text block states as a JSON image reference, or undefined. */
+function jsonImageReference(content: unknown): string | undefined {
+  if (!Array.isArray(content)) return undefined
+  for (const block of content) {
+    if (!isRecord(block) || block.type !== 'text' || typeof block.text !== 'string') continue
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(block.text)
+    } catch {
+      continue
+    }
+    if (!isRecord(parsed)) continue
+    const path = parsed.path
+    const image = parsed.image
+    if (typeof path !== 'string' || path === '') continue
+    if (!isRecord(image) || typeof image.mediaType !== 'string' || !image.mediaType.startsWith('image/')) continue
+    return path
+  }
+  return undefined
 }
 
 /**

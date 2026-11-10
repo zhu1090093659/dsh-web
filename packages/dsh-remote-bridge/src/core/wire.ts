@@ -89,6 +89,15 @@ export function subagentAddress(parentSessionId: string, childSessionId: string)
 export const CODE_SUBAGENT_ADDRESS_REQUIRED = 'session/agent-busy'
 
 /**
+ * The failure the harness raises when a session address names a session this host
+ * does not have. `session/page` answers it, `session/projections` answers
+ * `null` for the same fact, and a caller that needs one name for "no such
+ * session" folds both into its own code rather than letting one fact cross as two
+ * different failures.
+ */
+export const CODE_HOST_SESSION_NOT_FOUND = 'session/not-found'
+
+/**
  * One endpoint's declared argument names: the name of its single parameter, the
  * empty declaration of a parameterless endpoint, or the exact names of an
  * endpoint that takes several.

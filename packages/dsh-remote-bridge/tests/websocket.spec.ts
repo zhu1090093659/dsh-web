@@ -307,7 +307,7 @@ describe('WebSocket carrier over a real socket', () => {
       t: 'res',
       id: 1,
       ok: true,
-      r: { proto: 1, minor: 21, server: 'dsh-remote-bridge', capabilities: ['session.snapshot.trim.v1', 'session.snapshot.page.v1', 'questions.v1', 'questions.list.v1', 'subagent.thread.v1', 'jobs.v1', 'agents.v1', 'delta.v1', 'session.list.omit-archived.v1', 'session.deep-history.v1', 'frame.deflate.v1', 'session.list.compact.v1', 'session.snapshot.since.v1', 'session.fork.v1', 'commands.v1', 'workspace.v1', 'session.admin.v1', 'squads.v1', 'push.v1', 'usage.v1', 'usage.stats.v1', 'ui.v1', 'ui.list.v1'], resume: 'snapshot', auth: 'unpaired' },
+      r: { proto: 1, minor: 22, server: 'dsh-remote-bridge', capabilities: ['session.snapshot.trim.v1', 'session.snapshot.page.v1', 'questions.v1', 'questions.list.v1', 'subagent.thread.v1', 'jobs.v1', 'agents.v1', 'delta.v1', 'session.list.omit-archived.v1', 'session.deep-history.v1', 'frame.deflate.v1', 'session.list.compact.v1', 'session.snapshot.since.v1', 'session.fork.v1', 'commands.v1', 'workspace.v1', 'session.admin.v1', 'squads.v1', 'push.v1', 'usage.v1', 'usage.stats.v1', 'ui.v1', 'ui.list.v1', 'session.attachment.path.v1'], resume: 'snapshot', auth: 'unpaired' },
     })
   })
 
@@ -322,7 +322,7 @@ describe('WebSocket carrier over a real socket', () => {
     await settle()
     // Then the leftover bytes were parsed, not discarded
     const answers = serverFrames(pair.serverBytes()).map(frame => JSON.parse(frame.payload.toString('utf8')) as { id: number; ok: boolean })
-    expect(answers).toEqual([{ t: 'res', id: 2, ok: true, r: { proto: 1, minor: 21, server: 'dsh-remote-bridge', capabilities: ['session.snapshot.trim.v1', 'session.snapshot.page.v1', 'questions.v1', 'questions.list.v1', 'subagent.thread.v1', 'jobs.v1', 'agents.v1', 'delta.v1', 'session.list.omit-archived.v1', 'session.deep-history.v1', 'frame.deflate.v1', 'session.list.compact.v1', 'session.snapshot.since.v1', 'session.fork.v1', 'commands.v1', 'workspace.v1', 'session.admin.v1', 'squads.v1', 'push.v1', 'usage.v1', 'usage.stats.v1', 'ui.v1', 'ui.list.v1'], resume: 'snapshot', auth: 'unpaired' } }])
+    expect(answers).toEqual([{ t: 'res', id: 2, ok: true, r: { proto: 1, minor: 22, server: 'dsh-remote-bridge', capabilities: ['session.snapshot.trim.v1', 'session.snapshot.page.v1', 'questions.v1', 'questions.list.v1', 'subagent.thread.v1', 'jobs.v1', 'agents.v1', 'delta.v1', 'session.list.omit-archived.v1', 'session.deep-history.v1', 'frame.deflate.v1', 'session.list.compact.v1', 'session.snapshot.since.v1', 'session.fork.v1', 'commands.v1', 'workspace.v1', 'session.admin.v1', 'squads.v1', 'push.v1', 'usage.v1', 'usage.stats.v1', 'ui.v1', 'ui.list.v1', 'session.attachment.path.v1'], resume: 'snapshot', auth: 'unpaired' } }])
   })
 
   it('user declaring the capability receives the listing as one binary frame whose inflate is the text answer', async () => {
@@ -392,7 +392,7 @@ describe('WebSocket carrier over a real socket', () => {
     // Then the frame that arrived first is delivered instead of being dropped
     const answers = serverFrames(pair.serverBytes()).map(frame => JSON.parse(frame.payload.toString('utf8')) as unknown)
     expect(answers).toEqual([
-      { t: 'res', id: 3, ok: true, r: { proto: 1, minor: 21, server: 'dsh-remote-bridge', capabilities: ['session.snapshot.trim.v1', 'session.snapshot.page.v1', 'questions.v1', 'questions.list.v1', 'subagent.thread.v1', 'jobs.v1', 'agents.v1', 'delta.v1', 'session.list.omit-archived.v1', 'session.deep-history.v1', 'frame.deflate.v1', 'session.list.compact.v1', 'session.snapshot.since.v1', 'session.fork.v1', 'commands.v1', 'workspace.v1', 'session.admin.v1', 'squads.v1', 'push.v1', 'usage.v1', 'usage.stats.v1', 'ui.v1', 'ui.list.v1'], resume: 'snapshot', auth: 'unpaired' } },
+      { t: 'res', id: 3, ok: true, r: { proto: 1, minor: 22, server: 'dsh-remote-bridge', capabilities: ['session.snapshot.trim.v1', 'session.snapshot.page.v1', 'questions.v1', 'questions.list.v1', 'subagent.thread.v1', 'jobs.v1', 'agents.v1', 'delta.v1', 'session.list.omit-archived.v1', 'session.deep-history.v1', 'frame.deflate.v1', 'session.list.compact.v1', 'session.snapshot.since.v1', 'session.fork.v1', 'commands.v1', 'workspace.v1', 'session.admin.v1', 'squads.v1', 'push.v1', 'usage.v1', 'usage.stats.v1', 'ui.v1', 'ui.list.v1', 'session.attachment.path.v1'], resume: 'snapshot', auth: 'unpaired' } },
     ])
   })
 })

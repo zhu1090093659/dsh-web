@@ -99,7 +99,7 @@ describe('session metadata over protocol v1', () => {
     await harness.connection.handleText(requestFrame(17, 'hello', { proto: 1 }))
     // Then the announcement names the fact and the minor version that carries it
     const hello = answerOf(harness, 17).r as { minor: number; capabilities: string[] }
-    expect(hello.minor).toBe(21)
+    expect(hello.minor).toBe(22)
     expect(hello.capabilities).toContain('session.list.omit-archived.v1')
   })
 

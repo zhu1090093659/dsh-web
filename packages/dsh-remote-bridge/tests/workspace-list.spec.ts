@@ -214,7 +214,7 @@ describe('workspace.v1', () => {
     await harness.connection.handleText(requestFrame(1, 'hello', { proto: 1, client: 'ios/0.1' }))
     // Then the announcement carries both new names and the minor that raises them
     const hello = answerOf(harness, 1).r as { minor: number; capabilities: string[] }
-    expect(hello.minor).toBe(21)
+    expect(hello.minor).toBe(22)
     expect(hello.capabilities).toEqual([...SERVED_CAPABILITIES])
     expect(hello.capabilities).toContain(CAP_WORKSPACE)
     expect(hello.capabilities).toContain(CAP_SESSION_ADMIN)

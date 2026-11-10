@@ -881,6 +881,6 @@ describe('protocol v1 composer parity: method set', () => {
     // ui.list), the effort preference one (session.setEffort), and the second
     // meeting point one (relay.grant, which only a host configured with that
     // meeting point serves); none renamed or removed one.
-    expect(KNOWN_METHODS.size).toBe(43)
+    expect(KNOWN_METHODS.size).toBe(44)
   })
 })

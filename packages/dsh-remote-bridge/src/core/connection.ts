@@ -16,6 +16,8 @@
  * @module dsh-remote-bridge/core/connection
  */
 
+import { isAbsolute } from 'node:path'
+import { attachmentPathsOf, oldestSeqOf, readAttachment, type AttachmentFacts } from './attachment-paths.ts'
 import type { ApprovalRegistry } from './approvals.ts'
 import { commandItems, commandsUnavailable } from './commands.ts'
 import type { DeviceRoster, PushEnvironment, PushLiveActivityToken, PushRegistration } from './devices.ts'
@@ -66,6 +68,7 @@ import {
   CODE_QUESTION_LIST_UNAVAILABLE,
   CODE_SESSION_NOT_FOLLOWABLE,
   CODE_SNAPSHOT_TOO_LARGE,
+  CODE_PATH_NOT_IN_SESSION,
   CODE_SNAPSHOT_UNAVAILABLE,
   CODE_SQUADS_UNAVAILABLE,
   CODE_TOKEN_INVALID,
@@ -85,6 +88,7 @@ import {
   METHOD_QUESTION_LIST,
   METHOD_SESSION_ARCHIVE,
   METHOD_SESSION_ATTACHMENT,
+  METHOD_SESSION_ATTACHMENT_PATH,
   METHOD_SESSION_COMMAND,
   METHOD_SESSION_COMMANDS,
   METHOD_SESSION_CREATE,
@@ -132,7 +136,7 @@ import { TITLES_MAX_IDS, type SessionMeta } from './session-meta.ts'
 import type { SessionPermissions } from './session-permissions.ts'
 import { USAGE_METHODS, type UsageService } from './usage.ts'
 import type { BridgeGateway, GatewayPeer } from './wire.ts'
-import { CODE_SUBAGENT_ADDRESS_REQUIRED, sessionAddress, subagentAddress, wireArgs, type SessionAddress } from './wire.ts'
+import { CODE_HOST_SESSION_NOT_FOUND, CODE_SUBAGENT_ADDRESS_REQUIRED, sessionAddress, subagentAddress, wireArgs, type SessionAddress } from './wire.ts'
 import { CLOSE_LIVENESS_TIMEOUT } from './ws-frames.ts'
 
 /** Protocol-level heartbeat period: a frame is sent after this long without one. */
@@ -168,6 +172,15 @@ export const DEEP_HISTORY_WINDOW = {
   maxMessages: 500,
   turnWindow: { minMessages: 50, minTurns: 2 },
 } as const
+
+/**
+ * Highest number of sessions one connection keeps a computed whitelist for.
+ *
+ * Bounded because a long-lived connection must not grow with every session its
+ * client opens: four is a phone's own working set of session screens, and the
+ * least recently used one goes first.
+ */
+export const ATTACHMENT_WHITELIST_SESSIONS = 4
 /** Highest number of prompt receipts one connection remembers for idempotency. */
 export const PROMPT_RECEIPT_LIMIT = 512
 /** Largest base64 text one prompt attachment may carry: 6 MiB (protocol §10.2). */
@@ -397,6 +410,12 @@ interface CallFailure {
 }
 
 type DispatchOutcome = { readonly ok: true; readonly r: unknown } | CallFailure
+
+/** One session's computed whitelist, valid for exactly the durable watermark it was read at. */
+interface AttachmentWhitelist {
+  readonly asOfSeq: number
+  readonly facts: ReadonlyMap<string, AttachmentFacts>
+}
 
 /**
  * One snapshot baseline answer, typed rather than opaque so the incremental
@@ -788,6 +807,27 @@ export class BridgeConnection {
   readonly #receipts = new Set<string>()
   readonly #toolCalls = new ToolCallIndex()
   readonly #messages = new MessageIndex()
+
+  /**
+   * The whitelists this connection has already computed, keyed by session id and
+   * ordered least recently used first.
+   *
+   * This is not the cache `session.attachment` refuses to keep, and it does not
+   * weaken that rule: that one is about image BYTES — an image can be offloaded
+   * after the fact, so every read of a file goes to the disk it is on. This is a
+   * set of PATHS, keyed by the durable watermark that would invalidate it, so a
+   * request arriving under the same `asOfSeq` can only be answered the same
+   * set. Nothing stale can be served, and an offload that moves the watermark
+   * moves the key with it.
+   *
+   * What it buys is the walk. A cold read of the longest session this host holds
+   * (measured: 5,680 entries, 6.0 MiB compressed) inflates in 40.8 ms and
+   * inflates plus parses in 108 ms, and the walk pays that once per page — two
+   * pages at {@link DEEP_HISTORY_WINDOW}. A phone scrolling a screen of tool
+   * cards asks several times with no event in between, so without this it would
+   * pay the inflate once per card.
+   */
+  readonly #attachmentWhitelists = new Map<string, AttachmentWhitelist>()
   #capabilities: ReadonlySet<string> = new Set()
   /** Delegated children this connection has learned the durable parent of, by child id. */
   readonly #lineage = new Map<string, string>()
@@ -1095,6 +1135,7 @@ export class BridgeConnection {
       case METHOD_SESSION_PROMPT: return await this.#sessionPrompt(frame.p)
       case METHOD_SESSION_INTERRUPT: return await this.#sessionInterrupt(frame.p)
       case METHOD_SESSION_ATTACHMENT: return await this.#sessionAttachment(frame.p, frame.id)
+      case METHOD_SESSION_ATTACHMENT_PATH: return await this.#sessionAttachmentPath(frame.p, frame.id)
       case METHOD_SESSION_PERMISSIONS: return this.#sessionPermissions(frame.p)
       case METHOD_SESSION_SET_PERMISSION: return this.#sessionSetPermission(frame.p)
       case METHOD_SESSION_MODELS: return await this.#sessionModels(frame.p)
@@ -1827,6 +1868,123 @@ export class BridgeConnection {
       return refusal(FRAME_TOO_LARGE, `attachment ${attachmentId} needs ${bytes} bytes, past the ${MAX_FRAME_BYTES} byte frame`)
     }
     return { ok: true, r: call.value }
+  }
+
+  /**
+   * Answer `session.attachment.path`: the bytes of one image a session already
+   * offloaded, addressed by the absolute path that session's own transcript names.
+   *
+   * The whitelist is the whole authorization and it lives in
+   * `core/attachment-paths.ts`: this method serves a path only when the named
+   * session's own durable store named it, and the store is read here on every call,
+   * for the reason `session.attachment` keeps no cache either — an image can be
+   * offloaded after the fact.
+   *
+   * The store is the one `session.history.deep` walks, so this read passes the
+   * same fence: a delegated child whose parent this connection may not read is
+   * refused before any store call. A session this host does not have answers
+   * `unknown-session`: the harness's own name for that fact is
+   * `session/not-found` on the store and a `null` projections answer, and
+   * both are folded into this method's own code here rather than crossing as two
+   * different failures.
+   *
+   * The budget is measured on the ENCODED answer, exactly as `session.attachment`
+   * measures its own: a frame that cannot cross is reported as `frame-too-large`
+   * rather than truncated into half an image.
+   * @param payload - `{sessionId, path}`.
+   * @param id - the request id the frame budget is measured against.
+   */
+  async #sessionAttachmentPath(payload: Readonly<Record<string, unknown>>, id: number): Promise<DispatchOutcome> {
+    const sessionId = stringArg(payload, 'sessionId')
+    const path = stringArg(payload, 'path')
+    if (sessionId === undefined || path === undefined) {
+      return refusal(CODE_INVALID_ARGS, 'session.attachment.path requires sessionId and path')
+    }
+    if (!isAbsolute(path)) {
+      return refusal(CODE_INVALID_ARGS, `session.attachment.path requires an absolute path, got ${path}`)
+    }
+    const whitelist = await this.#sessionAttachmentPaths(sessionId)
+    if (!whitelist.ok) return whitelist
+    const facts = whitelist.facts.get(path)
+    if (facts === undefined) {
+      return refusal(CODE_PATH_NOT_IN_SESSION, `${path} is not an image session ${sessionId} offloaded`)
+    }
+    const read = await readAttachment(facts)
+    if (!read.ok) return refusal(read.code, read.msg)
+    const answer = { image: read.image, data: read.data }
+    if (Buffer.byteLength(JSON.stringify(responseFrame(id, answer)), 'utf8') > MAX_FRAME_BYTES) {
+      return refusal(FRAME_TOO_LARGE, `${path} needs more than one ${MAX_FRAME_BYTES} byte frame once encoded`)
+    }
+    return { ok: true, r: answer }
+  }
+
+  /**
+   * The images one session's own durable store names.
+   *
+   * The store is paged backwards to its oldest entry, exactly as
+   * `session.history.deep` pages it: a whitelist cut at one page would forget an
+   * image the session offloaded a month ago. Each page is folded into the map and
+   * dropped, so a long session costs memory in proportion to the images it named
+   * rather than to its whole log.
+   * @param sessionId - the session whose transcript is read; no path of this read
+   *   ever comes from the client.
+   * @returns the whitelist keyed by path, or the refusal the read produced.
+   */
+  async #sessionAttachmentPaths(
+    sessionId: string,
+  ): Promise<{ readonly ok: true; readonly facts: ReadonlyMap<string, AttachmentFacts> } | CallFailure> {
+    const unfollowable = await this.#unfollowable(sessionId)
+    if (unfollowable !== undefined) return refusal(CODE_SESSION_NOT_FOLLOWABLE, unfollowable)
+    const projections = await this.#unary('session', 'projections', { sessionId })
+    if (!projections.ok) return projections
+    const cut = isRecord(projections.value) ? projections.value.asOfSeq : undefined
+    if (typeof cut !== 'number' || !Number.isSafeInteger(cut) || cut < -1) {
+      // A null projections answer is the harness's own "no such session" on that
+      // endpoint; anything else is a session that exists and reports no cut.
+      return projections.value === null
+        ? refusal(CODE_UNKNOWN_SESSION, `session ${sessionId} does not exist on this host`)
+        : refusal(CODE_SNAPSHOT_UNAVAILABLE, `session ${sessionId} reported no durable cut to read its images from`)
+    }
+    const remembered = this.#attachmentWhitelists.get(sessionId)
+    if (remembered !== undefined && remembered.asOfSeq === cut) {
+      this.#rememberAttachmentWhitelist(sessionId, cut, remembered.facts)
+      return { ok: true, facts: remembered.facts }
+    }
+    const facts = new Map<string, AttachmentFacts>()
+    let before: number | undefined
+    for (;;) {
+      const store = await this.#storePageOf(sessionId, cut, before)
+      if (!store.ok) {
+        return store.code === CODE_HOST_SESSION_NOT_FOUND
+          ? refusal(CODE_UNKNOWN_SESSION, `session ${sessionId} does not exist on this host`)
+          : store
+      }
+      for (const [named, entry] of attachmentPathsOf(store.records)) facts.set(named, entry)
+      const oldest = oldestSeqOf(store.records)
+      // A page that does not move the watermark is the store's last word: stop
+      // rather than ask for the same page again.
+      if (!store.hasMore || oldest === undefined || (before !== undefined && oldest >= before)) break
+      before = oldest
+    }
+    this.#rememberAttachmentWhitelist(sessionId, cut, facts)
+    return { ok: true, facts }
+  }
+
+  /**
+   * Keep one session's whitelist, evicting the least recently used one past the
+   * bound.
+   *
+   * A hit moves its session to the back, so what is evicted is the entry no
+   * request has needed for longest rather than the one that arrived first.
+   */
+  #rememberAttachmentWhitelist(sessionId: string, asOfSeq: number, facts: ReadonlyMap<string, AttachmentFacts>): void {
+    this.#attachmentWhitelists.delete(sessionId)
+    this.#attachmentWhitelists.set(sessionId, { asOfSeq, facts })
+    while (this.#attachmentWhitelists.size > ATTACHMENT_WHITELIST_SESSIONS) {
+      const oldest = this.#attachmentWhitelists.keys().next().value
+      if (oldest === undefined) break
+      this.#attachmentWhitelists.delete(oldest)
+    }
   }
 
   /** Answer `session.permissions` out of the host's own preset service. */

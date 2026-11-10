@@ -106,7 +106,7 @@ describe('usage channel over protocol v1', () => {
     expect(hello.capabilities).toEqual([...SERVED_CAPABILITIES])
     expect(hello.capabilities).toContain(CAP_USAGE)
     expect(hello.minor).toBe(MINOR)
-    expect(MINOR).toBe(21)
+    expect(MINOR).toBe(22)
   })
 
   it('user that declared no capability is told neither usage method exists and every other method still answers', async () => {

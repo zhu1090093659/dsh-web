@@ -14,6 +14,7 @@ export const METHOD_SESSION_HISTORY_DEEP = 'session.history.deep'
 export const METHOD_SESSION_PROMPT = 'session.prompt'
 export const METHOD_SESSION_INTERRUPT = 'session.interrupt'
 export const METHOD_SESSION_ATTACHMENT = 'session.attachment'
+export const METHOD_SESSION_ATTACHMENT_PATH = 'session.attachment.path'
 export const METHOD_SESSION_PERMISSIONS = 'session.permissions'
 export const METHOD_SESSION_SET_PERMISSION = 'session.setPermission'
 export const METHOD_SESSION_MODELS = 'session.models'
@@ -289,6 +290,19 @@ export const CAP_UI = 'ui.v1'
  * `ui.request` 说 `settled` 时结束），而不是按一次它信不过的应答清卡。
  */
 export const CAP_UI_LIST = 'ui.list.v1'
+/**
+ * Capability a client declares in `hello`'s `cap` array to be told that this
+ * bridge can hand it the bytes of an image a session already offloaded.
+ *
+ * An announcement and nothing more, the same shape as
+ * {@link CAP_SESSION_DEEP_HISTORY}: `session.attachment.path` is open to every
+ * paired connection, because it is a pure read of one session's own durable
+ * transcript that costs no other client anything. Declaring the capability is how
+ * a client learns the method exists, and a client that does not declare it loses
+ * only that knowledge — it never sees a frame from this channel, because it never
+ * asks for one.
+ */
+export const CAP_SESSION_ATTACHMENT_PATH = 'session.attachment.path.v1'
 
 /**
  * 宿主配了第二会合点时，在 `hello` 的 `capabilities` 里公告的能力名。
@@ -476,6 +490,7 @@ export const KNOWN_METHODS: ReadonlySet<string> = new Set([
   METHOD_SESSION_PROMPT,
   METHOD_SESSION_INTERRUPT,
   METHOD_SESSION_ATTACHMENT,
+  METHOD_SESSION_ATTACHMENT_PATH,
   METHOD_SESSION_PERMISSIONS,
   METHOD_SESSION_SET_PERMISSION,
   METHOD_SESSION_MODELS,
@@ -565,6 +580,23 @@ export const CODE_UI_LIST_UNAVAILABLE = 'ui-list-unavailable'
  * an unaddressable one, rather than reading it blind.
  */
 export const CODE_SESSION_NOT_FOLLOWABLE = 'session-not-followable'
+/**
+ * 该路径不在这次会话自己的持久 transcript 里：白名单只有两处来源，客户端自选的路径
+ * 一律不在其中。`realpath()` 解析结果不再等于该字符串时也回这一码——那个路径已经
+ * 指向别处，就不再是这次会话点过的那个文件。
+ */
+export const CODE_PATH_NOT_IN_SESSION = 'path-not-in-session'
+/**
+ * 白名单里有这个路径，但它已经不是一个常规文件：文件被删了，或被换成了目录、设备或
+ * fifo。它与 {@link CODE_PATH_NOT_IN_SESSION} 是两个答案——「这次会话没点过它」与
+ * 「点过的那个文件不在了」。
+ */
+export const CODE_ATTACHMENT_NOT_FOUND = 'not-found'
+/**
+ * 文件确实在，但它的文件头魔数不是 png/jpeg/webp/gif 四种之一。扩展名不作数：`.png`
+ * 里装的不是 PNG 就回这一码，而一个叫 `.txt` 的 PNG 照常服务。
+ */
+export const CODE_NOT_AN_IMAGE = 'not-an-image'
 export const CODE_SNAPSHOT_UNAVAILABLE = 'snapshot-unavailable'
 /**
  * This host composes no job registry, so it has no background jobs to publish.
@@ -606,6 +638,13 @@ export const PROTO = 1
 /**
  * Minor version this package speaks.
  *
+ * 22 当按路径取图落地（与协议 §18 的 `session.history.deep` 同例的一条读通道）：
+ * 新增 {@link CAP_SESSION_ATTACHMENT_PATH} 一个能力名与
+ * {@link METHOD_SESSION_ATTACHMENT_PATH} 一个方法，客户端因此从线路上读到一种新的
+ * 应答体，所以 minor 抬一格。这个方法对每一条已配对连接都开放，能力名只公告：它决定
+ * 的是客户端要不要露出取图能力，不决定桥放不放行，理由与 {@link CAP_SESSION_DEEP_HISTORY}
+ * 逐字相同。`proto` 仍为 1，没有任何既有帧、既有方法或既有键改形状；不声明这个
+ * 名字的客户端一帧都不发，两边互不知情时线路逐字节不变。
  * 21 当可交互回复（协议 §35）落地：新增 {@link CAP_UI} 与 {@link CAP_UI_LIST}
  * 两个能力名、{@link TOPIC_UI_REQUEST} 一个主题、{@link METHOD_UI_EVENT} 与
  * {@link METHOD_UI_LIST} 两个方法，宿主半区还多一个模型工具 `ui_present`。客户端
@@ -717,7 +756,7 @@ export const PROTO = 1
  * declares the capability that plugin requires. No addition changed the major
  * version, a frozen field, or an existing method or topic name.
  */
-export const MINOR = 21
+export const MINOR = 22
 
 /**
  * The capabilities this bridge itself serves, and the opening half of what
@@ -763,6 +802,7 @@ export const SERVED_CAPABILITIES: readonly string[] = [
   CAP_USAGE_STATS,
   CAP_UI,
   CAP_UI_LIST,
+  CAP_SESSION_ATTACHMENT_PATH,
 ]
 /** `server` field of the hello response. */
 export const SERVER_ID = 'dsh-remote-bridge'

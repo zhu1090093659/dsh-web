@@ -254,7 +254,7 @@ describe('the squads channel as one capability', () => {
     // When it greets the bridge
     const hello = answerOf(harness, 1).r as { minor: number; capabilities: string[] }
     // Then the announcement names the capability beside the minor that carries it
-    expect(hello.minor).toBe(21)
+    expect(hello.minor).toBe(22)
     expect(hello.capabilities).toContain(CAP_SQUADS)
     // And greeting alone asked the domain for nothing
     expect(harness.gateway.invocations).toEqual([])

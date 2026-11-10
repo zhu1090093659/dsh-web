@@ -103,7 +103,7 @@ describe('interactive reply bridge', () => {
     const hello = answerOf(harness, 1).r as { minor: number; capabilities: string[] }
     expect(hello.minor).toBe(MINOR)
     // hello 的应答里新增两项能力名（§35.1）：既有项位置不动，两个新名字追加在末尾。
-    expect(hello.capabilities.slice(-2)).toEqual(['ui.v1', 'ui.list.v1'])
+    expect(hello.capabilities.slice(-3)).toEqual(['ui.v1', 'ui.list.v1', 'session.attachment.path.v1'])
   })
 
   it('operator of a phone that declared ui.v1 is handed the whole page and the card stays held', async () => {

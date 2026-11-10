@@ -176,7 +176,7 @@ describe('jobs.v1 capability gating', () => {
     await harness.connection.handleText(requestFrame(1, 'hello', { proto: 1, cap: [] }))
     // Then the announcement carries the new capability and the raised minor
     const hello = harness.transport.responseTo(1)?.r as { minor: number; capabilities: string[] } | undefined
-    expect(hello).toMatchObject({ proto: 1, minor: 21 })
+    expect(hello).toMatchObject({ proto: 1, minor: 22 })
     expect(hello?.capabilities).toContain('jobs.v1')
   })
 

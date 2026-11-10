@@ -155,7 +155,7 @@ describe('session.fork.v1', () => {
     // Then the announcement carries the minor and lists this channel; a channel that
     // shipped after it appends behind it, so its position is not what is asserted
     const hello = answerOf(harness, 1).r as { minor: number; capabilities: string[] }
-    expect(hello.minor).toBe(21)
+    expect(hello.minor).toBe(22)
     expect(hello.capabilities).toEqual([...SERVED_CAPABILITIES])
     expect(hello.capabilities).toContain(CAP_SESSION_FORK)
   })

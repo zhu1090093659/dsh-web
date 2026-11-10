@@ -258,7 +258,7 @@ describe('commands.v1', () => {
     await harness.connection.handleText(requestFrame(1, 'hello', { proto: 1, client: 'ios/0.1' }))
     // Then the announcement carries the capability this channel added and the minor it raised
     const hello = answerOf(harness, 1).r as { minor: number; capabilities: string[] }
-    expect(hello.minor).toBe(21)
+    expect(hello.minor).toBe(22)
     expect(hello.capabilities).toEqual([...SERVED_CAPABILITIES])
     expect(hello.capabilities).toContain(CAP_COMMANDS)
   })

@@ -134,7 +134,7 @@ describe('the agent channel as one capability', () => {
     await harness.connection.handleText(requestFrame(1, 'hello', { proto: 1 }))
     // Then the announcement names the capability and the minor version beside it
     const hello = answerOf(harness, 1).r as { minor: number; capabilities: string[] }
-    expect(hello.minor).toBe(21)
+    expect(hello.minor).toBe(22)
     expect(hello.capabilities).toContain(CAP_AGENTS)
     // And greeting alone asked the host for nothing
     expect(harness.gateway.invocations).toEqual([])

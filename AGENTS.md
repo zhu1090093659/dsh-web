@@ -65,6 +65,7 @@ CI changes follow the [CI optimization checklist](.agents/notes/implemented/proc
 ## Development Workflow
 
 - For implementation and maintenance tasks, load [dsh-web-agent-coding](.agents/skills/dsh-web-agent-coding/SKILL.md) and the focused skill it selects.
+- Browser or GUI verification uses the browser tools the session mounts; Playwright is the fallback when none are mounted (or the check needs scripted repetition the tools lack) and stays the committed mount gate `pnpm test:mount`. Procedure: [dsh-web-web-qa](.agents/skills/dsh-web-web-qa/SKILL.md).
 - [Agent Note rules](.agents/notes/README.md) own decision-record requirements; the coding skill owns context use, delegation, failure recovery, navigation, and task-specific validation.
 - Before modifying existing subsystems or architectures, search `.agents/notes/implemented/` for the Owning Note to review past constraints and rejected alternatives. Updating the note that already owns a decision satisfies the rule; create a new note only when no note owns it. Keep implemented notes current with shipped reality in the present tense (One home per fact).
 - Agent 的代码改动涉及 Wallpaper Engine / 渲染器域时，通知负责该域的协作者 Aa728848（EDDYCRAZY-CC）；该域的代码（`src/client/wallpaper.ts`、`src/we-player-source.ts` 及其测试）已随皮肤中心迁至 [dsh-skins](https://github.com/zhu1090093659/dsh-skins)，域归属见 [CONTRIBUTING.md](CONTRIBUTING.md)。

@@ -17,6 +17,13 @@ Use the real DSH Web GUI and the profile that loads the affected bundle. This sk
 4. When the verification needs its own host, point `DSH_HOME` at a scratch directory (`DSH_HOME=/tmp/dsh-verify-<topic>` with a free `--port`). A private home gives the probe its own profiles, sessions, settings, skins and task-board ledger, so it cannot deny the user's host the ledger lock or overwrite their state. A different port alone isolates nothing.
 5. Run every helper that writes to a current directory somewhere disposable (`cd "$(mktemp -d)"`), never in the checkout, and name absolute paths in any delete. Archive extraction in particular writes the member under its own basename, which can overwrite a repository file at the tool's default working directory.
 
+## Drive the browser
+
+- Prefer the browser tools this session already exposes. When `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_screenshot`, `browser_console` and their siblings are mounted, they drive and capture the whole verification: they act on the GUI at its real URL, in the profile the user is using, with that profile's settings, skins and sessions under test.
+- Playwright is the reproducible lane, not a way to look at the GUI. `playwright.config.ts`, `tests/e2e/mount.e2e.ts` and `scripts/e2e-mount.sh` are one committed gate (`pnpm test:mount`): they pack the aggregate, install it into a scratch profile, boot their own host and assert DOM markers headlessly. Run an ad-hoc Playwright script in their place and the evidence describes a second browser and a render the user is not looking at.
+- Fall back to Playwright only when the session mounts no browser tool, when the check is that committed lane, or when the behavior needs scripted repetition the tools do not offer. State in the reported evidence which of the two drove the check.
+- Leave the user's surface as found. Work in the tabs the tools create, close temporary browser task spaces when the verification ends, and never restart the host or stand up a replacement server to get a page worth looking at (Prepare step 2).
+
 ## Exercise the user-visible behavior
 
 - Use the application route and workflow a user actually reaches, not only an isolated component mount.

@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CompositionError,
   applyPresetOverrides,
+  parsePagedToolPatterns,
   readCompositionRows,
   readPresetDefinition,
   readPresetMetadata,
@@ -46,6 +47,13 @@ function configOf(row: CompositionRow): Record<string, unknown> {
   return row.config as Record<string, unknown>
 }
 
+/**
+ * The rows the one `pagedToolPatterns` value must reach: the catalog installs
+ * the registry restriction, the activation tool replays the log against it, and
+ * working-context renders the resulting active set.
+ */
+const PAGING_ROWS = ['tool-catalog', 'tool-activate', 'working-context']
+
 describe('readCompositionRows', () => {
   it('operator reads every row of the shipped composition once', () => {
     // Given the shipped composition, When the operator reads it for the preset
@@ -74,7 +82,7 @@ describe('readCompositionRows', () => {
     expect(catalog['presentation']).toBe('ptc')
     expect(catalog['descriptionMaxLength']).toBe(200)
     expect(catalog['maxResidentTokens']).toBe(8000)
-    expect(catalog['pagedToolPatterns']).toEqual(['mcp__*'])
+    expect(catalog['pagedToolPatterns']).toEqual(['mcp__*', 'browser_*', 'task_board_*', 'team_*', 'squad*', 'ui_*', 'ssh_*'])
   })
 
   it('operator reads the shipped dispatcher switch ON on the minimal-prompt row', () => {
@@ -301,6 +309,49 @@ describe('applyPresetOverrides', () => {
     const parsed = readCompositionRows('- id: other\n  name: ./other.mjs\n  config:\n    presentation: native\n', presetDir)
     const applied = applyPresetOverrides(parsed, { presentation: 'ptc' })
     expect(applied).toEqual(parsed)
+  })
+})
+
+describe('pagedToolPatterns override', () => {
+  it('operator writes the parsed family text as an array into every row that pages from it', () => {
+    // Given the shipped composition and a settings text naming two families
+    // When the overlay is applied
+    // Then all three paging rows carry the same parsed array, so the catalog,
+    // the activation tool and the working context cannot disagree about it
+    const applied = applyPresetOverrides(rows(), { pagedToolPatterns: ' mcp__* , ssh_*,, ' })
+    for (const id of PAGING_ROWS) {
+      expect(configOf(rowOf(applied, id))['pagedToolPatterns'], id).toEqual(['mcp__*', 'ssh_*'])
+    }
+    // Each row holds its own array: one shared instance would let a later
+    // mutation of one row's list reach the other two.
+    const lists = PAGING_ROWS.map(id => configOf(rowOf(applied, id))['pagedToolPatterns'])
+    expect(new Set(lists).size, 'one array per row').toBe(PAGING_ROWS.length)
+    // The row the value arrived with keeps its own keys.
+    expect(configOf(rowOf(applied, 'tool-catalog'))['presentation']).toBe('ptc')
+  })
+
+  it('operator inherits the shipped list for blank text', () => {
+    // Given a settings text of whitespace alone
+    // When the overlay is applied
+    // Then no paging row moves: each keeps exactly the shipped configuration
+    const applied = applyPresetOverrides(rows(), { pagedToolPatterns: '  ' })
+    for (const id of PAGING_ROWS) {
+      expect(rowOf(applied, id), id).toEqual(rowOf(rows(), id))
+    }
+  })
+
+  it('operator inherits the shipped list when any entry is malformed', () => {
+    // Given a settings text carrying one malformed entry
+    // When the overlay is applied
+    // Then nothing is parsed and every paging row keeps the shipped list, so a
+    // typo cannot split the three readers apart
+    for (const text of ['mcp__', 'a*b*', 'mcp**', 'good*, bad', '*', 'mcp__*, *']) {
+      expect(parsePagedToolPatterns(text), text).toBeUndefined()
+      const applied = applyPresetOverrides(rows(), { pagedToolPatterns: text })
+      for (const id of PAGING_ROWS) {
+        expect(rowOf(applied, id), `${id}: ${text}`).toEqual(rowOf(rows(), id))
+      }
+    }
   })
 })
 

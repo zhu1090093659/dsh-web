@@ -14,6 +14,7 @@ import {
   renderSignature,
   toolSummary,
 } from '../presets/liangshen/tool-catalog.mjs'
+import { DEFAULT_PAGED_TOOL_PATTERNS } from '../presets/liangshen/paging.mjs'
 
 type Listener = (first: any, second: any, third: any) => Promise<any>
 
@@ -129,6 +130,21 @@ const MCP_TOOLS = [
   { name: 'mcp__github__create_issue', description: 'Create a GitHub issue.', parameters: { type: 'object', properties: {} } },
   { name: 'mcp__github__list_prs', description: 'List pull requests.', parameters: { type: 'object', properties: {} } },
   { name: 'mcp__codegraph__explore', description: 'Explore the code graph.', parameters: { type: 'object', properties: {} } },
+]
+
+/**
+ * The paged plugin families the shipped patterns add beside the MCP bridge:
+ * each is claimed by a literal prefix, and `squads_create` / `squad_member_add`
+ * share the one `squad*` pattern.
+ */
+const PLUGIN_TOOLS = [
+  { name: 'browser_navigate', description: 'Open a page.', parameters: { type: 'object', properties: {} } },
+  { name: 'task_board_list', description: 'List task board cards.', parameters: { type: 'object', properties: {} } },
+  { name: 'team_comment', description: 'Comment on a team issue.', parameters: { type: 'object', properties: {} } },
+  { name: 'squads_create', description: 'Create a squad.', parameters: { type: 'object', properties: {} } },
+  { name: 'squad_member_add', description: 'Add a squad member.', parameters: { type: 'object', properties: {} } },
+  { name: 'ui_present', description: 'Present a page to the client.', parameters: { type: 'object', properties: {} } },
+  { name: 'ssh_exec', description: 'Run a command on a host.', parameters: { type: 'object', properties: {} } },
 ]
 
 /**
@@ -379,6 +395,7 @@ describe('liangshen-tool-catalog', () => {
     expect(() => register({ pagedToolPatterns: 'mcp__*' })).toThrow(/pagedToolPatterns must be an array/)
     expect(() => register({ pagedToolPatterns: ['mcp__*', ''] })).toThrow(/pagedToolPatterns entries must be non-empty/)
     expect(() => register({ pagedToolPatterns: ['mcp__*__*'] })).toThrow(/prefix patterns ending in one trailing/)
+    expect(() => register({ pagedToolPatterns: ['*'] })).toThrow(/prefix patterns ending in one trailing/)
     expect(() => register({ maxActiveNamespaces: 0 })).toThrow(/maxActiveNamespaces must be an integer >= 1/)
   })
 
@@ -554,6 +571,44 @@ describe('liangshen-tool-catalog', () => {
     const agent = agentOf(errored, undefined, harness)
     await assemble(harness, agent)
     expect(harness.withheld(agent).sort()).toEqual(MCP_TOOLS.map(tool => tool.name).sort())
+  })
+
+  test('operator sees paged plugin families off the wire and in the catalog summary', async () => {
+    // Given a scope whose rows mount plugin tool families beside the host builtins
+    // When the shipped patterns page it
+    // Then the restriction withholds exactly the plugin tools, the builtins stay
+    //      resident, and the catalog summarizes each family under its own name
+    const harness = register({ presentation: 'native' }, { surface: [...WIRE, ...PLUGIN_TOOLS] })
+    const agent = agentOf([], undefined, harness)
+    await assemble(harness, agent)
+    expect(harness.withheld(agent).sort()).toEqual(PLUGIN_TOOLS.map(tool => tool.name).sort())
+    const text = catalogText((await preStep(harness, agent)).messages)
+    expect(text).toContain('<inactive_namespaces>')
+    // Both squad spellings land under the one namespace.
+    expect(text).toContain('- `squad` (2 tools, e.g. `squad_member_add`): Add a squad member. Call `tool_activate({ namespace: "squad" })`')
+    expect(text).toContain('- `task_board` (1 tool, e.g. `task_board_list`): List task board cards. Call `tool_activate({ namespace: "task_board" })`')
+    expect(text).not.toContain('- `task_board_list')
+    expect(text).toContain('- `bash({ command: string, timeoutMs?: number })`')
+  })
+
+  test('operator gets an activated plugin family back on the wire, rebuilt from the event stream', async () => {
+    // Given a durable log that already carries one plugin-family activation
+    // When the next request assembles
+    // Then only that family comes back, and it renders under its namespace heading
+    const harness = register({ presentation: 'native' }, { surface: [...WIRE, ...PLUGIN_TOOLS] })
+    const agent = agentOf(activationEvents('squad', 'c1'), undefined, harness)
+    await assemble(harness, agent)
+    expect(harness.withheld(agent).sort()).toEqual([
+      'browser_navigate', 'ssh_exec', 'task_board_list', 'team_comment', 'ui_present',
+    ])
+    const text = catalogText((await preStep(harness, agent)).messages)
+    expect(text).toContain('- namespace `squad` (activated):')
+    // An object schema with no declared properties renders as the open record,
+    // so the family heading is asserted on the rendered line.
+    expect(text).toContain('  - `squads_create(Record<string, JsonValue>)`: Create a squad.')
+    expect(text).toContain('  - `squad_member_add(Record<string, JsonValue>)`: Add a squad member.')
+    expect(text).not.toContain('Call `tool_activate({ namespace: "squad" })`')
+    expect(text).toContain('Call `tool_activate({ namespace: "task_board" })`')
   })
 
   test("a 'ptc' scope with no restriction API still lists every tool it can reach", async () => {
@@ -948,6 +1003,32 @@ describe('liangshen-tool-catalog', () => {
     // Without patterns nothing is grouped, so the plain list is unchanged.
     expect(catalogEntries([{ name: 'mcp__github__x', description: 'X.' }], 200)
       .find((entry: any) => entry.name === 'mcp__github__x')?.namespace).toBeUndefined()
+  })
+
+  test('operator gets a plugin family named by its pattern head, not by its tool names', () => {
+    // Given the shipped patterns and a surface carrying plugin families
+    // When the entries are built
+    // Then each plugin tool carries its family name, both squad spellings share
+    //      one namespace, and the host builtin carries none
+    const entries = catalogEntries([
+      { name: 'bash', description: 'Shell.' },
+      { name: 'task_board_list', description: 'List cards.' },
+      { name: 'squads_create', description: 'Create a squad.' },
+      { name: 'squad_member_add', description: 'Add a member.' },
+      { name: 'browser_navigate', description: 'Open a page.' },
+      { name: 'ui_present', description: 'Present a page.' },
+      { name: 'ssh_exec', description: 'Run a command.' },
+      { name: 'team_comment', description: 'Comment.' },
+    ], 200, { patterns: DEFAULT_PAGED_TOOL_PATTERNS })
+    const namespaceOfEntry = (toolName: string) => entries.find((entry: any) => entry.name === toolName)?.namespace
+    expect(namespaceOfEntry('bash')).toBeUndefined()
+    expect(namespaceOfEntry('task_board_list')).toBe('task_board')
+    expect(namespaceOfEntry('squads_create')).toBe('squad')
+    expect(namespaceOfEntry('squad_member_add')).toBe('squad')
+    expect(namespaceOfEntry('browser_navigate')).toBe('browser')
+    expect(namespaceOfEntry('ui_present')).toBe('ui')
+    expect(namespaceOfEntry('ssh_exec')).toBe('ssh')
+    expect(namespaceOfEntry('team_comment')).toBe('team')
   })
 
   test('estimates the resident surface and how it maps onto the ceiling', () => {

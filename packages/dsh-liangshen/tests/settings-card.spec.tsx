@@ -16,6 +16,7 @@ import {
   PRESENTATION_CHOICES,
   LiangShenSettingsCard,
   LiangShenSettingsCardController,
+  pagedToolPatternsField,
   type LiangShenSettingsCardProps,
   type LiangShenSettingsCardState,
   type LiangShenSettings,
@@ -41,6 +42,7 @@ function baseState(overrides: Partial<LiangShenSettingsCardState> = {}): LiangSh
     announceToAgent: field,
     presentation: field,
     dispatcher: field,
+    pagedToolPatterns: field,
     ...overrides,
   }
 }
@@ -93,6 +95,7 @@ describe('LiangShenSettingsCard', () => {
       'settings-liangshen-announce',
       'settings-liangshen-presentation',
       'settings-liangshen-dispatcher',
+      'settings-liangshen-paged-tool-patterns',
     ]) {
       expect(document.getElementById(id), id).not.toBeNull()
     }
@@ -205,6 +208,28 @@ describe('LiangShenSettingsCard', () => {
     const field = document.getElementById('settings-liangshen-dispatcher')!.parentElement!
     fireEvent.click(Array.from(field.querySelectorAll('button')).find((button) => button.textContent === 'settings.reset')!)
     expect(resetField).toHaveBeenCalledWith('dispatcher')
+  })
+
+  it('operator can edit the on-demand tool families from the card', () => {
+    // Given the card rendered with the field inheriting, When the operator
+    // types a family list, Then the card stages that exact text.
+    const { edit } = renderCard(baseState())
+    fireEvent.change(document.getElementById('settings-liangshen-paged-tool-patterns')!, { target: { value: 'mcp__*, ssh_*' } })
+    expect(edit).toHaveBeenCalledWith('pagedToolPatterns', 'mcp__*, ssh_*')
+  })
+
+  it('operator holds a malformed family draft unwritten and clears a blank one', () => {
+    // Given the field spec the card binds, When drafts are parsed, Then a
+    // malformed entry writes nothing, blank inherits, and a good list is stored.
+    const spec = pagedToolPatternsField('pagedToolPatterns')
+    expect(spec.parse('mcp__*, ssh*')).toEqual({ kind: 'set', value: 'mcp__*, ssh*' })
+    expect(spec.parse('mcp__')).toBeUndefined()
+    expect(spec.parse('*')).toBeUndefined()
+    expect(spec.parse('mcp__*, *')).toBeUndefined()
+    expect(spec.parse('mcp_*_x*')).toBeUndefined()
+    expect(spec.parse('mcp**')).toBeUndefined()
+    expect(spec.parse('ok*, bad')).toBeUndefined()
+    expect(spec.parse('  ')).toEqual({ kind: 'clear' })
   })
 
   it('keeps the exported choice lists aligned with the Host schema', () => {

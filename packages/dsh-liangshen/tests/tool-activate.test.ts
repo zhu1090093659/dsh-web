@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   DEFAULT_MAX_ACTIVE_NAMESPACES,
+  DEFAULT_PAGED_TOOL_PATTERNS,
   namespaceOf,
   partitionWireTools,
   patternNamespace,
@@ -53,6 +54,26 @@ function dispatch(namespace: string, subCallId: string, isError = false) {
   }]
 }
 
+/**
+ * One ordinary tool call dispatched from inside a program, the way ptc records
+ * it: under the default presentation a top-level `tool/call` is always
+ * `run_code`, so this is the only shape a real tool call takes.
+ */
+function toolDispatch(toolName: string, subCallId: string, isError = false) {
+  return [{
+    type: 'tool/ptc-dispatch',
+    data: {
+      rootCallId: 'call_root',
+      parentCallId: 'call_root',
+      subCallId,
+      name: toolName,
+      arguments: {},
+      isError,
+      content: [{ type: 'text', text: isError ? 'boom' : 'ok' }],
+    },
+  }]
+}
+
 describe('paging helpers', () => {
   it('operator gets namespaces derived from prefix patterns', () => {
     // Given a wire name and the patterns a profile declares
@@ -67,16 +88,69 @@ describe('paging helpers', () => {
     expect(namespaceOf('read', ['mcp__*'])).toBeUndefined()
   })
 
+  it('operator gets a plugin family named by the pattern head, not by the tool name', () => {
+    // Given the shipped plugin patterns and the tool names they claim
+    // When each name is resolved against its own pattern
+    // Then the family is the pattern's head with one trailing "_" dropped, so one
+    //      plugin's whole family shares one namespace
+    expect(patternNamespace('task_board_create', 'task_board_*')).toBe('task_board')
+    expect(patternNamespace('task_board_list', 'task_board_*')).toBe('task_board')
+    expect(patternNamespace('browser_navigate', 'browser_*')).toBe('browser')
+    expect(patternNamespace('team_comment', 'team_*')).toBe('team')
+    expect(patternNamespace('ui_present', 'ui_*')).toBe('ui')
+    expect(patternNamespace('ssh_exec', 'ssh_*')).toBe('ssh')
+    // "squad*" carries no separator of its own, so it covers both spellings.
+    expect(patternNamespace('squads_create', 'squad*')).toBe('squad')
+    expect(patternNamespace('squad_member_add', 'squad*')).toBe('squad')
+    // The MCP derivation is untouched: a "__"-headed pattern still reads the
+    // server segment out of the tool name.
+    expect(patternNamespace('mcp__github__create_issue', 'mcp__*')).toBe('github')
+    // A name the head does not claim, one that leaves no family name at all, and
+    // a bare head with no remainder all stay resident.
+    expect(patternNamespace('bash', 'browser_*')).toBeUndefined()
+    expect(patternNamespace('_x', '_*')).toBeUndefined()
+    expect(patternNamespace('browser_', 'browser_*')).toBeUndefined()
+  })
+
+  it('operator gets the shipped default list: the MCP bridge plus the plugin families', () => {
+    // Given no pagedToolPatterns in the config
+    // When the default is resolved
+    // Then it names the MCP bridge and the six plugin families this preset mounts
+    expect(DEFAULT_PAGED_TOOL_PATTERNS)
+      .toEqual(['mcp__*', 'browser_*', 'task_board_*', 'team_*', 'squad*', 'ui_*', 'ssh_*'])
+    expect(validatePagedToolPatterns('p', undefined)).toBe(DEFAULT_PAGED_TOOL_PATTERNS)
+  })
+
+  it('operator keeps every host builtin resident under the shipped patterns', () => {
+    // Given the shipped patterns and the host builtins the preset mounts
+    // When each builtin is resolved against the whole pattern chain
+    // Then none is claimed: paging only ever reaches plugin tool families
+    const builtins = [
+      'bash', 'pwsh', 'read', 'read_image', 'write', 'edit', 'str_replace_editor',
+      'glob', 'grep', 'job_output', 'job_list', 'job_kill', 'skill',
+      'ask_user_question', 'todo_write', 'web_search', 'subagent', 'subagent_fork',
+      'list_subagent_models', 'send_message', 'list_agents', 'interrupt_agent', 'ralph',
+      'exit_plan_mode', 'create_goal', 'get_goal', 'update_goal', 'fact_register',
+      'tool_activate', 'run_code', 'list_mcp_resources', 'list_mcp_resource_templates',
+      'read_mcp_resource',
+    ]
+    for (const builtin of builtins) expect(namespaceOf(builtin, DEFAULT_PAGED_TOOL_PATTERNS)).toBeUndefined()
+  })
+
   it('operator gets the declared pattern config validated', () => {
     // Given an absent config and the configs a profile could declare
     // When the config is validated
     // Then the default fills in, a valid list passes through, and each malformed entry throws its own reason
-    expect(validatePagedToolPatterns('p', undefined)).toEqual(['mcp__*'])
+    expect(validatePagedToolPatterns('p', undefined)).toEqual(DEFAULT_PAGED_TOOL_PATTERNS)
     expect(validatePagedToolPatterns('p', ['foo_*'])).toEqual(['foo_*'])
     expect(() => validatePagedToolPatterns('p', 'mcp__*' as never)).toThrow(/must be an array/)
     expect(() => validatePagedToolPatterns('p', [''])).toThrow(/non-empty/)
     expect(() => validatePagedToolPatterns('p', ['mcp__'])).toThrow(/trailing/)
     expect(() => validatePagedToolPatterns('p', ['m*p__*'])).toThrow(/trailing/)
+    // A head-less "*" is refused instead of accepted and inert: the family is
+    // read from the pattern's head, so a bare wildcard would page nothing.
+    expect(() => validatePagedToolPatterns('p', ['*'])).toThrow(/trailing/)
+    expect(() => validatePagedToolPatterns('p', [' *'])).toThrow(/trailing/)
   })
 
   it('operator gets the wire partitioned into resident tools and inactive namespaces', () => {
@@ -99,6 +173,26 @@ describe('paging helpers', () => {
     expect([...activated.inactive.keys()]).toEqual(['codegraph'])
   })
 
+  it('operator gets one plugin family paged under a single namespace, however its tools are spelled', () => {
+    // Given a wire carrying both squad spellings beside another plugin family and a builtin
+    // When the wire is partitioned with nothing activated, then with squad activated
+    // Then both spellings page under the one "squad" namespace and the builtin never moves
+    const wire = [
+      { name: 'bash' },
+      { name: 'squads_create' },
+      { name: 'squad_member_add' },
+      { name: 'task_board_list' },
+    ]
+    const { resident, inactive } = partitionWireTools(wire, DEFAULT_PAGED_TOOL_PATTERNS, new Set())
+    expect(resident.map((tool: any) => tool.name)).toEqual(['bash'])
+    expect([...inactive.keys()]).toEqual(['squad', 'task_board'])
+    expect(inactive.get('squad')?.map((tool: any) => tool.name)).toEqual(['squads_create', 'squad_member_add'])
+
+    const activated = partitionWireTools(wire, DEFAULT_PAGED_TOOL_PATTERNS, new Set(['squad']))
+    expect(activated.resident.map((tool: any) => tool.name)).toEqual(['bash', 'squads_create', 'squad_member_add'])
+    expect([...activated.inactive.keys()]).toEqual(['task_board'])
+  })
+
   it('replays activations from the event stream, oldest-first, with LRU eviction', () => {
     const events = [
       ...activation('github', 'c1'),
@@ -110,6 +204,70 @@ describe('paging helpers', () => {
     const { active, evicted } = replayActivations(events, DEFAULT_MAX_ACTIVE_NAMESPACES, ['mcp__*'])
     expect(active).toEqual(['codegraph', 'ssh', 'docker'])
     expect(evicted).toEqual(['github'])
+  })
+
+  it('operator sees the least recently used plugin family evicted exactly as an MCP server is', () => {
+    // Given four plugin families activated in order through the shipped patterns
+    // When the log is replayed at the shipped capacity
+    // Then the oldest family is evicted and the newest three stay active
+    const events = [
+      ...activation('task_board', 'c1'),
+      ...activation('squad', 'c2'),
+      ...activation('browser', 'c3'),
+      ...activation('ssh', 'c4'),
+    ]
+    const { active, evicted } = replayActivations(events, DEFAULT_MAX_ACTIVE_NAMESPACES, DEFAULT_PAGED_TOOL_PATTERNS)
+    expect(active).toEqual(['squad', 'browser', 'ssh'])
+    expect(evicted).toEqual(['task_board'])
+  })
+
+  it('operator keeps a plugin family fresh when one of its tools is called, whatever the suffix', () => {
+    // Given three active families and a call into one of the oldest family's tools
+    // When the log is replayed and a fourth family is activated
+    // Then the used family survives and the family that was not touched is evicted
+    const events = [
+      ...activation('task_board', 'c1'),
+      ...activation('squad', 'c2'),
+      ...activation('browser', 'c3'),
+      ...call('c4', 'task_board_update', {}),
+      ...activation('ssh', 'c5'),
+    ]
+    const { active, evicted } = replayActivations(events, DEFAULT_MAX_ACTIVE_NAMESPACES, DEFAULT_PAGED_TOOL_PATTERNS)
+    expect(active).toEqual(['browser', 'task_board', 'ssh'])
+    expect(evicted).toEqual(['squad'])
+  })
+
+  it('operator keeps a plugin family fresh when its tools are called from inside a program', () => {
+    // Given three active families and a use of the OLDEST one through a ptc dispatch
+    // When the log is replayed and a fourth family is activated
+    // Then the used family survives and the untouched one is evicted, so the LRU
+    //      is not activation order
+    const events = [
+      ...activation('task_board', 'c1'),
+      ...activation('squad', 'c2'),
+      ...activation('browser', 'c3'),
+      ...toolDispatch('task_board_list', 'call_root:ptc:1'),
+      ...activation('ssh', 'c4'),
+    ]
+    const { active, evicted } = replayActivations(events, DEFAULT_MAX_ACTIVE_NAMESPACES, DEFAULT_PAGED_TOOL_PATTERNS)
+    expect(active).toEqual(['browser', 'task_board', 'ssh'])
+    expect(evicted).toEqual(['squad'])
+  })
+
+  it('operator gets no recency from a tool dispatch that reported an error', () => {
+    // Given three active families and a FAILED use of the oldest one
+    // When the log is replayed and a fourth family is activated
+    // Then the failed call refreshed nothing and the oldest family is evicted
+    const events = [
+      ...activation('task_board', 'c1'),
+      ...activation('squad', 'c2'),
+      ...activation('browser', 'c3'),
+      ...toolDispatch('task_board_list', 'call_root:ptc:1', true),
+      ...activation('ssh', 'c4'),
+    ]
+    const { active, evicted } = replayActivations(events, DEFAULT_MAX_ACTIVE_NAMESPACES, DEFAULT_PAGED_TOOL_PATTERNS)
+    expect(active).toEqual(['squad', 'browser', 'ssh'])
+    expect(evicted).toEqual(['task_board'])
   })
 
   it('refreshes recency on re-activation and on use of an active namespace', () => {
@@ -176,12 +334,21 @@ describe('liangshen-tool-activate', () => {
     { name: 'mcp__codegraph__explore', description: 'Explore.' },
   ]
 
-  function makeCtx(events: unknown[] = [], selfCallId = 'self-1') {
+  /** One scope whose paged families are plugin tools rather than MCP servers. */
+  const PLUGIN_SCHEMAS = [
+    { name: 'bash', description: 'shell' },
+    { name: 'squads_create', description: 'Create a squad.' },
+    { name: 'squad_member_add', description: 'Add a member.' },
+    { name: 'browser_navigate', description: 'Open a page.' },
+    { name: 'task_board_list', description: 'List cards.' },
+  ]
+
+  function makeCtx(events: unknown[] = [], selfCallId = 'self-1', schemas: unknown[] = SCHEMAS) {
     const registered: Array<Record<string, unknown>> = []
     const ctx = {
       tools: {
         register: (spec: Record<string, unknown>) => { registered.push(spec) },
-        schemas: () => SCHEMAS,
+        schemas: () => schemas,
       },
       get: () => undefined,
     } as never
@@ -227,6 +394,23 @@ describe('liangshen-tool-activate', () => {
     expect(schema.required).toEqual(['namespace'])
     expect(Object.keys(schema.properties)).toEqual(['namespace'])
     expect(schema.additionalProperties).toBe(false)
+    // The parameter NAME is frozen: old sessions' tool/call events replay
+    // through it. The description names both derivation shapes, so the model
+    // can reach an MCP server and a plugin family the same way.
+    const namespace = schema.properties.namespace as { description: string }
+    expect(namespace.description).toContain('mcp__codegraph__*')
+    expect(namespace.description).toContain('task_board_*')
+  })
+
+  it('operator activates a plugin family and gets every tool behind it named', async () => {
+    // Given a scope whose paged families are plugin tools
+    // When the squad family is activated
+    // Then both squad spellings are named back, and the other families stay paged
+    const m = makeCtx([], 'self-1', PLUGIN_SCHEMAS)
+    apply(m.ctx, {})
+    const result = await executeOf(m, 'squad')
+    expect(result.text).toContain('Activated namespace "squad" (2 tools): squad_member_add, squads_create.')
+    await expect(executeOf(m, 'docker')).rejects.toThrow(/unknown paged namespace "docker".*"browser", "squad", "task_board"/)
   })
 
   it('activates an inactive paged namespace and names its tools', async () => {

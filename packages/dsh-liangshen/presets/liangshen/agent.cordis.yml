@@ -18,11 +18,27 @@
 # true -> 'ptc' and false -> 'native') but only warn once.
 #
 # Gentle tool paging keeps high-fan-out families out of reach until needed:
-# tools matching `pagedToolPatterns` (default `mcp__*`) stay paged out, the
-# durable tool-catalog message summarizes their namespaces with an activation
-# pointer, and the preset's own `tool_activate` tool (the tool-activate row)
-# loads one namespace back — at most three stay active, LRU eviction pages the
-# oldest back out. The activation state replays from the durable session event
+# tools matching `pagedToolPatterns` — by default the MCP bridge plus the plugin
+# families `browser_*`, `task_board_*`, `team_*`, `squad*`, `ui_*` and
+# `ssh_*` — stay paged out, the durable tool-catalog message summarizes their
+# namespaces with an activation pointer, and the preset's own `tool_activate`
+# tool (the tool-activate row) loads one namespace back — at most three stay
+# active, LRU eviction pages the oldest back out. The pattern's own head decides
+# the family: a head ending in `__` is an MCP bridge and takes the first `__`
+# segment of the tool name (`mcp__codegraph__x` -> `codegraph`), any other head
+# names the family literally with one trailing `_` dropped (`task_board_*` ->
+# `task_board`), so `squad*` covers `squads_*` and `squad_member_*` alike.
+# Every host builtin the rows below mount stays resident: no shipped pattern
+# names one, so the shell, filesystem, job, skill, delegation, plan, goal and web
+# tools never page.
+# The pattern list is ONE fact shared by THREE rows: `tool-catalog` installs the
+# registry restriction, `tool-activate` replays the log to answer it, and
+# `working-context` renders the resulting active set. All three therefore carry
+# the same shipped list and the settings overlay rewrites all three together: a
+# row left on its own default would disagree about what is active, and the
+# activation tool would refuse to re-activate a namespace the registry had
+# already withheld.
+# The activation state replays from the durable session event
 # stream on every assembly, so resume and compaction rebuild it without process
 # memory. Paging is enforced twice, because the wire is not the only surface a
 # tool can be reached through: the assembled tool list loses the paged families,
@@ -140,8 +156,11 @@
 # the assembled roster alone. The shipped default is a static-context choice,
 # not a measured win: the official scaffold comparison ranks this presentation
 # below the native surface on both code-agent benchmarks, and the bundled
-# benchmark matrix is how that trade would be settled locally. `pagedToolPatterns` (default `['mcp__*']`) names the
-# high-fan-out families that stay paged out of the wire until activated; the
+# benchmark matrix is how that trade would be settled locally.
+# `pagedToolPatterns` names the high-fan-out families that stay paged out of the
+# wire until activated: the MCP bridge plus the plugin families `browser_*`,
+# `task_board_*`, `team_*`, `squad*`, `ui_*` and `ssh_*`. Every host builtin
+# the rows below mount stays resident, because no shipped pattern names one; the
 # active set replays from the session event stream, so resume and compaction
 # rebuild it. `maxResidentTokens` (default 6000, calibrated above the shipped
 # roster so the guard flags real growth rather than the factory configuration)
@@ -182,7 +201,7 @@
   config:
     descriptionMaxLength: 200
     presentation: 'ptc'
-    pagedToolPatterns: ['mcp__*']
+    pagedToolPatterns: ['mcp__*', 'browser_*', 'task_board_*', 'team_*', 'squad*', 'ui_*', 'ssh_*']
     maxResidentTokens: 8000
 
 # ── the wire ────────────────────────────────────────────────────────────────
@@ -204,14 +223,26 @@
 # the settings overlay rewrites the SAME key, so the settings switch and the
 # composition never disagree.
 
+# The working-context line folds the SAME active set the catalog pages from, so
+# this row carries the same `pagedToolPatterns` list as the tool-catalog row:
+# two pattern sources would let the rendered line name a namespace active that
+# the registry has already withheld.
 - id: working-context
   name: ./working-context.mjs
+  config:
+    pagedToolPatterns: ['mcp__*', 'browser_*', 'task_board_*', 'team_*', 'squad*', 'ui_*', 'ssh_*']
 
 # The paging activation handle the catalog points at: with `pagedToolPatterns`
 # non-empty this row is what lets `tool_activate({ namespace })` bring one
 # paged namespace back onto the wire (and the generated SDK) for the session.
+# It carries the SAME list as the tool-catalog and working-context rows, because
+# it replays the log with its own copy: a different list would let it answer
+# "already active" for a namespace the catalog's restriction had withheld,
+# leaving that namespace unreachable for the rest of the session.
 - id: tool-activate
   name: ./tool-activate.mjs
+  config:
+    pagedToolPatterns: ['mcp__*', 'browser_*', 'task_board_*', 'team_*', 'squad*', 'ui_*', 'ssh_*']
 
 # The key-fact register: the model pins a hard constraint / confirmed decision /
 # failed path with `fact_register`, the fold rebuilds the register from the

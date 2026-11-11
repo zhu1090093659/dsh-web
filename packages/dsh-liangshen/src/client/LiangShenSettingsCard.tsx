@@ -14,8 +14,28 @@ import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-cli
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { LiangShenMark } from './LiangShenMark.tsx'
-import { BooleanField, ChoiceField, PluginSettingsCard } from './PluginSettingsCard.tsx'
-import { CardForm, booleanField, choiceField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
+import { BooleanField, ChoiceField, PluginSettingsCard, ValueField } from './PluginSettingsCard.tsx'
+import { CardForm, booleanField, choiceField, textField, type CardActions, type CardShell, type FieldSpec, type FieldState as CardFieldState } from './settings-form.ts'
+
+/** A tool family entry: a prefix ending in exactly one trailing star. */
+const FAMILY_ENTRY_RE = /^[^*]+\*$/
+
+/**
+ * The on-demand tool family list: comma separated entries, each a prefix with
+ * one trailing star. Blank clears the field; any malformed entry holds the
+ * draft unwritten.
+ */
+export function pagedToolPatternsField(field: string): FieldSpec {
+  return {
+    ...textField(field),
+    parse: (text) => {
+      const entries = text.split(',').map(entry => entry.trim()).filter(entry => entry !== '')
+      if (entries.length === 0) return { kind: 'clear' }
+      if (!entries.every(entry => FAMILY_ENTRY_RE.test(entry))) return undefined
+      return { kind: 'set', value: entries.join(', ') }
+    },
+  }
+}
 
 /** Wire presentations the tool catalog accepts (mirrors the Host schema). */
 export const PRESENTATION_CHOICES = ['ptc', 'native'] as const
@@ -30,6 +50,8 @@ export interface LiangShenSettings {
   presentation?: string
   /** Whether the preset appends the dispatcher rules section after the persona. */
   dispatcher?: boolean
+  /** Comma-separated on-demand tool families the Host writes to the tool-catalog row. */
+  pagedToolPatterns?: string
 }
 
 /** What the LiangShen card renders. */
@@ -38,6 +60,7 @@ export interface LiangShenSettingsCardState extends CardShell {
   announceToAgent: CardFieldState
   presentation: CardFieldState
   dispatcher: CardFieldState
+  pagedToolPatterns: CardFieldState
 }
 
 /** The registration-side face the card's slot entry injects. */
@@ -60,6 +83,7 @@ export class LiangShenSettingsCardController {
       booleanField('announceToAgent'),
       choiceField('presentation', PRESENTATION_CHOICES),
       booleanField('dispatcher'),
+      pagedToolPatternsField('pagedToolPatterns'),
     ])
     this.store = this.form.bind(() => this.projection())
   }
@@ -71,6 +95,7 @@ export class LiangShenSettingsCardController {
       announceToAgent: this.form.field('announceToAgent'),
       presentation: this.form.field('presentation'),
       dispatcher: this.form.field('dispatcher'),
+      pagedToolPatterns: this.form.field('pagedToolPatterns'),
     }
   }
 
@@ -165,6 +190,17 @@ export function LiangShenSettingsCard(props: LiangShenSettingsCardProps) {
         {...state.dispatcher}
         onEdit={(text) => { props.edit('dispatcher', text) }}
         onReset={() => { props.resetField('dispatcher') }}
+      />
+      <ValueField
+        id="settings-liangshen-paged-tool-patterns"
+        label={t('settings.pagedToolPatterns')}
+        hint={t('settings.pagedToolPatternsHint')}
+        placeholder="browser_*, task_board_*"
+        {...fieldProps}
+        invalidLabel={t('settings.pagedToolPatternsInvalid')}
+        {...state.pagedToolPatterns}
+        onEdit={(text) => { props.edit('pagedToolPatterns', text) }}
+        onReset={() => { props.resetField('pagedToolPatterns') }}
       />
     </PluginSettingsCard>
   )

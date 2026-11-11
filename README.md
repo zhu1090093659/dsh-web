@@ -52,7 +52,7 @@ dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方�
 
 | 核心能力与场景 | 原生 dsh web | dsh-web 全家桶优势 |
 | --- | --- | --- |
-| Agent 预设与执行纪律 | 仅官方标准预设（Standard / Minimal 等），静态上下文开销大 | 官方预设 + 创意工坊社区预设 + 梁神模式（极简 Persona 约束、PTC 程序化工具传输、MCP 温和分页、关键事实登记簿与老虎机拨杆） |
+| Agent 预设与执行纪律 | 仅官方标准预设（Standard / Minimal 等），静态上下文开销大 | 官方预设 + 创意工坊社区预设 + 梁神模式（极简 Persona 约束、PTC 程序化工具传输、按需工具族温和分页、关键事实登记簿与老虎机拨杆） |
 | 智能体小队与团队编排 | 仅单次会话内临时子代理调用 | 可复用小队与成员定义（预设/权限/模型/思考档位/系统提示词简报）+ 整队 Agent Teams 协同运行与实时状态投影 + 10 项 `squads_*` / `squad_member_*` 原生工具 |
 | 实时浏览器视图与视觉交互 | 无可视化受控浏览器视图 | 右侧栏 CDP 实时投屏标签页 + 默认隔离 Chromium 与真实已登录浏览器接管 + 11 项 `browser_*` 交互与无损区域截图工具 |
 | 自动化任务看板 | 无 | Host 权威 Schema v7 五列看板 + 树状子任务与父卡自治派发 + 卡片多模态附件 + 离线 Cron/单次定时与防休眠电源保护 + GitHub / Team Hub / 手机远端三扩展 + 8 项模型原生工具面 |
@@ -67,7 +67,7 @@ dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方�
 | 核心使用场景与用户需求 | 推荐解决方案与能力 | 快速入口 |
 | --- | --- | --- |
 | 打造 24/7 无人值守 AI 研发流水线，通过 Cron/单次定时巡检、树状子任务父卡自治派发或 Issue 自动修复提 PR | 任务看板：Host 权威后台调度、树状子任务与父卡自治派发、GitHub / Team Hub / 手机远端扩展、防休眠电源守护 | [任务看板与 cron 定时执行](packages/dsh-task-board/README.zh.md) |
-| 追求极致编码推理效率与超低上下文开销，需要极简 Prompt、程序化工具调用（PTC）与严苛 Agent 调度/工作纪律 | 梁神模式：极简 Persona、run_code 程序化传输、MCP 温和分页、关键事实登记簿与老虎机拨杆开关 | [梁神模式预设与 PTC 传输](packages/dsh-liangshen/README.zh.md) |
+| 追求极致编码推理效率与超低上下文开销，需要极简 Prompt、程序化工具调用（PTC）与严苛 Agent 调度/工作纪律 | 梁神模式：极简 Persona、run_code 程序化传输、按需工具族温和分页、关键事实登记簿与老虎机拨杆开关 | [梁神模式预设与 PTC 传输](packages/dsh-liangshen/README.zh.md) |
 | 组建可复用的专业 AI 成员与智能体小队，按需单独点播成员会话或以 Agent Teams 整队协同攻坚 | 智能体小队：可复用成员定义（预设/权限/模型/思考档位/简报）、整队协同运行与实时状态投影、10 项模型原生工具 | [智能体小队与整队运行](packages/dsh-agents/README.zh.md) |
 | 在对话右侧实时观看 Agent 驱动的 Chromium 画面，执行网页交互测试、DOM 快照或复用本机已登录浏览器 | 实时浏览器视图：右侧栏 CDP 实时投屏、隔离 Chromium 与真实浏览器接管、11 项交互与无损区域截图工具 | [实时浏览器视图与 CDP 控制](packages/dsh-browser-view/README.zh.md) |
 | 在手机上通过协议 v1 远程访问与控制 DeepSeek Harness | 手机 App 远程访问：协议 v1 WebSocket、会话流式响应、入站网关与公网/局域网接入 | [手机 App 远程访问](packages/dsh-remote-bridge/README.zh.md) |
@@ -117,11 +117,11 @@ dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方�
 
 ### 梁神模式（LiangShen Mode · 极简 Persona、PTC 运行时与高效调度引擎）
 
-在新建会话输入框左侧通过专属老虎机拨杆切换，或在“设置 > Agent 预设”中选用。梁神模式（`dsh-liangshen`）是专为追求**极致推理效率、超低静态上下文开销与严苛工程执行纪律**而深度重构的杀手级预设与运行时插件。针对主流大模型在长程编程任务中容易出现的系统提示词冗长膨胀、工具 Schema 挤占上下文、思维链无效空转（如“流水账推理”）以及多轮遗忘退化等痛点，梁神模式通过原生极简提示词、程序化代码工具调用（PTC）、MCP 温和分页与关键事实局部就近投射，提供纯粹而强悍的编程作战体验：
+在新建会话输入框左侧通过专属老虎机拨杆切换，或在“设置 > Agent 预设”中选用。梁神模式（`dsh-liangshen`）是专为追求**极致推理效率、超低静态上下文开销与严苛工程执行纪律**而深度重构的杀手级预设与运行时插件。针对主流大模型在长程编程任务中容易出现的系统提示词冗长膨胀、工具 Schema 挤占上下文、思维链无效空转（如“流水账推理”）以及多轮遗忘退化等痛点，梁神模式通过原生极简提示词、程序化代码工具调用（PTC）、按需工具族温和分页与关键事实局部就近投射，提供纯粹而强悍的编程作战体验：
 
 - **极简 Persona 与严苛行动导向纪律（Zero Prompt Waste）**：彻底剥离官方 Standard 预设中冗长繁琐的系统级条文，将提示词极致收敛为单行 Persona 与经过实战千锤百炼的高效工程纪律。内置反思熔断（同一假设推演不超过两轮，缺少事实立即闭合思考并调用原生工具探测，杜绝凭空揣测）、行动导向（思考过程仅用于决定下一步具体操作，严禁在思考中预演完整代码）、并发探索（单轮内并发派发多个独立检测或搜索工具）、YAGNI 与 PDCA 循环（单步验证单一假设，不写冗余注水注释）、以及有界收敛纪律（前置检查最多 2-3 轮即刻收敛，迅速转入实际作答或编辑）。大幅降低静态 Token 占用，让模型注意力百分之百倾注于业务与代码本身。
 - **程序化工具调用传输（PTC · Programmatic Tool Calling）**：彻底终结在每次请求中平铺上百个 JSON Schema 工具参数的低效模式。默认将网络线协议（wire）极致收拢为唯一的 `run_code`（运行 TypeScript 脚本），其余所有工具均通过自动生成的强类型 SDK 在独立的沙箱线程中以代码形式调用。无论系统注册了多少复杂工具，静态传输面始终保持极小体积；模型可原生利用 `Promise.all` 编写并发工具调用，并在程序内预先过滤、聚合、提取关键数据，只将精炼结论回传至对话上下文，从根本上解决大文本输出打爆 Token 的问题。对于习惯原生工具面的场景，亦可在插件设置中一键无缝切换为组装好的原生工具清单（Native）。
-- **MCP 工具温和分页与 LRU 动态激活（Gentle Tool Paging）**：针对海量 MCP 工具或第三方插件扩展，出厂默认启用温和分页（默认匹配 `mcp__*`）。外部工具在初始状态下仅以命名空间摘要形式登记在目录消息中，既不占 wire 协议也不进 SDK 声明；当大模型判定需要使用对应工具时，可自主调用 `tool_activate({ namespace })` 按需挂载。内置 LRU 策略（上限 3 个活跃命名空间），自动淘汰最久未用的命名空间，激活状态在会话压缩与恢复后完整重建，兼具海量工具接入能力与极致小巧的静态 Schema 面。
+- **按需工具族温和分页与 LRU 动态激活（Gentle Tool Paging）**：针对海量 MCP 工具与高扇出插件工具族，出厂默认启用按需温和分页（默认匹配 `['mcp__*', 'browser_*', 'task_board_*', 'team_*', 'squad*', 'ui_*', 'ssh_*']`，宿主内建工具全部常驻，亦可在插件设置的「按需工具族」中自定义）。命中的工具族在初始状态下仅以命名空间摘要形式登记在目录消息中，既不占 wire 协议也不进 SDK 声明；当大模型判定需要使用对应工具族时，可自主调用 `tool_activate({ namespace })` 按需挂载。内置 LRU 策略（上限 3 个活跃命名空间），激活或调用均刷新新近度并自动淘汰最久未用的命名空间，激活状态在会话压缩与恢复后完整重建，兼具海量工具接入能力与极致小巧的静态 Schema 面。
 - **关键事实登记簿与就近状态投射（Fact Register & Working Context）**：长程多轮对话中大模型极易遗忘早期的关键业务约束或踩过的坑。插件向模型提供专属 `fact_register` 工具，可将用户硬性约束、已确认的架构决策或失败路径登记为单行事实（每条不超过 160 字符，最多保留 12 条）。关键事实随 `[Working Context: ...]` 状态行在每一轮交互中就近投射至最新消息尾部的局部注意力窗口内，从物理机制上彻底解决长上下文“中间遗忘”与重复踩坑顽疾。
 - **原生调度者架构与敏捷访谈纪律（Dispatcher Identity & Triage）**：预设出厂深度集成调度者（Dispatcher）架构规范，赋能模型以团队指挥官身份统领工程任务。内置复杂度分诊机制（L0/L1 单点任务直接敏捷执行，L2 复杂任务严格遵循“澄清访谈 -> 架构规划 -> 并发子代理派发 -> 双层严格验收”标准流）；设定严格的提问预算控制（单轮最多 4 问、总计最多 3 轮、影响面排序、假设先行），杜绝无效拉扯；任务状态权威沉淀于 `todo_write`，杜绝浮躁的敷衍式交付。
 - **新建会话老虎机拨杆与炫酷中奖特效（Composer Slot Lever）**：在新建会话输入框工具行、模型选择器左侧，精心打造了一台复古老虎机拨杆控件。下拉拨杆（支持鼠标拖拽、单击或键盘快捷操作）即可一键为当前新建会话装配梁神模式，拉下命中即触发绚丽的中奖粒子特效（闪光、冲击环、火花粒子与专属彩蛋横幅）；上推即可平滑切回默认模式。拨杆自适应全局主题色彩，且在会话开始后自动隐藏，丝滑灵动，极具极客趣味。
@@ -309,7 +309,7 @@ dsh plugin --profile web add @linxin666/dsh-i18n@latest                         
 | [@linxin666/dsh-client-ui-task-board-github](https://www.npmjs.com/package/@linxin666/dsh-client-ui-task-board-github) | [README](packages/dsh-task-board-github/README.zh.md) | 任务看板扩展：GitHub Issues 与 PR 状态双向同步及自动化提 PR 闭环 |
 | [@linxin666/dsh-client-ui-task-board-team](https://www.npmjs.com/package/@linxin666/dsh-client-ui-task-board-team) | [README](packages/dsh-task-board-team/README.zh.md) | 任务看板扩展：绑定本地 `dsh-agents` 成员认领云端 `team-hub` Issue、问题路由、双向评论与返工 |
 | [@linxin666/dsh-task-board-remote](https://www.npmjs.com/package/@linxin666/dsh-task-board-remote) | [README](packages/dsh-task-board-remote/README.zh.md) | 任务看板远端面：将看板能力面（`board.v1`）挂载至 `dsh-remote-bridge` 供已配对手机读写同一账本 |
-| [@linxin666/dsh-liangshen](https://www.npmjs.com/package/@linxin666/dsh-liangshen) | [README](packages/dsh-liangshen/README.zh.md) | 梁神模式：极简系统提示词、PTC 程序化工具传输、MCP 温和分页、事实登记簿、调度者纪律与老虎机拨杆 |
+| [@linxin666/dsh-liangshen](https://www.npmjs.com/package/@linxin666/dsh-liangshen) | [README](packages/dsh-liangshen/README.zh.md) | 梁神模式：极简系统提示词、PTC 程序化工具传输、按需工具族温和分页、事实登记簿、调度者纪律与老虎机拨杆 |
 | [@linxin666/dsh-agents](https://www.npmjs.com/package/@linxin666/dsh-agents) | [README](packages/dsh-agents/README.zh.md) | 智能体小队：可复用小队与成员定义、整队 Agent Teams 运行与实时投影、10 项模型原生工具 |
 | [@linxin666/dsh-client-ui-browser-view](https://www.npmjs.com/package/@linxin666/dsh-client-ui-browser-view) | [README](packages/dsh-browser-view/README.zh.md) | 实时浏览器视图：右侧栏 CDP 实时投屏、隔离 Chromium 与真实已登录浏览器接管、11 项交互与无损区域截图工具 |
 | [@linxin666/dsh-remote-bridge](https://www.npmjs.com/package/@linxin666/dsh-remote-bridge) | [README](packages/dsh-remote-bridge/README.zh.md) | 手机 App 远程访问：协议 v1 宿主适配、原生客户端 WebSocket、入站网关与公网中继/隧道/局域网接入 |

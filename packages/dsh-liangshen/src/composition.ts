@@ -498,6 +498,26 @@ export interface PresetOverrides {
   presentation?: string
   /** The `minimal-prompt` row's `dispatcher` switch. */
   dispatcher?: boolean
+  /**
+   * Comma-separated on-demand tool families; written as an array to every row
+   * that pages from it (tool-catalog, tool-activate, working-context), skipped
+   * when blank or malformed.
+   */
+  pagedToolPatterns?: string
+}
+
+/**
+ * Parse the on-demand tool family text: comma separated, each entry a prefix
+ * ending in exactly one trailing `*`.
+ * @param text - the settings text.
+ * @returns the pattern list, or undefined when the text is blank or any entry is malformed.
+ */
+export function parsePagedToolPatterns(text: string | undefined): string[] | undefined {
+  if (text === undefined) return undefined
+  const entries = text.split(',').map(entry => entry.trim()).filter(entry => entry !== '')
+  if (entries.length === 0) return undefined
+  const wellFormed = entries.every(entry => /^[^*]+\*$/.test(entry))
+  return wellFormed ? entries : undefined
 }
 
 /** One settings overlay entry: the row it targets and the config keys it writes. */
@@ -511,8 +531,20 @@ type OverrideTarget = readonly [string, Readonly<Record<string, unknown>>]
  * the assembled native roster remains the only surface.
  */
 function overrideTargets(overrides: PresetOverrides): OverrideTarget[] {
+  const paged = parsePagedToolPatterns(overrides.pagedToolPatterns)
+  // One pattern list reaches every row that pages from it. The three rows
+  // replay the same session log with the same patterns — the catalog installs
+  // the registry restriction, the activation tool answers against it, and
+  // working-context renders it — so a row left on its own default would
+  // disagree about what is active and could strand a withheld namespace.
+  const pagedPatch = () => (paged === undefined ? {} : { pagedToolPatterns: [...paged] })
   return [
-    ['tool-catalog', { ...overrides.presentation === undefined ? {} : { presentation: overrides.presentation } }],
+    ['tool-catalog', {
+      ...overrides.presentation === undefined ? {} : { presentation: overrides.presentation },
+      ...pagedPatch(),
+    }],
+    ['tool-activate', pagedPatch()],
+    ['working-context', pagedPatch()],
     ['minimal-prompt', { ...overrides.dispatcher === undefined ? {} : { dispatcher: overrides.dispatcher } }],
   ]
 }

@@ -1,10 +1,10 @@
 /**
  * paging — pure helpers for the LiangShen preset's gentle tool paging.
  *
- * Paging keeps high-fan-out tool families (MCP servers and similar plugins)
- * off the wire until the session actually needs them: a tool whose name
- * matches one of the configured prefix patterns is PAGED, everything else is
- * RESIDENT and stays on the wire. A paged tool returns to the wire once its
+ * Paging keeps high-fan-out tool families (MCP servers and plugin tool
+ * families) off the wire until the session actually needs them: a tool whose
+ * name matches one of the configured prefix patterns is PAGED, everything else
+ * is RESIDENT and stays on the wire. A paged tool returns to the wire once its
  * namespace is activated through the `tool_activate` tool.
  *
  * The activation state is derived from the durable session event stream, never
@@ -18,8 +18,14 @@
  * oldest, returning its tools to the paged summary.
  */
 
-/** The default paging pattern: every MCP-bridged tool (`mcp__<server>__<fn>`). */
-export const DEFAULT_PAGED_TOOL_PATTERNS = ['mcp__*']
+/**
+ * The default paging patterns: the MCP bridge (`mcp__<server>__<fn>`, one
+ * namespace per server) plus the plugin tool families this preset mounts and
+ * would otherwise carry resident for the whole session — the browser view, the
+ * task board, the team issue channel, the squad roster, the client presentation
+ * tool and the SSH host tools.
+ */
+export const DEFAULT_PAGED_TOOL_PATTERNS = ['mcp__*', 'browser_*', 'task_board_*', 'team_*', 'squad*', 'ui_*', 'ssh_*']
 
 /** The LRU cap on simultaneously active paged namespaces. */
 export const DEFAULT_MAX_ACTIVE_NAMESPACES = 3
@@ -38,7 +44,9 @@ export function integerAtLeast(plugin, value, field, minimum, fallback) {
 
 /**
  * Validate the pagedToolPatterns config: an array of prefix globs, each a
- * non-empty literal prefix ending in exactly one trailing `*`.
+ * non-empty literal head ending in exactly one trailing `*`. A head-less `*`
+ * is refused rather than accepted and inert: the family derivation reads the
+ * head, so a bare wildcard would claim every tool and page none of them.
  */
 export function validatePagedToolPatterns(plugin, value, fallback = DEFAULT_PAGED_TOOL_PATTERNS) {
   if (value === undefined) return fallback
@@ -49,7 +57,7 @@ export function validatePagedToolPatterns(plugin, value, fallback = DEFAULT_PAGE
     if (typeof entry !== 'string' || entry.trim() === '') {
       throw new TypeError(`${plugin}: pagedToolPatterns entries must be non-empty strings`)
     }
-    if (!entry.endsWith('*') || entry.slice(0, -1).includes('*')) {
+    if (!entry.endsWith('*') || entry.slice(0, -1).includes('*') || entry.slice(0, -1).trim() === '') {
       throw new TypeError(`${plugin}: pagedToolPatterns entries must be prefix patterns ending in one trailing "*"`)
     }
     return entry
@@ -58,10 +66,17 @@ export function validatePagedToolPatterns(plugin, value, fallback = DEFAULT_PAGE
 
 /**
  * The namespace one tool name belongs to under one pattern, or undefined when
- * the pattern does not match. The prefix strips the pattern's literal head and
- * the namespace is the first `__`-delimited segment of the remainder
- * (`mcp__codegraph__codegraph_explore` under `mcp__*` is `codegraph`); a
- * remainder without `__` is the namespace as a whole.
+ * the pattern does not match. The pattern's own head decides how the namespace
+ * is derived:
+ * - a head ending in `__` is an MCP bridge, whose namespace lives in the tool
+ *   name: the first `__`-delimited segment of the remainder
+ *   (`mcp__codegraph__codegraph_explore` under `mcp__*` is `codegraph`);
+ * - any other head names the family literally, with one trailing `_` dropped
+ *   (`task_board_*` is `task_board`, `squad*` is `squad`), so a plugin whose
+ *   tools share a literal prefix shares one namespace — and `squad*` covers
+ *   `squads_*` and `squad_member_*` alike.
+ * An empty remainder, or a head that leaves no family name at all, means the
+ * tool is not paged.
  */
 export function patternNamespace(name, pattern) {
   if (typeof name !== 'string' || typeof pattern !== 'string' || !pattern.endsWith('*')) return undefined
@@ -69,7 +84,9 @@ export function patternNamespace(name, pattern) {
   if (!name.startsWith(prefix)) return undefined
   const rest = name.slice(prefix.length)
   if (rest === '') return undefined
-  const namespace = rest.split('__')[0]
+  const namespace = prefix.endsWith('__')
+    ? rest.split('__')[0]
+    : prefix.endsWith('_') ? prefix.slice(0, -1) : prefix
   return namespace === '' ? undefined : namespace
 }
 
@@ -198,17 +215,26 @@ export function replayActivations(events, capacity = DEFAULT_MAX_ACTIVE_NAMESPAC
   }
   for (const event of list) {
     // Under the `ptc` presentation the wire carries `run_code` alone, so the model
-    // reaches `tool_activate` from inside a program and the harness records that as
+    // reaches EVERY tool from inside a program and the harness records each call as
     // a `tool/ptc-dispatch` event — never as a top-level `tool/call`. Reading only
     // `tool/call` therefore found no activation at all: every activation reported
     // success, the page never lifted, and the same namespace could be activated
     // again for ever. Both event shapes feed the same recency list, in the order
-    // the session recorded them.
+    // the session recorded them, and the dispatch branch repeats BOTH rules the
+    // top-level branch applies: an activation activates, and any other call into
+    // an already-active family refreshes it. Without the second rule the LRU
+    // silently degraded to activation order — the only shape a real tool call
+    // takes under the default presentation refreshed nothing.
     if (event?.type === 'tool/ptc-dispatch') {
       const dispatch = event.data
-      if (dispatch?.name !== TOOL_ACTIVATE_NAME || dispatch?.isError === true) continue
-      const namespace = callArguments(dispatch)?.namespace
-      if (typeof namespace === 'string' && namespace !== '') touch(namespace)
+      if (dispatch?.isError === true) continue
+      if (dispatch?.name === TOOL_ACTIVATE_NAME) {
+        const namespace = callArguments(dispatch)?.namespace
+        if (typeof namespace === 'string' && namespace !== '') touch(namespace)
+        continue
+      }
+      const namespace = namespaceOf(dispatch?.name, patterns)
+      if (namespace !== undefined && active.includes(namespace)) touch(namespace)
       continue
     }
     if (event?.type !== 'tool/call') continue

@@ -2,12 +2,15 @@
  * tool-activate — the LiangShen preset's `tool_activate` tool: the activation
  * handle for the gentle tool paging the sibling tool-catalog plugin applies.
  *
- * Tools whose names match the paging patterns (default `mcp__*`) stay out of
- * reach until their namespace is activated here: off the wire, and — under a
- * presentation whose wire has already collapsed to the single `run_code`
- * transport, where the wire carries nothing left to filter — also out of the
- * scope's registry view, which is what the generated SDK and every program
- * dispatch resolve against. The activation itself is the durable `tool/call`
+ * Tools whose names match the paging patterns — by default the MCP bridge plus
+ * the plugin families `browser_*`, `task_board_*`, `team_*`, `squad*`, `ui_*`
+ * and `ssh_*` — stay out of reach until their namespace is activated here: off
+ * the wire, and, under a presentation whose wire has already collapsed to the
+ * single `run_code` transport where the wire carries nothing left to filter,
+ * also out of the scope's registry view, which is what the generated SDK and
+ * every program dispatch resolve against.
+ *
+ * The activation itself is the durable `tool/call`
  * event this call appends to the session log: the catalog plugin re-pages the
  * scope at the end of the call (its `tools/post-execute` hook) and the wire
  * partition replays the same event stream at the next assembly, so both halves
@@ -131,7 +134,7 @@ export function apply(ctx, config) {
       properties: {
         namespace: {
           type: 'string',
-          description: 'The paged namespace to activate, exactly as the catalog names it (for example "codegraph" for mcp__codegraph__* tools).',
+          description: 'The paged namespace to activate, exactly as the catalog names it (for example "codegraph" for mcp__codegraph__* tools, or "task_board" for task_board_* tools).',
         },
       },
       required: ['namespace'],

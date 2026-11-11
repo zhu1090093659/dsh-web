@@ -21,9 +21,13 @@
  * boolean `ptcPresentation` maps onto the enum (true -> 'ptc', false ->
  * 'native') with a one-time deprecation warning.
  *
- * TOOL PAGING: tools whose names match `pagedToolPatterns` (default
- * `['mcp__*']`) stay off the wire until their namespace is activated through
- * the `tool_activate` tool (registered by the sibling tool-activate plugin).
+ * TOOL PAGING: tools whose names match `pagedToolPatterns` — by default the
+ * MCP bridge plus the plugin families `browser_*`, `task_board_*`, `team_*`,
+ * `squad*`, `ui_*` and `ssh_*` — stay off the wire until their namespace is
+ * activated through the `tool_activate` tool (registered by the sibling
+ * tool-activate plugin). Every host builtin stays resident: no shipped pattern
+ * names one, so the session keeps its shell, filesystem, job, skill, delegation,
+ * plan, goal and web tools on the wire for its whole lifetime.
  * The active set replays from the durable session event stream on every
  * assembly, so resume, reload, and compaction rebuild it without any
  * process-memory state. At most a few namespaces stay active; the LRU
@@ -179,9 +183,10 @@ export const DEFAULT_PRESENTATION = 'ptc'
  * surface small.
  *
  * The value is calibrated ABOVE this preset's own shipped roster rather than at
- * the theoretical core-set ideal: with gentle paging every non-\`mcp__*\` tool the
- * preset mounts stays resident, and that roster measures in the low thousands of
- * estimated tokens. A ceiling below the factory baseline would fire on every
+ * the theoretical core-set ideal: with gentle paging the resident surface is the
+ * host builtins plus every tool family no shipped pattern claims, and that
+ * roster measures in the low thousands of estimated tokens. A ceiling below the
+ * factory baseline would fire on every
  * ordinary session and train the reader to ignore it. It therefore flags real
  * growth — a deployment adding tool families of its own — instead of the shipped
  * configuration. The guard warns once per session and never truncates: silently
@@ -297,9 +302,9 @@ function validateRetiredAnchorTools(value) {
  * line instead.
  *
  * SCOPE: exactly the host builtins the preset's own `agent.cordis.yml` rows
- * mount for a session, which is the surface the paging wildcard leaves resident
- * (`pagedToolPatterns` defaults to `mcp__*`, so no host builtin is ever paged
- * out):
+ * mount for a session, which is the surface the shipped paging patterns leave
+ * resident (they name the MCP bridge and the plugin tool families, and no host
+ * builtin matches one):
  * - the shell (one of bash / pwsh per platform), the filesystem and discovery
  *   tools, the background-job controls, and the editor;
  * - the prompt/skill surface, the todo list, the user question tool, and

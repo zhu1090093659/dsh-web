@@ -46,6 +46,13 @@ function row(id: string): string {
   return next < 0 ? rest : rest.slice(0, next)
 }
 
+/**
+ * The rows that page from `pagedToolPatterns`: the catalog installs the
+ * registry restriction, the activation tool replays the log against it, and
+ * working-context renders the resulting active set. One list, three readers.
+ */
+const PAGING_ROWS = ['tool-catalog', 'tool-activate', 'working-context']
+
 /** Every leaf row of the composition, descending into each group's entry list. */
 function leafRows(rows: readonly CompositionRow[]): CompositionRow[] {
   return rows.flatMap((row) =>
@@ -118,12 +125,33 @@ describe('liangshen preset composition', () => {
     expect(row('tool-catalog')).toContain('descriptionMaxLength: 200')
   })
 
-  it("declares the 'ptc' presentation, its executor, and MCP paging without retired keys", () => {
+  it("declares the 'ptc' presentation, its executor, and gentle paging without retired keys", () => {
     expect(row('tool-catalog')).toContain("presentation: 'ptc'")
-    expect(row('tool-catalog')).toContain("pagedToolPatterns: ['mcp__*']")
     expect(row('tool-catalog')).not.toContain('ptcPresentation')
     expect(row('tool-catalog')).not.toContain('anchorTools')
     expect(row('tool-executor-ptc')).toContain("name: '@deepseek-ai/dsh-tool-executor-ptc'")
+  })
+
+  it('operator gets the shipped paging default entry by entry, on every row that pages from it', () => {
+    // Given the shipped composition, read the way the preset loader reads it
+    // When each paging row's pagedToolPatterns is parsed
+    // Then all three carry the same shipped list, so the restriction, the
+    //      activation tool and the working context cannot disagree about what
+    //      is active, and a dropped pattern reads back as its absence
+    const shipped = ['mcp__*', 'browser_*', 'task_board_*', 'team_*', 'squad*', 'ui_*', 'ssh_*']
+    const declared = `pagedToolPatterns: [${shipped.map(pattern => `'${pattern}'`).join(', ')}]`
+    const parsedRows = leafRows(readCompositionRows(preset, presetDir) as CompositionRow[])
+    for (const id of PAGING_ROWS) {
+      const matched = parsedRows.filter(entry => entry.id === id)
+      expect(matched, id).toHaveLength(1)
+      // A row that lost its config reads back as undefined here, not as a pass.
+      expect((matched[0].config as Record<string, unknown>).pagedToolPatterns, id).toEqual(shipped)
+      // And each row carries exactly that list, so the parsed value cannot come
+      // from anywhere but the committed line.
+      expect(row(id), id).toContain(declared)
+      // The LRU cap stays at three, so a wider default cannot silently widen it.
+      expect(row(id), id).not.toContain('maxActiveNamespaces')
+    }
   })
 
   it('mounts working-context, tool-activate and both preset-plane guards, and no retired guard row', () => {

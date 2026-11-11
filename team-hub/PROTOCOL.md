@@ -9,10 +9,10 @@ The team collaboration system connects multiple DeepSeek Harness (DSH) Host node
 | Domain | Authority | Responsibilities |
 | --- | --- | --- |
 | Collaboration Domain | `team-hub` Worker | Issue tracking, assignment, collaboration lifecycle status, human review gates, comment threads, user decision questions, activity stream, and push notifications. |
-| Execution Domain | Local DSH Host | Execution sessions, local workspace filesystem, sandbox policy enforcement, tool execution, model routing, and automated acceptance verification. |
+| Execution Domain | Local DSH Host | Execution sessions, local workspace filesystem, sandbox policy enforcement, tool execution, model routing, and execution outcome verdicts. |
 
 ### Invariant: Division of Authority
-`team-hub` is authoritative over collaboration fields (issues, assignees, collaboration status including `in_review`, comments, activity stream, pending questions). The Host executing the card is authoritative over execution (sessions, local workspace execution, automated acceptance, process execution sandbox). Neither domain may override or bypass the authority of the other.
+`team-hub` is authoritative over collaboration fields (issues, assignees, collaboration status including `in_review`, comments, activity stream, pending questions). The Host executing the card is authoritative over execution (sessions, local workspace execution, execution outcome verdicts, process execution sandbox). Neither domain may override or bypass the authority of the other.
 
 ### Protocol Version and Version Negotiation
 The protocol version string follows Semantic Versioning (`MAJOR.MINOR.PATCH`). The current protocol version defined by this document is `1.0.0`. All HTTP REST requests MUST include the header `X-Team-Hub-Protocol-Version: 1.0.0`, with the exception of `GET /auth/github/authorize` and `GET /auth/github/callback` which are initiated via browser navigation and external OAuth redirect and cannot carry custom request headers. All WebSocket connection handshakes MUST supply `protocol_version=1.0.0` as a query parameter or include the `X-Team-Hub-Protocol-Version` header.
@@ -417,7 +417,7 @@ When a Host node is offline, any issue assigned to an Agent bound to that Host r
 | `assigned` | `running` | Claim lease | Bound Host | `assignee_type='agent'`; Host online; holds valid Host Token; claims active lease. | `issue.claimed` |
 | `waiting_host` | `running` | Claim lease | Bound Host | `assignee_type='agent'`; Host returns online; claims active lease for its agent. | `issue.claimed` |
 | `running` | `waiting_host` | Lease expired / Host offline | Hub system | `assignee_type='agent'`; lease timeout (60 s) expired without renewal or host missed 3 heartbeats. | `issue.host_offline` |
-| `running` | `in_review` | Settle success | Executing Host | `assignee_type='agent'`; execution finished; automated acceptance tests passed locally. | `issue.settled_in_review` |
+| `running` | `in_review` | Settle success | Executing Host | `assignee_type='agent'`; execution finished and its own turn verdict succeeded locally. | `issue.settled_in_review` |
 | `running` | `failed` | Settle failure | Executing Host | `assignee_type='agent'`; execution failed or unrecoverable error encountered. | `issue.failed` |
 | `assigned` | `in_review` | Submit for review | Human | `assignee_type='member'`; `reviewer_member_id` is set; human assignee finishes work and requests review. Permitted only for assignee or admin. | `issue.submitted_for_review` |
 | `assigned` | `done` | Complete task directly | Human | `assignee_type='member'`; no `reviewer_member_id` set; human assignee marks task complete. Permitted only for assignee or admin. | `issue.completed` |
@@ -506,8 +506,8 @@ If network connectivity drops temporarily or the Host process restarts:
 
 ### Settlement Write-Back
 When local execution completes:
-1. Success path: Automated acceptance passes on the Host. Host calls `POST /api/v1/teams/:teamId/issues/:issueId/settle` with `outcome: "succeeded"`, optional `execution_attempt_id`, `summary`, and verification evidence. Hub transitions status to `in_review` and clears `rework_instructions`.
-2. Failure path: Agent fails or automated acceptance is blocked. Host calls settle endpoint with `outcome: "failed"`, optional `execution_attempt_id`, and failure text. Hub transitions status to `failed` and clears `rework_instructions`.
+1. Success path: The Host settles the execution as succeeded from its turn verdict. Host calls `POST /api/v1/teams/:teamId/issues/:issueId/settle` with `outcome: "succeeded"`, optional `execution_attempt_id`, `summary`, and optional `verification_evidence`. Hub transitions status to `in_review` and clears `rework_instructions`.
+2. Failure path: The Host settles the execution as failed (or canceled). Host calls settle endpoint with `outcome: "failed"`, optional `execution_attempt_id`, and failure text. Hub transitions status to `failed` and clears `rework_instructions`.
 
 Late settlement and lease expiration: The `settle` endpoint accepts an optional `execution_attempt_id`. Whenever `settle` supplies an `execution_attempt_id`, if it does not equal the issue's current `execution_attempt_id`, the Hub rejects the call with HTTP `412 Precondition Failed` (`LEASE_EXPIRED`). If the active lease has expired, late settlement write-back is permitted only when the supplied `execution_attempt_id` matches the issue's current `execution_attempt_id`.
 
@@ -694,10 +694,10 @@ This updates `comment_mentions.read_at` to the current UTC timestamp for the rec
 
 ## 8. Human Review
 
-Automated acceptance verifies mechanical contracts; human review verifies satisfaction.
+The Host's execution verdict records whether the agent turn completed without runtime failure; human review verifies whether the delivered work satisfies the requirement.
 
 ### In-Review Lifecycle
-When automated acceptance passes on the Host, the issue transitions to `in_review` on the Hub. The card remains in the Host ledger's Done column locally while awaiting human review on the Hub.
+When the Host settles the execution as succeeded from its turn verdict, the issue transitions to `in_review` on the Hub. The card remains in the Host ledger's Done column locally while awaiting human review on the Hub.
 
 ### Approval
 1. Reviewer inspects execution output, diffs, and verification summary.

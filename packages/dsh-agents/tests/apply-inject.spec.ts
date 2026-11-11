@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
-import { apply, inject, OFFICIAL_TEAMS_BUNDLES, servesTeamRuntime, teamRuntimeGate } from '../src/index.ts'
+import { apply, inject, OFFICIAL_TEAMS_BUNDLES, profileMountsOfficialTeams, servesTeamRuntime, teamRuntimeGate } from '../src/index.ts'
 import { DSH_AGENTS_ROUTE_PATHS } from '../src/protocol.ts'
 import { TeamService, type TeamServiceContext } from '../src/team/index.ts'
 import { installTeamTools } from '../src/tools/index.ts'
@@ -250,6 +250,30 @@ describe('row mount under an inject-enforcing context', () => {
     expect(() => apply(host.ctx, { enabled: true })).not.toThrow()
     expect(projections).toEqual([])
     expect(host.warnings.some(message => message.includes('@deepseek-ai/dsh-agent-team'))).toBe(true)
+    host.release()
+  })
+
+  it('operator yields to the 0.2.2-rc.2+ base bundle when dsh-base is started alongside subagents.rootOf', () => {
+    // Given a 0.2.2-rc.2+ Host where @deepseek-ai/dsh-base embeds agent-team and subagents exposes rootOf, When the gate runs before agentTeams finishes registering, Then profileMountsOfficialTeams returns true and the fork stays unmounted.
+    const projections: Projection[] = []
+    const services = servedTeamServices(projections)
+    const host = createFakeHost({
+      ...services,
+      subagents: {
+        ...(services.subagents as object),
+        rootOf: (caller: unknown) => caller,
+      },
+      profileContext: {
+        startedBundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'],
+      },
+    })
+
+    expect(profileMountsOfficialTeams(host.ctx)).toBe(true)
+    expect(teamRuntimeGate(host.ctx)).toBe('host-teams-declared')
+    expect(servesTeamRuntime(host.ctx)).toBe(false)
+
+    expect(() => apply(host.ctx, { enabled: true })).not.toThrow()
+    expect(projections).toEqual([])
     host.release()
   })
 

@@ -177,9 +177,6 @@ export function isDelegatedCaller(agent, ctx) {
   if (header?.['origin'] === 'subagent') return true
 
   const agents = readService(ctx, 'agents')
-  if (asRecord(agents) === undefined) return false
-  const roots = rootsOf(agents)
-  if (roots === undefined) return false
   const id = idOf(caller)
   const get = asRecord(agents)?.['get']
   if (id !== undefined && typeof get === 'function') {
@@ -191,7 +188,22 @@ export function isDelegatedCaller(agent, ctx) {
     }
     if (live !== agent) return false
   }
-  return !roots.includes(agent)
+
+  const roots = asRecord(agents) === undefined ? undefined : rootsOf(agents)
+  if (roots !== undefined) return !roots.includes(agent)
+
+  // Starting in 0.2.2-rc.2 `agents.roots()` was replaced by `subagents.rootOf(caller)`.
+  const subagents = readService(ctx, 'subagents')
+  const rootOf = asRecord(subagents)?.['rootOf']
+  if (typeof rootOf === 'function') {
+    try {
+      const root = rootOf.call(subagents, agent)
+      if (asRecord(root) !== undefined) return root !== agent
+    } catch {
+      return false
+    }
+  }
+  return false
 }
 
 /**
@@ -356,10 +368,14 @@ export function hasRunningChildSubagent(agent, ctx) {
     if (ownId !== undefined) parentIds.add(ownId)
     const headerId = sessionIdOf(caller)
     if (headerId !== undefined) parentIds.add(headerId)
-    const running = entriesOf(listed).some(entry =>
-      entry['status'] === 'running'
-      && typeof entry['parent'] === 'string'
-      && parentIds.has(entry['parent']))
+    const running = entriesOf(listed).some((entry) => {
+      const active = entry['status'] === 'running' || entry['running'] === true
+      if (!active) return false
+      const directParent = typeof entry['parent'] === 'string'
+        ? entry['parent']
+        : asRecord(asRecord(entry['session'])?.['header'])?.['parentSession']
+      return typeof directParent === 'string' && parentIds.has(directParent)
+    })
     if (running) return true
   }
 

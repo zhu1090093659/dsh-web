@@ -161,9 +161,38 @@ describe('teammate pins', () => {
       'model:deepseek/deepseek-v4/high',
       'checkpoint',
     ])
-    const started = harness.started[0] as { request: { agentPreset?: string } }
+    const started = harness.started[0] as { name?: string; agentPreset?: string; request: { agentPreset?: string } }
     expect(started.request.agentPreset).toBe('xundong')
+    expect(started.agentPreset).toBe('xundong')
+    expect(started.name).toBe('scout')
     expect(result.member.name).toBe('scout')
+  })
+
+  it('operator delivers teammate messages through subagents.sendMessage on 0.2.2-rc.2+ hosts without the legacy internal symbol', async () => {
+    // Given a 0.2.2-rc.2+ subagents service that exposes sendMessage instead of Symbol.for('dsh.subagent.deliverPrompt'), When the Lead spawns and messages a teammate, Then the message is delivered via subagents.sendMessage.
+    const harness = createTeamHarness()
+    const lead = harness.createAgent('squad-lead')
+    const sent: Array<{ callerId: string; targetId: string; text: string }> = []
+    const subagents = (harness.ctx as unknown as { get(name: string): Record<string, unknown> }).get('subagents')
+    subagents.sendMessage = async (caller: { id: string }, targetId: string, content: Array<{ text?: string }>) => {
+      sent.push({ callerId: caller.id, targetId, text: content[0]?.text ?? '' })
+      return 'msg-rc2'
+    }
+    harness.teamService = await TeamService.create(harness.ctx)
+
+    const spawned = await harness.teamService.spawnTeammate(lead as unknown as Agent, spawnRequest())
+    const delivery = await harness.teamService.sendMessage(lead as unknown as Agent, {
+      target: 'scout',
+      content: [{ type: 'text', text: 'check line 42' }],
+      signal: new AbortController().signal,
+    })
+
+    expect(delivery.messageId).toBe('msg-rc2')
+    expect(sent).toEqual([{
+      callerId: 'squad-lead',
+      targetId: spawned.member.id,
+      text: 'Team message from lead:',
+    }])
   })
 
   it('operator fails the spawn with a named error when the pinned preset cannot be resolved', async () => {

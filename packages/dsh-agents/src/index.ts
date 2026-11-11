@@ -253,7 +253,19 @@ interface ProfileBundlesFace {
 export function profileMountsOfficialTeams(ctx: Context): boolean {
   const profile = readService<ProfileBundlesFace>(ctx, 'profileContext', false)
   if (!Array.isArray(profile?.startedBundles)) return false
-  return OFFICIAL_TEAMS_BUNDLES.some(bundle => profile.startedBundles?.includes(bundle) === true)
+  if (OFFICIAL_TEAMS_BUNDLES.some(bundle => profile.startedBundles?.includes(bundle) === true)) {
+    return true
+  }
+  // Starting in 0.2.2-rc.2 `@deepseek-ai/dsh-base` embeds `id: agent-team`
+  // (`@deepseek-ai/dsh-agent-team`) directly in its own `cordis.patch.yml` and
+  // `@deepseek-ai/dsh-subagent` exposes `rootOf(caller)`. Detecting that pair
+  // yields even when `dsh-agents` initializes before the base bundle's own
+  // `agent-team` row finishes registering `agentTeams`.
+  if (profile.startedBundles.includes('@deepseek-ai/dsh-base')) {
+    const subagents = readService<{ rootOf?: unknown }>(ctx, 'subagents', false)
+    if (typeof subagents?.rootOf === 'function') return true
+  }
+  return false
 }
 
 /**

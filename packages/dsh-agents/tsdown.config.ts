@@ -26,7 +26,6 @@ export default clientBundle('@linxin666/dsh-agents', ['src/index.ts'], {
     '@deepseek-ai/dsh-session-persistence',
     '@deepseek-ai/dsh-session-projection',
     '@deepseek-ai/dsh-subagent',
-    '@deepseek-ai/dsh-subagent/internal',
     '@deepseek-ai/dsh-system-prompt',
     '@deepseek-ai/dsh-tools',
     '@deepseek-ai/dsh-workspace',

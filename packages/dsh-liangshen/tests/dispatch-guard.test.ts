@@ -85,6 +85,11 @@ describe('liangshen-dispatch-guard', () => {
     const root = parents[0]
     const rooted = { get: (id: string) => (id === root.id ? root : undefined), roots: () => parents }
     expect(isDelegatedCaller(root, hostWith({ agents: rooted }))).toBe(false)
+    // Then: on 0.2.2-rc.2+ hosts where agents.roots() is replaced by subagents.rootOf(caller), rootOf settles it.
+    const rc2Agents = { get: (id: string) => (id === child.id ? child : id === root.id ? root : undefined) }
+    const rc2Subagents = { rootOf: (candidate: unknown) => (candidate === child ? root : candidate) }
+    expect(isDelegatedCaller(child, hostWith({ agents: rc2Agents, subagents: rc2Subagents }))).toBe(true)
+    expect(isDelegatedCaller(root, hostWith({ agents: rc2Agents, subagents: rc2Subagents }))).toBe(false)
   })
 
   it('operator does not judge a stale caller a child', () => {
@@ -190,6 +195,11 @@ describe('liangshen-dispatch-guard', () => {
     expect(hasRunningChildSubagent(child, hostWith({ agents: foreign }))).toBe(false)
     const idle = { list: () => [{ id: 'c', status: 'inactive', parent: 'root-1' }] }
     expect(hasRunningChildSubagent(child, hostWith({ agents: idle }))).toBe(false)
+    // Then: on 0.2.2-rc.2+ hosts where Agent entries expose running: true and session.header.parentSession, the child is detected too.
+    const byHeaderParentSession = {
+      list: () => [{ id: 'c', running: true, session: { header: { id: 's-c', parentSession: 's-root-1' } } }],
+    }
+    expect(hasRunningChildSubagent(child, hostWith({ agents: byHeaderParentSession }))).toBe(true)
   })
 
   it('operator honours a directly injected running-child callback', () => {

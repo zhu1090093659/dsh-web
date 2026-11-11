@@ -9,8 +9,8 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-session-persistence'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import { steerHostSubagentPrompt } from '@deepseek-ai/dsh-subagent/internal'
+import { createUserMessage, type ContentBlock, type MessageId, type MessageSource } from '@deepseek-ai/dsh-llm'
+import type { SessionId } from '@deepseek-ai/dsh-session'
 import { TeamActivity } from './activity.ts'
 import { errorMessage, TeamError } from './error.ts'
 import { TeamJournal } from './journal.ts'
@@ -57,6 +57,52 @@ const DEFAULT_MAX_MEMBERS = 16
 const DEFAULT_MAX_TASKS = 256
 const DEFAULT_MAX_MESSAGE_BYTES = 65_536
 const DEFAULT_DISPOSAL_TIMEOUT_MS = 5_000
+
+/**
+ * Process-stable symbol used by `@deepseek-ai/dsh-subagent` up to 0.2.2-rc.1 for
+ * host-authored prompt delivery. Starting in 0.2.2-rc.2 the `/internal` subpath
+ * was removed and `subagents.sendMessage` accepts cross-tree teammate targets
+ * directly; probing both keeps the compiled bundle loadable and functional on
+ * both cohorts.
+ */
+const DELIVER_SUBAGENT_PROMPT = Symbol.for('dsh.subagent.deliverPrompt')
+
+type DualCohortSubagentMessenger = {
+  [DELIVER_SUBAGENT_PROMPT]?: (
+    parent: Agent,
+    childId: SessionId,
+    content: ContentBlock[],
+    source: MessageSource,
+    signal: AbortSignal,
+    delivery: 'steer',
+  ) => Promise<MessageId>
+  sendMessage?: (
+    caller: Agent,
+    targetSessionId: SessionId,
+    content: ContentBlock[],
+    options?: { signal?: AbortSignal },
+  ) => Promise<MessageId>
+}
+
+function steerTeammatePrompt(
+  subagents: TeamServiceFaces['subagents'],
+  root: Agent,
+  caller: Agent,
+  targetId: SessionId,
+  content: ContentBlock[],
+  source: MessageSource,
+  signal: AbortSignal,
+): Promise<MessageId> {
+  const runtime = subagents as unknown as DualCohortSubagentMessenger
+  const legacyDeliver = runtime[DELIVER_SUBAGENT_PROMPT]
+  if (typeof legacyDeliver === 'function') {
+    return legacyDeliver.call(subagents, root, targetId, content, source, signal, 'steer')
+  }
+  if (typeof runtime.sendMessage === 'function') {
+    return runtime.sendMessage(caller, targetId, content, { signal })
+  }
+  throw new TeamError('subagent runtime does not support teammate prompt delivery', 'TEAM_DISPOSED')
+}
 
 /** Validate one positive safe-integer deployment limit. */
 function positiveLimit(name: string, value: number): number {
@@ -285,7 +331,7 @@ export class TeamService extends Service {
       root.steer(input)
       messageId = input.id
     } else {
-      messageId = await steerHostSubagentPrompt(this.faces.subagents, root, target.id, content, source, request.signal)
+      messageId = await steerTeammatePrompt(this.faces.subagents, root, caller, target.id, content, source, request.signal)
     }
     this.activity.notify(membership.id)
     return { messageId }

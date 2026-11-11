@@ -233,7 +233,21 @@ export class TeamRoster {
    * @param childIds - selected roster child ids.
    */
   async stopTeammates(root: Agent, childIds: readonly SessionId[]): Promise<void> {
-    await this.lifecycle.withTimeout(this.faces.subagents.drainChildren(root, childIds))
+    const subagents = this.faces.subagents as unknown as {
+      drainChildren?: (parent: Agent, ids: readonly SessionId[]) => Promise<void>
+      drainDescendants?: (parents: readonly Agent[]) => Promise<void>
+    }
+    if (typeof subagents.drainChildren === 'function') {
+      await this.lifecycle.withTimeout(subagents.drainChildren(root, childIds))
+      return
+    }
+    if (typeof subagents.drainDescendants === 'function') {
+      await this.lifecycle.withTimeout(subagents.drainDescendants([root]))
+      return
+    }
+    for (const childId of childIds) {
+      this.faces.subagents.interrupt(childId, { kind: 'ancestor', agent: root })
+    }
   }
 
   /** Perform one creation admitted before the Team runtime disposal cutoff. */
@@ -275,19 +289,26 @@ export class TeamRoster {
       await this.journal.appendAndFlush(root, 'team/member', { version: 2, teamId: TeamId(root.id), member })
     })
 
+    let activationDispose: (() => Promise<void>) | undefined
     try {
+      const requestFields = {
+        prompt: request.prompt,
+        parent: root,
+        ...agentPreset === undefined ? {} : { agentPreset },
+      }
+      // Dual-cohort spec: 0.2.2-rc.1 reads `spec.request.{prompt,parent,agentPreset}`
+      // while 0.2.2-rc.2 flattened those fields onto `spec` alongside `name`.
       const started = await this.faces.subagents.startActivation({
         delivery: 'parent',
         childId,
         provider: request.provider,
         label: description,
-        request: {
-          prompt: request.prompt,
-          parent: root,
-          ...agentPreset === undefined ? {} : { agentPreset },
-        },
+        name,
+        ...requestFields,
+        request: requestFields,
         signal,
-      })
+      } as Parameters<typeof this.faces.subagents.startActivation>[0] & { readonly childId: SessionId })
+      activationDispose = started.dispose
       // M2 ordering contract: the pinned permission and model land on the child
       // session BEFORE its initial prompt is checkpointed, so the teammate never
       // takes a first step as the deployment default. An unhonourable pin throws
@@ -302,7 +323,12 @@ export class TeamRoster {
       }
       try {
         const phase = await this.settleProvisioning(root, failed)
-        await this.stopTeammates(root, [childId])
+        const hasDrainChildren = typeof (this.faces.subagents as unknown as { drainChildren?: unknown }).drainChildren === 'function'
+        if (!hasDrainChildren && typeof activationDispose === 'function') {
+          await this.lifecycle.withTimeout(activationDispose())
+        } else {
+          await this.stopTeammates(root, [childId])
+        }
         if (phase === 'active') {
           throw new TeamError(
             `teammate "${name}" became active while its creator reported failure`,

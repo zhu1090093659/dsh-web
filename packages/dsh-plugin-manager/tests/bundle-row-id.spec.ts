@@ -13,9 +13,9 @@
  *    would mount the host half only and leave the update-check section dead;
  * 2. the row's `id` is claimed by nobody else: not an official DSH bundle row
  *    (the roster below, snapshotted from the installed
- *    `@deepseek-ai/dsh-web-app` at the 0.2.2-rc.1 cohort) and not another
- *    family package. Reusing the official `ui-plugin-manager` id dropped the
- *    official row, and because only the official client registers
+ *    `@deepseek-ai/dsh-web-app` across the 0.2.2-rc.1..0.2.2-rc.2 cohorts) and
+ *    not another family package. Reusing the official `ui-plugin-manager` id
+ *    dropped the official row, and because only the official client registers
  *    `sidebar.panellist`, the sidebar "Plugins" entry and the whole plugin
  *    management page disappeared without a log line.
  *
@@ -65,46 +65,48 @@ function familyClaimedIds(): Map<string, string[]> {
 /**
  * Row ids the official DSH bundles already claim, snapshotted from the
  * installed `@deepseek-ai/dsh-base` and `@deepseek-ai/dsh-web-app` bundle
- * patches (cohort 0.2.2-rc.1, both bundles: the official id space is not
- * only `ui-*` — `dsh-base` claims a bare `plugin-manager`, which is why this
- * package's own id could not simply drop the prefix). A family row must stay
- * out of this set: the loader cannot mount two packages under one id and
- * never says so. The plugin-management rows are asserted present below so
- * the snapshot cannot be emptied to make the check pass.
+ * patches (union of cohorts 0.2.2-rc.1 and 0.2.2-rc.2, both bundles: the
+ * official id space is not only `ui-*` — `dsh-base` claims a bare
+ * `plugin-manager`, which is why this package's own id could not simply drop
+ * the prefix). A family row must stay out of this set: the loader cannot mount
+ * two packages under one id and never says so. The plugin-management rows are
+ * asserted present below so the snapshot cannot be emptied to make the check
+ * pass.
  */
 const OFFICIAL_ROW_IDS: ReadonlySet<string> = new Set([
   'account-controller', 'agent', 'agent-default-model', 'agent-instructions', 'agent-loop',
-  'agent-preset-registry', 'api-remotes', 'approval', 'attachment-local', 'authorization',
-  'bash-sandbox', 'client-hmr', 'command-compact', 'command-feedback', 'command-goal',
-  'commands', 'compaction-basic', 'config-editor', 'connection', 'cordis-client-runner',
-  'cordis-host-runner', 'cordis-inspect-providers', 'credentials', 'deepseek-account',
-  'deepseek-llm-api-extensions', 'deliverable-file-references', 'desktop-product-telemetry',
-  'directory-picker', 'entry-customization', 'file-reference-local', 'file-upload',
-  'fs-observation-policy', 'fs-sandbox', 'goal', 'goal-round-driver', 'harness-dev-context',
-  'hmr', 'image-offload', 'job-controller', 'jobs', 'llm', 'llm-deepseek',
-  'llm-deepseek-account', 'llm-pi-ai', 'llm-retry', 'locale', 'mcp-resources',
-  'message-feedback', 'message-quotes', 'modules', 'office-to-pdf', 'open-in-app', 'otel',
-  'permission', 'plan-mode', 'plugin-inventory', 'plugin-manager',
-  'plugin-package-inventory-deepseek', 'product-analytics', 'ptc-runtime', 'pwsh-sandbox',
-  'remote-access', 'repeat-tool-reminder', 'resources', 'sandbox', 'sandbox-policy', 'schedule',
-  'session', 'session-checkpoint-policy', 'session-controller', 'session-log-deepseek',
-  'session-log-download', 'session-persistence-jsonl', 'session-projection',
-  'session-projection-cache', 'session-query-sqlite', 'session-reference', 'session-stats',
-  'session-telemetry-otel', 'session-title', 'session-title-llm', 'session-turn-outline',
-  'settings', 'settings-controller', 'shell-env', 'shortcuts', 'skill', 'skill-filesystem',
-  'spill-local', 'spill-policy', 'storage', 'storage-domain', 'storage-json', 'subagent',
-  'subagent-fork-in-process', 'subagent-model-selection-settings', 'subagent-spawn-in-process',
-  'subprocess', 'system-prompt', 'terminal-controller', 'timeout-policy', 'timer',
-  'token-meter', 'tool-bash', 'tool-executor-native', 'tool-executor-ptc', 'tool-fs',
-  'tool-fs-search', 'tool-goal', 'tool-jobs', 'tool-plugin-manager', 'tool-pwsh',
-  'tool-result-pruner', 'tool-skill', 'tool-subagent', 'tool-subagent-control',
-  'tool-subagent-fork', 'tool-todo', 'tool-web', 'tool-workflow', 'tool-working-directory',
-  'tools', 'typert', 'typert-gateway', 'typert-loader', 'ui-agent-preset', 'ui-approval',
-  'ui-attachment', 'ui-brand-official', 'ui-chat', 'ui-commands', 'ui-context-menu',
-  'ui-conversation', 'ui-cordis', 'ui-deliverables', 'ui-file-actions', 'ui-file-drag',
-  'ui-goal', 'ui-input-trigger', 'ui-jobs', 'ui-layout', 'ui-message-feedback',
-  'ui-model-selection', 'ui-open-in-app', 'ui-permission', 'ui-plan', 'ui-plugin-manager',
-  'ui-reference', 'ui-renderer', 'ui-schedule', 'ui-secret-mask', 'ui-session', 'ui-settings',
+  'agent-preset-registry', 'agent-team', 'api-remotes', 'approval', 'attachment-local',
+  'authorization', 'bash-sandbox', 'client-hmr', 'command-compact', 'command-feedback',
+  'command-goal', 'commands', 'compaction-basic', 'config-editor', 'connection',
+  'cordis-client-runner', 'cordis-host-runner', 'cordis-inspect-providers', 'credentials',
+  'deepseek-account', 'deepseek-llm-api-extensions', 'deliverable-file-references',
+  'desktop-product-telemetry', 'directory-picker', 'entry-customization', 'file-reference-local',
+  'file-upload', 'fs-observation-policy', 'fs-sandbox', 'goal', 'goal-round-driver',
+  'harness-dev-context', 'hmr', 'image-offload', 'job-controller', 'jobs', 'llm',
+  'llm-deepseek', 'llm-deepseek-account', 'llm-pi-ai', 'llm-retry', 'locale', 'mcp-manager',
+  'mcp-resources', 'message-feedback', 'message-quotes', 'modules', 'office-kit',
+  'office-to-pdf', 'open-in-app', 'otel', 'permission', 'plan-mode', 'plugin-inventory',
+  'plugin-manager', 'plugin-package-inventory-deepseek', 'product-analytics', 'ptc-runtime',
+  'pwsh-sandbox', 'remote-access', 'repeat-tool-reminder', 'resources', 'sandbox',
+  'sandbox-policy', 'schedule', 'session', 'session-checkpoint-policy', 'session-controller',
+  'session-log-deepseek', 'session-log-download', 'session-persistence-jsonl',
+  'session-projection', 'session-projection-cache', 'session-query-sqlite', 'session-reference',
+  'session-stats', 'session-telemetry-otel', 'session-title', 'session-title-llm',
+  'session-turn-outline', 'settings', 'settings-controller', 'shell-env', 'shortcuts', 'skill',
+  'skill-filesystem', 'skill-office', 'spill-local', 'spill-policy', 'storage', 'storage-domain',
+  'storage-json', 'subagent', 'subagent-fork-in-process', 'subagent-model-selection-settings',
+  'subagent-spawn-in-process', 'subprocess', 'system-prompt', 'terminal-controller',
+  'timeout-policy', 'timer', 'token-meter', 'tool-agent-team', 'tool-bash',
+  'tool-executor-native', 'tool-executor-ptc', 'tool-fs', 'tool-fs-search', 'tool-goal',
+  'tool-jobs', 'tool-plugin-manager', 'tool-pwsh', 'tool-result-pruner', 'tool-skill',
+  'tool-subagent', 'tool-subagent-control', 'tool-subagent-fork', 'tool-todo', 'tool-web',
+  'tool-workflow', 'tool-working-directory', 'tools', 'typert', 'typert-gateway', 'typert-loader',
+  'ui-account-notifications', 'ui-agent-preset', 'ui-agent-team', 'ui-approval', 'ui-attachment',
+  'ui-brand-official', 'ui-chat', 'ui-commands', 'ui-context-menu', 'ui-conversation',
+  'ui-cordis', 'ui-deliverables', 'ui-file-actions', 'ui-file-drag', 'ui-goal',
+  'ui-input-trigger', 'ui-jobs', 'ui-layout', 'ui-message-feedback', 'ui-model-selection',
+  'ui-open-in-app', 'ui-permission', 'ui-plan', 'ui-plugin-manager', 'ui-reference',
+  'ui-renderer', 'ui-schedule', 'ui-secret-mask', 'ui-session', 'ui-settings',
   'ui-settings-account', 'ui-settings-agent-loop', 'ui-settings-general', 'ui-settings-models',
   'ui-settings-plugin-inventory', 'ui-settings-plugins', 'ui-settings-session-log',
   'ui-settings-shell', 'ui-settings-subagent', 'ui-settings-web-search', 'ui-shortcuts',
@@ -113,7 +115,7 @@ const OFFICIAL_ROW_IDS: ReadonlySet<string> = new Set([
   'ui-trajectory', 'ui-user-questions', 'ui-workflow-run', 'ui-workspace', 'user-questions',
   'web', 'web-deepseek-api', 'web-fetch-http', 'web-runtime', 'web-search-deepseek',
   'web-startup', 'webserver', 'workflow-ptc', 'working-directory', 'workspace',
-  'workspace-changes', 'workspace-controller', 'workspace-files',
+  'workspace-changes', 'workspace-controller', 'workspace-dependencies', 'workspace-files',
 ])
 
 describe('this package\'s bundle row', () => {

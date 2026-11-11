@@ -305,7 +305,7 @@ function ExecutionSettingsSection({ controller, task, pending, executionOptions 
         pending={pending}
         onChange={effort => { controller.updateTask(task.id, { reasoningEffort: effort }) }}
       />
-      <FoldSection title={t('detail.settings.advanced')} summary={advancedSummary}>
+      <FoldSection title={t('detail.settings.run')} summary={advancedSummary}>
         <label className={css.scheduleToggle} title={t('exec.reuseSessionHint')}>
           <input
             type="checkbox"

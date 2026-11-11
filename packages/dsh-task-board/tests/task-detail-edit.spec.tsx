@@ -184,7 +184,7 @@ describe('session reuse toggle (#1419)', () => {
   it('starts unchecked and opts the task in through the controller', async () => {
     const updateTask = vi.fn(async () => true)
     const { container } = await renderDetail(task(), updateTask)
-    openFormSection(container, '高级设置')
+    openFormSection(container, t('detail.settings.run'))
     const checkbox = reuseCheckbox(container)
     expect(checkbox.checked).toBe(false)
     await act(async () => { checkbox.click() })
@@ -194,7 +194,7 @@ describe('session reuse toggle (#1419)', () => {
   it('shows an opted-in task as checked and clears the opt-in on unclick', async () => {
     const updateTask = vi.fn(async () => true)
     const { container } = await renderDetail(task({ reuseSession: true }), updateTask)
-    openFormSection(container, '高级设置')
+    openFormSection(container, t('detail.settings.run'))
     const checkbox = reuseCheckbox(container)
     expect(checkbox.checked).toBe(true)
     await act(async () => { checkbox.click() })

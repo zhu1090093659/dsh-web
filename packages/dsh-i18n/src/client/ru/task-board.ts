@@ -126,7 +126,7 @@ export const ru: Record<string, string> = {
   'detail.execution.external': 'Выполнено вне этого хоста: {agent}',
   'detail.executionEnded': 'Завершено',
   'detail.executionSettings': 'Настройки запуска',
-  'detail.settings.advanced': 'Дополнительные настройки',
+  'detail.settings.run': 'Режим запуска',
   'detail.settings.summary.none': 'Не включено',
   'detail.settings.summary.reuseSession': 'Та же беседа',
   'detail.executionStarted': 'Запущено',

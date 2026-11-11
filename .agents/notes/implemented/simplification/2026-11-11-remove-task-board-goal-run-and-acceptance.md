@@ -28,7 +28,7 @@ Together they accounted for the largest configuration, protocol, ledger, and UI 
 ## Consequences
 
 - Every card execution settles on its turn's `turn/end` verdict and incurs zero judge LLM calls; workflows that need multi-step decomposition use subtasks under `liangshen` or native `/goal` inside an interactive chat session.
-- The settings card's built-in disclosure list shrinks to two topics (Basics and New-card defaults, with the Runtime behavior and Task acceptance sections removed) ahead of provider extension sections, and the task detail's Advanced fold holds session reuse alone.
+- The settings card's built-in disclosure list shrinks to two topics (Basics and New-card defaults, with the Runtime behavior and Task acceptance sections removed) ahead of provider extension sections, and the task detail's Run Mode fold (`detail.settings.run`, unified from the former Advanced settings title to match the create dialog) holds session reuse alone.
 - Upgrading an existing `$DSH_HOME` succeeds in place without data loss; retired `goalRun`, `skipVerification`, and `verification` fields are silently omitted the next time the ledger writes.
 - Callers invoking `task_board_manage` with `reset-verification` receive a standard invalid-action refusal, and paired remote clients reading `board.options` receive `{ catalog, meta }` without acceptance contracts or `goalRunEnabled`.
 

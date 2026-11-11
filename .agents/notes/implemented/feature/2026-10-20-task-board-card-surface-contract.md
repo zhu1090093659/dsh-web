@@ -24,7 +24,7 @@ Folding is one behaviour with one contract. A region row owns `aria-expanded`, a
 
 ### Reading order and rhythm
 
-The panel is two tracks at a viewport of 1024px or wider — content on the left, how this run will run on the right — and one column in the same order below that. Workspace, preset, permission, model and reasoning effort stay visible; session reuse folds into one "Advanced" row whose closed summary echoes whether it is on (the former `/goal` and skip-acceptance switches were removed in [2026-11-11](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.md)). Scheduled runs and execution history are one fold row each, their summaries naming the state, and history lists five runs until it is expanded. Status moves are one menu, and the footer holds one primary, one ghost and one danger action with the created stamp between the primary and the danger.
+The panel is two tracks at a viewport of 1024px or wider — content on the left, how this run will run on the right — and one column in the same order below that. Workspace, preset, permission, model and reasoning effort stay visible; session reuse folds into one "Run Mode" row (`detail.settings.run`, unified from the initial "Advanced" title when the former `/goal` and skip-acceptance switches were removed in [2026-11-11](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.md)) whose closed summary echoes whether it is on. Scheduled runs and execution history are one fold row each, their summaries naming the state, and history lists five runs until it is expanded. Status moves are one menu, and the footer holds one primary, one ghost and one danger action with the created stamp between the primary and the danger.
 
 Consecutive folds form a group (`.detailFolds`, 8px) rather than joining the 16px section rhythm, so a fold row is 30px and the pitch between two folds is 38px against 58px before the change.
 
@@ -38,7 +38,7 @@ Folding the long explanations without shortening them was the first proposal, an
 
 Pure visual polish — spacing, colour and weight with no copy and no structure change — was rejected because the two loudest findings were structural: the repeated verification sentence lived in how the data was presented, and nine equal-weight buttons were an ordering defect rather than a spacing one.
 
-Folding the permission gate and the status badge into "Advanced" was rejected. A blocking confirmation and the card's current column are decisions a human acts on, and a disclosure in front of either turns a visible obligation into a hidden one.
+Folding the permission gate and the status badge into that switch row (historically titled "Advanced", renamed "Run Mode" in [2026-11-11](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.md)) was rejected. A blocking confirmation and the card's current column are decisions a human acts on, and a disclosure in front of either turns a visible obligation into a hidden one.
 
 Re-recording the `test-standards` baseline instead of rewriting the assertions this rework introduced was rejected. The gate's `baseline -> current` counts showed ten tautological assertions, one title without a role, and six bodies without a stated precondition, all introduced by this work; re-recording would have frozen that debt and hidden it behind a green run.
 

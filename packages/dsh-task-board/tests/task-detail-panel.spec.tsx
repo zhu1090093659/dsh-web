@@ -313,9 +313,13 @@ describe('folded execution column', () => {
     const { container } = renderDetail(card({ reuseSession: true }))
 
     // When the closed region renders
-    const summary = foldHeader(container, t('detail.settings.advanced')).textContent ?? ''
+    const header = foldHeader(container, t('detail.settings.run'))
+    const summary = header.textContent ?? ''
 
-    // Then it echoes the switches that are on, and never one that is off
+    // Then the row is named exactly as the create dialog names the same section
+    expect(header.textContent).toContain(t('new.section.run'))
+
+    // And it echoes the switches that are on, and never one that is off
     expect(summary).toContain(t('detail.settings.summary.reuseSession'))
 
     // And every short explanation the panel shows stays inside one meta line
@@ -329,7 +333,7 @@ describe('folded execution column', () => {
     const { container, controller: board } = renderDetail(card())
 
     // When the reader opens the advanced region
-    const header = openFormSection(container, t('detail.settings.advanced'))
+    const header = openFormSection(container, t('detail.settings.run'))
 
     // Then the switch and its one-line explanation are there, and the
     // retired team-run option is not one of them
@@ -381,7 +385,7 @@ describe('folded execution column', () => {
   it('user reading the three closed folds sees one group with one tooltip each', () => {
     // Given a card whose execution column renders all three folds closed
     const { container } = renderDetail(card())
-    const advanced = foldHeader(container, t('detail.settings.advanced'))
+    const advanced = foldHeader(container, t('detail.settings.run'))
     const schedule = foldHeader(container, t('detail.schedule'))
     const history = foldHeader(container, t('detail.execution'))
 
@@ -422,7 +426,7 @@ describe('folded execution column', () => {
   it('user collapsing a fold from inside its body gets the focus back on the region row', () => {
     // Given an open advanced region with one of its switches focused
     const { container } = renderDetail(card())
-    const header = openFormSection(container, t('detail.settings.advanced'))
+    const header = openFormSection(container, t('detail.settings.run'))
     const box = rightColumn(container).querySelector('input[type="checkbox"]') as HTMLInputElement
     act(() => { box.focus() })
     expect(document.activeElement).toBe(box)

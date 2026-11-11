@@ -28,7 +28,7 @@ Status: implemented
 ## 后果
 
 - 每次卡片执行均凭单回合 `turn/end` 判定结算，不再产生额外裁判模型调用；需要多步拆分的任务走 `liangshen` 子任务树，或在交互式聊天会话内直接使用原生 `/goal`。
-- 设置卡内置折叠主题缩减为两项（基础、新建卡片默认值；原「运行行为」与「任务验收」分区一并移除）加外部扩展贡献区块；任务详情「高级设置」折叠行仅承载会话复用。
+- 设置卡内置折叠主题缩减为两项（基础、新建卡片默认值；原「运行行为」与「任务验收」分区一并移除）加外部扩展贡献区块；任务详情「运行方式」折叠行（`detail.settings.run`，由原「高级设置」统一为与新建对话框一致的标题）仅承载会话复用。
 - 既有 `$DSH_HOME` 原地升级不丢卡、不报错；残留的 `goalRun`、`skipVerification`、`verification` 字段在下一次账本正常落盘时自然剥离。
 - 对 `task_board_manage` 传入 `reset-verification` 将按未知/非法动作拒绝；已配对远端客户端读取 `board.options` 获得 `{ catalog, meta }`，不再含验收契约与 `goalRunEnabled`。
 

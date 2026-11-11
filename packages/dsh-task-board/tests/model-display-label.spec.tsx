@@ -103,7 +103,6 @@ async function renderDetail(taskRecord: TaskRecord, models: ExecutionModelOption
       scheduler: { timeZone: 'UTC' },
       power: { platform: 'linux', phase: 'unsupported', enabled: false, runningSessions: 0, armedSchedules: 0, sessionStateKnown: true },
       sessionDefaultPermission: 'read-only',
-      goalRunEnabled: true,
     },
   }
   const controller = {

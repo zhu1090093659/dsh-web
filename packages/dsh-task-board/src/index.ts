@@ -25,16 +25,6 @@ import { LEGACY_AGENT_TEAMS_TOOL, DEFAULT_SUBTASK_DEPTH, SUBTASK_DEPTH_MAX, SUBT
 import { DEFAULT_SESSION_POLL_SECONDS, SESSION_POLL_MAX_SECONDS, SESSION_POLL_MIN_SECONDS } from './core/poll-cadence.ts'
 import { DEFAULT_RUN_LAUNCH_WIDTH, RUN_LAUNCH_WIDTH_MAX, RUN_LAUNCH_WIDTH_MIN } from './core/launch-width.ts'
 import { DEFAULT_SPEND_BUDGET_TOKENS } from './core/spend-budget.ts'
-import {
-  DEFAULT_VERIFICATION_BUDGET_SECONDS,
-  DEFAULT_VERIFICATION_CALL_TIMEOUT_SECONDS,
-  VERIFICATION_BUDGET_MAX_SECONDS,
-  VERIFICATION_BUDGET_MIN_SECONDS,
-  VERIFICATION_CALL_TIMEOUT_MAX_SECONDS,
-  VERIFICATION_CALL_TIMEOUT_MIN_SECONDS,
-  verificationBudgetMs,
-  verificationCallTimeoutMs,
-} from './core/verification-budget.ts'
 import { DEFAULT_SESSION_PERMISSION } from './core/handover.ts'
 import type { CardDefaults } from './core/card-defaults.ts'
 import { buildTaskBoardTools, TASK_BOARD_TOOL_NAMES } from './host/agent-tools.ts'
@@ -44,9 +34,7 @@ import type { ModelInfoResolver, TaskBoardAttachmentStore } from './host/attachm
 import { TASK_BOARD_SERVICE_NAME, type TaskBoardExtension } from './core/extension.ts'
 import type { TaskBoardAction } from './protocol.ts'
 import { mountOnce } from './mount-once.ts'
-import { createGoalVerificationGate, type GoalFace } from './host/verification-gate.ts'
-import { normalizeCatalog, type ModelCatalogView, type VerificationSettings } from './core/verification.ts'
-import { probeWorkspaceChanges } from './host/workspace-evidence.ts'
+import { normalizeCatalog, type ModelCatalogView } from './core/model-catalog.ts'
 
 /** Order of the announcement section within the shared tool-guidance band. */
 const SECTION_ORDER = PLUGIN_TOOL_SECTION_ORDERS['task-board']
@@ -146,22 +134,6 @@ export interface Config {
    */
   spendBudgetTokens?: Volatile<number>
   /**
-   * GLOBAL native /goal switch (default OFF), the master control over whether
-   * this board starts a run with dsh's built-in /goal at all. A run uses native
-   * /goal only when THIS is on AND the task's own `goalRun` is not off; while
-   * it is off every task runs one plain turn.
-   *
-   * The value is frozen when an execution starts, so toggling it only affects
-   * executions that begin afterwards and never re-writes a task's stored
-   * `goalRun` preference. A run that consequently does not execute native
-   * /goal is marked as such (its acceptance applicability is `goal-disabled`)
-   * and is never reported as a passed goal acceptance or failed for lacking a
-   * completion call. Independent of `goalVerification`; acceptance governs the
-   * completing call of a goal-form run, this switch governs whether the run
-   * becomes a goal run.
-   */
-  goalRunEnabled?: Volatile<boolean>
-  /**
    * Agent preset a NEW card starts from (volatile, default blank = not set).
    * A prefill, never a pin: the create dialog opens with it selected, the
    * caller may override it, and the card stores what it was created with. It
@@ -188,48 +160,6 @@ export interface Config {
    * model, and a blank `cardDefaultModel` makes it inert.
    */
   cardDefaultReasoningEffort?: Volatile<string>
-  /**
-   * Goal acceptance for executions this board starts (default ON). When on,
-   * update_goal(action: complete) inside a task execution is refused until an
-   * acceptance pass is recorded for that execution: the three coding criteria,
-   * a 0.65 threshold, two rounds per criterion with the A/B slots swapped, and
-   * at most two acceptances per execution — the first failure returns its
-   * findings to the fixing agent, the second ends the cycle. The switch only
-   * affects goal-form executions of the board; plain chat and a task pinned to
-   * goalRun: false are untouched. When a separate third-party verifier also
-   * runs its own automatic acceptance, both judges score independently: this
-   * one gates completion, the other only steers, and no public interface lets
-   * the two share a verdict.
-   */
-  goalVerification?: Volatile<boolean>
-  /**
-   * Judge model for goal acceptance as provider/model. Blank inherits the HOST's
-   * own model catalog default — never the card's pinned execution model.
-   */
-  goalVerificationModel?: Volatile<string>
-  /**
-   * Reasoning effort for the judge. Blank inherits the host default level; an
-   * effort the resolved model does not declare is dropped instead of being
-   * sent, and the fallback to the model's own default is reported.
-   */
-  goalVerificationReasoningEffort?: Volatile<string>
-  /**
-   * Ceiling of ONE judge request of a goal acceptance, in seconds
-   * (30..600, default 150). One acceptance issues six judge requests (three
-   * criteria times two rounds), so a ceiling that is too small turns a slow but
-   * healthy judge route into a wall of timeouts, and every timeout was charged
-   * as an acceptance anomaly. Raise it for a reasoning model reading a long
-   * trace.
-   */
-  goalVerificationCallTimeoutSeconds?: Volatile<number>
-  /**
-   * Total ceiling of ONE goal acceptance attempt, in seconds (120..1800,
-   * default eight times the per-call default). Keep it at or above
-   * `goalVerificationCallTimeoutSeconds` times six or an acceptance can never
-   * finish: the attempt then ends early with a budget stop that judges nothing
-   * and spends no acceptance budget.
-   */
-  goalVerificationBudgetSeconds?: Volatile<number>
 }
 
 /**
@@ -265,8 +195,6 @@ export interface ConfigInput {
   runLaunchWidth?: number
   /** Daily token ceiling for board runs; 0 disables the gate. */
   spendBudgetTokens?: number
-  /** Global native /goal switch; default off, frozen per execution. */
-  goalRunEnabled?: boolean
   /** Agent preset a new card starts from; blank = not set. */
   cardDefaultMode?: string
   /** Permission a new card starts from; blank = not set. */
@@ -275,16 +203,6 @@ export interface ConfigInput {
   cardDefaultModel?: string
   /** Reasoning level a new card starts from; blank = not set. */
   cardDefaultReasoningEffort?: string
-  /** Goal acceptance switch. */
-  goalVerification?: boolean
-  /** Judge model route for goal acceptance; blank inherits the host default. */
-  goalVerificationModel?: string
-  /** Judge reasoning effort; blank inherits the host default. */
-  goalVerificationReasoningEffort?: string
-  /** Ceiling of one judge request of a goal acceptance, in seconds. */
-  goalVerificationCallTimeoutSeconds?: number
-  /** Total ceiling of one goal acceptance attempt, in seconds. */
-  goalVerificationBudgetSeconds?: number
 }
 
 export const Config: z<ConfigInput, Config> = z.object({
@@ -299,27 +217,11 @@ export const Config: z<ConfigInput, Config> = z.object({
   sessionPollSeconds: z.number().min(SESSION_POLL_MIN_SECONDS).max(SESSION_POLL_MAX_SECONDS).default(DEFAULT_SESSION_POLL_SECONDS).volatile(),
   runLaunchWidth: z.number().min(RUN_LAUNCH_WIDTH_MIN).max(RUN_LAUNCH_WIDTH_MAX).default(DEFAULT_RUN_LAUNCH_WIDTH).volatile(),
   spendBudgetTokens: z.number().min(DEFAULT_SPEND_BUDGET_TOKENS).default(DEFAULT_SPEND_BUDGET_TOKENS).volatile(),
-  goalRunEnabled: z.boolean().default(false).volatile(),
   cardDefaultMode: z.string().default('').volatile(),
   cardDefaultPermission: z.union([...TASK_PERMISSIONS, '']).default('').volatile(),
   cardDefaultModel: z.string().default('').volatile(),
   cardDefaultReasoningEffort: z.string().default('').volatile(),
-  goalVerification: z.boolean().default(true).volatile(),
-  goalVerificationModel: z.string().default('').volatile(),
-  goalVerificationReasoningEffort: z.string().default('').volatile(),
-  goalVerificationCallTimeoutSeconds: z.number().min(VERIFICATION_CALL_TIMEOUT_MIN_SECONDS).max(VERIFICATION_CALL_TIMEOUT_MAX_SECONDS).default(DEFAULT_VERIFICATION_CALL_TIMEOUT_SECONDS).volatile(),
-  goalVerificationBudgetSeconds: z.number().min(VERIFICATION_BUDGET_MIN_SECONDS).max(VERIFICATION_BUDGET_MAX_SECONDS).default(DEFAULT_VERIFICATION_BUDGET_SECONDS).volatile(),
 })
-
-/** Schema default for the goal-acceptance switch, re-read for hand-built contexts. */
-export const DEFAULT_GOAL_VERIFICATION = true
-
-/**
- * Schema default for the GLOBAL native-/goal switch, re-read for hand-built
- * contexts. Deliberately false: a deployment that never configured it (and
- * every card written before the option existed) runs plain single turns.
- */
-export const DEFAULT_GOAL_RUN = false
 
 declare module '@deepseek-ai/cordis' {
   interface Events {
@@ -667,34 +569,18 @@ function applyImpl(ctx: Context, config?: Config): void {
   const sessionDefaultPermission = (): TaskPermission =>
     config?.sessionDefaultPermission ?? resolveHostDefaultPermission(ctx) ?? DEFAULT_SESSION_PERMISSION
 
-  /** Live acceptance settings the contract of each new execution freezes. */
-  const verificationSettings = (): VerificationSettings => ({
-    enabled: readConfigField(config?.goalVerification, DEFAULT_GOAL_VERIFICATION),
-    model: readConfigField(config?.goalVerificationModel, ''),
-    reasoningEffort: readConfigField(config?.goalVerificationReasoningEffort, ''),
-  })
-  /**
-   * The acceptance time ceilings, read live: raising one must unblock a card
-   * whose acceptance is stuck on a slow judge route without a remount, so
-   * these deliberately are NOT frozen into the per-execution contract.
-   */
-  const verificationCallTimeoutMsLive = (): number =>
-    verificationCallTimeoutMs(readConfigField(config?.goalVerificationCallTimeoutSeconds, DEFAULT_VERIFICATION_CALL_TIMEOUT_SECONDS))
-  const verificationBudgetMsLive = (): number =>
-    verificationBudgetMs(readConfigField(config?.goalVerificationBudgetSeconds, DEFAULT_VERIFICATION_BUDGET_SECONDS))
   // The catalog reader needs the service, and the service needs the reader;
   // the reader only runs after start(), so a late holder is enough.
   let hostForCatalog: TaskBoardHostService | undefined
-  const verificationCatalog = async (): Promise<ModelCatalogView | undefined> => {
+  /**
+   * Live reader of the host model catalog, normalized for the board. The
+   * service reads it once per run group and carries the value, so a settings
+   * edit only reaches executions that start afterwards.
+   */
+  const modelCatalog = async (): Promise<ModelCatalogView | undefined> => {
     const runner = hostForCatalog?.runner
     return runner === undefined ? undefined : normalizeCatalog(await runner.modelCatalog())
   }
-  /**
-   * Live reader of the GLOBAL native-/goal switch. The service calls it exactly
-   * once per execution and carries the value, so a settings edit only reaches
-   * executions that start afterwards.
-   */
-  const goalRunEnabled = (): boolean => readConfigField(config?.goalRunEnabled, DEFAULT_GOAL_RUN)
   /**
    * Live reader of the new-card defaults, read at every use like the switch
    * above: the create dialog prefills from the published snapshot, and each
@@ -735,12 +621,10 @@ function applyImpl(ctx: Context, config?: Config): void {
     ownerPeer,
     sessionDefaultPermission,
     maxSubtaskDepth: maxSubtaskDepth(),
-    goalRunEnabled,
     runLaunchWidth,
     spendBudgetTokens,
     cardDefaults,
-    verificationSettings,
-    verificationCatalog,
+    modelCatalog,
     attachments: () => resolveAttachmentStore(ctx),
     modelInfo: () => resolveModelInfoReader(ctx),
     legacyAgentTeams,
@@ -777,7 +661,7 @@ function applyImpl(ctx: Context, config?: Config): void {
       snapshot: () => host.snapshot(),
       apply: (requestId: string, action: TaskBoardAction, initiator?: string) => host.apply(requestId, action, initiator),
       subscribe: (listener: () => void) => host.subscribe(listener),
-      verificationOptions: () => host.verificationOptions(),
+      modelCatalogOptions: () => host.modelCatalogOptions(),
     })
   }
 
@@ -832,44 +716,6 @@ function applyImpl(ctx: Context, config?: Config): void {
   ctx.effect(() => {
     const disposers: Array<() => void> = []
     try {
-      // The goal acceptance gate: the OFFICIAL tool pre-execution lifecycle,
-      // installed before the tool body runs, so a completion claim cannot take
-      // effect without a matching acceptance pass record.
-      const gate = createGoalVerificationGate({
-        ledger: host.ledger,
-        llm: () => resolveLlmRuntime(ctx),
-        goals: () => {
-          try {
-            return ctx.get('goals') as GoalFace | undefined
-          } catch {
-            return undefined
-          }
-        },
-        // The host's own observation of what a turn changed on disk, when this
-        // deployment records it; the acceptance degrades to the trajectory alone
-        // when it does not.
-        workspaceChanges: () => probeWorkspaceChanges(ctx),
-        callTimeoutMs: verificationCallTimeoutMsLive,
-        budgetMs: verificationBudgetMsLive,
-        logger: {
-          warn: (message: string, ...rest: unknown[]) => {
-            const logger = (ctx as { logger?: { warn?: (...args: unknown[]) => void } }).logger
-            if (typeof logger?.warn === 'function') logger.warn(message, ...rest)
-            else console.warn(message, ...rest)
-          },
-        },
-      })
-      // A capture-only context may implement no listener registry (it returns
-      // no disposer), so the handle is pushed only when it really is one.
-      const offGate = ctx.on('tools/pre-execute', async (exec, next) => {
-        const decision = await gate({ name: exec.name, arguments: exec.arguments, agent: exec.agent, signal: exec.signal })
-        return decision ?? next()
-      })
-      if (typeof offGate === 'function') disposers.push(offGate)
-      else if (typeof (offGate as { dispose?: unknown } | undefined)?.dispose === 'function') {
-        const handle = offGate as { dispose(): void }
-        disposers.push(() => { handle.dispose() })
-      }
       const routes = makeTaskBoardRoutes(host, {
         ...resolveProxyAccess(config),
         connection: () => resolveConnectionTrust(ctx),

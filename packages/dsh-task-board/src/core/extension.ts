@@ -12,7 +12,7 @@
  * @module dsh-task-board/core/extension
  */
 import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
-import type { TaskBoardAction, TaskBoardSnapshot, TaskBoardVerificationOptions } from '../protocol.ts'
+import type { TaskBoardAction, TaskBoardModelCatalog, TaskBoardSnapshot } from '../protocol.ts'
 import type { ExecutionOutcome, TaskRecord, TaskStatus } from './tasks.ts'
 
 /** Cordis service name the host and browser halves each publish. */
@@ -453,11 +453,10 @@ export interface TaskBoardHostFace {
    */
   subscribe(listener: () => void): () => void
   /**
-   * The acceptance settings, the contract they resolve to right now, and the
-   * model catalog the choices come from. The same document the board's own
-   * `/verification` route serves.
+   * The host model catalog the board's model and reasoning-level choices come
+   * from. The same document the board's own `/model-catalog` route serves.
    */
-  verificationOptions(): Promise<TaskBoardVerificationOptions>
+  modelCatalogOptions(): Promise<TaskBoardModelCatalog>
 }
 
 declare module '@deepseek-ai/cordis' {

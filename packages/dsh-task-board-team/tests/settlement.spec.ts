@@ -3,7 +3,7 @@
  *
  * The events come through the board's own registry fanout, so the subscription
  * the extension really installed is what these specs drive; the mapping asserted
- * is team-hub/PROTOCOL.md section 5 (a passed automated acceptance becomes
+ * is team-hub/PROTOCOL.md section 5 (a succeeded execution verdict becomes
  * \`succeeded\` and moves the issue to \`in_review\`, everything else becomes
  * \`failed\`) plus the section 13 summary cap.
  */

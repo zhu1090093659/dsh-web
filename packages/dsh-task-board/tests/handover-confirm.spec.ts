@@ -205,20 +205,16 @@ describe('handover bundle: runner override and prompt preamble', () => {
   it('the bundle triplet overrides the legacy pins and the prompt carries the reference preamble', async () => {
     const { gateway, calls } = apiCapture()
     const task = {
-      ...createTask({ title: '交接卡', description: '', prompt: '正文', workspaceId: 'ws-legacy', mode: 'preset-legacy', goalRun: true }, NOW, 'id-1'),
+      ...createTask({ title: '交接卡', description: '', prompt: '正文', workspaceId: 'ws-legacy', mode: 'preset-legacy' }, NOW, 'id-1'),
       handover: { ...HANDOVER, bundledAt: NOW },
     }
     const dispatched: string[] = []
     const runnerWithPermission = new HostExecutionRunner(gateway, {
       execute: async (_sessionId, line) => { dispatched.push(line); return { kind: 'success', text: 'ok' } as const },
     })
-    await runnerWithPermission.launch(task, { goalEnabled: true })
-    expect(dispatched[0]).toBe('/permission danger-full-access')
-    // The card's opted-in goal run arms /goal with the same composed prompt
-    // (preamble included), so the objective the agent continues toward is what
-    // it read.
-    expect(dispatched[1]?.startsWith('/goal ')).toBe(true)
-    expect(dispatched[1]).toContain('正文')
+    await runnerWithPermission.launch(task)
+    // One plain turn: the only command dispatched is the pinned permission.
+    expect(dispatched).toEqual(['/permission danger-full-access'])
     expect(calls.create).toMatchObject({ workspaceId: 'ws-1', agentPreset: 'preset-a' })
     const text = (calls.prompt as { content: Array<{ text: string }> }).content[0].text
     expect(text).toContain('docs/handover.md')

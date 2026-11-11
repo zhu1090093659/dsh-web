@@ -2,6 +2,8 @@
 
 Status: implemented
 
+Superseded by [Remove task-board /goal runs and goal acceptance](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.md): the entire goal-acceptance subsystem (`goalVerification*` settings, `TaskRecord.skipVerification`, `ExecutionRecord.verification`, the `tools/pre-execute` `update_goal` gate, judge calls, `reset-verification`, and the acceptance UI) together with `goalRunEnabled` and `TaskRecord.goalRun` has been removed; legacy `goalRun`, `skipVerification`, and `verification` fields on v7 ledger rows are ignored and dropped on load. The sections below record the historical 2026-09-30 design and are not authority for current behavior.
+
 ## Problem
 
 A task-board execution runs an autonomous goal: the runner arms `/goal`, the
@@ -101,9 +103,9 @@ verifier's default acceptance ALGORITHM rather than the verifier.
   with the actual obstacle when there is no open execution, no acceptance block,
   or nothing left to clear. It is deliberately NOT folded into the quality
   budget: a budget reset would let an agent buy an extra acceptance by asking.
-- **Time budget (issue #1828).** Two row settings, `goalVerificationCallTimeoutSeconds`
+- **Time budget (issue #1828, historical — removed 2026-11-11).** Two former row settings, `goalVerificationCallTimeoutSeconds`
   (30..600, default 150) and `goalVerificationBudgetSeconds` (120..1800,
-  default 1200), normalized in `src/core/verification-budget.ts` beside the
+  default 1200), were normalized in the deleted `src/core/verification-budget.ts` beside the
   existing `core/poll-cadence.ts` precedent and read LIVE, not frozen into the
   contract: raising a ceiling must unblock a card without a plugin reload. The
   total default is derived from the per-call default times the six judge calls
@@ -151,16 +153,15 @@ verifier's default acceptance ALGORITHM rather than the verifier.
 - **Team runs.** Acceptance applies to the Lead execution, whose session
   evidence is the team summary; a teammate execution is recorded as a
   `team-member` and is not independently accepted.
-- **Per-card opt-out.** `TaskRecord.skipVerification` opts ONE card out of the
-  gate. Absent means inherit: the execution resolves the same contract it always
-  did from the board-wide `goalVerification` switch, so a card that never
+- **Per-card opt-out (historical — removed 2026-11-11).** Retired `TaskRecord.skipVerification` formerly opted one card out of the
+  gate (legacy `skipVerification` values are now ignored on load, and the board-wide `goalVerification` switch is removed). Absent meant inherit from that former switch, so a card that never
   touched the option is unchanged. An explicit `true` resolves the contract from
   an OFF switch instead, and the execution is recorded as a distinct
   `applicability: 'skipped'` rather than reusing `disabled`: the report must be
   able to say WHICH of the two turned the gate off, and a report that renders
   nothing at all would let a user read "the board switch is off" into a card
   they themselves opted out. Only the explicit `true` is persisted (mirroring
-  `goalRun`, which persists only its explicit `true`), the option appears in
+  retired `goalRun`, which persisted only its explicit `true` before removal), the former option appeared in
   the new-task form and the task detail beside the other card-level execution
   switches, and it is exposed on `task_board_create` / `task_board_update`
   like every other card option. It is an execution-time decision, not a
@@ -233,9 +234,9 @@ verifier's default acceptance ALGORITHM rather than the verifier.
   crash interrupted, and the UI renders the audit credential and labels each
   emptied attempt as CLEANED rather than as a judge that reported no finding.
 - **GLOBAL native /goal switch, default off.** A new row setting
-  `goalRunEnabled` (volatile, schema default `false`) is the master control
-  over whether this board starts a run with the built-in `/goal` at all. The
-  effective condition is the global switch AND the task's own `goalRun` being
+  retired `goalRunEnabled` (volatile, former schema default `false`, removed 2026-11-11) was the master control
+  over whether this board started a run with the built-in `/goal` at all. Its
+  historical condition required both the global switch and the task's retired `goalRun` field being
   ON: both sides must ASK for the goal run, and the card side defaults to off
   (see below), so with the global switch off every card runs one plain turn. The
   value is read ONCE per execution at launch and carried by value into the
@@ -251,7 +252,7 @@ verifier's default acceptance ALGORITHM rather than the verifier.
   applies the user's own preference; the collapsed run summary reports a single
   round when the master switch withholds it. The switch is independent of the
   acceptance switch.
-- **The per-card goal option defaults OFF.** `TaskRecord.goalRun` is an
+- **The per-card goal option defaulted OFF (historical — removed 2026-11-11).** Retired `TaskRecord.goalRun` was an
   opt-IN: only an explicit `true` is persisted (creation, update and the load
   normalizer all store nothing else), the runner arms `/goal` only for a card
   whose value IS `true`, and the Host service gates on the same test. Absent
@@ -260,9 +261,9 @@ verifier's default acceptance ALGORITHM rather than the verifier.
   turn, and the board never begins a multi-round goal run after an upgrade
   without the user asking for it card by card. The detail-view checkbox is
   checked only for `true`, the new-task dialog starts unchecked and sends
-  `goalRun: true` only when checked, and `task_board_create` /
-  `task_board_update` follow the same rule (the tool view reports the card's
-  `goalRun: true` as the deviation worth naming). Neither the checkbox nor the
+  historical `goalRun: true` only when checked, and `task_board_create` /
+  `task_board_update` followed that historical rule before removal (formerly reporting
+  `goalRun: true` as the deviation). Neither the retired checkbox nor the
   tool face is disabled by the global switch: that switch decides whether the
   preference takes effect, never whether it can be stated, and it never rewrites
   the stored value.
@@ -357,13 +358,12 @@ verifier's default acceptance ALGORITHM rather than the verifier.
   history, reruns and scheduled occurrences each carry their own report, and the
   per-execution contract is the reason a settings edit mid-run changes nothing
   for the run already going.
-- The gate deliberately does not touch plain chat, a card that never opted
-  into `goalRun`, or a run whose `/goal` was refused: those are not goal
+- Historically, the gate did not touch plain chat, a card without retired
+  `goalRun`, or a run whose `/goal` was refused: those were not goal
   executions, and their records say which case applies.
 - A card that opted out is a COST decision the user makes per card, and it is
-  recorded as such: `skipVerification` travels through the legacy import the
-  way `goalRun` does (a user restoring their own board keeps their per-card
-  execution preferences), while the per-execution `verification` block is
+  recorded as such historically (both `skipVerification` and `goalRun` are now retired and stripped on load; previously `skipVerification` traveled through legacy import the way retired `goalRun` did so a user kept historical
+  execution preferences), while the per-execution `verification` block was
   still stripped on import, so no imported card can arrive already accepted.
   The ledger stays at v5: an optional card field absent from every existing
   row is exactly the additive change the v5 migration already describes, and
@@ -381,7 +381,7 @@ verifier's default acceptance ALGORITHM rather than the verifier.
   card only becomes a goal run when the user opts that card in AND the global
   switch is on. That is the requested default and it is the safe direction for
   quota: no card silently begins a multi-round goal run after an upgrade. A
-  card's stored `goalRun` preference is preserved untouched throughout, so a
+  card's historical `goalRun` preference was preserved until the 2026-11-11 removal (now ignored and dropped on load), so a
   master switch turned back on applies exactly what each card asked for.
 - Cleanup deletes only what the acceptance mechanism itself wrote, and it
   keeps the hash of the judged evidence: a later review can still prove WHICH
@@ -414,7 +414,7 @@ verifier's default acceptance ALGORITHM rather than the verifier.
   and the configured per-call ceiling ending the acceptance as a bounded anomaly.
 - `tests/goal-verification-service.spec.ts` (26 scenarios): the contract
   frozen and bound before the prompt, the switch off, a card that did not opt
-  into `goalRun`, a
+  into retired `goalRun` (suite deleted in 2026-11-11), a
   refused `/goal`, an explicit route with an unsupported level, a scheduled
   run, the resolved options route, and the settlement rules (completed goal
   without a pass fails, paused goal fails, unreadable projection fails, a pass

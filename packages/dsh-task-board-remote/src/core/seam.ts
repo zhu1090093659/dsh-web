@@ -40,8 +40,8 @@ export interface BoardFace {
   apply(requestId: string, action: Readonly<Record<string, unknown>>, initiator?: string): unknown
   /** Subscribe to the host's change notifications; returns the unsubscriber. */
   subscribe(listener: () => void): () => void
-  /** The acceptance settings, the contract they resolve to, and the model catalog. */
-  verificationOptions(): Promise<unknown>
+  /** The host model catalog the board's model and reasoning-level choices come from. */
+  modelCatalogOptions(): Promise<unknown>
 }
 
 /** What one board method answers: the payload, or a refusal in this plugin's codes. */
@@ -134,7 +134,7 @@ export function boardFaceOf(seat: ServiceSeat): BoardFace | undefined {
   if (typeof face.snapshot !== 'function'
     || typeof face.apply !== 'function'
     || typeof face.subscribe !== 'function'
-    || typeof face.verificationOptions !== 'function') return undefined
+    || typeof face.modelCatalogOptions !== 'function') return undefined
   return face as unknown as BoardFace
 }
 

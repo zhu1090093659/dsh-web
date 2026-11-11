@@ -4,7 +4,7 @@ Status: implemented
 
 由 [家族设置卡片带标识与一行文案](./2026-10-01-family-settings-cards-identity-marks-and-copy.md) 补充：两条主题说明与卡片的文案被缩短，电源状态行改为安静的小字；折叠布局本身不变。
 
-由 [新建卡片默认值](./2026-10-14-task-board-new-card-defaults.zh.md) 补充：看板自己的选项变成三张主题卡，第三张承载四个新建卡片默认值键；折叠布局本身不变。
+由 [新建卡片默认值](./2026-10-14-task-board-new-card-defaults.zh.md) 补充，并由 [移除任务看板的 /goal 运行与任务验收](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.zh.md) 收窄：原运行行为与任务验收主题卡移除后，看板自己的选项为两张嵌套主题卡（基础、新建卡片默认值），排在提供方席位之前；折叠布局本身不变。
 
 ## Problem
 
@@ -16,14 +16,14 @@ Status: implemented
 
 设置卡是一列折叠主题卡，也就是任务表单已经在用的版式（[任务表单分区](./2026-09-27-task-board-create-dialog-regions.zh.md)）应用到设置表面。
 
-- 看板自己的选项是三张嵌套的 `PluginSettingsCard` 折叠卡——看板与运行行为（总开关、agent 播报、空闲睡眠保护、子任务深度），任务验收（开关、裁判模型、推理强度、解析后的预览），以及这份主题清单第三张卡承载的新建卡片默认值（[新建卡片默认值](./2026-10-14-task-board-new-card-defaults.zh.md)）——渲染进本来就已经承载提供方席位的同一个列表（`board-settings.module.css` 的 `.nestedCards`）。验收区块原有的标题与分隔线被移除：卡头本身已经点名了这个主题。
-- 四张卡一律默认折叠（`defaultOpen={false}`），看板卡自己的三张主题与 GitHub Issues 区块都一样，设置页因此以一份简短的主题清单打开。
+- 看板自己的选项是两张嵌套的 `PluginSettingsCard` 折叠卡——基础（总开关、agent 播报、空闲睡眠保护、转发代理信任、轮询间隔、子任务深度、启动并发、花费上限）与新建卡片默认值（[新建卡片默认值](./2026-10-14-task-board-new-card-defaults.zh.md)；原任务验收主题卡已于 [2026-11-11](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.zh.md) 移除）——渲染进本来就已经承载提供方席位的同一个列表（`board-settings.module.css` 的 `.nestedCards`）。
+- 所有嵌套卡一律默认折叠（`defaultOpen={false}`），看板卡自己的内置主题与 GitHub Issues 区块都一样，设置页因此以一份简短的主题清单打开。
 - 嵌套卡带 `hideFooter`：它们落入看板卡的同一份表单，由那一行唯一的保存写入，那张保存按钮也仍是界面上唯一的保存入口。它们的 chrome 状态因此报 `dirty: false`——未保存角标归外层卡头——而 `writable` 跟随表单，只读部署在展开的主题里仍会说明只读。
 - 看板卡保留自己的折叠卡头与电源状态行；移动的只是选项。
 
 ### Copy
 
-`settings.enabledCardHint` 与 `settings.goalVerificationCardHint` 是两条主题描述（zh 与 en 在包内，ru 镜像在 `packages/dsh-i18n`）。原有的长字段提示留在它们解释的字段上，因此折叠卡头只有一行描述。
+`settings.enabledCardHint` 与 `settings.cardDefaultsCardBrief` 是内置主题描述（zh 与 en 在包内，ru 镜像在 `packages/dsh-i18n`；原 `settings.goalVerificationCardHint` 已随任务验收一并移除）。原有的长字段提示留在它们解释的字段上，因此折叠卡头只有一行描述。
 
 ## Alternatives considered
 
@@ -37,7 +37,7 @@ Status: implemented
 
 ## Consequences
 
-- 看板卡打开后就是四行主题加电源状态行；每个主题一次点击可达，各自的字段与提示保持不变。
+- 看板卡打开后就是内置主题行加提供方席位与电源状态行；每个主题一次点击可达，各自的字段与提示保持不变。
 - GitHub Issues 区块默认折叠，因此它的仓库与凭据摘要需要一次点击才能读到；它对自己命名空间仍保留自己的保存行。该区块内的仓库列表又是它自己的一层折叠（扩展样式表的 `setupDisclosure`，默认收起）：同步多个仓库的部署会把每一行都摊开，把凭据表单与连接测试挤出视线。每行分两行——仓库名与它的「收无指派 / 移除」按钮同行，纳入标签、指派与含无指派的 chip 折到下一行——因为单行时 chip 会被同行的按钮挤压成 `d…`/`@…` 的省略号（`setupRepositoryHead` / `setupRepositoryTags`）。折叠按钮带 `aria-expanded`/`aria-controls`，可访问名包含仓库数量，收起时这些行完全不进 DOM。
 - 这次折叠本身不涉及任何存储值、线形字段或账本 schema，也没有新增属于它的设置键：只有呈现方式与新增文案键。
 - 覆盖：`packages/dsh-task-board/tests/settings-card-disclosure.spec.tsx` 在 jsdom 里驱动整套折叠（折叠时只有一个卡头、展开后四张主题卡均折叠、每个主题的控件以及提供方席位同处一个列表），`packages/dsh-task-board-github/tests/github-ui.spec.tsx` 覆盖被贡献卡片的默认折叠。

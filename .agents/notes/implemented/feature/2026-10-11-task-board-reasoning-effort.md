@@ -12,7 +12,7 @@ Task creation and task details offer a reasoning-effort selector beside the mode
 
 `reasoningEffort` is an optional task execution field. It travels through the existing strict create/update actions and ledger, and the runner includes it in the official `session/selectModel` request when selecting the execution model. The existing-session launch path uses the same selection logic. Clearing uses an empty wire string because JSON omits `undefined` properties. The additive field does not change the ledger schema version. A subtask that pins its own model but leaves effort unset uses that model's default instead of borrowing an ancestor's effort. An unpinned model may inherit its ancestor's model/effort pair; the subtask's own effort still takes precedence. Import preserves both fields. A rejected model-selection request carrying an explicit declared effort fails the execution before its prompt is queued.
 
-The field controls the task execution model, independently of the acceptance judge's reasoning setting. The [subtask decision](2026-09-24-task-board-subtasks.md) owns lineage and Team execution; this note does not redefine teammate routing.
+The field controls the task execution model. The [subtask decision](2026-09-24-task-board-subtasks.md) owns lineage and Team execution; this note does not redefine teammate routing.
 
 ## Alternatives considered
 

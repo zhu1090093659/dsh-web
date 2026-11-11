@@ -172,10 +172,6 @@ function taskSummary(
     ...(task.reasoningEffort === undefined ? {} : { reasoningEffort: task.reasoningEffort }),
     ...(task.reuseSession === true ? { reuseSession: true } : {}),
     ...(task.teamRun === true ? { teamRun: true } : {}),
-    // Default-OFF opt-in: only a card that asked for the goal run reports it.
-    ...(task.goalRun === true ? { goalRun: true } : {}),
-    // Default-OFF opt-out: the deviation is what a reader must be told.
-    ...(task.skipVerification === true ? { skipVerification: true } : {}),
     ...(task.schedule === undefined ? {} : { schedule: scheduleView(task.schedule) }),
     ...(task.freeze === undefined ? {} : { continuationCard: true }),
     ...(task.permissionConfirmedAt === undefined ? {} : { permissionConfirmedAt: task.permissionConfirmedAt }),
@@ -362,7 +358,6 @@ function buildManageTool(host: TaskBoardToolHost): ToolDefinition {
       'A manual move writes the card column only and never fabricates an execution record, so the card reports a declaration rather than evidence of a run: done/failed declare work finished (or failed) outside a Host-run execution — human work, an external system, a decision made elsewhere — and running says the work is under way without a tracked session. Use task_board_run when the work should actually run in a session here.',
       'record-external-outcome is the record-backed version of move-done and move-failed: use it when YOU, or another agent outside this Host, actually finished or failed the card with your own model, so the terminal column and the run history both derive from one execution record. It takes result (succeeded or failed) and initiatedBy (who completed it, for example your own agent name) plus an optional summary, and it is refused while the card still has an open execution: the Host stays the only authority over a run it is executing. It cannot record running or cancelled — those remain Host-only. A parent card that dispatched its subtasks uses it once, at the end, to backfill every subtask card with the conclusion it reached; the Host records an inherited verdict on a subtask the parent never wrote back, so the write-back is what keeps each subtask conclusion its own.',
       'settle force-closes the open execution of a card the board can no longer observe (a stuck running card) and records it cancelled with the caller as the reason, so the card returns to the todo column and can be run again.',
-      'reset-verification clears the acceptance anomalies (timeouts, authentication failures, an unresolvable judge route, or an attempt the time budget ended) recorded on a card open execution, so the next update_goal(action: complete) runs a fresh acceptance. It is refused unless that execution really carries such anomalies, it never clears a quality verdict, and a spent anomaly budget otherwise HOLDS the card open instead of failing it: tell the user the acceptance environment is unusable and that this action is how they clear it once they have fixed it.',
       'archive takes the whole subtask tree off the board and is refused while any member has an unsettled execution; restore brings the task, its ancestors and its subtree back; delete removes one card and is refused while it still has subtasks (detach or delete them first) or while it runs.',
       'It cannot confirm a permission binding: the confirmation gate is a human act performed in the board UI.',
     ].join(' '),
@@ -371,7 +366,7 @@ function buildManageTool(host: TaskBoardToolHost): ToolDefinition {
       action: {
         type: 'string',
         required: true,
-        enum: ['move-todo', 'move-backlog', 'move-running', 'move-done', 'move-failed', 'archive', 'restore', 'delete', 'settle', 'reset-verification', 'record-external-outcome'],
+        enum: ['move-todo', 'move-backlog', 'move-running', 'move-done', 'move-failed', 'archive', 'restore', 'delete', 'settle', 'record-external-outcome'],
         description: 'The lifecycle operation to perform.',
       },
       // Only record-external-outcome reads these two; every other action
@@ -432,7 +427,6 @@ function buildManageTool(host: TaskBoardToolHost): ToolDefinition {
         'move-failed': { kind: 'move', taskId: args.taskId, status: 'failed' },
         archive: { kind: 'archive', taskId: args.taskId },
         settle: { kind: 'settle', taskId: args.taskId },
-        'reset-verification': { kind: 'reset-verification', taskId: args.taskId },
         restore: { kind: 'restore', taskId: args.taskId },
         delete: { kind: 'delete', taskId: args.taskId },
       }
@@ -605,8 +599,6 @@ function buildCreateTool(host: TaskBoardToolHost): ToolDefinition {
       model: { type: 'string', description: 'Pinned model as provider/model (or a model id); omit to adopt the board new-card default, and the host default when none is configured.' },
       reasoningEffort: { type: 'string', description: 'Reasoning effort id for that model (an adapter-owned level such as "high"); omit to adopt the board new-card default for that model, and the model own default when none applies. Only an effort the target model declares is sent; an empty string clears it back to the default.' },
       reuseSession: { type: 'boolean', description: 'Continue later runs in the previous execution session instead of a fresh conversation.' },
-      goalRun: { type: 'boolean', description: 'Start each run with dsh built-in /goal so the session keeps working continuation rounds until the goal completes. Off by default: omit (or pass false) for a single plain turn, and pass true to opt this card in. It only takes effect while the deployment global native /goal switch is on.' },
-      skipVerification: { type: 'boolean', description: 'Run this task without the board acceptance gate: update_goal may mark the goal complete without a passing acceptance, and the execution record is marked skipped. Default false (omit to inherit the board-wide acceptance switch). Only affects executions started afterwards.' },
       tags: {
         type: 'array',
         description: 'Labels: the name renders as a badge and drives the board filter; promptPrefix is injected ahead of the execution prompt on every run.',
@@ -656,8 +648,6 @@ function buildCreateTool(host: TaskBoardToolHost): ToolDefinition {
         // targets the caller omitted are filled.
         applyCardDefaults: true,
         ...(args.reuseSession === true ? { reuseSession: true } : {}),
-        ...(args.goalRun === true ? { goalRun: true } : {}),
-    ...(args.skipVerification === true ? { skipVerification: true } : {}),
         ...(tags.length === 0 ? {} : { tags }),
         ...(args.schedule === undefined ? {} : {
           schedule: {
@@ -715,8 +705,6 @@ function buildUpdateTool(host: TaskBoardToolHost): ToolDefinition {
       model: { type: 'string', description: 'New pinned model; an empty string clears it.' },
       reasoningEffort: { type: 'string', description: 'New reasoning effort id for the pinned model; an empty string clears it back to the model own default. Only an effort the target model declares is sent at run time.' },
       reuseSession: { type: 'boolean', description: 'Continue later runs in the previous execution session.' },
-      goalRun: { type: 'boolean', description: 'Whether each run starts with dsh built-in /goal (default false, one plain turn). Pass true to opt this card in, or false to return it to the default.' },
-      skipVerification: { type: 'boolean', description: 'Whether this task runs without the board acceptance gate (default false, inherit the board-wide switch). Pass true to opt out; pass false to opt back in. Only affects executions started afterwards.' },
       tags: {
         type: 'array',
         description: 'Replacement label set; an empty array clears all labels.',
@@ -748,8 +736,6 @@ function buildUpdateTool(host: TaskBoardToolHost): ToolDefinition {
         patch.permission = args.permission === '' ? undefined : args.permission
       }
       if (has(args, 'reuseSession')) patch.reuseSession = args.reuseSession === true
-      if (has(args, 'goalRun')) patch.goalRun = args.goalRun === true ? true : false
-      if (has(args, 'skipVerification')) patch.skipVerification = args.skipVerification === true ? true : false
       if (has(args, 'tags')) {
         const tags = args.tags ?? []
         patch.tags = tags.length === 0

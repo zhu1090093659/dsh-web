@@ -31,7 +31,6 @@ import { applySetParent } from './core/use-cases/task-parent.ts'
 import { applyDeleteTag, applyRenameTag } from './core/use-cases/task-tag.ts'
 import { applyUpdateTask, canEditTaskContent, hasContentPatch } from './core/use-cases/task-update.ts'
 import { TASK_BOARD_MIGRATABLE_SCHEMA_VERSIONS, TASK_BOARD_SCHEMA_VERSION, TASK_BOARD_ZONE_STAMP_SCHEMA_VERSION, type TaskBoardAction, type TaskBoardSchedulerSnapshot } from './protocol.ts'
-import { withoutAcceptanceAnomalies, type ExecutionVerification } from './core/verification.ts'
 import { DEFAULT_SESSION_PERMISSION, requiresPermissionConfirmation, type TaskPermission } from './core/handover.ts'
 
 interface PersistedScheduler extends TaskBoardSchedulerSnapshot {
@@ -382,17 +381,7 @@ function mergeTask(a: TaskRecord, b: TaskRecord): TaskRecord {
     const previous = byId.get(entry.id)
     byId.set(entry.id, previous === undefined ? entry : betterExecution(previous, entry))
   }
-  // Acceptance evidence is the one field "betterExecution" cannot choose: a
-  // browser half that also wrote this execution carries no attempts, and taking
-  // its copy would erase the Host's verdict. The copy with the most recorded
-  // attempts wins, and one execution's verdict is never copied onto another.
-  const executions = [...byId.values()].sort((x, y) => x.startedAt - y.startedAt).map(entry => {
-    if (entry.verification !== undefined) return entry
-    const richer = [...a.executions, ...b.executions]
-      .filter(other => other.id === entry.id && other.verification !== undefined)
-      .sort((x, y) => (y.verification?.attempts.length ?? 0) - (x.verification?.attempts.length ?? 0))[0]
-    return richer?.verification === undefined ? entry : { ...entry, verification: richer.verification }
-  })
+  const executions = [...byId.values()].sort((x, y) => x.startedAt - y.startedAt)
   return { ...newer, executions: retainRecentExecutions(executions) }
 }
 
@@ -1227,32 +1216,6 @@ export class HostTaskLedger {
         this.finalizeReadyRuns(false)
         break
       }
-      case 'reset-verification': {
-        // The explicit user reset of the acceptance anomaly counter (issue
-        // #1828). It clears the attempts the ENVIRONMENT produced — timeouts,
-        // authentication failures, unresolvable routes, and attempts the time
-        // budget ended — and nothing else: a quality verdict is the board's own
-        // judgement of the work and survives every reset. Only the open
-        // execution is addressable, because the reset exists to unblock a
-        // completion claim on a run that is still going.
-        const task = this.document.tasks.find(item => item.id === action.taskId)
-        if (task === undefined) throw new Error('task not found')
-        if (task.archivedAt !== undefined) throw new Error('archived task is read-only')
-        const execution = [...task.executions].reverse().find(entry => entry.endedAt === undefined)
-        if (execution === undefined) throw new Error('task has no open execution')
-        const verification = execution.verification
-        if (verification === undefined || verification.applicability !== 'enforced') {
-          throw new Error('this execution is not gated by task acceptance')
-        }
-        const cleared = withoutAcceptanceAnomalies(verification)
-        if (cleared === undefined) throw new Error('this execution has no acceptance anomaly to reset')
-        this.document.tasks = this.document.tasks.map(item => item.id !== action.taskId ? item : {
-          ...item,
-          updatedAt: now,
-          executions: item.executions.map(entry => entry.id === execution.id ? { ...entry, verification: cleared } : entry),
-        })
-        break
-      }
       case 'restore': {
         if (this.subtreeHasOpenExecution(action.taskId)) throw new Error('running task cannot be restored')
         const result = applyRestoreTask(this.document.tasks, action.taskId, now, this.maxSubtaskDepth)
@@ -1666,54 +1629,6 @@ export class HostTaskLedger {
         })
       : parsed.tasks
     return this.normalizeDocument({ ...parsed, tasks: rows as TaskRecord[] })
-  }
-
-  /**
-   * Find the still-open execution that ran in one session, with its task.
-   *
-   * The completion gate keys on the session id its tool call arrives from: the
-   * execution record is the only object binding a session to a card, and an
-   * already-settled execution is deliberately not returned (a session the board
-   * no longer owns must not be gated).
-   * @param sessionId - the DSH session the tool call runs in.
-   * @returns the open execution and its task, or undefined.
-   */
-  findOpenExecutionBySession(sessionId: string): { task: TaskRecord; execution: ExecutionRecord } | undefined {
-    if (sessionId === '') return undefined
-    for (const task of this.document.tasks) {
-      for (const execution of task.executions) {
-        if (execution.endedAt !== undefined) continue
-        if (execution.sessionId === sessionId) return { task, execution }
-      }
-    }
-    return undefined
-  }
-
-  /**
-   * Replace one execution's acceptance block (creating it when absent).
-   *
-   * A no-op when the serialized value is unchanged, so a coarse caller that
-   * re-writes the same state never bumps the ledger revision. A settled
-   * execution keeps its record: the report of a finished cycle must survive,
-   * and only the board's own settlement moves the card.
-   * @param taskId - the task owning the execution.
-   * @param executionId - the execution to update.
-   * @param verification - the new block.
-   * @returns true when the ledger changed.
-   */
-  setVerification(taskId: string, executionId: string, verification: ExecutionVerification): boolean {
-    const now = this.now()
-    const task = this.document.tasks.find(item => item.id === taskId)
-    const execution = task?.executions.find(entry => entry.id === executionId)
-    if (task === undefined || execution === undefined) return false
-    if (JSON.stringify(execution.verification ?? null) === JSON.stringify(verification)) return false
-    this.document.tasks = this.document.tasks.map(item => item.id !== taskId ? item : {
-      ...item,
-      updatedAt: now,
-      executions: item.executions.map(entry => entry.id === executionId ? { ...entry, verification } : entry),
-    })
-    this.commit()
-    return true
   }
 
   private load(dir: string): LedgerDocument {

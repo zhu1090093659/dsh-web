@@ -3,28 +3,9 @@
  *
  * The card's chrome belongs to the shared family slice
  * (`settings-card.module.css`, generated); this file owns only the nested
- * disclosure list and the acceptance block's quiet notes, on theme tokens
- * instead of inline literals.
+ * disclosure list and the power facts, on theme tokens instead of inline
+ * literals.
  */
-
-.note {
-  margin: 4px 0;
-  font-size: 12px;
-  color: var(--dsw-alias-label-secondary);
-}
-
-.error {
-  margin: 4px 0;
-  font-size: 12px;
-  color: var(--dsw-alias-state-error-primary);
-}
-
-.resolvedList {
-  margin: 4px 0 8px;
-  padding-left: 16px;
-  font-size: 12px;
-  color: var(--dsw-alias-label-secondary);
-}
 
 /* One spacing step for this card's own blocks: the topic list and the power
    facts under it read the same value instead of each hard-coding one. */
@@ -81,7 +62,7 @@
 }
 
 /* The nested disclosure cards of this card: the board and its runtime
-   behavior, goal acceptance, and the sections a provider extension
+   behavior, and the sections a provider extension
    contributes. The gap keeps the stacked card
    borders apart; an empty list draws nothing. */
 .nestedCards {

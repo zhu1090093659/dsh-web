@@ -1700,101 +1700,6 @@
   transform: rotate(225deg);
 }
 
-/* --- acceptance report -------------------------------------------------------
- * The row carries the verdict only. Everything the board decided on stays one
- * press away inside the fold: counts, judge route, per-criterion scores, the
- * findings, the evidence scope and the usage are all rendered there, unchanged.
- * --------------------------------------------------------------------------- */
-
-.verifyReport {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.verifyBadge {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  align-self: flex-start;
-  max-width: 100%;
-  padding: 2px 10px;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 18px;
-  color: var(--dsw-alias-label-secondary);
-  background: var(--dsw-alias-interactive-bg-hover);
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.verifyBadge::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: var(--dsh-tb-hit-size);
-  transform: translateY(-50%);
-}
-
-.verifyBadge[data-tone='warn'] {
-  color: var(--dsw-alias-state-warn-primary);
-  background: var(--dsw-alias-state-warn-secondary);
-  border-color: transparent;
-}
-
-.verifyBadge[data-tone='success'] {
-  color: var(--dsw-alias-state-success-primary);
-  background: var(--dsw-alias-state-success-secondary);
-  border-color: transparent;
-}
-
-.verifyBadge[data-tone='error'] {
-  color: var(--dsw-alias-state-error-primary);
-  background: var(--dsw-alias-state-error-secondary);
-  border-color: transparent;
-}
-
-.verifyVerdict {
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-.verifyPanel {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
-  background: var(--dsw-alias-bg-layer-2);
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 8px;
-  min-width: 0;
-}
-
-.attemptRow {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 10px;
-  background: var(--dsw-alias-bg-base);
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 8px;
-  min-width: 0;
-}
-
-.attemptHead {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-width: 0;
-}
-
 /* --- free-text references (handover bundle) --------------------------------- */
 
 .referenceList {
@@ -1918,20 +1823,17 @@
 }
 
 /* --- disclosure motion -------------------------------------------------------
- * The folded regions of the panel (the rest of the history, the acceptance
- * detail) appear and leave as one reversed pair: the same 6px travel on the
+ * The folded regions of the panel (the rest of the history) appear and leave as one reversed pair: the same 6px travel on the
  * same curve, only opposite in direction. `usePresence` keeps the node mounted
  * through the exit leg, so the close never snaps.
  * --------------------------------------------------------------------------- */
 
 .executionExtra,
-.verifyPanel,
 .detailBody .formSectionBody {
   animation: dshTbRowsIn var(--dsh-tb-motion-enter) var(--dsh-tb-ease) both;
 }
 
 .executionExtra[data-execution-fold='closing'],
-.verifyPanel[data-state='closing'],
 .detailBody .formSectionBody[data-state='closing'] {
   animation: dshTbRowsOut var(--dsh-tb-motion-close) var(--dsh-tb-ease) both;
 }
@@ -1973,13 +1875,11 @@
    unmounts on the close duration. */
 @media (prefers-reduced-motion: reduce) {
   .executionExtra,
-  .verifyPanel,
   .detailBody .formSectionBody {
     animation: dshTbFadeIn var(--dsh-tb-motion-close) linear both;
   }
 
   .executionExtra[data-execution-fold='closing'],
-  .verifyPanel[data-state='closing'],
   .detailBody .formSectionBody[data-state='closing'] {
     animation: dshTbFadeOut var(--dsh-tb-motion-close) linear both;
   }
@@ -2284,7 +2184,6 @@
 .iconButton:focus-visible,
 .linkButton:focus-visible,
 .menuItem:focus-visible,
-.verifyBadge:focus-visible,
 .executionSession:focus-visible,
 .search:focus-visible,
 .input:focus-visible,
@@ -2303,7 +2202,6 @@
 .iconButton,
 .linkButton,
 .menuItem,
-.verifyBadge,
 .executionSession,
 .search,
 .input,
@@ -2368,7 +2266,6 @@
   .iconButton,
   .linkButton,
   .menuItem,
-  .verifyBadge,
   .executionSession,
   .disclosureChevron,
   .menuChevron,

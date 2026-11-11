@@ -93,10 +93,6 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
   const [reasoningEffort, setReasoningEffort] = useState(seed.reasoningEffort)
   const inheritedPermission = parentTask === undefined ? undefined : effectiveTaskPermission(parentTask)
   const [reuseSession, setReuseSession] = useState(initialTask?.reuseSession ?? false)
-  // Unchecked by default: a new task runs one plain turn unless the user opts
-  // into dsh's built-in /goal here. A duplicate keeps the original card's choice.
-  const [goalRun, setGoalRun] = useState(initialTask?.goalRun ?? false)
-  const [skipVerification, setSkipVerification] = useState(initialTask?.skipVerification ?? false)
   const [scheduleEnabled, setScheduleEnabled] = useState(initialTask?.schedule?.enabled ?? false)
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>(initialTask?.schedule?.mode ?? 'cron')
   const [scheduleCron, setScheduleCron] = useState(initialTask?.schedule?.cron ?? '')
@@ -129,11 +125,6 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
   const [error, setError] = useState<string | undefined>(undefined)
   const [pending, setPending] = useState(false)
   const [options, setOptions] = useState(controller.getSnapshot().executionOptions)
-  // Live GLOBAL native-/goal switch. The new-task form never rewrites a stored
-  // preference from it: the checkbox stays operable and is explained while the
-  // master switch is off, and the user's own choice is what a later re-enable
-  // restores.
-  const [goalRunEnabled, setGoalRunEnabled] = useState(controller.getSnapshot().host?.goalRunEnabled === true)
   // "Parse pasted text" (issue #1540) exists only when the deployment carries a
   // parse face; the section stays hidden otherwise.
   const [canParse] = useState(controller.getSnapshot().canParseTask === true)
@@ -159,7 +150,6 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
     () => controller.subscribe(() => {
       const snapshot = controller.getSnapshot()
       setOptions(snapshot.executionOptions)
-      setGoalRunEnabled(snapshot.host?.goalRunEnabled === true)
     }),
     [controller],
   )
@@ -287,8 +277,6 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
       ...(model === '' ? {} : { model }),
       ...(reasoningEffort === '' ? {} : { reasoningEffort }),
       ...(reuseSession ? { reuseSession: true } : {}),
-      ...(goalRun ? { goalRun: true } : {}),
-      ...(skipVerification ? { skipVerification: true } : {}),
       ...(tagList.length > 0 ? { tags: tagList } : {}),
       ...(attachments.persisted.length + uploaded.length > 0
         // The storage is content-addressed: the same content uploaded twice
@@ -399,12 +387,7 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
     : t('new.summary.attachmentCount', { count: String(attachmentCount) })
   const tagCount = cleanTags(tags).length
   const labelsSummary = tagCount === 0 ? t('new.summary.none') : t('new.summary.labelCount', { count: String(tagCount) })
-  const runSummary = [
-    // A card whose goal option is on but whose master switch is off will run one
-    // plain turn: the collapsed line says the truth rather than the stored value.
-    goalRun && goalRunEnabled ? t('new.summary.multiRound') : t('new.summary.singleRound'),
-    ...(reuseSession ? [t('exec.reuseSession')] : []),
-  ].join(' · ')
+  const runSummary = reuseSession ? t('exec.reuseSession') : t('new.summary.none')
   const handoverSummary = freezeText.trim() !== '' || handoverText.trim() !== ''
     ? t('new.summary.filled')
     : t('new.summary.none')
@@ -636,30 +619,6 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
           <span>{t('exec.reuseSession')}</span>
         </label>
         <p className={css.detailText}>{t('exec.reuseSessionHint')}</p>
-
-        <label className={css.scheduleToggle}>
-          <input
-            type="checkbox"
-            checked={goalRun}
-            // Always operable: the global switch decides whether the choice
-            // takes effect, never whether it may be stated, and the state (and a
-            // duplicate's template) is never rewritten by it.
-            onChange={event => { setGoalRun(event.target.checked) }}
-          />
-          <span>{t('exec.goalRun')}</span>
-        </label>
-        <p className={css.detailText}>{t('exec.goalRunHint')}</p>
-        {!goalRunEnabled && <p className={css.detailText}>{t('settings.goalRunGlobalDisabledTaskOption')}</p>}
-
-        <label className={css.scheduleToggle}>
-          <input
-            type="checkbox"
-            checked={skipVerification}
-            onChange={event => { setSkipVerification(event.target.checked) }}
-          />
-          <span>{t('exec.skipVerification')}</span>
-        </label>
-        <p className={css.detailText}>{t('exec.skipVerificationHint')}</p>
       </CollapsibleSection>
 
       <CollapsibleSection

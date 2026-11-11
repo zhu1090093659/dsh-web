@@ -239,46 +239,6 @@ describe('task-board action protocol', () => {
     })).toBeUndefined()
   })
 
-  it('operator sending the /goal opt-in through create and update gets it accepted', () => {
-    // Given create input and update patches that carry the goal option
-    // When the envelopes are parsed
-    // Then the boolean is accepted in both, and anything else is refused
-    expect(parseActionEnvelope({
-      requestId: 'create-goal-on',
-      action: { kind: 'create', id: 'task-goal', input: { title: 'G', description: '', prompt: 'p', goalRun: true } },
-    })?.action.kind).toBe('create')
-
-    // The opt-in is tri-state: false (or null) returns the card to its default.
-    expect(parseActionEnvelope({
-      requestId: 'update-goal-on',
-      action: { kind: 'update', taskId: 'task-goal', patch: { goalRun: true } },
-    })?.action.kind).toBe('update')
-    expect(parseActionEnvelope({
-      requestId: 'update-goal-off',
-      action: { kind: 'update', taskId: 'task-goal', patch: { goalRun: null } },
-    })?.action.kind).toBe('update')
-    expect(parseActionEnvelope({
-      requestId: 'update-goal-bad',
-      action: { kind: 'update', taskId: 'task-goal', patch: { goalRun: 'no' } },
-    })).toBeUndefined()
-    expect(parseActionEnvelope({
-      requestId: 'create-goal-bad',
-      action: { kind: 'create', id: 'task-goal', input: { title: 'G', description: '', prompt: 'p', goalRun: 0 } },
-    })).toBeUndefined()
-  })
-
-  it('user importing legacy tasks keeps the /goal opt-in on the imported card', () => {
-    // Given a legacy card that opted into goal runs
-    const task = { ...createTask({ title: 'legacy', description: '', prompt: '', goalRun: true }, 1, 'legacy'), goalRun: true }
-
-    // When it is imported
-    const parsed = parseActionEnvelope({ requestId: 'import-goal', action: { kind: 'import', sourceId: 'browser-a', tasks: [task] } })
-
-    // Then the imported card carries the same opt-in
-    expect(parsed?.action.kind).toBe('import')
-    if (parsed?.action.kind !== 'import') throw new Error('expected an import action')
-    expect(parsed.action.tasks[0].goalRun).toBe(true)
-  })
 })
 
 describe('label management actions', () => {

@@ -69,21 +69,20 @@ describe('board.snapshot', () => {
 })
 
 describe('board.options', () => {
-  it('user asks for options and receives the acceptance block with the published meta', async () => {
+  it('user asks for options and receives the model catalog with the published meta', async () => {
     // Given a board that publishes its permission baseline and subtask depth
     const board = new FakeBoard()
     const methods = methodsOf(() => board)
     // When the phone asks for the options
     const answer = await methods[METHOD_BOARD_OPTIONS]({}, CALL)
-    // Then the acceptance block is the host's own, and meta carries only the keys it set
+    // Then the catalog is the host's own, and meta carries only the keys it set
     expect(answer).toEqual({
       ok: true,
       r: {
-        verification: { settings: { enabled: true }, contract: { route: 'vendor/model' }, catalog: { groups: [] } },
+        catalog: { groups: [] },
         meta: {
           sessionDefaultPermission: 'read-only',
           maxSubtaskDepth: 1,
-          goalRunEnabled: false,
         },
       },
     })
@@ -111,7 +110,7 @@ describe('board.options', () => {
     expect(answer).toEqual({
       ok: false,
       code: 'board-unavailable',
-      msg: 'the task board could not resolve its acceptance options: no model catalog',
+      msg: 'the task board could not resolve its model catalog: no model catalog',
     })
   })
 

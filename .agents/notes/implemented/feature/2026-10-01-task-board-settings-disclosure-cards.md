@@ -4,7 +4,7 @@ Status: implemented
 
 Extended by [family settings cards carry an identity mark and one-line copy](./2026-10-01-family-settings-cards-identity-marks-and-copy.md): the two topic descriptions and the card's copy line are shortened, and the power-status lines become quiet small print; the disclosure layout itself is unchanged.
 
-Extended by [new-card defaults](./2026-10-14-task-board-new-card-defaults.md): the board's own options are three topic cards, the third carrying the four new-card default keys; the disclosure layout itself is unchanged.
+Extended by [new-card defaults](./2026-10-14-task-board-new-card-defaults.md) and narrowed by [Remove task-board /goal runs and goal acceptance](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.md): after the Runtime behavior and Task acceptance topic cards were removed, the board's own options are two nested topic cards (Basics and New-card defaults) ahead of the provider seat; the disclosure layout itself is unchanged.
 
 ## Problem
 
@@ -25,16 +25,13 @@ The settings card is a list of collapsed topic cards, the layout the task form
 already uses ([task form regions](./2026-09-27-task-board-create-dialog-regions.md))
 applied to the settings surface.
 
-- The card's own options are three nested `PluginSettingsCard` disclosures — the
-  board and its runtime behavior (master switch, agent announcement, idle-sleep
-  protection, subtask depth), task acceptance (switch, judge model, reasoning
-  level, resolved preview) and the new-card defaults the third card of that list
-  carries ([new-card defaults](./2026-10-14-task-board-new-card-defaults.md)) —
+- The card's own options are two nested `PluginSettingsCard` disclosures —
+  Basics (master switch, agent announcement, idle-sleep
+  protection, forwarded-proxy trust, poll cadence, subtask depth, launch width, spend cap) and new-card defaults ([new-card defaults](./2026-10-14-task-board-new-card-defaults.md); the historical task-acceptance card was removed in [2026-11-11](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.md)) —
   rendered into the same list (`board-settings.module.css` `.nestedCards`) that
-  already hosts the provider seat. The acceptance block's heading and divider are
-  gone: the card's own header names the topic.
-- Every one of the four starts collapsed (`defaultOpen={false}`), on the board
-  card's three topics and on the GitHub Issues section alike, so the settings page
+  already hosts the provider seat.
+- Every nested card starts collapsed (`defaultOpen={false}`), on the board
+  card's built-in topics and on the GitHub Issues section alike, so the settings page
   opens as a short topic list.
 - The nested cards carry `hideFooter`: they stage into the board card's one form
   and are written by its single save row, which stays the only save affordance.
@@ -46,8 +43,8 @@ applied to the settings surface.
 
 ### Copy
 
-`settings.enabledCardHint` and `settings.goalVerificationCardHint` are the two
-topic descriptions (zh and en in the package, ru mirrored in `packages/dsh-i18n`).
+`settings.enabledCardHint` and `settings.cardDefaultsCardBrief` are the built-in
+topic descriptions (zh and en in the package, ru mirrored in `packages/dsh-i18n`; the historical `settings.goalVerificationCardHint` key was removed with task acceptance).
 The long field hints stay on the fields they explain, so a collapsed header is
 one line of description.
 
@@ -73,7 +70,7 @@ from it.
 
 ## Consequences
 
-- The board card opens as four topic rows plus the power-status lines; each topic
+- The board card opens as its built-in topic rows plus provider seats and the power-status lines; each topic
   is one click away and keeps its own fields and hints.
 - The GitHub Issues section starts collapsed, so its repository and credential
   summary needs one click to read; it keeps its own save row for its own namespace.

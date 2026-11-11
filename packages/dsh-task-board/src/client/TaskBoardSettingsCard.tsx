@@ -8,12 +8,11 @@ import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@d
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { useEffect, useState } from 'react'
-import type { TaskBoardPowerSnapshot, TaskBoardVerificationOptions } from '../protocol.ts'
+import type { TaskBoardModelCatalog, TaskBoardPowerSnapshot } from '../protocol.ts'
 import type { TaskBoardExtensionDispatch } from '../core/extension.ts'
 import type { ExecutionPresetOption } from '../core/controller.ts'
 import { TASK_PERMISSIONS } from '../core/tasks.ts'
-import { resolveContract, type ModelCatalogView, type VerificationSettings } from '../core/verification.ts'
-import { parseModelRoute } from '../core/verification.ts'
+import { parseModelRoute, type ModelCatalogView } from '../core/model-catalog.ts'
 import { CardDefaultPresetField } from './CardDefaultPresetField.tsx'
 import { PluginSettingsCard, BooleanField, ChoiceField, ValueField } from './PluginSettingsCard.tsx'
 import {
@@ -132,11 +131,11 @@ function spendBudgetField(): FieldSpec {
 }
 
 /**
- * The judge-model field: blank inherits the host model catalog default, and a
+ * The model-route field: blank inherits the host model catalog default, and a
  * non-blank draft must be a qualified provider/model route. An unparseable
  * draft blocks the save instead of storing a route nothing can resolve.
- * The new-card default model uses the same gate, so both fields accept exactly
- * the routes an execution can pin.
+ * The new-card default model uses this gate so it accepts exactly the routes
+ * an execution can pin.
  */
 function modelRouteField(field: string): FieldSpec {
   return {
@@ -180,18 +179,6 @@ export interface TaskBoardSettings {
    */
   spendBudgetTokens?: number
   /**
-   * GLOBAL native /goal switch (default off): the master control over whether
-   * this board starts a run with dsh's built-in /goal at all. Frozen per
-   * execution.
-   */
-  goalRunEnabled?: boolean
-  /** Goal acceptance for this board's executions (default on). */
-  goalVerification?: boolean
-  /** Judge model route for goal acceptance; blank inherits the host default. */
-  goalVerificationModel?: string
-  /** Judge reasoning effort; blank inherits the host default level. */
-  goalVerificationReasoningEffort?: string
-  /**
    * Agent preset the create dialog of this board opens with. Blank pins
    * nothing, so a new card follows the deployment default as before.
    */
@@ -225,14 +212,6 @@ export interface TaskBoardSettingsCardState extends CardShell {
   runLaunchWidth: CardFieldState
   /** Daily token cap field. */
   spendBudgetTokens: CardFieldState
-  /** GLOBAL native /goal switch. */
-  goalRunEnabled: CardFieldState
-  /** Goal-acceptance switch. */
-  goalVerification: CardFieldState
-  /** Judge model route field. */
-  goalVerificationModel: CardFieldState
-  /** Judge reasoning-effort field. */
-  goalVerificationReasoningEffort: CardFieldState
   /** New-card default agent preset. */
   cardDefaultMode: CardFieldState
   /** New-card default permission. */
@@ -277,10 +256,6 @@ export class TaskBoardSettingsCardController {
       sessionPollField(),
       runLaunchWidthField(),
       spendBudgetField(),
-      booleanField('goalRunEnabled'),
-      booleanField('goalVerification'),
-      modelRouteField('goalVerificationModel'),
-      textField('goalVerificationReasoningEffort', 'pick'),
       // The new-card defaults: blank is a real value every one of them keeps
       // ("apply no default"), which is why they are applied like any other field
       // and only their parse rules differ.
@@ -303,10 +278,6 @@ export class TaskBoardSettingsCardController {
       sessionPollSeconds: this.form.field('sessionPollSeconds'),
       runLaunchWidth: this.form.field('runLaunchWidth'),
       spendBudgetTokens: this.form.field('spendBudgetTokens'),
-      goalRunEnabled: this.form.field('goalRunEnabled'),
-      goalVerification: this.form.field('goalVerification'),
-      goalVerificationModel: this.form.field('goalVerificationModel'),
-      goalVerificationReasoningEffort: this.form.field('goalVerificationReasoningEffort'),
       cardDefaultMode: this.form.field('cardDefaultMode'),
       cardDefaultPermission: this.form.field('cardDefaultPermission'),
       cardDefaultModel: this.form.field('cardDefaultModel'),
@@ -374,16 +345,16 @@ export function TaskBoardSettingsCard(props: TaskBoardSettingsCardProps) {
   const state = props.useTaskBoardSettingsCard(snapshot => snapshot)
   const disabled = !state.writable
   const [power, setPower] = useState<TaskBoardPowerSnapshot | undefined>()
-  const [verification, setVerification] = useState<TaskBoardVerificationOptions | undefined>()
+  const [modelCatalog, setModelCatalog] = useState<TaskBoardModelCatalog | undefined>()
   useEffect(() => {
     // The SSE channel already carries power on every real change and pushes
     // one frame on subscribe; polling the full /state snapshot every 5 s
     // re-cloned and re-serialized the whole ledger server-side for one field.
     let live = true
-    void fetch('api/task-board/verification')
+    void fetch('api/task-board/model-catalog')
       .then(r => r.ok ? r.json() : undefined)
-      .then((data: TaskBoardVerificationOptions | undefined) => {
-        if (data?.catalog && live) setVerification(data)
+      .then((data: TaskBoardModelCatalog | undefined) => {
+        if (data?.catalog && live) setModelCatalog(data)
       })
       .catch(() => {})
     const events = new EventSource('api/task-board/events')
@@ -397,63 +368,15 @@ export function TaskBoardSettingsCard(props: TaskBoardSettingsCardProps) {
     }
     return () => { live = false; events.close() }
   }, [])
-  // The staged drafts drive the resolved preview, so an unsaved model or level
-  // change already shows what the next execution would freeze (including a
-  // reasoning-level fallback the target model forces).
-  const catalog: ModelCatalogView = verification?.catalog ?? { groups: [] }
-  const stagedSettings: VerificationSettings = {
-    enabled: state.goalVerification.text !== 'false',
-    model: state.goalVerificationModel.text,
-    reasoningEffort: state.goalVerificationReasoningEffort.text,
-  }
-  const preview = resolveContract(stagedSettings, catalog)
-  const inheritRoute = catalog.default
-  const modelChoices = [
-    {
-      value: '',
-      label: inheritRoute === undefined
-        ? t('settings.goalVerificationModelInheritUnknown')
-        : t('settings.goalVerificationModelInherit', { model: inheritRoute.provider + '/' + inheritRoute.model }),
-    },
-    ...catalog.groups.flatMap(group => group.models.map(model => ({
-      value: group.id + '/' + model.id,
-      // The shared display form: the model name first, then the provider
-      // that publishes it, so two providers offering one model name stay
-      // tellable apart.
-      label: modelDisplayLabel({
-        id: group.id + '/' + model.id,
-        name: model.name ?? model.id,
-        // The provider is the group id — the same token the route pins,
-        // and the one every other model picker names.
-        provider: group.id,
-      }),
-    }))),
-  ]
-  const stagedRoute = parseModelRoute(stagedSettings.model) ?? (inheritRoute === undefined ? undefined : { provider: inheritRoute.provider, model: inheritRoute.model })
-  const stagedEfforts = stagedRoute === undefined
-    ? []
-    : catalog.groups.find(group => group.id === stagedRoute.provider)?.models.find(model => model.id === stagedRoute.model)?.reasoning?.efforts ?? []
-  const effortChoices = [
-    {
-      value: '',
-      label: stagedRoute === undefined || stagedEfforts.length === 0
-        ? t('settings.goalVerificationEffortInheritUnknown')
-        : t('settings.goalVerificationEffortInherit', {
-          effort: catalog.groups.find(group => group.id === stagedRoute.provider)?.models
-            .find(model => model.id === stagedRoute.model)?.reasoning?.defaultEffort ?? t('settings.goalVerificationEffortInheritUnknown'),
-        }),
-    },
-    ...stagedEfforts.map(effort => ({ value: effort.id, label: effort.name ?? effort.id })),
-  ]
+  const catalog: ModelCatalogView = modelCatalog?.catalog ?? { groups: [] }
   const fieldProps = {
     overriddenLabel: t('settings.overridden'),
     resetLabel: t('settings.reset'),
     invalidLabel: t('settings.invalidNumber'),
     disabled,
   }
-  // The new-card-defaults topic reads the SAME catalog the acceptance fields
-  // and the create dialog read (session/modelCatalog, served here through the
-  // verification payload), normalized once into the roster the reasoning
+  // The new-card-defaults topic reads the SAME catalog the create dialog reads (session/modelCatalog, served here through the
+  // model-catalog payload), normalized once into the roster the reasoning
   // helpers below consume, so the default level can only offer levels the
   // chosen default model really declares.
   const defaultModels = modelOptionsFromCatalog(catalog)
@@ -497,7 +420,7 @@ export function TaskBoardSettingsCard(props: TaskBoardSettingsCardProps) {
     >
       {/* The board's own settings are nested disclosure cards, so an expanded
           card reads as a short topic list: the board and its runtime behavior,
-          goal acceptance, and whatever a provider contributes (a provider
+          and whatever a provider contributes (a provider
           extension registers into the seat rendered last). Every one
           of them starts collapsed and shares this card's single save. */}
       <ul className={settingsCss.nestedCards}>
@@ -614,116 +537,6 @@ export function TaskBoardSettingsCard(props: TaskBoardSettingsCardProps) {
             onEdit={(text) => { props.edit('spendBudgetTokens', text) }}
             onReset={() => { props.resetField('spendBudgetTokens') }}
           />
-        </PluginSettingsCard>
-
-        <PluginSettingsCard
-          t={t}
-          density="nested"
-          titleKey="settings.runBehaviorTitle"
-          descriptionKey="settings.runBehaviorCardHint"
-          defaultOpen={false}
-          hideFooter
-          state={nestedShell}
-          onSave={props.save}
-          onDiscard={props.discard}
-        >
-          <BooleanField
-            id="settings-task-board-goal-run"
-            label={t('settings.goalRunGlobal')}
-            hint={t('settings.goalRunGlobalHintBrief')}
-            hintTitle={t('settings.goalRunGlobalHint')}
-            inheritLabel={t('settings.inherit')}
-            onLabel={t('settings.on')}
-            offLabel={t('settings.off')}
-            {...fieldProps}
-            {...state.goalRunEnabled}
-            onEdit={(text) => { props.edit('goalRunEnabled', text) }}
-            onReset={() => { props.resetField('goalRunEnabled') }}
-          />
-        </PluginSettingsCard>
-
-        <PluginSettingsCard
-          t={t}
-          density="nested"
-          titleKey="settings.goalVerificationTitle"
-          descriptionKey="settings.goalVerificationCardHint"
-          defaultOpen={false}
-          hideFooter
-          state={nestedShell}
-          onSave={props.save}
-          onDiscard={props.discard}
-        >
-          <BooleanField
-            id="settings-task-board-goal-verification"
-          label={t('settings.goalVerification')}
-          hint={t('settings.goalVerificationHintBrief')}
-          hintTitle={t('settings.goalVerificationHint')}
-          inheritLabel={t('settings.inherit')}
-          onLabel={t('settings.on')}
-          offLabel={t('settings.off')}
-          {...fieldProps}
-          {...state.goalVerification}
-          onEdit={(text) => { props.edit('goalVerification', text) }}
-          onReset={() => { props.resetField('goalVerification') }}
-        />
-          <ChoiceField
-            id="settings-task-board-goal-verification-model"
-            label={t('settings.goalVerificationModel')}
-            hint={t('settings.goalVerificationModelHintBrief')}
-            hintTitle={t('settings.goalVerificationModelHint')}
-            inheritLabel={t('settings.inherit')}
-            choices={modelChoices}
-            {...fieldProps}
-            {...state.goalVerificationModel}
-            onEdit={(text) => { props.edit('goalVerificationModel', text) }}
-            onReset={() => { props.resetField('goalVerificationModel') }}
-          />
-          <ChoiceField
-            id="settings-task-board-goal-verification-effort"
-            label={t('settings.goalVerificationEffort')}
-            hint={t('settings.goalVerificationEffortHintBrief')}
-            hintTitle={t('settings.goalVerificationEffortHint')}
-            inheritLabel={t('settings.inherit')}
-            choices={effortChoices}
-            {...fieldProps}
-            {...state.goalVerificationReasoningEffort}
-            onEdit={(text) => { props.edit('goalVerificationReasoningEffort', text) }}
-            onReset={() => { props.resetField('goalVerificationReasoningEffort') }}
-          />
-          <p className={settingsCss.note}>{t('settings.goalVerificationResolved')}</p>
-          {preview.route === undefined
-            ? <p className={settingsCss.error}>{t('settings.goalVerificationRouteMissing')}</p>
-            : (
-              <ul className={settingsCss.resolvedList}>
-                <li>{t('settings.goalVerificationResolvedModel', { model: preview.route.provider + '/' + preview.route.model })}</li>
-                <li>
-                  {preview.route.reasoningEffort === undefined
-                    ? t('settings.goalVerificationResolvedNoEffort')
-                    : t('settings.goalVerificationResolvedEffort', { effort: preview.route.reasoningEffort })}
-                </li>
-                <li>
-                  {t('settings.goalVerificationResolvedSource', {
-                    source: preview.modelSource === 'inherit'
-                      ? t('settings.goalVerificationSourceInherit')
-                      : t('settings.goalVerificationSourceExplicit'),
-                  })}
-                </li>
-                <li>{t('settings.goalVerificationResolvedPreset', { threshold: String(preview.threshold) })}</li>
-              </ul>
-            )}
-          {preview.effortFallback !== undefined && (
-            <p className={settingsCss.note}>
-              {preview.effortFallback.resolved === undefined
-                ? t('settings.goalVerificationEffortFallbackNone', { requested: preview.effortFallback.requested })
-                : t('settings.goalVerificationEffortFallback', {
-                  requested: preview.effortFallback.requested,
-                  resolved: preview.effortFallback.resolved,
-                })}
-            </p>
-          )}
-          {stagedSettings.model.trim() !== '' && parseModelRoute(stagedSettings.model) === undefined && (
-            <p className={settingsCss.note}>{t('settings.goalVerificationModelInvalid')}</p>
-          )}
         </PluginSettingsCard>
 
         {/* New-card defaults: what the create dialog opens with, and what the

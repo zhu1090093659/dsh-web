@@ -17,7 +17,7 @@ The text is taken at settlement, from the events the inspection already read. `H
 Rules the implementation holds:
 
 - **Window.** Only events at or after the execution's `startedAt` count. A reused session carries earlier executions' history, and their closing words are not this run's output.
-- **Last message with prose.** A trailing tool-call or reasoning-only message has nothing to record, so the reader walks back to the last assistant message that carries text blocks. Reasoning and tool traffic are excluded deliberately: the acceptance evidence already renders them, and a summary that opened with a tool call would bury the conclusion.
+- **Last message with prose.** A trailing tool-call or reasoning-only message has nothing to record, so the reader walks back to the last assistant message that carries text blocks. Reasoning and tool traffic are excluded deliberately: a summary that opened with a tool call or reasoning block would bury the conclusion.
 - **Truncation.** Over the limit, the tail is kept and the omitted length is announced as a `[truncated N chars]` prefix. The closing paragraphs carry the conclusion; a reader that needs the whole message follows `summary.seq` into the session history.
 - **Absence, not emptiness.** No assistant prose, an unreadable session, or a launch failure before any session existed leaves the field out entirely. Nothing in the settlement path depends on a summary, so settlement never fails over it.
 - **Failures keep their text too.** The `error` field keeps its historical meaning; a failed run's closing words are recorded beside it rather than replacing it.
@@ -35,7 +35,7 @@ The agent tool face (`executionView` in `src/host/agent-tools.ts`) deliberately 
 
 **Store the full transcript instead of the closing message.** Rejected: the ledger is a decision record, not a session mirror. It would multiply ledger bytes per execution, duplicate history the session store already owns, and hand every reader far more than "what did this run deliver".
 
-**Keep the head of an overlong message rather than its tail.** Rejected: an assistant's closing paragraphs state the conclusion (what was shipped, what failed), while the opening paragraph is usually framing. The board already bounds the acceptance evidence from the tail for the same reason.
+**Keep the head of an overlong message rather than its tail.** Rejected: an assistant's closing paragraphs state the conclusion (what was shipped, what failed), while the opening paragraph is usually framing. The board's historical acceptance evidence bounded from the tail for the same reason.
 
 **Emitting an empty string when nothing was readable.** Rejected: it would make "produced nothing" indistinguishable from "the board could not read the session", which is exactly the distinction a parent card needs when deciding whether to trust a success.
 

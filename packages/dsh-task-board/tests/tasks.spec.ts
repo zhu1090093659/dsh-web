@@ -280,13 +280,4 @@ describe('withSchedule', () => {
   })
 })
 
-describe('goal run opt-in', () => {
-  it('user leaving the option alone gets one plain turn and only an explicit true is stored', () => {
-    // Given cards created without the option, with it true, and with it false
-    // When the created records are read
-    // Then absent is the canonical off-state and only the opt-in is persisted
-    expect(sampleTask().goalRun).toBeUndefined()
-    expect(createTask({ title: 'x', description: '', prompt: '', goalRun: true }, NOW, 'task-on').goalRun).toBe(true)
-    expect(createTask({ title: 'x', description: '', prompt: '', goalRun: false }, NOW, 'task-off').goalRun).toBeUndefined()
-  })
-})
+

@@ -5,7 +5,6 @@
  * unit-testable in isolation.
  */
 import type { FreezeSnapshot } from './freeze-snapshot.ts'
-import type { ExecutionVerification } from './verification.ts'
 import type { TaskHandover, TaskHandoverInput } from './handover.ts'
 import { normalizeTaskIntegrations, type TaskBoardExtensionPayload } from './extension.ts'
 import { normalizeAttachments, type TaskAttachment } from './attachment.ts'
@@ -134,14 +133,6 @@ export interface ExecutionRecord {
    * informational, and every field above is what the board decides with.
    */
   summary?: ExecutionSummary
-  /**
-   * Goal acceptance state of this execution (task-board goal verification).
-   * Fixed when the execution starts and never rewritten from later settings:
-   * the contract is frozen here, the attempts accrue here, and the settlement
-   * rule reads the pass record here. Absent on an execution that started
-   * before the feature existed, which keeps it on the historical verdict.
-   */
-  verification?: ExecutionVerification
 }
 
 /**
@@ -494,32 +485,6 @@ export interface TaskRecord {
    */
   teamRun?: boolean
   /**
-   * Start every execution of this task with dsh's built-in `/goal` command,
-   * armed with the composed execution prompt as its objective. The session then
-   * keeps working automatic continuation rounds until the agent marks the goal
-   * complete, and this board settles the execution on the goal's own end
-   * instead of at the first turn end. Absent means OFF — the option is
-   * unchecked by default, so only an explicit `true` joins the goal run and
-   * every card that never touched it (including every card written before the
-   * field existed) runs one plain turn. A session whose `/goal` command is
-   * refused still runs the prompt.
-   */
-  goalRun?: boolean
-  /**
-   * Run this task's goal executions WITHOUT the board's acceptance gate.
-   *
-   * Absent means INHERIT: the execution's applicability is decided by the
-   * board-wide `goalVerification` switch frozen at start, exactly as a card
-   * that never touched this option behaves. Only an explicit `true` opts the
-   * card out, and the execution records `applicability: 'disabled'` so the
-   * report says plainly that nothing certified this run.
-   *
-   * The opt-out is per execution, not per run: flipping it never rewrites the
-   * verdict rule of an execution already open, and a rerun or a scheduled
-   * occurrence reads the card's current value when it freezes its contract.
-   */
-  skipVerification?: boolean
-  /**
    * Frozen context snapshot for a continuation card; absent on plain tasks.
    * Sanitized before it enters the ledger (redaction, slash-command taint,
    * 8 KiB per-field cap) by the protocol gate and re-normalized on load.
@@ -625,16 +590,6 @@ export interface NewTaskInput {
   applyCardDefaults?: boolean
   /** Reuse the previous execution's session for later runs (issue #1419). */
   reuseSession?: boolean
-  /**
-   * Start the execution with dsh's built-in `/goal`. Absent means the default
-   * (one plain turn); only an explicit true joins the goal run.
-   */
-  goalRun?: boolean
-  /**
-   * Run this task's goal executions without the acceptance gate; absent
-   * inherits the board-wide `goalVerification` switch.
-   */
-  skipVerification?: boolean
   /**
    * Optional scheduling rule requested at creation time (the new-task
    * dialog): an enable flag, the kind of plan (a recurring 5-field cron
@@ -794,14 +749,6 @@ export function createTask(input: NewTaskInput, now: number, id: string): TaskRe
     model: normalizeTargetId(input.model),
     reasoningEffort: normalizeTargetId(input.reasoningEffort),
     reuseSession: input.reuseSession === true ? true : undefined,
-    // Default OFF: only an explicit true is stored, so a card that never
-    // touched the option (and every card written before the field existed)
-    // keeps running one plain turn.
-    goalRun: input.goalRun === true ? true : undefined,
-    // Default OFF: only an explicit true is stored, so a card that never
-    // touched the option inherits the board-wide acceptance switch exactly as
-    // every card written before the field existed does.
-    skipVerification: input.skipVerification === true ? true : undefined,
     ...(input.freeze === undefined ? {} : { freeze: freezeOf(input.freeze, now) }),
     ...(input.handover === undefined ? {} : { handover: { ...input.handover, bundledAt: now } }),
     ...(tags === undefined ? {} : { tags }),

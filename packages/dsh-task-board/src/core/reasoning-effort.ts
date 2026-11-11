@@ -15,7 +15,7 @@
  * the only place that can complete the documented `provider/model` or model-id
  * pin.
  */
-import type { CatalogModel, ModelCatalogView } from './verification.ts'
+import type { CatalogModel, ModelCatalogView } from './model-catalog.ts'
 
 /** One execution route an effort resolves against: `provider/model`, or a bare model id. */
 export interface ReasoningRoute {

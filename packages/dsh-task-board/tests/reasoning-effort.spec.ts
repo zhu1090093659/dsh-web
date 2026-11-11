@@ -18,7 +18,7 @@ import { HostTaskLedger, type LedgerState, type OpenedRun } from '../src/host-le
 import { resolveExecutionTargets } from '../src/core/subtask.ts'
 import { createTask, type TaskRecord } from '../src/core/tasks.ts'
 import { normalizeReasoningEffort, declaredRoute, resolveReasoningEffort } from '../src/core/reasoning-effort.ts'
-import type { ModelCatalogView } from '../src/core/verification.ts'
+import type { ModelCatalogView } from '../src/core/model-catalog.ts'
 
 const NOW = 1_700_000_000_000
 

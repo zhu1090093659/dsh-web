@@ -428,14 +428,14 @@ export function makeTaskBoardRoutes(
       }
     },
   }
-  const verification: WebRoute = {
+  const modelCatalog: WebRoute = {
     kind: 'exact',
-    path: `${TASK_BOARD_API_PREFIX}/verification`,
+    path: `${TASK_BOARD_API_PREFIX}/model-catalog`,
     handler: async (req, res): Promise<void> => {
       if (req.method !== 'GET') return writeJson(res, 405, { ok: false, error: 'method-not-allowed' }, { 'cache-control': 'no-store' })
       if (!guard(req, res)) return
       try {
-        writeJson(res, 200, await service.verificationOptions(), { 'cache-control': 'no-store' })
+        writeJson(res, 200, await service.modelCatalogOptions(), { 'cache-control': 'no-store' })
       } catch (error) {
         writeJson(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) }, { 'cache-control': 'no-store' })
       }
@@ -520,5 +520,5 @@ export function makeTaskBoardRoutes(
       }
     },
   }
-  return [state, action, events, parse, verification, attachmentUpload, attachmentImage]
+  return [state, action, events, parse, modelCatalog, attachmentUpload, attachmentImage]
 }

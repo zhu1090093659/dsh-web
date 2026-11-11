@@ -1108,10 +1108,10 @@ describe('TaskBoardHostService poll heartbeat', () => {
     const now = new Date(2026, 7, 16, 10, 0, 30).getTime()
     const ledger = new HostTaskLedger(root(), () => now)
     ledger.applyRequest('create-parent', {
-      kind: 'create', id: 'parent', input: { title: 'Parent', description: '', prompt: 'work', permission: 'read-only', goalRun: true },
+      kind: 'create', id: 'parent', input: { title: 'Parent', description: '', prompt: 'work', permission: 'read-only' },
     })
     ledger.applyRequest('create-child', {
-      kind: 'create', id: 'child', input: { title: 'Child', description: '', prompt: 'child work', parentId: 'parent', goalRun: true },
+      kind: 'create', id: 'child', input: { title: 'Child', description: '', prompt: 'child work', parentId: 'parent' },
     })
     const sessions: string[] = []
     const permissions: string[] = []
@@ -1135,10 +1135,6 @@ describe('TaskBoardHostService poll heartbeat', () => {
       power: new PowerInhibitor({ platform: 'linux' }),
       now: () => now,
       workspaceRegistry: fixtureWorkspaces(),
-      // The native-/goal master switch is on AND both cards opted in: the
-      // option is off by default, so this case asserts that every member of a
-      // cascade that asked for it arms its own goal.
-      goalRunEnabled: () => true,
       commandDispatcher: {
         execute: async (_sessionId, line) => { permissions.push(line); return { kind: 'success', text: 'ok' } as const },
       },
@@ -1148,13 +1144,12 @@ describe('TaskBoardHostService poll heartbeat', () => {
     service.apply('run-1', { kind: 'run', taskId: 'parent' })
 
     // Then exactly one session exists: the parent's own, under its pinned
-    // permission, with its own goal armed from its own composed prompt
+    // permission, with one plain turn
     await vi.waitFor(() => {
       expect(ledger.state().tasks[0]?.executions[0]?.sessionId).toBe('session-1')
     })
     expect(sessions).toEqual(['session-1'])
-    expect(permissions.filter(line => line.startsWith('/permission'))).toEqual(['/permission read-only'])
-    expect(permissions.filter(line => line.startsWith('/goal '))).toHaveLength(1)
+    expect(permissions).toEqual(['/permission read-only'])
     // The subtask keeps its card and gets no execution of its own
     expect(ledger.state().tasks.map(task => task.status)).toEqual(['running', 'todo'])
     expect(ledger.state().tasks[1]?.executions).toHaveLength(0)

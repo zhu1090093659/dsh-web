@@ -6,7 +6,7 @@ import type { Workspace } from '@deepseek-ai/dsh-workspace/types'
 import { LEGACY_AGENT_TEAMS_REASON, LIANGSHEN_PRESET_ID } from './core/subtask.ts'
 import { MISSING_WORKSPACE_REASON, mostRecentWorkspaceId } from './core/workspace-target.ts'
 import { declaredRoute, normalizeReasoningEffort, resolveReasoningEffort, type ReasoningRoute } from './core/reasoning-effort.ts'
-import type { ModelCatalogView } from './core/verification.ts'
+import type { ModelCatalogView } from './core/model-catalog.ts'
 import type { ExecutionSummary, TaskPermission, TaskRecord } from './core/tasks.ts'
 import type { TaskAttachment } from './core/attachment.ts'
 import {
@@ -337,27 +337,6 @@ export function promptText(task: TaskRecord, context: PromptContext = {}): strin
 }
 
 /**
- * The parts of an objective the built-in `/goal` command reads as an operation
- * rather than as an objective: an exact `clear`/`pause`/`resume`/`edit`
- * (case-insensitive) and a leading `edit <objective>`.
- */
-const GOAL_COMMAND_KEYWORD = /^(?:clear|pause|resume|edit)$|^edit\s/i
-
-/**
- * Build the objective the built-in `/goal` command receives. A prompt whose
- * text would be read as a goal operation is prefixed with a neutral label: the
- * instruction stays intact, and the command arms an objective instead of
- * clearing, pausing, or editing an unrelated goal (or refusing for a missing
- * one).
- * @param prompt - the composed execution prompt.
- * @returns the objective text for `/goal <objective>`.
- */
-export function goalObjective(prompt: string): string {
-  const text = prompt.trim()
-  return GOAL_COMMAND_KEYWORD.test(text) ? `Goal: ${text}` : text
-}
-
-/**
  * Build the tag section of the execution prompt (issue #1521). Only tags with
  * a non-blank `promptPrefix` contribute; a task whose tags are all bare names
  * (or which has no tags at all) yields undefined and the prompt is byte-for-byte
@@ -511,25 +490,11 @@ export class HostExecutionRunner {
      */
     agentPreset?: string
     onSession?: (sessionId: string) => void
-    onGoalArmed?: (armed: boolean) => void
-    /**
-     * GLOBAL native /goal switch, resolved by the caller ONCE per execution and
-     * carried here so the decision is frozen for this launch.
-     *
-     * Frozen deliberately: a settings edit made while the run is in flight must
-     * not arm, disarm or otherwise change the goal/acceptance contract of a run
-     * already running. Absent means off — the default for every deployment that
-     * never touched the switch, including cards written before the option
-     * existed. A plain single turn is what an off switch produces; the task-level
-     * `goalRun` still applies on top of it (both must ASK for a goal).
-     */
-    goalEnabled?: boolean
     /**
      * The host model catalog, read ONCE per execution by the caller. The card's
      * pinned reasoning effort is sent only when this catalog declares it for the
-     * route the execution runs at, so one snapshot decides both the acceptance
-     * contract and the effort this run freezes. Absent means "no capability
-     * evidence": an effort is then not sent at all.
+     * route the execution runs at. Absent means "no capability evidence": an
+     * effort is then not sent at all.
      */
     catalog?: ModelCatalogView
   } = {}): Promise<string> {
@@ -592,7 +557,7 @@ export class HostExecutionRunner {
         // at the gate without its binding.
         options.onSession?.(reused)
         await this.assertReusedPreset(reused, mode)
-        await this.pinAndPrompt(reused, task, permission, options.promptContext, options.onGoalArmed, options.goalEnabled === true, options.catalog)
+        await this.pinAndPrompt(reused, task, permission, options.promptContext, options.catalog)
       } catch (error) {
         throw new SessionLaunchError(reused, error)
       }
@@ -613,7 +578,7 @@ export class HostExecutionRunner {
     options.onSession?.(sessionId)
     try {
       await this.invoke('session', 'rename', { sessionId, title: task.title })
-      await this.pinAndPrompt(sessionId, task, permission, options.promptContext, options.onGoalArmed, options.goalEnabled === true, options.catalog)
+      await this.pinAndPrompt(sessionId, task, permission, options.promptContext, options.catalog)
     } catch (error) {
       throw new SessionLaunchError(sessionId, error)
     }
@@ -727,8 +692,6 @@ export class HostExecutionRunner {
     task: TaskRecord,
     permission: TaskPermission | undefined,
     context: PromptContext = {},
-    onGoalArmed?: (armed: boolean) => void,
-    goalEnabled = false,
     catalog?: ModelCatalogView,
   ): Promise<void> {
     if (permission !== undefined) {
@@ -809,8 +772,6 @@ export class HostExecutionRunner {
         ...resolved.images,
       ],
     })
-    const armed = await this.armGoal(sessionId, task, promptContext, goalEnabled)
-    onGoalArmed?.(armed)
   }
 
   /**
@@ -832,107 +793,18 @@ export class HostExecutionRunner {
   /**
    * Read the host's model catalog: the default route an unconfigured session
    * starts at, and each provider's models with the reasoning metadata its
-   * adapter exposes. The acceptance settings card and the frozen contract both
-   * resolve against it, so "inherit host" means the host's own configuration
-   * rather than a session's or a card's pinned model.
+   * adapter exposes. The board resolves a card's pinned route and reasoning
+   * level against it, so "the model declares this level" is answered from the
+   * host's own configuration rather than from a session's or a card's pin.
    * @returns the raw catalog value, or undefined when this cohort serves none.
    */
   async modelCatalog(): Promise<unknown> {
     try {
       return await this.invoke('session', 'modelCatalog', {})
     } catch (error) {
-      console.warn('[dsh-task-board] session/modelCatalog failed; the acceptance settings fall back to the configured route', error)
+      console.warn('[dsh-task-board] session/modelCatalog failed; the board falls back to the pinned route', error)
       return undefined
     }
-  }
-
-  /**
-   * Arm dsh's built-in goal on the session. The task prompt is queued FIRST, so
-   * the session's first turn carries the instruction verbatim; `/goal
-   * <objective>` then turns the same text into a persistent objective, and
-   * dsh's goal-round driver keeps starting continuation rounds until the agent
-   * marks it complete (see {@link goalVerdict} for how the run settles).
-   *
-   * Two switches gate the arming, and BOTH must ask for it:
-   * - the GLOBAL native-/goal switch (`goalEnabled`, default OFF), frozen when
-   *   this execution started; and
-   * - the task's own `goalRun` (absent means off, only an explicit true opts
-   *   the card into a goal run).
-   *
-   * A refusal (no command dispatcher, no `/goal` command in this cohort, an
-   * objective the command rejects) is reported and the run continues as a plain
-   * turn: the task was asked to run, and a missing goal mode must not lose the
-   * work.
-   * @param sessionId - the session to arm in.
-   * @param task - the task being run.
-   * @param context - the run's prompt context.
-   * @param goalEnabled - the GLOBAL switch, frozen for this execution.
-   * @returns whether `/goal` was really armed.
-   */
-  private async armGoal(sessionId: ExecutionSessionId, task: TaskRecord, context: PromptContext, goalEnabled: boolean): Promise<boolean> {
-    if (!goalEnabled) return false
-    if (task.goalRun !== true) return false
-    if (this.commands === undefined) {
-      console.warn('[dsh-task-board] no command dispatcher is available; task ' + task.id + ' runs without /goal')
-      return false
-    }
-    try {
-      const command = await this.commands.execute(
-        sessionId,
-        '/goal ' + goalObjective(promptText(task, context)),
-        AbortSignal.timeout(30_000),
-      )
-      if (command === undefined) {
-        console.warn('[dsh-task-board] /goal was not acknowledged for session ' + sessionId + '; the run continues as a plain turn')
-        return false
-      }
-      if (command.kind !== 'success') {
-        console.warn('[dsh-task-board] /goal was refused for session ' + sessionId + ': ' + (command.text ?? 'no reason reported') + '; the run continues as a plain turn')
-        return false
-      }
-      return true
-    } catch (error) {
-      console.warn('[dsh-task-board] could not arm /goal on session ' + sessionId + '; the run continues as a plain turn', error)
-      return false
-    }
-  }
-
-  /**
-   * The verdict an armed dsh goal imposes on an otherwise completed turn.
-   *
-   * A goal run is one session working many automatic continuation rounds:
-   * dsh's goal-round driver queues the next round whenever the agent goes
-   * idle, so the first completed `turn/end` is not the execution's result.
-   * Settling there would leave the card in `done` while the session keeps
-   * working, and a scheduled task would fire a second, concurrent session.
-   * The session projection is the authority: an `active` goal keeps the
-   * execution pending, a `blocked` goal fails it with the recorded reason, and
-   * any other phase (complete, paused, or no goal at all) leaves the turn
-   * verdict in place.
-   *
-   * An unreadable projection falls back to that turn verdict: a cohort whose
-   * gateway withdrew `session/projections` must not hang every execution.
-   */
-  private async goalVerdict(sessionId: string): Promise<ExecutionInspection | undefined> {
-    let projections: { values?: { goal?: unknown } } | null
-    try {
-      projections = await this.invoke('session', 'projections', { sessionId }) as { values?: { goal?: unknown } } | null
-    } catch (error) {
-      console.warn('[dsh-task-board] session/projections failed while reading the goal phase; settling from the turn result', error)
-      return undefined
-    }
-    const goal = projections?.values?.goal
-    if (goal === undefined || goal === null) return undefined
-    const view = (goal as { goal?: { phase?: unknown; blockedReason?: { message?: unknown } } }).goal
-    if (view?.phase === 'active') return { outcome: 'pending' }
-    if (view?.phase === 'blocked') {
-      const message = view.blockedReason?.message
-      return {
-        outcome: 'failed',
-        error: 'goal is blocked: ' + (typeof message === 'string' && message !== '' ? message : 'no reason recorded'),
-      }
-    }
-    return undefined
   }
 
   async listRunning(): Promise<{ known: true; count: number; items: SessionSummary[] } | { known: false }> {
@@ -1083,7 +955,9 @@ export class HostExecutionRunner {
     const closing = executionSummaryOf(events.map(entry => entry.event), startedAt)
     const carried = closing === undefined ? {} : { summary: closing }
     const reason = nonCompletedTurnEnd(turnEnd.event.data)
-    if (reason === undefined) return { ...(await this.goalVerdict(sessionId) ?? { outcome: 'succeeded' as const }), ...carried }
+    // The turn is the ONLY verdict: an execution is a single plain turn, so a
+    // completed turn end is a success and nothing else has to be read.
+    if (reason === undefined) return { outcome: 'succeeded' as const, ...carried }
     // `error` keeps its historical wording; every other non-completed reason
     // (aborted / blocked / max-tokens / interrupted) now reports instead of
     // silently counting as success.

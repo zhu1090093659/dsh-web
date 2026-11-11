@@ -18,7 +18,6 @@ import { sanitizeFreezeSnapshot } from './freeze-snapshot.ts'
 import { sanitizeHandover } from './handover.ts'
 import { normalizeTaskIntegrations } from './extension.ts'
 import { normalizeAttachments } from './attachment.ts'
-import { normalizeVerification } from './verification.ts'
 
 /** Persistence seam for the task ledger. */
 export interface TaskStore {
@@ -76,8 +75,6 @@ function isTaskRecordShape(value: unknown): value is Omit<TaskRecord, 'status'> 
   if (record.hidden !== undefined && typeof record.hidden !== 'boolean') return false
   if (record.attachments !== undefined && !Array.isArray(record.attachments)) return false
   if (record.reuseSession !== undefined && typeof record.reuseSession !== 'boolean') return false
-  if (record.goalRun !== undefined && typeof record.goalRun !== 'boolean') return false
-  if (record.skipVerification !== undefined && typeof record.skipVerification !== 'boolean') return false
   if (!Array.isArray(record.executions)) return false
   for (const execution of record.executions) {
     if (typeof execution !== 'object' || execution === null) return false
@@ -95,11 +92,28 @@ function isTaskRecordShape(value: unknown): value is Omit<TaskRecord, 'status'> 
     // written before the field existed carries none, and a non-boolean value
     // is dropped by the repair below rather than trusted as provenance.
     if (entry.external !== undefined && typeof entry.external !== 'boolean') return false
-    // The acceptance block is repaired like every other optional field: an
-    // unusable one is dropped, which can only make the board MORE strict.
-    if (entry.verification !== undefined && normalizeVerification(entry.verification) === undefined) return false
   }
   return true
+}
+
+/**
+ * Drop the fields of retired features from one loaded row.
+ *
+ * A ledger written by an older build may still carry them: `goalRun` and
+ * `skipVerification` on a card, and the acceptance block on an execution. They
+ * are removed field by field rather than rejected — an old row always loads,
+ * every other field is untouched, and the next commit persists the row without
+ * them, so a removed option never survives a load and no new value is ever
+ * written for it.
+ * @param value - the parsed row (a card or one execution record).
+ * @returns a copy without the retired fields.
+ */
+function withoutRetiredFields<T extends object>(value: T): T {
+  const kept = { ...value } as Record<string, unknown>
+  delete kept.goalRun
+  delete kept.skipVerification
+  delete kept.verification
+  return kept as T
 }
 
 /** A task record is structurally valid if it round-trips through the UI. */
@@ -245,7 +259,7 @@ export function parseLedger(raw: string | null): TaskRecord[] {
     }
     // Always (re)assign the schedule: a repair that returns undefined must
     // clear a malformed persisted rule rather than leave it in the row.
-    const task: TaskRecord = { ...row, status: normalizeStatus(row.status) }
+    const task: TaskRecord = withoutRetiredFields({ ...row, status: normalizeStatus(row.status) })
     task.schedule = normalizeSchedule(row.schedule)
     // The lineage link is repaired like every other optional field: a blank or
     // non-string parent id clears the link instead of dropping the row. Whether
@@ -255,16 +269,13 @@ export function parseLedger(raw: string | null): TaskRecord[] {
     // Cascade bookkeeping on execution records is repaired field by field too,
     // so a hand-edited ledger degrades a run group instead of the whole task.
     task.executions = task.executions.map(execution => ({
-      ...execution,
+      ...withoutRetiredFields(execution),
       runGroupId: normalizeTargetId(execution.runGroupId),
       ownResult: isExecutionOutcome(execution.ownResult) ? execution.ownResult : undefined,
       ownError: typeof execution.ownError === 'string' ? execution.ownError : undefined,
       // A summary a reader does not recognize (an older document has none) is
       // simply absent; a malformed one is dropped without costing the run.
       summary: normalizeExecutionSummary(execution.summary),
-      // A malformed acceptance block is dropped rather than dropping the
-      // execution record: the board then treats that run as unverified.
-      verification: normalizeVerification(execution.verification),
       // A malformed rework block is dropped on the same terms: the run itself
       // is what the history is for, and only its instructions are unrecoverable.
       rework: normalizeExecutionRework(execution.rework),
@@ -282,12 +293,6 @@ export function parseLedger(raw: string | null): TaskRecord[] {
     task.archivedAt = typeof row.archivedAt === 'number' && Number.isFinite(row.archivedAt) ? row.archivedAt : undefined
     task.permission = isTaskPermission(row.permission) ? row.permission as TaskPermission : undefined
     task.reuseSession = row.reuseSession === true ? true : undefined
-    // The goal opt-in is stored only when it is ON: absent means the default
-    // (one plain turn per run), so a hand-edited false normalizes back to it.
-    task.goalRun = row.goalRun === true ? true : undefined
-    // The acceptance opt-out is stored only when it is ON: absent inherits the
-    // board-wide switch, so a hand-edited false normalizes back to inherit.
-    task.skipVerification = row.skipVerification === true ? true : undefined
     task.freeze = normalizeFreeze(row.freeze)
     task.handover = normalizeHandover(row.handover)
     // Tags are repaired field by field like the schedule: a malformed entry is

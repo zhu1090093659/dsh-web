@@ -1,9 +1,8 @@
 /**
  * One-shot model dispatch for the board's Host half.
  *
- * The board makes two one-shot model calls: the goal-acceptance judge
- * (`verification-runner.ts`) and the "parse pasted text" action
- * (`host-ai.ts`). Both call the official `llm` service, and both must call it
+ * The board makes one one-shot model call: the "parse pasted text" action
+ * (`host-ai.ts`). It calls the official `llm` service, and it must call it
  * the way the official agent loop does.
  *
  * The runtime exposes two entry points with the same name shape. The public
@@ -20,9 +19,9 @@
  * so the guard's `for await (const chunk of next())` raised
  * `TypeError: next(...) is not a function or its return value is not async
  * iterable`. The agent loop was unaffected because it already dispatches
- * through `prepareCall(...).stream(...)`; the board's two one-shot calls were
- * not, and each completed acceptance was recorded as an anomaly
- * ("验收异常（裁判请求失败）") after two judge attempts.
+ * through `prepareCall(...).stream(...)`; the board's one-shot call was not,
+ * and the parse action failed with that TypeError until it dispatched the same
+ * way.
  *
  * Dispatching through the prepared call fixes that at the owner: the board no
  * longer depends on a mutable instance property that a plugin may legitimately
@@ -38,10 +37,9 @@ export type OneShotRequest = Pick<GenerateOptions, 'messages' | 'signal'> & Pick
 /**
  * The call config as this board's own domain types carry it.
  *
- * `VerificationRoute.reasoningEffort` and the parse route are plain strings (the
- * catalog publishes effort ids as strings), while the SDK brands them
- * nominally; the single crossing is branded here so no caller repeats the
- * assertion.
+ * The parse route's `reasoningEffort` and the catalog's effort ids are plain
+ * strings, while the SDK brands them nominally; the single crossing is branded
+ * here so no caller repeats the assertion.
  */
 export interface OneShotCallConfig {
   provider: string

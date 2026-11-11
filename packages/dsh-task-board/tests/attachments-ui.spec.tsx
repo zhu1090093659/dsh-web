@@ -67,7 +67,6 @@ function fakeController(options: { upload?: (file: File) => Promise<TaskAttachme
       revision: 1,
       scheduler: { timeZone: 'UTC' },
       power: { platform: 'linux', phase: 'unsupported', enabled: false, runningSessions: 0, armedSchedules: 0, sessionStateKnown: true },
-      goalRunEnabled: false,
       ...(options.attachmentLimits === undefined ? {} : { attachmentLimits: options.attachmentLimits }),
     },
   }

@@ -89,7 +89,6 @@ function hostedSnapshot(cardDefaults?: Record<string, string>): Record<string, u
     power: { platform: 'linux', phase: 'unsupported', enabled: false, runningSessions: 0, armedSchedules: 0, sessionStateKnown: true },
     sessionDefaultPermission: 'read-only',
     maxSubtaskDepth: 1,
-    goalRunEnabled: false,
     ...(cardDefaults === undefined ? {} : { cardDefaults }),
   }
 }
@@ -387,8 +386,8 @@ describe('new-card defaults refreshed live from the settings form', () => {
     const board = await mountedBoard({ enabled: true, cardDefaultPermission: 'workspace-write' })
     const readsBefore = board.server.stateReads()
 
-    // When the user toggles the board's acceptance switch and saves
-    await board.saveSettings({ cardDefaultPermission: 'workspace-write', goalVerification: false })
+    // When the user toggles the board's announcement switch and saves
+    await board.saveSettings({ cardDefaultPermission: 'workspace-write', announceToAgent: false })
 
     // Then the defaults did not change, so the ledger is not read again for it
     expect(board.server.stateReads()).toBe(readsBefore)

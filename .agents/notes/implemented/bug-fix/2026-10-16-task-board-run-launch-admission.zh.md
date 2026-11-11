@@ -14,7 +14,7 @@ Status: implemented
 
 一个槽位一直持有到该 launch 的 promise 结算，所以「在飞」的含义是「仍在创建并 prompt 它的会话」；槽位在 launch 启动之前**同步**占用，因此单次 pump 不会超额准入。`runLaunchWidth`（1..16，默认 3，volatile）的唯一事实源在 `src/core/launch-width.ts`，与 `src/core/poll-cadence.ts` 拥有轮询节奏的方式一致。
 
-队列出现之后，有两处细节开始承重。其一，run group 现在在它第一次准入时**冻结一次**验收契约，并把同一个值交给之后每一个成员：看板一直要求契约在会话被 prompt 之前冻结，而按每次 launch 各读一次，会让某个排队中的成员读到它同伴从未见过的设置。读取失败不缓存，下一个成员照常重读，与逐执行读取时的行为一致。其二，排队等槽位的时间正是 execution 可能被结算掉的时间——人工 settle，或团队执行按 Lead 的判定收口——因此一个 execution 已经关闭的 launch 会被丢弃，而不是建出一个没人观察的会话。
+队列出现之后，有两处细节开始承重。其一，run group 在它第一次准入时**冻结一次**宿主模型目录，并把同一个值交给之后每一个成员（[任务验收本身已于后续移除](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.zh.md)）：在会话被 prompt 之前冻结可避免排队中途目录变化只作用于后启动的成员。读取失败不缓存，下一个成员照常重读，与逐执行读取时的行为一致。其二，排队等槽位的时间正是 execution 可能被结算掉的时间——人工 settle，或团队执行按 Lead 的判定收口——因此一个 execution 已经关闭的 launch 会被丢弃，而不是建出一个没人观察的会话。
 
 ## Alternatives considered
 

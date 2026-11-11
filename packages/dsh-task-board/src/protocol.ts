@@ -6,7 +6,7 @@ import { isValidTimeZone } from './core/schedule.ts'
 import { sanitizeFreezeSnapshot, type FreezeSnapshot } from './core/freeze-snapshot.ts'
 import { sanitizeHandover, type TaskHandoverInput } from './core/handover.ts'
 import { TASK_BOARD_MESSAGE_MAX_LENGTH, isTaskBoardExtensionPayload, normalizeTaskIntegrations, type TaskBoardExtensionPayload } from './core/extension.ts'
-import { normalizeVerification, type ModelCatalogView, type VerificationContract, type VerificationSettings } from './core/verification.ts'
+import type { ModelCatalogView } from './core/model-catalog.ts'
 import { isTaskAttachmentList, TASK_ATTACHMENT_LIMIT, TASK_ATTACHMENT_MAX_BYTES, TASK_ATTACHMENT_TOTAL_MAX_BYTES } from './core/attachment.ts'
 
 /** Freeze payload carried by create/update actions after the gate (redacted in place). */
@@ -86,14 +86,6 @@ export interface TaskBoardSnapshot {
    */
   maxSubtaskDepth?: number
   /**
-   * Live GLOBAL native-/goal switch. The browser uses it to disable the
-   * task-level option (and explain that the global switch must be turned on
-   * first) WITHOUT rewriting anyone's stored per-task preference; the Host
-   * freezes its own read per execution, so this mirror never governs a run in
-   * flight.
-   */
-  goalRunEnabled?: boolean
-  /**
    * New-card defaults this deployment configures: what the create dialog opens
    * with, and what the create path fills an omitted target from when the caller
    * opts in (`applyCardDefaults`). A target the board configures nothing for is
@@ -129,16 +121,12 @@ export interface TaskBoardSnapshot {
 }
 
 /**
- * Body of `GET {TASK_BOARD_API_PREFIX}/verification`: the acceptance settings the
- * card edits, the contract they resolve to right now, and the host model catalog
- * the model and reasoning choices come from. Served through the same loopback /
- * authenticated-proxy guard as the rest of the board API, and it carries no
- * credential material — model routes and level ids only.
+ * Body of `GET {TASK_BOARD_API_PREFIX}/model-catalog`: the host model catalog the
+ * board's model and reasoning-level choices come from. Served through the same
+ * loopback / authenticated-proxy guard as the rest of the board API, and it
+ * carries no credential material — model routes and level ids only.
  */
-export interface TaskBoardVerificationOptions {
-  settings: VerificationSettings
-  /** The RESOLVED contract, so the card can show what the next execution freezes. */
-  contract: VerificationContract
+export interface TaskBoardModelCatalog {
   catalog: ModelCatalogView
 }
 
@@ -192,8 +180,6 @@ export type TaskBoardAction =
   | { kind: 'archive'; taskId: string }
   | { kind: 'restore'; taskId: string }
   | { kind: 'settle'; taskId: string }
-  /** Clear the acceptance anomalies recorded on a card's open execution (issue #1828). */
-  | { kind: 'reset-verification'; taskId: string }
   /**
    * Record an outcome an agent OUTSIDE the Host produced (issue #1826).
    *
@@ -320,10 +306,6 @@ function validImportedKnownFields(value: Record<string, unknown>): boolean {
       if (execution.external !== undefined && typeof execution.external !== 'boolean') return false
       if (execution.frozenBy !== undefined && typeof execution.frozenBy !== 'string') return false
       if (execution.frozenAt !== undefined && typeof execution.frozenAt !== 'number') return false
-      // A well-formed acceptance block may be imported for inspection, but the
-      // import path DROPS it (see importedTask): a fabricated pass record must
-      // never let an imported execution settle as verified.
-      if (execution.verification !== undefined && normalizeVerification(execution.verification) === undefined) return false
     }
   }
   return true
@@ -353,8 +335,6 @@ function importedTask(value: unknown): TaskRecord | undefined {
       ...(execution.external === true ? { external: true } : {}),
       ...(execution.frozenAt === undefined ? {} : { frozenAt: execution.frozenAt }),
       ...(execution.frozenBy === undefined ? {} : { frozenBy: execution.frozenBy }),
-      // 安全门（对抗场景 d）：验收报告是 Host 的判定，不接受 import 携带——
-      // 一条伪造的通过记录会让导入的执行被当成已验收。
     })),
     // The rule was already reconstructed field by field by parseLedger (which
     // is what drops an unknown or malformed field), so the import keeps that
@@ -376,12 +356,6 @@ function importedTask(value: unknown): TaskRecord | undefined {
     // is the user's own card preference, not a verdict.
     ...(task.reasoningEffort === undefined ? {} : { reasoningEffort: task.reasoningEffort }),
     ...(task.reuseSession === undefined ? {} : { reuseSession: task.reuseSession }),
-    ...(task.goalRun === undefined ? {} : { goalRun: task.goalRun }),
-    // The per-card acceptance opt-out rides the import like the /goal opt-in:
-    // it is a user-chosen execution preference on their own board, not a
-    // verdict. The per-execution `verification` block is still stripped below, so
-    // no imported card can arrive already accepted.
-    ...(task.skipVerification === undefined ? {} : { skipVerification: task.skipVerification }),
     ...(task.archivedAt === undefined ? {} : { archivedAt: task.archivedAt }),
     ...(task.freeze === undefined ? {} : { freeze: task.freeze }),
     ...(task.handover === undefined ? {} : { handover: task.handover }),
@@ -420,7 +394,7 @@ function handoverPayload(value: unknown): TaskHandoverInput | undefined {
 
 function createInput(value: unknown): value is NewTaskInput {
   const input = record(value)
-  if (input === undefined || !exactKeys(input, ['title', 'description', 'prompt', 'parentId', 'workspaceId', 'mode', 'permission', 'schedule', 'freeze', 'handover', 'model', 'reasoningEffort', 'applyCardDefaults', 'reuseSession', 'goalRun', 'skipVerification', 'tags', 'integrations', 'attachments'])) return false
+  if (input === undefined || !exactKeys(input, ['title', 'description', 'prompt', 'parentId', 'workspaceId', 'mode', 'permission', 'schedule', 'freeze', 'handover', 'model', 'reasoningEffort', 'applyCardDefaults', 'reuseSession', 'tags', 'integrations', 'attachments'])) return false
   if (input.parentId !== undefined && (typeof input.parentId !== 'string' || input.parentId.trim() === '')) return false
   if (typeof input.title !== 'string' || typeof input.description !== 'string' || typeof input.prompt !== 'string') return false
   // The reasoning effort is an adapter-owned id the Host resolves against the
@@ -430,8 +404,6 @@ function createInput(value: unknown): value is NewTaskInput {
   if (!optionalString(input.workspaceId) || !optionalString(input.mode) || !optionalString(input.model) || !optionalString(input.reasoningEffort)) return false
   if (input.applyCardDefaults !== undefined && typeof input.applyCardDefaults !== 'boolean') return false
   if (input.reuseSession !== undefined && typeof input.reuseSession !== 'boolean') return false
-  if (input.goalRun !== undefined && typeof input.goalRun !== 'boolean') return false
-  if (input.skipVerification !== undefined && typeof input.skipVerification !== 'boolean') return false
   if (input.permission !== undefined && !isTaskPermission(input.permission)) return false
   if (input.tags !== undefined && !isTaskTagList(input.tags)) return false
   if (input.integrations !== undefined && normalizeTaskIntegrations(input.integrations) === undefined) return false
@@ -458,15 +430,9 @@ function createInput(value: unknown): value is NewTaskInput {
 
 function updatePatch(value: unknown): boolean {
   const patch = record(value)
-  if (patch === undefined || !exactKeys(patch, ['title', 'description', 'prompt', 'workspaceId', 'mode', 'permission', 'freeze', 'handover', 'model', 'reasoningEffort', 'reuseSession', 'goalRun', 'skipVerification', 'tags', 'attachments'])) return false
+  if (patch === undefined || !exactKeys(patch, ['title', 'description', 'prompt', 'workspaceId', 'mode', 'permission', 'freeze', 'handover', 'model', 'reasoningEffort', 'reuseSession', 'tags', 'attachments'])) return false
   // null (or false) clears the reuse opt-in; only a real boolean is accepted.
   if (patch.reuseSession !== undefined && patch.reuseSession !== null && typeof patch.reuseSession !== 'boolean') return false
-  // The goal opt-in is tri-state: null/true return the card to its default
-  // (goal run), false pins a single plain turn.
-  if (patch.goalRun !== undefined && patch.goalRun !== null && typeof patch.goalRun !== 'boolean') return false
-  // The acceptance opt-out is the mirror tri-state: null/false return the card
-  // to inheriting the board-wide switch, true pins it out of the gate.
-  if (patch.skipVerification !== undefined && patch.skipVerification !== null && typeof patch.skipVerification !== 'boolean') return false
   for (const key of ['title', 'description', 'prompt', 'workspaceId', 'mode', 'model', 'reasoningEffort'] as const) {
     if (!optionalString(patch[key])) return false
   }
@@ -645,7 +611,6 @@ function parseEnvelopeAction(value: unknown): TaskBoardActionEnvelope | undefine
     case 'archive':
     case 'restore':
     case 'settle':
-    case 'reset-verification':
     case 'run':
     case 'rerun':
       if (!exactKeys(action, ['kind', 'taskId'])) return undefined

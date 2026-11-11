@@ -37,8 +37,8 @@ A deployment may publish one model name through several providers, and each pair
 ### 4. One shared model display form: model name, then provider
 - `packages/dsh-task-board/src/client/board/model-options.ts` owns `modelDisplayLabel`: the model name first, the provider that publishes it second, joined by " · ". A row without a provider keeps its bare name, and a row carrying no name of its own shows the model part of its own qualified route, so the provider is never printed twice.
 - `modelChoiceRows` renders through that one formatter, so the settings card's new-card default model choices and every execution-target picker show the same form.
-- The new-task modal's model picker, its AI-parse model picker, the task detail view's model picker, the collapsed execution summary and the settings card's acceptance (judge) model picker all read the label from the shared formatter.
-- The provider is named by the route's own group id — the token the picker stores — so the acceptance picker and the execution pickers name one provider identically.
+- The new-task modal's model picker, its AI-parse model picker, the task detail view's model picker, the collapsed execution summary and the settings card's new-card-default model picker (formerly also the retired judge model picker) all read the label from the shared formatter.
+- The provider is named by the route's own group id — the token the picker stores — so the settings picker and the execution pickers name one provider identically.
 - The pickers' values stay the qualified `provider/model` route, the stored pins stay untouched, and the reasoning-effort derivation is unchanged: only the display form moved.
 - A row the flat discovery fallback produces (no provider) keeps its bare model name, and a route the roster cannot describe keeps its own route text in the summary — the display never invents a provider for a route it cannot resolve.
 

@@ -2,8 +2,8 @@
  * The settlement one finished execution reports to the hub.
  *
  * The board owns the execution verdict and the hub owns the collaboration
- * status, so this module is the whole mapping between them: a passed automated
- * acceptance becomes `succeeded` (the hub moves the issue to `in_review`), and
+ * status, so this module is the whole mapping between them: a succeeded
+ * execution verdict becomes `succeeded` (the hub moves the issue to `in_review`), and
  * every other outcome — including a cancelled run — becomes `failed`, because a
  * card the Host stopped never earned a human review. The summary is clipped to
  * the character cap the protocol fixes (section 13), which mirrors the board's
@@ -72,7 +72,7 @@ export function buildSettleRequest(input: {
 }): SettleRequestBody {
   const outcome = settleOutcome(input.outcome)
   const lines = [
-    `${input.task.title} — ${outcome === 'succeeded' ? 'automated acceptance passed' : 'automated acceptance did not pass'}`,
+    `${input.task.title} — ${outcome === 'succeeded' ? 'execution succeeded' : 'execution failed'}`,
     `attempt: ${input.executionId}`,
   ]
   if (input.error !== undefined && input.error.trim() !== '') lines.push(`reason: ${input.error.trim()}`)

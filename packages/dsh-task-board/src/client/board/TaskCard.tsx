@@ -23,7 +23,6 @@ import { t } from '../locales.ts'
 import { useTaskBoardSeats } from '../seats.tsx'
 import { cardOutcome, cardTimeline, RESULT_KEY, splitTitleKind } from './card-view.ts'
 import { IconClock, IconSession } from './icons.tsx'
-import { verificationRunningKey } from './status-key.ts'
 import css from '../board.module.css'
 import { markdownExcerpt, markdownToPlainText } from './task-markdown.tsx'
 
@@ -144,8 +143,6 @@ function TaskCardInner({
   const isDraggable = !archived && !busy && !pending
   const outcome = cardOutcome(task, archived)
   const latest = outcome.latest
-  // Forced acceptance owns the running label.
-  const runningKey = verificationRunningKey(latest?.verification)
   const timeline = cardTimeline(task, archived)
   const resultText = latest?.result !== undefined ? t(RESULT_KEY[latest.result]) : ''
   const sessionId = latest?.sessionId
@@ -154,7 +151,7 @@ function TaskCardInner({
   const ariaLabel = [
     title.kind === undefined ? summary : `${title.kind}: ${title.text}`,
     !archived && pending ? t('board.pending') : '',
-    !archived && busy ? t(runningKey ?? 'detail.result.running') : '',
+    !archived && busy ? t('detail.result.running') : '',
     !archived && !busy && resultText !== '' ? resultText : '',
     outcome.declared ? t('card.declared') : '',
     subtasksFailed > 0 ? t('card.subtasksFailed', { count: String(subtasksFailed) }) : '',
@@ -173,9 +170,7 @@ function TaskCardInner({
   // box that is the same size whether or not it holds a spinner. Nothing here
   // can add or remove a row, so a state change cannot resize the card.
   const runningLabel = !archived && latest !== undefined && executionLabel(latest) === 'running'
-    ? (runningKey !== undefined
-      ? t(runningKey)
-      : latest.ownResult === undefined ? t('detail.result.running') : t('detail.subtasks.waiting'))
+    ? (latest.ownResult === undefined ? t('detail.result.running') : t('detail.subtasks.waiting'))
     : ''
   // Archived cards settle outside the board's judgement, so they keep the plain
   // text result instead of a badge that would paint a tone they do not own.

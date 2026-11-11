@@ -15,7 +15,7 @@ export const CAP_BOARD = 'board.v1'
 
 /** The whole ledger, forwarded verbatim. */
 export const METHOD_BOARD_SNAPSHOT = 'board.snapshot'
-/** The acceptance settings, contract and model catalog, plus the board's live meta. */
+/** The host model catalog, plus the board's live meta. */
 export const METHOD_BOARD_OPTIONS = 'board.options'
 /** One board action, applied by the host under an idempotency key. */
 export const METHOD_BOARD_APPLY = 'board.apply'

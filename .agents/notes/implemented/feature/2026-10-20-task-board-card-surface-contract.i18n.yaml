@@ -1,3 +1,5 @@
-# Bilingual-pair consistency record (docs/i18n.md).
-2026-10-20-task-board-card-surface-contract.md: 08e14eba2df0c79b3214a1d55e394fc4745244a1
-2026-10-20-task-board-card-surface-contract.zh.md: c96095e03d099ea27ca6c20e6883895915f3e437
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-10-20-task-board-card-surface-contract.md: 8aecc9d9ef69bd4119ba3954de6cb9f551fd6ce1
+2026-10-20-task-board-card-surface-contract.zh.md: 9b7f7a3ecfd451122fc3bf02af1813f4f7d655fa

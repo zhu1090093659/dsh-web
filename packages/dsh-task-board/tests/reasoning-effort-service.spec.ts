@@ -15,7 +15,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { HostTaskLedger } from '../src/host-ledger.ts'
 import { TaskBoardHostService } from '../src/host-service.ts'
 import { PowerInhibitor } from '../src/power-inhibitor.ts'
-import type { ModelCatalogView } from '../src/core/verification.ts'
+import type { ModelCatalogView } from '../src/core/model-catalog.ts'
 import { fixtureWorkspaces } from './workspace-fixture.ts'
 
 const NOW = 1_700_000_000_000
@@ -84,7 +84,7 @@ function harness(options: { catalog?: ModelCatalogView; rejectSelectModel?: bool
     ledger: new HostTaskLedger(scratch(), () => NOW),
     power: new PowerInhibitor({ platform: 'linux' }),
     now: () => NOW,
-    ...(options.catalog === undefined ? {} : { verificationCatalog: async () => options.catalog }),
+    ...(options.catalog === undefined ? {} : { modelCatalog: async () => options.catalog }),
     workspaceRegistry: fixtureWorkspaces(),
   })
   return {

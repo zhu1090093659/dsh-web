@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The task-board settings card as one first-level card whose four topics are
+ * The task-board settings card as one first-level card whose two topics are
  * nested cards: every topic root carries the shared shell's nested chrome class
  * and the card hosting them carries the first-level chrome instead, so the two
  * densities stay distinguishable in the rendered tree.
@@ -30,25 +30,23 @@ function cardRoot(container: HTMLElement, label: string): HTMLLIElement {
   return root
 }
 
-/** The four topics the card nests, in their documented order. */
+/** The two topics the card nests, in their documented order. */
 function topicLabels(): string[] {
   return [
     zh['settings.enabledTopic'],
-    zh['settings.runBehaviorTitle'],
-    zh['settings.goalVerificationTitle'],
     zh['settings.cardDefaultsTitle'],
   ]
 }
 
 describe('task-board settings card nested topic density', () => {
-  it('operator expanding the card sees its four topics nested in one hosting card at first level', () => {
+  it('operator expanding the card sees its two topics nested in one hosting card at first level', () => {
     // Given the settings card rendered from its slot
     const container = render(cardProps())
 
     // When the operator expands the card to reach the topic list
     act(() => { header(container, zh['settings.title']).click() })
 
-    // Then each of the four topics carries the nested chrome class of the
+    // Then each of the two topics carries the nested chrome class of the
     // shared shell, and the card hosting them carries none of it, so the
     // topics read as the hosting card's children and not as its siblings
     for (const topic of topicLabels()) {
@@ -57,7 +55,7 @@ describe('task-board settings card nested topic density', () => {
     const hosting = cardRoot(container, zh['settings.title'])
     expect(hosting.classList.contains(cardCss.cardNested)).toBe(false)
 
-    // ...and the four are siblings in one list that the hosting card contains
+    // ...and the two are siblings in one list that the hosting card contains
     const list = cardRoot(container, topicLabels()[0] ?? '').parentElement
     expect(list?.tagName).toBe('UL')
     expect(list?.children).toHaveLength(topicLabels().length)

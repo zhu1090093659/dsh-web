@@ -2,6 +2,8 @@
 
 Status: implemented
 
+Superseded by [Remove task-board /goal runs and goal acceptance](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.md): the two-level `/goal` switch (`goalRunEnabled` and `TaskRecord.goalRun`), `/goal` command dispatch, and `session/projections` goal-phase settlement have been removed; every board execution now runs as a plain single turn, and legacy `goalRun` fields in v7 ledgers are ignored and dropped on load. The sections below record the historical 2026-09-27 design and are not authority for current behavior.
+
 ## Problem
 
 A board run was one DSH prompt: the runner created (or reused) a session, applied the pinned permission and model, and queued the task text. The session ran exactly one turn, and the board settled it from that turn's `turn/end`. Long tasks that need many rounds of work — the case dsh's own goal feature exists for — therefore ended up half-done whenever the first turn ran out of steam: nothing on the board restarted the work, and the card reported success for a task that had only begun.
@@ -10,7 +12,7 @@ dsh ships the missing mechanism as the built-in `/goal` command (a persisted goa
 
 ## Decision
 
-A task row carries an optional `goalRun?: boolean`, edited by the "start the run with dsh's built-in /goal" checkbox in the new-task dialog and in the task detail. The option is ON by default: absent means on, and only an explicit `false` stores the opt-out, so a card that never touched the option — and every card written before the field existed — starts its runs as goal runs.
+Historically (removed 2026-11-11; legacy `goalRun` values are now ignored and dropped on load), a task row carried an optional `goalRun?: boolean`, edited by the former "start the run with dsh's built-in /goal" checkbox in the new-task dialog and in the task detail. In this initial design the option defaulted to ON (later inverted to opt-in and then removed altogether).
 
 ### Launch
 
@@ -31,8 +33,8 @@ A task row carries an optional `goalRun?: boolean`, edited by the "start the run
 
 - `create` input and `update` patch accept the boolean; the update patch is tri-state (true or null returns the card to the default, false pins a plain turn). `parseLedger` keeps `false` and normalizes a stray `true` back to absent, because absent is the canonical on-state. No schema bump: the field is additive and optional.
 - The import path carries the opt-out (`importedTask` copies it like `reuseSession`), and the security gate stays: import never carries a confirmation stamp.
-- `task_board_create`/`task_board_update` expose the option, and the task view reports `goalRun: false` as the deviation from the default.
-- The detail-view checkbox shows `task.goalRun !== false` and writes the boolean through the ordinary update action; the new-task dialog starts checked and only sends `goalRun: false` when the user unchecks it.
+- Historically (removed 2026-11-11), `task_board_create`/`task_board_update` exposed the option and the task view reported `goalRun: false` as the deviation from that initial default.
+- Historically (removed 2026-11-11), the detail-view checkbox read `task.goalRun !== false` and wrote the boolean through the update action, while the new-task dialog only sent `goalRun: false` when unchecked.
 
 ## Alternatives considered
 
@@ -52,7 +54,7 @@ A task row carries an optional `goalRun?: boolean`, edited by the "start the run
 
 - A goal run can work for many rounds in one session and consumes API quota for each of them; a task that never reaches completion keeps its session busy for up to the goal's own round limit, after which dsh blocks the goal and the card fails with that reason.
 - The execution is `running` for as long as the goal is active, so session reuse, cron, and the running-task lock all behave as they do for any long run.
-- `goalRun: false` restores the previous one-turn behavior exactly, including prompt bytes and settlement timing.
+- Historically, `goalRun: false` restored single-turn behavior (now the universal behavior for every run after `goalRun` was removed in 2026-11-11).
 - A deployment whose runtime serves no `/goal` command (or no command dispatcher) still runs every card; the goal mode is reported as unavailable in the host log instead of failing the run.
 - Required verification: `tests/goal-run.spec.ts` covers the objective guard, prompt-then-goal ordering, the objective carrying the composed prompt, the opt-out, both refusal tolerances, and the four settlement verdicts; `tests/tasks.spec.ts`, `tests/store.spec.ts`, `tests/protocol.spec.ts`, `tests/agent-tools.spec.ts`, `tests/task-detail-edit.spec.tsx`, and `tests/new-task-run.spec.tsx` cover the field, the ledger repair, the wire gate, the tool surface, and both checkboxes. Package gates: `pnpm --filter @linxin666/dsh-client-ui-task-board test` and `pnpm i18n:check`.
 

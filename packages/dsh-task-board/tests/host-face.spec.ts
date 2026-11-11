@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { TypertGateway } from '@deepseek-ai/dsh-api-gateway'
 import { Config, apply } from '../src/index.ts'
 import { HostTaskLedger } from '../src/host-ledger.ts'
-import type { TaskBoardSnapshot, TaskBoardAction, TaskBoardVerificationOptions } from '../src/protocol.ts'
+import type { TaskBoardSnapshot, TaskBoardAction, TaskBoardModelCatalog } from '../src/protocol.ts'
 import { TASK_BOARD_SERVICE_NAME, type TaskBoardExtension } from '../src/core/extension.ts'
 
 /** The face a consumer inside the Host process drives the board through. */
@@ -24,7 +24,7 @@ interface PublishedFace {
   snapshot(): TaskBoardSnapshot
   apply(requestId: string, action: TaskBoardAction, initiator?: string): TaskBoardSnapshot | Promise<TaskBoardSnapshot>
   subscribe(listener: () => void): () => void
-  verificationOptions(): Promise<TaskBoardVerificationOptions>
+  modelCatalogOptions(): Promise<TaskBoardModelCatalog>
 }
 
 /** One mounted activation, observed through the service it published. */
@@ -111,7 +111,7 @@ describe('the published taskBoard service', () => {
     // When a consumer inside the Host process reads the service it published
     const face = board.face as unknown as Record<string, unknown>
     // Then both the provider pair and the four capability members answer as functions
-    for (const member of ['registerExtension', 'isExtensionEnabled', 'snapshot', 'apply', 'subscribe', 'verificationOptions']) {
+    for (const member of ['registerExtension', 'isExtensionEnabled', 'snapshot', 'apply', 'subscribe', 'modelCatalogOptions']) {
       expect(typeof face[member]).toBe('function')
     }
   })
@@ -176,14 +176,12 @@ describe('the published taskBoard service', () => {
     expect(heard).toBe(afterFirst)
   })
 
-  it('admin reads the acceptance options through the face', async () => {
+  it('admin reads the model catalog through the face', async () => {
     // Given a mounted board
     const board = mount(Config({ enabled: true }))
-    // When a consumer asks for the acceptance options
-    const options = await board.face.verificationOptions()
-    // Then the settings the card edits, the contract they resolve to, and the catalog all cross
-    expect(options.settings).toEqual({ enabled: true, model: '', reasoningEffort: '' })
-    expect(options.contract).toMatchObject({ enabled: true, preset: 'coding' })
+    // When a consumer asks for the model catalog
+    const options = await board.face.modelCatalogOptions()
+    // Then the catalog the model and level pickers read crosses, and nothing else
     expect(options.catalog.groups).toEqual([])
   })
 
@@ -246,7 +244,6 @@ describe('the published taskBoard service', () => {
       archive: { kind: 'archive', taskId: 'missing' },
       restore: { kind: 'restore', taskId: 'missing' },
       settle: { kind: 'settle', taskId: 'missing' },
-      'reset-verification': { kind: 'reset-verification', taskId: 'missing' },
       'record-external-outcome': { kind: 'record-external-outcome', taskId: 'missing', result: 'succeeded', initiatedBy: 'walk' },
       'set-schedule': { kind: 'set-schedule', taskId: 'missing', patch: {} },
       run: { kind: 'run', taskId: 'missing' },
@@ -269,7 +266,7 @@ describe('the published taskBoard service', () => {
     }
     // Then none of them is refused as an unknown kind: each is implemented, so a refusal
     // that does happen is the action's own (a missing card, a missing extension)
-    expect(Object.keys(actions)).toHaveLength(18)
+    expect(Object.keys(actions)).toHaveLength(17)
     expect(refusals.filter(entry => entry.includes('unknown task board action kind'))).toEqual([])
   })
 })

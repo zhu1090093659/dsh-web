@@ -32,7 +32,7 @@ Status: implemented
 
 ## Consequences
 
-- 由 DSH 自己服务的反代、Ingress 或可信隧道部署，无需任何看板侧配置即可到达全部看板路由（state、action、events、parse、verification）；守卫由它们共用。
+- 由 DSH 自己服务的反代、Ingress 或可信隧道部署，无需任何看板侧配置即可到达全部看板路由（state、action、events、parse、model-catalog、attachments）；守卫由它们共用。
 - Host 的 connection 服务不去认证的调用者得不到任何好处：服务拒绝它，看板的回退路径仍会拒绝非回环代理权威，除非显式 token 或转发代理 opt-in 适用。跨站提交在看板看到之前就被服务拒绝。
 - 不提供 connection 服务的 composition，以及每一个被服务拒绝的直连回环客户端，都保持既有判定；桥接从不撤销看板原本给出的任何放行。
 - 转发代理开关与 token 白名单保持它们已记录的含义，仍是 Host 自己不认证的代理所走的路径。

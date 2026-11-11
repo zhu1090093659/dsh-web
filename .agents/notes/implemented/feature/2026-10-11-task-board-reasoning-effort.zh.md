@@ -12,7 +12,7 @@ Status: implemented
 
 `reasoningEffort` 是可选的任务执行字段，经现有严格的创建/更新动作与账本传递，runner 在选择执行模型时将它带入官方 `session/selectModel` 请求。复用已有会话的启动路径采用同一选模逻辑。清空在线上传递空字符串，因为 JSON 会省略值为 `undefined` 的属性。此增量字段不改变账本 schema 版本。子任务自行钉住模型而留空档位时，使用该模型默认值，不借用祖先档位。未钉住模型时可继承祖先的模型/档位组合，子任务自己的档位仍优先。导入同时保留两个字段。携带显式且已声明档位的选模请求被拒绝时，此次执行在 Prompt 入队前失败。
 
-该字段控制任务执行模型，独立于验收裁判的思考设置。[子任务决策](2026-09-24-task-board-subtasks.md) 拥有父子关系与 Team 执行，本记录不重新定义 teammate 路由。
+该字段控制任务执行模型。[子任务决策](2026-09-24-task-board-subtasks.md) 拥有父子关系与 Team 执行，本记录不重新定义 teammate 路由。
 
 ## Alternatives considered
 

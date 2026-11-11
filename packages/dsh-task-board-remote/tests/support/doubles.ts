@@ -40,7 +40,6 @@ export class FakeBoard implements BoardFace {
   readonly meta = {
     sessionDefaultPermission: 'read-only',
     maxSubtaskDepth: 1,
-    goalRunEnabled: false,
   }
 
   /**
@@ -75,9 +74,9 @@ export class FakeBoard implements BoardFace {
     return () => { this.listeners.delete(listener) }
   }
 
-  async verificationOptions(): Promise<unknown> {
+  async modelCatalogOptions(): Promise<unknown> {
     if (this.optionsError !== undefined) throw this.optionsError
-    return { settings: { enabled: true }, contract: { route: 'vendor/model' }, catalog: { groups: [] } }
+    return { catalog: { groups: [] } }
   }
 
   /** Notify every subscriber once, the way the host does. */

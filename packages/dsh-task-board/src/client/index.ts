@@ -479,7 +479,7 @@ export function bindSettingsForm(ctx: ClientContext): ConfigForm<TaskBoardSettin
  * signature.
  *
  * Deliberately nothing but those four keys: the settings form also carries the
- * board's own switches and the acceptance configuration, and an edit to one of
+ * board's own switches, and an edit to one of
  * those says nothing about the defaults the create dialog prefills from. Not a
  * second normalization of Host state — the value never leaves this comparison.
  * @param value - the settings form's effective section, if it has one.

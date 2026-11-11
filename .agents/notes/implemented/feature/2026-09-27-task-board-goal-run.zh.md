@@ -2,6 +2,8 @@
 
 Status: implemented
 
+已被[移除任务看板的 /goal 运行与任务验收](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.zh.md)取代：两级 `/goal` 开关（`goalRunEnabled` 与 `TaskRecord.goalRun`）、`/goal` 命令派发及 `session/projections` 目标阶段结算均已移除；看板每次执行现均为普通单回合运行，v7 账本旧行中的 `goalRun` 字段在加载时被忽略并丢弃。下文保留 2026-09-27 当初的设计档案，不再代表当前行为。
+
 ## 问题
 
 看板的一次执行就是一条 DSH Prompt：runner 新建（或复用）会话、应用钉住的权限与模型、把任务文本入队，会话只跑一个回合，看板就凭该回合的 `turn/end` 结算。因此需要多轮推进的长任务——正是 dsh 自带 goal 能力的适用场景——在第一个回合力竭时就此半途而废：看板上没有任何机制让工作继续，卡片却把才刚起步的任务报成成功。
@@ -10,7 +12,7 @@ dsh 已把缺失的机制作为内置 `/goal` 命令提供（持久目标 + 目�
 
 ## 决策
 
-任务行新增可选字段 `goalRun?: boolean`，由新建任务对话框与任务详情页的「以 dsh 内置的 /goal 开始执行任务」复选框编辑。该选项默认开启：字段缺席即视为开启，只有显式 `false` 才写入退出选择，因此从未碰过该选项的卡片——以及字段存在之前写入的所有卡片——都以目标模式执行。
+历史上（已于 2026-11-11 移除；旧行残留的 `goalRun` 现已在加载时忽略并丢弃），任务行曾携带可选字段 `goalRun?: boolean`，由原新建任务对话框与详情页复选框编辑；最初设计默认开启（后改为默认关闭并最终整体移除）。
 
 ### 启动
 
@@ -31,8 +33,8 @@ dsh 已把缺失的机制作为内置 `/goal` 命令提供（持久目标 + 目�
 
 - `create` 输入与 `update` 补丁接受该布尔值；更新补丁是三态的（true 或 null 让卡片回到默认，false 钉住单回合）。`parseLedger` 保留 `false`，并把多写的 `true` 归一为缺席，因为缺席才是开启状态的规范写法。无需 schema 升级：字段是可选且增量式的。
 - 导入路径保留退出选择（`importedTask` 像 `reuseSession` 一样复制该字段），安全门不变：导入永不携带确认戳。
-- `task_board_create`/`task_board_update` 暴露该选项，任务视图把 `goalRun: false` 作为对默认值的偏离上报。
-- 详情页复选框显示 `task.goalRun !== false`，改动经普通 update 动作写入；新建任务对话框默认勾选，只有用户取消勾选时才发送 `goalRun: false`。
+- 历史上（已于 2026-11-11 移除），`task_board_create`/`task_board_update` 曾暴露该选项，任务视图曾把 `goalRun: false` 作为对当时默认值的偏离上报。
+- 历史上（已于 2026-11-11 移除），详情页复选框曾按 `task.goalRun !== false` 回显并经 update 动作写入，新建任务对话框仅在取消勾选时发送 `goalRun: false`。
 
 ## 考虑过的替代方案
 
@@ -52,7 +54,7 @@ dsh 已把缺失的机制作为内置 `/goal` 命令提供（持久目标 + 目�
 
 - 一次目标执行可能在同一会话中跑很多轮，每一轮都消耗 API 额度；始终未达成的任务会让会话一直忙到目标自身的轮次上限，之后 dsh 阻塞该目标，卡片以该原因失败。
 - 目标 active 期间执行保持 `running`，因此会话复用、cron 与运行中任务锁的行为与任何长任务一致。
-- `goalRun: false` 完全恢复此前的单回合行为，包括 Prompt 字节与结算时机。
+- 历史上，`goalRun: false` 用于恢复单回合行为（2026-11-11 移除 `goalRun` 后，单回合已成为所有执行的唯一形态）。
 - 运行时未提供 `/goal` 命令（或没有命令派发器）的部署照常执行每张卡片；目标模式在宿主日志中报为不可用，而不是让执行失败。
 - 必需验证：`tests/goal-run.spec.ts` 覆盖目标守卫、先 Prompt 后目标的顺序、目标携带组合 Prompt、退出选择、两种拒绝容忍度，以及四种结算判定；`tests/tasks.spec.ts`、`tests/store.spec.ts`、`tests/protocol.spec.ts`、`tests/agent-tools.spec.ts`、`tests/task-detail-edit.spec.tsx` 与 `tests/new-task-run.spec.tsx` 覆盖字段、账本修复、wire 门禁、工具面与两个复选框。包门禁：`pnpm --filter @linxin666/dsh-client-ui-task-board test` 与 `pnpm i18n:check`。
 

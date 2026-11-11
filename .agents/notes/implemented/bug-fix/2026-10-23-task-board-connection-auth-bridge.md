@@ -32,7 +32,7 @@ Requiring the operator to add the board to another allowlist or inject another t
 
 ## Consequences
 
-- A deployment behind a reverse proxy, ingress, or trusted tunnel that DSH already serves reaches every board route (state, action, events, parse, verification) with no board-specific configuration; the guard is shared by all of them.
+- A deployment behind a reverse proxy, ingress, or trusted tunnel that DSH already serves reaches every board route (state, action, events, parse, model-catalog, attachments) with no board-specific configuration; the guard is shared by all of them.
 - A caller the Host's connection service does not authenticate gains nothing: the service refuses it, and the board's fallback still refuses a non-loopback proxy authority unless the explicit token or forwarded-proxy opt-in applies. Cross-site posts are refused by the service before the board sees them.
 - A composition without the connection service, and every direct loopback client the service declines, keep the pre-existing decisions; the bridge never subtracts an admission the board used to grant.
 - The forwarded-proxy switch and the token allowlist keep their documented meanings and remain the paths for proxies the Host does not authenticate itself.

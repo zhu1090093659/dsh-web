@@ -16,7 +16,7 @@ import type { CardDefaults } from './core/card-defaults.ts'
 import { TaskBoardExtensionRegistry } from './host/extension-registry.ts'
 import type { TaskBoardExtension } from './core/extension.ts'
 import { isTaskPermission, normalizeTargetId, type ExecutionOutcome, type ExecutionSummary, type ScheduleMode, type TaskRecord, type TaskStatus } from './core/tasks.ts'
-import { passedAttempt, resolveContract, verificationNeverInvoked, verificationOnlyInvalid, verificationRequired, withAcceptanceDetailCleared, type ExecutionVerification, type ModelCatalogView, type VerificationContract, type VerificationSettings } from './core/verification.ts'
+import type { ModelCatalogView } from './core/model-catalog.ts'
 import type { TaskPermission } from './core/handover.ts'
 import type { TaskAttachment } from './core/attachment.ts'
 import {
@@ -65,50 +65,22 @@ const ABANDONED_LAUNCH_REASON = 'host stopped before this execution started'
 const REWORK_SESSION_REASON = 'rework: the card\'s previous execution session is not present and idle in the host session roster, so there is no conversation to send the rework instructions into'
 
 /**
- * The acceptance contract one run group freezes, read once for the whole group.
+ * The host model catalog one run group freezes, read once for the whole group.
  *
- * The board freezes an execution's acceptance contract BEFORE its session is
- * prompted. Admission delays the launch, so reading these per execution would
- * let a settings edit made while later members wait reach some members of one
- * run and not others. Reading them once per run group — at the group's first
- * admission, which is its root's — keeps the whole group on one contract and
- * still freezes it before any member's session is prompted.
+ * The catalog decides whether a card's pinned reasoning level may be sent, and
+ * it is read BEFORE the session is prompted. Admission delays the launch, so
+ * reading it per execution would let a catalog change made while later members
+ * wait reach some members of one run and not others. Reading it once per run
+ * group — at the group's first admission, which is its root's — keeps the whole
+ * group on one catalog and still freezes it before any member is prompted.
  */
-interface FrozenRunContract {
-  settings: VerificationSettings
-  /** The GLOBAL native-/goal switch, resolved exactly once for the run group. */
-  globalGoalEnabled: boolean
-  /** The host model catalog the group's contracts resolve their route from. */
+interface FrozenRunCatalog {
+  /** The host model catalog the group's routes and reasoning levels resolve against. */
   catalog: ModelCatalogView | undefined
 }
 
-/** Reads (or returns the already-read) contract of one run group. */
-type RunContractFreezer = () => Promise<FrozenRunContract>
-
-/**
- * Why an enforced goal execution settled failed while its acceptance DID run:
- * attempts were recorded and none of them passed. The judge answered about the
- * work and the work did not pass.
- */
-export const NO_MATCHING_PASS_VERIFICATION_REASON = 'goal 验收：本次执行没有匹配的验收通过记录（验收未运行、未通过或报告来自其他执行），按未验收判失败。'
-/**
- * Why an enforced goal execution settled failed with ZERO acceptance records:
- * the gate was never opened, so the judge never ran and nothing was ever judged
- * (issue #1837). The root cause is a session that declared completion in prose
- * instead of calling `update_goal(action: complete)` — a tool-adherence problem,
- * NOT a quality verdict on the delivery — so this reason says so and keeps the
- * two investigation directions apart.
- */
-export const NEVER_INVOKED_VERIFICATION_REASON = 'goal 验收未触发：本次执行没有任何验收记录，验收门从未打开——执行会话没有调用 update_goal(action: complete) 来完成目标（常见于只在回复里宣告完成）。这不是质量判负：交付从未被裁判评估。'
-/**
- * Why an enforced goal execution settled failed while its ONLY acceptance
- * records are INVALID: the judge answered but could not locate its own
- * rejection, so the board stopped calling it. This is NOT an evidence-backed
- * quality veto — the requirement is explicit that such a run must not be
- * described as one — but the execution still has no matching pass, so it ends
- * for lack of one, and the reason names that precisely.
- */
-export const INVALID_ONLY_VERIFICATION_REASON = 'goal 验收无效：本次执行只记录了无效验收（裁判未能给出与任务要求对应、且可定位到本次证据的否决依据），看板已停止调用裁判。这**不是**有证据的质量判负：验收本身不可用，本次运行因没有匹配的通过记录而结束。请检查验收环境与证据可见性，或用 task_board_manage(action=reset-verification) 清除记录的无效验收后重新完成目标。'
+/** Reads (or returns the already-read) catalog of one run group. */
+type RunCatalogFreezer = () => Promise<FrozenRunCatalog>
 
 /**
  * Provenance of one cron-triggered run: when the rule fired and the zone
@@ -134,7 +106,7 @@ export interface ScheduledRunContext {
  * an enabled rule (the new-task dialog and the one-time browser import),
  * `set-schedule` edits one, and `delete`/`archive` drop one. `update` is
  * deliberately absent — the update patch cannot carry a schedule — and neither
- * can the run, move, lineage, permission, verification or label actions.
+ * can the run, move, lineage, permission or label actions.
  */
 const SCHEDULE_WRITE_ACTIONS: ReadonlySet<TaskBoardAction['kind']> = new Set(['create', 'import', 'set-schedule', 'delete', 'archive'])
 
@@ -205,7 +177,6 @@ const ACTION_KINDS: Readonly<Record<TaskBoardAction['kind'], true>> = {
   archive: true,
   restore: true,
   settle: true,
-  'reset-verification': true,
   'record-external-outcome': true,
   'set-schedule': true,
   run: true,
@@ -265,11 +236,9 @@ export class TaskBoardHostService {
    */
   private readonly unreadablePolls = new Map<string, number>()
   private preventIdleSleep = false
-  private readonly verificationSettings: () => VerificationSettings
-  private readonly verificationCatalog: () => Promise<ModelCatalogView | undefined>
+  /** Live reader of the host model catalog; frozen per run group. */
+  private readonly modelCatalog: () => Promise<ModelCatalogView | undefined>
   private readonly timers: HostTimerFace
-  /** Live reader of the global native-/goal switch; frozen per execution. */
-  private readonly goalRunEnabled: () => boolean
   /** Live reader of the deployment's new-card defaults (published and applied per create). */
   private readonly cardDefaults: () => CardDefaults
   /**
@@ -324,21 +293,12 @@ export class TaskBoardHostService {
     cardDefaults?: () => CardDefaults
     timers?: HostTimerFace
     /**
-     * Live GLOBAL native /goal switch (a volatile config read). Read ONCE per
-     * execution, at launch, and carried by value from then on: a settings edit
-     * made while a run is in flight must not arm, disarm or otherwise change the
-     * goal/acceptance contract of that run. Absent means OFF, which is the
-     * default for every deployment that never configured it.
+     * The host model catalog the card routes and reasoning levels resolve
+     * against, read live so a deployment that mounts the model service after the
+     * board still gains it. Absent means "no capability evidence": a pinned
+     * effort is then not sent at all.
      */
-    goalRunEnabled?: () => boolean
-    /**
-     * Live acceptance settings (volatile config reads). Absent keeps goal
-     * acceptance OFF for every execution this service opens, which is what a
-     * programmatic mount without the settings domain gets.
-     */
-    verificationSettings?: () => VerificationSettings
-    /** The host model catalog the acceptance contract resolves its route from. */
-    verificationCatalog?: () => Promise<ModelCatalogView | undefined>
+    modelCatalog?: () => Promise<ModelCatalogView | undefined>
     /**
      * Live admission width for run launches: the number of launches (one
      * session creation and its prompt each) that may be in flight at once. Read
@@ -396,14 +356,12 @@ export class TaskBoardHostService {
     this.timers = options.timers ?? PROCESS_TIMERS
     this.power = options.power ?? new PowerInhibitor()
     this.now = options.now ?? Date.now
-    this.goalRunEnabled = options.goalRunEnabled ?? (() => false)
     this.cardDefaults = options.cardDefaults ?? (() => ({}))
     this.runLaunchWidth = options.runLaunchWidth ?? (() => DEFAULT_RUN_LAUNCH_WIDTH)
     this.spendBudgetTokens = options.spendBudgetTokens ?? (() => DEFAULT_SPEND_BUDGET_TOKENS)
     this.spendUsedToday = options.spendUsedToday ?? (now => usedTokensToday(now))
     this.launches = new LaunchAdmissionQueue(() => normalizeRunLaunchWidth(this.runLaunchWidth()))
-    this.verificationSettings = options.verificationSettings ?? (() => ({ enabled: false, model: '', reasoningEffort: '' }))
-    this.verificationCatalog = options.verificationCatalog ?? (async () => undefined)
+    this.modelCatalog = options.modelCatalog ?? (async () => undefined)
     this.extensions = new TaskBoardExtensionRegistry({
       ledger: this.ledger,
       // Capability writes go through the board's own action path, so every
@@ -441,9 +399,6 @@ export class TaskBoardHostService {
     this.syncPowerReasons()
     this.pollTimer = this.timers.interval(() => { this.schedulePoll() }, sessionPollMs(this.sessionPollSeconds))
     this.schedulePoll()
-    // Boot is also the cleanup catch-up point: an execution that passed before
-    // the Host stopped may still hold its detail (a crash, a failed write).
-    this.cleanupPendingAcceptanceDetail()
     // Boot is a recovery point: an occurrence armed while the Host was down is
     // not replayed, and each schedule rolls to its next future target. A
     // schedule the Board should have served while running is then armed
@@ -519,13 +474,9 @@ export class TaskBoardHostService {
       power: this.power.snapshot(),
       sessionDefaultPermission: this.ledger.sessionDefaultPermission,
       maxSubtaskDepth: this.ledger.maxSubtaskDepth,
-      // The GLOBAL native-/goal switch is published live for the UI, but the
-      // service freezes its own read at launch: this mirror is for the FORM
-      // (enable/disable + explanation), never for a run already in flight.
-      goalRunEnabled: this.goalRunEnabled(),
-      // The new-card defaults are published live for the same reason the switch
-      // is: the create dialog prefills from them, and each creating session
-      // re-reads them for the create it submits.
+      // The new-card defaults are published live: the create dialog prefills
+      // from them, and each creating session re-reads them for the create it
+      // submits.
       ...(cardDefaults === undefined ? {} : { cardDefaults }),
       // The attachment limits travel with the snapshot so the browser can
       // refuse an oversized selection before it uploads anything.
@@ -543,26 +494,13 @@ export class TaskBoardHostService {
   }
 
   /**
-   * The acceptance configuration the settings card displays: the live settings,
-   * the contract they resolve to, and the host catalog the choices come from.
-   *
-   * The card shows the RESOLVED route, not the raw configuration, so "inherit
-   * host" reads as the concrete model and reasoning level the next execution
-   * will actually freeze, including any recorded effort fallback.
-   * @returns the resolved acceptance options.
+   * The host model catalog the settings card's model and reasoning-level
+   * choices come from.
+   * @returns the catalog, or an empty one when this deployment serves none.
    */
-  async verificationOptions(): Promise<{
-    settings: VerificationSettings
-    contract: VerificationContract
-    catalog: ModelCatalogView
-  }> {
-    const settings = this.verificationSettings()
-    const catalog = await this.verificationCatalog()
-    return {
-      settings,
-      contract: resolveContract(settings, catalog),
-      catalog: catalog ?? { groups: [] },
-    }
+  async modelCatalogOptions(): Promise<{ catalog: ModelCatalogView }> {
+    const catalog = await this.modelCatalog()
+    return { catalog: catalog ?? { groups: [] } }
   }
 
   /** SSE frame payload; deliberately skips the tasks deep-clone of {@link snapshot}. */
@@ -770,7 +708,7 @@ export class TaskBoardHostService {
     this.listeners.clear()
   }
 
-  private async launch(opened: OpenedRun, schedule?: ScheduledRunContext, freezeContract?: RunContractFreezer): Promise<void> {
+  private async launch(opened: OpenedRun, schedule?: ScheduledRunContext, freezeCatalog?: RunCatalogFreezer): Promise<void> {
     /** The session this launch attached to the execution, once it exists. */
     let attached: string | undefined
     try {
@@ -810,64 +748,26 @@ export class TaskBoardHostService {
         ...(rework === undefined ? {} : { rework }),
       }
       const promptContext = Object.keys(contextParts).length === 0 ? undefined : contextParts
-      // Freeze this execution's acceptance contract BEFORE the session is
-      // prompted: a settings change made while the run is in flight must not
-      // retrofit the rule that will judge it. A card that opted out resolves the
-      // same contract from an OFF switch: the board-wide switch decides the
-      // default, the card decides this execution, and both are read here.
+      // Freeze this run group's model catalog BEFORE the session is prompted: a
+      // catalog change made while the run is in flight must not change which
+      // reasoning level this execution is allowed to send.
       //
       // The read is the run GROUP's when the queue handed one down: admission
-      // delays a member's launch, so a per-execution read would let a settings
-      // edit made while later members wait reach some members of one run and not
-      // others. One group, one contract — and still frozen before the group's
+      // delays a member's launch, so a per-execution read would let a change
+      // made while later members wait reach some members of one run and not
+      // others. One group, one catalog — and still frozen before the group's
       // first session is prompted.
-      const { settings, globalGoalEnabled, catalog } = await (freezeContract ?? (() => this.freezeRunContract()))()
-      // The GLOBAL native-/goal switch is read ONCE per run group and carried by
-      // value for the whole execution: a settings edit after this point can only
-      // affect executions that start later.
-      // The card must ASK for the goal run: the option is off by default, so an
-      // absent value is a plain turn exactly like an explicit false.
-      const goalEnabled = globalGoalEnabled && opened.task.goalRun === true
-      // The card's opt-out is a DISTINCT reason, not the board switch: the
-      // report must be able to say which of the two turned the gate off.
-      const skippedBy: ExecutionVerification['applicability'] = opened.task.skipVerification === true ? 'skipped' : 'disabled'
-      const contract = resolveContract(
-        { ...settings, enabled: settings.enabled && opened.task.skipVerification !== true },
-        catalog,
-      )
-      // An execution that will not become a goal run can never fire the
-      // completion gate, so it is marked with the reason that actually applied:
-      // the global switch being off is its OWN reason, distinct from this run
-      // simply not becoming a goal run (the card never opted in, or a refused or
-      // unavailable /goal command), and it must never read as an accepted run.
-      // The reason names which switch withheld the goal: the GLOBAL master
-      // switch (this board never arms /goal) is a different fact from the card's
-      // own goal option staying off — which is the default, so it is what an
-      // untouched card gets.
-      const notArmed: ExecutionVerification['applicability'] = globalGoalEnabled ? 'goal-unavailable' : 'goal-disabled'
-      const initial: ExecutionVerification = {
-        contract,
-        attempts: [],
-        applicability: !contract.enabled ? skippedBy : notArmed,
-      }
-      this.ledger.setVerification(opened.task.id, opened.execution.id, initial)
+      const { catalog } = await (freezeCatalog ?? (() => this.readRunCatalog()))()
       const sessionId = await this.runner.launch(opened.task, {
         ...(reuseSessionId === undefined ? {} : { reuseSessionId }),
         ...(forcedPreset === undefined ? {} : { agentPreset: forcedPreset }),
         ...(promptContext === undefined ? {} : { promptContext }),
-        // The frozen global switch travels with the launch, so the runner's
-        // arming decision is exactly the one made above.
-        goalEnabled,
-        // The same catalog snapshot the acceptance contract was frozen from.
+        // The same catalog snapshot the reasoning decision is resolved from.
         catalog,
-        // Bind the session to the execution before the prompt is queued, so the
-        // completion gate can never observe the agent without its binding.
+        // Bind the session to the execution before the prompt is queued.
         onSession: (id) => {
           attached = id
           this.ledger.attachSession(opened.task.id, opened.execution.id, id)
-        },
-        onGoalArmed: (armed) => {
-          this.setApplicability(opened.task.id, opened.execution.id, !contract.enabled ? skippedBy : armed ? 'enforced' : notArmed)
         },
       })
       if (attached === undefined) this.ledger.attachSession(opened.task.id, opened.execution.id, sessionId)
@@ -888,27 +788,22 @@ export class TaskBoardHostService {
   }
 
   /**
-   * Read the acceptance contract one run group freezes, in the order the board
-   * has always read it: the acceptance settings, then the global native-/goal
-   * switch, then the model catalog that both resolves the contract's route and
-   * decides the reasoning effort the session may be given.
+   * Read the model catalog one run group freezes. The catalog is what decides
+   * whether a card's pinned reasoning level may be sent to the session.
    */
-  private async freezeRunContract(): Promise<FrozenRunContract> {
-    const settings = this.verificationSettings()
-    const globalGoalEnabled = this.goalRunEnabled() === true
-    const catalog = await this.verificationCatalog()
-    return { settings, globalGoalEnabled, catalog }
+  private async readRunCatalog(): Promise<FrozenRunCatalog> {
+    return { catalog: await this.modelCatalog() }
   }
 
   /**
-   * A {@link RunContractFreezer} that reads once and hands the SAME value to
+   * A {@link RunCatalogFreezer} that reads once and hands the SAME value to
    * every later caller of one run group. A read that fails is not cached: the
    * next member reads again, exactly as a per-execution read would have.
    */
-  private contractFreezerForRunGroup(): RunContractFreezer {
-    let pending: Promise<FrozenRunContract> | undefined
+  private catalogFreezerForRunGroup(): RunCatalogFreezer {
+    let pending: Promise<FrozenRunCatalog> | undefined
     return () => {
-      pending ??= this.freezeRunContract().catch((error: unknown) => {
+      pending ??= this.readRunCatalog().catch((error: unknown) => {
         pending = undefined
         throw error
       })
@@ -1047,16 +942,6 @@ export class TaskBoardHostService {
   ): Promise<void> {
     for (const execution of executions) {
       if (execution.sessionId === undefined) continue
-      const record = this.ledger.getTask(execution.taskId)?.executions.find(entry => entry.id === execution.executionId)
-      const verification = record?.verification
-      // A cycle the gate already closed is decided here, without another
-      // inspection: the goal may still be active (or un-blockable) exactly
-      // because the acceptance failed, and the card must not stay in the
-      // running column waiting for a verdict that is already recorded.
-      if (verification?.failedReason !== undefined) {
-        this.settleAndNotify(execution.taskId, execution.executionId, 'failed', verification.failedReason)
-        continue
-      }
       try {
         // A team member's turn is read even while the roster calls its session
         // running: a durable teammate never goes idle for good.
@@ -1069,29 +954,6 @@ export class TaskBoardHostService {
           continue
         }
         this.unreadablePolls.delete(execution.executionId)
-        // Forced acceptance: the old fallback paths — a completed turn, a
-        // paused goal, an unreadable projection, a manual settle — must never
-        // be mistaken for a verified success. Only a matching pass record
-        // settles this execution as succeeded.
-        if (result.outcome === 'succeeded' && verificationRequired(verification) && passedAttempt(verification) === undefined) {
-          // Two different failures share this branch, and they send the reader
-          // in opposite directions: attempts on record mean the judge ran and
-          // the work did not pass, while zero attempts mean the gate never
-          // opened at all (issue #1837) — the session narrated completion
-          // instead of calling `update_goal(action: complete)`.
-          this.settleAndNotify(
-            execution.taskId,
-            execution.executionId,
-            'failed',
-            verificationNeverInvoked(verification)
-              ? NEVER_INVOKED_VERIFICATION_REASON
-              : verificationOnlyInvalid(verification)
-                ? INVALID_ONLY_VERIFICATION_REASON
-                : NO_MATCHING_PASS_VERIFICATION_REASON,
-            result.summary,
-          )
-          continue
-        }
         // The run's closing text rides whichever verdict it earned: a failed
         // execution still leaves what it managed to say.
         this.settleAndNotify(execution.taskId, execution.executionId, result.outcome, 'error' in result ? result.error : undefined, result.summary)
@@ -1134,73 +996,6 @@ export class TaskBoardHostService {
       outcome,
       ...(error === undefined ? {} : { error }),
     })
-    // The pass record and the settlement are DURABLE by this point (both are in
-    // the ledger above), so the acceptance-only detail may now be cleaned. A
-    // cleanup failure is recorded against the execution and retried on the next
-    // Host start; it never revokes the pass this settlement just wrote.
-    if (outcome === 'succeeded') this.cleanupAcceptanceDetail(taskId, executionId)
-  }
-
-  /**
-   * Remove one execution's acceptance-only detail after it PASSED and settled.
-   *
-   * Deliberately narrow: only the acceptance mechanism's own per-attempt
-   * material (findings, invalid diagnostics, the bulky judge side) is removed,
-   * and only for THIS execution, keyed by its own id in the ledger it belongs
-   * to. No user file, task artifact, raw session history or other execution's
-   * record is read or written. Idempotent by the record's own state, and it
-   * clearly never touches a run that did not pass (the caller's guard) — a
-   * failed or invalid execution keeps everything a repair or a review needs.
-   * @param taskId - the task whose execution settled.
-   * @param executionId - the settled execution.
-   */
-  private cleanupAcceptanceDetail(taskId: string, executionId: string): void {
-    const execution = this.ledger.getTask(taskId)?.executions.find(entry => entry.id === executionId)
-    const verification = execution?.verification
-    // Only an execution with a REAL pass record is cleaned. An execution whose
-    // acceptance never ran (no block) or was disabled/skipped has nothing this
-    // mechanism created, and a failed one must keep its evidence.
-    if (verification === undefined || passedAttempt(verification) === undefined) return
-    if (verification.cleanup?.state === 'cleaned') return
-    try {
-      const cleaned = withAcceptanceDetailCleared(verification, this.now())
-      if (cleaned === undefined) return
-      this.ledger.setVerification(taskId, executionId, cleaned)
-    } catch (error) {
-      // Record the failure so the UI can say the cleanup is pending and the
-      // Host retries it at start; the pass itself is untouched.
-      const attempts = (verification.cleanup?.attempts ?? 0) + 1
-      this.ledger.setVerification(taskId, executionId, {
-        ...verification,
-        cleanup: {
-          state: 'failed',
-          attempts,
-          startedAt: verification.cleanup?.startedAt ?? this.now(),
-          lastError: error instanceof Error ? error.message : String(error),
-          audit: verification.cleanup?.audit ?? [],
-        },
-      })
-      safeConsoleError('[dsh-task-board] acceptance-detail cleanup failed; it is retried on the next Host start', error)
-    }
-  }
-
-  /**
-   * Catch-up pass: clean the acceptance detail of every execution that PASSED
-   * and settled but whose cleanup did not finish (a crash, a failed write, a
-   * Host killed mid-cleanup).
-   *
-   * The same bounds as any other cleanup apply — only a real pass record on a
-   * settled execution is touched — so this can never delete material belonging
-   * to an execution that did not pass, and never a user file.
-   */
-  private cleanupPendingAcceptanceDetail(): void {
-    for (const task of this.ledger.allTasks()) {
-      for (const execution of task.executions) {
-        if (execution.endedAt === undefined) continue
-        if (execution.result !== 'succeeded') continue
-        this.cleanupAcceptanceDetail(task.id, execution.id)
-      }
-    }
   }
 
   private noteUnreadableInspection(execution: OpenExecutionReference, reason: string | undefined): void {
@@ -1316,21 +1111,11 @@ export class TaskBoardHostService {
   private dispatchRuns(runs: readonly OpenedRun[], schedule?: ScheduledRunContext): void {
     const root = runs[0]
     if (root === undefined) return
-    this.scheduleLaunch(root, schedule, this.contractFreezerForRunGroup())
+    this.scheduleLaunch(root, schedule, this.catalogFreezerForRunGroup())
   }
 
-  /**
-   * Move one execution's applicability without touching its frozen contract or
-   * its recorded attempts (used when the run's goal form becomes known).
-   */
-  private setApplicability(taskId: string, executionId: string, applicability: ExecutionVerification['applicability']): void {
-    const verification = this.ledger.getTask(taskId)?.executions.find(entry => entry.id === executionId)?.verification
-    if (verification === undefined || verification.applicability === applicability) return
-    this.ledger.setVerification(taskId, executionId, { ...verification, applicability })
-  }
-
-  private scheduleLaunch(opened: OpenedRun, schedule?: ScheduledRunContext, freezeContract?: RunContractFreezer): void {
-    this.enqueueLaunch(opened, () => this.launch(opened, schedule, freezeContract).catch(error => {
+  private scheduleLaunch(opened: OpenedRun, schedule?: ScheduledRunContext, freezeCatalog?: RunCatalogFreezer): void {
+    this.enqueueLaunch(opened, () => this.launch(opened, schedule, freezeCatalog).catch(error => {
       safeConsoleError('[dsh-task-board] execution launch settlement failed', error)
     }), schedule)
   }

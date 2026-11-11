@@ -15,7 +15,7 @@ Status: implemented
 - **分区只渲染标题与卡片。** 说明段落删除，`web-ui-plugins` 在 zh、en 与 `dsh-i18n` 的 ru 镜像里同时去掉 `description` 键：导航项与分区标题已经点明了这一页，那行句子只是把卡片往下推。
 - **共享卡片外壳新增可选 `icon`。** 卡片传入时，`PluginSettingsCard` 在标题文本前渲染一枚 34px 的安静标识块（`settings-card.module.css` 的 `.mark`）；不传的卡片保持原有的官方形状卡头，因此提供方区块与内置同级卡片都不受影响，嵌套主题卡也保持这一卡头形状，除非它按下面的嵌套密度自行加入。标识块在悬停与展开时取卡片自身的墨色，整行由此读起来是一个控件。
 - **卡片标题去掉冗余的名词。** `远程访问设置` 改为 `远程访问`，"Remote access settings" 改为 "Remote access"，`Настройки удалённого доступа` 改为 `Удалённый доступ`，说明改为「手机配对、公网隧道与设备限额。」/ "Phone pairing, public tunnel and device limits."。中文的局域网提示与两份 `dsh-remote-web-ui` README 里写的是旧卡名，一并跟随。
-- **说明写卡里有什么，而不是插件是什么。** 看板卡读作「任务编排、agent 播报与目标验收。」/ "Task orchestration, agent announcement and goal acceptance."；它两张主题卡的说明与 GitHub 区块的说明删掉了父卡卡头已经写着的那些词。
+- **说明写卡里有什么，而不是插件是什么。** 看板卡描述卡内承载的主题（最初为「任务编排、agent 播报与目标验收。」/ "Task orchestration, agent announcement and goal acceptance."，后随[移除任务验收](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.zh.md)同步收窄）；各主题卡与 GitHub 区块的说明删掉了父卡卡头已经写着的那些词。
 - **看板卡的实时事实改为小字。** 电源事实行与电池免责声明移入 `board-settings.module.css` 的 `.power`，以 12px 排在主题卡列表之下，不再作为无样式正文段落渲染。这一块不画自己的分隔线：最后一张主题卡本就用边框收尾。
 - **标识沿用家族已有的字形。** 远程访问卡复用侧边栏的 `PhoneIcon`；看板卡自绘三列看板字形，且看板卡内只有它的卡头带标识。
 - **外壳新增嵌套密度。** `PluginSettingsCard` 接受 `density?: 'nested'`，该变体是对卡片自身局部尺度变量（`settings-card.module.css` `.card` 上的 `--settings-card-radius`、`-header-pad`、`-header-gap`、`-title-size`、`-description-size`、`-body-inset` 与 `-motion`）的覆盖，因此两级共用一套规则，不传该属性的消费者渲染出的首级卡与改动前完全一致。嵌套卡为 10px 圆角、10px 12px 卡头内边距与 10px 间距（可点高度仍高于 44px 触控目标）、13px/600 标题配 12px 且单行省略的说明、12px 的 body 左右内缩。

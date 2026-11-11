@@ -7,7 +7,6 @@ import { createTask, EXECUTION_HISTORY_LIMIT, startExecution, withSchedule, type
 import { HostTaskLedger, processIsAlive, processState, win32StartTimeMs, type PowerShellProbe } from '../src/host-ledger.ts'
 import { nextRunAtMs, resolveHostTimeZone } from '../src/core/schedule.ts'
 import { TASK_BOARD_SCHEMA_VERSION } from '../src/protocol.ts'
-import { budgetAttempts, exceptionAttempts, passedAttempt, type ExecutionVerification, type VerificationAttempt } from '../src/core/verification.ts'
 
 const roots: string[] = []
 const NOW = new Date(2026, 7, 16, 10, 0, 30).getTime()
@@ -74,30 +73,6 @@ function spawnZombie(): number | undefined {
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
 })
-
-/** One recorded acceptance attempt of a given stage, built for the ledger tests. */
-function attempt(stage: 'exception' | 'budget' | 'quality', index: number, passed = false): VerificationAttempt {
-  return {
-    index,
-    at: NOW + index,
-    stage,
-    passed,
-    score: stage === 'quality' ? 0.8 : 0,
-    baseline: stage === 'quality' ? 0.1 : 0,
-    criteria: stage === 'quality' ? [{ id: 'specification', name: 'Specification Adherence', score: 0.8, baseline: 0.1, threshold: 0.65, passed: true }] : [],
-    findings: [],
-    usage: { calls: 1, inputTokens: 0, outputTokens: 0, reasoningTokens: 0 },
-    evidence: { chars: 0, omittedCharacters: 0, entries: 0, hash: '' },
-    route: { provider: 'p', model: 'm' },
-    channel: 'explicit-tag',
-    rounds: 2,
-    ...(stage === 'quality' ? {} : { error: 'environment failure' }),
-  }
-}
-
-const anomaly = (index: number): VerificationAttempt => attempt('exception', index)
-const budgetStop = (index: number): VerificationAttempt => attempt('budget', index)
-const passedQuality = (index: number): VerificationAttempt => attempt('quality', index, true)
 
 describe('HostTaskLedger', () => {
   it('imports each source once and merges newer fields with the execution union', () => {
@@ -600,59 +575,6 @@ describe('HostTaskLedger', () => {
     expect(declared.status).toBe('done')
     expect(declared.executions).toHaveLength(0)
     expect(declared.updatedAt).toBe(NOW)
-  })
-
-  it('operator clearing acceptance anomalies resets the counter but keeps every recorded verdict', () => {
-    // Given an open execution carrying one anomaly, one budget stop and one pass
-    const ledger = new HostTaskLedger(tempRoot(), () => NOW)
-    ledger.applyRequest('create', { kind: 'create', id: 'task-a', input: { title: 'A', description: '', prompt: '' } })
-    const execution = ledger.applyRequest('run', { kind: 'run', taskId: 'task-a' }).runs?.[0]?.execution
-    expect(execution).toBeDefined()
-    const attempts: ExecutionVerification['attempts'] = [
-      anomaly(1), anomaly(2), budgetStop(1), passedQuality(1),
-    ]
-    ledger.setVerification('task-a', execution!.id, {
-      contract: {
-        enabled: true, modelSource: 'inherit', route: { provider: 'p', model: 'm' }, preset: 'coding', threshold: 0.65,
-      },
-      attempts,
-      applicability: 'enforced',
-      failedReason: 'acceptance anomaly budget exhausted',
-    })
-
-    // When the operator clears the recorded anomalies
-    ledger.applyRequest('reset', { kind: 'reset-verification', taskId: 'task-a' })
-
-    // Then only the non-verdict attempts are gone: the pass record survives
-    const cleared = ledger.state().tasks[0].executions[0].verification
-    expect(exceptionAttempts(cleared)).toHaveLength(0)
-    expect(budgetAttempts(cleared)).toHaveLength(0)
-    expect(passedAttempt(cleared)?.passed).toBe(true)
-    expect(cleared?.failedReason).toBeUndefined()
-
-    // And a second reset is refused, because there is nothing left to clear
-    expect(() => ledger.applyRequest('reset2', { kind: 'reset-verification', taskId: 'task-a' })).toThrow('no acceptance anomaly')
-  })
-
-  it('operator clearing anomalies is refused on a card with no open execution or no acceptance gate', () => {
-    // Given a card that was never run, and a card whose open execution is not gated
-    const ledger = new HostTaskLedger(tempRoot(), () => NOW)
-    ledger.applyRequest('create-idle', { kind: 'create', id: 'idle', input: { title: 'A', description: '', prompt: '' } })
-    ledger.applyRequest('create-plain', { kind: 'create', id: 'plain', input: { title: 'B', description: '', prompt: '' } })
-    const execution = ledger.applyRequest('run', { kind: 'run', taskId: 'plain' }).runs?.[0]?.execution
-    ledger.setVerification('plain', execution!.id, {
-      contract: { enabled: false, modelSource: 'inherit', preset: 'coding', threshold: 0.65 },
-      attempts: [anomaly(1)],
-      applicability: 'disabled',
-    })
-
-    // When the operator tries to clear acceptance anomalies on either card
-    const idle = (() => { try { ledger.applyRequest('r1', { kind: 'reset-verification', taskId: 'idle' }); return '' } catch (error) { return (error as Error).message } })()
-    const plain = (() => { try { ledger.applyRequest('r2', { kind: 'reset-verification', taskId: 'plain' }); return '' } catch (error) { return (error as Error).message } })()
-
-    // Then both are refused, with the reason that names the actual obstacle
-    expect(idle).toContain('no open execution')
-    expect(plain).toContain('not gated by task acceptance')
   })
 
   it('operator recording an external outcome writes one execution the column and the history both derive from', () => {

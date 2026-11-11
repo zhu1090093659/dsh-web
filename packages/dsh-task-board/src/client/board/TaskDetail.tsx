@@ -194,18 +194,12 @@ function FoldSection({ title, summary, hint, children }: {
 }
 
 /** The execution-target editor: workspace / mode / permission pickers. */
-function ExecutionSettingsSection({ controller, task, pending, executionOptions, goalRunEnabled }: {
+function ExecutionSettingsSection({ controller, task, pending, executionOptions }: {
   controller: BoardController
   task: TaskRecord
   pending: boolean
   /** Picker option sets, owned by the detail overlay's snapshot. */
   executionOptions: ControllerSnapshot['executionOptions']
-  /**
-   * Live GLOBAL native-/goal switch. It only decides whether the card's own
-   * preference takes effect: the option stays operable while it is off, the
-   * stored value is never rewritten by it, and the explanation below says so.
-   */
-  goalRunEnabled: boolean
 }) {
   const options = executionOptions
   const models = options.models ?? []
@@ -223,8 +217,6 @@ function ExecutionSettingsSection({ controller, task, pending, executionOptions,
   // One line for the closed fold: which switches are on.
   const advancedOn: string[] = []
   if (task.reuseSession === true) advancedOn.push(t('detail.settings.summary.reuseSession'))
-  if (task.goalRun === true) advancedOn.push(t('detail.settings.summary.goal'))
-  if (task.skipVerification === true) advancedOn.push(t('detail.settings.summary.skipVerification'))
   const advancedSummary = advancedOn.length === 0 ? t('detail.settings.summary.none') : advancedOn.join(' · ')
   return (
     <section className={css.detailSection}>
@@ -324,32 +316,6 @@ function ExecutionSettingsSection({ controller, task, pending, executionOptions,
           <span>{t('exec.reuseSession')}</span>
         </label>
         <p className={css.detailMeta}>{t('exec.reuseSessionHint.short')}</p>
-        <label className={css.scheduleToggle} title={t('exec.goalRunHint')}>
-          <input
-            type="checkbox"
-            checked={task.goalRun === true}
-            // Always operable (only a pending execution locks it): the global
-            // switch decides whether the preference takes effect, never whether
-            // the user may state it, and it never rewrites what is stored here.
-            disabled={pending}
-            onChange={event => { controller.updateTask(task.id, { goalRun: event.target.checked }) }}
-          />
-          <span>{t('exec.goalRun')}</span>
-        </label>
-        <p className={css.detailMeta}>{t('exec.goalRunHint.short')}</p>
-        {!goalRunEnabled && (
-          <p className={css.detailMeta} title={t('settings.goalRunGlobalDisabledTaskOption')}>{t('exec.goalRunGlobalOff')}</p>
-        )}
-        <label className={css.scheduleToggle} title={t('exec.skipVerificationHint')}>
-          <input
-            type="checkbox"
-            checked={task.skipVerification === true}
-            disabled={pending}
-            onChange={event => { controller.updateTask(task.id, { skipVerification: event.target.checked }) }}
-          />
-          <span>{t('exec.skipVerification')}</span>
-        </label>
-        <p className={css.detailMeta}>{t('exec.skipVerificationHint.short')}</p>
       </FoldSection>
     </section>
   )
@@ -1051,7 +1017,6 @@ export function TaskDetail({ controller, task, phase = 'open' }: { controller: B
                       task={current}
                       pending={pending}
                       executionOptions={snapshot.executionOptions}
-                      goalRunEnabled={snapshot.host?.goalRunEnabled === true}
                     />
                     <ScheduleSection controller={controller} task={current} pending={pending} />
                   </>

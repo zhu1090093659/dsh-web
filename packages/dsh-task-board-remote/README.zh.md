@@ -6,7 +6,7 @@
 
 ## 功能
 
-- **三个方法。** `board.snapshot` 逐字转发宿主快照；`board.options` 给出验收设置、它们解析出的契约、模型目录，以及看板的实时 meta；`board.apply` 把一个动作交给宿主自己的 `apply`。
+- **三个方法。** `board.snapshot` 逐字转发宿主快照；`board.options` 给出宿主模型目录以及看板的实时 meta；`board.apply` 把一个动作交给宿主自己的 `apply`。
 - **一个主题。** `board.changed` 告诉声明了该能力的已配对手机「有变更」，载荷只有 revision。
 - **判定归宿主。** 运行中锁、高权限绑定的人工确认门、子任务深度、调度次数预算，全部留在原处。拒绝就是宿主自己那句话，以 `board-refused` 穿过。
 - **退化而不是失败。** 该行不声明任何注入服务：宿主没有桥、或没有看板时照常启动，只失去这一面。
@@ -24,14 +24,14 @@
 | 方法 | 请求 `p` | 响应 `r` |
 | --- | --- | --- |
 | `board.snapshot` | `{}` 或 `{since}` | `{mode:"reset", token, snapshot, revision, tasks}`——宿主快照逐字转发外加增量键——或 `{mode:"delta", token, revision, changed, removed}` |
-| `board.options` | `{}` | `{verification:{settings,contract,catalog}, meta:{sessionDefaultPermission?, cardDefaults?, maxSubtaskDepth?, goalRunEnabled?}}` |
+| `board.options` | `{}` | `{catalog, meta:{sessionDefaultPermission?, cardDefaults?, maxSubtaskDepth?}}` |
 | `board.apply` | `{requestId, action}` | `{snapshot, revision}` |
 
 客户端在 `hello` 的 `cap` 数组里声明 `board.v1`。未声明时三个方法回 `unknown-method`——方法对它而言不属于协议——主题也永不到达它。
 
 另外声明了桥的 `delta.v1` 的客户端，可以把上一次应答的 `token` 当作 `since` 发回来，只会收到动了的部分——`mode:"delta"` 带 `changed` 与 `removed` 里的 id——或者在增量并不明显更小时再收一次整份看板。这件事的判定全归桥（协议 v1 §15）：本行只把看板自己的行交给它，并把应答包成看板的形状。什么都没声明、或没带令牌的客户端永远收到 `mode:"reset"` 与空 `token`，而它读的 `snapshot` 逐字未变——增量键都是可加可忽略的。配对判定在前，与协议方法完全一致。
 
-`action` 是看板动作自身的 JSON 形态（`create`、`update`、`move`、`archive`、`restore`、`delete`、`settle`、`record-external-outcome`、`reset-verification`、`extension-action` 等），逐字穿过。不传 initiator：看板把该字段定义为发起动作的 DSH 会话 id，而手机不是会话——塞一个替身会把非会话身份写进执行审计，而工作区继承查询也把它当会话 id 读。
+`action` 是看板动作自身的 JSON 形态（`create`、`update`、`move`、`archive`、`restore`、`delete`、`settle`、`record-external-outcome`、`extension-action` 等），逐字穿过。不传 initiator：看板把该字段定义为发起动作的 DSH 会话 id，而手机不是会话——塞一个替身会把非会话身份写进执行审计，而工作区继承查询也把它当会话 id 读。
 
 ## 事件
 

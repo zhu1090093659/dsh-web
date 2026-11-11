@@ -6,8 +6,7 @@
  * ledger the browser does, through the same host gates.
  *
  * - `board.snapshot` forwards the host snapshot verbatim, and `board.options` the
- *   acceptance settings, contract and model catalog plus the board's live meta;
- *   neither is interpreted here.
+ *   host model catalog plus the board's live meta; neither is interpreted here.
  * - `board.apply` forwards one action to the host's own `apply`, keyed by the
  *   client's `requestId` per connection. A refusal is the host's: it crosses as
  *   `board-refused` with the host's own text.

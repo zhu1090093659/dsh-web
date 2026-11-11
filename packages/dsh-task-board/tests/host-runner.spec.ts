@@ -81,9 +81,6 @@ function configuredTask(): TaskRecord {
     workspaceId: 'workspace-a',
     mode: 'preset-a',
     permission: 'workspace-write',
-    // The native-/goal option is OFF by default; the cases that launch with the
-    // frozen global switch on assert the arming, so this card opts in.
-    goalRun: true,
   }
 }
 
@@ -93,8 +90,8 @@ describe('HostExecutionRunner', () => {
     const promptPayloads: unknown[] = []
     const commands = {
       execute: vi.fn(async (_sessionId: string, line: string) => {
-        order.push(line.startsWith('/permission ') ? 'permission' : 'goal')
-        if (line.startsWith('/permission ')) expect(line).toBe('/permission workspace-write')
+        order.push('permission')
+        expect(line).toBe('/permission workspace-write')
         return { kind: 'success' as const }
       }),
     }
@@ -123,11 +120,11 @@ describe('HostExecutionRunner', () => {
         throw new Error('unexpected gateway call')
       }),
     }
-    await expect(new HostExecutionRunner(gateway, commands, workspaceRegistry()).launch(configuredTask(), { goalEnabled: true })).resolves.toBe('session-a')
-    // The permission pin precedes the prompt; the /goal arming follows it, so
-    // the session's first turn carries the instruction verbatim.
-    expect(order).toEqual(['preset', 'create', 'rename', 'permission', 'prompt', 'goal'])
-    expect(commands.execute).toHaveBeenCalledWith('session-a', '/goal do work', expect.anything())
+    await expect(new HostExecutionRunner(gateway, commands, workspaceRegistry()).launch(configuredTask())).resolves.toBe('session-a')
+    // The permission pin precedes the prompt, so the session's first turn
+    // carries the instruction verbatim.
+    expect(order).toEqual(['preset', 'create', 'rename', 'permission', 'prompt'])
+    expect(commands.execute).toHaveBeenCalledTimes(1)
     expect(gateway.invoke.mock.calls[1]?.[0].args).toEqual({ request: { workspaceId: 'workspace-a', agentPreset: 'preset-a' } })
     expect(promptPayloads).toEqual([{ sessionId: 'session-a', requestId: expect.any(String), mode: 'queue', content: [{ type: 'text', text: 'do work' }] }])
   })
@@ -137,8 +134,8 @@ describe('HostExecutionRunner', () => {
     const promptPayloads: unknown[] = []
     const commands = {
       execute: vi.fn(async (_sessionId: string, line: string) => {
-        order.push(line.startsWith('/permission ') ? 'permission' : 'goal')
-        if (line.startsWith('/permission ')) expect(line).toBe('/permission workspace-write')
+        order.push('permission')
+        expect(line).toBe('/permission workspace-write')
         return { kind: 'success' as const }
       }),
     }
@@ -165,11 +162,11 @@ describe('HostExecutionRunner', () => {
       }),
     }
     await expect(
-      new HostExecutionRunner(gateway, commands, workspaceRegistry()).launch(configuredTask(), { reuseSessionId: 'session-existing', goalEnabled: true }),
+      new HostExecutionRunner(gateway, commands, workspaceRegistry()).launch(configuredTask(), { reuseSessionId: 'session-existing' }),
     ).resolves.toBe('session-existing')
     // The pinned permission is re-asserted on the existing session; no
     // create/rename reaches the gateway at all.
-    expect(order).toEqual(['preset', 'projections', 'permission', 'prompt', 'goal'])
+    expect(order).toEqual(['preset', 'projections', 'permission', 'prompt'])
     expect(promptPayloads).toEqual([{ sessionId: 'session-existing', requestId: expect.any(String), mode: 'queue', content: [{ type: 'text', text: 'do work' }] }])
   })
 
@@ -431,13 +428,8 @@ describe('HostExecutionRunner', () => {
     const items = [{ sessionId: 'session-a', running: false }]
     const list = vi.fn(async () => ({ items }))
     const page = vi.fn(async () => ({ records: [sessionEvent('turn/end', 10, 1_100, { reason: { kind: 'completed' } })], hasMore: false }))
-    const projections = vi.fn(async () => ({ values: { goal: null } }))
     const gateway = {
-      invoke: fakeInvoke(async (request: GatewayRequest) => request.method === 'list'
-        ? list()
-        : request.method === 'projections'
-          ? projections()
-          : page()),
+      invoke: fakeInvoke(async (request: GatewayRequest) => request.method === 'list' ? list() : page()),
       stream: fakeStream(async () => ({
         async *[Symbol.asyncIterator]() {
           yield snapshot([], 10, true)
@@ -451,7 +443,6 @@ describe('HostExecutionRunner', () => {
     await expect(runner.inspect('session-a', 1_000, running.items)).resolves.toEqual({ outcome: 'succeeded' })
     expect(list).toHaveBeenCalledOnce()
     expect(page).toHaveBeenCalledOnce()
-    expect(projections).toHaveBeenCalledOnce()
   })
 
   it('requests the host roster under the descriptor _request wire key and reports it known', async () => {

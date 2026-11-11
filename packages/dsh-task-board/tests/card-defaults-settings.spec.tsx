@@ -37,7 +37,7 @@ class StubEventSource {
 }
 
 /**
- * The model catalog the card reads through `api/task-board/verification`:
+ * The model catalog the card reads through `api/task-board/model-catalog`:
  * one provider whose model declares two levels, one model declaring a single
  * level, and one model declaring none at all.
  */

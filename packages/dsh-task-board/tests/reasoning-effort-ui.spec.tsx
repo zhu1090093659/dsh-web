@@ -62,7 +62,6 @@ function detailSnapshot(taskRecord: TaskRecord, pendingTaskIds: string[] = []): 
       scheduler: { timeZone: 'UTC' },
       power: { platform: 'linux', phase: 'unsupported', enabled: false, runningSessions: 0, armedSchedules: 0, sessionStateKnown: true },
       sessionDefaultPermission: 'read-only',
-      goalRunEnabled: true,
     },
   }
 }
@@ -108,7 +107,6 @@ function renderCreateModal(): { container: HTMLElement; createTaskConfirmed: Ret
       revision: 1,
       scheduler: { timeZone: 'UTC' },
       power: { platform: 'linux', phase: 'unsupported', enabled: false, runningSessions: 0, armedSchedules: 0, sessionStateKnown: true },
-      goalRunEnabled: true,
     },
   }
   const createTaskConfirmed = vi.fn(async () => ({ id: 'task-new' } as TaskRecord))

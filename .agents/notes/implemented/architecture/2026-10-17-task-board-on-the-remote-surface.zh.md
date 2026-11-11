@@ -17,8 +17,8 @@ Status: implemented
 看板经两道增量扩展缝和一个新包到达远端面，两道缝彼此都不认识对方的词。
 
 1. **桥提供一道通用扩展缝。** `packages/dsh-remote-bridge` 发布 cordis 服务 `remoteBridge`，含 `registerMethods({ capability?, methods })`（返回 disposer）与 `broadcast(topic, payload, capability?)`。桥在自己的闸门之后派发已注册的名字——未注册的名字最先回 `unknown-method`，未配对连接回 `unpaired`（与协议方法一致），从未声明该表能力的客户端被告知方法不存在——并把插件的 `{ok, r}` 或 `{ok:false, code, msg}` 原样穿过。`hello` 回 `minor: 1`，主版本 1 与全部冻结字段、方法名、主题名都没有变化。同一道缝也决定握手公告什么：插件早已注册 `board.v1` 与其方法，而 `hello` 只回桥自己的静态 `SERVED_CAPABILITIES`，于是从握手读自己 `board.v1` 能力的手机判定这台宿主不提供 Tasks。现在答案取 `SERVED_CAPABILITIES` 与 `RemoteBridgeRegistry.capabilities()` 的并集——后者是注册表里各表所门控的去重、非空能力名，升序——每次握手现算，因此桥建好之后才挂载的插件对下一条连接也可见，而撤下的表会把它的能力名一起带走，除非还有别的方法要求它。
-2. **看板多一个窄的进程内面。** `taskBoard` 服务增加 `snapshot()`、`apply(requestId, action, initiator?)`、`subscribe(listener)` 与 `verificationOptions()`，每一个都是宿主同名服务方法的**转发**。发布出去的对象里没有闸门、没有归一化、没有状态，因此经这条路到达看板的消费者，被拒绝的规则与浏览器完全相同。原有两个成员一字未动。
-3. **一个绑定包。** `packages/dsh-task-board-remote` 拥有看板的线路词表（`board.v1`、`board.snapshot`、`board.options`、`board.apply`、`board.changed`、`board-unavailable` / `board-refused`），结构化解析两个席位（`ctx.get` 加 `ctx.inject`，不 import 任何一方），只做形状转发、按连接的 `requestId` 重放与一波合并。所有业务判定——运行中锁、权限确认门、子任务深度、调度次数预算、验收契约——留在账本里。
+2. **看板多一个窄的进程内面。** `taskBoard` 服务增加 `snapshot()`、`apply(requestId, action, initiator?)`、`subscribe(listener)` 与 `modelCatalogOptions()`（随[移除任务验收](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.zh.md)与远端 seam 的 `BoardFace` 同步由 `verificationOptions()` 改名），每一个都是宿主同名服务方法的**转发**。发布出去的对象里没有闸门、没有归一化、没有状态，因此经这条路到达看板的消费者，被拒绝的规则与浏览器完全相同。原有两个成员一字未动。
+3. **一个绑定包。** `packages/dsh-task-board-remote` 拥有看板的线路词表（`board.v1`、`board.snapshot`、应答 `{catalog, meta:{sessionDefaultPermission?, cardDefaults?, maxSubtaskDepth?}}` 的 `board.options`、`board.apply`、`board.changed`、`board-unavailable` / `board-refused`），结构化解析两个席位（`ctx.get` 加 `ctx.inject`，不 import 任何一方），只做形状转发、按连接的 `requestId` 重放与一波合并。所有业务判定——运行中锁、权限确认门、子任务深度、调度次数预算——留在账本里。
 
 线路契约由 `iphone_remote_use_dsh/docs/protocol-v1.md` §12 冻结；本记录说明两道缝为何存在，不重复帧长什么样。
 
@@ -31,7 +31,7 @@ Status: implemented
 1. `TaskBoardHostService.apply()` 用 `ACTION_KINDS`（`Record<TaskBoardAction['kind'], true>` 全量记录）校验 kind。联合新增成员而这里没登记就编译不过，因此这张表不会落后于协议。未知 kind 抛 `unknown task board action kind: <kind>`，它带着原文以 `board-refused` 穿过远端面（§12.3），且什么都不改。
 2. `HostTaskLedger.apply()` 的 switch 补上了它一直缺的 `default`，作为纵深防御，防止将来出现一条绕过服务层直接到达账本的调用路径。
 
-`tests/host-face.spec.ts` 固定三件事：经发布面的拒绝不动 revision、不动任务表、不触发任何订阅；直接持有的账本同样拒绝该 kind；遍历联合全部十八种 kind 证明没有一种被当成未知——每一种要么被处理，要么按它自己的理由被拒。
+`tests/host-face.spec.ts` 固定三件事：经发布面的拒绝不动 revision、不动任务表、不触发任何订阅；直接持有的账本同样拒绝该 kind；遍历联合全部 kind 证明没有一种被当成未知——每一种要么被处理，要么按它自己的理由被拒。
 
 ## Context & Efficiency Impact
 

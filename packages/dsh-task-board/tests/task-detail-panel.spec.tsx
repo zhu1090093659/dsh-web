@@ -50,7 +50,6 @@ function hostState(overrides: Record<string, unknown> = {}): ControllerSnapshot[
     scheduler: { timeZone: 'UTC' },
     power: { platform: 'linux', phase: 'unsupported', enabled: false, runningSessions: 0, armedSchedules: 0, sessionStateKnown: true },
     sessionDefaultPermission: 'read-only',
-    goalRunEnabled: true,
     ...overrides,
   } as ControllerSnapshot['host']
 }
@@ -295,8 +294,8 @@ describe('folded execution column', () => {
   }
 
   it('user opening a card sees no long explanation paragraph in the execution column', () => {
-    // Given a card with two advanced switches already on
-    const { container } = renderDetail(card({ reuseSession: true, goalRun: true }))
+    // Given a card with the advanced switch already on
+    const { container } = renderDetail(card({ reuseSession: true }))
 
     // When the panel renders in its default state
     const right = rightColumn(container)
@@ -307,43 +306,38 @@ describe('folded execution column', () => {
     expect(right.querySelectorAll('input[type="checkbox"]')).toHaveLength(0)
     expect(right.textContent).not.toContain(t('exec.hint'))
     expect(right.textContent).not.toContain(t('exec.reuseSessionHint'))
-    expect(right.textContent).not.toContain(t('exec.goalRunHint'))
-    expect(right.textContent).not.toContain(t('exec.skipVerificationHint'))
   })
 
   it('user reading a closed fold sees which switches are on, in the short form the view allows', () => {
-    // Given: every advanced switch on, on a card whose switches read in one line
-    const { container } = renderDetail(card({ reuseSession: true, goalRun: true, skipVerification: true }))
+    // Given: the advanced switch on, on a card whose switches read in one line
+    const { container } = renderDetail(card({ reuseSession: true }))
 
     // When the closed region renders
     const summary = foldHeader(container, t('detail.settings.advanced')).textContent ?? ''
 
     // Then it echoes the switches that are on, and never one that is off
     expect(summary).toContain(t('detail.settings.summary.reuseSession'))
-    expect(summary).toContain(t('detail.settings.summary.goal'))
-    expect(summary).toContain(t('detail.settings.summary.skipVerification'))
 
     // And every short explanation the panel shows stays inside one meta line
-    for (const key of ['exec.hint.short', 'exec.reuseSessionHint.short', 'exec.goalRunHint.short', 'exec.skipVerificationHint.short', 'exec.goalRunGlobalOff'] as const) {
+    for (const key of ['exec.hint.short', 'exec.reuseSessionHint.short'] as const) {
       expect([...zh[key]].length).toBeLessThanOrEqual(30)
     }
   })
 
-  it('user opening the advanced fold reaches the same three switches and they still save immediately', () => {
+  it('user opening the advanced fold reaches the session-reuse switch and it still save immediately', () => {
     // Given a card with nothing switched on
     const { container, controller: board } = renderDetail(card())
 
     // When the reader opens the advanced region
     const header = openFormSection(container, t('detail.settings.advanced'))
 
-    // Then the three switches and their one-line explanations are there, and the
+    // Then the switch and its one-line explanation are there, and the
     // retired team-run option is not one of them
     expect(header.getAttribute('aria-expanded')).toBe('true')
     expect(document.getElementById(header.getAttribute('aria-controls') ?? '')?.id).toBe(header.getAttribute('aria-controls'))
     const boxes = [...rightColumn(container).querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
-    expect(boxes).toHaveLength(3)
+    expect(boxes).toHaveLength(1)
     expect(container.textContent).toContain(t('exec.reuseSessionHint.short'))
-    expect(container.textContent).toContain(t('exec.skipVerificationHint.short'))
 
     // And toggling one writes through the controller exactly as before
     act(() => { boxes[0]!.click() })
@@ -386,7 +380,7 @@ describe('folded execution column', () => {
 
   it('user reading the three closed folds sees one group with one tooltip each', () => {
     // Given a card whose execution column renders all three folds closed
-    const { container } = renderDetail(card({ skipVerification: true }))
+    const { container } = renderDetail(card())
     const advanced = foldHeader(container, t('detail.settings.advanced'))
     const schedule = foldHeader(container, t('detail.schedule'))
     const history = foldHeader(container, t('detail.execution'))

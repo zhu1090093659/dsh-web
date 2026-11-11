@@ -67,7 +67,6 @@ function renderDialog(options: {
       revision: 1,
       scheduler: { timeZone: 'UTC' },
       power: { platform: 'linux', phase: 'unsupported', enabled: false, runningSessions: 0, armedSchedules: 0, sessionStateKnown: true },
-      goalRunEnabled: true,
       ...(options.defaults === undefined ? {} : { cardDefaults: options.defaults }),
     },
   }

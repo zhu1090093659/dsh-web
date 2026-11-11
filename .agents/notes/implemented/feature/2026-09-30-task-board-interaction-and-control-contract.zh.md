@@ -96,7 +96,7 @@ Tab 会走到浮层下面的卡片，弹窗也没有声明为模态。对键盘�
   取代它，测试也断言字段不存在），所以界面契约止于浮层；用高度过渡会把隐藏字段留在
   DOM 中。
 - 共享设置卡外壳（`shared/client/settings/`）未改动。它是六个包共用的一个组件，需要
-  独立变更与证据；本看板自己的设置卡只保留其验收区块，现已落到
-  `board-settings.module.css` 的 token 上。
+  独立变更与证据；本看板设置卡自定义样式落到
+  `board-settings.module.css` 的 token 上（原验收区块本身已于 [2026-11-11](../simplification/2026-11-11-remove-task-board-goal-run-and-acceptance.zh.md) 移除）。
 
 这些界面的字号尺度、结果槽位与折叠行为由[卡片界面呈现契约](2026-10-20-task-board-card-surface-contract.md)所有。

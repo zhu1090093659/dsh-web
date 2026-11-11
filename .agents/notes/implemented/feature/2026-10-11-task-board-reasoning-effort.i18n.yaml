@@ -1,3 +1,5 @@
-# Bilingual-pair consistency record (docs/i18n.md).
-2026-10-11-task-board-reasoning-effort.md: 7f5104b0ea8c604b9c007573cf9d2a435b7ea83c
-2026-10-11-task-board-reasoning-effort.zh.md: 1de7a7642d582e72bde473a5c8d255538fc1d212
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-10-11-task-board-reasoning-effort.md: 333d8770d9065e386938848a0a26a62685b065b4
+2026-10-11-task-board-reasoning-effort.zh.md: c92c3532eed05535fc3d146a6a5a5efd3e0615aa

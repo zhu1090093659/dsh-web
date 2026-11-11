@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createTask, type TaskRecord } from '../src/core/tasks.ts'
-import type { ModelCatalogView } from '../src/core/verification.ts'
+import type { ModelCatalogView } from '../src/core/model-catalog.ts'
 import { HostExecutionRunner } from '../src/host-runner.ts'
 import { fixtureWorkspaces } from './workspace-fixture.ts'
 

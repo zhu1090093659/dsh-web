@@ -48,13 +48,10 @@ function renderModal(initialTask?: TaskRecord): HTMLElement {
       models: [],
     },
     pendingTaskIds: [],
-    // The master native-/goal switch is on: these cases exercise the
-    // task-level option, which the global default (off) would disable.
     host: {
       revision: 1,
       scheduler: { timeZone: 'UTC' },
       power: { platform: 'linux', phase: 'unsupported', enabled: false, runningSessions: 0, armedSchedules: 0, sessionStateKnown: true },
-      goalRunEnabled: true,
     },
   }
   const controller = {
@@ -139,9 +136,9 @@ describe('create-task dialog regions', () => {
     // When the user reads the region headers
     const container = renderModal()
 
-    // Then each collapsed header summarizes the values it holds: the /goal
-    // option is off by default, so the run region reports a single round
-    expect(regionHeader(container, t('new.section.run')).textContent).toContain(t('new.summary.singleRound'))
+    // Then each collapsed header summarizes the values it holds: session
+    // reuse is off by default, so the run region reports nothing set
+    expect(regionHeader(container, t('new.section.run')).textContent).toContain(t('new.summary.none'))
     // And the execution summary names the preset a run without a pin lands on
     expect(regionHeader(container, t('new.section.execution')).textContent)
       .toContain(t('preset.builtin.standard'))

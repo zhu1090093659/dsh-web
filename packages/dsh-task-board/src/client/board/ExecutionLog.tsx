@@ -1,9 +1,8 @@
 /**
  * The execution history of one card.
  *
- * A card accumulates dozens of runs, and each run carried the full acceptance
- * report inline: the same machine explanation repeated once per row buried the
- * one row a reader needed. The history therefore renders newest first, keeps
+ * A card accumulates dozens of runs, and a long list buries the one row a
+ * reader needs. The history therefore renders newest first, keeps
  * the five latest rows visible and puts the rest behind one disclosure that
  * opens and closes as one motion pair (the presence hook keeps the extra rows
  * mounted through the exit leg instead of pulling them out on the click's
@@ -22,7 +21,6 @@ import css from '../board.module.css'
 import { IconSession } from './icons.tsx'
 import { usePresence } from './overlay.tsx'
 import { formatTime } from './TaskCard.tsx'
-import { VerificationReport } from './VerificationReport.tsx'
 
 /** Rows shown before the history asks to be expanded. */
 export const VISIBLE_EXECUTIONS = 5
@@ -96,7 +94,6 @@ function ExecutionRow({ execution, timeZone, onOpen }: {
             {t('detail.execution.initiator', { session: execution.initiatedBy })}
           </span>
         )}
-        {execution.verification !== undefined && <VerificationReport verification={execution.verification} />}
         {execution.error !== undefined && execution.error !== '' && (
           <span className={css.executionError}>
             {failureText(execution.error)}

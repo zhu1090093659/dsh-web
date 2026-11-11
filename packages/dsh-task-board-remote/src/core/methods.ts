@@ -36,7 +36,7 @@ interface BoardTaskRow extends DeltaRowFace {
  * forwarded only when the host set it, so "this deployment configures nothing"
  * stays distinguishable from a configured blank value.
  */
-const META_KEYS = ['sessionDefaultPermission', 'cardDefaults', 'maxSubtaskDepth', 'goalRunEnabled'] as const
+const META_KEYS = ['sessionDefaultPermission', 'cardDefaults', 'maxSubtaskDepth'] as const
 
 /** Where the host face is read from for one call. */
 export interface BoardMethodsOptions {
@@ -208,13 +208,13 @@ function snapshotAnswer(board: BoardFace | undefined, payload: Readonly<Record<s
 
 async function optionsAnswer(board: BoardFace | undefined): Promise<BoardMethodResult> {
   if (board === undefined) return unavailable('the task board is not mounted on this host')
-  let verification: unknown
+  let document: unknown
   try {
-    verification = await board.verificationOptions()
+    document = await board.modelCatalogOptions()
   } catch (error) {
-    return unavailable(`the task board could not resolve its acceptance options: ${textOf(error)}`)
+    return unavailable(`the task board could not resolve its model catalog: ${textOf(error)}`)
   }
-  if (!isRecord(verification)) return unavailable('the task board answered no acceptance options')
+  if (!isRecord(document) || !isRecord(document.catalog)) return unavailable('the task board answered no model catalog')
   const read = readSnapshot(board)
   if (!read.ok) return read.result
   const meta: Record<string, unknown> = {}
@@ -222,7 +222,7 @@ async function optionsAnswer(board: BoardFace | undefined): Promise<BoardMethodR
     const value = read.snapshot[key]
     if (value !== undefined) meta[key] = value
   }
-  return carried({ verification, meta })
+  return carried({ catalog: document.catalog, meta })
 }
 
 /**

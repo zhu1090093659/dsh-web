@@ -1249,20 +1249,60 @@ describe('CliGateway operations on an application-owned profile', () => {
   }
 
   /**
-   * A gateway whose official manager resolves with one scripted verdict: the
-   * manager folds a refused run into its resolved value instead of rejecting
-   * (its `change()` wrapper catches every failure), so this is the shape a real
-   * refusal arrives in.
+   * One official `updateBundle` answer for a run that replaced a bundle.
+   *
+   * The official manager owns the replacement itself since 0.2.2-rc.1, so this
+   * is the whole shape our gateway reads: which phase ended the run, that
+   * phase's own verdict, and the reinstallation when the target did not land.
    */
-  function verdictGatewayFor(facts: ProfileFacts, verdict: unknown, calls: string[][] = []): CliGateway {
+  function updateLanded(from: string, to: string, application = 'applied'): Record<string, unknown> {
+    return { from, to, step: 'install', result: { stage: 'install', target: `${to}`, changed: true, application } }
+  }
+
+  /**
+   * A gateway whose official manager answers one scripted `updateBundle`
+   * sequence. The `installBundle` and `removeBundle` members it also carries
+   * throw on purpose: an update must be one official call, and a test that
+   * reaches for the old two-phase path fails instead of passing quietly.
+   */
+  function updateGatewayFor(
+    facts: ProfileFacts,
+    script: (name: string, version: string, requestId: string | undefined) => unknown | Promise<unknown>,
+    calls: string[][] = [],
+  ): CliGateway {
     return new CliGateway(desktopFacts(facts), {} as NodeJS.ProcessEnv, {
       spawnImpl: (() => { throw new Error('the CLI must not run for an application-owned profile') }) as never,
       findBinary: () => '/fake/dsh',
       nativeManager: () => ({
-        installBundle: async (spec: string) => { calls.push(['install', spec]); return verdict },
-        removeBundle: async (name: string) => { calls.push(['remove', name]); return verdict },
+        installBundle: async () => { throw new Error('an update must not call installBundle') },
+        removeBundle: async () => { throw new Error('an update must not call removeBundle') },
+        updateBundle: async (name: string, version: string, options?: { requestId?: string }) => {
+          calls.push(['update', name, version, options?.requestId ?? ''])
+          return script(name, version, options?.requestId)
+        },
+        setBundleEnabled: async (name: string, enabled: boolean) => {
+          calls.push(['select', name, String(enabled)])
+          return { stage: 'enable', target: name, enabled, changed: false, application: 'applied' }
+        },
       }),
     })
+  }
+
+  /**
+   * Mirror what the official manager does inside `updateBundle`: it removes the
+   * installed version (which also drops the bundle from the layer order) and
+   * installs the target, which appends that bundle at the end of
+   * `dsh.profile.bundles`.
+   */
+  function managerReplaces(profileDir: string, name: string, version: string): void {
+    removePackage(profileDir, name)
+    installPackage(profileDir, name, { version, bundle: true })
+    const manifest = readManifest(profileDir)
+    // The reinstall appends the bundle behind every bundle that followed it, so
+    // drop any entry the fake install left first: this is the order drift the
+    // gateway has to correct.
+    const bundles = [...manifest.dsh.profile.bundles.filter(bundle => bundle !== name), name]
+    writePackageJson(profileDir, { ...manifest.dependencies, [name]: version }, bundles)
   }
 
   /** The verdict a real refused pnpm run carries (ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION). */
@@ -1278,253 +1318,161 @@ describe('CliGateway operations on an application-owned profile', () => {
     },
   }
 
-  it('operator: updates through the official in-process manager instead of the refused CLI', async () => {
+  it('operator: is told the report needs a manager with an update primitive', async () => {
+    // Given a runtime whose official manager has no update primitive (older than 0.2.2-rc.1)
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    const gateway = new CliGateway(desktopFacts(facts), {} as NodeJS.ProcessEnv, {
+      spawnImpl: (() => { throw new Error('the CLI must not run') }) as never,
+      findBinary: () => '/fake/dsh',
+      nativeManager: () => ({ installBundle: async () => ({}), removeBundle: async () => ({}) }),
+    })
+
+    // When the update runs
+    const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
+
+    // Then the failure names the missing primitive instead of pretending to update
+    expect(job.phase).toBe('error')
+    expect(job.error).toContain('updateBundle')
+    expect(job.error).toContain('0.2.2-rc.1')
+  })
+
+  it('operator: updates through the official manager in one call instead of the refused CLI', async () => {
     // Given an application-owned desktop profile with an outdated package
     const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
     tempDirs.push(dir)
     const calls: string[][] = []
-    const gateway = nativeGatewayFor(desktopFacts(facts), () => {
-      installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
+    const gateway = updateGatewayFor(desktopFacts(facts), (name, version) => {
+      managerReplaces(facts.profileDir, name, version)
+      return updateLanded('1.0.0', version)
     }, calls)
 
     // When the update runs
-    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
-    const job = await settle(gateway, jobId)
+    const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
 
-    // Then the official manager performed it, the CLI was never spawned, and
+    // Then exactly one official update ran, under the job's own request id, and
     // the resulting row is verified from the profile the host reads
-    expect(calls).toEqual([['install', 'dsh-memoir@1.1.0']])
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.slice(0, 3)).toEqual(['update', 'dsh-memoir', '1.1.0'])
+    expect(calls[0]?.[3]).toMatch(/^job-/)
     expect(job.phase).toBe('done')
     expect(job.plugin).toMatchObject({ id: 'dsh-memoir', version: '1.1.0' })
     // An update this process serves needs no restart, so no such fact is claimed
     expect(job.restartRequired).toBeUndefined()
   })
 
-  it('operator: sees a failed manager run reported as an error job', async () => {
-    // Given the official manager refuses the spec
+  it('operator: sees a throwing manager call reported with its own message', async () => {
+    // Given the official manager throws instead of resolving
     const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
     tempDirs.push(dir)
-    const gateway = new CliGateway(desktopFacts(facts), {} as NodeJS.ProcessEnv, {
-      spawnImpl: (() => { throw new Error('the CLI must not run') }) as never,
-      findBinary: () => '/fake/dsh',
-      nativeManager: () => ({
-        installBundle: async () => { throw new Error('registry unreachable') },
-        removeBundle: async () => {},
-      }),
-    })
+    const gateway = updateGatewayFor(desktopFacts(facts), () => { throw new Error('registry unreachable') })
 
     // When the update runs
-    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
-    const job = await settle(gateway, jobId)
+    const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
 
     // Then the failure is reported with the manager's own message
     expect(job.phase).toBe('error')
     expect(job.error).toContain('registry unreachable')
   })
 
+  it('operator: sees the manager folded refusal with pnpm reason, naming the phase', async () => {
+    // Given a manager that refused the install phase and resolved with its verdict
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    const gateway = updateGatewayFor(desktopFacts(facts), () => ({
+      from: '1.0.0', to: '1.1.0', step: 'install', result: pnpmRefusal,
+    }))
+
+    // When the update runs
+    const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
+
+    // Then the job reports the refusal, its pnpm diagnostic, and the phase that
+    // ended the run, never claiming the manager succeeded with nothing moved
+    expect(job.phase).toBe('error')
+    expect(job.error).toContain('官方插件管理器更新失败')
+    expect(job.error).toContain('安装新版本时失败')
+    expect(job.error).toContain('ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION')
+    expect(job.error).not.toContain('报告成功')
+  })
+
   it('operator: sees a green manager run rejected when the version did not move', async () => {
     // Given the manager resolves without moving anything
     const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
     tempDirs.push(dir)
-    const calls: string[][] = []
-    const gateway = nativeGatewayFor(desktopFacts(facts), () => {}, calls)
+    const gateway = updateGatewayFor(desktopFacts(facts), () => updateLanded('1.0.0', '1.1.0'))
 
     // When the update runs
-    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
-    const job = await settle(gateway, jobId)
+    const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
 
     // Then a no-op is still a failure, exactly like the CLI path
     expect(job.phase).toBe('error')
     expect(job.error).toContain('更新未生效')
   })
 
-  it('operator: sees the manager folded refusal with pnpm\'s own reason on an update', async () => {
-    // Given a manager that refused the update and resolved with its verdict
+  it('operator: is told the version the manager put back when the target could not land', async () => {
+    // Given the official manager failed the install phase and restored the
+    // version it removed
     const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
     tempDirs.push(dir)
-    const gateway = verdictGatewayFor(desktopFacts(facts), pnpmRefusal)
+    const gateway = updateGatewayFor(desktopFacts(facts), () => ({
+      from: '1.0.0',
+      to: '1.1.0',
+      step: 'install',
+      result: pnpmRefusal,
+      restore: { stage: 'install', target: 'dsh-memoir@1.0.0', changed: true, application: 'applied' },
+    }))
 
     // When the update runs
-    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
-    const job = await settle(gateway, jobId)
+    const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
 
-    // Then the job reports the manager's refusal and its pnpm diagnostic
-    // instead of claiming the manager succeeded and nothing moved
+    // Then the report names the refusal and the version that is back on disk
     expect(job.phase).toBe('error')
-    expect(job.error).toContain('官方插件管理器更新失败')
-    expect(job.error).toContain('ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION')
-    expect(job.error).not.toContain('报告成功')
-  })
-
-  /** The verdict the official manager resolves for a dependency the profile already carries (hmr mounted). */
-  const alreadyInstalledRefusal = {
-    stage: 'install',
-    target: 'dsh-memoir@1.1.0',
-    enabled: true,
-    changed: false,
-    application: 'failed',
-    error: { code: 'already-installed' },
-  }
-
-  it('operator: updates a plugin the manager refuses to reinstall while hmr is mounted', async () => {
-    // Given an application-owned profile whose official manager refuses an
-    // already-installed dependency exactly as it does on every profile host
-    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
-    tempDirs.push(dir)
-    const calls: string[][] = []
-    const gateway = new CliGateway(desktopFacts(facts), {} as NodeJS.ProcessEnv, {
-      spawnImpl: (() => { throw new Error('the CLI must not run for an application-owned profile') }) as never,
-      findBinary: () => '/fake/dsh',
-      nativeManager: () => ({
-        installBundle: async (spec: string) => {
-          calls.push(['install', spec])
-          if (readManifest(facts.profileDir).dependencies['dsh-memoir'] !== undefined) return alreadyInstalledRefusal
-          installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
-          return { stage: 'install', target: spec, changed: true, application: 'applied' }
-        },
-        removeBundle: async (name: string) => {
-          calls.push(['remove', name])
-          removePackage(facts.profileDir, name)
-          return { stage: 'remove', target: name, changed: true, application: 'applied' }
-        },
-      }),
-    })
-
-    // When the update runs
-    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
-    const job = await settle(gateway, jobId)
-
-    // Then the refused call continues as remove-then-install, still through the
-    // official manager only, and the row carries the target version
-    expect(calls).toEqual([
-      ['install', 'dsh-memoir@1.1.0'],
-      ['remove', 'dsh-memoir'],
-      ['install', 'dsh-memoir@1.1.0'],
-    ])
-    expect(job.phase).toBe('done')
-    expect(job.plugin).toMatchObject({ id: 'dsh-memoir', version: '1.1.0' })
-  })
-
-  it('operator: keeps the old version when the replacement install fails', async () => {
-    // Given a manager that refuses the reinstall, then refuses the new version
-    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
-    tempDirs.push(dir)
-    const calls: string[][] = []
-    const gateway = new CliGateway(desktopFacts(facts), {} as NodeJS.ProcessEnv, {
-      spawnImpl: (() => { throw new Error('the CLI must not run for an application-owned profile') }) as never,
-      findBinary: () => '/fake/dsh',
-      nativeManager: () => ({
-        installBundle: async (spec: string) => {
-          calls.push(['install', spec])
-          if (spec === 'dsh-memoir@1.1.0') {
-            return readManifest(facts.profileDir).dependencies['dsh-memoir'] === undefined ? pnpmRefusal : alreadyInstalledRefusal
-          }
-          installPackage(facts.profileDir, 'dsh-memoir', { version: '1.0.0' })
-          return { stage: 'install', target: spec, changed: true, application: 'applied' }
-        },
-        removeBundle: async (name: string) => {
-          calls.push(['remove', name])
-          removePackage(facts.profileDir, name)
-          return { stage: 'remove', target: name, changed: true, application: 'applied' }
-        },
-      }),
-    })
-
-    // When the update runs
-    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
-    const job = await settle(gateway, jobId)
-
-    // Then the previous dependency is reinstalled and the report says so
-    expect(calls).toEqual([
-      ['install', 'dsh-memoir@1.1.0'],
-      ['remove', 'dsh-memoir'],
-      ['install', 'dsh-memoir@1.1.0'],
-      ['install', 'dsh-memoir@1.0.0'],
-    ])
-    expect(job.phase).toBe('error')
-    expect(job.error).toContain('ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION')
-    expect(job.error).toContain('已装回 dsh-memoir@1.0.0')
+    expect(job.error).toContain('已装回 1.0.0')
     expect(readManifest(facts.profileDir).dependencies['dsh-memoir']).toBe('1.0.0')
   })
 
-  it('operator: sees a replacement whose removal landed as restart-required, not as a clean success', async () => {
-    // Given an application-owned profile whose official manager refuses the
-    // in-place reinstall, applies the removal only as far as a restart loads it
-    // (the replaced bundle's rows already left the running process, issue
-    // #1905), and then installs the target version
+  it('operator: is told when the manager could not even put the old version back', async () => {
+    // Given the reinstallation the manager ran after the failure failed too
     const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
     tempDirs.push(dir)
-    const calls: string[][] = []
-    const gateway = new CliGateway(desktopFacts(facts), {} as NodeJS.ProcessEnv, {
-      spawnImpl: (() => { throw new Error('the CLI must not run for an application-owned profile') }) as never,
-      findBinary: () => '/fake/dsh',
-      nativeManager: () => ({
-        installBundle: async (spec: string) => {
-          calls.push(['install', spec])
-          if (readManifest(facts.profileDir).dependencies['dsh-memoir'] !== undefined) return alreadyInstalledRefusal
-          installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
-          return { stage: 'install', target: spec, changed: true, application: 'applied' }
-        },
-        removeBundle: async (name: string) => {
-          calls.push(['remove', name])
-          removePackage(facts.profileDir, name)
-          return { stage: 'remove', target: name, changed: true, application: 'restart-required' }
-        },
-      }),
-    })
+    const gateway = updateGatewayFor(desktopFacts(facts), () => ({
+      from: '1.0.0',
+      to: '1.1.0',
+      step: 'install',
+      result: pnpmRefusal,
+      restore: {
+        stage: 'install',
+        target: 'dsh-memoir@1.0.0',
+        changed: false,
+        application: 'failed',
+        error: { code: 'operation-error', diagnostic: 'pnpm could not fetch it' },
+      },
+    }))
 
     // When the update runs
-    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
-    const job = await settle(gateway, jobId)
+    const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
 
-    // Then the target version landed and the job is done, carrying the fact
-    // that only a restart loads it — not an error, which would roll it back
-    expect(calls).toEqual([
-      ['install', 'dsh-memoir@1.1.0'],
-      ['remove', 'dsh-memoir'],
-      ['install', 'dsh-memoir@1.1.0'],
-    ])
-    expect(job.phase).toBe('done')
-    expect(job.plugin).toMatchObject({ id: 'dsh-memoir', version: '1.1.0' })
-    expect(job.error).toBeUndefined()
-    expect(job.restartRequired).toEqual(['dsh-memoir'])
+    // Then the person is told to reinstall by hand instead of assuming a clean rollback
+    expect(job.phase).toBe('error')
+    expect(job.error).toContain('装回 1.0.0 也失败')
+    expect(job.error).toContain('请手动重新安装')
   })
 
-  it('operator: sees a reinstall that landed as restart-required read as an applied update', async () => {
-    // Given the removal applies cleanly and the reinstall lands but cannot be
-    // loaded in this process
+  it('operator: sees an update that landed but needs a restart named, not failed', async () => {
+    // Given the manager applied the target while the replaced rows already left
+    // the running process (issue #1905)
     const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
     tempDirs.push(dir)
-    const calls: string[][] = []
-    const gateway = new CliGateway(desktopFacts(facts), {} as NodeJS.ProcessEnv, {
-      spawnImpl: (() => { throw new Error('the CLI must not run for an application-owned profile') }) as never,
-      findBinary: () => '/fake/dsh',
-      nativeManager: () => ({
-        installBundle: async (spec: string) => {
-          calls.push(['install', spec])
-          if (readManifest(facts.profileDir).dependencies['dsh-memoir'] !== undefined) return alreadyInstalledRefusal
-          installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
-          return { stage: 'install', target: spec, changed: true, application: 'restart-required' }
-        },
-        removeBundle: async (name: string) => {
-          calls.push(['remove', name])
-          removePackage(facts.profileDir, name)
-          return { stage: 'remove', target: name, changed: true, application: 'applied' }
-        },
-      }),
+    const gateway = updateGatewayFor(desktopFacts(facts), (name, version) => {
+      managerReplaces(facts.profileDir, name, version)
+      return updateLanded('1.0.0', version, 'restart-required')
     })
 
     // When the update runs
-    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
-    const job = await settle(gateway, jobId)
+    const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
 
-    // Then the update is applied, the report says a restart loads it, and the
-    // previous version was never reinstalled: a landed update is not a failure
-    expect(calls).toEqual([
-      ['install', 'dsh-memoir@1.1.0'],
-      ['remove', 'dsh-memoir'],
-      ['install', 'dsh-memoir@1.1.0'],
-    ])
+    // Then the version landed, the job is done, and the fact that only a restart
+    // loads it rides the job instead of an error that would roll it back
     expect(job.phase).toBe('done')
     expect(job.plugin).toMatchObject({ id: 'dsh-memoir', version: '1.1.0' })
     expect(job.error).toBeUndefined()
@@ -1540,331 +1488,153 @@ describe('CliGateway operations on an application-owned profile', () => {
     error: { code: 'bundle-in-use' },
   }
 
-  /**
-   * A scripted official manager whose removal follows the official order: it
-   * deselects the bundle, applies the reload, and only then judges whether the
-   * bundle's rows still run. `loadedRows` is what the session holds at that
-   * point, so a case can make the first judgment refuse and the state it left
-   * on disk settle the second call.
-   */
-  function inUseManager(options: {
-    profileDir: string
-    calls: string[][]
-    loadedRows: () => boolean
-    /** What the guard's deselect step writes before it judges. */
-    deselect?: () => void
-  }): { installBundle: (spec: string) => Promise<unknown>, removeBundle: (name: string) => Promise<unknown>, setBundleEnabled: (name: string, enabled: boolean) => Promise<unknown> } {
-    return {
-      installBundle: async (spec: string) => {
-        options.calls.push(['install', spec])
-        if (readManifest(options.profileDir).dependencies['dsh-memoir'] !== undefined) return alreadyInstalledRefusal
-        installPackage(options.profileDir, 'dsh-memoir', { version: '1.1.0' })
-        return { stage: 'install', target: spec, changed: true, application: 'applied' }
-      },
-      removeBundle: async (name: string) => {
-        options.calls.push(['remove', name])
-        if (!options.loadedRows()) {
-          removePackage(options.profileDir, name)
-          return { stage: 'remove', target: name, changed: true, application: 'applied' }
-        }
-        options.deselect?.()
-        return { ...bundleInUseRefusal, target: name }
-      },
-      setBundleEnabled: async (name: string, enabled: boolean) => {
-        options.calls.push(['select', name, String(enabled)])
-        return { stage: 'enable', target: name, enabled, changed: false, application: 'applied' }
-      },
-    }
-  }
-
-  it('operator: updates the second plugin of one session after a first update reloaded the profile', async () => {
-    // Given two updatable bundles whose rows the session holds after the first
-    // update's reload, and a guard that judges the rows after its own reload
-    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' }, 'dsh-claude-style': { version: '1.0.0' } })
-    tempDirs.push(dir)
-    const calls: string[][] = []
-    let reloaded = false
-    const refused = new Set<string>()
-    const gateway = new CliGateway(desktopFacts(facts), {} as NodeJS.ProcessEnv, {
-      spawnImpl: (() => { throw new Error('the CLI must not run for an application-owned profile') }) as never,
-      findBinary: () => '/fake/dsh',
-      nativeManager: () => ({
-        installBundle: async (spec: string) => {
-          calls.push(['install', spec])
-          const name = spec.split('@')[0] as string
-          // The official guard refuses the first call for an installed package.
-          if (!refused.has(name)) {
-            refused.add(name)
-            return { ...alreadyInstalledRefusal, target: spec }
-          }
-          installPackage(facts.profileDir, name, { version: '1.1.0' })
-          reloaded = true
-          return { stage: 'install', target: spec, changed: true, application: 'applied' }
-        },
-        removeBundle: async (name: string) => {
-          calls.push(['remove', name])
-          removePackage(facts.profileDir, name)
-          return { stage: 'remove', target: name, changed: true, application: 'applied' }
-        },
-      }),
-    })
-
-    // When both plugins are updated in one session
-    const first = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
-    const second = await settle(gateway, gateway.update('dsh-claude-style', '1.1.0').jobId)
-
-    // Then neither needs a restart between them: both landed their own version
-    expect(first.phase).toBe('done')
-    expect(first.plugin).toMatchObject({ id: 'dsh-memoir', version: '1.1.0' })
-    expect(second.phase).toBe('done')
-    expect(second.plugin).toMatchObject({ id: 'dsh-claude-style', version: '1.1.0' })
-    expect(reloaded).toBe(true)
-  })
-
   it('operator: retries the removal once against the state the guard left, so the update lands', async () => {
-    // Given a guard whose first judgment still sees the bundle's rows but whose
-    // own deselect step is what the second call then finds settled
+    // Given a manager whose first call is refused because the bundle's rows still
+    // run, and whose second call sees the state that guard's own reload left
     const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
     tempDirs.push(dir)
     const calls: string[][] = []
-    let rowsLoaded = true
-    const gateway = new CliGateway(desktopFacts(facts), {} as NodeJS.ProcessEnv, {
-      spawnImpl: (() => { throw new Error('the CLI must not run for an application-owned profile') }) as never,
-      findBinary: () => '/fake/dsh',
-      nativeManager: () => inUseManager({
-        profileDir: facts.profileDir,
-        calls,
-        loadedRows: () => rowsLoaded,
-        deselect: () => { rowsLoaded = false },
-      }),
-    })
+    let attempts = 0
+    const gateway = updateGatewayFor(desktopFacts(facts), (name, version) => {
+      attempts += 1
+      if (attempts === 1) return { from: '1.0.0', to: version, step: 'remove', result: bundleInUseRefusal }
+      managerReplaces(facts.profileDir, name, version)
+      return updateLanded('1.0.0', version)
+    }, calls)
 
     // When the update runs
     const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
 
-    // Then the removal is asked again and the new version lands
-    expect(calls).toEqual([
-      ['install', 'dsh-memoir@1.1.0'],
-      ['remove', 'dsh-memoir'],
-      ['remove', 'dsh-memoir'],
-      ['install', 'dsh-memoir@1.1.0'],
-    ])
+    // Then it was answered exactly once more and the target landed
+    expect(attempts).toBe(2)
     expect(job.phase).toBe('done')
     expect(job.plugin).toMatchObject({ id: 'dsh-memoir', version: '1.1.0' })
   })
 
   it('operator: is told to restart, and keeps the plugin selected, when the rows really are still loaded', async () => {
-    // Given rows the reload cannot unload, so both judgments refuse
+    // Given a manager that refuses the removal both times and deselected the
+    // bundle on the way (the official guard deselects before it judges)
     const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
     tempDirs.push(dir)
     const calls: string[][] = []
-    let deselected = false
-    const gateway = new CliGateway(desktopFacts(facts), {} as NodeJS.ProcessEnv, {
-      spawnImpl: (() => { throw new Error('the CLI must not run for an application-owned profile') }) as never,
-      findBinary: () => '/fake/dsh',
-      nativeManager: () => inUseManager({
-        profileDir: facts.profileDir,
-        calls,
-        loadedRows: () => true,
-        deselect: () => {
-          deselected = true
-          const manifest = readManifest(facts.profileDir)
-          writePackageJson(facts.profileDir, manifest.dependencies, manifest.dsh.profile.bundles.filter(bundle => bundle !== 'dsh-memoir'))
-        },
-      }),
-    })
+    const gateway = updateGatewayFor(desktopFacts(facts), (_name, version) => {
+      const manifest = readManifest(facts.profileDir)
+      writePackageJson(
+        facts.profileDir,
+        manifest.dependencies,
+        manifest.dsh.profile.bundles.filter(bundle => bundle !== 'dsh-memoir'),
+      )
+      return { from: '1.0.0', to: version, step: 'remove', result: bundleInUseRefusal }
+    }, calls)
 
     // When the update runs
     const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
 
-    // Then nothing is installed, the selection the guard dropped comes back,
-    // and the report names the restart instead of a bare refusal code
-    expect(calls).toEqual([
-      ['install', 'dsh-memoir@1.1.0'],
-      ['remove', 'dsh-memoir'],
-      ['remove', 'dsh-memoir'],
-      ['select', 'dsh-memoir', 'true'],
-    ])
-    expect(deselected).toBe(true)
+    // Then the person is told to restart, the plugin is still installed, and the
+    // selection the guard dropped was put back
     expect(job.phase).toBe('error')
-    expect(job.error).toContain('已安装版本无法移除')
-    expect(job.error).toContain('bundle-in-use')
-    expect(job.error).toContain('重启 DSH')
+    expect(job.error).toContain('移除已安装版本时被拒')
+    expect(job.error).toContain('重启 DSH 后再执行本次更新即可')
+    expect(calls.filter(call => call[0] === 'update')).toHaveLength(2)
+    expect(calls).toContainEqual(['select', 'dsh-memoir', 'true'])
     expect(readManifest(facts.profileDir).dependencies['dsh-memoir']).toBe('1.0.0')
   })
 
-  it('operator: learns a removal that is not an in-use refusal without a pointless second call', async () => {
-    // Given a manager that refuses the reinstall and then refuses the removal
-    // for a reason a retry cannot change
+  it('operator: learns a removal refusal that is not a running row without a pointless second call', async () => {
+    // Given a management-owned bundle the guard refuses outright
     const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
     tempDirs.push(dir)
     const calls: string[][] = []
-    const gateway = new CliGateway(desktopFacts(facts), {} as NodeJS.ProcessEnv, {
-      spawnImpl: (() => { throw new Error('the CLI must not run for an application-owned profile') }) as never,
-      findBinary: () => '/fake/dsh',
-      nativeManager: () => ({
-        installBundle: async (spec: string) => {
-          calls.push(['install', spec])
-          return alreadyInstalledRefusal
-        },
-        removeBundle: async (name: string) => {
-          calls.push(['remove', name])
-          return { stage: 'remove', target: name, changed: false, application: 'failed', error: { code: 'management-required' } }
-        },
-      }),
-    })
+    const gateway = updateGatewayFor(desktopFacts(facts), (_name, version) => ({
+      from: '1.0.0',
+      to: version,
+      step: 'remove',
+      result: {
+        stage: 'remove',
+        target: 'dsh-memoir',
+        changed: false,
+        application: 'failed',
+        error: { code: 'management-required' },
+      },
+    }), calls)
 
     // When the update runs
     const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
 
-    // Then the refusal is reported as it came, nothing is installed, and no
-    // restart is suggested for a refusal a restart cannot clear
-    expect(calls).toEqual([['install', 'dsh-memoir@1.1.0'], ['remove', 'dsh-memoir']])
+    // Then the refusal is final after one call, and it is named as a refusal
     expect(job.phase).toBe('error')
-    expect(job.error).toContain('已安装版本无法移除')
     expect(job.error).toContain('management-required')
-    expect(job.error).not.toContain('重启 DSH')
+    expect(calls.filter(call => call[0] === 'update')).toHaveLength(1)
   })
 
   it('operator: keeps the bundle where it sat in the layer order after an update', async () => {
-    // Given a bundle the profile lists between two others, so its patch layer
-    // overrides nothing that follows it
-    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' }, 'dsh-later': { version: '1.0.0' } })
+    // Given a profile whose bundle order puts the updated plugin in the middle
+    const { facts, dir } = makeProfile(
+      { 'dsh-first': { version: '1.0.0' }, 'dsh-memoir': { version: '1.0.0' }, 'dsh-last': { version: '1.0.0' } },
+      { bundles: ['dsh-first', 'dsh-memoir', 'dsh-last'] },
+    )
     tempDirs.push(dir)
-    writePackageJson(facts.profileDir, { 'dsh-memoir': '1.0.0', 'dsh-later': '1.0.0' }, ['dsh-memoir', 'dsh-later'])
-    const calls: string[][] = []
-    const gateway = new CliGateway(desktopFacts(facts), {} as NodeJS.ProcessEnv, {
-      spawnImpl: (() => { throw new Error('the CLI must not run for an application-owned profile') }) as never,
-      findBinary: () => '/fake/dsh',
-      nativeManager: () => ({
-        installBundle: async (spec: string) => {
-          calls.push(['install', spec])
-          if (readManifest(facts.profileDir).dependencies['dsh-memoir'] !== undefined) return alreadyInstalledRefusal
-          installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
-          return { stage: 'install', target: spec, changed: true, application: 'applied' }
-        },
-        removeBundle: async (name: string) => {
-          calls.push(['remove', name])
-          removePackage(facts.profileDir, name)
-          return { stage: 'remove', target: name, changed: true, application: 'applied' }
-        },
-      }),
+    const gateway = updateGatewayFor(desktopFacts(facts), (name, version) => {
+      managerReplaces(facts.profileDir, name, version)
+      return updateLanded('1.0.0', version)
     })
 
     // When the update runs
     const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
 
-    // Then it lands and the bundle still precedes the one that followed it
+    // Then the bundle is back where it was: that array is the layer order the
+    // loader applies patches in, so moving it would change which rows override
+    // which
     expect(job.phase).toBe('done')
-    expect(readManifest(facts.profileDir).dsh.profile.bundles).toEqual(['dsh-memoir', 'dsh-later'])
-  })
-
-  it('operator: sees the manager folded refusal on an install', async () => {
-    // Given a manager that refused the install and resolved with its verdict
-    const { facts, dir } = makeProfile({})
-    tempDirs.push(dir)
-    const gateway = verdictGatewayFor(desktopFacts(facts), pnpmRefusal)
-
-    // When the install runs
-    const { jobId } = gateway.install('dsh-free-search')
-    const job = await settle(gateway, jobId)
-
-    // Then the manager's own reason is the job error
-    expect(job.phase).toBe('error')
-    expect(job.error).toContain('官方插件管理器安装失败')
-    expect(job.error).toContain('ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION')
-  })
-
-  it('operator: sees the manager folded refusal on a removal', async () => {
-    // Given a manager that refused the removal and resolved with its verdict
-    const { facts, dir } = makeProfile({ 'dsh-free-search': { version: '1.0.0' } })
-    tempDirs.push(dir)
-    const gateway = verdictGatewayFor(desktopFacts(facts), {
-      stage: 'remove',
-      target: 'dsh-free-search',
-      changed: false,
-      application: 'failed',
-      error: { code: 'operation-error', diagnostic: 'ERR_PNPM_ENOENT: no such package in the profile' },
-    })
-
-    // When the removal runs
-    const { jobId } = gateway.remove('dsh-free-search')
-    const job = await settle(gateway, jobId)
-
-    // Then the refusal is reported, not the "still in the profile" no-op
-    expect(job.phase).toBe('error')
-    expect(job.error).toContain('官方插件管理器卸载失败')
-    expect(job.error).toContain('ERR_PNPM_ENOENT')
-    expect(job.error).not.toContain('卸载未生效')
+    expect(readManifest(facts.profileDir).dsh.profile.bundles).toEqual(['dsh-first', 'dsh-memoir', 'dsh-last'])
   })
 
   it('operator: sees a cancelled manager run as a cancellation, not a no-op', async () => {
-    // Given a manager run the host cancelled before it touched the profile
+    // Given the manager reports the run was cancelled
     const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
     tempDirs.push(dir)
-    const gateway = verdictGatewayFor(desktopFacts(facts), { stage: 'install', changed: false, application: 'cancelled' })
+    const gateway = updateGatewayFor(desktopFacts(facts), (_name, version) => ({
+      from: '1.0.0',
+      to: version,
+      step: 'install',
+      result: { stage: 'install', changed: false, application: 'cancelled' },
+    }))
 
     // When the update runs
-    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
-    const job = await settle(gateway, jobId)
+    const job = await settle(gateway, gateway.update('dsh-memoir', '1.1.0').jobId)
 
-    // Then the cancellation is named
+    // Then the cancellation is what the person reads
     expect(job.phase).toBe('error')
-    expect(job.error).toContain('已取消')
+    expect(job.error).toContain('本次操作已取消')
   })
 
   it('operator: sees the packages an incompatible-version refusal names', async () => {
-    // Given the manager refused a version the running dsh rejects
+    // Given the manager refuses the target's declared DSH minimum
     const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
     tempDirs.push(dir)
-    const gateway = verdictGatewayFor(desktopFacts(facts), {
-      stage: 'install',
-      changed: false,
-      application: 'failed',
-      error: {
-        code: 'incompatible-version',
-        incompatible: [{ name: 'dsh-memoir', version: '2.0.0', runtimeVersion: '0.2.0-rc.2' }],
-      },
-    })
-
-    // When the update runs
-    const { jobId } = gateway.update('dsh-memoir', '2.0.0')
-    const job = await settle(gateway, jobId)
-
-    // Then the refusal names the package, its version and the runtime it rejects
-    expect(job.phase).toBe('error')
-    expect(job.error).toContain('dsh-memoir@2.0.0')
-    expect(job.error).toContain('0.2.0-rc.2')
-  })
-
-  it('operator: keeps verifying the profile when the manager reports it applied the run', async () => {
-    // Given a manager whose verdict claims success and whose run really moved the profile
-    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
-    tempDirs.push(dir)
-    const gateway = new CliGateway(desktopFacts(facts), {} as NodeJS.ProcessEnv, {
-      spawnImpl: (() => { throw new Error('the CLI must not run for an application-owned profile') }) as never,
-      findBinary: () => '/fake/dsh',
-      nativeManager: () => ({
-        installBundle: async () => {
-          installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
-          return { stage: 'install', target: 'dsh-memoir@1.1.0', changed: true, application: 'restart-required' }
+    const gateway = updateGatewayFor(desktopFacts(facts), (_name, version) => ({
+      from: '1.0.0',
+      to: version,
+      step: 'check',
+      result: {
+        stage: 'install',
+        changed: false,
+        application: 'failed',
+        error: {
+          code: 'incompatible-version',
+          incompatible: [{ name: 'dsh-memoir', version: '2.0.0', runtimeVersion: '0.2.1' }],
         },
-        removeBundle: async () => {},
-      }),
-    })
+      },
+    }))
 
     // When the update runs
-    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
-    const job = await settle(gateway, jobId)
+    const job = await settle(gateway, gateway.update('dsh-memoir', '2.0.0').jobId)
 
-    // Then the profile re-read still settles it, because a positive verdict is
-    // not trusted on its own either, and the restart the manager named is
-    // carried as a fact instead of being dropped
-    expect(job.phase).toBe('done')
-    expect(job.plugin).toMatchObject({ id: 'dsh-memoir', version: '1.1.0' })
-    expect(job.restartRequired).toEqual(['dsh-memoir'])
+    // Then the row-level refusal names the package, its version and the runtime
+    expect(job.phase).toBe('error')
+    expect(job.error).toContain('检查新版本时被拒')
+    expect(job.error).toContain('dsh-memoir@2.0.0 与 dsh 0.2.1 不兼容')
   })
-
   it('operator: keeps the CLI as the writer on a non-desktop profile', async () => {
     // Given an ordinary CLI-booted profile with an official manager mounted
     const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
@@ -2230,11 +2000,12 @@ describe('CliGateway orphan row-override pruning', () => {
       spawnImpl: (() => { throw new Error('no CLI on this runtime') }) as never,
       findBinary: () => '/fake/dsh',
       nativeManager: () => ({
-        installBundle: async (spec: string) => {
-          if (spec === 'dsh-memoir@1.1.0') installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
-          return { application: 'applied' }
+        installBundle: async () => { throw new Error('an update must not call installBundle') },
+        removeBundle: async () => { throw new Error('an update must not call removeBundle') },
+        updateBundle: async (name: string, version: string) => {
+          installPackage(facts.profileDir, name, { version })
+          return { from: '1.0.0', to: version, step: 'install' as const, result: { application: 'applied' } }
         },
-        removeBundle: async () => ({ application: 'applied' }),
       }),
     })
 
@@ -2286,11 +2057,12 @@ describe('CliGateway orphan row-override pruning', () => {
       }, []) as never,
       findBinary: () => '/fake/dsh',
       nativeManager: () => ({
-        installBundle: async (spec: string) => {
-          if (spec === 'dsh-memoir@1.1.0') installPackage(facts.profileDir, 'dsh-memoir', { version: '1.1.0' })
-          return { application: 'applied' }
+        installBundle: async () => { throw new Error('an update must not call installBundle') },
+        removeBundle: async () => { throw new Error('an update must not call removeBundle') },
+        updateBundle: async (name: string, version: string) => {
+          installPackage(facts.profileDir, name, { version })
+          return { from: '1.0.0', to: version, step: 'install' as const, result: { application: 'applied' } }
         },
-        removeBundle: async () => ({ application: 'applied' }),
       }),
     })
 
@@ -2701,5 +2473,126 @@ describe('CliGateway orphan pruning on profiles whose bundles are not all instal
     expect(existsSync(join(dir, 'dsh', 'node_modules', '@deepseek-ai', 'dsh-web-app', 'package.json'))).toBe(true)
     expect(readFileSync(facts.patchPath, 'utf8')).toBe(REPLACEMENT_WINDOW_LAYER)
     expect(existsSync(`${facts.patchPath}.bak-plugin-manager`)).toBe(false)
+  })
+})
+
+describe('CliGateway batch updates', () => {
+  it('operator: applies every row in order and reports each one beside the failure', async () => {
+    // Given two outdated plugins, one of which pnpm refuses
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' }, 'dsh-weather': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] === 'plugin' && args[3] === 'add') {
+        const spec = args[4] ?? ''
+        if (spec === 'dsh-weather@1.1.0') return { code: 1, output: 'ERR_PNPM_NO_MATCHING_VERSION' }
+        installPackage(facts.profileDir, spec.slice(0, spec.lastIndexOf('@')), { version: '1.1.0' })
+      }
+      return { code: 0 }
+    }, calls)
+
+    // When both rows are applied in one run
+    const { jobId } = gateway.updateAll([
+      { kind: 'apply', id: 'dsh-memoir', version: '1.1.0' },
+      { kind: 'apply', id: 'dsh-weather', version: '1.1.0' },
+    ])
+    const job = await settle(gateway, jobId)
+
+    // Then the run is one job, the first row landed, the second row carries
+    // pnpm's own reason, and the batch is done rather than failed
+    expect(job.phase).toBe('done')
+    expect(job.current).toBeUndefined()
+    expect(job.results?.map(row => row.phase)).toEqual(['done', 'error'])
+    expect(job.results?.[0]).toMatchObject({ id: 'dsh-memoir', landed: '1.1.0' })
+    expect(job.results?.[1]?.error).toContain('ERR_PNPM_NO_MATCHING_VERSION')
+    // The refused row did not stop the run: both were asked for, in order
+    expect(calls.filter(call => call[3] === 'add')).toEqual([
+      ['plugin', '--profile', 'web', 'add', 'dsh-memoir@1.1.0'],
+      ['plugin', '--profile', 'web', 'add', 'dsh-weather@1.1.0'],
+    ])
+  })
+
+  it('operator: sees a row the route already refused carried into the run as that row', async () => {
+    // Given one row the route refused before the job existed
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, () => ({ code: 0 }), calls)
+
+    // When the batch runs
+    const { jobId } = gateway.updateAll([
+      { kind: 'refused', id: 'dsh-blocked', error: 'plugin-manager: dsh-blocked is already at 1.0.0' },
+    ])
+    const job = await settle(gateway, jobId)
+
+    // Then the row states the refusal and nothing was written
+    expect(job.phase).toBe('done')
+    expect(job.results).toEqual([
+      { id: 'dsh-blocked', phase: 'error', error: 'plugin-manager: dsh-blocked is already at 1.0.0' },
+    ])
+    expect(calls).toHaveLength(0)
+  })
+
+  it('operator: applies a legacy migration as one row of the batch', async () => {
+    // Given a profile still carrying the legacy aggregate
+    const legacy = LEGACY_AGGREGATE
+    const { facts, dir } = makeProfile({ [legacy]: { version: '0.3.2', bundle: true } }, { bundles: [legacy] })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = gatewayFor(facts, (args) => {
+      if (args[0] !== 'plugin') return { code: 0 }
+      if (args[3] === 'remove' && args[4] === legacy) removePackage(facts.profileDir, legacy)
+      if (args[3] === 'add' && args[4] === `${CURRENT_AGGREGATE}@0.3.3`) {
+        installPackage(facts.profileDir, CURRENT_AGGREGATE, { version: '0.3.3', bundle: true })
+      }
+      return { code: 0 }
+    }, calls)
+
+    // When the batch runs the migration row
+    const { jobId } = gateway.updateAll([{
+      kind: 'migrate',
+      id: legacy,
+      targetId: CURRENT_AGGREGATE,
+      targetVersion: '0.3.3',
+      targetSpec: `${CURRENT_AGGREGATE}@0.3.3`,
+    }])
+    const job = await settle(gateway, jobId)
+
+    // Then the row landed on the current aggregate and the profile carries it
+    expect(job.phase).toBe('done')
+    expect(job.results?.[0]).toMatchObject({ id: legacy, phase: 'done', landed: '0.3.3' })
+    expect(readManifest(facts.profileDir).dependencies).toHaveProperty([CURRENT_AGGREGATE])
+  })
+
+  it('operator: gets a batch row applied through the official manager on an application-owned profile', async () => {
+    // Given a desktop profile and two outdated bundles
+    const { facts, dir } = makeProfile({ 'dsh-memoir': { version: '1.0.0' }, 'dsh-weather': { version: '1.0.0' } })
+    tempDirs.push(dir)
+    const calls: string[][] = []
+    const gateway = new CliGateway({ ...facts, profileName: 'desktop', desktop: true }, {} as NodeJS.ProcessEnv, {
+      spawnImpl: (() => { throw new Error('the CLI must not run for an application-owned profile') }) as never,
+      findBinary: () => '/fake/dsh',
+      nativeManager: () => ({
+        installBundle: async () => { throw new Error('an update must not call installBundle') },
+        removeBundle: async () => { throw new Error('an update must not call removeBundle') },
+        updateBundle: async (name: string, version: string) => {
+          calls.push(['update', name, version])
+          installPackage(facts.profileDir, name, { version })
+          return { from: '1.0.0', to: version, step: 'install' as const, result: { application: 'applied' } }
+        },
+      }),
+    })
+
+    // When the batch runs
+    const { jobId } = gateway.updateAll([
+      { kind: 'apply', id: 'dsh-memoir', version: '1.1.0' },
+      { kind: 'apply', id: 'dsh-weather', version: '1.1.0' },
+    ])
+    const job = await settle(gateway, jobId)
+
+    // Then each row was one official update, in order, and both landed
+    expect(calls).toEqual([['update', 'dsh-memoir', '1.1.0'], ['update', 'dsh-weather', '1.1.0']])
+    expect(job.results?.map(row => row.phase)).toEqual(['done', 'done'])
+    expect(job.results?.[1]).toMatchObject({ id: 'dsh-weather', landed: '1.1.0' })
   })
 })

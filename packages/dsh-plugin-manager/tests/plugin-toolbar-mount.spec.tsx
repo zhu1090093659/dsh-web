@@ -44,20 +44,12 @@ function pluginPage(): { page: HTMLElement; group: HTMLElement; head: HTMLElemen
 }
 
 /**
- * An applied-update result. This file never clicks the update action, so only
- * the resolved shape matters here; the React body is covered by
- * plugin-list-toolbar.spec.tsx.
+ * A batch result. This file never clicks the update action, so only the resolved
+ * shape matters here; the React body is covered by plugin-list-toolbar.spec.tsx.
  */
-const landed: PluginListToolbarProps['update'] = async () => ({
-  plugin: {
-    id: 'dsh-usage',
-    name: 'dsh-usage',
-    version: '1.0.0',
-    source: { kind: 'npm', spec: 'dsh-usage@1.0.0' },
-    installedAt: '2026-10-01T00:00:00.000Z',
-    enabled: true,
-  },
-  restartRequired: [],
+const updateAll: PluginListToolbarProps['updateAll'] = async ids => ({
+  applied: ids.map(id => ({ id, phase: 'done', landed: '1.0.0' }) as const),
+  failed: [],
 })
 
 /** Mount options over an inert face; the React body is not under test here. */
@@ -66,7 +58,7 @@ function options(extra: Partial<PluginToolbarMountOptions> = {}): PluginToolbarM
     props: () => ({
       isLoopback: true,
       checkUpdates: async () => [],
-      update: landed,
+      updateAll,
       restartPlan: async () => ({ mode: 'relaunch' as const }),
       restart: async () => 'relaunch' as const,
       t,
@@ -172,7 +164,7 @@ describe('toolbar placement', () => {
       props: () => ({
         isLoopback: true,
         checkUpdates: async () => [],
-        update: landed,
+        updateAll,
         restartPlan: async () => ({ mode: 'relaunch' as const }),
         restart: async () => 'relaunch' as const,
         t: () => label,

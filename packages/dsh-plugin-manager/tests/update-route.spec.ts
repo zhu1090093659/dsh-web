@@ -611,3 +611,133 @@ describe('gateway check-updates route', () => {
     expect(unchangedResponse.body()).toEqual({ updates: [] })
   })
 })
+
+/**
+ * The batch route: one request for a whole page's worth of updates, resolved
+ * per plugin with exactly the rules the single update route applies.
+ */
+function updatesHandler(
+  facts: ProfileFacts,
+  fetchManifest: (name: string) => Promise<RegistryVersionManifest | undefined>,
+  options: { cliAvailable?: boolean, lastUpdateFailed?: (id: string, version: string) => boolean } = {},
+) {
+  const updateAll = vi.fn((_entries: unknown[]) => ({ jobId: 'job-batch' }))
+  const lastUpdateFailed = options.lastUpdateFailed ?? (() => false)
+  const gateway = {
+    updateAll,
+    lastUpdateFailed,
+    usesNativeWriter: () => false,
+    withMutationLock: async <T>(task: () => Promise<T>) => await task(),
+  } as unknown as CliGateway
+  const handler = makeGatewayRoutes({
+    facts,
+    gateway,
+    cliAvailable: () => options.cliAvailable ?? true,
+    fetchManifest,
+    dshVersion: async () => undefined,
+  }).find(route => route.path === '/api/plugin-manager/updates')!.handler
+  return { handler, updateAll }
+}
+
+describe('gateway batch update route', () => {
+  it('operator: resolves every id and starts one batch job with its rows', async () => {
+    // Given two installed third-party plugins, both behind the registry
+    const { facts, dir } = profile('^1.0.0')
+    tempDirs.push(dir)
+    const { handler, updateAll } = updatesHandler(facts, async name =>
+      name === 'dsh-memoir' ? manifest('1.1.0') : undefined)
+    const captured = response()
+
+    // When the batch runs
+    await handler(request({ ids: ['dsh-memoir'] }), captured.res)
+
+    // Then one job was started with the resolved target, and no per-row refusal
+    expect(captured.status()).toBe(200)
+    expect(captured.body()).toEqual({ jobId: 'job-batch' })
+    expect(updateAll).toHaveBeenCalledWith([{ kind: 'apply', id: 'dsh-memoir', version: '1.1.0' }])
+  })
+
+  it('operator: answers a row that is already current as that row, not as a failed request', async () => {
+    // Given the installed version is the newest the registry serves
+    const { facts, dir } = profile('^1.0.0')
+    tempDirs.push(dir)
+    const { handler, updateAll } = updatesHandler(facts, async () => manifest('1.0.0'))
+    const captured = response()
+
+    // When the batch runs
+    await handler(request({ ids: ['dsh-memoir'] }), captured.res)
+
+    // Then the run started anyway and carries the refusal as that row's answer:
+    // one up-to-date plugin must not stop the eight behind it
+    expect(captured.status()).toBe(200)
+    const entries = updateAll.mock.calls[0]?.[0] as Array<{ kind: string, id: string, error?: string }>
+    expect(entries).toHaveLength(1)
+    expect(entries[0]?.kind).toBe('refused')
+    expect(entries[0]?.id).toBe('dsh-memoir')
+    expect(entries[0]?.error).toContain('is already at 1.0.0')
+  })
+
+  it('operator: answers an uninstalled id as that row instead of refusing the batch', async () => {
+    // Given one id that is not part of the profile
+    const { facts, dir } = profile('^1.0.0')
+    tempDirs.push(dir)
+    const { handler, updateAll } = updatesHandler(facts, async () => manifest('1.1.0'))
+    const captured = response()
+
+    // When the batch runs
+    await handler(request({ ids: ['dsh-ghost'] }), captured.res)
+
+    // Then the row says why it could not run
+    expect(captured.status()).toBe(200)
+    const entries = updateAll.mock.calls[0]?.[0] as Array<{ kind: string, error?: string }>
+    expect(entries[0]?.kind).toBe('refused')
+    expect(entries[0]?.error).toContain('not installed')
+  })
+
+  it('operator: asks for each plugin once when the caller repeats an id', async () => {
+    // Given the same plugin listed twice
+    const { facts, dir } = profile('^1.0.0')
+    tempDirs.push(dir)
+    const { handler, updateAll } = updatesHandler(facts, async () => manifest('1.1.0'))
+    const captured = response()
+
+    // When the batch runs
+    await handler(request({ ids: ['dsh-memoir', 'dsh-memoir'] }), captured.res)
+
+    // Then it is resolved and applied once
+    expect(captured.status()).toBe(200)
+    expect(updateAll).toHaveBeenCalledWith([{ kind: 'apply', id: 'dsh-memoir', version: '1.1.0' }])
+  })
+
+  it('operator: refuses a batch with no ids, a non-string id, or more ids than the cap', async () => {
+    // Given a gateway that could start a job
+    const { facts, dir } = profile('^1.0.0')
+    tempDirs.push(dir)
+    const { handler, updateAll } = updatesHandler(facts, async () => manifest('1.1.0'))
+    const tooMany = Array.from({ length: 51 }, (_, index) => `dsh-plugin-${String(index)}`)
+
+    for (const body of [{}, { ids: [] }, { ids: [42] }, { ids: tooMany }, { ids: ['dsh-memoir@1.0.0 > /etc/passwd'] }]) {
+      const captured = response()
+      // When an unusable batch body arrives
+      await handler(request(body), captured.res)
+      // Then the request is refused before any job exists
+      expect(captured.status()).toBe(400)
+    }
+    expect(updateAll).not.toHaveBeenCalled()
+  })
+
+  it('operator: refuses the batch when no writer can serve this runtime', async () => {
+    // Given no CLI and no in-process manager
+    const { facts, dir } = profile('^1.0.0')
+    tempDirs.push(dir)
+    const { handler } = updatesHandler(facts, async () => manifest('1.1.0'), { cliAvailable: false })
+    const captured = response()
+
+    // When the batch runs
+    await handler(request({ ids: ['dsh-memoir'] }), captured.res)
+
+    // Then it is refused with the same explanation the single route gives
+    expect(captured.status()).toBe(500)
+    expect((captured.body() as { error: string }).error).toContain('CLI not found')
+  })
+})

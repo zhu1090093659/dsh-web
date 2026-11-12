@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import type { PluginUpdateItem, PluginUpdateResult, RestartMode, RestartPlanWire } from '../core/protocol.ts'
+import type { PluginBatchUpdateResult, PluginUpdateItem, RestartMode, RestartPlanWire } from '../core/protocol.ts'
 import { applicableUpdates, thirdPartyUpdates } from '../core/updates.ts'
 import { displayMinimumVersion } from '../core/version.ts'
 import { dshGateOf } from './PluginUpdatePatch.tsx'
@@ -31,11 +31,15 @@ export interface PluginListToolbarInjected {
   /** Compare every installed plugin against the version its source serves. */
   checkUpdates: () => Promise<PluginUpdateItem[]>
   /**
-   * Re-install one plugin from its recorded source. Resolves with what landed:
-   * the row at the new version, plus the bundles only a restart loads. A landed
-   * update that needs a restart keeps the batch running instead of failing it.
+   * Apply every listed update in one run and answer which rows landed and which
+   * did not.
+   *
+   * One call rather than one call per plugin: the sequence (and the decision that
+   * a refused row does not end the run) is the host's, so the toolbar no longer
+   * spends a request and a job on each row. A row that landed but needs a restart
+   * is still an applied row — it joins the restart list instead of failing.
    */
-  update: (id: string) => Promise<PluginUpdateResult>
+  updateAll: (ids: string[], onRow?: (row: UpdateCursor) => void) => Promise<PluginBatchUpdateResult>
   /**
    * Read how a restart would be carried out, without carrying it out: the
    * confirmation must name the same consequence the host will produce (an
@@ -79,6 +83,16 @@ function planCopy(plan: RestartPlanWire | undefined, t: Translate): string {
   return t('restartPlanRelaunch')
 }
 
+/** Which row a running batch is on, as the face reports it. */
+export interface UpdateCursor {
+  /** Package name of the row in flight. */
+  id: string
+  /** One-based position of that row in the run. */
+  index: number
+  /** How many rows the run was asked to apply. */
+  total: number
+}
+
 /** What the toolbar is currently doing. */
 type Phase = 'idle' | 'checking' | 'updating'
 
@@ -90,12 +104,11 @@ type Panel = 'none' | 'list' | 'restart'
  * list, and a restart tears this component down anyway.
  */
 export function PluginListToolbar(props: PluginListToolbarProps) {
-  const { t, isLoopback, checkUpdates, update, restartPlan, restart } = props
+  const { t, isLoopback, checkUpdates, updateAll, restartPlan, restart } = props
 
   const [phase, setPhase] = useState<Phase>('idle')
   const [checked, setChecked] = useState(false)
   /** Every third-party row the last check reported, including the applied ones. */
-  const [found, setFound] = useState(0)
   const [rows, setRows] = useState<PluginUpdateItem[]>([])
   const [applied, setApplied] = useState<string[]>([])
   /**
@@ -105,6 +118,12 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
    * claiming a plain success.
    */
   const [restartRequired, setRestartRequired] = useState<{ id: string; version: string }[]>([])
+  /**
+   * Rows the last run could not apply, with the host's reason. They stay in
+   * `rows` — the user has to see which plugin is stuck and why, beside the
+   * version it is stuck on — and only the whole-call failure reaches `error`.
+   */
+  const [failures, setFailures] = useState<{ id: string; error: string }[]>([])
   const [cursor, setCursor] = useState<{ name: string; index: number; total: number } | undefined>(undefined)
   const [error, setError] = useState<string | undefined>(undefined)
   const [panel, setPanel] = useState<Panel>('none')
@@ -135,9 +154,9 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
     void checkUpdates().then(items => {
       const thirdParty = thirdPartyUpdates(items)
       setRows(thirdParty)
-      setFound(thirdParty.length)
       setApplied([])
       setRestartRequired([])
+      setFailures([])
       setChecked(true)
       setPanel('list')
     }).catch(reason => {
@@ -156,29 +175,28 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
     busyRef.current = true
     setPhase('updating')
     setError(undefined)
-    void (async () => {
-      const done: string[] = []
-      for (const [index, row] of queue.entries()) {
-        setCursor({ name: row.id, index: index + 1, total: queue.length })
-        try {
-          const result = await update(row.id)
-          // The update landed; when this process cannot load it, the run still
-          // counts as applied and continues, and the panel names the restart.
-          if (result.restartRequired.length > 0) {
-            setRestartRequired(current => [...current, { id: row.id, version: result.plugin.version }])
-          }
-        } catch (reason) {
-          // Stop at the first failure: the remaining rows stay listed with their
-          // versions, so the user sees exactly what did not go through.
-          setError(t('failed', { reason: messageOf(reason) }))
-          break
-        }
-        done.push(row.id)
-        setApplied([...done])
-        setRows(current => current.filter(item => item.id !== row.id))
-      }
+    setFailures([])
+    void updateAll(queue.map(row => row.id), row => {
+      setCursor({ name: row.id, index: row.index, total: row.total })
+    }).then(result => {
+      // Every landed row leaves the list, including the ones this process cannot
+      // load yet: those are applied (and name their restart), not failures.
+      const landed = new Set(result.applied.map(row => row.id))
+      const restart = result.applied
+        .filter(row => row.restartRequired === true)
+        .map(row => ({ id: row.id, version: row.landed ?? '' }))
+      setApplied(current => [...current, ...result.applied.map(row => row.id)])
+      setRestartRequired(current => [...current, ...restart])
+      // A refused row stays listed with the reason the host gave, so the run's
+      // partial result is visible row by row instead of as one alert line.
+      setFailures(result.failed.map(row => ({ id: row.id, error: row.error ?? t('updateFailedUnknown') })))
+      setRows(current => current.filter(item => !landed.has(item.id)))
+    }).catch(reason => {
+      // The request itself failed (route refused, transport, no writer): nothing
+      // ran, so the list stays exactly as it was and the alert explains why.
+      setError(t('failed', { reason: messageOf(reason) }))
+    }).finally(() => {
       setCursor(undefined)
-    })().finally(() => {
       busyRef.current = false
       setPhase('idle')
     })
@@ -244,14 +262,22 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
     ? null
     : <p className={css.error} role="alert" data-update-error>{error}</p>
   /** What is still pending after a partial run (the applied rows leave the list). */
-  const remaining = found - applied.length
+  const remaining = rows.length
+  const failedCount = failures.length
+  /**
+   * One line for the whole run: the row in flight, what is still pending, and —
+   * once nothing is — whether the run landed everything or only part of it. A
+   * partial run must not read as a clean one.
+   */
   const summary = cursor !== undefined
     ? t('updatingAll', { name: cursor.name, index: String(cursor.index), total: String(cursor.total) })
     : remaining > 0
       ? t('updatesAvailable', { count: String(remaining) })
-      : applied.length > 0
-        ? t('updateAllDone')
-        : t('noUpdates')
+      : failedCount > 0
+        ? t('updateAllPartial', { done: String(applied.length), failed: String(failedCount) })
+        : applied.length > 0
+          ? t('updateAllDone')
+          : t('noUpdates')
 
   return (
     <div className={css.toolbar} {...shellProps} data-state={restartMode ?? phase} aria-busy={busy}>
@@ -292,7 +318,13 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
       {panel === 'list' && (
         <div className={css.panel} data-update-panel role="group" aria-label={t('updatesPanelTitle')}>
           {errorLine}
-          {applied.length > 0 && <p className={css.ok} data-update-applied>{t('updateAllDone')}</p>}
+          {applied.length > 0 && (
+            <p className={css.ok} data-update-applied>
+              {failedCount > 0
+                ? t('updateAllPartial', { done: String(applied.length), failed: String(failedCount) })
+                : t('updateAllDone')}
+            </p>
+          )}
           {restartRequired.length > 0 && (
             <ul className={css.restartRequired} data-update-restart-required>
               {restartRequired.map(item => (
@@ -310,6 +342,7 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
                 // One verdict per row, read once: the badge, its copy and the
                 // bulk action's exclusion all come from the same answer.
                 const gate = dshGateOf(row)
+                const failure = failures.find(item => item.id === row.id)
                 return (
                   <li key={row.id} className={css.panelRow} data-update-row={row.id} data-compatible={gate === 'open' ? 'yes' : 'no'}>
                     <span className={css.panelName}>{row.id}</span>
@@ -321,6 +354,11 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
                             min: displayMinimumVersion(row.requiresDsh),
                           })
                           : t('updateUnverifiedDshUnknownRange')}
+                      </span>
+                    )}
+                    {failure === undefined ? null : (
+                      <span className={css.compatBlocked} data-update-row-error={failure.id}>
+                        {t('updateFailedRow', { reason: failure.error })}
                       </span>
                     )}
                   </li>

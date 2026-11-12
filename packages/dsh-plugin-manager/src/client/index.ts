@@ -36,6 +36,7 @@ import { bridgeRemoteNamespaces, getRemoteSnapshot, subscribeRemote } from './na
 import { mountPluginListToolbar } from './plugin-toolbar-mount.tsx'
 import { en, zh, type PluginManagerKey } from './locales.ts'
 import {
+  batchUpdateResult,
   parseFailuresSnapshot,
   parseInstallStatus,
   parseInstalledPlugin,
@@ -44,10 +45,13 @@ import {
   parseRestartPlan,
   parseRestartRequired,
   parseUpdateList,
+  parseUpdateOutcomes,
   type InstalledPluginItem,
   type InstallProgressItem,
+  type PluginBatchUpdateResult,
   type PluginFailuresSnapshot,
   type PluginUpdateItem,
+  type PluginUpdateOutcome,
   type PluginUpdateResult,
   type RestartMode,
   type RestartPlanWire,
@@ -67,6 +71,7 @@ const CHANNEL = '/plugin-installer'
 const LIST_ENDPOINT = 'list'
 const INSTALL_ENDPOINT = 'install'
 const UPDATE_ENDPOINT = 'update'
+const UPDATES_ENDPOINT = 'updates'
 const UNINSTALL_ENDPOINT = 'uninstall'
 const SET_ENABLED_ENDPOINT = 'set-enabled'
 const CHECK_UPDATES_ENDPOINT = 'check-updates'
@@ -99,6 +104,12 @@ interface GatewayJobWire {
    * update that already landed.
    */
   restartRequired?: unknown
+  /**
+   * The per-row outcomes of a batch update job, read through
+   * {@link parseUpdateOutcomes}: one entry per requested plugin with the phase
+   * it reached and, when it could not be applied, the host's reason.
+   */
+  results?: unknown
 }
 
 /**
@@ -124,6 +135,23 @@ export type PluginManagerFace = PluginUpdatePatchInjected & PluginManagerService
    * user with either.
    */
   restartPlan: () => Promise<RestartPlanWire>
+  /**
+   * Apply every listed update in one run, answering the rows that landed and the
+   * rows that did not.
+   *
+   * The list-level toolbar used to drive one update job per plugin from the
+   * browser, which spent a request and a job on each row and left the sequence —
+   * and the decision to stop at the first refusal — in the component. The gateway
+   * half now runs that sequence on the host as one job; the official installer
+   * channel has no batch endpoint, so there the batch stays a loop of its own
+   * single update, which is the only writer that channel accepts.
+   */
+  updateAll: (ids: readonly string[]) => Promise<PluginBatchUpdateResult>
+}
+
+/** Error text for a failed call, keeping the reason a thrown value carries. */
+function failureText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 /**
@@ -162,6 +190,27 @@ export function createPluginManagerFace(ctx: ClientContext): PluginManagerFace {
     checkUpdates: async (): Promise<PluginUpdateItem[]> => parseUpdateList(await call(CHECK_UPDATES_ENDPOINT, {})),
     status: async (): Promise<InstallProgressItem> => parseInstallStatus(await call(STATUS_ENDPOINT, {})),
     failures: async (): Promise<PluginFailuresSnapshot> => parseFailuresSnapshot(await call(FAILURES_ENDPOINT, {})),
+    // One official update per id: this channel publishes no batch endpoint, and
+    // its single call is the only writer it accepts. A refused row is collected
+    // rather than thrown, so one plugin cannot discard the rest of the run.
+    updateAll: async (ids: readonly string[]): Promise<PluginBatchUpdateResult> => {
+      const applied: PluginUpdateOutcome[] = []
+      const failed: PluginUpdateOutcome[] = []
+      for (const id of ids) {
+        try {
+          const result = await official.update(id)
+          applied.push({
+            id,
+            phase: 'done',
+            landed: result.plugin.version,
+            ...result.restartRequired.length > 0 ? { restartRequired: true } : {},
+          })
+        } catch (error) {
+          failed.push({ id, phase: 'error', error: failureText(error) })
+        }
+      }
+      return { applied, failed }
+    },
   }
 
   // Gateway channel implementations.
@@ -230,6 +279,20 @@ export function createPluginManagerFace(ctx: ClientContext): PluginManagerFace {
           // update this process serves and one only a restart loads.
           restartRequired: parseRestartRequired(job.restartRequired),
         }
+      } finally {
+        gatewayInflight = false
+      }
+    },
+    updateAll: async (ids: readonly string[]): Promise<PluginBatchUpdateResult> => {
+      gatewayInflight = true
+      try {
+        const started = await gatewayJson(`${GATEWAY_PREFIX}/${UPDATES_ENDPOINT}`, {
+          method: 'POST',
+          body: JSON.stringify({ ids: [...ids] }),
+        }) as { jobId?: string }
+        if (started.jobId === undefined) throw new Error('plugin-manager: gateway updates returned no job')
+        const job = await waitJob(started.jobId)
+        return batchUpdateResult(parseUpdateOutcomes(job.results))
       } finally {
         gatewayInflight = false
       }
@@ -328,6 +391,13 @@ export function createPluginManagerFace(ctx: ClientContext): PluginManagerFace {
       notifyChange()
       return item
     },
+    updateAll: async ids => {
+      const result = await ((await ensureMode()) === 'official' ? official.updateAll(ids) : gateway.updateAll(ids))
+      // Only a landed row is a change a consumer has to react to; a run whose
+      // every row was refused leaves the installed set exactly as it was.
+      if (result.applied.length > 0) notifyChange()
+      return result
+    },
     uninstall: async id => {
       const rows = await ((await ensureMode()) === 'official' ? official.uninstall(id) : gateway.uninstall(id))
       notifyChange()
@@ -398,6 +468,7 @@ export function apply(ctx: ClientContext): void {
           isLoopback: face.isLoopback,
           checkUpdates: face.checkUpdates,
           update: face.update,
+          updateAll: face.updateAll,
           restartPlan: face.restartPlan,
           restart: face.restart,
           t: ctx.locale.bind(NS),

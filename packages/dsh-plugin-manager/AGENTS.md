@@ -78,19 +78,27 @@ packages/AGENTS.md 的全局/包级规则。
   拒绝写该 profile（`dsh plugin --profile desktop …` 直接报错），更新必须经宿主挂载的
   官方 `pluginManager` 服务（`ctx.get('pluginManager')`，契约观察不 import）；其余运行时
   CLI 仍是唯一写入器，两条路径共用同一任务表、状态轮询与版本核对。
-- **官方管理器拒绝原地更新（`already-installed`）**：0.2.1-rc.2 起 `installBundle` 在 `hmr` 挂载且该包
-  已是 profile 依赖时直接抛 `already-installed`（守卫在 pnpm 之前），而 dsh-base 只在
-  `profileContext` 存在时挂 `hmr` 行——即每个 profile 宿主，官方插件页自己的更新按钮走同一条路。
-  因此应用自有 profile 的更新按两阶段执行：先 `removeBundle` 再 `installBundle`；第二阶段失败时
-  装回运行前 profile 携带的 spec，并在错误里写明是「已装回」还是「需手动重装」。单次
-  `installBundle` 仍排在最前，上游哪天接受原地更新就自动回到单次路径。见
-  [记录](../../.agents/notes/implemented/bug-fix/2026-10-17-plugin-manager-native-update-two-phase.md)。
-- **两阶段替换不得改变层级顺序，`bundle-in-use` 只应答一次**（issue #1905）：`removeBundle` 会把
-  该包从 `dsh.profile.bundles` 删掉、重装再追加到末尾，而该数组就是 loader 套用 patch 的层级
-  顺序——批量更新会让整批行的继承顺序漂移，所以 `restoreBundleIndex()` 必须把包放回原位
-  （成功与回滚都要）。官方守卫是先取消勾选并 reload、**之后**才判定行是否仍有活跃 fiber，
-  因此 `removeForReplacement()` 针对这个已落盘状态重试一次；第二次仍被拒才用
-  `setBundleEnabled` 还原选择状态并点名重启。不要把这条重试改成「直接报错」或「循环重试」。
+- **单条更新只调官方 `updateBundle`，不再自己拼两阶段**：0.2.2-rc.1 起官方管理器自带
+  `updateBundle(name, version, { requestId })`——先核验目标（存在、声明 bundle、接受当前 DSH），
+  `hmr` 挂载时先移除再安装并沿用原有勾选，安装失败或取消时自己把移除的版本装回。因此
+  `runNativeUpdate()` 只剩一次官方调用加两道官方没覆盖的守卫，`installBundle` 后的
+  `already-installed` 分支、自建回滚与 `replaceInstalled`/`removeForReplacement` 一并删除；
+  运行时没有 `updateBundle`（低于 0.2.2-rc.1）时明确报「没有 updateBundle」而不是退回旧路径。
+  `package.json` 的 `dsh.engines.dsh` / peer 下限就是这条前提。见
+  [记录](../../.agents/notes/implemented/bug-fix/2026-10-18-plugin-manager-official-update-bundle.md)。
+- **官方 `updateBundle` 之外的守卫只有两条**（issue #1905）：① 官方移除会把该包从
+  `dsh.profile.bundles` 删掉、重装再追加到末尾，而该数组就是 loader 套用 patch 的层级顺序，
+  所以 `restoreBundleIndex()` 必须在更新落地后把包放回原位（成功与失败回滚都要）；② 官方守卫是
+  先取消勾选并 reload、**之后**才判定行是否仍有活跃 fiber，因此 `applyNativeUpdate()` 针对这个
+  已落盘状态重试一次，第二次仍被拒才用 `setBundleEnabled` 还原选择状态并在错误里点名重启。
+  不要把这条重试改成「直接报错」或「循环重试」。
+- **批量更新是 host 侧对单条官方原语的串行，不是一个新写入器**：`updateAll()` 只起一个任务，
+  按给定顺序逐条跑 `updateBundle`（非应用自有 profile 时逐条跑 CLI），`job.results` 每行带
+  `phase` / `targetVersion` / `landed` / `error` / `restartRequired`，`job.current` 是在跑的那行。
+  一条被拒**不终止**整批：官方与 CLI 的单条写入本身就带原子性。路由 `POST /api/plugin-manager/updates`
+  先按单条同一套规则解析每个 id（`planUpdate()`），解析不了的行以该行错误进任务而不是让请求失败；
+  批量任务收尾一律 `done`，失败事实在各行上。见
+  [记录](../../.agents/notes/implemented/bug-fix/2026-10-18-plugin-manager-official-update-bundle.md)。
 - **官方管理器 resolve 不等于成功**：它的 `change()` 包装器把失败折叠进返回值
   （`application: 'failed'` / `'cancelled'`，附 `error.code` / `error.diagnostic`），而不是
   抛错。原生安装/更新/卸载必须先经 `nativeManagerFailure()` 读该判定再重读 profile，

@@ -105,6 +105,46 @@ export interface PluginUpdateResult {
   restartRequired: string[]
 }
 
+/**
+ * One row of a batch update, as the host reported it.
+ *
+ * A batch is the host's sequence over the official manager's single-plugin
+ * update, so its progress is a row per requested plugin rather than one
+ * aggregate verdict: each row carries the version the host resolved, where it
+ * ended, and — when it could not be applied — the reason.
+ */
+export interface PluginUpdateOutcome {
+  /** Installed package name this row applies. */
+  id: string
+  /** Where this row is: still queued, in flight, applied, or refused. */
+  phase: 'pending' | 'running' | 'done' | 'error'
+  /** The exact version the host resolved for this row; absent when it was refused up front. */
+  targetVersion?: string
+  /** The version that landed, present on an applied row. */
+  landed?: string
+  /** Why this row could not be applied, present on a refused row. */
+  error?: string
+  /**
+   * Whether the landed version is on disk but not loaded in the running host
+   * (the official manager answered `application: 'restart-required'`).
+   */
+  restartRequired?: boolean
+}
+
+/**
+ * What one batch update run produced.
+ *
+ * Both halves are carried: the refused rows stay in the panel beside the version
+ * they are stuck on, and the applied rows leave it. Reporting only one half would
+ * make a partial run read as either a clean one or no run at all.
+ */
+export interface PluginBatchUpdateResult {
+  /** Rows that landed, at the version that landed. */
+  applied: PluginUpdateOutcome[]
+  /** Rows that did not, each carrying the host's reason. */
+  failed: PluginUpdateOutcome[]
+}
+
 /** Point-in-time install/update progress reported by the host. */
 export interface InstallProgressItem {
   kind: 'idle' | 'install' | 'update'
@@ -319,6 +359,52 @@ export function parseUpdateList(value: unknown): PluginUpdateItem[] {
     }
     return row
   })
+}
+
+/**
+ * Validate and normalize the rows of a batch update, as a gateway job carries
+ * them under `results`.
+ *
+ * Deliberately tolerant in the same way {@link parseRestartRequired} is: every
+ * row is an outcome the panel has to render, and refusing the whole list over one
+ * malformed row would hide the rows that did land. A row missing its id or phase
+ * is that row's problem, so it is dropped rather than thrown; an unreadable
+ * `results` value reads as "no rows", which the caller shows as a run without a
+ * per-row verdict.
+ * @param value - decoded but untrusted job value.
+ * @returns the typed rows, in the order the host applied them.
+ */
+export function parseUpdateOutcomes(value: unknown): PluginUpdateOutcome[] {
+  if (!Array.isArray(value)) return []
+  const rows: PluginUpdateOutcome[] = []
+  for (const item of value) {
+    if (!isRecord(item) || !isString(item.id) || item.id === '') continue
+    const phase = item.phase
+    if (phase !== 'pending' && phase !== 'running' && phase !== 'done' && phase !== 'error') continue
+    const row: PluginUpdateOutcome = { id: item.id, phase }
+    if (isString(item.targetVersion) && item.targetVersion !== '') row.targetVersion = item.targetVersion
+    if (isString(item.landed) && item.landed !== '') row.landed = item.landed
+    if (isString(item.error) && item.error !== '') row.error = item.error
+    if (item.restartRequired === true) row.restartRequired = true
+    rows.push(row)
+  }
+  return rows
+}
+
+/**
+ * Split a finished batch's rows by outcome, the shape the toolbar renders.
+ * A row still in flight is neither: it is simply not in either half.
+ * @param rows - the rows the host reported.
+ * @returns the applied and failed rows.
+ */
+export function batchUpdateResult(rows: readonly PluginUpdateOutcome[]): PluginBatchUpdateResult {
+  const applied: PluginUpdateOutcome[] = []
+  const failed: PluginUpdateOutcome[] = []
+  for (const row of rows) {
+    if (row.phase === 'done') applied.push(row)
+    else if (row.phase === 'error') failed.push(row)
+  }
+  return { applied, failed }
 }
 
 /**

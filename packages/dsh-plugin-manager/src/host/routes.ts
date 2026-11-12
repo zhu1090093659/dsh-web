@@ -12,7 +12,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { readJsonBody, withIdentityEncoding, writeJson } from './http.ts'
 import { isLoopbackRequest } from './loopback.ts'
-import { detectOfficialChannels, findDshBinary, spawnDsh, unsafeSpecReason, type CliGateway } from './gateway.ts'
+import { detectOfficialChannels, findDshBinary, spawnDsh, unsafeSpecReason, type CliGateway, type GatewayUpdateEntry } from './gateway.ts'
 import { dshRequirementOf, parseDshVersion } from '../core/version.ts'
 import { evaluateDshCompatibility } from './dsh-compat.ts'
 import { readManifestVersion, readPatchText, readProfileManifest, type ProfileFacts } from './profile.ts'
@@ -34,6 +34,9 @@ const VERSION_TIMEOUT_MS = 10_000
 
 /** Bounded capture of the version probe output, counted in bytes. */
 const VERSION_MAX_OUTPUT_BYTES = 4_096
+
+/** How many plugins one batch update may carry (a page's worth of installed plugins, not a queue). */
+const MAX_BATCH_UPDATES = 50
 
 /** Grace period after SIGTERM before a stuck probe child is SIGKILLed. */
 const VERSION_ESCALATION_TIMEOUT_MS = 5_000
@@ -328,6 +331,86 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
     writeJson(res, 200, gateway.install(installSpec))
   }
 
+  /**
+   * Resolve one update request against the live profile: the exact version to
+   * install, the migration it needs instead, or the refusal that stops it.
+   *
+   * Every answer the update route gives before a job exists — not installed, not
+   * a direct registry plugin, unresolvable version, already at it, a DSH minimum
+   * this host does not satisfy — is produced here, so the single update and the
+   * batch resolve a row by exactly the same rules. A batch turns a refusal into
+   * that row's answer instead of dropping the whole run.
+   * @param target - the installed package name.
+   */
+  const planUpdate = async (target: string): Promise<
+    | { status: number, error: string }
+    | { status: 200, kind: 'update', version: string }
+    | { status: 200, kind: 'migrate', targetId: string, targetVersion: string, targetSpec: string }
+  > => {
+    const patchText = await readPatchText(facts.patchPath)
+    const row = (await snapshotGateway(facts, patchText)).plugins.find(plugin => plugin.id === target)
+    if (row === undefined) return { status: 404, error: `plugin-manager: plugin ${target} is not installed` }
+    const migration = legacyMigrationFor(target)
+    if (migration !== undefined) {
+      const targetManifest = await fetchManifest(migration.to).catch(() => undefined)
+      if (targetManifest === undefined || targetManifest.version === '') {
+        return { status: 502, error: `plugin-manager: cannot resolve the migration target ${migration.to}` }
+      }
+      const targetSpec = targetSpecForLegacy(row.source.spec, targetManifest.version)
+      if (targetSpec === undefined) {
+        return { status: 400, error: `plugin-manager: cannot derive the migration target spec for ${target}` }
+      }
+      const unsafeTarget = unsafeSpecReason(targetSpec)
+      if (unsafeTarget !== undefined) return { status: 400, error: unsafeTarget }
+      const requiresDsh = dshRequirementOf(targetManifest)
+      if (requiresDsh !== undefined) {
+        const { hostVersion, compatible } = await compatibleVerdict(requiresDsh)
+        if (!compatible) {
+          return {
+            status: 412,
+            error: hostVersion === undefined
+              ? `plugin-manager: cannot verify the running DSH version for ${migration.to} against the declared requirement ${requiresDsh}; check the declaration and the DSH runtime before migrating`
+              : `plugin-manager: ${migration.to} requires DSH ${requiresDsh} (current DSH ${hostVersion}); upgrade DSH before migrating`,
+          }
+        }
+      }
+      return { status: 200, kind: 'migrate', targetId: migration.to, targetVersion: targetManifest.version, targetSpec }
+    }
+    if (row.source.kind !== 'npm' || !isDirectRegistrySpec(row.source.spec)) {
+      return { status: 400, error: `plugin-manager: ${target} is not a direct npm registry plugin` }
+    }
+    const manifest = await fetchManifest(target).catch(() => undefined)
+    if (manifest === undefined) return { status: 502, error: `plugin-manager: cannot resolve the latest version for ${target}` }
+    const latest = manifest.version
+    if (latest === '') return { status: 502, error: `plugin-manager: cannot resolve the latest version for ${target}` }
+    const unsafeLatest = unsafeSpecReason(`${target}@${latest}`)
+    if (unsafeLatest !== undefined) return { status: 502, error: unsafeLatest }
+    // A run that wrote this version and then failed its boot preflight left
+    // the profile at the target with the update itself unsettled (see
+    // gateway.ts verifyBoot). Answering that retry with "already at latest" is
+    // a dead end the panel cannot leave: the row already carries the newest
+    // version, so the only way out was a reinstall run by hand. Only a
+    // recorded failure of this plugin's newest update at this exact version
+    // re-runs the install — the same job, preflight included — so a plugin
+    // that is genuinely up to date keeps its 409 and writes nothing.
+    if (row.version === latest && !gateway.lastUpdateFailed(target, latest)) {
+      return { status: 409, error: `plugin-manager: ${target} is already at ${latest}` }
+    }
+    const requiresDsh = dshRequirementOf(manifest)
+    if (requiresDsh !== undefined) {
+      const { hostVersion, compatible } = await compatibleVerdict(requiresDsh)
+      if (!compatible) {
+        return {
+          status: 412,
+          error: hostVersion === undefined
+            ? `plugin-manager: cannot verify the running DSH version for ${target} against the declared requirement ${requiresDsh}; check the declaration and the DSH runtime before updating`
+            : `plugin-manager: ${target} requires DSH ${requiresDsh} (current DSH ${hostVersion}); upgrade DSH before updating`,
+        }
+      }
+    }
+    return { status: 200, kind: 'update', version: latest }
+  }
+
   const updateHandler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const body = (await readJsonBody(req, { maxBytes: 64 * 1024, objectOnly: true }) ?? {}) as Record<string, unknown>
     const id = body['id']
@@ -346,74 +429,77 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
       return
     }
     const outcome = await gateway.withMutationLock(async () => {
-      const patchText = await readPatchText(facts.patchPath)
-      const row = (await snapshotGateway(facts, patchText)).plugins.find(plugin => plugin.id === target)
-      if (row === undefined) return { status: 404, error: `plugin-manager: plugin ${target} is not installed` }
-      const migration = legacyMigrationFor(target)
-      if (migration !== undefined) {
-        const targetManifest = await fetchManifest(migration.to).catch(() => undefined)
-        if (targetManifest === undefined || targetManifest.version === '') {
-          return { status: 502, error: `plugin-manager: cannot resolve the migration target ${migration.to}` }
-        }
-        const targetSpec = targetSpecForLegacy(row.source.spec, targetManifest.version)
-        if (targetSpec === undefined) {
-          return { status: 400, error: `plugin-manager: cannot derive the migration target spec for ${target}` }
-        }
-        const unsafeTarget = unsafeSpecReason(targetSpec)
-        if (unsafeTarget !== undefined) return { status: 400, error: unsafeTarget }
-        const requiresDsh = dshRequirementOf(targetManifest)
-        if (requiresDsh !== undefined) {
-          const { hostVersion, compatible } = await compatibleVerdict(requiresDsh)
-          if (!compatible) {
-            return {
-              status: 412,
-              error: hostVersion === undefined
-                ? `plugin-manager: cannot verify the running DSH version for ${migration.to} against the declared requirement ${requiresDsh}; check the declaration and the DSH runtime before migrating`
-                : `plugin-manager: ${migration.to} requires DSH ${requiresDsh} (current DSH ${hostVersion}); upgrade DSH before migrating`,
-            }
-          }
-        }
-        return { status: 200, job: gateway.migrate(target, migration.to, targetManifest.version, targetSpec) }
-      }
-      if (row.source.kind !== 'npm' || !isDirectRegistrySpec(row.source.spec)) {
-        return { status: 400, error: `plugin-manager: ${target} is not a direct npm registry plugin` }
-      }
-      const manifest = await fetchManifest(target).catch(() => undefined)
-      if (manifest === undefined) return { status: 502, error: `plugin-manager: cannot resolve the latest version for ${target}` }
-      const latest = manifest.version
-      if (latest === '') return { status: 502, error: `plugin-manager: cannot resolve the latest version for ${target}` }
-      const unsafeLatest = unsafeSpecReason(`${target}@${latest}`)
-      if (unsafeLatest !== undefined) return { status: 502, error: unsafeLatest }
-      // A run that wrote this version and then failed its boot preflight left
-      // the profile at the target with the update itself unsettled (see
-      // gateway.ts verifyBoot). Answering that retry with "already at latest" is
-      // a dead end the panel cannot leave: the row already carries the newest
-      // version, so the only way out was a reinstall run by hand. Only a
-      // recorded failure of this plugin's newest update at this exact version
-      // re-runs the install — the same job, preflight included — so a plugin
-      // that is genuinely up to date keeps its 409 and writes nothing.
-      if (row.version === latest && !gateway.lastUpdateFailed(target, latest)) {
-        return { status: 409, error: `plugin-manager: ${target} is already at ${latest}` }
-      }
-      const requiresDsh = dshRequirementOf(manifest)
-      if (requiresDsh !== undefined) {
-        const { hostVersion, compatible } = await compatibleVerdict(requiresDsh)
-        if (!compatible) {
-          return {
-            status: 412,
-            error: hostVersion === undefined
-              ? `plugin-manager: cannot verify the running DSH version for ${target} against the declared requirement ${requiresDsh}; check the declaration and the DSH runtime before updating`
-              : `plugin-manager: ${target} requires DSH ${requiresDsh} (current DSH ${hostVersion}); upgrade DSH before updating`,
-          }
-        }
-      }
-      return { status: 200, job: gateway.update(target, latest) }
+      const plan = await planUpdate(target)
+      if ('error' in plan) return plan
+      return plan.kind === 'migrate'
+        ? { status: plan.status, job: gateway.migrate(target, plan.targetId, plan.targetVersion, plan.targetSpec) }
+        : { status: plan.status, job: gateway.update(target, plan.version) }
     })
     if ('error' in outcome) {
       writeJson(res, outcome.status, { error: outcome.error })
       return
     }
     writeJson(res, outcome.status, outcome.job)
+  }
+
+  /**
+   * Apply every listed plugin update in one run.
+   *
+   * The official manager updates one bundle at a time and the CLI adds one spec
+   * at a time, so the batch is this gateway's sequence over that single-plugin
+   * primitive: one job, one mutation-lock slot, one poll, and one ledger of rows.
+   * Each id is resolved here first, exactly as a single update is, and a row that
+   * cannot be resolved is carried into the job as its own answer rather than
+   * failing the request — one plugin already at its newest version must not stop
+   * the eight behind it.
+   */
+  const updatesHandler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+    const body = (await readJsonBody(req, { maxBytes: 64 * 1024, objectOnly: true }) ?? {}) as Record<string, unknown>
+    const listed = body['ids']
+    if (!Array.isArray(listed) || listed.length === 0) {
+      writeJson(res, 400, { error: 'plugin-manager: updates needs a non-empty ids array' })
+      return
+    }
+    if (listed.length > MAX_BATCH_UPDATES) {
+      writeJson(res, 400, { error: `plugin-manager: updates accepts at most ${String(MAX_BATCH_UPDATES)} ids` })
+      return
+    }
+    const targets: string[] = []
+    for (const value of listed) {
+      if (typeof value !== 'string' || value.trim() === '') {
+        writeJson(res, 400, { error: 'plugin-manager: updates needs string ids' })
+        return
+      }
+      const target = value.trim()
+      const unsafe = unsafeSpecReason(target)
+      if (unsafe !== undefined) {
+        writeJson(res, 400, { error: unsafe })
+        return
+      }
+      if (!targets.includes(target)) targets.push(target)
+    }
+    if (!deps.cliAvailable() && !gateway.usesNativeWriter()) {
+      writeJson(res, 500, { error: 'plugin-manager: dsh CLI not found on PATH' })
+      return
+    }
+    const entries = await gateway.withMutationLock(async () => {
+      const plan: GatewayUpdateEntry[] = []
+      for (const target of targets) {
+        const row = await planUpdate(target)
+        if ('error' in row) plan.push({ kind: 'refused', id: target, error: row.error })
+        else if (row.kind === 'migrate') {
+          plan.push({
+            kind: 'migrate',
+            id: target,
+            targetId: row.targetId,
+            targetVersion: row.targetVersion,
+            targetSpec: row.targetSpec,
+          })
+        } else plan.push({ kind: 'apply', id: target, version: row.version })
+      }
+      return plan
+    })
+    writeJson(res, 200, gateway.updateAll(entries))
   }
 
   const removeHandler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
@@ -663,6 +749,7 @@ export function makeGatewayRoutes(deps: GatewayRouteDeps): WebRoute[] {
     { kind: 'exact', path: `${GATEWAY_PREFIX}/list`, handler: guard(listHandler) },
     { kind: 'exact', path: `${GATEWAY_PREFIX}/install`, handler: guard(installHandler) },
     { kind: 'exact', path: `${GATEWAY_PREFIX}/update`, handler: guard(updateHandler) },
+    { kind: 'exact', path: `${GATEWAY_PREFIX}/updates`, handler: guard(updatesHandler) },
     { kind: 'exact', path: `${GATEWAY_PREFIX}/remove`, handler: guard(removeHandler) },
     { kind: 'exact', path: `${GATEWAY_PREFIX}/status`, handler: guard(statusHandler) },
     { kind: 'exact', path: `${GATEWAY_PREFIX}/set-enabled`, handler: guard(setEnabledHandler) },

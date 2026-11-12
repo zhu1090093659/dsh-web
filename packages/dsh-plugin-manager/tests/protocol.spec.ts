@@ -6,6 +6,8 @@ import {
   parsePluginList,
   parseRestartRequired,
   parseUpdateList,
+  parseUpdateOutcomes,
+  batchUpdateResult,
 } from '../src/core/protocol.ts'
 
 const pluginRow = {
@@ -157,5 +159,50 @@ describe('parseFailuresSnapshot', () => {
 
   it('rejects a bad failure row', () => {
     expect(() => parseFailuresSnapshot({ items: [{ pluginId: 1 }], pluginRoot: '/', safeMode: false })).toThrow(/failure row 0/)
+  })
+})
+
+describe('parseUpdateOutcomes', () => {
+  it('operator: keeps every usable batch row and drops only the unusable ones', () => {
+    // Given a job whose rows mix the usable shapes with rows no renderer can place
+    const reported = [
+      { id: 'dsh-usage', phase: 'done', landed: '0.9.2', targetVersion: '0.9.2' },
+      { id: 'dsh-weather', phase: 'error', error: 'pnpm refused it', targetVersion: '1.1.0' },
+      { id: 'dsh-pending', phase: 'pending' },
+      { id: 42, phase: 'done' },
+      { id: 'dsh-unknown-phase', phase: 'applied' },
+      null,
+    ]
+
+    // When the job's rows are read through the parser
+    const rows = parseUpdateOutcomes(reported)
+
+    // Then the usable rows survive in order and the unusable ones are dropped
+    expect(rows.map(row => row.id)).toEqual(['dsh-usage', 'dsh-weather', 'dsh-pending'])
+    expect(rows[0]).toEqual({ id: 'dsh-usage', phase: 'done', landed: '0.9.2', targetVersion: '0.9.2' })
+    expect(rows[1]?.error).toBe('pnpm refused it')
+  })
+
+  it('operator: reads an unreadable results value as no rows instead of rejecting the update', () => {
+    // Given a job value that carries no readable row list
+    // When each of those values is read
+    // Then none of them yields a row, so the caller shows a run without verdicts
+    expect(parseUpdateOutcomes(undefined)).toEqual([])
+    expect(parseUpdateOutcomes('rows')).toEqual([])
+    expect(parseUpdateOutcomes({})).toEqual([])
+  })
+
+  it('operator: splits a finished run by outcome, leaving an in-flight row out of both halves', () => {
+    // Given a finished run whose last row is still marked in flight
+    // When the run is split by outcome
+    const result = batchUpdateResult([
+      { id: 'dsh-usage', phase: 'done', landed: '0.9.2' },
+      { id: 'dsh-weather', phase: 'error', error: 'refused' },
+      { id: 'dsh-running', phase: 'running' },
+    ])
+
+    // Then each row is in exactly the half its outcome names
+    expect(result.applied.map(row => row.id)).toEqual(['dsh-usage'])
+    expect(result.failed.map(row => row.id)).toEqual(['dsh-weather'])
   })
 })

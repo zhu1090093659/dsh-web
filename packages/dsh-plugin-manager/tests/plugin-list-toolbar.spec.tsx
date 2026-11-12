@@ -18,7 +18,7 @@ import React from 'react'
 import type { ComponentProps } from 'react'
 import { PluginListToolbar } from '../src/client/PluginListToolbar.tsx'
 import { en, type PluginManagerKey } from '../src/client/locales.ts'
-import type { PluginUpdateItem, PluginUpdateResult } from '../src/core/protocol.ts'
+import type { PluginBatchUpdateResult, PluginUpdateItem, PluginUpdateOutcome } from '../src/core/protocol.ts'
 
 afterEach(cleanup)
 
@@ -29,22 +29,19 @@ const t: ComponentProps<typeof PluginListToolbar>['t'] = (key, params) => {
   return text.replace(/\{(\w+)\}/g, (match, name: string) => String(params[name] ?? match))
 }
 
-/**
- * The result one applied update resolves with: the row at the version that
- * landed, plus the bundles only a restart loads (empty for an in-place update).
- */
-function landed(id: string, version: string, restartRequired: string[] = []): PluginUpdateResult {
-  return {
-    plugin: {
-      id,
-      name: id,
-      version,
-      source: { kind: 'npm', spec: `${id}@${version}` },
-      installedAt: '2026-10-01T00:00:00.000Z',
-      enabled: true,
-    },
-    restartRequired,
-  }
+/** One row a batch run applied, at the version that landed. */
+function applied(id: string, version: string, restartRequired = false): PluginUpdateOutcome {
+  return { id, phase: 'done', targetVersion: version, landed: version, ...restartRequired ? { restartRequired: true } : {} }
+}
+
+/** One row a batch run could not apply, with the host's reason. */
+function refused(id: string, error: string): PluginUpdateOutcome {
+  return { id, phase: 'error', error }
+}
+
+/** The result of one batch run: the rows that landed and the rows that did not. */
+function batch(appliedRows: PluginUpdateOutcome[], refusedRows: PluginUpdateOutcome[] = []): PluginBatchUpdateResult {
+  return { applied: appliedRows, failed: refusedRows }
 }
 
 /** A face fake; every member is overridable per case. */
@@ -52,7 +49,7 @@ function face(overrides: Partial<ComponentProps<typeof PluginListToolbar>> = {})
   return {
     isLoopback: true,
     checkUpdates: vi.fn(async (): Promise<PluginUpdateItem[]> => []),
-    update: vi.fn(async (id: string) => landed(id, '1.0.0')),
+    updateAll: vi.fn(async (ids: string[]) => batch(ids.map(id => applied(id, '1.0.0')))),
     restartPlan: vi.fn(async () => ({ mode: 'relaunch' as const })),
     restart: vi.fn(async () => 'relaunch' as const),
     ...overrides,
@@ -142,20 +139,21 @@ describe('checking every installed plugin', () => {
 describe('updating every third-party plugin', () => {
   it('user applies every applicable row in one run', async () => {
     // Given two third-party updates and one shipped package
-    const update = vi.fn(async (id: string) => landed(id, '1.1.0'))
+    const updateAll = vi.fn(async (ids: string[]) => batch(ids.map(id => applied(id, '1.1.0'))))
     const second: PluginUpdateItem = { id: 'dsh-weather', current: '1.0.0', latest: '1.1.0' }
-    renderToolbar(face({ checkUpdates: vi.fn(async () => [thirdParty, second, official]), update }))
+    renderToolbar(face({ checkUpdates: vi.fn(async () => [thirdParty, second, official]), updateAll }))
     fireEvent.click(screen.getByRole('button', { name: t('checkUpdates') }))
     await waitFor(() => { expect(document.querySelector('[data-update-all]')?.textContent).toBe(t('updateAll', { count: '2' })) })
 
     // When the user updates everything
     fireEvent.click(document.querySelector('[data-update-all]') as HTMLElement)
 
-    // Then exactly the third-party rows were updated and the restart is offered
+    // Then the batch was asked for exactly the third-party rows, in one call
     await waitFor(() => {
       expect(document.querySelector('[data-update-restart]')?.getAttribute('data-restart-pending')).toBe('2')
     })
-    expect(update.mock.calls.map(call => call[0])).toEqual(['dsh-usage', 'dsh-weather'])
+    expect(updateAll.mock.calls).toHaveLength(1)
+    expect(updateAll.mock.calls[0]?.[0]).toEqual(['dsh-usage', 'dsh-weather'])
     expect(listedRows()).toEqual([])
     expect(document.querySelector('[data-update-applied]')?.textContent).toBe(t('updateAllDone'))
   })
@@ -163,8 +161,8 @@ describe('updating every third-party plugin', () => {
   it('user sees a row below the declared DSH minimum listed but never applied', async () => {
     // Given an update whose manifest needs a newer DSH
     const blocked: PluginUpdateItem = { id: 'dsh-future', current: '1.0.0', latest: '2.0.0', requiresDsh: '>=9.0.0', compatible: false }
-    const update = vi.fn(async (id: string) => landed(id, '2.0.0'))
-    renderToolbar(face({ checkUpdates: vi.fn(async () => [blocked]), update }))
+    const updateAll = vi.fn(async () => batch([]))
+    renderToolbar(face({ checkUpdates: vi.fn(async () => [blocked]), updateAll }))
     fireEvent.click(screen.getByRole('button', { name: t('checkUpdates') }))
 
     // When the check settles
@@ -174,7 +172,7 @@ describe('updating every third-party plugin', () => {
     expect(document.querySelector('[data-update-row="dsh-future"]')?.getAttribute('data-compatible')).toBe('no')
     expect(document.querySelector('[data-update-row="dsh-future"]')?.textContent).toContain('9.0.0')
     expect(document.querySelector('[data-update-all]')).toBeNull()
-    expect(update).not.toHaveBeenCalled()
+    expect(updateAll).not.toHaveBeenCalled()
   })
 
   it('user reads the same verdict on a row the host could not verify as on a row below the minimum', async () => {
@@ -204,51 +202,52 @@ describe('updating every third-party plugin', () => {
     expect(document.querySelector('[data-update-all]')).toBeNull()
   })
 
-  it('user sees a failed update stop the run and keep the rest listed', async () => {
-    // Given the first row cannot be installed
+  it('user sees one refused row named in place while the rest of the run lands', async () => {
+    // Given the host refuses the first row and applies the second
     const second: PluginUpdateItem = { id: 'dsh-weather', current: '1.0.0', latest: '1.1.0' }
-    const update = vi.fn(async (id: string) => {
-      if (id === 'dsh-usage') throw new Error('pnpm refused the install')
-      return landed(id, '1.1.0')
-    })
-    renderToolbar(face({ checkUpdates: vi.fn(async () => [thirdParty, second]), update }))
+    const updateAll = vi.fn(async () => batch([applied('dsh-weather', '1.1.0')], [refused('dsh-usage', 'pnpm refused the install')]))
+    renderToolbar(face({ checkUpdates: vi.fn(async () => [thirdParty, second]), updateAll }))
     fireEvent.click(screen.getByRole('button', { name: t('checkUpdates') }))
     await waitFor(() => { expect(document.querySelector('[data-update-all]')?.textContent).toBe(t('updateAll', { count: '2' })) })
 
     // When the user updates everything
     fireEvent.click(document.querySelector('[data-update-all]') as HTMLElement)
 
-    // Then the reason is shown and the untouched row remains listed
+    // Then the applied row left the list, the refused row kept its place and
+    // carries the host's reason, and the run reads as the partial run it was
     await waitFor(() => {
-      expect(document.querySelector('[data-update-error]')?.textContent).toContain('pnpm refused the install')
+      expect(document.querySelector('[data-update-row-error="dsh-usage"]')?.textContent)
+        .toBe(t('updateFailedRow', { reason: 'pnpm refused the install' }))
     })
-    expect(listedRows()).toEqual(['dsh-usage', 'dsh-weather'])
-    expect(update.mock.calls.map(call => call[0])).toEqual(['dsh-usage'])
-    // Nothing was applied, so the summary still counts both rows.
-    expect(summaryText()).toBe(t('updatesAvailable', { count: '2' }))
+    expect(listedRows()).toEqual(['dsh-usage'])
+    expect(document.querySelector('[data-update-applied]')?.textContent)
+      .toBe(t('updateAllPartial', { done: '1', failed: '1' }))
+    expect(summaryText()).toBe(t('updatesAvailable', { count: '1' }))
+    // The failure never reached the alert line: nothing about the request failed.
+    expect(document.querySelector('[data-update-error]')).toBeNull()
+    // The landed row still counts for the restart entry.
+    expect(document.querySelector('[data-update-restart]')?.getAttribute('data-restart-pending')).toBe('1')
   })
 
-  it('user sees the summary count drop as rows are applied', async () => {
-    // Given the second of two updates cannot be installed
+  it('user keeps every row when the whole batch request is refused', async () => {
+    // Given the route refuses the batch before any row runs
     const second: PluginUpdateItem = { id: 'dsh-weather', current: '1.0.0', latest: '1.1.0' }
-    const update = vi.fn(async (id: string) => {
-      if (id === 'dsh-weather') throw new Error('pnpm refused the install')
-      return landed(id, '0.9.2')
-    })
-    renderToolbar(face({ checkUpdates: vi.fn(async () => [thirdParty, second]), update }))
+    const updateAll = vi.fn(async () => { throw new Error('plugin-manager: dsh CLI not found on PATH') })
+    renderToolbar(face({ checkUpdates: vi.fn(async () => [thirdParty, second]), updateAll }))
     fireEvent.click(screen.getByRole('button', { name: t('checkUpdates') }))
     await waitFor(() => { expect(document.querySelector('[data-update-all]')?.textContent).toBe(t('updateAll', { count: '2' })) })
 
     // When the user updates everything
     fireEvent.click(document.querySelector('[data-update-all]') as HTMLElement)
 
-    // Then the applied row left the list and the summary counts only the rest
+    // Then the reason is on the alert line, no row moved, and nothing applied
     await waitFor(() => {
-      expect(document.querySelector('[data-update-error]')?.textContent).toContain('pnpm refused the install')
+      expect(document.querySelector('[data-update-error]')?.textContent).toContain('dsh CLI not found on PATH')
     })
-    expect(listedRows()).toEqual(['dsh-weather'])
-    expect(summaryText()).toBe(t('updatesAvailable', { count: '1' }))
-    expect(document.querySelector('[data-update-applied]')?.textContent).toBe(t('updateAllDone'))
+    expect(listedRows()).toEqual(['dsh-usage', 'dsh-weather'])
+    expect(document.querySelector('[data-update-applied]')).toBeNull()
+    expect(document.querySelector('[data-update-restart]')?.getAttribute('data-restart-pending')).toBe('0')
+    expect(summaryText()).toBe(t('updatesAvailable', { count: '2' }))
   })
 
   it('user sees an update that landed but needs a restart named, while the run carries on', async () => {
@@ -256,28 +255,28 @@ describe('updating every third-party plugin', () => {
     // (the replaced bundle's rows left this process, issue #1905) and the
     // second one in place
     const second: PluginUpdateItem = { id: 'dsh-weather', current: '1.0.0', latest: '1.1.0' }
-    const update = vi.fn(async (id: string) => {
-      const version = id === 'dsh-usage' ? '0.9.2' : '1.1.0'
-      return landed(id, version, id === 'dsh-usage' ? [id] : [])
-    })
-    renderToolbar(face({ checkUpdates: vi.fn(async () => [thirdParty, second]), update }))
+    const updateAll = vi.fn(async () => batch([
+      applied('dsh-usage', '0.9.2', true),
+      applied('dsh-weather', '1.1.0'),
+    ]))
+    renderToolbar(face({ checkUpdates: vi.fn(async () => [thirdParty, second]), updateAll }))
     fireEvent.click(screen.getByRole('button', { name: t('checkUpdates') }))
     await waitFor(() => { expect(document.querySelector('[data-update-all]')?.textContent).toBe(t('updateAll', { count: '2' })) })
 
     // When the user updates everything
     fireEvent.click(document.querySelector('[data-update-all]') as HTMLElement)
 
-    // Then both rows were applied, the batch ran to the end, nothing is
-    // reported as a failure, and the restart-only row states its own fact
+    // Then both rows were applied, nothing is reported as a failure, and the
+    // restart-only row states its own fact
     await waitFor(() => {
       expect(document.querySelector('[data-update-restart-row="dsh-usage"]')?.textContent).toContain(
         t('updateRestartRequired', { version: '0.9.2' }),
       )
     })
-    expect(update.mock.calls.map(call => call[0])).toEqual(['dsh-usage', 'dsh-weather'])
+    expect(updateAll.mock.calls).toHaveLength(1)
     expect(document.querySelector('[data-update-error]')).toBeNull()
     expect(document.querySelector('[data-update-restart-row="dsh-weather"]')).toBeNull()
-    // The plugin still counts as applied, so the restart entry stays offered
+    // Both rows landed, so both count and the restart entry is offered
     expect(document.querySelector('[data-update-restart]')?.getAttribute('data-restart-pending')).toBe('2')
     expect(listedRows()).toEqual([])
   })

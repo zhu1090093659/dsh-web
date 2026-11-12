@@ -34,6 +34,7 @@ const ROUTES = [
   '/api/plugin-manager/set-enabled',
   '/api/plugin-manager/status',
   '/api/plugin-manager/update',
+  '/api/plugin-manager/updates',
 ]
 
 /**

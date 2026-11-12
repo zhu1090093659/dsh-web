@@ -11,11 +11,19 @@ describe('real-browser configuration', () => {
   it('operator keeps the isolated browser as the default and supplies the local CDP default', () => {
     // Given no browser-view profile overrides
     // When the configuration schema resolves its defaults
-    // Then real-browser mode is off and the endpoint is loopback
+    // Then real-browser mode is off, the endpoint is loopback, and pages idle out after three days
     expect(effectiveConfig(Config({}))).toEqual({
       realBrowserEnabled: false,
       cdpEndpoint: 'http://127.0.0.1:9222',
+      idleCloseDays: 3,
     })
+  })
+
+  it('operator edits the idle window and the live reference reports the new value', () => {
+    // Given a profile that closes idle pages after seven days
+    // When the configuration resolves
+    // Then the resolved window is seven, not the schema default
+    expect(effectiveConfig(Config({ idleCloseDays: 7 })).idleCloseDays).toBe(7)
   })
 })
 

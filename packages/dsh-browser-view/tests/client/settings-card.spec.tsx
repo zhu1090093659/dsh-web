@@ -114,3 +114,35 @@ describe('Web Extensions real-browser settings card', () => {
     controller.dispose()
   })
 })
+
+describe('Web Extensions idle-close field', () => {
+  it('operator types an idle window and the card writes the number it parses', async () => {
+    // Given the shared card form with no idle window stored yet
+    // When a reader types 0 and saves
+    // Then the write is the number 0, the value that disables the sweep
+    const form = new FakeConfigForm()
+    const controller = new BrowserViewSettingsCardController(form)
+    const face = controller.inject()
+    actOn(() => { face.edit('idleCloseDays', '0') })
+    actOn(() => { face.save() })
+    await vi.waitFor(() => { expect(form.mutations).toHaveLength(1) })
+    expect(form.mutations[0].ops).toEqual([{ op: 'set', path: ['idleCloseDays'], value: 0 }])
+    controller.dispose()
+  })
+
+  it('operator types a negative idle window and the draft is flagged instead of staged', () => {
+    // Given a card bound to a native form
+    // When a reader types a negative number of days
+    // Then the field keeps the text and reports it invalid, so no write is staged
+    const form = new FakeConfigForm()
+    const controller = new BrowserViewSettingsCardController(form)
+    const face = controller.inject()
+    actOn(() => { face.edit('idleCloseDays', '-1') })
+    const state = face.hooks.browserViewSettingsCard.getSnapshot()
+    expect(state.idleCloseDays.text).toBe('-1')
+    expect(state.idleCloseDays.invalid).toBe(true)
+    expect(form.mutations).toHaveLength(0)
+    controller.dispose()
+  })
+})
+

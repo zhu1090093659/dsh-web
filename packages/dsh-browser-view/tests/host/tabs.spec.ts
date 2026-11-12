@@ -424,3 +424,76 @@ describe('document replacement', () => {
     expect(manager.consoleEntries('tab-1').map(entry => entry.text)).toEqual(['enter-pressed'])
   })
 })
+
+describe('idle tabs', () => {
+  const DAY = 24 * 60 * 60 * 1_000
+
+  it('operator leaves a created page untouched for the window and it is reported idle', async () => {
+    // Given a created tab and a clock one millisecond short of a three-day window
+    // When the clock passes the window
+    // Then the tab is not idle before the window and is idle at it
+    let clock = 1_000
+    const { manager } = await openManager({ clock: () => clock })
+    clock = 1_000 + 3 * DAY - 1
+    expect(manager.idleCandidates(3 * DAY)).toEqual([])
+    clock = 1_000 + 3 * DAY
+    expect(manager.idleCandidates(3 * DAY)).toEqual(['tab-1'])
+    await manager.dispose()
+  })
+
+  it('operator works on a page inside the window and the idle clock restarts at the touch', async () => {
+    // Given a tab touched after it was created
+    // When the creation time would already have expired but the touch has not
+    // Then the tab stays off the idle list, and joins it only a full window after the touch
+    let clock = 1_000
+    const { manager } = await openManager({ clock: () => clock })
+    clock = 1_000 + 2 * DAY
+    manager.touch('tab-1')
+    clock = 1_000 + 4 * DAY
+    expect(manager.idleCandidates(3 * DAY)).toEqual([])
+    clock = 1_000 + 5 * DAY
+    expect(manager.idleCandidates(3 * DAY)).toEqual(['tab-1'])
+    await manager.dispose()
+  })
+
+  it('operator touches a tab that closed meanwhile and the unknown id is ignored', async () => {
+    // Given a tab id that no longer exists
+    // When a tool call touches it
+    // Then nothing throws, so a close racing a tool call costs no error
+    const { manager } = await openManager()
+    expect(() => { manager.touch('tab-closed') }).not.toThrow()
+    await manager.dispose()
+  })
+
+  it('operator adopts a page from a real browser and the sweep never selects it', async () => {
+    // Given one adopted real-browser page and one tab DSH created
+    // When both are older than the window
+    // Then only the created tab is idle: a page from somebody's browser is not a candidate
+    let clock = 1_000
+    const transport = new FakeTransport()
+    transport.responses.set('Target.attachToTarget', (params: Record<string, unknown>) => ({ sessionId: 'session-' + String(params.targetId) }))
+    transport.responses.set('Target.getTargets', {
+      targetInfos: [{ targetId: 'adopted-1', type: 'page', url: 'https://a.test/', title: 'A' }],
+    })
+    transport.responses.set('Target.createTarget', { targetId: 'created-1' })
+    const manager = new TabManager({ transport, discoverTargets: true, pinViewport: false, now: () => clock })
+    await manager.discoverExistingTabs()
+    await manager.createTab({ sessionId: 'session-a' })
+    clock = 1_000 + 4 * DAY
+    expect(manager.idleCandidates(3 * DAY)).toEqual(['created-1'])
+    await manager.dispose()
+  })
+
+  it('operator sets the window to zero and no tab is ever idle', async () => {
+    // Given a tab a month old
+    // When the configured window is zero or negative
+    // Then the sweep selects nothing, which is what the disabled policy means
+    let clock = 1_000
+    const { manager } = await openManager({ clock: () => clock })
+    clock = 1_000 + 30 * DAY
+    expect(manager.idleCandidates(0)).toEqual([])
+    expect(manager.idleCandidates(-1)).toEqual([])
+    await manager.dispose()
+  })
+})
+

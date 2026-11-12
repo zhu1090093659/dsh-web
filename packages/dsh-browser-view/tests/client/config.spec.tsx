@@ -14,11 +14,11 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-function formFixture(): ConfigPageForm & { mutate: ReturnType<typeof vi.fn> } {
+function formFixture(values: Record<string, unknown> = {}): ConfigPageForm & { mutate: ReturnType<typeof vi.fn> } {
   return {
     state: {
       status: 'ready',
-      value: { realBrowserEnabled: false, cdpEndpoint: 'http://127.0.0.1:9222' },
+      value: { realBrowserEnabled: false, cdpEndpoint: 'http://127.0.0.1:9222', ...values },
       base: undefined,
       user: undefined,
       revision: 7,
@@ -51,6 +51,27 @@ describe('browser-view row configuration', () => {
     await act(async () => { input.focus(); input.blur(); await Promise.resolve() })
     await vi.waitFor(() => {
       expect(form.mutate).toHaveBeenNthCalledWith(2, [{ op: 'set', path: ['cdpEndpoint'], value: 'http://localhost:9333' }], 7)
+    })
+  })
+
+it('operator types an idle window in the row form and the commit writes a whole number', async () => {
+    // Given a ready volatile form carrying a three-day window
+    // When the reader types 0 into the idle field and leaves it
+    // Then the write carries the number 0, not the string the field showed
+    const form = formFixture({ idleCloseDays: 3 })
+    const mounted = render(<BrowserViewConfig t={translate(zh)} view="page" form={form} />)
+    tree = mounted
+    const idle = mounted.container.querySelectorAll('input[type="text"]')[1] as HTMLInputElement
+    expect(idle.value).toBe('3')
+    actOn(() => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+      setter?.call(idle, '0')
+      idle.dispatchEvent(new Event('input', { bubbles: true }))
+      idle.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await act(async () => { idle.focus(); idle.blur(); await Promise.resolve() })
+    await vi.waitFor(() => {
+      expect(form.mutate).toHaveBeenCalledWith([{ op: 'set', path: ['idleCloseDays'], value: 0 }], 7)
     })
   })
 

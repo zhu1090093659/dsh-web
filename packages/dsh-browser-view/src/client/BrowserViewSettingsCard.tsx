@@ -8,7 +8,7 @@ import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-cli
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { PluginSettingsCard, BooleanField, ValueField } from './PluginSettingsCard.tsx'
-import { CardForm, booleanField, textField, type CardActions, type CardShell, type FieldState } from './settings-form.ts'
+import { CardForm, booleanField, numberField, textField, type CardActions, type CardShell, type FieldState } from './settings-form.ts'
 import { createServedEntryForm } from './settings-entry-form.ts'
 import { BrowserViewGuideGlyph } from './guide-icon.tsx'
 
@@ -16,12 +16,14 @@ import { BrowserViewGuideGlyph } from './guide-icon.tsx'
 export interface BrowserViewSettings {
   realBrowserEnabled?: boolean
   cdpEndpoint?: string
+  idleCloseDays?: number
 }
 
 /** Card projection bound by the renderer. */
 export interface BrowserViewSettingsCardState extends CardShell {
   realBrowserEnabled: FieldState
   cdpEndpoint: FieldState
+  idleCloseDays: FieldState
 }
 
 /** Registration-side snapshot and write actions. */
@@ -49,6 +51,7 @@ export class BrowserViewSettingsCardController {
     this.form = new CardForm(scope, [
       booleanField('realBrowserEnabled'),
       textField('cdpEndpoint'),
+      numberField('idleCloseDays', { integer: true, min: 0 }),
     ])
     this.store = this.form.bind(() => this.projection())
   }
@@ -58,6 +61,7 @@ export class BrowserViewSettingsCardController {
       ...this.form.shell(),
       realBrowserEnabled: this.form.field('realBrowserEnabled'),
       cdpEndpoint: this.form.field('cdpEndpoint'),
+      idleCloseDays: this.form.field('idleCloseDays'),
     }
   }
 
@@ -118,6 +122,17 @@ export function BrowserViewSettingsCard(props: BrowserViewSettingsCardProps) {
         {...state.cdpEndpoint}
         onEdit={(text) => { props.edit('cdpEndpoint', text) }}
         onReset={() => { props.resetField('cdpEndpoint') }}
+      />
+      <ValueField
+        id="settings-browser-view-idle-days"
+        label={t('settings.idleCloseDays')}
+        hint={t('settings.idleCloseDaysHint')}
+        placeholder="3"
+        numeric
+        {...shared}
+        {...state.idleCloseDays}
+        onEdit={(text) => { props.edit('idleCloseDays', text) }}
+        onReset={() => { props.resetField('idleCloseDays') }}
       />
     </PluginSettingsCard>
   )

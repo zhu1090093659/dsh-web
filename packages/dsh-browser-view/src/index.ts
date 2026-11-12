@@ -76,6 +76,9 @@ export function apply(ctx: Context, config?: RuntimeConfig): void {
         ? { mode: 'cdp', cdpEndpoint: value.cdpEndpoint }
         : { mode: 'isolated' }
     },
+    // Read per sweep, so a settings edit applies without a remount and without
+    // reconnecting the browser: a threshold change is not a source change.
+    idleCloseDays: () => effectiveConfig(config).idleCloseDays,
     // Resolved per navigation, not at mount: the connection service owns the
     // process launch token, may mount after this plugin, and answers with a
     // URL that is only good for this process. A host that mounts none simply

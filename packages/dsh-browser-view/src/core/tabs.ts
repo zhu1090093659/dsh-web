@@ -80,6 +80,11 @@ interface TabRecord {
   loaderId: string | undefined
   ownerSessionId: string | undefined
   origin: 'created' | 'adopted'
+  /**
+   * Clock reading of the last tool call that worked on this tab. Seeded at
+   * attach, so a page DSH just opened counts as active; nothing else writes it.
+   */
+  lastActiveAt: number
   console: BrowserConsoleEntry[]
   network: BrowserNetworkEntry[]
   /** Pending requests keyed by network request id, so response frames update in place. */
@@ -239,6 +244,37 @@ export class TabManager {
     return this.view(record)
   }
 
+  /**
+   * Record that a tool call just worked on this tab.
+   *
+   * Only the host's own tool paths call this. A panel that keeps watching a
+   * page is not activity: a page nobody drives must still age out, or a viewer
+   * left open on one tab keeps the cleanup from ever running.
+   * @param tabId - the tab the call used; an id that closed meanwhile is ignored.
+   */
+  touch(tabId: string): void {
+    const record = this.tabs.get(tabId)
+    if (record === undefined) return
+    record.lastActiveAt = this.now()
+  }
+
+  /**
+   * Tabs DSH opened itself that no tool call has touched within `maxAgeMs`.
+   *
+   * Adopted real-browser pages are never candidates: they belong to the person
+   * using that browser, and the real-browser contract closes them only when a
+   * caller names the tab explicitly.
+   * @param maxAgeMs - idle window in milliseconds; zero or less selects nothing.
+   * @returns ids in creation order.
+   */
+  idleCandidates(maxAgeMs: number): string[] {
+    if (!(maxAgeMs > 0)) return []
+    const nowMs = this.now()
+    return [...this.tabs.values()]
+      .filter(record => record.origin === 'created' && nowMs - record.lastActiveAt >= maxAgeMs)
+      .map(record => record.id)
+  }
+
   /** Internal record access for the layers that need the CDP session. */
   sessionOf(tabId: string): string {
     const record = this.tabs.get(tabId)
@@ -323,6 +359,7 @@ export class TabManager {
       loaderId: undefined,
       ownerSessionId: undefined,
       origin,
+      lastActiveAt: this.now(),
       console: [],
       network: [],
       pendingRequests: new Map(),

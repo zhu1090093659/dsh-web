@@ -47,3 +47,5 @@ The package suite covers endpoint validation, hostile discovery WebSockets, defa
 Enabling the mode deliberately grants broad access to real authenticated pages. The local CDP port must be treated as a sensitive capability and opened only for the intended browser lifetime. Chrome's default-profile restriction means some users must use a separately maintained real profile and sign in there once; the feature does not bypass that browser security control.
 
 The host now owns target adoption and two lifecycle models. Future changes must preserve mode-specific disposal, idempotent target attachment, real viewport behavior, and the explicit close boundary. Protocol fields are additive, so no wire-version bump is required.
+
+The idle auto-close decision ([browser view idle auto-close](2026-11-12-browser-view-idle-close.md)) closes only tabs DSH created, so the explicit-close boundary for adopted tabs stated here still holds.

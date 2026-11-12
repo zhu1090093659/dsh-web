@@ -13,6 +13,7 @@ export const BROWSER_VIEW_CONFIG_KEYS = [
 interface BrowserConfigValues {
   realBrowserEnabled?: unknown
   cdpEndpoint?: unknown
+  idleCloseDays?: unknown
 }
 
 /** The row configuration form backed by the Host's volatile settings namespace. */
@@ -22,10 +23,13 @@ export function BrowserViewConfig({ t, view, form }: PropsLocale<'browser-view'>
   const endpoint = typeof values?.cdpEndpoint === 'string' && values.cdpEndpoint.length > 0
     ? values.cdpEndpoint
     : 'http://127.0.0.1:9222'
+  const idleDays = typeof values?.idleCloseDays === 'number' ? values.idleCloseDays : 3
   const [draft, setDraft] = useState(endpoint)
+  const [idleDraft, setIdleDraft] = useState(String(idleDays))
   const [pending, setPending] = useState(false)
   const [failed, setFailed] = useState(false)
   useEffect(() => { setDraft(endpoint) }, [endpoint])
+  useEffect(() => { setIdleDraft(String(idleDays)) }, [idleDays])
   if (view === 'summary') return t('config.summary')
   if (form === undefined || form.state.status !== 'ready') {
     return <p className={css.hint}>{t('config.unavailable')}</p>
@@ -47,6 +51,11 @@ export function BrowserViewConfig({ t, view, form }: PropsLocale<'browser-view'>
     const next = draft.trim()
     if (next === endpoint || next === '') return
     await mutate([{ op: 'set', path: ['cdpEndpoint'], value: next }])
+  }
+  const commitIdleDays = async (): Promise<void> => {
+    const next = Number(idleDraft.trim())
+    if (!Number.isInteger(next) || next < 0 || next === idleDays) return
+    await mutate([{ op: 'set', path: ['idleCloseDays'], value: next }])
   }
   return (
     <section className={css.root} data-dsh-plugin={BROWSER_VIEW_PLUGIN} aria-busy={pending}>
@@ -81,6 +90,25 @@ export function BrowserViewConfig({ t, view, form }: PropsLocale<'browser-view'>
         />
       </label>
       <p className={css.hint}>{t('config.cdpEndpoint.hint')}</p>
+      <label className={css.field}>
+        <span>{t('config.idleCloseDays')}</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={idleDraft}
+          disabled={disabled}
+          spellCheck={false}
+          onChange={(event) => { setIdleDraft(event.currentTarget.value) }}
+          onBlur={() => { void commitIdleDays() }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              event.currentTarget.blur()
+            }
+          }}
+        />
+      </label>
+      <p className={css.hint}>{t('config.idleCloseDays.hint')}</p>
       {failed && <p className={css.error} role="alert">{t('config.failed')}</p>}
     </section>
   )

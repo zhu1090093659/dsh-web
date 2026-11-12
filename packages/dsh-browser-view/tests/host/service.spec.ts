@@ -538,3 +538,74 @@ describe('dispose', () => {
     expect(events).toHaveLength(seen)
   })
 })
+describe('idle sweep', () => {
+  const DAY = 24 * 60 * 60 * 1_000
+
+  it('operator leaves a page untouched for the window and the sweep closes it', async () => {
+    // Given one created tab and a three-day window
+    // When the clock passes three days and a sweep runs
+    // Then the tab closes and the panel state no longer lists it
+    let clock = 1_000
+    const browser = createFakeBrowser({ now: () => clock, idleCloseDays: () => 3 })
+    const tab = await browser.service.ensureTab('session-a')
+    clock = 1_000 + 3 * DAY
+    await expect(browser.service.sweepIdle()).resolves.toEqual([tab.id])
+    expect((await browser.service.listTabs()).tabs).toEqual([])
+  })
+
+  it('operator drives one of two pages and the sweep closes only the untouched one', async () => {
+    // Given two tabs with one of them driven inside the window
+    // When the clock passes the window for the other tab and a sweep runs
+    // Then only the untouched tab closes
+    let clock = 1_000
+    const browser = createFakeBrowser({ now: () => clock, idleCloseDays: () => 3 })
+    const idle = await browser.service.ensureTab('session-a')
+    const busy = await browser.service.ensureTab('session-b')
+    clock = 1_000 + 2 * DAY
+    await browser.service.tabFor('session-b')
+    clock = 1_000 + 4 * DAY
+    await expect(browser.service.sweepIdle()).resolves.toEqual([idle.id])
+    expect((await browser.service.listTabs()).tabs.map(tab => tab.id)).toEqual([busy.id])
+  })
+
+  it('operator sweeps the tab a session was bound to and the next call opens a fresh one', async () => {
+    // Given a session bound to a tab the sweep closed
+    // When that session asks for its tab again
+    // Then a new tab is created instead of the closed id coming back
+    let clock = 1_000
+    const browser = createFakeBrowser({ now: () => clock, idleCloseDays: () => 3 })
+    const first = await browser.service.ensureTab('session-a')
+    clock = 1_000 + 3 * DAY
+    await browser.service.sweepIdle()
+    const second = await browser.service.ensureTab('session-a')
+    expect(second.id).not.toBe(first.id)
+    expect(browser.transport.callsOf('Target.createTarget')).toHaveLength(2)
+  })
+
+  it('operator configures zero idle days and no sweep closes a page or starts a browser', async () => {
+    // Given a host with the sweep disabled and no browser running yet
+    // When a sweep runs, and then a page sits open for a month
+    // Then nothing closes and no browser was ever launched
+    let clock = 1_000
+    const disabled = createFakeBrowser({ now: () => clock, idleCloseDays: () => 0 })
+    await expect(disabled.service.sweepIdle()).resolves.toEqual([])
+    expect(disabled.opens()).toBe(0)
+    const tab = await disabled.service.ensureTab('session-a')
+    clock = 1_000 + 30 * DAY
+    await expect(disabled.service.sweepIdle()).resolves.toEqual([])
+    expect((await disabled.service.listTabs()).tabs.map(entry => entry.id)).toEqual([tab.id])
+  })
+
+  it('operator builds a service with no idle policy and a month-old page stays open', async () => {
+    // Given a service built without an idle window
+    // When a sweep runs against a page a month old
+    // Then nothing closes, because an unconfigured policy is not a zero-day policy
+    let clock = 1_000
+    const browser = createFakeBrowser({ now: () => clock })
+    const tab = await browser.service.ensureTab('session-a')
+    clock = 1_000 + 30 * DAY
+    await expect(browser.service.sweepIdle()).resolves.toEqual([])
+    expect((await browser.service.listTabs()).tabs.map(entry => entry.id)).toEqual([tab.id])
+  })
+})
+

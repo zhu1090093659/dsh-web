@@ -122,6 +122,13 @@ export interface BrowserViewServiceOptions {
   authenticatedUrl?: (url: string) => string | undefined
   /** Live browser source; called for state and every new connection. */
   resolveConfig?: () => BrowserConnectionConfig
+  /**
+   * Idle window in days for the tab sweep, read per sweep so a settings edit
+   * applies on the next one. Zero or less disables the sweep. @default () => 0
+   */
+  idleCloseDays?: () => number
+  /** How often the idle sweep runs; zero disables it. @default IDLE_SWEEP_INTERVAL_MS */
+  sweepIntervalMs?: number
   /** Browser factory, replaced by tests. */
   openSession?: (options: OpenSessionOptions) => Promise<BrowserSession>
 }
@@ -163,6 +170,18 @@ async function openIsolatedSession(options: OpenSessionOptions): Promise<Browser
  * `CDP_COMMAND_TIMEOUT_MS`, exactly as in the isolated mode.
  */
 export const REAL_BROWSER_HANDSHAKE_TIMEOUT_MS = 5_000
+
+/** One day in milliseconds: the unit the idle-close window is configured in. */
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * How often the service looks for tabs that went idle.
+ *
+ * Ten minutes is a compromise between two costs that both land on the host:
+ * a shorter period wakes the process for nothing on a window measured in days,
+ * and a longer one leaves a page running well past its window.
+ */
+export const IDLE_SWEEP_INTERVAL_MS = 10 * 60 * 1000
 
 /**
  * Seams the external session factory resolves when it connects. The defaults
@@ -228,6 +247,9 @@ export class BrowserViewService implements BrowserViewBackend {
   private readonly openSession: NonNullable<BrowserViewServiceOptions['openSession']>
   private readonly resolveConfig: () => BrowserConnectionConfig
   private readonly authenticatedUrl: BrowserViewServiceOptions['authenticatedUrl']
+  private readonly idleCloseDays: () => number
+  private readonly sweepIntervalMs: number
+  private idleTimer: ReturnType<typeof setInterval> | undefined
   private readonly sinks = new Set<BrowserViewSink>()
   private readonly bindings = new Map<string, string>()
   /**
@@ -266,6 +288,18 @@ export class BrowserViewService implements BrowserViewBackend {
     this.openSession = options.openSession ?? openConfiguredSession
     this.resolveConfig = options.resolveConfig ?? (() => ({ mode: 'isolated' }))
     this.authenticatedUrl = options.authenticatedUrl
+    this.idleCloseDays = options.idleCloseDays ?? (() => 0)
+    this.sweepIntervalMs = options.sweepIntervalMs ?? IDLE_SWEEP_INTERVAL_MS
+    if (this.sweepIntervalMs > 0) {
+      const timer: ReturnType<typeof setInterval> = setInterval(() => {
+        void this.sweepIdle().catch(() => undefined)
+      }, this.sweepIntervalMs)
+      // A pending timer holds a Node process open. The sweep is housekeeping:
+      // it must never be the reason the host cannot exit.
+      const unref = (timer as unknown as { unref?: () => void }).unref
+      if (typeof unref === 'function') unref.call(timer)
+      this.idleTimer = timer
+    }
   }
 
   /** Whether a browser is currently running. */
@@ -437,6 +471,34 @@ export class BrowserViewService implements BrowserViewBackend {
   }
 
   /**
+   * Close the tabs no browser tool has touched for the configured idle window.
+   *
+   * Scope is what the real-browser contract allows: only tabs DSH created are
+   * candidates, and a page adopted from the person's own browser is never closed
+   * by a timer — that contract keeps adopted pages closable only through an
+   * explicit `tab_id`. The window is read per sweep, so a settings edit applies
+   * to the next one, and a host with no browser running closes nothing and
+   * starts none: cleanup must never cost a process.
+   * @returns ids of the tabs actually closed, in close order.
+   */
+  async sweepIdle(): Promise<string[]> {
+    if (this.disposed) return []
+    const days = this.idleCloseDays()
+    if (!(days > 0)) return []
+    const session = this.session
+    if (session === undefined || session.transport.closed) return []
+    const closed: string[] = []
+    for (const tabId of session.tabs.idleCandidates(days * DAY_MS)) {
+      // Nothing to do for a target that closed itself between the scan and the
+      // close: the sweep already has the outcome it wanted.
+      if (!session.tabs.has(tabId)) continue
+      await this.closeTab(tabId).catch(() => undefined)
+      if (!session.tabs.has(tabId)) closed.push(tabId)
+    }
+    return closed
+  }
+
+  /**
    * Resolve the tab a tool call from `sessionId` should act on.
    *
    * The order is a safety property, not a preference. An agent that lands on
@@ -458,6 +520,26 @@ export class BrowserViewService implements BrowserViewBackend {
    */
   async tabFor(sessionId: string | undefined, tabId?: string): Promise<BrowserTabView> {
     const tabs = await this.requireTabs()
+    const tab = await this.resolveTabFor(tabs, sessionId, tabId)
+    // Every tool call that resolves a tab counts as activity. That is the whole
+    // activity signal the idle sweep has, and it is what keeps a page somebody
+    // is driving from ageing out mid-task.
+    tabs.touch(tab.id)
+    return tab
+  }
+
+  /**
+   * Apply {@link tabFor}'s resolution order against an already open manager.
+   * @param tabs - the live tab manager.
+   * @param sessionId - calling agent session, when the host provides one.
+   * @param tabId - explicit tab from the tool arguments.
+   * @returns the tab the call should act on.
+   */
+  private async resolveTabFor(
+    tabs: TabManager,
+    sessionId: string | undefined,
+    tabId?: string,
+  ): Promise<BrowserTabView> {
     if (tabId !== undefined && tabId !== '') {
       const found = tabs.list().find(tab => tab.id === tabId)
       if (found === undefined) throw new Error(`unknown tab "${tabId}"; call browser_tabs to see the open tabs`)
@@ -847,6 +929,10 @@ export class BrowserViewService implements BrowserViewBackend {
   async dispose(): Promise<void> {
     if (this.disposed) return
     this.disposed = true
+    if (this.idleTimer !== undefined) {
+      clearInterval(this.idleTimer)
+      this.idleTimer = undefined
+    }
     this.generation += 1
     this.opening = undefined
     // Stop broadcasting first: a panel must not receive a frame from a browser

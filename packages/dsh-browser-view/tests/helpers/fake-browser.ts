@@ -36,6 +36,8 @@ export interface FakeBrowserOptions {
   failLaunch?: () => Error | undefined
   /** Clock for action traces. @default () => 500 */
   now?: () => number
+  /** Idle window the sweep reads, in days; absent means the sweep is off. */
+  idleCloseDays?: () => number
   /**
    * Pin the emulated viewport, as the isolated session does.
    * Set it to false to model a tab adopted from a real browser.
@@ -88,6 +90,7 @@ export function createFakeBrowser(options: FakeBrowserOptions = {}): FakeBrowser
 
   const service = new BrowserViewService({
     now: options.now ?? (() => 500),
+    idleCloseDays: options.idleCloseDays,
     openSession: async (opts): Promise<BrowserSession> => {
       opens += 1
       const failure = options.failLaunch?.()
@@ -96,6 +99,7 @@ export function createFakeBrowser(options: FakeBrowserOptions = {}): FakeBrowser
         transport,
         jpegQuality: opts.jpegQuality,
         viewport: opts.viewport,
+        now: options.now ?? (() => 500),
         pinViewport: options.pinViewport ?? true,
         onFrame: opts.onFrame,
         onTabsChanged: opts.onTabsChanged,

@@ -2,7 +2,7 @@
 
 本仓库是 DeepSeek Harness 的外部插件包，开发只能基于官方 NPM SDK
 （`@deepseek-ai/*` devDependencies，类型从 node_modules 解析，不引用任何
-DSH 源码 checkout）。锚定 0.2.2-rc.1 cohort。
+DSH 源码 checkout）。锚定 0.2.2-rc.2 cohort。
 
 - 所有产品文案遵循 harness 的 i18n 惯例：`zh` 字典为 key 源，`en` 完整对照，
   通过 `ctx.locale.register` 注册。

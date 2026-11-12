@@ -15,7 +15,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.2.2-rc.1"
+      "dsh": ">=0.2.2-rc.2"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -40,7 +40,7 @@
   },
   "license": "Apache-2.0",
   "peerDependencies": {
-    "@deepseek-ai/dsh": ">=0.2.2-rc.1",
+    "@deepseek-ai/dsh": ">=0.2.2-rc.2",
     "react": "^18.2.0"
   },
   "dependencies": {
@@ -49,15 +49,15 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.1.0",
-    "@deepseek-ai/dsh-api-remotes": "^0.2.2-rc.1",
-    "@deepseek-ai/dsh-client-connection": "^0.2.2-rc.1",
-    "@deepseek-ai/dsh-client-locale": "^0.2.2-rc.1",
-    "@deepseek-ai/dsh-client-store": "^0.2.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.2.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.2.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.2.2-rc.1",
-    "@deepseek-ai/dsh-host-webserver": "^0.2.2-rc.1",
-    "@deepseek-ai/dsh-settings": "^0.2.2-rc.1",
+    "@deepseek-ai/dsh-api-remotes": "^0.2.2-rc.2",
+    "@deepseek-ai/dsh-client-connection": "^0.2.2-rc.2",
+    "@deepseek-ai/dsh-client-locale": "^0.2.2-rc.2",
+    "@deepseek-ai/dsh-client-store": "^0.2.2-rc.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.2.2-rc.2",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.2.2-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.2.2-rc.2",
+    "@deepseek-ai/dsh-host-webserver": "^0.2.2-rc.2",
+    "@deepseek-ai/dsh-settings": "^0.2.2-rc.2",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",

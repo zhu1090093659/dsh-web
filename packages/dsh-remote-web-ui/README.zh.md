@@ -11,7 +11,7 @@
 <p align="center">
   <img src="https://img.shields.io/npm/v/@linxin666/dsh-remote-web-ui?style=flat-square" alt="Version">
   &nbsp;
-  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--rc.1-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
+  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--rc.2-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
@@ -156,7 +156,7 @@ pnpm --filter @linxin666/dsh-remote-web-ui test
 pnpm --filter @linxin666/dsh-remote-web-ui run typecheck
 ```
 
-对端 API 来自官方 NPM SDK：用到的每个 `@deepseek-ai/*` 包都声明在 devDependencies（0.2.2-rc.1 cohort）中，TypeScript/Vitest 直接从 node_modules 解析类型——不需要 DSH 源码 checkout。消费侧 `prepare` 构建（`tsdown.prepare.config.ts`）不做类型检查地转译，git 安装同样无需 harness checkout。
+对端 API 来自官方 NPM SDK：用到的每个 `@deepseek-ai/*` 包都声明在 devDependencies（0.2.2-rc.2 cohort）中，TypeScript/Vitest 直接从 node_modules 解析类型——不需要 DSH 源码 checkout。消费侧 `prepare` 构建（`tsdown.prepare.config.ts`）不做类型检查地转译，git 安装同样无需 harness checkout。
 
 ## 检查
 
@@ -168,7 +168,7 @@ pnpm run build
 
 ## Harness 契约依赖
 
-锚定 0.2.2-rc.1 线；本构建依赖的接缝：
+锚定 0.2.2-rc.2 线；本构建依赖的接缝：
 
 - **`sidebar.footer.action` 底部席位**（0.1.7 shell 组合）：侧栏声明并渲染远程入口占据的席位。
 - **`ctx.layout.toggleSidebar()`**（packages/client/ui-layout）：鲸鱼按钮经官方面板动作面展开折叠侧栏。
@@ -197,7 +197,7 @@ pnpm run build
 - **通道携带进程自己的内部凭据。** harness 浏览器认证 cookie 与 authority 绑定（为浏览器访问过的确切 `host:port` 签发）且没有回环豁免，因此转发到 `127.0.0.1` 的再发起请求无法复用设备的 cookie。插件因此自行兑换一次自己的启动令牌——与浏览器首次访问执行的是同一次交换——并把所得 cookie 附到再发起请求上。该凭据只在上面的配对门之后被使用；停止/取消配对会立即停止对它的使用。
 
 - **通道转发调用者自己的请求头，只把属于本通道的那些留在门外（issue #1925）。** 插件可能用自己的头认证自己的调用——实测命中案例是 `@michengai/dsh-im-connect` 的 `/sessions/ensure` 带 `x-dsh-im-connect-client`——所以再发起的请求不再按固定白名单重建：除本通道自己掌握的头之外全部透传。它把 `host` 改写为回环权威、用进程自己的内层凭据替换调用者 cookie、合成 `sec-fetch-site: same-origin`，并丢弃 `origin`/`referer`、整族浏览器 fetch 元数据（`sec-*`）、逐跳头（含调用者自己在 `Connection` 头里点名的那些）、转发标记（`x-forwarded-*`、`cf-connecting-ip`、`forwarded`、`x-real-ip`——再发起的请求是回环请求，边缘留下的戳会让围栏把它判成远程），以及无 cookie 的设备凭据 `x-dsh-remote-device`：门在入口消费它，绝不向外转发。`accept-encoding`、`range` 与 `if-range` 同样不透传，因为本代理复制的响应头里既没有 `content-encoding` 也没有 `content-range`。
-- **运行时现实：局域网浏览器走 `/remote` 网关，不走原生 `/api`。** 本插件从不重绑 web server，因此宿主停在本机回环上，harness 的 `/api` Host 围栏对局域网权威返回 403。转发器让宿主在局域网上可达，但那里只有本插件自己的面在应答：配对入口页、状态视图与门控 `/remote` 通道。要在局域网权威上恢复原生 `/api`，需要 harness web server 的 `trustedHosts`，这不在本包范围内；运维自己用 `--host` 把宿主绑到网络时，那块面只由 harness 围栏约束，因为官方运行时没有任何组件发出 `api/gate` seam（对照本仓库安装的 0.2.2-rc.1 包核实）。在这种部署下，设备已经兑换过的浏览器凭据在停止/取消配对后仍然有效，直到其自然过期（30 天）——撤销约束的是 `/remote` 通道与配对 cookie，而不是那个凭据。插件会对 `/api` 姿态做探测并大声告警；请把宿主暴露到网络当作深思熟虑的决定，在共享机器上优先回环加隧道。
+- **运行时现实：局域网浏览器走 `/remote` 网关，不走原生 `/api`。** 本插件从不重绑 web server，因此宿主停在本机回环上，harness 的 `/api` Host 围栏对局域网权威返回 403。转发器让宿主在局域网上可达，但那里只有本插件自己的面在应答：配对入口页、状态视图与门控 `/remote` 通道。要在局域网权威上恢复原生 `/api`，需要 harness web server 的 `trustedHosts`，这不在本包范围内；运维自己用 `--host` 把宿主绑到网络时，那块面只由 harness 围栏约束，因为官方运行时没有任何组件发出 `api/gate` seam（对照本仓库安装的 0.2.2-rc.2 包核实）。在这种部署下，设备已经兑换过的浏览器凭据在停止/取消配对后仍然有效，直到其自然过期（30 天）——撤销约束的是 `/remote` 通道与配对 cookie，而不是那个凭据。插件会对 `/api` 姿态做探测并大声告警；请把宿主暴露到网络当作深思熟虑的决定，在共享机器上优先回环加隧道。
 - **配对设备是完全控制凭据。** host 模式下它可达完整 host API——聊天、会话、设置、凭据、Agent 预设、产出物——与 SDK 对回环桌面的信任一致。只有三个控制面（配对、自更新、插件安装/卸载）保持物理本地。只配对你控制的设备；停止或逐设备取消配对立即撤销。
 - **控制端点仅限回环，状态视图对隧道访客只答最小载荷**：铸造/停止/撤销/重命名/合并、设备列表、事件流与 lan-bind 状态只应答桌面请求（回环套接字与回环 Host、无转发头），门控通道同时让自更新与插件安装路径保持物理本地。`/api/pair/status` 经隧道可达，但被转发或未配对的调用者只会收到 `{ ok, paired, requirePairingForLan, phase, lanAvailable }`；完整快照——令牌过期时间、公网隧道 URL、计数——与逐设备列表只留在桌面。局域网源浏览器看到「配对面板仅限本机使用」横幅。
 - **带转发头的请求一律视为远程（issue #1906），只有运维本人可以收窄它。** 部署在宿主前面的反向代理——Cloudflare 隧道、frp、nginx 反代——拨的是 `127.0.0.1:<port>` 并把 Host 头改写成该上游字面量，于是源站为一个公网请求同时看到回环套接字与回环 Host：回环判定两半都成立，配对门会直接放行。围栏因此把携带 `CF-Connecting-IP` 或 `X-Forwarded-For` 的请求判为被转发、永不视为本机。该规则只存在一份（`shared/host/loopback.ts` 的 `isProxiedRequest`，由 `isLoopbackRequest` 消费），并随同步副本在全部包生效。本包把这个问题拆成两层（issue #1919）：`isLoopbackUpstream`（回环套接字与 Host，刻意忽略转发头）只判断一个 Host 能否被应答，因此隧道访客能到达配对状态与入口页；`isLoopbackClient`（无转发头）继续守护配对门、`/api/pair` 控制面与桌面载荷。本包没有任何开关会把被转发的请求放进承载凭据的面；同级 task-board 插件把那个更窄的反例做成自己的默认关闭开关（`trustForwardedProxy`）。真实的桌面请求（回环套接字 + 回环 Host + 无转发头）仍判为本机；浏览器同源标记逻辑未改动，跨站请求照旧被拒。残余风险：会剥掉这两个头的代理会让请求重新回到与桌面相同的形状，任何基于头的规则都无法区分——请让代理转发 `X-Forwarded-For`（Cloudflare 与 nginx 默认转发），并注意本机进程本来就能伪造任何请求头。

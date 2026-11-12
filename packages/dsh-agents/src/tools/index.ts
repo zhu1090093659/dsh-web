@@ -7,6 +7,7 @@
 
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { TeamService, TeamServiceContext } from '../team/index.ts'
+import { TEAM_IDENTITY_CONTEXT_ORDER } from '../team/index.ts'
 import { readService } from '../host/services.ts'
 import { AGENTS_PERMISSIONS } from '../protocol.ts'
 import { TeamTaskId } from '../team/types.ts'
@@ -222,7 +223,7 @@ function install(agent: Agent, ctx: TeamServiceContext, agentTeams: TeamService,
     }))
     register(scoped.systemPrompt.context({
       name: 'team:identity',
-      order: scoped.systemPrompt.getContextOrder('TEAM_IDENTITY'),
+      order: TEAM_IDENTITY_CONTEXT_ORDER,
       required: true,
       text: () => {
         const { role, name } = agentTeams.membership(agent)

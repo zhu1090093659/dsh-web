@@ -22,7 +22,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.2.2-rc.1"
+      "dsh": ">=0.2.2-rc.2"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -42,12 +42,12 @@
     "typecheck": "tsgo --noEmit"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh": ">=0.2.2-rc.1"
+    "@deepseek-ai/dsh": ">=0.2.2-rc.2"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.1.0",
-    "@deepseek-ai/dsh-client-locale": "^0.2.2-rc.1",
-    "@deepseek-ai/dsh-host-webserver": "^0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-locale": "^0.2.2-rc.2",
+    "@deepseek-ai/dsh-host-webserver": "^0.2.2-rc.2",
     "@types/node": "^22.20.0",
     "jsdom": "29.1.1",
     "mermaid": "^12.2.0",

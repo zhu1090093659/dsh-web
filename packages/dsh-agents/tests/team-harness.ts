@@ -40,9 +40,8 @@ export interface FakeAgent {
     tools: { register(definition: { name: string }): () => void }
     systemPrompt: {
       section(section: { name: string }): () => void
-      context(context: { name: string }): () => void
+      context(context: { name: string; order: number }): () => void
       getSectionOrder(name: string): number
-      getContextOrder(name: string): number
     }
   }
 }
@@ -54,6 +53,8 @@ export interface TeamHarness {
   readonly tools: string[]
   readonly sections: string[]
   readonly contexts: string[]
+  /** Registered context orders, in registration order; the position each context claims. */
+  readonly contextOrders: number[]
   readonly projections: Array<{ key: string; stateVersion: number }>
   readonly agents: Map<string, FakeAgent>
   /** The activation request the fake subagent service received, when one arrived. */
@@ -81,6 +82,7 @@ export function createTeamHarness(): TeamHarness {
   const tools: string[] = []
   const sections: string[] = []
   const contexts: string[] = []
+  const contextOrders: number[] = []
   const projections: Array<{ key: string; stateVersion: number }> = []
   const started: unknown[] = []
 
@@ -99,6 +101,7 @@ export function createTeamHarness(): TeamHarness {
     tools,
     sections,
     contexts,
+    contextOrders,
     projections,
     agents,
     started,
@@ -138,10 +141,10 @@ export function createTeamHarness(): TeamHarness {
             },
             context: (context) => {
               contexts.push(id + ':' + context.name)
+              contextOrders.push(context.order)
               return () => undefined
             },
             getSectionOrder: () => 600,
-            getContextOrder: () => 125,
           },
         },
       }

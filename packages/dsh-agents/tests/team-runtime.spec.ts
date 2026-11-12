@@ -70,6 +70,10 @@ describe('squad-run gate on the Team tool surface', () => {
     expect(harness.tools).toEqual(TEAM_TOOL_NAMES)
     expect(harness.sections).toEqual(['squad-lead:team:policy'])
     expect(harness.contexts).toEqual(['squad-lead:team:identity'])
+    // 125 is the slot rc.1's central table allocated to TEAM_IDENTITY; 0.2.2-rc.2
+    // stopped answering for the name, so the plugin must supply the number itself
+    // (the official context() rejects a non-finite order).
+    expect(harness.contextOrders).toEqual([125])
     expect(harness.sections.some(entry => entry.startsWith(plain.id))).toBe(false)
 
     // A later ordinary session sees neither a tool nor the policy section.

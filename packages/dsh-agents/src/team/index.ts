@@ -104,6 +104,21 @@ function steerTeammatePrompt(
   throw new TeamError('subagent runtime does not support teammate prompt delivery', 'TEAM_DISPOSED')
 }
 
+/**
+ * Prompt-context position shared by the Team identity context and the squad
+ * roster context.
+ *
+ * `0.2.2-rc.1` allocated this slot in the host's central table
+ * (`CONTEXT_ORDERS.TEAM_IDENTITY === 125` in `@deepseek-ai/dsh-system-prompt`).
+ * `0.2.2-rc.2` dropped the name from that table when the official runtime became
+ * a shared task board, so `getContextOrder('TEAM_IDENTITY')` now answers
+ * `undefined` and the official `context()` rejects it (a context order must be
+ * finite). The position is package-owned now: 125 puts both contexts between
+ * `SUBAGENT_DELEGATION` (120) and `HARNESS_SOURCE` (200), exactly where rc.1
+ * assembled them.
+ */
+export const TEAM_IDENTITY_CONTEXT_ORDER = 125
+
 /** Validate one positive safe-integer deployment limit. */
 function positiveLimit(name: string, value: number): number {
   if (!Number.isSafeInteger(value) || value < 1) {

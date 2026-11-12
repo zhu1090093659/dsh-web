@@ -20,7 +20,7 @@ concurrency:
 # than in a package.json dependency (a workspace devDependency cannot run in
 # this tree; see the install step).
 env:
-  DSH_CLI_VERSION: 0.2.2-rc.1
+  DSH_CLI_VERSION: 0.2.2-rc.2
 
 # Four independent gates run in parallel and a fifth job aggregates them into
 # the required "CI checks" context:

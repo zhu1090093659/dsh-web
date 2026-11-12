@@ -28,7 +28,7 @@ import { makeAgentsRoutes } from './host/routes.ts'
 import { createHostRunGateway, createTeammatePins, type CommandDispatcherFace, type TypertGatewayFace, type WorkspaceRegistryFace } from './host/run-gateway.ts'
 import { AgentsHostService } from './host/service.ts'
 import { readService } from './host/services.ts'
-import { TeamService, type TeamServiceContext } from './team/index.ts'
+import { TEAM_IDENTITY_CONTEXT_ORDER, TeamService, type TeamServiceContext } from './team/index.ts'
 import { installTeamTools, type TeamToolInstallation } from './tools/index.ts'
 import { PLUGIN_TOOL_SECTION_ORDERS, visibleToolText } from './tool-surface.ts'
 
@@ -113,8 +113,6 @@ export interface SquadContextRegistry {
     required?: boolean
     text: (context: never) => string
   }): () => void
-  /** The host's own placement for a named context, when it publishes one. */
-  getContextOrder?(name: 'TEAM_IDENTITY'): number
 }
 
 /** The system-prompt registry face, narrowed to the one method this plugin calls. */
@@ -321,7 +319,9 @@ export function servesTeamRuntime(ctx: Context): boolean {
  * A CONTEXT, not a section: a member preset that registers a `complete` section
  * restores itself as the only section, which drops every untagged section
  * (docs/member-prompt.md). Contexts are rendered beside the sections, so the
- * Lead's roster survives any preset composition.
+ * Lead's roster survives any preset composition. The position is the Team
+ * runtime's own (see {@link TEAM_IDENTITY_CONTEXT_ORDER}): the host's central
+ * context table stopped naming it in 0.2.2-rc.2.
  * @param registry - `ctx.systemPrompt`.
  * @param readText - reads the squad roster and goal for one assembling session.
  * @returns the exact disposer the registry returned.
@@ -330,10 +330,9 @@ export function registerSquadPromptContext(
   registry: SquadContextRegistry,
   readText: (sessionId: string | undefined) => string,
 ): () => void {
-  const identityOrder = typeof registry.getContextOrder === 'function' ? registry.getContextOrder('TEAM_IDENTITY') : 0
   return registry.context({
     name: SQUAD_CONTEXT_NAME,
-    order: Number.isFinite(identityOrder) ? identityOrder : 0,
+    order: TEAM_IDENTITY_CONTEXT_ORDER,
     required: true,
     text: (context: never) => readText(assembleIdentity(context).sessionId),
   })

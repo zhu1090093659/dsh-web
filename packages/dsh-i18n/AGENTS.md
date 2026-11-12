@@ -15,10 +15,13 @@ packages/AGENTS.md 的全局/包级规则。
   一致、ru 覆盖每个 ns 的 zh 键集、占位符集合一致。来源包清单与本包映射同步
   维护：新增家族插件包 = 新增一个 ru 文件 + index.ts 一行 + 脚本清单
   （scripts/i18n-audit.mjs 的 PACKAGES）一项。
-- 注册语义（对照 @deepseek-ai/dsh-client-locale 0.2.2-rc.1 验证）：
+- 注册语义（对照 @deepseek-ai/dsh-client-locale 0.2.2-rc.2 验证，类型面与
+  运行时与 rc.1 逐字节一致）：
   `register(ns, 'ru', dict)` 对重复 (ns, locale) 抛错（单一属主），按 ns 逐个
   catch，抛错的 ns 跳过、其余照常。所有 disposer 幂等，组合释放只释放实际
-  注册成功的项。
+  注册成功的项。注意 rc.2 的重复判定是"一次调用的全部 pairs 先查后写"：本包
+  每次只传一个 locale，所以按 ns 的 catch 是安全的；若将来改成一次注册多个
+  语言，同批其它语言会随这一批一起被丢掉。
 - 浏览器 bundle 纯度：对本包只 `import type` @deepseek-ai/*；ru 字典不跨包
   import（包间无依赖），键集一致性完全由 `pnpm i18n:check` 保证；包内
   tests/ 做字典内部自洽校验（非空、值为 string、无 CJK、占位符配对），

@@ -174,9 +174,9 @@ export function PluginUpdatePatch(props: PluginUpdatePatchProps) {
     let timer: ReturnType<typeof setTimeout> | undefined
     const tick = (delay: number): void => {
       timer = setTimeout(() => {
-        void status().then(next => {
-          if (!stopped && next !== undefined) {
-            setProgress(next)
+        void status().then(snapshot => {
+          if (!stopped && snapshot !== undefined) {
+            setProgress(snapshot)
             tick(400)
           }
         }).catch(() => { /* polling fails silently; the update itself owns the error row */ })

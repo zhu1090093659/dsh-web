@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SessionMeta, type SessionMetaFaces } from '../src/core/session-meta.ts'
 import { answerOf, makeConnection, requestFrame, type ConnectionHarness } from './support/harness.ts'
-
-/** One metadata source over fixed faces, for a connection that reads real metadata. */
-function metaOver(faces: SessionMetaFaces): SessionMeta {
-  return new SessionMeta(() => faces, () => Date.now(), () => {})
-}
 
 /** One row of the gateway's roster answer, as the host writes it. */
 function summary(sessionId: string, extra: Record<string, unknown> = {}): Record<string, unknown> {

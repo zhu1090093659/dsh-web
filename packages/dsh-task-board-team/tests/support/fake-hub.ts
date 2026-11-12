@@ -91,10 +91,6 @@ function failure(status: number, code: string, message: string): HubResponse {
   return respond(status, { error: { code, message, details: {} } })
 }
 
-function isRecord(value: unknown): boolean {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
 /** The team hub one test drives. */
 export class FakeHub {
   readonly calls: HubCall[] = []

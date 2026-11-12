@@ -4,7 +4,7 @@
  * entry toggle; the entry row waits for the real sidebar root, so in jsdom
  * (no sidebar) apply must still complete cleanly and dispose without residue.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { apply, inject } from '../src/client/index.ts'
 
 describe('skill-explorer client apply', () => {

@@ -460,7 +460,7 @@ describe('user question bridge', () => {
     const payload = questionPayloads(harness.transport)[0]
     expect(payload).toMatchObject({ sessionId: 's-1', callId: 'bridge:minted-1', state: 'open' })
     expect(payload?.expiresAt).toBeUndefined()
-    expect((payload?.questions as unknown[]).length).toBe(1)
+    expect((payload!.questions as unknown[]).length).toBe(1)
     expect(harness.questions.stateOf('bridge:minted-1')).toBe('open')
     // When the user answers with that handle, the host's own ask is settled with it
     await harness.connection.handleText(requestFrame(20, 'question.answer', { sessionId: 's-1', callId: 'bridge:minted-1', answers: ANSWER.answers }))

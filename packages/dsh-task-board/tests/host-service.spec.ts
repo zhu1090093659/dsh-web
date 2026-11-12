@@ -847,8 +847,8 @@ describe('TaskBoardHostService scheduling without a browser', () => {
       if (request.method === 'list') return { items: [{ sessionId: 'session-a', running: false }] }
       throw new Error('history offline')
     }, () => ({
-      async *[Symbol.asyncIterator]() {
-        throw new Error('follow offline')
+      [Symbol.asyncIterator]() {
+        return { next: () => { throw new Error('follow offline') } }
       },
     }))
     const service = new TaskBoardHostService(gateway, {

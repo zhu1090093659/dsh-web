@@ -168,13 +168,13 @@ test('every package declares an in-package icon and ships it with locale in file
       `${rel} icon "${icon}" must be one of svg, png, jpg, jpeg or webp`,
     )
     assert.ok(Array.isArray(manifest.files), `${rel} package.json must carry a "files" whitelist`)
-    const files = manifest.files.map(normalizeEntry)
+    const files = new Set(manifest.files.map(normalizeEntry))
     assert.ok(
-      files.includes(iconPath),
+      files.has(iconPath),
       `${rel} package.json "files" must list the icon "${iconPath}" or npm drops it from the published tarball`,
     )
     assert.ok(
-      files.includes('locale'),
+      files.has('locale'),
       `${rel} package.json "files" must list "locale" or npm drops the metadata the plugin page reads`,
     )
   }

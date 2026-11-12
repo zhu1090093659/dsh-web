@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { DeviceRoster, type PushRegistration } from '../src/core/devices.ts'
+import { DeviceRoster } from '../src/core/devices.ts'
 import {
   LiveActivityNotifier,
   type LiveActivityAddress,
@@ -127,11 +127,6 @@ function rosterRow(deviceId: string): Record<string, unknown> {
     lastSeenAt: 1_700_000_000_000,
     tokenHash: 'hash-0',
   }
-}
-
-/** A registration as a phone with one card would send it. */
-function registrationOf(tokens: readonly { activityId: string; token: string; sessionId?: string }[]): PushRegistration {
-  return { deviceToken: 'aabbccdd', environment: 'sandbox', bundle: 'dev.dsh.Whale', liveActivityTokens: tokens, registeredAt: 1_700_000_000_000 }
 }
 
 async function rosterFile(): Promise<string> {

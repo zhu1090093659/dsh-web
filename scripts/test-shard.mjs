@@ -190,7 +190,7 @@ export function partitionShards(packages, shardCount) {
     (a, b) => b.weight - a.weight || (a.dir < b.dir ? -1 : a.dir > b.dir ? 1 : 0),
   )
   const shards = Array.from({ length: shardCount }, () => [])
-  const loads = new Array(shardCount).fill(0)
+  const loads = Array(shardCount).fill(0)
   for (const pkg of ordered) {
     let target = 0
     for (let index = 1; index < shardCount; index += 1) {
@@ -237,7 +237,7 @@ function runSuite(pkg) {
 }
 
 async function runBounded(items, limit, worker) {
-  const results = new Array(items.length)
+  const results = Array(items.length)
   let cursor = 0
   const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
     for (;;) {

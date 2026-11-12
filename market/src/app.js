@@ -16,10 +16,10 @@
     try {
       var v = window.localStorage.getItem(MOTION_KEY)
       return v === '1' || v === '0' ? v === '1' : null
-    } catch (e) { return null }
+    } catch { return null }
   }
   function writeMotion(on) {
-    try { window.localStorage.setItem(MOTION_KEY, on ? '1' : '0') } catch (e) { }
+    try { window.localStorage.setItem(MOTION_KEY, on ? '1' : '0') } catch { }
   }
   // 缺省关闭：全屏 WebGL 着色器常驻渲染是本页面最大的持续开销，而默认
   // 呈现几乎不可辨（canvas 只有 .42 不透明度且被压暗压灰）。用户按需开启。
@@ -31,7 +31,7 @@
   if (canvas) {
     try {
       gl = canvas.getContext('webgl', { antialias: false, alpha: false, powerPreference: 'high-performance' })
-    } catch (err) { gl = null }
+    } catch { gl = null }
   }
   if (gl) {
     var reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
@@ -109,7 +109,7 @@
     }
 
     var buildOk = true
-    try { buildResources() } catch (err) { buildOk = false }
+    try { buildResources() } catch { buildOk = false }
     if (buildOk) {
       var softwareRenderer = (function () {
         var info = gl.getExtension('WEBGL_debug_renderer_info')
@@ -187,7 +187,7 @@
       canvas.addEventListener('webglcontextlost', function (e) { e.preventDefault(); contextLost = true; stop() })
       canvas.addEventListener('webglcontextrestored', function () {
         contextLost = false
-        try { buildResources(); resize() } catch (err) { contextLost = true; return }
+        try { buildResources(); resize() } catch { contextLost = true; return }
         if (bgEnabled) { draw(); start() }
       })
       // 这里只定尺寸、不画首帧：首帧由应用层 boot() 的 applyMotion() 决定，
@@ -277,20 +277,20 @@
   function deviceFp() {
     var KEY = 'dsh-market-fp'
     var fp = null
-    try { fp = window.localStorage.getItem(KEY) } catch (e) { fp = null }
+    try { fp = window.localStorage.getItem(KEY) } catch { fp = null }
     if (!fp || !/^[A-Za-z0-9_-]{16,64}$/.test(fp)) {
       fp = window.crypto && window.crypto.randomUUID
         ? window.crypto.randomUUID()
         : 'fp-' + Math.random().toString(36).slice(2) + '-' + Date.now().toString(36)
-      try { window.localStorage.setItem(KEY, fp) } catch (e) { }
+      try { window.localStorage.setItem(KEY, fp) } catch { }
     }
     return fp
   }
   function loadMyVotes() {
-    try { return JSON.parse(window.localStorage.getItem('dsh-market-votes') || '{}') } catch (e) { return {} }
+    try { return JSON.parse(window.localStorage.getItem('dsh-market-votes') || '{}') } catch { return {} }
   }
   function saveMyVotes(v) {
-    try { window.localStorage.setItem('dsh-market-votes', JSON.stringify(v)) } catch (e) { }
+    try { window.localStorage.setItem('dsh-market-votes', JSON.stringify(v)) } catch { }
   }
   var myVotes = loadMyVotes()
 
@@ -300,10 +300,10 @@
     try {
       var arr = JSON.parse(window.localStorage.getItem(SAVED_KEY) || '[]')
       return Array.isArray(arr) ? arr.filter(function (x) { return typeof x === 'string' }) : []
-    } catch (e) { return [] }
+    } catch { return [] }
   })()
   function persistSaved() {
-    try { window.localStorage.setItem(SAVED_KEY, JSON.stringify(savedKeys)) } catch (e) { }
+    try { window.localStorage.setItem(SAVED_KEY, JSON.stringify(savedKeys)) } catch { }
   }
   function isSaved(kind, id) { return savedKeys.indexOf(kind + ':' + id) !== -1 }
 
@@ -359,7 +359,7 @@
       var kind = pick && pick.kind, id = pick && pick.id
       if (kind !== 'skin' && kind !== 'pet' && kind !== 'plugin') return
       if (!id || seen[kind + ':' + id]) return
-      var item = (state.data[kind] || []).filter(function (it) { return it.id === id })[0]
+      var item = (state.data[kind] || []).find(function (it) { return it.id === id })
       if (!item) return
       seen[kind + ':' + id] = true
       out.push(entryOf(kind, item))
@@ -575,7 +575,6 @@
       var keys = (SUB_ORDER[state.cat] || []).filter(function (k) { return subs[k] })
       Object.keys(subs).sort().forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k) })
       if (keys.length) {
-        var total = keys.reduce(function (n, k) { return n + subs[k] }, 0)
         box.appendChild(filterChip('全部', state.subcat === 'all', 'data-subcat', 'all', true))
         keys.forEach(function (k) {
           box.appendChild(filterChip(SUB_LABEL[k] || k, state.subcat === k, 'data-subcat', k, true))
@@ -936,7 +935,7 @@
   }
   function openFromHash() {
     var raw = ''
-    try { raw = decodeURIComponent((location.hash || '').replace(/^#/, '')) } catch (e) { return }
+    try { raw = decodeURIComponent((location.hash || '').replace(/^#/, '')) } catch { return }
     var parts = raw.split(':')
     if (parts.length !== 2 || KINDS.indexOf(parts[0]) === -1) return
     var kind = parts[0], id = parts[1]
@@ -945,7 +944,7 @@
   }
 
   function copyText(t, btn) {
-    function done() {
+    function finish() {
       var old = btn.textContent
       btn.textContent = '已复制'
       setTimeout(function () { btn.textContent = old }, 1200)
@@ -955,13 +954,13 @@
       ta.value = t
       document.body.appendChild(ta)
       ta.select()
-      try { document.execCommand('copy') } catch (e) { }
+      try { document.execCommand('copy') } catch { }
       ta.remove()
     }
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(t).then(done).catch(function () { fallback(); done() })
+      navigator.clipboard.writeText(t).then(finish).catch(function () { fallback(); finish() })
     } else {
-      fallback(); done()
+      fallback(); finish()
     }
   }
 
@@ -1117,7 +1116,7 @@
           action: 'market-like',
         })
         return true
-      } catch (e) { return false }
+      } catch { return false }
     })
   }
   function turnstileToken() {
@@ -1126,17 +1125,17 @@
       return new Promise(function (resolve) {
         var settled = false
         var timer = 0
-        function done(token) {
+        function finish(token) {
           if (settled) return
           settled = true
           window.clearTimeout(timer)
-          if (tsResolve === done) tsResolve = null
+          if (tsResolve === finish) tsResolve = null
           resolve(token)
         }
-        timer = window.setTimeout(function () { done('') }, 8000)
-        tsResolve = done
-        try { window.turnstile.reset(tsWidgetId) } catch (e) { }
-        try { window.turnstile.execute(tsWidgetId) } catch (e) { done('') }
+        timer = window.setTimeout(function () { finish('') }, 8000)
+        tsResolve = finish
+        try { window.turnstile.reset(tsWidgetId) } catch { }
+        try { window.turnstile.execute(tsWidgetId) } catch { finish('') }
       })
     })
     tsChain = attempt.then(function () {}, function () {})
@@ -1174,7 +1173,7 @@
       vid = crypto.randomUUID().replace(/-/g, '')
       localStorage.setItem(VID_KEY, vid)
       return vid
-    } catch (e) { return '' }
+    } catch { return '' }
   }
   function sendPageview() {
     // Automated browsers (headless QA, webdriver-driven crawlers) never count.
@@ -1187,7 +1186,7 @@
         navigator.sendBeacon('/api/telemetry/event', new Blob([payload], { type: 'application/json' }))
         return
       }
-    } catch (e) { }
+    } catch { }
     fetch('/api/telemetry/event', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

@@ -74,7 +74,7 @@ describe('probePosture', () => {
   })
 
   it('treats a transport error as not exposed (unreachable is not open)', async () => {
-    const failing: ProbeRequest = (_options, onStatus) => {
+    const failing: ProbeRequest = (_options, _onStatus) => {
       const fake = {
         destroy() {},
         on(event: string, listener: () => void) {

@@ -166,7 +166,7 @@ export interface ConfigViolation {
  * @throws when a supplied value is outside its contract.
  */
 export function resolveConfig(input: WinBashConfigInput | undefined): WinBashConfig {
-  const resolved: WinBashConfig = { ...CONFIG_DEFAULTS, ...(input ?? {}) }
+  const resolved: WinBashConfig = { ...CONFIG_DEFAULTS, ...input }
   const violations = validateConfig(resolved)
   if (violations.length > 0) {
     throw new Error(

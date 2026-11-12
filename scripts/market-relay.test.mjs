@@ -42,7 +42,6 @@ function rejectUnbindable(args) {
 function relayDb(seed = {}) {
   const registrations = new Map(Object.entries(seed.registrations || {}))
   const rateLimit = new Map()
-  const batches = []
   const stmtFor = (sql, args) => {
     const s = { sql, args }
     s.bind = (...a) => ({ sql, args: a, get bound() { return s.boundArgs = a } })

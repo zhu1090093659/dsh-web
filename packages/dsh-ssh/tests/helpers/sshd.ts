@@ -100,7 +100,7 @@ export class TestSshd {
         detail = readFileSync(log, 'utf8').slice(0, 2000)
       } catch { /* no log */ }
       rmSync(dir, { recursive: true, force: true })
-      throw new Error(`sshd failed to start: ${String(error)} ${detail}`)
+      throw new Error(`sshd failed to start: ${String(error)} ${detail}`, { cause: error })
     }
     logStream.end()
     return new TestSshd(port, join(dir, 'client'), root, child, dir)

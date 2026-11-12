@@ -305,12 +305,12 @@ const ADAPT_CSS: readonly string[] = [
   // The pet is part of the hidden set by design: the mobile remote mirror
   // carries the desktop-less phone surface, and a floating pet would only
   // cover the small viewport. The suppression is the requirement, not a bug.
-  `body.${ACTIVE_CLASS} [class$=\"_detailsCol\"]{display:none !important}`,
-  `body.${ACTIVE_CLASS} [data-dsh-plugin=\"ssh\"],`,
-  `body.${ACTIVE_CLASS} [data-dsh-plugin=\"skill-explorer\"],`,
-  `body.${ACTIVE_CLASS} [data-dsh-plugin=\"task-board\"],`,
-  `body.${ACTIVE_CLASS} [data-dsh-plugin=\"pet\"],`,
-  `body.${ACTIVE_CLASS} [data-dsh-plugin=\"usage\"]{display:none !important}`,
+  `body.${ACTIVE_CLASS} [class$="_detailsCol"]{display:none !important}`,
+  `body.${ACTIVE_CLASS} [data-dsh-plugin="ssh"],`,
+  `body.${ACTIVE_CLASS} [data-dsh-plugin="skill-explorer"],`,
+  `body.${ACTIVE_CLASS} [data-dsh-plugin="task-board"],`,
+  `body.${ACTIVE_CLASS} [data-dsh-plugin="pet"],`,
+  `body.${ACTIVE_CLASS} [data-dsh-plugin="usage"]{display:none !important}`,
   // The official workbench (Files / source control) mounts into a
   // full-viewport portal layer with no data-dsh-plugin root, so the plugin
   // list above cannot key on it; its open state persists across page loads,
@@ -318,7 +318,7 @@ const ADAPT_CSS: readonly string[] = [
   // control — the remote-opens-to-an-empty-screen report. Hide the
   // workbench panel only: the same portal layer also hosts the settings
   // modal, which must stay reachable (verified in the GUI QA round).
-  `body.${ACTIVE_CLASS} [class$=\"_overlayLayer\"] [class$=\"_workbench\"]{display:none !important}`,
+  `body.${ACTIVE_CLASS} [class$="_overlayLayer"] [class$="_workbench"]{display:none !important}`,
   // v68: settings modal on mobile — the official panel is a fixed 800px
   // two-column layout (nav + content); switch to a column layout: the
   // section nav becomes a horizontal scrollable row on top.

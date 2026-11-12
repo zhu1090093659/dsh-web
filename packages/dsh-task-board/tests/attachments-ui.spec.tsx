@@ -407,7 +407,7 @@ describe('the attachment field of the new-task dialog', () => {
   it('user unable to open the picker or stage a file while the form is submitting', async () => {
     // Given a new-task dialog whose upload never finishes
     let release: (() => void) | undefined
-    const { controller, createTaskConfirmed, uploadAttachment } = fakeController({
+    const { controller, uploadAttachment } = fakeController({
       upload: async () => await new Promise<TaskAttachment>((resolve) => {
         release = () => { resolve(stored) }
       }),

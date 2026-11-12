@@ -111,15 +111,6 @@ const ready = <T>(value: T, revision = 1): ConfigFormSnapshot<T> => ({
   writable: true,
 })
 
-const unavailable = (): ConfigFormSnapshot<never> => ({
-  status: 'unavailable',
-  value: undefined,
-  base: undefined,
-  user: undefined,
-  revision: undefined,
-  writable: false,
-})
-
 describe('createCompatScope transport', () => {
   it('binds the native form once the bridge resolves its profile entry id', async () => {
     const native = fakeForm<{ enabled: boolean }>(ready({ enabled: false }, 9))

@@ -138,7 +138,7 @@ var CHAN_COLORS = { market: '#6f8cff', npm: '#45c4f5', unknown: '#5d6580' }
 
 function $(id) { return document.getElementById(id) }
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] }) }
-function fmt(n) { n = Number(n) || 0; return n >= 10000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n) }
+function fmt(n) { n = Number(n) || 0; return n >= 10000 ? (n / 1000).toFixed(1).replace(/[.]0$/, '') + 'k' : String(n) }
 function full(n) { return (Number(n) || 0).toLocaleString('en-US') }
 
 /* ---------- KPI cards ---------- */
@@ -482,7 +482,9 @@ export function renderDashboard(boot) {
     + '<title>dsh-web 使用统计</title>'
     + '<style>' + CSS + '</style></head><body>'
     + SHELL
+    // oxlint-disable-next-line unicorn/no-useless-concat -- the split keeps a literal closing script tag out of the source, so the same file stays safe if it is ever inlined
     + '<script type="application/json" id="boot-data">' + bootJson({ days: boot.days, sizes: boot.sizes, icons: ICONS, data: boot.data }) + '</' + 'script>'
+    // oxlint-disable-next-line unicorn/no-useless-concat -- same reason as the boot-data script above
     + '<script src="/app.js" defer data-cfasync="false"></' + 'script>'
     + '</body></html>'
 }

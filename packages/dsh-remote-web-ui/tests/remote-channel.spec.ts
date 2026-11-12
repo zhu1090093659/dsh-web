@@ -162,10 +162,8 @@ function makeWindow(origin = 'https://tunnel.example.com', body = '{}', status =
     state.fetchCalls.push({ url: new URL(raw, base).href, init: _init })
     return Promise.resolve(new Response(body, { status: state.responseStatus, headers: { 'content-type': 'application/json' } }))
   }) as typeof globalThis.fetch
-  class FakeWebSocket {
-    constructor(url: string | URL) {
-      state.wsUrls.push(new URL(url.toString(), base).href)
-    }
+  function FakeWebSocket(url: string | URL): void {
+    state.wsUrls.push(new URL(url.toString(), base).href)
   }
   return {
     fetch: fakeFetch,

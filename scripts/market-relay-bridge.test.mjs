@@ -75,14 +75,12 @@ class BridgeSocket {
   }
 }
 
-class BridgeSocketPair {
-  constructor() {
-    const first = new BridgeSocket()
-    const second = new BridgeSocket()
-    first.peer = second
-    second.peer = first
-    return [first, second]
-  }
+function BridgeSocketPair() {
+  const first = new BridgeSocket()
+  const second = new BridgeSocket()
+  first.peer = second
+  second.peer = first
+  return [first, second]
 }
 
 globalThis.Response = BridgeResponse

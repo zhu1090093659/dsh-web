@@ -7,7 +7,7 @@
  * which source the current link carries. Pure presentation — all state and
  * actions arrive through props from the entry's behavior component.
  */
-import clsx from 'clsx'
+import { clsx } from 'clsx'
 import { memo, useState, type FormEvent } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import {

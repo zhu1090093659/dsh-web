@@ -1088,7 +1088,7 @@ export function makeRoutes(deps: PairRoutesDeps): WebRoute[] {
       writeJson(res, 403, { ok: false, code: 'forbidden' })
       return
     }
-    writeJson(res, 200, { ok: true, ...(deps.lanBindStatus?.() ?? {}) })
+    writeJson(res, 200, { ok: true, ...deps.lanBindStatus?.() })
   }
 
   /**

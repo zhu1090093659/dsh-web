@@ -121,7 +121,7 @@ describe('a mirror card reaches the phone with its provider payload', () => {
 
       // Then the card carries the provider's payload as the ledger stored it
       expect(mirror?.integrations).toEqual({ 'task-board-team': payload })
-      const team = (mirror?.integrations as Record<string, Record<string, unknown>>)['task-board-team']
+      const team = (mirror!.integrations as Record<string, Record<string, unknown>>)['task-board-team']
       expect(team).toMatchObject({
         issueId: payload.issueId,
         issueNumber: payload.issueNumber,

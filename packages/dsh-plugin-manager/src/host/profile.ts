@@ -96,7 +96,7 @@ export function launchedInstallAnchor(launched: LaunchedProfile | undefined): st
     ? ''
     : launched.installAnchor.trim()
   if (anchor === '') return undefined
-  if (!isAbsolute(anchor) || anchor.split(/[\/\\]/).includes('..')) return undefined
+  if (!isAbsolute(anchor) || anchor.split(/[/\\]/).includes('..')) return undefined
   return anchor
 }
 
@@ -250,7 +250,7 @@ function launchedFacts(
   // land, so its SHAPE is validated here. The RAW segments are inspected
   // because `normalize` would silently collapse a `..` away, hiding an escape
   // instead of rejecting it.
-  if (!isAbsolute(profileDir) || profileDir.split(/[\/\\]/).includes('..')) {
+  if (!isAbsolute(profileDir) || profileDir.split(/[/\\]/).includes('..')) {
     throw new Error(`plugin-manager: published profile directory is not a safe absolute path ${JSON.stringify(launched.dir ?? '')}`)
   }
   // The published name and directory must describe the SAME profile: the name
@@ -258,7 +258,8 @@ function launchedFacts(
   // files this gateway reads and writes, so a mismatch would split the two
   // write paths across different profiles. The official runtime publishes
   // exactly `basename(dir)` as the name, so this holds for every real host.
-  const dirBase = profileDir.split(/[\/\\]/).filter(Boolean).pop() ?? basename(profileDir)
+  const baseSegments = profileDir.split(/[/\\]/).filter(Boolean)
+  const dirBase = baseSegments[baseSegments.length - 1] ?? basename(profileDir)
   if (name !== '' && name !== dirBase) {
     throw new Error(`plugin-manager: published profile name and directory disagree ${JSON.stringify(name)} vs ${JSON.stringify(profileDir)}`)
   }

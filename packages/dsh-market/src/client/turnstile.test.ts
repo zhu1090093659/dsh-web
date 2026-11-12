@@ -95,7 +95,7 @@ describe('turnstile challenge frame lifecycle', () => {
     await expect(pending).rejects.toThrow('turnstile-timeout')
     expect(document.body.contains(frame)).toBe(false)
     expect(challengeFrames()).toHaveLength(0)
-    const retry = marketTurnstileToken()
+    marketTurnstileToken()
     await tick()
     expect(challengeFrames()).toHaveLength(1)
   })

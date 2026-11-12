@@ -18,8 +18,8 @@
 
 import { defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
 import type { UiPresentReply } from '../core/hub.ts'
-import { UI_HTML_MAX_BYTES, UI_PAYLOAD_MAX_BYTES, uiHtmlFits, uiKey } from '../core/ui.ts'
-import type { JsonValue, UiCardView, UiRefusalReason, UiState } from '../core/ui.ts'
+import { UI_HTML_MAX_BYTES, uiHtmlFits, uiKey } from '../core/ui.ts'
+import type { JsonValue, UiCardView, UiState } from '../core/ui.ts'
 
 /**
  * The one thing this tool needs from the hub.

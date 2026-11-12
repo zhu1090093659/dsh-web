@@ -241,7 +241,7 @@ describe('removeManagedBlock / lanBindState', () => {
   it('operator: a hand-truncated block is removed without eating the rows after it', () => {
     // Given a BEGIN marker with no END and rows on both sides of it.
     const home = tempHome()
-    const patch = profileFile(home, 'web', '- id: keep\n' + `${LAN_BIND_BLOCK_BEGIN}\n- id: webserver\n  config:\n    host: '0.0.0.0'\n- id: keep-after\n`)
+    const patch = profileFile(home, 'web', `- id: keep\n${LAN_BIND_BLOCK_BEGIN}\n- id: webserver\n  config:\n    host: '0.0.0.0'\n- id: keep-after\n`)
     // When the cleanup runs.
     removeManagedBlock('web', home)
     // Then both surrounding rows stay and the orphan is gone.

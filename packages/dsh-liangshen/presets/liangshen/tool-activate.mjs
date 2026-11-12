@@ -30,7 +30,6 @@
 
 import {
   DEFAULT_MAX_ACTIVE_NAMESPACES,
-  DEFAULT_PAGED_TOOL_PATTERNS,
   integerAtLeast,
   namespaceOf,
   replayActivations,

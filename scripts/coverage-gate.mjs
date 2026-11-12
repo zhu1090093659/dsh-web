@@ -293,8 +293,8 @@ export function coverPackage(pkg) {
 export async function runPackages(packages, cover, options = {}) {
   const limit = Math.max(1, options.limit ?? planConcurrency(options.cpuCount ?? cpus().length))
   const onProgress = options.onProgress ?? (() => {})
-  const results = new Array(packages.length)
-  const done = new Array(packages.length).fill(false)
+  const results = Array(packages.length)
+  const done = Array(packages.length).fill(false)
   let next = 0
   let reported = 0
   const flush = () => {

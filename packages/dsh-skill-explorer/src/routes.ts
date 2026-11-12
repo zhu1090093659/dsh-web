@@ -309,7 +309,7 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
           const skill = await resolveScannedSkill(name, path, panelCwd(), res)
           if (skill === undefined) return
           // Disabled = disable-model-invocation: true; enabled = false.
-          const frontmatter = setFrontmatterField(skill.path, 'disable-model-invocation', enabled ? false : true)
+          const frontmatter = setFrontmatterField(skill.path, 'disable-model-invocation', !enabled)
           writeJson(res, 200, {
             name,
             enabled: frontmatter.disableModelInvocation !== true,

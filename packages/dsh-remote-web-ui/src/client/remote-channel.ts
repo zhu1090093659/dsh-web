@@ -395,7 +395,7 @@ export function installFileUploadHook(window: UploadHookWindow): () => void {
       // here first would make it skip its own rewrite branch and drop the
       // device credential the fence requires.
       if (url.origin === window.location.origin && url.pathname === RULES.uploadPath) {
-        return window.fetch.call(window, raw, init)
+        return window.fetch(raw, init)
       }
       return originalFetch.call(window, input, init)
     },

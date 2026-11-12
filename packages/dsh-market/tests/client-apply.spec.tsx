@@ -14,8 +14,8 @@ vi.mock('../src/client/plugin-manager-bridge.ts', () => ({
 }))
 
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
-  Button: (props: Record<string, unknown>) => null,
-  Modal: (props: Record<string, unknown>) => null,
+  Button: (_props: Record<string, unknown>) => null,
+  Modal: (_props: Record<string, unknown>) => null,
 }))
 
 vi.mock('@deepseek-ai/dsh-client-ui-settings/client', () => ({

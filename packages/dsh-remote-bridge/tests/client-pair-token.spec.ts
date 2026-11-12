@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { PAIR_TOKEN_URL, readPairToken, type PairTokenFetch } from '../src/client/pair-token.ts'
 
 /** A transport that answers once with the given status and body. */
-function answering(status: number, body: unknown, contentType = 'application/json'): PairTokenFetch {
+function answering(status: number, body: unknown, _contentType = 'application/json'): PairTokenFetch {
   return async () => ({
     ok: status >= 200 && status < 300,
     status,

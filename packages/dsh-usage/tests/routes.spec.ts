@@ -154,7 +154,7 @@ describe('usage routes', () => {
     }
     // remote-web-ui exposes ctx.remoteWebUiPairing; a paired cookie passes the
     // shared fence, an unpaired LAN request is still refused.
-    const paired = { get: (name: string, strict?: boolean) => (name === 'remoteWebUiPairing' ? { isPairedDevice: () => true } : undefined) } as never
+    const paired = { get: (name: string, _strict?: boolean) => (name === 'remoteWebUiPairing' ? { isPairedDevice: () => true } : undefined) } as never
     const request = { method: 'GET', socket: { remoteAddress: '192.168.1.9' }, headers: { host: '192.168.1.9:3080' } }
     void makeUsageOverviewRoute(paired, stubService()).handler(request as never, res as never)
     expect(state.status).toBe(200)

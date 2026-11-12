@@ -337,6 +337,7 @@ export class TeamRoster {
           )
         }
       } catch (recordError: unknown) {
+        // oxlint-disable-next-line preserve-caught-error -- the caught error is already the aggregate's second member, and AggregateError takes no cause option in the TS 5.7 lib.
         throw new AggregateError([error, recordError], 'teammate creation and durable failure recording both failed')
       }
       throw error
@@ -358,7 +359,7 @@ export class TeamRoster {
       try {
         await this.stopTeammates(root, [childId])
       } catch (cleanupError: unknown) {
-        /* v8 ignore next -- requires the independently tested HMR settlement conflict and cleanup failure together. */
+        /* v8 ignore next -- requires the independently tested HMR settlement conflict and cleanup failure together. */ // oxlint-disable-next-line preserve-caught-error -- the aggregate's second member already IS the caught error.
         throw new AggregateError([conflict, cleanupError], 'provisioning conflict cleanup failed')
       }
       throw conflict

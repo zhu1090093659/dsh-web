@@ -82,7 +82,7 @@ export const HOST_PWSH_TOOL = 'pwsh'
 export const SERVING_MODE: SandboxMode = 'danger-full-access'
 
 /** Every mode the policy service may answer with. */
-const SANDBOX_MODES: readonly SandboxMode[] = ['read-only', 'workspace-write', 'danger-full-access']
+const SANDBOX_MODES: ReadonlySet<SandboxMode> = new Set(['read-only', 'workspace-write', 'danger-full-access'])
 
 /** The scoped restriction call this module consumes from an agent's tools view. */
 export interface ScopedRestrictor {
@@ -216,7 +216,7 @@ function servingVerdict(read: SessionPolicyReader | undefined, session: unknown)
   if (typeof cwd !== 'string' || cwd === '') return 'refuses'
   try {
     const mode = read.resolve({ session })?.mode
-    if (!SANDBOX_MODES.includes(mode)) return 'unknown'
+    if (!SANDBOX_MODES.has(mode)) return 'unknown'
     return mode === SERVING_MODE ? 'serves' : 'refuses'
   } catch {
     return 'unknown'

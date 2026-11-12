@@ -17,7 +17,6 @@ import { CardDefaultPresetField } from './CardDefaultPresetField.tsx'
 import { PluginSettingsCard, BooleanField, ChoiceField, ValueField } from './PluginSettingsCard.tsx'
 import {
   modelChoiceRows,
-  modelDisplayLabel,
   modelOptionsFromCatalog,
   reasoningEffortsFor,
   reasoningHintKey,

@@ -16,7 +16,7 @@
  *
  * Usage: node tools/check-dispatcher-rules.mjs [--strict] [--verbose]
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 

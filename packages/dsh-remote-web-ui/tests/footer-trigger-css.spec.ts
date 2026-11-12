@@ -14,7 +14,7 @@ const css = readFileSync(new URL('../src/client/remote.module.css', import.meta.
 
 /** Extract one rule block body by its full selector. */
 function ruleBody(selector: string): string {
-  const escaped = selector.replace(/[.*+?^$\{\}()|[\]\\]/g, '\\$&')
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const match = new RegExp(escaped + '\\s*\\{([^}]*)\\}').exec(css)
   if (match === null) throw new Error(selector + ' rule not found in remote.module.css')
   return match[1] ?? ''

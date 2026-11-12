@@ -34,7 +34,6 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // imported: the api-session-controller client merge declares `sessions` on
 // Context and would collide with the host dsh-session merge inside this
 // package's single tsc program. The face is read via a duck-typed cast.
-import { createElement } from 'react'
 import { ArchiveController } from './archive-controller.ts'
 import { mainViewSessionId } from './main-session.ts'
 import { SessionArchiveCard, type SessionArchiveFace } from './SessionArchiveCard.tsx'

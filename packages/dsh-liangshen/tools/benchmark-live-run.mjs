@@ -48,7 +48,6 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const PACKAGE_ROOT = resolve(HERE, '..')
 const PRESET_SOURCE = join(PACKAGE_ROOT, 'presets', 'liangshen')
 const DRIVER = join(HERE, 'benchmark-driver.mjs').replace(/\\/g, '/')
-const require = createRequire(import.meta.url)
 
 /** Fixed route every variant runs on, so the comparison isolates the preset. */
 export const FIXED_ROUTE = { provider: 'deepseek-official', model: 'deepseek-flash', reasoningEffort: 'max' }

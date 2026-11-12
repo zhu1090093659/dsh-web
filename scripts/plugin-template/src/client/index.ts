@@ -10,7 +10,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 
 /** Apply the browser half. */
-export function apply(ctx: Context): void {
+export function apply(_ctx: Context): void {
   // TODO(__NAME__): browser-side behavior — runtime service wiring, DOM
   // slots, React views. A bare skeleton does nothing.
 }

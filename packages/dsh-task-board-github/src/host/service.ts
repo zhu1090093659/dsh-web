@@ -31,7 +31,6 @@ import {
 import {
   composeIssuePrompt,
   computeLabelWriteBack,
-  extractLabelNames,
   isDshManagedLabel,
   isIssueIncluded,
   materializeTaskFromIssue,
@@ -1227,7 +1226,7 @@ export class GitHubSyncService {
         }
 
         // Remove PR phase label and add/keep done state label
-        const labelsToRemove = [config.prPhaseLabel]
+        const labelsToRemove = new Set([config.prPhaseLabel])
         const labelsToAdd = [config.stateLabels.done]
         try {
           await this.client.removeIssueLabel(config.owner, config.repository, gh.issueNumber, config.prPhaseLabel)
@@ -1247,7 +1246,7 @@ export class GitHubSyncService {
         }
 
         const nextLabels = [
-          ...gh.remoteLabels.filter((l: string) => !labelsToRemove.includes(l)),
+          ...gh.remoteLabels.filter((l: string) => !labelsToRemove.has(l)),
           ...labelsToAdd.filter((l: string) => !gh.remoteLabels.includes(l)),
         ]
 

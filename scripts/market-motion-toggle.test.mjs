@@ -105,7 +105,7 @@ function makePage({ glEnabled = true, reduceMotion = false, stored = null } = {}
       title: '',
       disabled: false,
       dataset: {},
-      classList: { _s: new Set(), add(c) { this._s.add(c) }, remove(c) { this._s.delete(c) }, toggle(c, on) { on ? this._s.add(c) : this._s.delete(c) } },
+      classList: { _s: new Set(), add(c) { this._s.add(c) }, remove(c) { this._s.delete(c) }, toggle(c, on) { if (on) this._s.add(c); else this._s.delete(c) } },
       _attrs: {},
       _listeners: {},
       setAttribute(k, v) { this._attrs[k] = String(v) },
@@ -133,7 +133,7 @@ function makePage({ glEnabled = true, reduceMotion = false, stored = null } = {}
     apiState: element('apiState'),
     toast: element('toast'),
   }
-  const ocean = { classList: { _s: new Set(), add(c) { this._s.add(c) }, remove(c) { this._s.delete(c) }, toggle(c, on) { on ? this._s.add(c) : this._s.delete(c) } } }
+  const ocean = { classList: { _s: new Set(), add(c) { this._s.add(c) }, remove(c) { this._s.delete(c) }, toggle(c, on) { if (on) this._s.add(c); else this._s.delete(c) } } }
 
   const document = {
     readyState: 'complete',

@@ -37,7 +37,7 @@ describe('SkillApi', () => {
     // Then the request carries a real Headers instance and no body content type
     expect(result.cwd).toBe('/test')
     expect(capturedInit?.headers).toBeInstanceOf(Headers)
-    expect((capturedInit?.headers as Headers).get('content-type')).toBeNull()
+    expect((capturedInit!.headers as Headers).get('content-type')).toBeNull()
   })
 
   it('user listing one directory gets its cwd URL-encoded', async () => {
@@ -71,7 +71,7 @@ describe('SkillApi', () => {
     // Then the request is a JSON POST carrying the skill identity and the state
     expect(capturedInit?.method).toBe('POST')
     expect(capturedInit?.headers).toBeInstanceOf(Headers)
-    expect((capturedInit?.headers as Headers).get('content-type')).toBe('application/json')
+    expect((capturedInit!.headers as Headers).get('content-type')).toBe('application/json')
     expect(JSON.parse(capturedInit?.body as string)).toEqual({
       name: 'test-skill',
       path: '/path/to/skill',
@@ -113,7 +113,7 @@ describe('SkillApi', () => {
     // Then the update route receives a JSON POST with every edited field
     expect(capturedUrl).toBe('api/dsh-skill-explorer/update')
     expect(capturedInit?.method).toBe('POST')
-    expect((capturedInit?.headers as Headers).get('content-type')).toBe('application/json')
+    expect((capturedInit!.headers as Headers).get('content-type')).toBe('application/json')
     expect(JSON.parse(capturedInit?.body as string)).toEqual({
       name: 'test-skill',
       path: '/path/SKILL.md',

@@ -783,8 +783,8 @@ describe('custom skill roots from the live skill-filesystem row (#1801)', () => 
 
   it('operator whose loader tree throws mid-reload still gets a served list', () => {
     // Given an entry tree that throws while being enumerated
-    function* throwing(): Generator<never> {
-      throw new Error('loader mid-reload')
+    function throwing(): Iterable<never> {
+      return { [Symbol.iterator]: () => { throw new Error('loader mid-reload') } }
     }
 
     // When the host reads custom roots off that tree

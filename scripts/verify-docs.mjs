@@ -154,14 +154,14 @@ if (import.meta.main) {
     if (!sigEqual(signature(enText), signature(zhText))) fail(p.rel + ': structural signature mismatch between README.md and README.zh.md')
     const enLines = enText.split(/\r?\n/)
     const zhLines = zhText.split(/\r?\n/)
-    if (!/^# /.test(enLines[0])) fail(p.rel + ': README.md must start with an H1 (package name)')
-    if (!/^# /.test(zhLines[0])) fail(p.rel + ': README.zh.md must start with an H1 (package name)')
+    if (!enLines[0].startsWith('# ')) fail(p.rel + ': README.md must start with an H1 (package name)')
+    if (!zhLines[0].startsWith('# ')) fail(p.rel + ': README.zh.md must start with an H1 (package name)')
     for (const { lines: ls, rel2, label } of [{ lines: enLines, rel2: p.rel, label: 'README.md' }, { lines: zhLines, rel2: p.rel, label: 'README.zh.md' }]) {
       let inFence = false
       for (let i = 1; i < ls.length; i++) {
         if (/^```|^~~~/.test(ls[i])) { inFence = !inFence; continue }
         if (inFence) continue
-        if (/^# /.test(ls[i])) { fail(rel2 + ': ' + label + ' line ' + (i + 1) + ' uses H1 under a section - use H3 for install options'); break }
+        if (ls[i].startsWith('# ')) { fail(rel2 + ': ' + label + ' line ' + (i + 1) + ' uses H1 under a section - use H3 for install options'); break }
       }
     }
     rows.push('ok    ' + p.rel)

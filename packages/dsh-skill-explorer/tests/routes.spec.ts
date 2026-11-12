@@ -525,7 +525,7 @@ describe('update', () => {
       expect(JSON.parse(body())).toEqual({ ok: true, name: 'edit-target', path: fixture.file, disabled: true })
       const written = readFileSync(fixture.file, 'utf8')
       expect(written).toContain("description: '新描述'")
-      expect(written).toContain('whenToUse: ' + "'" + '新场景' + "'")
+      expect(written).toContain("whenToUse: '新场景'")
       expect(written).toContain('# 新正文')
       // The edit form does not expose the switch: a disabled skill stays disabled.
       expect(written).toContain('disable-model-invocation: true')

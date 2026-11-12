@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { PairingPhase } from '../pairing.ts'
 import { RemotePanel, type PanelState } from './RemotePanel.tsx'
-import { copyText, issuePair, mergePairDevices, renamePair, revokePair, stopPair, type DeviceFrame, type IssueResponse, type PairStateFrame, type RelayStatusFrame, type TunnelStatusFrame } from './pair-api.ts'
+import { copyText, issuePair, mergePairDevices, renamePair, revokePair, stopPair, type DeviceFrame, type IssueResponse, type PairStateFrame, type TunnelStatusFrame } from './pair-api.ts'
 import { PhoneIcon } from './PhoneIcon.tsx'
 import css from './remote.module.css'
 

@@ -372,7 +372,7 @@ export function refusalNotice(failures) {
 
 /** Run `worker` over `items` with bounded concurrency, preserving order. */
 export async function runPool(items, concurrency, worker) {
-  const results = new Array(items.length)
+  const results = Array(items.length)
   let next = 0
   const runners = Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, async () => {
     for (;;) {

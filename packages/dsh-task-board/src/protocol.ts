@@ -7,7 +7,7 @@ import { sanitizeFreezeSnapshot, type FreezeSnapshot } from './core/freeze-snaps
 import { sanitizeHandover, type TaskHandoverInput } from './core/handover.ts'
 import { TASK_BOARD_MESSAGE_MAX_LENGTH, isTaskBoardExtensionPayload, normalizeTaskIntegrations, type TaskBoardExtensionPayload } from './core/extension.ts'
 import type { ModelCatalogView } from './core/model-catalog.ts'
-import { isTaskAttachmentList, TASK_ATTACHMENT_LIMIT, TASK_ATTACHMENT_MAX_BYTES, TASK_ATTACHMENT_TOTAL_MAX_BYTES } from './core/attachment.ts'
+import { isTaskAttachmentList } from './core/attachment.ts'
 
 /** Freeze payload carried by create/update actions after the gate (redacted in place). */
 type FreezePayload = FreezeSnapshot & { redacted?: boolean; frozenBy?: string }

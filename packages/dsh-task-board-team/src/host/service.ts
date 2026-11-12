@@ -34,7 +34,6 @@ import {
 } from '../core/hub-protocol.ts'
 import type { TaskBoardExtensionHost, TaskBoardCapabilities, TaskBoardLinkedTask } from '../core/contract.ts'
 import {
-  TEAM_EXTENSION_ID,
   findLinkedTask,
   readTaskIssueLink,
   readTeamIssueLink,

@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { RemoteEntry, type RemoteEntryProps } from '../src/client/RemoteEntry.tsx'
-import { en, type RemoteKey } from '../src/client/locales.ts'
+import { en } from '../src/client/locales.ts'
 
 // English dictionary translate stub with {param} interpolation.
 const t: RemoteEntryProps['t'] = (key, params) => {

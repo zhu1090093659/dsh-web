@@ -15,7 +15,7 @@
  * the namespace), so the fallback rebinds when the mirror answers.
  */
 import { describe, expect, it, vi } from 'vitest'
-import type { ConfigForm, ConfigForms } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { bindSettingsForm } from '../src/client/index.ts'
 
 /** One fake form the shared forms service hands out, recording the writes it sees. */

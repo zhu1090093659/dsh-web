@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { renderIndexInjections } from '@deepseek-ai/dsh-host-webserver'
 
-import { BOOT_WATCHDOG_KEY, buildBootWatchdogScript, buildRemoteChannelBootScript, REMOTE_CHANNEL_BOOT_SCRIPT } from '../src/remote-channel-boot.ts'
+import { BOOT_WATCHDOG_KEY, buildRemoteChannelBootScript, REMOTE_CHANNEL_BOOT_SCRIPT } from '../src/remote-channel-boot.ts'
 import { REMOTE_CHANNEL_BOOT_GLOBAL, REMOTE_HOST_GRANT_GLOBAL, isLocalPage, type RemoteChannelBootSeat } from '../src/remote-channel-rules.ts'
 import { shouldRewriteFetchPath, shouldRewriteWsPath } from '../src/client/remote-channel.ts'
 
@@ -367,7 +367,7 @@ interface WatchWindow {
 function makeWatchWindow(appMounted: () => boolean, hostname = 'claire-grain-desire-relief.trycloudflare.com'): WatchWindow {
   const win: WatchWindow = {
     fetch: () => Promise.resolve({}),
-    WebSocket: class {},
+    WebSocket: class extends EventTarget {},
     location: {
       hostname,
       href: `https://${hostname}/`,

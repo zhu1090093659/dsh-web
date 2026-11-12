@@ -9,13 +9,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { SessionArchiveConfig } from '../core/config.ts'
-import {
-  AUTO_ARCHIVE_DAYS_MAX,
-  AUTO_ARCHIVE_DAYS_MIN,
-  AUTO_DELETE_DAYS_MAX,
-  AUTO_DELETE_DAYS_MIN,
-  validateDays,
-} from '../core/config.ts'
 import type { ArchiveSessionRow } from '../core/types.ts'
 import { selectionFullyProtected } from '../core/cascade.ts'
 import { filterRows, PAGE_SIZE, selectionSummary, sortRows, type SortDir, type SortKey } from '../core/selection.ts'

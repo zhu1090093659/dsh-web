@@ -21,9 +21,9 @@ describe('board responsive css', () => {
   })
 
   it('renders a visible horizontal scrollbar affordance', () => {
-    expect(css).toMatch(/\.columns::\-webkit-scrollbar\s*\{[^}]*height:\s*10px/s)
-    expect(css).toMatch(/\.columns::\-webkit-scrollbar-track\s*\{[^}]*background:/s)
-    expect(css).toMatch(/\.columns::\-webkit-scrollbar-thumb\s*\{[^}]*background:/s)
+    expect(css).toMatch(/\.columns::-webkit-scrollbar\s*\{[^}]*height:\s*10px/s)
+    expect(css).toMatch(/\.columns::-webkit-scrollbar-track\s*\{[^}]*background:/s)
+    expect(css).toMatch(/\.columns::-webkit-scrollbar-thumb\s*\{[^}]*background:/s)
     expect(css).toContain('scrollbar-width: thin')
   })
 

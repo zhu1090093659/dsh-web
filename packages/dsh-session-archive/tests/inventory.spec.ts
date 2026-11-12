@@ -95,14 +95,6 @@ describe('session-rdb store', () => {
 })
 
 describe('buildInventory', () => {
-  function writeSessionDir(host: FakeHost, id: string, size = 64): void {
-    const project = join(host.home, 'sessions', '--Users-demo--')
-    mkdirSync(project, { recursive: true })
-    const dir = join(project, id.startsWith('session-') ? id.slice('session-'.length) : id)
-    mkdirSync(dir, { recursive: true })
-    writeFileSync(join(dir, 'session.jsonl.zstd'), Buffer.alloc(size, 3))
-  }
-
   it('merges feed, disk, projcache, registry, and ledger; never invents rows from projcache alone', async () => {
     const host = createFakeHost({
       feedItems: [

@@ -14,7 +14,6 @@ import {
   cascadeTargets,
   combineCascadeOutcome,
   hasOutstandingDescendants,
-  isOutstanding,
   normalizeSubtaskDepth,
   openGroupExecution,
   outstandingDescendants as lineageOutstandingDescendants,
@@ -1648,7 +1647,7 @@ export class HostTaskLedger {
       } catch (error) {
         // Migration failure is explicit: the original file stays in place
         // for manual recovery and the ledger refuses to start (fail closed).
-        throw new Error(`ledger v${String(parsed.schemaVersion)} to v${TASK_BOARD_SCHEMA_VERSION} migration failed; original file kept at ${this.file}: ${error instanceof Error ? error.message : String(error)}`)
+        throw new Error(`ledger v${String(parsed.schemaVersion)} to v${TASK_BOARD_SCHEMA_VERSION} migration failed; original file kept at ${this.file}: ${error instanceof Error ? error.message : String(error)}`, { cause: error })
       }
     }
     try {
@@ -1859,7 +1858,7 @@ export class HostTaskLedger {
             const hint = confirmedOwner
               ? ''
               : `; if this PID was reused after a crash and no other DSH host is running, remove ${this.lockFile} manually and retry`
-            throw new Error(`task-board ledger is already owned by process ${pid}${hint}`)
+            throw new Error(`task-board ledger is already owned by process ${pid}${hint}`, { cause: error })
           }
         }
         try { unlinkSync(this.lockFile) } catch (unlinkError) {

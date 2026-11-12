@@ -35,7 +35,7 @@ const todayKey = () => 'dsh-web-ui-telemetry-day:' + new Date().toISOString().sl
 function lastBody(): Record<string, unknown> {
   const call = vi.mocked(fetch).mock.calls.at(-1)
   expect(call?.[0]).toBe(ENDPOINT)
-  return JSON.parse(String((call?.[1] as RequestInit).body))
+  return JSON.parse(String((call![1] as RequestInit).body))
 }
 
 describe('daily telemetry heartbeat', () => {

@@ -505,7 +505,7 @@ export function MarketCard(props: MarketCardProps): ReactNode {
   }
 
   const copyCommand = (id: string, command: string): void => {
-    const done = (): void => { setCopiedId(id); window.setTimeout(() => setCopiedId(null), 1200) }
+    const finish = (): void => { setCopiedId(id); window.setTimeout(() => setCopiedId(null), 1200) }
     const fallback = (): boolean => {
       const ta = document.createElement('textarea')
       ta.value = command
@@ -521,11 +521,11 @@ export function MarketCard(props: MarketCardProps): ReactNode {
       return ok
     }
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(command).then(done, () => {
-        if (fallback()) done()
+      navigator.clipboard.writeText(command).then(finish, () => {
+        if (fallback()) finish()
       })
     } else {
-      if (fallback()) done()
+      if (fallback()) finish()
     }
   }
 
@@ -543,7 +543,7 @@ export function MarketCard(props: MarketCardProps): ReactNode {
           ...prev,
           stats: {
             ...prev.stats,
-            installs: { ...(prev.stats.installs ?? { skin: {}, pet: {}, plugin: {}, preset: {} }), [kind]: { ...(prev.stats.installs?.[kind] ?? {}), [id]: count } },
+            installs: { ...(prev.stats.installs ?? { skin: {}, pet: {}, plugin: {}, preset: {} }), [kind]: { ...prev.stats.installs?.[kind], [id]: count } },
           },
         } : prev)
       }).catch(() => { /* non-fatal */ })
@@ -634,7 +634,7 @@ export function MarketCard(props: MarketCardProps): ReactNode {
             ...prev.stats,
             installs: {
               ...(prev.stats.installs ?? { skin: {}, pet: {}, plugin: {}, preset: {} }),
-              skin: { ...(prev.stats.installs?.skin ?? {}), ...counts },
+              skin: { ...prev.stats.installs?.skin, ...counts },
             },
           },
         } : prev)
@@ -682,7 +682,7 @@ export function MarketCard(props: MarketCardProps): ReactNode {
           ...prev,
           stats: {
             ...prev.stats,
-            installs: { ...(prev.stats.installs ?? { skin: {}, pet: {}, plugin: {}, preset: {} }), plugin: { ...(prev.stats.installs?.plugin ?? {}), [id]: count } },
+            installs: { ...(prev.stats.installs ?? { skin: {}, pet: {}, plugin: {}, preset: {} }), plugin: { ...prev.stats.installs?.plugin, [id]: count } },
           },
         } : prev)
       }).catch(() => { /* non-fatal */ })

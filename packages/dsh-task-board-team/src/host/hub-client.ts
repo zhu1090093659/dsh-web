@@ -20,7 +20,6 @@ import {
   type HubComment,
   type HubIssue,
   type HubQuestion,
-  type HubQuestionAnswer,
 } from '../core/hub-protocol.ts'
 import type { QuestionReportBody } from '../core/question-report.ts'
 import type { SettleRequestBody } from '../core/settlement.ts'

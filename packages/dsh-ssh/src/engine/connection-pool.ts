@@ -386,7 +386,7 @@ export async function connectChain(
         // Name the hop: an address hop (or a typo'd alias) must stay
         // diagnosable from the error alone.
         throw new Error('proxyJump hop \'' + spec + '\' (' + hop.user + '@' + hop.host + ':' + hop.port + '): '
-          + (error instanceof Error ? error.message : String(error)))
+          + (error instanceof Error ? error.message : String(error)), { cause: error })
       }
       hops.push(hopClient)
       const next = index + 1 < chain.length ? resolveHop(engine, entry, chain[index + 1]) : undefined

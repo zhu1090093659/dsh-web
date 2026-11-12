@@ -26,7 +26,7 @@ import { shellArgv, shellEnvironment, shellTempDir, type ShellRegistry } from '.
 export const WIN_BASH_TOOL = 'win_bash'
 
 /** Every sandbox mode a session may run under. */
-const SANDBOX_MODES: readonly SandboxMode[] = ['read-only', 'workspace-write', 'danger-full-access']
+const SANDBOX_MODES: ReadonlySet<SandboxMode> = new Set(['read-only', 'workspace-write', 'danger-full-access'])
 
 /** The only mode this tool runs under; every other mode is refused. */
 const SUPPORTED_MODE: SandboxMode = 'danger-full-access'
@@ -299,7 +299,7 @@ function resolvePolicy(ctx: Context, agent: unknown): SandboxExecutionPolicy | u
   if (service === undefined || typeof service.resolve !== 'function') return undefined
   const session = (agent as { session?: unknown } | undefined)?.session
   const policy = service.resolve(session === undefined ? {} : { session })
-  if (!SANDBOX_MODES.includes(policy.mode) || typeof policy.workspaceRoot !== 'string') {
+  if (!SANDBOX_MODES.has(policy.mode) || typeof policy.workspaceRoot !== 'string') {
     throw new Error('win_bash: the sandbox policy service returned an invalid policy; no command was started.')
   }
   return policy

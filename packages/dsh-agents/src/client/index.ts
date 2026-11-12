@@ -21,7 +21,6 @@ import type { ConfigForm, ConfigForms } from '@deepseek-ai/dsh-client-ui-setting
 import { AgentsSettingsCard, AgentsSettingsCardController } from './AgentsSettingsCard.tsx'
 import type { AgentsSettings } from './AgentsSettingsCard.tsx'
 import { createAgentsTransport } from './host-api.ts'
-import type { AgentsTransport } from './host-api.ts'
 import { AGENTS_LOCALE_NAMESPACE, registerAgentLocales } from './locales.ts'
 import type { AgentsKey, LocaleRegistrar } from './locales.ts'
 import { registerAgentsPanel } from './panel.tsx'

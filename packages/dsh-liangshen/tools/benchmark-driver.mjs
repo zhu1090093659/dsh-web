@@ -35,7 +35,7 @@ function sessionIdFor(runId) {
  * @param config - resolved driver config.
  * @param io - process-facing effects.
  */
-async function run(ctx, config, io) {
+async function run(ctx, config, _io) {
   // Loader siblings mount concurrently: await the whole application before
   // creating an agent, or its scoped tools and adapters are half-composed.
   await ctx.get('loader')?.await()

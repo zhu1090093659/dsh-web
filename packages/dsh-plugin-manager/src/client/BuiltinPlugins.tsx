@@ -243,8 +243,8 @@ export function BuiltinPlugins(props: BuiltinPluginsProps) {
   // toggle never collapses the list under the pointer.
   useEffect(() => {
     let live = true
-    void readGroup(remote).then(next => {
-      if (live) setState(next)
+    void readGroup(remote).then(state => {
+      if (live) setState(state)
     })
     return () => { live = false }
   }, [remote, reload])

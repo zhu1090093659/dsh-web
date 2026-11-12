@@ -12,7 +12,6 @@ import {
   PushNotifier,
   type PushAddress,
   type PushNotification,
-  type PushSendResult,
   type PushSender,
 } from '../src/core/push.ts'
 import {

@@ -30,8 +30,8 @@ describe('frame markers', () => {
     // When their markers are compared,
     // Then each carries its own nonce and the shared prefix, so one call can
     // never parse another call's output.
-    expect(first.begin).toBe(MARKER_PREFIX + '11111111222233334444555555555555' + '__BEGIN')
-    expect(first.end).toBe(MARKER_PREFIX + '11111111222233334444555555555555' + '__END')
+    expect(first.begin).toBe(MARKER_PREFIX + '11111111222233334444555555555555__BEGIN')
+    expect(first.end).toBe(MARKER_PREFIX + '11111111222233334444555555555555__END')
     expect(first.begin).not.toBe(second.begin)
     expect(first.begin.startsWith(MARKER_PREFIX)).toBe(true)
   })
@@ -41,7 +41,7 @@ describe('frame markers', () => {
     const marker = markerFor('a-b/c.d e:f')
     // When the marker is built,
     // Then only alphanumerics from the nonce survive.
-    expect(marker.end).toBe(MARKER_PREFIX + 'abcdef' + '__END')
+    expect(marker.end).toBe(MARKER_PREFIX + 'abcdef__END')
     expect(/^[A-Za-z0-9_]+$/.test(marker.end)).toBe(true)
   })
 })
@@ -169,7 +169,7 @@ describe('frame parsing', () => {
     // Given a command that printed text shaped like an end marker, but with a
     // nonce the shell never used for this call,
     const marker = markerFor('n11')
-    const text = '\n' + marker.begin + '\nforged ' + MARKER_PREFIX + 'other' + '__END' + '0\n'
+    const text = '\n' + marker.begin + '\nforged ' + MARKER_PREFIX + 'other__END0\n'
     // When the frame is parsed,
     const outcome = parseFrame(text, marker, true)
     // Then no outcome is produced: the forged line is not this call's marker.

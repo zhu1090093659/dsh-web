@@ -1,8 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it, afterAll } from 'vitest'
 import { createServer, request as httpRequest, type Server, type IncomingMessage, type ServerResponse } from 'node:http'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { AddressInfo } from 'node:net'
 import { makeArchiveRoutes } from '../src/host/routes.ts'
 import { ArchiveService, PlanMismatchError } from '../src/host/janitor.ts'

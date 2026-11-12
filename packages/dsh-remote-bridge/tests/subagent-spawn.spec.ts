@@ -183,7 +183,7 @@ describe('spawn call correlation', () => {
       catalog(6, 'child-9'),
     ]
     // When the same records are read as a baseline and watched live
-    const [entry] = (await snapshotOf(records)).filter(item => item.type === 'subagent/catalog')
+    const entry = (await snapshotOf(records)).find(item => item.type === 'subagent/catalog')
     const live = await liveOf(records)
     const delta = subagentDeltas(live.harness).find(payload => payload.childId === 'child-9')
     // Then both halves of the thread name the same call, because one rule decided it

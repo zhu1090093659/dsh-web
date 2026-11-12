@@ -301,7 +301,7 @@ describe('the attachments of an execution', () => {
   it('operator running a card whose image record carries no pixel size fails before the prompt', async () => {
     // Given a card whose image record lost its pixel size
     const { store } = fakeStore()
-    const { width, height, ...withoutSize } = imageAttachment()
+    const { width: _width, height: _height, ...withoutSize } = imageAttachment()
     const { gateway, prompts } = recordingGateway()
     const runner = new HostExecutionRunner(gateway, undefined, workspaceRegistry(), undefined, undefined, {
       attachments: () => store,

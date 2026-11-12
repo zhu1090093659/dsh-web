@@ -26,7 +26,6 @@ const REPO_ROOT = resolve(SCRIPT_DIR, '..')
 const AGGREGATE_DIR = join(REPO_ROOT, 'packages', 'dsh-web-all')
 export const LEGACY_NAME = '@linxin666/dsh-web-ui-all'
 export const CURRENT_NAME = '@linxin666/dsh-web-all'
-const LEGACY_VERSION_PREFIX = 'v'
 /**
  * Whether new legacy dual-publishes are still accepted.
  *
@@ -47,7 +46,7 @@ export function rewriteLegacyPackageJson(text, version) {
   pkg.name = LEGACY_NAME
   if (typeof pkg.description === 'string') pkg.description = pkg.description.replace(/@linxin666\/dsh-web-all/g, LEGACY_NAME)
   pkg.dsh = {
-    ...(pkg.dsh ?? {}),
+    ...pkg.dsh,
     migrate: {
       to: CURRENT_NAME,
       since: version,
@@ -84,7 +83,7 @@ export function legacyDualPublishedCount({ view = (name) => execFileSync('npm', 
       versionData?.dsh?.migrate?.to === CURRENT_NAME
     ).length
   } catch (error) {
-    throw new Error(`legacy-aggregate-publish: cannot read ${LEGACY_NAME} metadata before dual-publish: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`legacy-aggregate-publish: cannot read ${LEGACY_NAME} metadata before dual-publish: ${error instanceof Error ? error.message : String(error)}`, { cause: error })
   }
 }
 

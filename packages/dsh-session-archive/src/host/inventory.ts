@@ -196,7 +196,6 @@ export function ledgerEntryFor(ledger: LedgerDocument, canonicalId: string, nati
  * times; disk-only rows are flagged `unreadable` metadata.
  */
 export async function buildInventory(sources: InventorySources, signal: AbortSignal): Promise<BuiltInventory> {
-  const now = Date.now()
   interface Draft {
     id: string
     title?: string

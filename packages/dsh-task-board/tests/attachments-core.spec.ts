@@ -381,7 +381,7 @@ describe('the attachment identity', () => {
 describe('the image dimensions', () => {
   it('operator submitting an image without its pixel size is refused', () => {
     // Given a create action whose image carries no pixel size
-    const { width, height, ...withoutSize } = imageAttachment()
+    const { width: _width, height: _height, ...withoutSize } = imageAttachment()
     const parsed = parseActionEnvelope({
       requestId: 'request-a',
       action: {

@@ -14,7 +14,7 @@
  * @module @linxin666/dsh-client-ui-browser-view/core/cdp
  */
 
-import WebSocket from 'ws'
+import { WebSocket } from 'ws'
 
 /** Protocol failure returned by the browser, or raised by this client. */
 export class CdpError extends Error {

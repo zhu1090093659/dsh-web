@@ -353,7 +353,7 @@ describe('runPackages', () => {
     assert.deepEqual(concurrentResult.measured, serialResult.measured)
     assert.deepEqual(concurrentResult.totals, serialResult.totals)
     assert.deepEqual(concurrentResult.failures, serialResult.failures)
-    assert.deepEqual(concurrentResult.measured, Object.fromEntries(FLEET.map((entry, index) => [entry.name, OUTCOMES[entry.name].metrics])))
+    assert.deepEqual(concurrentResult.measured, Object.fromEntries(FLEET.map((entry) => [entry.name, OUTCOMES[entry.name].metrics])))
   })
 
   it('reports progress in package order however the runs settle', async () => {

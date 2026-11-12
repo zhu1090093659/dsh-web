@@ -30,7 +30,7 @@ import type {
   SessionPreviewView,
   WorkspaceView,
 } from '../core/types.ts'
-import { buildInventory, ledgerEntryFor, readProjcacheIndex, type BuiltInventory, type InventorySources, type ProjcacheFileEntry, type ProjcacheIndex } from './inventory.ts'
+import { buildInventory, readProjcacheIndex, type BuiltInventory, type InventorySources, type ProjcacheFileEntry, type ProjcacheIndex } from './inventory.ts'
 import {
   capEntries,
   deserializeAutoState,

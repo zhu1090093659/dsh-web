@@ -457,15 +457,6 @@ function renderRetiredPlugins(retired) {
 }
 
 /**
- * The display subpath of one shell-wrapped family row: the namespaced row id
- * without the web-ui- prefix (web-ui-usage -> usage), so the subpath, the row
- * id, and the inventory title stay traceable 1:1.
- */
-function shellSubpath(id) {
-  return namespaceId(id).replace(/^web-ui-/, '')
-}
-
-/**
  * Family subpaths of one aggregate, deduped and sorted for exports emission.
  *
  * A family row mounts its child's REAL package now, so the child owns its
@@ -478,20 +469,6 @@ function shellSubpath(id) {
 function collectShellSubpaths(tombstones = []) {
   return [...new Set(tombstones)].sort()
 }
-
-/**
- * Source packages mounted as direct bare rows even though their patch row is
- * not shell-wrapped (paths are relative patchFrom spellings):
- * - self: compat shim IS this package's own plugin;
- * - dsh-i18n: host half is a no-op;
- * - skins/skin-center: carried the Config schema for background/custom-theme/
- *   wallpaper that the 0.1.7 SettingsForms loader had to inspect directly. It
- *   is no longer an in-repo patchFrom source (the skin center became a
- *   satellite npm row), so the entry is inert today; it stays because the
- *   exemption list also decides which historical family subpaths keep their
- *   compat export.
- */
-const SHELL_EXEMPT = new Set(['../dsh-i18n', '../skins/skin-center'])
 
 /** Directories directly under a path (non-recursive, sorted). */
 function listSubdirs(dir) {
@@ -669,7 +646,7 @@ function parsePatchBlocks(patchPath, errors) {
     const subIndent = idIndent + 2
     let j = i + 1
     const nameLine = significant[j]
-    if (nameLine && nameLine.text.startsWith(' '.repeat(subIndent)) && /^name:/.test(nameLine.text.slice(subIndent))) {
+    if (nameLine && nameLine.text.startsWith(' '.repeat(subIndent)) && nameLine.text.slice(subIndent).startsWith('name:')) {
       const nameMatch = nameLine.text.slice(subIndent).match(/^name:\s*(['"])([^'"]+)\1\s*$/)
         || nameLine.text.slice(subIndent).match(/^name:\s*(\S+)\s*$/)
       if (nameMatch) {
@@ -689,7 +666,7 @@ function parsePatchBlocks(patchPath, errors) {
       if (indent <= idIndent) break
       if (indent <= subIndent) {
         const payload = candidate.text.slice(subIndent)
-        if (/^config:/.test(payload)) {
+        if (payload.startsWith('config:')) {
           j++
           while (j < significant.length) {
             const nested = significant[j]
@@ -700,7 +677,7 @@ function parsePatchBlocks(patchPath, errors) {
           }
           continue
         }
-        if (!/^name:/.test(payload)) {
+        if (!payload.startsWith('name:')) {
           block.extraLines.push(candidate.text)
           j++
           while (j < significant.length) {

@@ -24,7 +24,7 @@
  * Tests: node --test scripts/runtime-deps-check.test.mjs
  */
 
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'

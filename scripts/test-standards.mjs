@@ -151,8 +151,8 @@ const SUITE_MODIFIERS_RE = /\.(?:describe|use|before|after|step|extend|configure
  */
 export function scanSource(source) {
   const n = source.length
-  const code = new Array(n)
-  const masked = new Array(n)
+  const code = Array(n)
+  const masked = Array(n)
   const blank = (i) => {
     code[i] = source[i] === '\n' ? '\n' : ' '
     masked[i] = source[i] === '\n' ? '\n' : ' '

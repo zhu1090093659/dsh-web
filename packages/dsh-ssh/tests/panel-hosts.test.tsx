@@ -164,8 +164,8 @@ describe('HostsTab grouped view', () => {
     expect(container.textContent).not.toContain('web-1.example.com')
     expect(container.textContent).toContain('dev-1.example.com')
     // The batch action tests every member of the group.
-    const batchButtons = [...container.querySelectorAll('section button')].filter(button => button.textContent === '测试全部')
-    await act(async () => { (batchButtons[0] as HTMLButtonElement).click() })
+    const batchButton = [...container.querySelectorAll('section button')].find(button => button.textContent === '测试全部')
+    await act(async () => { (batchButton as HTMLButtonElement).click() })
     expect(vi.mocked(api.testHost).mock.calls.length).toBeGreaterThan(0)
   })
 })

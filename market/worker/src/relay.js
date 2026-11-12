@@ -113,7 +113,7 @@ function isAllowedTarget(target) {
  * the request is rejected, so retries cannot outrun the window.
  * @returns a prepared statement list prefix implementing the check.
  */
-function rateLimitStatements(env, bucket, max) {
+function rateLimitStatements(env, bucket, _max) {
   const windowStart = Math.floor(Date.now() / REGISTER_WINDOW_MS) * REGISTER_WINDOW_MS
   return {
     windowStart,

@@ -144,7 +144,7 @@ function json(data, status = 200, extra = {}) {
   })
 }
 
-function preflight(request) {
+function preflight(_request) {
   const headers = new Headers({
     // ACAO * is intentional: the legitimate writers are MarketCards embedded
     // in arbitrary per-user DSH GUI origins (loopback, LAN, custom domains),

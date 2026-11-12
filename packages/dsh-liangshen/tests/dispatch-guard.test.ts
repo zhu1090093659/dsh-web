@@ -170,7 +170,7 @@ describe('liangshen-dispatch-guard', () => {
     const byScope = { list: (agent: unknown, scope?: string) => (scope === 'children' ? [{ id: 'c', status: 'running' }] : []) }
     expect(hasRunningChildSubagent(child, hostWith({ subagents: byScope }))).toBe(true)
     // Then: the older single-argument form answers just as well.
-    const byAgent = { list: (agent: unknown) => [{ id: 'c', status: 'inactive' }] }
+    const byAgent = { list: (_agent: unknown) => [{ id: 'c', status: 'inactive' }] }
     expect(hasRunningChildSubagent(child, hostWith({ subagents: byAgent }))).toBe(false)
     const running = { list: () => [{ id: 'c', status: 'running' }] }
     expect(hasRunningChildSubagent(child, hostWith({ subagents: running }))).toBe(true)

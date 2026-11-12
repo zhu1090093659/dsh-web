@@ -402,8 +402,7 @@ function isMain() {
 
 if (isMain()) {
   const args = process.argv.slice(2)
-  const positional = args.filter((arg) => !arg.startsWith('--'))
-  const dir = positional[0]
+  const dir = args.find((arg) => !arg.startsWith('--'))
   if (dir === undefined || !existsSync(dir)) {
     console.error('usage: node tools/benchmark-report.mjs <results-dir> [--baseline B]')
     process.exitCode = 1

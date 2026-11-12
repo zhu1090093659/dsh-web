@@ -395,7 +395,7 @@ describe('HostExecutionRunner', () => {
     }
     await expect(new HostExecutionRunner(gateway).inspect('session-a', 1_000)).resolves.toEqual({ outcome: 'succeeded' })
     expect(page).toHaveBeenCalledTimes(2)
-    expect((page.mock.calls[1]?.[0].args.request as { beforeSeq?: number }).beforeSeq).toBe(300)
+    expect((page.mock.calls[1]![0].args.request as { beforeSeq?: number }).beforeSeq).toBe(300)
   })
 
   it('operator gets the text the run left behind on the verdict the runner returns', async () => {
@@ -569,7 +569,7 @@ describe('HostExecutionRunner', () => {
 
   it('probes the history head instead of re-scanning a wedged session whose newest seq is unchanged', async () => {
     let headSeq = 40
-    const page = vi.fn(async (request: GatewayRequest) => ({
+    const page = vi.fn(async (_request: GatewayRequest) => ({
       records: [sessionEvent('assistant/message', headSeq, 4_000, {})],
       hasMore: false,
     }))

@@ -79,10 +79,6 @@ function stubApi(overrides: Partial<ArchiveApi> = {}): { api: ArchiveApi; calls:
   return { api, calls }
 }
 
-async function pump(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0))
-}
-
 describe('ArchiveController.runBatch', () => {
   it('chunks large batches and tracks progress per chunk', async () => {
     const rows = Array.from({ length: 450 }, (_, index) => row({ id: `session-${index}` }))

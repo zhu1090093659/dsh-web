@@ -7,7 +7,7 @@
  * @module @linxin666/dsh-session-archive/host/ledger
  */
 
-import { mkdir, open, readFile, rename, unlink } from 'node:fs/promises'
+import { mkdir, open, rename, unlink } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { RunStats } from '../core/types.ts'
 

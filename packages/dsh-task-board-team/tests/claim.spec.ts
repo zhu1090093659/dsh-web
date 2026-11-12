@@ -192,7 +192,7 @@ describe('claiming team issues', () => {
 
     // Then only the preset-bearing member was reported, and the skip is visible
     const register = harness.hub.calls.find(call => call.path.endsWith('/hosts/register'))
-    expect((register?.body as { agents: unknown[] }).agents).toEqual([{ name: 'builder', preset_id: 'liangshen' }])
+    expect((register!.body as { agents: unknown[] }).agents).toEqual([{ name: 'builder', preset_id: 'liangshen' }])
     expect(harness.service().summary().problems.join(' ')).toContain('bare is not registered')
   })
 
@@ -211,8 +211,9 @@ describe('claiming team issues', () => {
     await harness.service().sweep()
 
     // Then the previous attempt was presented instead of being read as a mismatch
-    const claimCall = harness.hub.calls.filter(call => call.path.endsWith('/claim')).pop()
-    expect((claimCall?.body as { execution_attempt_id?: string }).execution_attempt_id).toBe('attempt_1')
+    const claimCalls = harness.hub.calls.filter(call => call.path.endsWith('/claim'))
+    const claimCall = claimCalls[claimCalls.length - 1]
+    expect((claimCall!.body as { execution_attempt_id?: string }).execution_attempt_id).toBe('attempt_1')
   })
 
   it('operator sees a burst of channel events collapse into one claim sweep per cadence', async () => {

@@ -69,9 +69,9 @@ describe('settlement write-back', () => {
     await flush()
 
     // Then the hub stored a failed settlement carrying that reason
-    const settle = harness.hub.calls.filter(call => call.path.endsWith('/settle'))
-    expect((settle[0].body as { outcome: string }).outcome).toBe('failed')
-    expect((settle[0].body as { error: string }).error).toBe('the acceptance command exited 1')
+    const settle = harness.hub.calls.find(call => call.path.endsWith('/settle'))
+    expect((settle!.body as { outcome: string }).outcome).toBe('failed')
+    expect((settle!.body as { error: string }).error).toBe('the acceptance command exited 1')
     expect(harness.hub.issues.get('issue_1')?.status).toBe('failed')
   })
 
@@ -85,8 +85,8 @@ describe('settlement write-back', () => {
     await flush()
 
     // Then the hub was told failed, because a stopped run never earned a review
-    const settle = harness.hub.calls.filter(call => call.path.endsWith('/settle'))
-    expect((settle[0].body as { outcome: string }).outcome).toBe('failed')
+    const settle = harness.hub.calls.find(call => call.path.endsWith('/settle'))
+    expect((settle!.body as { outcome: string }).outcome).toBe('failed')
   })
 
   it('operator sees an oversized summary clipped to the protocol cap', async () => {
@@ -104,7 +104,7 @@ describe('settlement write-back', () => {
     await flush()
 
     // Then both the summary and the error respect the cap
-    const body = harness.hub.calls.filter(call => call.path.endsWith('/settle'))[0].body as { summary: string; error: string }
+    const body = harness.hub.calls.find(call => call.path.endsWith('/settle'))!.body as { summary: string; error: string }
     expect(body.summary.length).toBe(EXECUTION_SUMMARY_LIMIT)
     expect(body.error.length).toBe(EXECUTION_SUMMARY_LIMIT)
   })

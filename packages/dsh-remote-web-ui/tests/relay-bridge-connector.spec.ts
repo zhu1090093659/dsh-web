@@ -383,7 +383,7 @@ describe('the connector state is readable where no stdout is', () => {
     cleanups.push(async () => { runner.stop() })
 
     // When one accepted lease starts it
-    const attaching = bridge.nextAttach()
+    bridge.nextAttach()
     runner.start({
       identity: { id: ID, secret: SECRET },
       port: Number(new URL(host.origin).port),

@@ -48,7 +48,7 @@ function harness(overrides: {
   let taskId = 0
   const tasks = new Map<number, () => void>()
   const timers = {
-    setTimeout(fn: () => void, ms: number): unknown {
+    setTimeout(fn: () => void, _ms: number): unknown {
       const id = ++taskId
       tasks.set(id, fn)
       return id

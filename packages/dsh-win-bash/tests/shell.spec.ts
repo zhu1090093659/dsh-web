@@ -11,7 +11,7 @@
  * Skipped off Windows x64, where the payload cannot start.
  */
 import { spawn, type ChildProcess } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -109,13 +109,6 @@ function ownTempDirs(): string[] {
   return readdirSync(tmpdir())
     .filter(name => name.startsWith(stem))
     .map(name => join(tmpdir(), name))
-}
-
-/** A fresh private temp directory for one shell, mirroring the registry's own. */
-function tempDir(): string {
-  const dir = join(tmpdir(), 'dsh-win-bash-itest-' + Math.random().toString(36).slice(2, 8))
-  mkdirSync(dir, { recursive: true })
-  return dir
 }
 
 const BUDGET = { stdoutBytes: 64 * 1024, stderrBytes: 16 * 1024, timeoutMs: 30_000 }
@@ -307,7 +300,7 @@ describe.skipIf(!RUNNABLE)('the persistent shell over the real payload', () => {
     const owner = {}
     const target = join(binDir(), '..', '..', 'etc')
     const result = await shells.run(owner, { bash: bashPath(), bin: binDir() }, process.cwd(),
-      'cd ' + "'" + target.replace(/\\/g, '/') + "'" + ' && pwd -W && ls fstab', BUDGET)
+      "cd '" + target.replace(/\\/g, '/') + "' && pwd -W && ls fstab'", BUDGET)
     // When the command runs,
     // Then it resolved inside the payload, so a Windows path with backslashes
     // reached bash intact.

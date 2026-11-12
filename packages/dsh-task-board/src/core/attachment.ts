@@ -97,6 +97,7 @@ export function canonicalAttachmentName(value: unknown): string {
   const raw = typeof value === 'string' ? value : ''
   const leaf = raw.split(/[\\/]/).pop() ?? ''
   const cleaned = leaf
+    // oxlint-disable-next-line no-control-regex -- folding control characters into spaces IS the normalization.
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

@@ -8,7 +8,7 @@
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import type { TaskBoardClientFace, TaskBoardClientMirror, TaskBoardExtensionActionRequest } from '../src/core/contract.ts'
-import { zh, en, setRuntimeTranslate, t } from '../src/client/locales.ts'
+import { zh, en, setRuntimeTranslate } from '../src/client/locales.ts'
 import {
   acceptPublishedSummaries,
   cardViewOf,

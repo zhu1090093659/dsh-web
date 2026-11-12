@@ -13,7 +13,16 @@
     "unicorn/no-array-sort": "off",
     "eslint/no-underscore-dangle": "off",
     "unicorn/require-module-specifiers": "off",
-    "import/no-empty-named-blocks": "off"
+    "import/no-empty-named-blocks": "off",
+    "eslint/no-await-in-loop": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "eslint/no-shadow": "off",
+    "promise/always-return": "off",
+    "unicorn/no-useless-spread": "off",
+    "oxc/no-map-spread": "off",
+    "unicorn/no-array-reverse": "off",
+    "unicorn/prefer-add-event-listener": "off",
+    "eslint/no-new": "off"
   },
   "ignorePatterns": [
     "node_modules/",
@@ -31,6 +40,7 @@
     "coverage/",
     "playwright-report/",
     "test-results/",
-    "gui-test-screenshots/"
+    "gui-test-screenshots/",
+    "docs/archive/"
   ]
 }

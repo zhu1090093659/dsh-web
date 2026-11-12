@@ -10,8 +10,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 
 /** Apply the host half. */
-export function apply(ctx: Context): void {
+export function apply(_ctx: Context): void {
   // TODO(__NAME__): host-side behavior, e.g.
-  //   ctx.systemPrompt.section({ name: 'plugin:__NAME__', order: 200, text: '...' })
+  //   _ctx.systemPrompt.section({ name: 'plugin:__NAME__', order: 200, text: '...' })
   // A pure browser plugin needs nothing here.
 }

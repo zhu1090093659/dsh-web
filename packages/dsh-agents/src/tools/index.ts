@@ -9,11 +9,10 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { TeamService, TeamServiceContext } from '../team/index.ts'
 import { TEAM_IDENTITY_CONTEXT_ORDER } from '../team/index.ts'
 import { readService } from '../host/services.ts'
-import { AGENTS_PERMISSIONS } from '../protocol.ts'
 import { TeamTaskId } from '../team/types.ts'
 import type { TeamMemberView } from '../team/types.ts'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { InferValue, ParameterSchemaSpec, ValueSchemaSpec } from '@deepseek-ai/dsh-tools'
+import type { InferValue, ValueSchemaSpec } from '@deepseek-ai/dsh-tools'
 
 /** Tool routing and installation policy. */
 export interface TeamToolOptions {

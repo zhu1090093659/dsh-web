@@ -1510,7 +1510,7 @@ window.__ModuleLoader__.load({
 				}, 2400);
 			};
 			const copyCommand = (id, command) => {
-				const done = () => {
+				const finish = () => {
 					setCopiedId(id);
 					window.setTimeout(() => setCopiedId(null), 1200);
 				};
@@ -1528,10 +1528,10 @@ window.__ModuleLoader__.load({
 					ta.remove();
 					return ok;
 				};
-				if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(command).then(done, () => {
-					if (fallback()) done();
+				if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(command).then(finish, () => {
+					if (fallback()) finish();
 				});
-				else if (fallback()) done();
+				else if (fallback()) finish();
 			};
 			const installAssetKind = async (kind, id, force) => {
 				if (gateway === null) return;
@@ -1555,7 +1555,7 @@ window.__ModuleLoader__.load({
 										preset: {}
 									},
 									[kind]: {
-										...prev.stats.installs?.[kind] ?? {},
+										...prev.stats.installs?.[kind],
 										[id]: count
 									}
 								}
@@ -1675,7 +1675,7 @@ window.__ModuleLoader__.load({
 									preset: {}
 								},
 								skin: {
-									...prev.stats.installs?.skin ?? {},
+									...prev.stats.installs?.skin,
 									...counts
 								}
 							}
@@ -1725,7 +1725,7 @@ window.__ModuleLoader__.load({
 										preset: {}
 									},
 									plugin: {
-										...prev.stats.installs?.plugin ?? {},
+										...prev.stats.installs?.plugin,
 										[id]: count
 									}
 								}
@@ -2309,7 +2309,7 @@ window.__ModuleLoader__.load({
 			return (url) => {
 				let registry;
 				try {
-					registry = ctx.get?.call(ctx, "sidebarRightTabs");
+					registry = ctx.get?.("sidebarRightTabs");
 				} catch {
 					registry = void 0;
 				}

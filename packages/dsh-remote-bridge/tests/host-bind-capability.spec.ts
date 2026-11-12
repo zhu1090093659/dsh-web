@@ -27,7 +27,7 @@ function refusingSchema(): { factory: (value: unknown) => unknown; calls: number
   const calls: number[] = []
   return {
     calls,
-    factory: (value: unknown) => {
+    factory: (_value: unknown) => {
       calls.push(1)
       throw new Error('webserver: host "0.0.0.0" is an unspecified (wildcard) address, which is not supported')
     },

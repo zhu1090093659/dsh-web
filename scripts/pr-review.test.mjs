@@ -134,10 +134,10 @@ test(`密钥扫描：命中拒绝，测试目录降级警告`, () => {
   const diff = [
     `diff --git a/src/api.ts b/src/api.ts`,
     `@@ -1 +1 @@`,
-    `+token = ` + `ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789`,
+    `+token = ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789`,
     `diff --git a/tests/fixture.ts b/tests/fixture.ts`,
     `@@ -1 +1 @@`,
-    `+const key = ` + `AKIAABCDEFGHIJKLMNOP`,
+    `+const key = AKIAABCDEFGHIJKLMNOP`,
   ].join(`\n`)
   const f = checkSecrets(diff)
   assert.equal(f.length, 2)
@@ -155,7 +155,7 @@ test(`私钥块命中`, () => {
 // ---------------------------------------------------------------- checkEmoji
 
 test(`emoji 扫描：命中拒绝`, () => {
-  const diff = `diff --git a/a.ts b/a.ts\n@@ -1 +1 @@\n+hello ` + `\u{1F600}` + ` world`
+  const diff = `diff --git a/a.ts b/a.ts\n@@ -1 +1 @@\n+hello \u{1F600} world`
   const f = checkEmoji(diff)
   assert.equal(f.length, 1)
   assert.equal(f[0].severity, `reject`)
@@ -238,14 +238,14 @@ test(`摘要为空拒绝`, () => {
 test(`PR 类别未勾选拒绝`, () => {
   // 真实场景：贡献者保留模板选项但未勾选（`- [ ]`），而非删除整行。
   const body = makeBody({ author: { login: `someone` } }).body
-    .replace(/^\- \[x\] 插件功能/m, `- [ ] 插件功能`)
+    .replace(/^- \[x\] 插件功能/m, `- [ ] 插件功能`)
   const f = checkTemplate({ body, author: { login: `someone` } }, `owner`)
   assert.ok(f.some((x) => x.message.includes(`PR 类别`)))
 })
 
 test(`AI 披露未勾选拒绝`, () => {
   let body = makeBody().body
-  body = body.replace(/^\- \[x\] 部分 AI 辅助.*$/m, ``)
+  body = body.replace(/^- \[x\] 部分 AI 辅助.*$/m, ``)
   body = body.replace(/^使用的 AI 模型：.*$/m, ``)
   const pr = { body, author: { login: `someone` } }
   const f = checkTemplate(pr, `owner`)
@@ -261,7 +261,7 @@ test(`声明 AI 但模型为空拒绝`, () => {
 
 test(`外部贡献者 PR 无测试截图拒绝；仓库所有者豁免`, () => {
   const noEvidence = makeBody({ author: { login: `someone` } }).body
-    .replace(/^\!\[screenshot\].*$/m, ``)
+    .replace(/^!\[screenshot\].*$/m, ``)
   const f1 = checkTemplate({ body: noEvidence, author: { login: `someone` } }, `owner`)
   assert.ok(f1.some((x) => x.message.includes(`证据`)))
   const f2 = checkTemplate({ body: noEvidence, author: { login: `owner` } }, `owner`)
@@ -270,10 +270,10 @@ test(`外部贡献者 PR 无测试截图拒绝；仓库所有者豁免`, () => {
 
 test(`外部贡献者 PR 未勾选自测证据 / 上游同步项拒绝；所有者豁免`, () => {
   let body = makeBody({ author: { login: `someone` } }).body
-  body = body.replace(/^\- \[x\] 我提供了自己本地测试的证据.*$/m, ``)
+  body = body.replace(/^- \[x\] 我提供了自己本地测试的证据.*$/m, ``)
   const f1 = checkTemplate({ body, author: { login: `someone` } }, `owner`)
   assert.ok(f1.some((x) => x.message.includes(`自测证据`)))
-  body = body.replace(/^\- \[x\] 我已同步上游最新.*$/m, ``)
+  body = body.replace(/^- \[x\] 我已同步上游最新.*$/m, ``)
   const f2 = checkTemplate({ body, author: { login: `someone` } }, `owner`)
   assert.ok(f2.some((x) => x.message.includes(`上游同步`)))
   const f3 = checkTemplate({ body, author: { login: `owner` } }, `owner`)
@@ -282,10 +282,10 @@ test(`外部贡献者 PR 未勾选自测证据 / 上游同步项拒绝；所有�
 
 test(`视觉修复 PR：未勾选完成截图 / 多模态声明拒绝`, () => {
   let body = makeBody({ author: { login: `someone` }, visual: true }).body
-  body = body.replace(/^\- \[x\] 我提供了修复完成后的截图.*$/m, ``)
+  body = body.replace(/^- \[x\] 我提供了修复完成后的截图.*$/m, ``)
   const f1 = checkTemplate({ body, author: { login: `someone` } }, `owner`)
   assert.ok(f1.some((x) => x.message.includes(`完成截图`)))
-  body = body.replace(/^\- \[x\] 修复使用的 AI 模型支持图像输入.*$/m, ``)
+  body = body.replace(/^- \[x\] 修复使用的 AI 模型支持图像输入.*$/m, ``)
   const f2 = checkTemplate({ body, author: { login: `someone` } }, `owner`)
   assert.ok(f2.some((x) => x.message.includes(`多模态`)))
 })
@@ -304,8 +304,8 @@ test(`视觉修复 PR：纯文本模型拒绝，多模态模型通过，所有�
 test(`文本类改动可不附截图`, () => {
   let body = makeBody({ author: { login: `someone` } }).body
   body = body
-    .replace(/^\- \[x\] 面向用户的功能或行为变更.*$/m, `- [x] 维护 / 重构`)
-    .replace(/^\!\[screenshot\].*$/m, ``)
+    .replace(/^- \[x\] 面向用户的功能或行为变更.*$/m, `- [x] 维护 / 重构`)
+    .replace(/^!\[screenshot\].*$/m, ``)
   const f = checkTemplate({ body, author: { login: `someone` } }, `owner`)
   assert.ok(!f.some((x) => x.message.includes(`证据`)))
 })
@@ -350,7 +350,7 @@ test(`提交信息检查`, () => {
   ])
   assert.equal(f.length, 1)
   assert.equal(f[0].severity, `warn`)
-  const bad = checkCommits([{ messageHeadline: `feat: ok ` + `\u{1F600}` }])
+  const bad = checkCommits([{ messageHeadline: `feat: ok \u{1F600}` }])
   assert.ok(bad.some((x) => x.severity === `reject` && x.rule === `emoji`))
 })
 

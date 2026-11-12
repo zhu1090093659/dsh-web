@@ -4,7 +4,7 @@
  * the outer leg down without an unhandled error, and normal completion must
  * keep reusing the upstream keep-alive connection.
  */
-import { createServer, request as httpRequest, type IncomingHttpHeaders, type IncomingMessage, type Server } from 'node:http'
+import { createServer, request as httpRequest, type IncomingHttpHeaders, type Server } from 'node:http'
 import { describe, expect, it } from 'vitest'
 import type { AddressInfo } from 'node:net'
 import type { InnerAuth } from '../src/inner-auth.ts'
@@ -95,7 +95,7 @@ describe('loopback proxy connection lifecycle', () => {
     const proxy = await serveProxy(up.port)
     try {
       // A chunked POST whose body never finishes: abort mid-flight.
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve, _reject) => {
         const req = httpRequest({ host: '127.0.0.1', port: proxy.port, method: 'POST' })
         req.on('error', () => { resolve() })
         req.write('partial-body-half')

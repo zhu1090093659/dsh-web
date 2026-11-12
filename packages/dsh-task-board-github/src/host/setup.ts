@@ -29,7 +29,7 @@ import { isIssueIncluded } from '../core/projection.ts'
 import { GITHUB_API_BASE_URL, GitHubApiClient, GitHubApiError, proxyClientOptions } from './client.ts'
 import { clearGitHubToken, describeGitHubCredential, resolveGitHubToken, setGitHubToken } from './credentials.ts'
 import { findGitHubSettingsEntry, resolveSettingsFace, writeConfiguredRepositories, writeProxySettings } from './configuration.ts'
-import { detectSystemProxy, resolveProxyConfiguration } from './proxy.ts'
+import { resolveProxyConfiguration } from './proxy.ts'
 
 /** How one repository is checked during a connection test. */
 export interface GitHubSetupTarget {

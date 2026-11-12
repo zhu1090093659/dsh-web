@@ -119,7 +119,7 @@ export function terminalSocketUrl(
   search: string,
   streamBaseUrl?: string | undefined,
 ): string | undefined {
-  if (WEB_PAGE_PROTOCOLS.includes(location.protocol)) {
+  if (WEB_PAGE_PROTOCOLS.has(location.protocol)) {
     const scheme = location.protocol === 'https:' ? 'wss' : 'ws'
     return scheme + '://' + location.host + SSH_API.terminal + search
   }
@@ -173,14 +173,14 @@ function transportStreamBaseUrl(
  * an application on this machine, which is the same classification the remote
  * channel and the update seat use (`isWebPageProtocol` / `isApplicationDeliveredPage`).
  */
-const WEB_PAGE_PROTOCOLS: readonly string[] = [
+const WEB_PAGE_PROTOCOLS: ReadonlySet<string> = new Set([
   'http:',
   'https:',
   'blob:',
   'data:',
   'about:',
   'filesystem:',
-]
+])
 
 /**
  * A terminal connection that never opened: it reports one failure once the

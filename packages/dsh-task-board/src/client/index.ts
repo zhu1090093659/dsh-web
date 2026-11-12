@@ -9,7 +9,7 @@
  * plugin must not take the GUI down.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
-import type { ClientRemote, SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { IWorkspaces } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { ConfigForm, ConfigForms } from '@deepseek-ai/dsh-client-ui-settings/client'

@@ -13,7 +13,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { basename, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { randomBytes } from 'node:crypto'
-import { WebSocket, WebSocketServer } from 'ws'
+import { WebSocketServer } from 'ws'
 import type { WebRoute, WebUpgradeRoute } from '@deepseek-ai/dsh-host-webserver'
 import type { SshEngine } from './engine.ts'
 import { TerminalSessionRegistry } from './engine/terminal-sessions.ts'
@@ -335,22 +335,22 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
         const tmp = join(staging, `upload-${randomBytes(6).toString('hex')}`)
         const sink = createWriteStream(tmp, { mode: 0o600 })
         let settled = false
+        // End the response only after the tmp file is gone, and unlink only
+        // after the sink is fully closed: destroying a WriteStream whose
+        // fs.open is still pending lets the open RE-CREATE the file after
+        // an early unlink, leaving staging populated (this raced the
+        // response end and made the byte-cap test flaky).
+        const cleanup = (): void => {
+          void unlink(tmp).catch(() => undefined).finally(() => {
+            try { res.end() } catch { /* closed */ }
+          })
+        }
         // Every terminal path (sink error, client abort, response loss) must
         // emit a result frame, end the response, and remove the tmp file.
         const fail = (error: unknown): void => {
           if (settled) return
           settled = true
           emit({ type: 'result', ok: false, error: error instanceof Error ? error.message : String(error) })
-          // End the response only after the tmp file is gone, and unlink only
-          // after the sink is fully closed: destroying a WriteStream whose
-          // fs.open is still pending lets the open RE-CREATE the file after
-          // an early unlink, leaving staging populated (this raced the
-          // response end and made the byte-cap test flaky).
-          const cleanup = (): void => {
-            void unlink(tmp).catch(() => undefined).finally(() => {
-              try { res.end() } catch { /* closed */ }
-            })
-          }
           if (sink.destroyed) {
             cleanup()
           } else {

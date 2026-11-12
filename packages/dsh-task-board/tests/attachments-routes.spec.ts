@@ -16,8 +16,6 @@ import {
 import type { TaskAttachment } from '../src/core/attachment.ts'
 import type { TaskBoardSnapshot } from '../src/protocol.ts'
 
-const NOW = new Date(2026, 7, 16, 10, 0, 30).getTime()
-
 const snapshot: TaskBoardSnapshot = {
   schemaVersion: 7,
   revision: 0,

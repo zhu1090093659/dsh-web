@@ -753,7 +753,7 @@ export class HostExecutionRunner {
         // keeps the best-effort behavior: the card was asked to run, and losing
         // the work over a model switch this run never promised is worse.
         if (decision.effort !== undefined) {
-          throw new Error(`session ${sessionId} refused the model selection "${provider === undefined ? modelId : provider + '/' + modelId}" with reasoning effort "${decision.effort}": ` + (modelError instanceof Error ? modelError.message : String(modelError)))
+          throw new Error(`session ${sessionId} refused the model selection "${provider === undefined ? modelId : provider + '/' + modelId}" with reasoning effort "${decision.effort}": ` + (modelError instanceof Error ? modelError.message : String(modelError)), { cause: modelError })
         }
         console.warn(`[dsh-task-board] failed to select model "${provider === undefined ? modelId : provider + '/' + modelId}" for session ${sessionId}, falling back to default:`, modelError)
       }

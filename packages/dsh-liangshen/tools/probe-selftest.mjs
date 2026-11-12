@@ -105,7 +105,7 @@ export async function runSelftest(options = {}) {
 
 function render(result) {
   const lines = []
-  lines.push('probe                 bad policy                      good policy                     ' + 'discriminates')
+  lines.push('probe                 bad policy                      good policy                     discriminates')
   for (const row of result.rows) {
     const bad = (row.bad.passed ? 'PASS' : 'fail') + ' ' + row.rule.metric + '=' + row.bad.value
     const good = (row.good.passed ? 'PASS' : 'fail') + ' ' + row.rule.metric + '=' + row.good.value

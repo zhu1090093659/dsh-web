@@ -116,7 +116,7 @@ const MemoTaskCard = memo(function MemoTaskCard({ task, pending, timeZone, onOpe
 })
 
 /** Settled columns whose cards group by recency and fold the oldest group. */
-const GROUPED_COLUMNS: readonly TaskStatus[] = ['done', 'failed']
+const GROUPED_COLUMNS: ReadonlySet<TaskStatus> = new Set(['done', 'failed'])
 
 /** Cards a grouped column renders before the oldest group folds. */
 export const COLUMN_FOLD_THRESHOLD = 30
@@ -289,7 +289,7 @@ export function TaskBoard({ controller }: { controller: BoardController }) {
 
   /** Every column and the archive first split by provider-owned source. */
   const renderSourceGroups = (view: SourceGroupView, tasks: TaskRecord[], compact: boolean, archived: boolean) => {
-    const recency = archived || GROUPED_COLUMNS.includes(view as TaskStatus)
+    const recency = archived || GROUPED_COLUMNS.has(view as TaskStatus)
     return groupTasksBySource(tasks, snapshot.grouping ?? []).map(bucket => {
       const foldKey = sourceGroupFoldKey(view, bucket.id)
       const folded = isSourceGroupFolded(sourceFolds, view, bucket.id, searchActive)

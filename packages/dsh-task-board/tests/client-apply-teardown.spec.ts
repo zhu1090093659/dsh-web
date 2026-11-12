@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { apply } from '../src/client/index.ts'
 
 /** The two official seats the board's own panel surfaces register into. */
-const PANEL_SEATS = ['main', 'sidebar.panellist']
+const PANEL_SEATS = new Set(['main', 'sidebar.panellist'])
 
 /** An unavailable settings namespace: the composition default (enabled) mounts the UI. */
 function unavailableSettingsForm() {
@@ -134,7 +134,7 @@ describe('task-board client apply fiber ownership', () => {
     // Then the sidebar row and the center-column page are both contributed into
     // the official seats (beside the settings card apply() also installs), and
     // every registration is live
-    const panelSeats = registrations.filter(entry => PANEL_SEATS.includes(entry.name))
+    const panelSeats = registrations.filter(entry => PANEL_SEATS.has(entry.name))
     expect(panelSeats.map(entry => entry.name).sort()).toEqual(['main', 'sidebar.panellist'])
     expect(registrations.every(entry => entry.live)).toBe(true)
 
@@ -158,7 +158,7 @@ describe('task-board client apply fiber ownership', () => {
     apply(second.ctx)
 
     // Then exactly one live row/page pair is registered again, not a stale one
-    const live = second.registrations.filter(entry => PANEL_SEATS.includes(entry.name))
+    const live = second.registrations.filter(entry => PANEL_SEATS.has(entry.name))
     expect(live.map(entry => entry.name).sort()).toEqual(['main', 'sidebar.panellist'])
     expect(second.registrations.filter(entry => entry.name === 'sidebar.panellist')).toHaveLength(1)
   })

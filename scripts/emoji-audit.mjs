@@ -167,8 +167,8 @@ export function auditTree(files, readSource) {
 }
 
 function main() {
-  const args = process.argv.slice(2)
-  if (args.includes('--help') || args.includes('-h')) {
+  const args = new Set(process.argv.slice(2))
+  if (args.has('--help') || args.has('-h')) {
     console.log('Usage: node scripts/emoji-audit.mjs [--list]\n\nScans hand-written sources for banned pictographic code points.\nExit 1 when any is found.')
     return 0
   }
@@ -187,7 +187,7 @@ function main() {
     return 1
   }
   console.log('[emoji-audit] OK: ' + scanned + ' hand-written file(s) scanned, no pictographs')
-  if (args.includes('--list')) console.log('[emoji-audit] skipped directories: ' + [...SKIP_DIRS].sort().join(', '))
+  if (args.has('--list')) console.log('[emoji-audit] skipped directories: ' + [...SKIP_DIRS].sort().join(', '))
   return 0
 }
 

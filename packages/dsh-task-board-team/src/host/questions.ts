@@ -27,7 +27,7 @@ import {
   type QuestionItem,
   type QuestionRequestShape,
 } from '../core/question-report.ts'
-import { findLinkedTask, findTaskBySession, readTaskIssueLink } from '../core/identity.ts'
+import { findTaskBySession, readTaskIssueLink } from '../core/identity.ts'
 import type { TaskBoardExtensionHost, TaskBoardLinkedTask } from '../core/contract.ts'
 import type { HostTimerFace } from '../core/timers.ts'
 

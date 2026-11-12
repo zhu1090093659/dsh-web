@@ -333,7 +333,7 @@ export class FakeBoard {
       else next[key] = value
     }
     if (!isAcceptablePayload(next)) throw new Error('merged integration payload exceeds the size limit')
-    this.records.set(taskId, { ...task, integrations: { ...(task.integrations ?? {}), [extensionId]: next } })
+    this.records.set(taskId, { ...task, integrations: { ...task.integrations, [extensionId]: next } })
   }
 
   private registerTool(entry: Admitted, definition: ToolDefinition): () => void {

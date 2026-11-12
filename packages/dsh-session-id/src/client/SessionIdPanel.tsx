@@ -26,18 +26,6 @@ export type SessionIdPanelProps = PropsLocale<'session-id'> & {
   onClose: () => void
 }
 
-/** Short relative label for a session's update time (zh/en shared w/ locales). */
-function relativeTimeLabel(updatedAt: number, now: number, t: PropsLocale<'session-id'>['t']): string {
-  const diff = Math.max(0, now - updatedAt)
-  const minute = 60_000
-  const hour = 60 * minute
-  const day = 24 * hour
-  if (diff < minute) return t('panel.updatedAt', { t: t('panel.time.now') })
-  if (diff < hour) return t('panel.updatedAt', { t: t('panel.time.minutes', { n: Math.floor(diff / minute) }) })
-  if (diff < day) return t('panel.updatedAt', { t: t('panel.time.hours', { n: Math.floor(diff / hour) }) })
-  return t('panel.updatedAt', { t: t('panel.time.days', { n: Math.floor(diff / day) }) })
-}
-
 /** Sort sessions by update time, newest first; blank rows sink to the bottom. */
 function sortSessions(list: SessionListState): SessionSummary[] {
   const rows = list.ids

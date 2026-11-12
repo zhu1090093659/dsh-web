@@ -342,7 +342,7 @@ export class ChromeProcess {
       child = spawn(chromePath, args, { stdio: 'ignore', windowsHide: true })
     } catch (error) {
       await removeTempProfile(userDataDir)
-      throw new Error(`Could not start ${chromePath}: ${error instanceof Error ? error.message : String(error)}`)
+      throw new Error(`Could not start ${chromePath}: ${error instanceof Error ? error.message : String(error)}`, { cause: error })
     }
     const process_ = new ChromeProcess(
       child,

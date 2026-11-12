@@ -910,6 +910,7 @@ export function sanitizeDeviceName(raw: string): string | undefined {
 
 /** Shared cleaner: collapse whitespace/control characters, cap, and blank-to-undefined. */
 function sanitizeLabel(raw: string, max: number): string | undefined {
+  // oxlint-disable-next-line no-control-regex -- folding control characters into spaces IS the cleaner.
   const cleaned = raw.replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim()
   if (cleaned === '') return undefined
   return cleaned.length <= max ? cleaned : cleaned.slice(0, max)

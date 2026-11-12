@@ -53,7 +53,7 @@ const SECTION_NAMES: Record<SectionKey, string> = {
  */
 const SENSITIVE_PATTERNS: RegExp[] = [
   /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
-  /Bearer\s+[A-Za-z0-9._~+\/=:-]{8,}/gi,
+  /Bearer\s+[A-Za-z0-9._~+/=:-]{8,}/gi,
   /sk-[A-Za-z0-9_-]{8,}/g,
   /ghp_[A-Za-z0-9]{20,}/g,
   /glpat-[A-Za-z0-9_-]{15,}/g,
@@ -111,8 +111,8 @@ export function sanitizeFreezeSnapshot(
     return bad('invalid-freeze', '冻结快照必须是 goal/progress/next 字符串对象')
   }
   const record = value as Record<string, unknown>
-  const allowed = ['goal', 'progress', 'next', ...extraKeys]
-  if (!Object.keys(record).every(key => allowed.includes(key))) {
+  const allowed = new Set(['goal', 'progress', 'next', ...extraKeys])
+  if (!Object.keys(record).every(key => allowed.has(key))) {
     return bad('invalid-freeze', '冻结快照包含未知字段')
   }
   for (const key of SECTION_ORDER) {

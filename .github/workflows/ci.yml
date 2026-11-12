@@ -121,16 +121,17 @@ jobs:
         run: pnpm i18n:check
 
       # Oxlint, syntax-only: .oxlintrc.json scopes the scan to hand-written
-      # sources and enables every defect-shaped rule category (correctness,
-      # suspicious, perf) while excluding the two purely stylistic ones. The
-      # gate REPORTS and does not block: measured 2026-10-14, the tree already
-      # carries 896 findings across 37 rules, far more than this lane may fix
-      # without behavior risk, so `|| true` keeps the per-rule counts in the log
-      # instead of turning a pre-existing finding into a red lane. It sits after
-      # the install because the binary comes from node_modules, and before
-      # Typecheck because it is the cheaper of the two (155ms for the tree).
+      # sources and enables the defect-shaped rule categories (correctness,
+      # suspicious, perf). The gate BLOCKS: the tree reached zero findings on
+      # 2026-11-12 after the rule set was tuned to this codebase's idioms (nine
+      # rules that conflict with sequential IO, spread updates, shadowed
+      # identifiers and DOM handler assignment are off with their reasons in
+      # .oxlintrc.json, and docs/archive/ is a frozen snapshot). A new finding
+      # is therefore a regression, not standing debt, so there is no `|| true`.
+      # It sits after the install because the binary comes from node_modules,
+      # and before Typecheck because it is the cheaper of the two.
       - name: Lint (syntax only)
-        run: pnpm lint || true
+        run: pnpm lint
 
       - name: Typecheck
         run: pnpm typecheck

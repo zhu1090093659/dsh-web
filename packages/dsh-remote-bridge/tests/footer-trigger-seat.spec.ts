@@ -16,7 +16,7 @@ const css = readFileSync(new URL('../src/client/panel.module.css', import.meta.u
 
 /** Extract one rule block body by its full selector. */
 function ruleBody(selector: string): string {
-  const escaped = selector.replace(/[.*+$\{\}()|[\]\\]/g, '\\$&')
+  const escaped = selector.replace(/[.*+${}()|[\]\\]/g, '\\$&')
   const match = new RegExp(escaped + '\\s*\\{([^}]*)\\}').exec(css)
   if (match === null) throw new Error(selector + ' rule not found in panel.module.css')
   return match[1] ?? ''

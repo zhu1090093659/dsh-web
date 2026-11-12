@@ -6,19 +6,14 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
 import {
   apply,
-  discoverSubdirectoryInstructions,
   extractInstructionPaths,
   filePathFromExecution,
-  FILE_TOUCH_TOOL_NAMES,
-  filterInstructionMessages,
   INSTRUCTION_SOURCES,
   isBaselineInstructionPath,
-  isMessagePureBaseline,
   DISPATCHER_RULES_HEADING,
   loadInstructionFiles,
   loadInstructionText,
   name,
-  PTC_SECTION_NAMES,
   renderInstructionSection,
   WORKSPACE_INSTRUCTIONS_SECTION_NAME,
 } from '../presets/liangshen/minimal-prompt.mjs'
@@ -1048,8 +1043,8 @@ describe('liangshen-minimal-prompt', () => {
       for (const removed of ['WIN32_SHELL_LINE', 'withPlatformLine']) {
         expect(removed in promptModule, removed).toBe(false)
       }
-      expect(promptModule.WIN32_SHELL_LINE).toBeUndefined()
-      expect(promptModule.withPlatformLine).toBeUndefined()
+      expect((promptModule as Record<string, unknown>).WIN32_SHELL_LINE).toBeUndefined()
+      expect((promptModule as Record<string, unknown>).withPlatformLine).toBeUndefined()
     })
 
     test('produces the same persona text on win32 and on POSIX', async () => {

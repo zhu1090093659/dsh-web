@@ -53,7 +53,7 @@ export function createExternalLinkOpener(
   return (url: string): void => {
     let registry: TabTypeRegistry | undefined
     try {
-      registry = ctx.get?.call(ctx, 'sidebarRightTabs') as TabTypeRegistry | undefined
+      registry = ctx.get?.('sidebarRightTabs') as TabTypeRegistry | undefined
     } catch {
       // A context that refuses the lookup: treat the sidebar as absent.
       registry = undefined

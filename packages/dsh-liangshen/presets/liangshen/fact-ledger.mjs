@@ -178,7 +178,7 @@ export function apply(ctx) {
     isConcurrencySafe: () => true,
     async execute(args) {
       if (typeof args?.revoke === 'string' && args.revoke.trim() !== '') {
-        return { text: `Revocation recorded for "${args.revoke.trim()}": every pinned fact under that tag (or matching that text) is dropped from the next step\'s working context.` }
+        return { text: `Revocation recorded for "${args.revoke.trim()}": every pinned fact under that tag (or matching that text) is dropped from the next step's working context.` }
       }
       if (typeof args?.fact !== 'string' || args.fact.trim() === '') {
         throw new Error('fact_register requires either a non-empty `fact` to pin or a non-empty `revoke` tag/text to unpin')

@@ -95,8 +95,8 @@ test('the limits module states every relay limit at its frozen value', () => {
     Object.keys(FROZEN).sort(),
     'the module states exactly the limits the two halves used to declare, and nothing else',
   )
-  for (const [name, value] of Object.entries(FROZEN)) {
-    assert.equal(limits[name], value, name + ' keeps the value it held before the consolidation')
+  for (const [name, value] of Object.entries(limits)) {
+    assert.equal(value, FROZEN[name], name + ' keeps the value it held before the consolidation')
   }
   assert.equal(
     limits.BRIDGE_STREAM_PAUSED_CAP,

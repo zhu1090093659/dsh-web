@@ -54,7 +54,7 @@ test('skins.json 契约与资产存在性', () => {
         assert.ok(item.repo.startsWith(SKINS_REPO), 'skin repo must point at the catalog repository: ' + item.id)
       }
     }
-    assert.ok(/^https:\/\//.test(item.repo), 'skin repo must be https: ' + item.id)
+    assert.ok(item.repo.startsWith('https://'), 'skin repo must be https: ' + item.id)
     const bg = item.contributes && item.contributes.backgroundMedia
     for (const mode of ['light', 'dark']) {
       const v = bg && bg[mode]
@@ -99,7 +99,7 @@ test('plugins.json 契约', () => {
     } else {
       assert.ok(typeof item.subcategory === 'string' && item.subcategory, 'plugin subcategory: ' + item.id)
     }
-    if (item.repo) assert.ok(/^https:\/\//.test(item.repo), 'plugin repo must be https: ' + item.id)
+    if (item.repo) assert.ok(item.repo.startsWith('https://'), 'plugin repo must be https: ' + item.id)
   }
 })
 
@@ -117,7 +117,7 @@ test('presets.json 契约', () => {
     assert.ok(typeof item.category === 'string' && item.category, 'preset category: ' + item.id)
     assert.ok(!ids.has(item.id), 'duplicate preset id: ' + item.id)
     ids.add(item.id)
-    if (item.repo) assert.ok(/^https:\/\//.test(item.repo), 'preset repo must be https: ' + item.id)
+    if (item.repo) assert.ok(item.repo.startsWith('https://'), 'preset repo must be https: ' + item.id)
     for (const rel of item.files) assert.ok(exists('assets/presets/' + item.id + '/' + rel), 'preset asset missing: ' + item.id + '/' + rel)
   }
 })

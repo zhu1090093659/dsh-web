@@ -1,10 +1,9 @@
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { REPO_ROOT, applySync, checkSync, copyEntries, headerFor, renderCopy, stripHeader } from './sync-shared.mjs'
+import { applySync, checkSync, copyEntries, headerFor, renderCopy, stripHeader } from './sync-shared.mjs'
 
 test('header/strip round-trips every file kind', () => {
   for (const file of ['settings-form.ts', 'PluginSettingsCard.tsx', 'settings-card.module.css', 'SegmentGroup.tsx', 'RangeBubble.tsx']) {

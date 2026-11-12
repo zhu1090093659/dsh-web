@@ -46,6 +46,7 @@ function isHttpsGitUrl(spec: string): boolean {
   // The URL parser re-homes 'https:///path' onto host 'path'; require the
   // host to actually start right after the scheme.
   if (!/^https:\/\/[A-Za-z0-9]/.test(spec)) return false
+  // oxlint-disable-next-line no-control-regex -- rejecting control characters in a spec IS the check.
   if (/[\s\u0000-\u001F\u007F]/.test(spec)) return false
   try {
     const url = new URL(spec)

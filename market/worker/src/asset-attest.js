@@ -116,7 +116,7 @@ async function measureAsset(env, base, path) {
 
 /** Measure every requested path with bounded concurrency, preserving order. */
 async function measureAssets(env, base, paths) {
-  const sizes = new Array(paths.length)
+  const sizes = Array(paths.length)
   let next = 0
   const runners = Array.from({ length: Math.min(ATTEST_CONCURRENCY, paths.length) }, async () => {
     for (;;) {

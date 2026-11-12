@@ -73,7 +73,6 @@ describe('claim audit UI (issue #6)', () => {
     const freeze = container.querySelector('[data-dsh-part="freeze"]')
     expect(freeze).not.toBeNull()
     expect(freeze!.textContent).toContain('session-source')
-    const executionList = container.querySelector('ul.executionList')
     // The last execution list on the page is the history; assert any row text.
     expect(container.textContent).toContain('session-claimer')
   })

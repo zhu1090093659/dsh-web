@@ -109,7 +109,7 @@ describe('installAsset', () => {
   }
 
   function mockFetch(overrides: Record<string, number> = {}): typeof fetch {
-    return (async (input: RequestInfo | URL, init?: RequestInit) => {
+    return (async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input)
       const m = url.match(/\/manifest\/(skins|pets|presets)\.json$/)
       if (m) {

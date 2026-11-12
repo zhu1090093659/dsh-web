@@ -363,8 +363,8 @@ async function loadRuDictionaries() {
   try {
     mod = await importTs(path)
   } catch (error) {
-    const codes = [error?.code, error?.cause?.code].map(String)
-    if (codes.includes('ERR_MODULE_NOT_FOUND') || codes.includes('ENOENT') || codes.includes('ENOTDIR')) return {}
+    const codes = new Set([error?.code, error?.cause?.code].map(String))
+    if (codes.has('ERR_MODULE_NOT_FOUND') || codes.has('ENOENT') || codes.has('ENOTDIR')) return {}
     throw error
   }
   const ru = mod.ruDictionaries
@@ -558,14 +558,13 @@ Usage: node scripts/i18n-audit.mjs [--check] [--template] [--report] [--help]
 `.trim()
 
 async function main() {
-  const args = process.argv.slice(2)
-  if (args.includes('--help') || args.includes('-h')) {
+  const args = new Set(process.argv.slice(2))
+  if (args.has('--help') || args.has('-h')) {
     console.log(HELP)
     return
   }
-  const template = args.includes('--template')
-  const report = args.includes('--report')
-  const check = !template && !report
+  const template = args.has('--template')
+  const report = args.has('--report')
 
   const packages = await loadPackages()
   const ruDictionaries = template ? {} : await loadRuDictionaries()

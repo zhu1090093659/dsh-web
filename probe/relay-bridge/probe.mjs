@@ -11,7 +11,6 @@
  */
 
 const SAMPLE_COUNT = Number(process.env.PROBE_N ?? '5');
-const STREAM_TIMEOUT_MS = 20000;
 const CALL_TIMEOUT_MS = 60000;
 
 const rawOrigin = process.argv[2] ?? process.env.PROBE_ORIGIN ?? '';

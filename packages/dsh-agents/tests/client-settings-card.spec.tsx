@@ -135,11 +135,13 @@ function fakeForm(init: { user?: Record<string, unknown>; writable?: boolean } =
     unset: async () => true,
     mutate: async (ops: FormOp[]) => {
       writes.push(ops)
+      const next = { ...user }
       for (const op of ops) {
         const key = op.path[0] ?? ''
-        if (op.op === 'set') user = { ...user, [key]: op.value }
-        else { const next = { ...user }; delete next[key]; user = next }
+        if (op.op === 'set') next[key] = op.value
+        else delete next[key]
       }
+      user = next
       snapshot = { ...snapshot, value: user as AgentsSettings, user: user as AgentsSettings, revision: snapshot.revision + 1 }
       for (const listener of [...listeners]) listener()
       return true

@@ -143,7 +143,7 @@ function mergePayload(
   current: TaskBoardExtensionPayload | undefined,
   patch: TaskBoardExtensionPayload,
 ): TaskBoardExtensionPayload {
-  const next: TaskBoardExtensionPayload = { ...(current ?? {}) }
+  const next: TaskBoardExtensionPayload = { ...current }
   for (const [key, value] of Object.entries(patch)) {
     if (value === undefined) delete next[key]
     else next[key] = value
@@ -624,7 +624,7 @@ export class TaskBoardExtensionRegistry {
     this.ledger.saveTaskRecord({
       ...task,
       updatedAt: this.now(),
-      integrations: { ...(task.integrations ?? {}), [id]: next },
+      integrations: { ...task.integrations, [id]: next },
     })
   }
 

@@ -3,7 +3,7 @@
  */
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { basename, join } from 'node:path'
+import { join } from 'node:path'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'

@@ -4,9 +4,9 @@ import { cpSync, existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, 
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
-import { basename, dirname, join, relative } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { execFileSync, spawnSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const require = createRequire(import.meta.url)
@@ -26,7 +26,6 @@ function resolveFamilyPackage(specifier) {
   }))
 }
 const SKIN_CENTER_DIR = resolveFamilyPackage('@linxin666/dsh-client-ui-skin-center')
-const COMMUNITY_DIR = resolveFamilyPackage('@linxin666/dsh-client-ui-community-plugins')
 
 /**
  * Assemble a true clean-checkout fixture: tracking-tree inputs only, no

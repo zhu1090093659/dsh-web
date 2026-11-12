@@ -374,7 +374,7 @@ describe('set-enabled id space', () => {
   it('re-enabling removes the override and reports enabled', async () => {
     const { facts, dir } = makeProfile()
     tempDirs.push(dir)
-    const { res, body } = captureResponse()
+    const { res } = captureResponse()
     await setEnabledHandler(facts)(loopbackRequest({ id: 'dsh-memoir', enabled: false }), res)
     const { res: res2, body: body2 } = captureResponse()
     await setEnabledHandler(facts)(loopbackRequest({ id: 'dsh-memoir', enabled: true }), res2)

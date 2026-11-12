@@ -24,7 +24,7 @@ import { DEFAULT_IDLE_EXPIRE_MS, PairingService, type PairingConfig } from './pa
 import { dshHome } from './dsh-home.ts'
 import { isPairedDeviceRequest, makeGateListener } from './gate.ts'
 import { RemoteWebUiPairing } from './pairing-access.ts'
-import { isTrustedApiRequest, makeRoutes, PAIRING_SOURCE_OPTIONS, type PairingSourcePreference } from './routes.ts'
+import { makeRoutes, PAIRING_SOURCE_OPTIONS, type PairingSourcePreference } from './routes.ts'
 import { makeRemoteApiRoutes, makeRemoteApiUpgradeRoutes } from './remote-api.ts'
 import { startRemotePresencePet, type PresencePetSeam } from './remote-presence-pet.ts'
 import { claimPostureKey, postureTargets, probePosture, releasePostureKey } from './posture.ts'

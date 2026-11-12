@@ -66,7 +66,7 @@ export const DEFAULT_CONCURRENCY = 2
 export const DEFAULT_WORKTREE_ROOT = join(homedir(), `remote-e2e`)
 
 /** 与 ci.yml 的 emoji 检查完全一致的码点范围（U+1F000-1FAFF / 2600-27BF / 2B00-2BFF / 区域指示符 / FE0F / ZWJ）。 */
-export const EMOJI_RE = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}\uFE0F\u200D]/u
+export const EMOJI_RE = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}]|[\uFE0F\u200D]/u
 /** exec 循环用（带 g，lastIndex 自动推进）。 */
 export const EMOJI_GLOBAL_RE = new RegExp(EMOJI_RE.source, 'gu')
 
@@ -578,7 +578,7 @@ export function parseArgs(argv) {
 
 /** 简单并发池。 */
 async function mapLimit(items, limit, fn) {
-  const results = new Array(items.length)
+  const results = Array(items.length)
   let cursor = 0
   const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
     for (;;) {
@@ -780,7 +780,7 @@ const VERDICT_STYLE = {
 
 /** 单个 PR 的完整审核（fetch 之后）。 */
 async function reviewPr(number, prInfo, ctx) {
-  const { repoRoot, opts, repoOwner, worktreeRoot } = ctx
+  const { repoRoot, opts, repoOwner } = ctx
   try {
     if (prInfo.state !== `OPEN`) {
       return { number, verdict: `SKIP`, reason: `PR 状态为 ` + prInfo.state, title: prInfo.title }

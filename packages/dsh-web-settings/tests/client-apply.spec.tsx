@@ -2,9 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('../src/client/compat-settings-scope.ts', () => ({
-  WebUiSettingsBinder: class {
-    constructor(_ctx: unknown) {}
-  },
+  WebUiSettingsBinder: function WebUiSettingsBinder(_ctx: unknown): void {},
 }))
 
 import { apply } from '../src/client/index.ts'

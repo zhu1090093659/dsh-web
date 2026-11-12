@@ -155,7 +155,7 @@ describe('attachment path over protocol v1', () => {
     await rm(root, { recursive: true, force: true })
   })
 
-  it('serves the bytes of an image the session offloaded, under the path it named', async () => {
+  it('user receives the bytes of an image the session offloaded, under the path it named', async () => {
     // Given a session that offloaded one PNG, and the file still where it was
     const file = join(root, 'shot.png')
     await writeFile(file, png(64))
@@ -180,7 +180,7 @@ describe('attachment path over protocol v1', () => {
     })
   })
 
-  it('serves a paired client that never declared the capability', async () => {
+  it('user is served although the client never declared the capability', async () => {
     // Given a connection that sent no hello at all, so it declared no capability
     const file = join(root, 'no-hello.png')
     await writeFile(file, png(16))
@@ -191,7 +191,7 @@ describe('attachment path over protocol v1', () => {
     expect(answer.ok).toBe(true)
   })
 
-  it('serves a PNG whose name claims nothing, because the extension is never read', async () => {
+  it('user is served a PNG whose name claims nothing, because the extension is never read', async () => {
     // Given a whitelisted file whose name says it is text
     const file = join(root, 'not-an-image.txt')
     await writeFile(file, png(32))
@@ -203,7 +203,7 @@ describe('attachment path over protocol v1', () => {
     expect(Buffer.from((answer.r as { data: string }).data, 'base64')).toEqual(png(32))
   })
 
-  it('answers a second request under the same watermark without walking the store again', async () => {
+  it('user gets a second answer under the same watermark without another walk of the store', async () => {
     // Given one whitelisted image and a session whose watermark does not move
     const file = join(root, 'twice.png')
     await writeFile(file, png(16))
@@ -219,7 +219,7 @@ describe('attachment path over protocol v1', () => {
     expect(harness.gateway.countOf('session', 'projections')).toBe(2)
   })
 
-  it('recomputes once the watermark advances', async () => {
+  it('user gets a fresh walk once the watermark advances', async () => {
     // Given a session whose watermark moves forward between two requests
     const file = join(root, 'advanced.png')
     await writeFile(file, png(16))
@@ -236,7 +236,7 @@ describe('attachment path over protocol v1', () => {
     expect(harness.gateway.countOf('session', 'page')).toBe(2)
   })
 
-  it('keeps at most the declared number of sessions, evicting the least recently used', async () => {
+  it('user asks from one session more than the bound, and the least recently used one is evicted', async () => {
     // Given one more session than the bound, each with an image of its own
     const files: string[] = []
     const stores = new Map<string, ReturnType<typeof storeOf>>()
@@ -261,7 +261,7 @@ describe('attachment path over protocol v1', () => {
     expect(harness.gateway.countOf('session', 'page')).toBe(ATTACHMENT_WHITELIST_SESSIONS + 2)
   })
 
-  it('refuses a path this session never named, byte for byte', async () => {
+  it('user is refused a path this session never named, byte for byte', async () => {
     // Given a session that offloaded one image, and a second image beside it
     const named = join(root, 'named.png')
     const other = join(root, 'other.png')
@@ -279,7 +279,7 @@ describe('attachment path over protocol v1', () => {
     expect(near.e?.code).toBe('path-not-in-session')
   })
 
-  it('refuses a whitelisted path that resolves somewhere else', async () => {
+  it('user is refused a whitelisted path that resolves somewhere else', async () => {
     // Given a session that named a path which is a symlink to an image elsewhere
     const target = join(root, 'target.png')
     const link = join(root, 'link.png')
@@ -295,7 +295,7 @@ describe('attachment path over protocol v1', () => {
     expect(answer.r).toBeUndefined()
   })
 
-  it('refuses a path that is not absolute before reading any store', async () => {
+  it('user is refused a relative path before any store is read', async () => {
     // Given a session that offloaded one image
     const harness = attachmentHarness(storeOf([offloadedMessage(join(root, 'named.png'), 1, 16)], 1))
     // When the client names a relative path
@@ -307,16 +307,17 @@ describe('attachment path over protocol v1', () => {
     expect(harness.gateway.countOf('session', 'page')).toBe(0)
   })
 
-  it('refuses a request that names no session or no path', async () => {
+  it('user is refused a request that names no session or no path', async () => {
     // Given a session that would answer a well-formed request
     const harness = attachmentHarness(storeOf([], 0))
     // When the request is missing a member, or names an empty path
+    // Then each one is refused as an argument, before any store is read
     expect((await ask(harness, 1, { path: '/tmp/x.png' })).e?.code).toBe('invalid-args')
     expect((await ask(harness, 2, { sessionId: 's-1' })).e?.code).toBe('invalid-args')
     expect((await ask(harness, 3, { sessionId: 's-1', path: '' })).e?.code).toBe('invalid-args')
   })
 
-  it('answers not-found when the whitelisted file is gone', async () => {
+  it('user is told not-found when the whitelisted file is gone', async () => {
     // Given a whitelisted image that was deleted after the session offloaded it
     const file = join(root, 'gone.png')
     await writeFile(file, png(16))
@@ -329,7 +330,7 @@ describe('attachment path over protocol v1', () => {
     expect(answer.e?.code).toBe('not-found')
   })
 
-  it('answers not-found when the whitelisted path is not a regular file', async () => {
+  it('user is told not-found when the whitelisted path is not a regular file', async () => {
     // Given a whitelisted path a directory now stands at
     const directory = join(root, 'a-directory.png')
     await mkdir(directory)
@@ -341,7 +342,7 @@ describe('attachment path over protocol v1', () => {
     expect(answer.e?.code).toBe('not-found')
   })
 
-  it('answers not-an-image when the bytes declare no image', async () => {
+  it('user is told not-an-image when the bytes declare no image', async () => {
     // Given a whitelisted file whose name says PNG and whose bytes say text
     const file = join(root, 'text.png')
     await writeFile(file, 'this is not an image, whatever the name says')
@@ -353,7 +354,7 @@ describe('attachment path over protocol v1', () => {
     expect(answer.e?.code).toBe('not-an-image')
   })
 
-  it('answers frame-too-large when the encoded answer cannot cross one frame', async () => {
+  it('user is told frame-too-large when the encoded answer cannot cross one frame', async () => {
     // Given a whitelisted image whose base64 alone is past the 10 MiB frame
     const size = 9 * 1024 * 1024
     const file = join(root, 'huge.png')
@@ -367,7 +368,7 @@ describe('attachment path over protocol v1', () => {
     expect(answer.e?.msg).toContain(String(MAX_FRAME_BYTES))
   })
 
-  it('reads the image reference of a durable tool result, and only when it carries an image', async () => {
+  it('user is served the image reference of a durable tool result, but only when it carries an image', async () => {
     // Given one tool result that published an image, and one that only named a path
     const image = join(root, 'read-image.png')
     const text = join(root, 'read-text.png')
@@ -405,7 +406,7 @@ describe('attachment path over protocol v1', () => {
     expect(refused.e?.code).toBe('path-not-in-session')
   })
 
-  it('serves an image a durable tool result published as a JSON reference', async () => {
+  it('user is served an image a durable tool result published as a JSON reference', async () => {
     // Given the shape this host persists for a run_code program that returned an image read
     const file = join(root, 'probe.png')
     await writeFile(file, png(127748))
@@ -424,7 +425,7 @@ describe('attachment path over protocol v1', () => {
     expect(refused.e?.code).toBe('path-not-in-session')
   })
 
-  it('never reads an assistant message as a whitelist source', async () => {
+  it('user cannot reach a path an assistant message merely wrote down', async () => {
     // Given a session whose assistant message merely wrote a placeholder down
     const file = join(root, 'written-by-the-model.png')
     await writeFile(file, png(16))
@@ -438,7 +439,7 @@ describe('attachment path over protocol v1', () => {
     expect(answer.e?.code).toBe('path-not-in-session')
   })
 
-  it('never whitelists a plugin-namespace name no file stands behind', async () => {
+  it('user cannot reach a plugin-namespace name no file stands behind', async () => {
     // Given a session whose only image is the virtual name browser_screenshot writes
     const virtual = 'browser-view:screenshot/FEEC6A33B1C2D3E4.png'
     const harness = attachmentHarness(storeOf([
@@ -462,7 +463,7 @@ describe('attachment path over protocol v1', () => {
     expect(absolute.e?.code).toBe('path-not-in-session')
   })
 
-  it('reaches an image the session offloaded on an older page of its store', async () => {
+  it('user reaches an image the session offloaded on an older page of its store', async () => {
     // Given a long session whose only image sits below several pages of prose
     const file = join(root, 'old.png')
     await writeFile(file, png(16))
@@ -479,7 +480,7 @@ describe('attachment path over protocol v1', () => {
     expect(harness.gateway.countOf('session', 'page')).toBeGreaterThan(1)
   })
 
-  it('answers unknown-session for a session this host does not have', async () => {
+  it('user is told unknown-session for a session this host does not have', async () => {
     // Given a host whose projections read answers null, as it does for an id it lacks
     const harness = makeConnection({ paired: true })
     harness.gateway.handler = async call => {
@@ -497,88 +498,124 @@ describe('attachment path over protocol v1', () => {
 })
 
 describe('the whitelist one durable transcript states', () => {
-  it('reads the offload placeholder and the facts it states', () => {
+  it('user whitelist reads the offload placeholder and the facts it states', () => {
+    // Given one durable user message carrying an offload placeholder for an image
+    // When the transcript is read for the paths it named
     const found = attachmentPathsOf([offloadedMessage('/tmp/a.png', 1, 93031)])
+    // Then the one path is stated, with every fact the envelope published
     expect([...found.keys()]).toEqual(['/tmp/a.png'])
     expect(found.get('/tmp/a.png')).toEqual({ path: '/tmp/a.png', mediaType: 'image/png', width: 4, height: 4, bytes: 93031 })
   })
 
-  it('states no fact the envelope did not state', () => {
+  it('user whitelist states no fact the envelope did not state', () => {
+    // Given a placeholder that names a type and states no size or dimensions
+    // When the transcript is read for the paths it named
     const found = attachmentPathsOf([
       record('user/message', 1, { content: [{ type: 'text', text: '<path>/tmp/b.png</path>\n<type>image</type>' }] }),
     ])
+    // Then the entry holds the path alone
     expect(found.get('/tmp/b.png')).toEqual({ path: '/tmp/b.png' })
   })
 
-  it('reads no path from a placeholder that is not an image envelope', () => {
+  it('user whitelist reads no path from a placeholder that is not an image envelope', () => {
+    // Given a placeholder whose declared type is file, not image
+    // When the transcript is read for the paths it named
     const found = attachmentPathsOf([
       record('user/message', 1, { content: [{ type: 'text', text: '<path>/tmp/c.txt</path>\n<type>file</type>\n<content>\nhi\n</content>' }] }),
     ])
+    // Then no path is kept
     expect(found.size).toBe(0)
   })
 
-  it('reads the image reference of a ptc-dispatched tool result', () => {
+  it('user whitelist reads the image reference of a ptc-dispatched tool result', () => {
+    // Given one ptc-dispatched tool result that carried an image beside a path
+    // When the transcript is read for the paths it named
     const found = attachmentPathsOf([
       record('tool/ptc-dispatch', 1, { name: 'read_image', content: [{ type: 'image', attachment: {} }], meta: { path: '/tmp/d.png' } }),
     ])
+    // Then that path is the one kept
     expect([...found.keys()]).toEqual(['/tmp/d.png'])
   })
 
-  it('keeps no name that is not a host absolute path', () => {
+  it('user whitelist keeps no name that is not a host absolute path', () => {
+    // Given two virtual plugin-namespace names and one host absolute path
+    // When the transcript is read for the paths it named
     const found = attachmentPathsOf([
       record('user/message', 1, { content: [{ type: 'text', text: envelope('browser-view:screenshot/FEEC6A33.png', 8) }] }),
       record('tool/ptc-dispatch', 2, { name: 'browser_screenshot', content: [{ type: 'image', attachment: {} }], meta: { path: 'browser-view:screenshot/8C3A41D0.png' } }),
       record('user/message', 3, { content: [{ type: 'text', text: envelope('/tmp/kept.png', 8) }] }),
     ])
+    // Then only the absolute path is kept
     expect([...found.keys()]).toEqual(['/tmp/kept.png'])
   })
 
-  it('reads the JSON image reference a durable tool result persisted', () => {
+  it('user whitelist reads the JSON image reference a durable tool result persisted', () => {
+    // Given one tool result whose JSON text states an image and no facts
+    // When the transcript is read for the paths it named
     const found = attachmentPathsOf([jsonImageResult('/tmp/whale-accept/probe.png', 34, 127748)])
+    // Then that path is kept, with no fact the JSON did not state
     expect([...found.keys()]).toEqual(['/tmp/whale-accept/probe.png'])
     expect(found.get('/tmp/whale-accept/probe.png')).toEqual({ path: '/tmp/whale-accept/probe.png' })
   })
 
-  it('reads no path from a tool result whose JSON names a file but publishes no image', () => {
+  it('user whitelist reads no path from a tool result whose JSON names a file but publishes no image', () => {
+    // Given one tool result whose JSON names a file and publishes no image
+    // When the transcript is read for the paths it named
     const found = attachmentPathsOf([jsonTextResult('/home/zcl/code/dsh-web/README.md', 1)])
+    // Then no path is kept
     expect(found.size).toBe(0)
   })
 
-  it('reads no path from a text block that is not JSON at all', () => {
+  it('user whitelist reads no path from a text block that is not JSON at all', () => {
+    // Given a text block that names a path in prose rather than in JSON
+    // When the transcript is read for the paths it named
     const found = attachmentPathsOf([
       record('tool/result', 1, { message: { content: [{ type: 'text', text: 'path: /tmp/not-json.png' }] } }),
     ])
+    // Then no path is kept
     expect(found.size).toBe(0)
   })
 
-  it('keeps the reading that states more when one path is seen twice', () => {
+  it('user whitelist keeps the reading that states more when one path is seen twice', () => {
+    // Given one path stated twice, once by a tool result and once by an image envelope
+    // When the transcript is read for the paths it named
     const found = attachmentPathsOf([
       record('tool/result', 1, { message: { content: [{ type: 'image', attachment: {} }] }, meta: { path: '/tmp/e.png' } }),
       record('user/message', 2, { content: [{ type: 'text', text: envelope('/tmp/e.png', 8) }] }),
     ])
+    // Then the reading that carries more facts wins
     expect(found.get('/tmp/e.png')).toEqual({ path: '/tmp/e.png', mediaType: 'image/png', width: 4, height: 4, bytes: 8 })
   })
 
-  it('reads the oldest entry seq of one store page', () => {
+  it('user whitelist reads the oldest entry seq of one store page', () => {
+    // Given one page whose entries arrive out of order, an empty page and an entry with no seq
+    // When each page is read for its oldest entry seq
     expect(oldestSeqOf([record('user/message', 7, {}), record('user/message', 3, {})])).toBe(3)
+    // Then an empty page and a seq-less entry both read as undefined
     expect(oldestSeqOf([])).toBeUndefined()
     expect(oldestSeqOf([{ type: 'event' }])).toBeUndefined()
   })
 })
 
 describe('the four image signatures', () => {
-  it('names the format from the head alone', () => {
+  it('user gets the format named from the head alone', () => {
+    // Given one head for each of the four formats
+    // When each head is read for its media type
     expect(mediaTypeOfSignature(png(4))).toBe('image/png')
     expect(mediaTypeOfSignature(Buffer.from([0xff, 0xd8, 0xff, 0xe0]))).toBe('image/jpeg')
     expect(mediaTypeOfSignature(Buffer.from('GIF87a....', 'ascii'))).toBe('image/gif')
     expect(mediaTypeOfSignature(Buffer.from('GIF89a....', 'ascii'))).toBe('image/gif')
     const webp = Buffer.concat([Buffer.from('RIFF', 'ascii'), Buffer.alloc(4), Buffer.from('WEBP', 'ascii')])
+    // Then every one of the four is named, the WebP head included
     expect(mediaTypeOfSignature(webp)).toBe('image/webp')
   })
 
-  it('names nothing for a head that is none of them', () => {
+  it('user gets no format for a head that is none of them', () => {
+    // Given a text head, a RIFF container that holds no WebP, and an empty buffer
+    // When each head is read for its media type
     expect(mediaTypeOfSignature(Buffer.from('not an image at all', 'utf8'))).toBeUndefined()
     expect(mediaTypeOfSignature(Buffer.from('RIFF....WAVE', 'ascii'))).toBeUndefined()
+    // Then none of them is named
     expect(mediaTypeOfSignature(Buffer.alloc(0))).toBeUndefined()
   })
 })

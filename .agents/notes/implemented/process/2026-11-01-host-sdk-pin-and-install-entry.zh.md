@@ -16,7 +16,7 @@ Status: implemented
 
 `build`、`test`、`typecheck` 在递归命令之前先跑 `host-sdk-link --check`，于是 registry 副本的 SDK 会在门禁处大声失败，而不是静默分裂 cohort。`pnpm-workspace.yaml` 关掉 `verifyDepsBeforeRun`：pnpm 11 的运行前依赖自检在它认为必要时以 headless 方式改写 `node_modules`，而对着 root 所有的宿主链接，这个自检只能以 EACCES 收场——连 `pnpm run deps:install` 本身都起不来。
 
-宿主不安装的三个纯客户端包（`dsh-client-store`、`dsh-client-ui-primitives`、`dsh-client-ui-slots`）由工作区 `overrides` 固定到 `0.2.2-rc.1`，使解析结果保持在同一 cohort。清单声明 `^0.2.2-rc.1`；override 只统一解析结果，配套的 `packageExtensions` 键随之移动。
+宿主不安装的三个纯客户端包（`dsh-client-store`、`dsh-client-ui-primitives`、`dsh-client-ui-slots`）由工作区 `overrides` 固定到当前 cohort，使解析结果保持在同一 cohort。清单声明 `^0.2.2-rc.2`；override 只统一解析结果，配套的 `packageExtensions` 键随之移动。
 
 ## Alternatives considered
 
@@ -47,5 +47,6 @@ Status: implemented
 - Windows 候选路径测试通过，真实全局树则因不完整被正确拒绝。没有强行建立 pin，也没有重启运行中的服务。
 - `node scripts/install-deps.mjs --no-frozen-lockfile` 在 Windows 完成并安装 alpha.3 cohort；随后全量 `pnpm typecheck` 与完整 `pnpm test` 在 registry cohort 上通过。
 - 本机的宿主树完整时，`node scripts/host-sdk-link.mjs --check` 打印 `host sdk: /usr/local/lib/nodejs/current/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai (0.2.2-rc.1, 330 packages)` 与 `check: ok (root exposes 330 packages, 226/226 workspace entries pinned, 39 host-absent left to pnpm)`；该树里没有任何 `slots` 包，`grep -c dsh-user-questions pnpm-lock.yaml` 为 `0`。
+- 工作区与宿主一并推进到 0.2.2-rc.2 队列后（2026-11-12），同一条检查打印 `host sdk: /usr/local/lib/nodejs/current/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai (0.2.2-rc.2, 336 packages)` 与 `check: ok (root exposes 336 packages, 223/223 workspace entries pinned, 37 host-absent left to pnpm)`。
 - `pnpm test:scripts` 有 552 个通过项与一个既有 Windows 文件权限失败：deploy-market 探针期望 `600`，Windows 返回 `666`。
 - 本机在 pin 生效时的实测：`pnpm typecheck` exit 0，24 个包报 `typecheck: Done`、0 个 `Failed`；`pnpm build` exit 0；`pnpm sync-shared:check`、`pnpm aggregate:check`、`pnpm runtime-deps:check`、`pnpm libs:check`、`pnpm emoji:check`、`pnpm docs:check`、`pnpm i18n:check`、`pnpm test:standards` 与 `pnpm test:scripts`（fail 0）全绿。

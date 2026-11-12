@@ -16,7 +16,7 @@ A second copy of the SDK beside the host's does not fail loudly. A second cordis
 
 `build`, `test` and `typecheck` run `host-sdk-link --check` ahead of the recursive command, so a registry copy of the SDK fails loudly at the gate instead of splitting the cohort silently. `pnpm-workspace.yaml` turns `verifyDepsBeforeRun` off: pnpm 11's pre-run dependency self-check rewrites `node_modules` headlessly when it decides it must, and against the root-owned host link that check can only end in EACCES — including for `pnpm run deps:install` itself.
 
-The three client-only packages the host does not install (`dsh-client-store`, `dsh-client-ui-primitives`, `dsh-client-ui-slots`) are forced to `0.2.2-rc.1` through workspace `overrides`, so resolution stays on one cohort. The manifests declare `^0.2.2-rc.1`; the override only unifies the resolution result, and the matching `packageExtensions` keys move with it.
+The three client-only packages the host does not install (`dsh-client-store`, `dsh-client-ui-primitives`, `dsh-client-ui-slots`) are forced to the cohort through workspace `overrides`, so resolution stays on one cohort. The manifests declare `^0.2.2-rc.2`; the override only unifies the resolution result, and the matching `packageExtensions` keys move with it.
 
 ## Alternatives considered
 
@@ -47,5 +47,6 @@ The three client-only packages the host does not install (`dsh-client-store`, `d
 - The Windows candidate test passes, while the real global tree is correctly rejected as incomplete. No pin is forced and no running service is restarted.
 - `node scripts/install-deps.mjs --no-frozen-lockfile` completes on Windows and installs the alpha.3 cohort. The subsequent full `pnpm typecheck` and complete `pnpm test` pass on the registry cohort.
 - On this machine, with a complete host tree, `node scripts/host-sdk-link.mjs --check` prints `host sdk: /usr/local/lib/nodejs/current/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai (0.2.2-rc.1, 330 packages)` and `check: ok (root exposes 330 packages, 226/226 workspace entries pinned, 39 host-absent left to pnpm)`; that tree carries no `slots` package and `grep -c dsh-user-questions pnpm-lock.yaml` is `0`.
+- After the workspace moved to the 0.2.2-rc.2 cohort (2026-11-12) and the host with it, the same check prints `host sdk: /usr/local/lib/nodejs/current/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai (0.2.2-rc.2, 336 packages)` and `check: ok (root exposes 336 packages, 223/223 workspace entries pinned, 37 host-absent left to pnpm)`.
 - `pnpm test:scripts` has 552 passing tests and one pre-existing Windows file-mode failure: the deploy-market probe expects mode `600` while Windows reports `666`.
 - On this machine, with the pin in effect, `pnpm typecheck` exits 0 with 24 packages reporting `typecheck: Done` and 0 `Failed`, `pnpm build` exits 0, and `pnpm sync-shared:check`, `pnpm aggregate:check`, `pnpm runtime-deps:check`, `pnpm libs:check`, `pnpm emoji:check`, `pnpm docs:check`, `pnpm i18n:check`, `pnpm test:standards` and `pnpm test:scripts` (0 failures) all pass.

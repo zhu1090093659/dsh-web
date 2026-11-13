@@ -20,21 +20,31 @@
  *   todos projection.
  *
  * When no field has anything to say the step is left untouched. The injection
- * and dedup discipline mirrors tool-catalog's pre-step: the message is
- * persistent, carries the plugin source shape, and a replacement is published
- * only when the rendered line changed or the published copy left the visible
- * surface.
+ * and dedup discipline is shared with tool-catalog's pre-step (paging.mjs owns
+ * it): the message is persistent, carries the plugin source shape, and a
+ * replacement is published only when the rendered line changed or the published
+ * copy left the visible surface.
+ *
+ * Every field folds in ONE pass over the durable stream: the plan-mode and todo
+ * projections, the register, and the failed-call index the activation replay
+ * needs are read event by event, and the replay itself only runs when the log
+ * holds an activation at all.
  */
 
 import {
   DEFAULT_MAX_ACTIVE_NAMESPACES,
   DEFAULT_PAGED_TOOL_PATTERNS,
+  TOOL_ACTIVATE_NAME,
+  erroredCallId,
   integerAtLeast,
+  latestVisiblePluginMessage,
+  reconcileStepMessage,
   replayActivations,
+  sessionEvents,
   validatePagedToolPatterns,
 } from './paging.mjs'
 
-import { foldFactLedger, renderLedgerField } from './fact-ledger.mjs'
+import { applyFactLedgerEvent, renderLedgerField } from './fact-ledger.mjs'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'liangshen-working-context'
@@ -45,23 +55,33 @@ const MAX_TITLE_CHARS = 80
 /** At most this many in-progress titles render; the rest collapse to a count. */
 const MAX_TITLES = 3
 
-/** Session events, tolerating both snapshotEvents() and events array. */
-function sessionEvents(session) {
-  if (Array.isArray(session?.events)) return session.events
-  if (typeof session?.snapshotEvents === 'function') return session.snapshotEvents()
-  return []
+/** Fold one event into the plan-mode projection: the last plan/mode event wins. */
+function foldPlanMode(projection, event) {
+  if (event?.type !== 'plan/mode' || typeof event.data?.active !== 'boolean') return projection
+  projection.seen = true
+  projection.active = event.data.active
+  return projection
+}
+
+/** Fold one event into the todo projection: the latest list, cleared by the next turn/start. */
+function foldTodos(current, event) {
+  if (event?.type === 'turn/start') return undefined
+  if (event?.type === 'todo/write' && Array.isArray(event.data?.todos)) return event.data.todos
+  return current
+}
+
+/** The in-progress titles of one folded todo list, in list order. */
+function inProgressTitles(todos) {
+  return (todos ?? [])
+    .filter(item => item?.status === 'in_progress' && typeof item?.content === 'string' && item.content.trim() !== '')
+    .map(item => item.content.trim())
 }
 
 /** The latest plan/mode state in the log: seen flag plus active value. */
 export function planModeState(events) {
-  let seen = false
-  let active = false
-  for (const event of Array.isArray(events) ? events : []) {
-    if (event?.type !== 'plan/mode' || typeof event.data?.active !== 'boolean') continue
-    seen = true
-    active = event.data.active
-  }
-  return { seen, active }
+  const projection = { seen: false, active: false }
+  for (const event of Array.isArray(events) ? events : []) foldPlanMode(projection, event)
+  return projection
 }
 
 /**
@@ -70,18 +90,8 @@ export function planModeState(events) {
  */
 export function inProgressTodos(events) {
   let todos
-  for (const event of Array.isArray(events) ? events : []) {
-    if (event?.type === 'turn/start') {
-      todos = undefined
-      continue
-    }
-    if (event?.type === 'todo/write' && Array.isArray(event.data?.todos)) {
-      todos = event.data.todos
-    }
-  }
-  return (todos ?? [])
-    .filter(item => item?.status === 'in_progress' && typeof item?.content === 'string' && item.content.trim() !== '')
-    .map(item => item.content.trim())
+  for (const event of Array.isArray(events) ? events : []) todos = foldTodos(todos, event)
+  return inProgressTitles(todos)
 }
 
 /** Clip one title to the per-title budget at a word-ish boundary. */
@@ -93,19 +103,43 @@ function clipTitle(title) {
 /**
  * Render the working-context line for one session's events, or undefined when
  * no field has anything objective to say.
+ *
+ * One pass over the stream folds everything this line renders plus the two
+ * facts the activation replay needs — the failed callIds and whether any
+ * activation was recorded at all. Without an activation the replay cannot find
+ * an active namespace (it reads activations, plus the recency of families one of
+ * them already lifted), so the second pass is skipped instead of walking the
+ * whole log again to derive an empty set.
  */
 export function renderWorkingContext(events, options) {
   const patterns = options?.pagedToolPatterns ?? DEFAULT_PAGED_TOOL_PATTERNS
   const maxActive = options?.maxActiveNamespaces ?? DEFAULT_MAX_ACTIVE_NAMESPACES
-  const fields = []
+  const list = Array.isArray(events) ? events : []
+  const plan = { seen: false, active: false }
+  const facts = []
+  const errored = new Set()
+  let todos
+  let sawActivation = false
+  for (const event of list) {
+    foldPlanMode(plan, event)
+    todos = foldTodos(todos, event)
+    applyFactLedgerEvent(facts, event)
+    const failedCallId = erroredCallId(event)
+    if (failedCallId !== undefined) errored.add(failedCallId)
+    if ((event?.type === 'tool/call' || event?.type === 'tool/ptc-dispatch') && event.data?.name === TOOL_ACTIVATE_NAME) {
+      sawActivation = true
+    }
+  }
 
-  const plan = planModeState(events)
+  const fields = []
   if (plan.seen) fields.push(`plan mode: ${plan.active ? 'on' : 'off'}`)
 
-  const { active } = replayActivations(events, maxActive, patterns)
-  if (active.length > 0) fields.push(`active namespaces: ${[...active].sort().join(', ')}`)
+  if (sawActivation) {
+    const { active } = replayActivations(list, maxActive, patterns, errored)
+    if (active.length > 0) fields.push(`active namespaces: ${[...active].sort().join(', ')}`)
+  }
 
-  const titles = inProgressTodos(events)
+  const titles = inProgressTitles(todos)
   if (titles.length > 0) {
     const shown = titles.slice(0, MAX_TITLES).map(clipTitle)
     const rest = titles.length - shown.length
@@ -115,51 +149,16 @@ export function renderWorkingContext(events, options) {
   // The key-fact register: facts the model pinned with fact_register, folded
   // from the same event stream, ride this line so they land inside the local
   // attention window every step.
-  const ledgerField = renderLedgerField(foldFactLedger(events))
+  const ledgerField = renderLedgerField(facts)
   if (ledgerField !== undefined) fields.push(ledgerField)
 
   return fields.length === 0 ? undefined : `[Working Context: ${fields.join(' | ')}]`
-}
-
-/** The text one message contributes, joined across its text blocks. */
-function textOf(message) {
-  const blocks = Array.isArray(message?.content) ? message.content : []
-  return blocks
-    .filter(block => block?.type === 'text' && typeof block.text === 'string')
-    .map(block => block.text)
-    .join('\n')
 }
 
 /** Whether one message is this plugin's working-context line. */
 function isContextMessage(message) {
   const source = message?.source
   return source?.kind === name || (source?.kind === 'plugin' && source?.plugin === name)
-}
-
-/** Visible surface positions, or undefined when the session exposes none. */
-function visibleSeqSet(session) {
-  const nodes = session?.surface?.nodes
-  return Array.isArray(nodes) ? new Set(nodes) : undefined
-}
-
-/**
- * Published working-context state read back from the durable log: the latest
- * visible line's text, or just the published flag when every copy was shadowed.
- */
-function contextHistory(agent) {
-  const session = agent?.session
-  const events = sessionEvents(session)
-  const visible = visibleSeqSet(session)
-  let published = false
-  for (let index = events.length - 1; index >= 0; index -= 1) {
-    const event = events[index]
-    if (event?.type !== 'user/message' || !isContextMessage(event.data)) continue
-    published = true
-    if (visible === undefined || typeof event.seq !== 'number' || visible.has(event.seq)) {
-      return { published, text: textOf(event.data) }
-    }
-  }
-  return { published }
 }
 
 /** Build the durable working-context message for one rendered line. */
@@ -194,29 +193,16 @@ export function apply(ctx, config) {
       maxActiveNamespaces,
     })
 
-    const history = contextHistory(agent)
-    const existing = decision.messages.find(message => isContextMessage(message))
-
-    // Nothing objective to say: inject nothing. A stale published line is left
-    // for compaction to age out rather than replaced with an empty marker.
-    if (line === undefined) {
-      if (existing === undefined) return decision
-      return { ...decision, messages: decision.messages.filter(message => message.id !== existing.id) }
-    }
-
-    if (history.text === line) {
-      if (existing === undefined) return decision
-      return { ...decision, messages: decision.messages.filter(message => message.id !== existing.id) }
-    }
-    if (existing !== undefined && textOf(existing) === line) return decision
-
-    const message = createContextMessage(line)
-    if (existing === undefined) {
-      return { ...decision, messages: [...decision.messages, message] }
-    }
-    return {
-      ...decision,
-      messages: decision.messages.map(item => (item.id === existing.id ? message : item)),
-    }
+    // Nothing objective to say: inject nothing (a stale published line is left
+    // for compaction to age out rather than replaced with an empty marker). The
+    // reconciliation is shared with tool-catalog's pre-step, so the two durable
+    // messages republish under exactly the same rules.
+    return reconcileStepMessage(
+      decision,
+      latestVisiblePluginMessage(agent, isContextMessage),
+      line,
+      () => createContextMessage(line),
+      isContextMessage,
+    )
   }, { prepend: true })
 }

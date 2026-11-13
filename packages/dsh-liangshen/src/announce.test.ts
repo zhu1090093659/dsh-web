@@ -335,3 +335,61 @@ describe('dsh-liangshen preset declaration', () => {
     expect(bundledPresetDir()).toContain('presets')
   })
 })
+
+// A settings write re-declares the preset, and the two preset files cannot
+// change under a running row: re-reading and re-parsing them on every write
+// would block the event loop for a result the activation already holds. The
+// rows no setting touches are therefore the same parsed objects in every
+// declaration of one activation, while each declaration keeps the values it
+// was built with.
+describe('dsh-liangshen preset parse reuse', () => {
+  /** One declaration's rows as the loose records these tests read. */
+  const rowsOf = (host: FakeHost, index: number) =>
+    host.declarations[index]!.definition.plugins as readonly { id?: string, config?: Record<string, unknown>, disabled?: unknown }[]
+
+  it('operator gets every settings re-arm served by the one parse of the activation', async () => {
+    // Given a running row whose presentation the Host commits into
+    vi.resetModules()
+    const mod = await import('../src/index.ts')
+    let presentation = 'ptc'
+    const host = makeHost()
+    mounted.push(host)
+    mod.apply(host.ctx, { presentation: { get: () => presentation } as never })
+    await settle()
+    expect(host.declarations.length).toBe(1)
+
+    // When the operator commits a new presentation
+    presentation = 'native'
+    host.commit()
+    await settle()
+
+    // Then the row the setting shapes follows the write, and the row it does
+    // not touch is the very object the first declaration was built from: the
+    // activation parsed the preset once instead of reading the disk again
+    const catalogOf = (index: number) => rowsOf(host, index).find(row => row.id === 'tool-catalog')?.config?.['presentation']
+    expect(catalogOf(1)).toBe('native')
+    expect(rowsOf(host, 1).find(row => row.id === 'persona')).toBe(rowsOf(host, 0).find(row => row.id === 'persona'))
+
+    // And the declaration the write replaced still reports what it declared,
+    // so the overlay derived a new row list instead of mutating the cached one
+    expect(catalogOf(0)).toBe('ptc')
+    expect(rowsOf(host, 0).find(row => row.id === 'tool-executor-ptc')?.disabled).toBe(false)
+    expect(rowsOf(host, 1).find(row => row.id === 'tool-executor-ptc')?.disabled).toBe(true)
+
+    // When the operator commits the shipped value back
+    presentation = 'ptc'
+    host.commit()
+    await settle()
+
+    // Then the third declaration is the first one again: a re-arm never
+    // accumulates the previous write on the cached base
+    expect(host.declarations.length).toBe(3)
+    expect(catalogOf(2)).toBe('ptc')
+    expect(host.declarations[2]?.definition).toEqual(host.declarations[0]?.definition)
+    expect(host.declarations.filter(record => !record.released).length).toBe(1)
+    // The definition handed to the registry is this declaration's own object
+    // though: only the parsed rows are shared, so nothing can rewrite the
+    // cached preset through the definition it received.
+    expect(host.declarations[1]?.definition).not.toBe(host.declarations[0]?.definition)
+  })
+})

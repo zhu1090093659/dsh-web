@@ -88,13 +88,16 @@
 
 import {
   DEFAULT_MAX_ACTIVE_NAMESPACES,
-  inactiveNamespaces,
+  TOOL_ACTIVATE_NAME,
   integerAtLeast,
+  latestVisiblePluginMessage,
   namespaceOf,
+  partitionWireTools,
+  reconcileStepMessage,
   replayActivations,
+  sessionEvents,
   summarizeInactive,
   validatePagedToolPatterns,
-  withheldToolNames,
 } from './paging.mjs'
 
 /** Cordis plugin name used by loader diagnostics. */
@@ -122,7 +125,8 @@ const pagedSurfaceBySession = new WeakMap()
 /**
  * Publish (or, with `undefined`, retract) one scope's paged namespaces.
  * @param agent - agent scope the partition belongs to.
- * @param surface - namespace-keyed namespaces, as `inactiveNamespaces` returns.
+ * @param surface - namespace-keyed namespaces, as one pre-activation partition
+ *   (`partitionWireTools` with an empty active set) reports them.
  */
 function publishPagedSurface(agent, surface) {
   if (agent === undefined || agent === null) return
@@ -199,6 +203,18 @@ export const DEFAULT_PRESENTATION = 'ptc'
 export const DEFAULT_MAX_RESIDENT_TOKENS = 8000
 
 /**
+ * The serialized character count one schema contributes, or 0 when it cannot be
+ * serialized at all (a hostile or circular definition).
+ */
+function schemaCharacters(schema) {
+  try {
+    return JSON.stringify(schema)?.length ?? 0
+  } catch {
+    return 0
+  }
+}
+
+/**
  * Rough token estimate for one tool surface: the serialized schema is the
  * payload the request actually carries, and four characters per token is the
  * conventional English-and-JSON approximation. Deliberately coarse — this
@@ -210,13 +226,38 @@ export function estimateSurfaceTokens(schemas) {
   let characters = 0
   for (const schema of Array.isArray(schemas) ? schemas : []) {
     if (schema === null || schema === undefined) continue
-    try {
-      characters += JSON.stringify(schema)?.length ?? 0
-    } catch {
-      // A hostile or circular schema contributes nothing rather than throwing.
-    }
+    characters += schemaCharacters(schema)
   }
   return Math.ceil(characters / 4)
+}
+
+/**
+ * One pass over one tool surface: its estimated token cost AND its heaviest
+ * tools, so the budget diagnostic never serializes the surface twice.
+ *
+ * The named tools are the ones a remedy should look at, and their order is a
+ * stable descending sort by their own estimate: the insertion below keeps the
+ * log order of equally heavy tools, exactly like sorting the whole list would.
+ * @param schemas - the tool schemas on the wire.
+ * @param count - how many heavy tools to name.
+ * @returns the estimated tokens plus the heaviest tools, heaviest first.
+ */
+function measureSurface(schemas, count = 3) {
+  let characters = 0
+  const heaviest = []
+  for (const schema of Array.isArray(schemas) ? schemas : []) {
+    if (schema === null || schema === undefined) continue
+    const own = schemaCharacters(schema)
+    characters += own
+    const tokens = Math.ceil(own / 4)
+    const entry = { name: typeof schema?.name === 'string' ? schema.name : '(unnamed)', tokens }
+    let index = 0
+    while (index < heaviest.length && heaviest[index].tokens >= tokens) index += 1
+    if (index >= count) continue
+    heaviest.splice(index, 0, entry)
+    if (heaviest.length > count) heaviest.length = count
+  }
+  return { tokens: Math.ceil(characters / 4), heaviest }
 }
 
 /**
@@ -567,23 +608,19 @@ export function renderCatalogText(entries, presentation = 'native', inactive = [
   ].join('\n')
 }
 
-/** Build the durable catalog message for one entry list. */
-export function createCatalogMessage(entries, presentation = 'native', inactive = []) {
+/** Build the durable catalog message for one already-rendered text. */
+function catalogMessageFor(text) {
   return {
     id: globalThis.crypto.randomUUID(),
     role: 'user',
-    content: [{ type: 'text', text: renderCatalogText(entries, presentation, inactive) }],
+    content: [{ type: 'text', text }],
     source: { kind: name },
   }
 }
 
-/** The text one message contributes, joined across its text blocks. */
-function textOf(message) {
-  const blocks = Array.isArray(message?.content) ? message.content : []
-  return blocks
-    .filter(block => block?.type === 'text' && typeof block.text === 'string')
-    .map(block => block.text)
-    .join('\n')
+/** Build the durable catalog message for one entry list. */
+export function createCatalogMessage(entries, presentation = 'native', inactive = []) {
+  return catalogMessageFor(renderCatalogText(entries, presentation, inactive))
 }
 
 /** Whether one message is this plugin's catalog. */
@@ -593,50 +630,16 @@ function isCatalogMessage(message) {
 }
 
 /**
- * Session events, tolerating both snapshotEvents() and events array.
+ * The catalog text for one assembly state, rendered once per state object.
+ *
+ * The state object is replaced by every assembly, so this memo only ever answers
+ * for one assembly: repeated pre-step reads against an unchanged surface re-render
+ * nothing, and a new assembly memoizes afresh. The text is appended here so the
+ * publish path builds its message from the same rendering.
  */
-function sessionEvents(session) {
-  if (Array.isArray(session?.events)) return session.events
-  if (typeof session?.snapshotEvents === 'function') return session.snapshotEvents()
-  return []
-}
-
-/** Visible surface positions, or undefined when the session exposes none. */
-function visibleSeqSet(session) {
-  const nodes = session?.surface?.nodes
-  return Array.isArray(nodes) ? new Set(nodes) : undefined
-}
-
-/**
- * Published catalog state read back from durable log.
- */
-function catalogHistory(agent) {
-  const session = agent?.session
-  const events = sessionEvents(session)
-  const visible = visibleSeqSet(session)
-  let published = false
-  for (let index = events.length - 1; index >= 0; index -= 1) {
-    const event = events[index]
-    if (event?.type !== 'user/message' || !isCatalogMessage(event.data)) continue
-    published = true
-    if (visible === undefined || typeof event.seq !== 'number' || visible.has(event.seq)) {
-      return { published, text: textOf(event.data) }
-    }
-  }
-  return { published }
-}
-
-/** This plugin's catalog message inside one step's admitted batch, if any. */
-function catalogMessage(messages) {
-  for (const message of messages) {
-    if (isCatalogMessage(message)) return { message, text: textOf(message) }
-  }
-  return undefined
-}
-
-/** Drop one message from a step's admitted batch. */
-function withoutMessage(decision, id) {
-  return { ...decision, messages: decision.messages.filter(message => message.id !== id) }
+function stateCatalogText(state) {
+  if (typeof state.text !== 'string') state.text = renderCatalogText(state.entries, state.presentation, state.inactive)
+  return state.text
 }
 
 /** Register the registry paging and the per-step catalog injection. */
@@ -682,7 +685,9 @@ export function apply(ctx, config) {
   }
   const presentation = resolvePresentation(config, detail => warnOnce(`presentation:${detail}`, detail))
 
-  // Per-agent fresh state evaluated on every assembly (never stale across steps/turns)
+  // Per-agent fresh state evaluated on every assembly (never stale across
+  // steps/turns). The catalog text is memoized on the state object itself, so the
+  // pre-step reads of one assembly render it once instead of once per read.
   const agentCatalogState = new WeakMap()
 
   // Session to agent mapping for lifecycle events
@@ -745,13 +750,33 @@ export function apply(ctx, config) {
     // assembly-path emergency that warning describes.
     const fullSurface = readSurface(agent, undefined, { quiet: true }) ?? []
     if (fullSurface.length === 0) return undefined
+    // ONE partition of the full surface, with the empty active set: it is both
+    // the publication the activation tool reads back (every paged namespace,
+    // active or not) and the basis the withhold list and the catalog summary are
+    // derived from, so the two halves of paging cannot disagree about which
+    // tools a namespace carries.
+    const allPaged = partitionWireTools(fullSurface, pagedToolPatterns, [])
     // Publish before the withhold decision: with every namespace already active
     // there is nothing to restrict, and the activation tool must still know the
     // namespace exists to report it as active instead of unknown.
-    publishPagedSurface(agent, inactiveNamespaces(fullSurface, pagedToolPatterns, []))
+    publishPagedSurface(agent, allPaged.inactive)
     const active = replayActivations(sessionEvents(agent?.session), maxActiveNamespaces, pagedToolPatterns).active
-    const withheld = withheldToolNames(fullSurface, pagedToolPatterns, active)
+    const activeNames = new Set(active)
+    const withheld = []
+    const inactive = new Map()
+    for (const [namespace, group] of allPaged.inactive) {
+      if (activeNames.has(namespace)) continue
+      inactive.set(namespace, group)
+      for (const tool of group) {
+        if (typeof tool?.name !== 'string' || tool.name === '') continue
+        // The reserved transport cannot be named by a restriction, so paging
+        // must never be the reason a session loses it.
+        if (tool.name === 'run_code') continue
+        withheld.push(tool.name)
+      }
+    }
     if (withheld.length === 0) return undefined
+    withheld.sort()
 
     try {
       const dispose = tools.restrict({ deny: withheld })
@@ -759,7 +784,7 @@ export function apply(ctx, config) {
         warnOnce('paging-runtime', 'the tool registry did not confirm the paging restriction — the paged namespaces stay reachable through a program in this session')
         return undefined
       }
-      const state = { active, inactive: inactiveNamespaces(fullSurface, pagedToolPatterns, active), dispose }
+      const state = { active, inactive, dispose }
       agentPaging.set(agent, state)
       return state
     } catch (err) {
@@ -898,6 +923,24 @@ export function apply(ctx, config) {
   })
 
   /**
+   * Whether one completed call can move the active set at all.
+   *
+   * The paging replay reads exactly two shapes: an activation, and a call into a
+   * family that is ALREADY active (which only refreshes its recency). A call
+   * into a resident host builtin — the shell, the filesystem tools, the catalog's
+   * own readers — is neither, and a paged family that is still paged out cannot
+   * be reached at all, so a paged scope skips the resync for it and keeps the page
+   * it already installed. Deliberately conservative: a scope with no live
+   * restriction, a call that names no tool, and the transport itself keep the old
+   * path.
+   */
+  const mayMovePaging = (agent, toolName) => !agentPaging.has(agent)
+    || typeof toolName !== 'string'
+    || toolName === TOOL_ACTIVATE_NAME
+    || toolName === 'run_code'
+    || namespaceOf(toolName, pagedToolPatterns) !== undefined
+
+  /**
    * Re-sync after a call that can move the active set.
    *
    * Every window between assemblies is the right one to fix the NEXT one, and
@@ -908,7 +951,8 @@ export function apply(ctx, config) {
    * serializes independent read-only calls.
    */
   ctx.on('tools/post-execute', (exec, _result, next) => {
-    syncBeforeAssembly(exec?.agent)
+    const agent = exec?.agent
+    if (mayMovePaging(agent, exec?.name)) syncBeforeAssembly(agent)
     return next()
   }, { prepend: true })
 
@@ -956,24 +1000,25 @@ export function apply(ctx, config) {
     if (surface === undefined) {
       const previous = agentCatalogState.get(agent)
       if (previous !== undefined && previous.presentation !== effectivePresentation) {
-        agentCatalogState.set(agent, { ...previous, presentation: effectivePresentation })
+        // A fresh state object on purpose: the memoized text belongs to the
+        // presentation it was rendered for, so it must not travel along.
+        agentCatalogState.set(agent, {
+          entries: previous.entries,
+          presentation: effectivePresentation,
+          inactive: previous.inactive,
+        })
       }
       return assembled
     }
 
-    // Diagnostic guard on the always-on-wire surface. It warns rather than
+    // Diagnostic guard on the always-on-wire surface: ONE pass yields both the
+    // total and the heaviest tools the remedy should name. It warns rather than
     // truncates: silently dropping a tool the session needs would trade a
     // measurable context cost for an unmeasurable capability loss.
-    const residentTokens = estimateSurfaceTokens(surface)
+    const { tokens: residentTokens, heaviest } = measureSurface(surface)
     if (residentTokens > maxResidentTokens) {
-      // Name the heaviest tools so the remedy is actionable rather than a bare number.
-      const heaviest = [...surface]
-        .map(tool => ({ name: typeof tool?.name === 'string' ? tool.name : '(unnamed)', tokens: estimateSurfaceTokens([tool]) }))
-        .sort((left, right) => right.tokens - left.tokens)
-        .slice(0, 3)
-        .map(entry => `${entry.name} (${entry.tokens})`)
-        .join(', ')
-      warnOnce('resident-budget', `the resident tool surface is about ${residentTokens} tokens across ${surface.length} tools, over the ${maxResidentTokens}-token budget; heaviest: ${heaviest} — add matching families to pagedToolPatterns so they are held off the wire until activated`)
+      const named = heaviest.map(entry => `${entry.name} (${entry.tokens})`).join(', ')
+      warnOnce('resident-budget', `the resident tool surface is about ${residentTokens} tokens across ${surface.length} tools, over the ${maxResidentTokens}-token budget; heaviest: ${named} — add matching families to pagedToolPatterns so they are held off the wire until activated`)
     }
 
     // The page the registry enforces IS this request's page: the restriction was
@@ -1001,24 +1046,20 @@ export function apply(ctx, config) {
     const state = agent === undefined ? undefined : agentCatalogState.get(agent)
     if (state === undefined) return decision
 
-    const { entries, presentation: statePresentation, inactive } = state
-    const candidate = renderCatalogText(entries, statePresentation, inactive)
-    const history = catalogHistory(agent)
-    const existing = catalogMessage(decision.messages)
-    if (history.text === candidate) {
-      return existing === undefined ? decision : withoutMessage(decision, existing.message.id)
-    }
-    if (existing !== undefined && existing.text === candidate) return decision
-    if (!history.published && entries.length === 0 && inactive.length === 0) {
-      return existing === undefined ? decision : withoutMessage(decision, existing.message.id)
-    }
-    const catalog = createCatalogMessage(entries, statePresentation, inactive)
-    if (existing === undefined) {
-      return { ...decision, messages: [...decision.messages, catalog] }
-    }
-    return {
-      ...decision,
-      messages: decision.messages.map(message => (message.id === existing.message.id ? catalog : message)),
-    }
+    const candidate = stateCatalogText(state)
+    const history = latestVisiblePluginMessage(agent, isCatalogMessage)
+    // A surface that is empty AND was never published has nothing to announce:
+    // publishing "no tools" for it is what made a seeded child session deny the
+    // tools its own request carries (issue #2016). A surface that replaced a
+    // published one does announce it, which is why the published flag is part of
+    // the condition.
+    const silent = !history.published && state.entries.length === 0 && state.inactive.length === 0
+    return reconcileStepMessage(
+      decision,
+      history,
+      candidate,
+      () => (silent ? undefined : catalogMessageFor(candidate)),
+      isCatalogMessage,
+    )
   }, { prepend: true })
 }

@@ -35,6 +35,10 @@
  * adds a denial it can justify from the durable log.
  */
 
+// The session log is read through the preset's shared reader: an unreadable log
+// reads as empty here exactly as it does in every other fold of this preset.
+import { sessionEvents } from './paging.mjs'
+
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'liangshen-subagent-routes'
 
@@ -100,27 +104,14 @@ export function parseAllowedRoutes(data) {
   return routes
 }
 
-/** The events of one session, tolerating both snapshot shapes. */
-function sessionEvents(session) {
-  if (Array.isArray(session?.events)) return session.events
-  if (typeof session?.snapshotEvents === 'function') {
-    try {
-      const snapshot = session.snapshotEvents()
-      if (Array.isArray(snapshot)) return snapshot
-    } catch {
-      return undefined
-    }
-  }
-  return undefined
-}
-
 /**
  * The authorized routes a session recorded, if any.
  *
  * The policy is appended before the Session's first model request, so the scan
  * stays short; the bound keeps a Session without one from walking its whole
  * log. Both the durable `eventAt(seq)` reader and a plain events array are
- * accepted, because the row may run against a Host that exposes only one.
+ * accepted, because the row may run against a Host that exposes only one. An
+ * unreadable log reads as "no policy recorded", which is the fail-open answer.
  * @param session - Session-like record.
  * @returns the recorded routes, or undefined when this Session recorded none.
  */
@@ -141,9 +132,7 @@ export function policyRoutesOf(session) {
     }
     return undefined
   }
-  const events = sessionEvents(session)
-  if (events === undefined) return undefined
-  for (const event of events.slice(0, MAX_POLICY_SCAN)) {
+  for (const event of sessionEvents(session).slice(0, MAX_POLICY_SCAN)) {
     if (event?.type !== POLICY_EVENT) continue
     const routes = parseAllowedRoutes(event.data)
     if (routes !== undefined) return routes

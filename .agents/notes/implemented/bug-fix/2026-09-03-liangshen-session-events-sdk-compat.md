@@ -14,13 +14,20 @@ This regression occurred because SDK cohort `0.1.2-alpha.4` replaced the mutable
 
 ## Decision
 
-Update `packages/dsh-liangshen/presets/liangshen/tool-catalog.mjs` (then `tool-bootstrap.mjs`) to extract events compatibly:
+`sessionEvents(session)` in `packages/dsh-liangshen/presets/liangshen/paging.mjs` (consolidated from `tool-catalog.mjs`, originally `tool-bootstrap.mjs`, and shared by `tool-catalog.mjs`, `working-context.mjs`, `tool-activate.mjs`, and `subagent-routes.mjs`; see [the hot-path consolidation and helper deduplication note](2026-11-13-liangshen-hot-path-and-dedup.md)) extracts events compatibly while wrapping `snapshotEvents()` in `try/catch`:
 ```javascript
-const events = Array.isArray(session?.events)
-  ? session.events
-  : typeof session?.snapshotEvents === 'function'
-    ? session.snapshotEvents()
-    : []
+export function sessionEvents(session) {
+  if (Array.isArray(session?.events)) return session.events
+  if (typeof session?.snapshotEvents === 'function') {
+    try {
+      const snapshot = session.snapshotEvents()
+      if (Array.isArray(snapshot)) return snapshot
+    } catch {
+      // Unreadable log: fall through to the empty one.
+    }
+  }
+  return []
+}
 ```
 This safely retrieves events whether running under legacy SDKs with `session.events` or current/future SDK cohorts with `session.snapshotEvents()`.
 

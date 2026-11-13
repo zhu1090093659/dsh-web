@@ -196,12 +196,12 @@ export function bundledPresetDir(): string {
 /**
  * Build the registry declaration of the bundled preset with the settings
  * currently committed applied to the rows they shape.
+ * @param base - the bundled preset as parsed for this activation.
  * @param values - the activation's effective settings.
  * @returns the definition to submit to `ctx.agentPresets.register`.
  */
-function declaration(values: ResolvedConfig): PresetDefinition {
-  const definition = readPresetDefinition(LIANGSHEN_PRESET_ID, bundledPresetDir())
-  return { ...definition, plugins: applyPresetOverrides(definition.plugins, values) }
+function declaration(base: PresetDefinition, values: ResolvedConfig): PresetDefinition {
+  return { ...base, plugins: applyPresetOverrides(base.plugins, values) }
 }
 
 /**
@@ -237,6 +237,24 @@ function applyImpl(ctx: Context, config?: Config): void {
    * already present at activation is never re-declared.
    */
   let registryMissing = false
+  /**
+   * The bundled preset as parsed by this activation, read on first declaration.
+   * Every settings write re-declares, and the two preset files cannot change
+   * under a running row, so re-reading and re-parsing them on each write would
+   * block the event loop for a result identical to the one already held. A
+   * failed read is not remembered: the next declaration tries the disk again.
+   */
+  let basePreset: PresetDefinition | undefined
+
+  /**
+   * The bundled preset definition for this activation, parsed at most once.
+   * The overlay derives a new row list from it, so the cached base keeps the
+   * values the composition ships for every declaration that follows.
+   */
+  const baseDefinition = (): PresetDefinition => {
+    if (basePreset === undefined) basePreset = readPresetDefinition(LIANGSHEN_PRESET_ID, bundledPresetDir())
+    return basePreset
+  }
 
   const warn = (message: string): void => { ctx.logger?.warn?.(`dsh-liangshen: ${message}`) }
 
@@ -275,7 +293,7 @@ function applyImpl(ctx: Context, config?: Config): void {
         return
       }
       try {
-        release = await registry.register(declaration(values))
+        release = await registry.register(declaration(baseDefinition(), values))
         registryMissing = false
         ctx.logger?.info?.(`liangshen: preset ${LIANGSHEN_PRESET_ID} declared`)
       } catch (error) {

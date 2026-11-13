@@ -88,36 +88,52 @@ function factRegisterCall(event) {
 }
 
 /**
+ * Fold ONE event into one register: a successful `fact_register` call appends
+ * its fact (or revokes by tag), whichever wire shape recorded it. Facts carry no
+ * ids — revocation matches on the optional `tag`, and an untagged fact can only
+ * be revoked by revoking its exact text as the tag of last resort.
+ *
+ * Exported because the register is folded from the same event stream as the rest
+ * of the working-context line: that projection folds every field in one pass, so
+ * the pin/revoke rule has to be applicable per event instead of per stream.
+ * @param facts - the register to fold into; left untouched by an unrelated event.
+ * @param event - one durable session event.
+ * @returns the same array, so a stream fold can thread it through the pass.
+ */
+export function applyFactLedgerEvent(facts, event) {
+  const register = Array.isArray(facts) ? facts : []
+  const data = factRegisterCall(event)
+  if (data === undefined) return register
+  let args = data.arguments
+  if (typeof args === 'string') {
+    try { args = JSON.parse(args) } catch { args = undefined }
+  }
+  if (args === undefined || args === null) return register
+  if (typeof args.revoke === 'string' && args.revoke.trim() !== '') {
+    const tag = args.revoke.trim()
+    for (let index = register.length - 1; index >= 0; index -= 1) {
+      if (register[index].tag === tag || register[index].text === tag) register.splice(index, 1)
+    }
+    return register
+  }
+  if (typeof args.fact !== 'string' || args.fact.trim() === '') return register
+  const text = args.fact.trim().slice(0, MAX_FACT_CHARS)
+  if (register.some(entry => entry.text === text)) return register
+  const tag = typeof args.tag === 'string' && args.tag.trim() !== '' ? args.tag.trim() : undefined
+  register.push({ text, tag })
+  if (register.length > MAX_FACTS) register.splice(0, register.length - MAX_FACTS)
+  return register
+}
+
+/**
  * Fold the current fact register from the event stream: every successful
  * `fact_register` call appends its fact (or revokes by tag), whichever wire
- * shape recorded it. Facts carry no ids — revocation matches on the optional
- * `tag`, and an untagged fact can only be revoked by revoking its exact text as
- * the tag of last resort.
+ * shape recorded it. The per-event rule lives in {@link applyFactLedgerEvent} so
+ * a single-pass projection folds the same register without a second walk.
  */
 export function foldFactLedger(events) {
   const facts = []
-  for (const event of Array.isArray(events) ? events : []) {
-    const data = factRegisterCall(event)
-    if (data === undefined) continue
-    let args = data.arguments
-    if (typeof args === 'string') {
-      try { args = JSON.parse(args) } catch { args = undefined }
-    }
-    if (args === undefined || args === null) continue
-    if (typeof args.revoke === 'string' && args.revoke.trim() !== '') {
-      const tag = args.revoke.trim()
-      for (let index = facts.length - 1; index >= 0; index -= 1) {
-        if (facts[index].tag === tag || facts[index].text === tag) facts.splice(index, 1)
-      }
-      continue
-    }
-    if (typeof args.fact !== 'string' || args.fact.trim() === '') continue
-    const text = args.fact.trim().slice(0, MAX_FACT_CHARS)
-    if (facts.some(entry => entry.text === text)) continue
-    const tag = typeof args.tag === 'string' && args.tag.trim() !== '' ? args.tag.trim() : undefined
-    facts.push({ text, tag })
-    if (facts.length > MAX_FACTS) facts.splice(0, facts.length - MAX_FACTS)
-  }
+  for (const event of Array.isArray(events) ? events : []) applyFactLedgerEvent(facts, event)
   return facts
 }
 

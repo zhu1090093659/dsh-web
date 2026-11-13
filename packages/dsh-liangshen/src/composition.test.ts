@@ -193,6 +193,32 @@ describe('readCompositionRows', () => {
     })
   })
 
+  it('operator reads a __proto__ key as own data without reaching the prototype chain', () => {
+    // Given a config map whose first key is __proto__, When the operator
+    // reads it, Then the entry is an own enumerable property of that map: a
+    // plain assignment would have rewritten the map's prototype instead and
+    // carried a parsed document into the prototype chain of everything read
+    // from it, while the key itself would have vanished from the map.
+    const parsed = readCompositionRows([
+      '- name: ./x.mjs',
+      '  config:',
+      '    __proto__:',
+      '      polluted: true',
+      '    plain: kept',
+      '',
+    ].join('\n'), presetDir)
+    const config = configOf(loose(parsed)[0]!)
+    const descriptor = Object.getOwnPropertyDescriptor(config, '__proto__')
+    expect(descriptor?.enumerable).toBe(true)
+    expect(descriptor?.value).toEqual({ polluted: true })
+    expect(Object.keys(config)).toEqual(['__proto__', 'plain'])
+    // And neither prototype moved: the map keeps Object.prototype, and no
+    // object in the process gained the parsed key.
+    expect(Object.getPrototypeOf(config)).toBe(Object.prototype)
+    expect(Object.hasOwn(Object.prototype, 'polluted')).toBe(false)
+    expect(config['plain']).toBe('kept')
+  })
+
   it('operator reads an absolute name as written and nested sequences of maps', () => {
     // Given a group row whose child rows carry a nested list and an absolute
     // module path, When the operator reads it, Then neither is rewritten.

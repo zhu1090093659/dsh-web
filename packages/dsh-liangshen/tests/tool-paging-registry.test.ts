@@ -27,6 +27,13 @@ import { describe, expect, it } from 'vitest'
 
 import { apply, name } from '../presets/liangshen/tool-catalog.mjs'
 import { apply as applyActivate } from '../presets/liangshen/tool-activate.mjs'
+import {
+  DEFAULT_MAX_ACTIVE_NAMESPACES,
+  DEFAULT_PAGED_TOOL_PATTERNS,
+  inactiveNamespaces,
+  replayActivations,
+  withheldToolNames,
+} from '../presets/liangshen/paging.mjs'
 
 type Listener = (first: any, second: any, third: any) => Promise<any>
 
@@ -355,6 +362,64 @@ describe('gentle paging under the collapsed ptc wire', () => {
     // would keep shrinking the surface instead of holding steady.
     expect(h.tools.sdkSchemas(agent).map((tool: any) => tool.name)).toEqual(once)
     expect(once).toEqual(['bash', 'read'])
+  })
+
+  it('operator gets no page refresh from a resident tool call, only from one the replay reads', async () => {
+    // Given a paged scope whose durable log gained an activation AFTER the page
+    // was installed, When a resident host builtin completes, Then the page stays
+    // exactly where it was: such a call cannot move the active set, so the
+    // post-call resync is not paid for it.
+    const h = harness()
+    const agent = await agentOf(h)
+    await h.assemble(agent)
+    ;(agent.session as any).snapshotEvents = () => activation('ssh', 'c2')
+
+    await h.emit('tools/post-execute', { agent, name: 'read' }, {}, () => Promise.resolve({ kind: 'accept' }))
+
+    // The log says ssh is active and no sync ran: the installed page is unchanged.
+    expect(h.tools.get('mcp__ssh__exec', agent)).toBeUndefined()
+    expect(h.tools.get('mcp__github__create_issue', agent)).toBeUndefined()
+    expect(h.tools.get('bash', agent)?.name).toBe('bash')
+  })
+
+  it('operator page catches up after every call the activation replay reads', async () => {
+    // Given the same paged scope and a log that gained an activation, When a call
+    // the replay reads completes - an activation, the program transport, or a
+    // call into a paged family - Then the page catches up before the next request.
+    for (const toolName of ['tool_activate', 'run_code', 'mcp__ssh__exec']) {
+      const h = harness()
+      const agent = await agentOf(h)
+      await h.assemble(agent)
+      ;(agent.session as any).snapshotEvents = () => activation('ssh', 'c2')
+
+      await h.emit('tools/post-execute', { agent, name: toolName }, {}, () => Promise.resolve({ kind: 'accept' }))
+
+      expect(h.tools.get('mcp__ssh__exec', agent)?.name).toBe('mcp__ssh__exec')
+      expect(h.tools.get('mcp__github__create_issue', agent)).toBeUndefined()
+    }
+  })
+
+  it('operator gets the same page and summary from one partition as from the standalone helpers', async () => {
+    // Given a surface carrying resident, MCP-bridge and plugin-family tools, When
+    // one sync derives the page, Then the withheld names and the paged summary
+    // are exactly what the standalone partitions report for the same active set.
+    const surface = [...RESIDENT, ...PAGED, ...PLUGIN]
+    const h = harness({}, { surface })
+    const events = activation('ssh', 'c1')
+    const agent = await agentOf(h, events)
+    await h.assemble(agent)
+
+    const { active } = replayActivations(events, DEFAULT_MAX_ACTIVE_NAMESPACES, DEFAULT_PAGED_TOOL_PATTERNS)
+    const withheld = withheldToolNames(surface, DEFAULT_PAGED_TOOL_PATTERNS, active)
+    const visibleNames = surface.map((tool: any) => tool.name).filter((toolName: string) => !withheld.includes(toolName))
+    expect(h.tools.schemas(agent).map((tool: any) => tool.name)).toEqual(visibleNames)
+
+    const text = await h.catalog(agent)
+    const remaining = [...inactiveNamespaces(surface, DEFAULT_PAGED_TOOL_PATTERNS, active).keys()]
+    expect(remaining).toContain('github')
+    for (const namespace of remaining) {
+      expect(text).toContain(`Call \`tool_activate({ namespace: "${namespace}" })\``)
+    }
   })
 
   it("pages the 'native' roster too, since the waterfall can no longer filter it", async () => {

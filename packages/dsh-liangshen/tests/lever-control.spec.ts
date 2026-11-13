@@ -5,7 +5,7 @@
  * semantics are pinned.
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { LeverController } from '../src/client/lever-controller.ts'
 
@@ -35,6 +35,9 @@ function fakeCtx(options: FakeOptions = {}) {
   ]).map(row => ({ isDefault: false, ...row }))
   const selections: [string, string][] = []
   const documentEvents: ((ns: string) => void)[] = []
+  // How often the controller bound its locale namespace, so a face that
+  // resolves its translator once is distinguishable from one that does not.
+  const binds = { count: 0 }
   const ctx = {
     sessions: {
       list: {
@@ -56,9 +59,14 @@ function fakeCtx(options: FakeOptions = {}) {
         return () => {}
       },
     },
-    locale: { bind: () => (key: string, vars?: Record<string, unknown>) => (vars === undefined ? key : `${key}${JSON.stringify(vars)}`) },
+    locale: {
+      bind: () => {
+        binds.count += 1
+        return (key: string, vars?: Record<string, unknown>) => (vars === undefined ? key : `${key}${JSON.stringify(vars)}`)
+      },
+    },
   }
-  return { ctx: ctx as never, selections, state, rows, documentEvents }
+  return { ctx: ctx as never, selections, state, rows, documentEvents, binds }
 }
 
 async function started(options: FakeOptions = {}) {
@@ -334,5 +342,120 @@ describe('LeverController service resolution', () => {
     expect(() => { controller.face().pull() }).not.toThrow()
     // No session to read means no switchable window, which reads as locked.
     expect(controller.snapshot().getSnapshot().state).toBe('locked')
+  })
+})
+
+/**
+ * How many DOM and session-storage lookups a restore-target resolution made.
+ * The controller reads both through globals Node does not define, so counting
+ * stand-ins are the only definitions it can reach and their counters say
+ * whether the lookup ran at all.
+ */
+interface ProbeCounts {
+  /** document.querySelector plus document.querySelectorAll calls. */
+  dom: number
+  /** sessionStorage.getItem calls. */
+  storage: number
+}
+
+/** Install counting stand-ins for the two globals detectPreset reads. */
+function installProbes(): { counts(): ProbeCounts, restore(): void } {
+  const counters: ProbeCounts = { dom: 0, storage: 0 }
+  vi.stubGlobal('document', {
+    querySelector: () => { counters.dom += 1; return null },
+    querySelectorAll: () => { counters.dom += 1; return [] },
+  })
+  vi.stubGlobal('sessionStorage', {
+    getItem: () => { counters.storage += 1; return null },
+    setItem: () => {},
+  })
+  return {
+    counts: () => ({ ...counters }),
+    restore: () => { vi.unstubAllGlobals() },
+  }
+}
+
+describe('LeverController snapshot cost', () => {
+  it('user sees a started session report locked without any DOM or storage probe', async () => {
+    // Given a session that already started, so its preset can no longer change
+    const probes = installProbes()
+    try {
+      const { controller } = await started({ readonly: { blank: false } })
+      // Then the lever reports the session as locked with nothing to restore,
+      // and paid for no DOM or session-storage lookup to say so
+      expect(controller.snapshot().getSnapshot().state).toBe('locked')
+      expect(controller.snapshot().getSnapshot().restoreLabel).toBe('')
+      expect(probes.counts()).toEqual({ dom: 0, storage: 0 })
+
+      // When the lever recomputes its snapshot and a gesture arrives
+      const before = probes.counts()
+      controller.refresh()
+      controller.face().pull()
+      await Promise.resolve()
+      // Then the recomputation still probes nothing and restores nothing
+      expect(probes.counts()).toEqual(before)
+      expect(controller.snapshot().getSnapshot().state).toBe('locked')
+      expect(controller.snapshot().getSnapshot().restoreLabel).toBe('')
+    } finally {
+      probes.restore()
+    }
+  })
+
+  it('user sees a blank session keep resolving its restore target from the chip and the storage', async () => {
+    // Given a blank session that reports no preset of its own, so nothing was
+    // remembered from an earlier visit and the fallback lookup has to run
+    const probes = installProbes()
+    try {
+      const fake = fakeCtx()
+      fake.state.byId['session-1'] = { id: 'session-1', blank: true, projectionValues: {}, retainedBy: { mainView: 1 } } as never
+      const controller = new LeverController(fake.ctx)
+      controller.start()
+      // (the roster read the activation started lands first)
+      await Promise.resolve()
+      await Promise.resolve()
+      // When the lever recomputes its snapshot
+      controller.refresh()
+      // Then both lookups ran and the lever reports the session as switchable
+      const counts = probes.counts()
+      expect(counts.dom).toBeGreaterThan(0)
+      expect(counts.storage).toBeGreaterThan(0)
+      expect(controller.snapshot().getSnapshot().state).toBe('off')
+    } finally {
+      probes.restore()
+    }
+  })
+})
+
+describe('LeverController face', () => {
+  it('user gets one face and one bound translator for the life of the lever', async () => {
+    // Given a controller whose locale service answers
+    const fake = await started()
+    // When the view reads the face twice and translates two keys
+    const face = fake.controller.face()
+    expect(fake.controller.face()).toBe(face)
+    expect(face.t('lever.a11y')).toBe('lever.a11y')
+    expect(face.t('lever.hint.push', { preset: 'Standard' })).toBe('lever.hint.push{"preset":"Standard"}')
+    // Then the namespace was bound once, not once per translated key
+    expect(fake.binds.count).toBe(1)
+  })
+
+  it('user keeps the lever translating once a locale service registers late', () => {
+    // Given a controller activated before the locale service was published
+    let published = false
+    const ctx = {
+      get locale() {
+        if (!published) throw new Error('cannot get property "locale" without inject')
+        return { bind: () => (key: string) => `zh:${key}` }
+      },
+    } as never
+    const controller = new LeverController(ctx)
+    const face = controller.face()
+    // When a key is translated while no translator exists, the key itself shows
+    expect(face.t('lever.a11y')).toBe('lever.a11y')
+    // Then the failed lookup was not remembered: once the service arrives the
+    // same face translates, without the view ever holding a second one
+    published = true
+    expect(controller.face()).toBe(face)
+    expect(face.t('lever.a11y')).toBe('zh:lever.a11y')
   })
 })

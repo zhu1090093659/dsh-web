@@ -1190,6 +1190,95 @@ describe('liangshen-minimal-prompt', () => {
       const step = await preStep(harness, agent, [{ id: 'user-replay', role: 'user', content: [] }])
       expect(step.messages.some((m: any) => m.content[0]?.text?.includes('replayed subpackage rule'))).toBe(true)
     })
+
+    test('operator in host mode never reads the session log on a tool result or a step', async () => {
+      // Given a host-mode row over a session whose log throws whenever it is read,
+      // When a tool result lands and the next step is prepared,
+      // Then neither of them reads it: the harness's own agent-instructions row
+      // owns the channel in this mode, so there is nothing here to discover.
+      const harness = register({ instructionSource: 'host' })
+      let reads = 0
+      const agent = {
+        session: {
+          snapshotEvents: () => {
+            reads += 1
+            throw new Error('the log must not be read in host mode')
+          },
+        },
+      }
+      listener(harness, 'tools/result')(
+        { name: 'read', arguments: { file_path: '/repo/src/a.ts' }, agent },
+        { isError: false },
+      )
+      const step = await preStep(harness, agent, [{ id: 'user-1', role: 'user', content: [] }])
+      expect(reads).toBe(0)
+      expect(step.messages).toHaveLength(1)
+    })
+
+    test('operator in hint mode never reads the session log on a tool result or a step', async () => {
+      // Given a hint-mode row over the same guarded session,
+      // When a tool result lands and a step with an instructions message is prepared,
+      // Then the log stays unread and the hint still rewrites the message.
+      const harness = register({ instructionSource: 'hint' })
+      let reads = 0
+      const agent = {
+        session: {
+          snapshotEvents: () => {
+            reads += 1
+            throw new Error('the log must not be read in hint mode')
+          },
+        },
+      }
+      listener(harness, 'tools/result')(
+        { name: 'str_replace_editor', arguments: { command: 'view', path: '/repo/src/a.ts' }, agent },
+        { isError: false },
+      )
+      const step = await preStep(harness, agent, [instructionsMessage('instructions-1', ['AGENTS.md'])])
+      expect(reads).toBe(0)
+      expect(step.messages).toHaveLength(1)
+      expect(step.messages[0].content[0].text).toContain('AGENTS.md')
+    })
+
+    test('operator resuming a ptc session gets its ptc dispatches replayed, errored ones skipped', async () => {
+      // Given a scratch project whose two subpackages carry their own AGENTS.md,
+      // and a durable log recording one visit per subpackage as a ptc dispatch -
+      // the second reported an error,
+      // When the session resumes in system-prompt mode and prepares its first step,
+      // Then the successful dispatch's directory is discovered and the failed one's
+      // is not: a dispatch that never took effect touched nothing.
+      const rootDir = project({
+        'AGENTS.md': 'root rule',
+        'packages/replayed/AGENTS.md': 'replayed subpackage rule',
+        'packages/replayed/file.ts': 'code',
+        'packages/failed/AGENTS.md': 'failed subpackage rule',
+        'packages/failed/file.ts': 'code',
+      })
+      const harness = register({ instructionSource: 'system-prompt' })
+      const pastEvents = [
+        {
+          type: 'tool/ptc-dispatch',
+          data: {
+            name: 'str_replace_editor',
+            arguments: { command: 'view', path: join(rootDir, 'packages/replayed/file.ts') },
+            isError: false,
+          },
+        },
+        {
+          type: 'tool/ptc-dispatch',
+          data: {
+            name: 'str_replace_editor',
+            arguments: { command: 'view', path: join(rootDir, 'packages/failed/file.ts') },
+            isError: true,
+          },
+        },
+      ]
+      const agent = { session: { header: { cwd: rootDir }, snapshotEvents: () => pastEvents } }
+      await assemble(harness, FULL_SECTIONS, undefined, agent)
+      const step = await preStep(harness, agent, [{ id: 'user-replay', role: 'user', content: [] }])
+      const text = JSON.stringify(step.messages)
+      expect(text).toContain('replayed subpackage rule')
+      expect(text).not.toContain('failed subpackage rule')
+    })
   })
 
   describe('dynamic subdirectory instruction reconciliation', () => {

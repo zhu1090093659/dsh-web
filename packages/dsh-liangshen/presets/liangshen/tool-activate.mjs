@@ -33,6 +33,7 @@ import {
   integerAtLeast,
   namespaceOf,
   replayActivations,
+  sessionEvents,
   validatePagedToolPatterns,
 } from './paging.mjs'
 import { pagedNamespacesFor } from './tool-catalog.mjs'
@@ -42,13 +43,6 @@ export const name = 'liangshen-tool-activate'
 
 /** The tools registry must exist before the activation tool can register. */
 export const inject = ['tools']
-
-/** Session events, tolerating both snapshotEvents() and events array. */
-function sessionEvents(session) {
-  if (Array.isArray(session?.events)) return session.events
-  if (typeof session?.snapshotEvents === 'function') return session.snapshotEvents()
-  return []
-}
 
 /** Register the model-facing `tool_activate` tool. */
 export function apply(ctx, config) {

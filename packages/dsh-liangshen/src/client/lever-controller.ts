@@ -89,6 +89,9 @@ export interface LeverFace {
   t: (key: LiangShenKey, vars?: Record<string, string | number>) => string
 }
 
+/** A translation function bound to this plugin's locale namespace. */
+type Translator = (key: LiangShenKey, vars?: Record<string, string | number>) => string
+
 /** Read the preset a session summary reports, when it reports one. */
 function presetOf(session: { projectionValues?: Record<string, unknown> } | undefined): string | undefined {
   const value = session?.projectionValues?.['agentPreset']
@@ -121,6 +124,16 @@ export class LeverController {
   private readonly selectTimeoutMs: number
 
   private readonly disposers: (() => void)[] = []
+
+  /** The one face this controller hands out: the view reads it on every render. */
+  private cachedFace: LeverFace | undefined
+
+  /**
+   * The translator bound to this plugin's locale namespace, resolved on first
+   * use. A lookup that resolved nothing is never cached, so a locale service
+   * registered after activation still reaches the same face.
+   */
+  private cachedTranslate: Translator | undefined
 
   constructor(private readonly ctx: ClientContext, options: LeverControllerOptions = {}) {
     this.selectTimeoutMs = options.selectTimeoutMs ?? SELECT_TIMEOUT_MS
@@ -164,19 +177,35 @@ export class LeverController {
     for (const dispose of this.disposers.splice(0)) dispose()
   }
 
-  /** The inject face handed to the slot entry. */
+  /** The inject face handed to the slot entry; the same instance on every read. */
   face(): LeverFace {
-    return {
+    const cached = this.cachedFace
+    if (cached !== undefined) return cached
+    const face: LeverFace = {
       store: this.store,
       pull: () => { void this.toggle('down') },
       push: () => { void this.toggle('up') },
       t: (key, vars) => {
-        const translate = readService<(key: LiangShenKey, vars?: Record<string, string | number>) => string>(
-          () => this.ctx.locale.bind('liangshen'),
-        )
+        const translate = this.translate()
         return translate === undefined ? key : translate(key, vars)
       },
     }
+    this.cachedFace = face
+    return face
+  }
+
+  /**
+   * The translator bound to this plugin's locale namespace, or undefined while
+   * none answers. The binding is resolved once and only on success: a locale
+   * service that arrives later than this controller still gets its chance.
+   */
+  private translate(): Translator | undefined {
+    const cached = this.cachedTranslate
+    if (cached !== undefined) return cached
+    const bound = readService<Translator>(() => this.ctx.locale.bind('liangshen'))
+    if (typeof bound !== 'function') return undefined
+    this.cachedTranslate = bound
+    return bound
   }
 
   /** Read the roster; a refusal leaves the lever as it was. */
@@ -205,10 +234,18 @@ export class LeverController {
     const facts = this.facts()
     const snapshot = this.store.getSnapshot()
     const state = leverState(facts)
-    const target = restoreTarget(facts)
-    const restoreLabel = target === undefined ? '' : this.labelOf(target)
+    // Only a blank session can push the lever back up, so only there does a
+    // restore target exist to name; 'locked' and 'missing' are decided by the
+    // roster alone and never read the label.
+    const restoreLabel = facts.blank ? this.restoreLabelOf(facts) : ''
     if (snapshot.state === state && snapshot.restoreLabel === restoreLabel) return
     this.store.set({ ...snapshot, state, restoreLabel })
+  }
+
+  /** Display name of the preset a push-up would restore; empty when there is none. */
+  private restoreLabelOf(facts: LeverFacts): string {
+    const target = restoreTarget(facts)
+    return target === undefined ? '' : this.labelOf(target)
   }
 
   /** The verb behind one gesture direction. */
@@ -305,12 +342,23 @@ export class LeverController {
     }
   }
 
-  /** The facts one decision reads, from the live session and the roster. */
+  /**
+   * The facts one decision reads, from the live session and the roster.
+   *
+   * `previous` is resolved only for a blank session: it exists to name the
+   * preset a push-up restores, and only a blank session may switch preset at
+   * all. Resolving it costs a DOM chip lookup and a session-storage read
+   * ({@link detectPreset}), which a started session -- reported as 'locked' or
+   * 'missing' -- would pay for on every roster and session update and never use.
+   */
   private facts(): LeverFacts {
     const summary = this.currentSession()
     const available = this.rows.filter(row => row.broken === undefined).map(row => row.id)
     const fallback = this.rows.find(row => row.isDefault)?.id
     const currentPreset = presetOf(summary)
+    const blank = summary?.blank === true
+
+    if (!blank) return { blank, agentPreset: currentPreset, available, fallback }
 
     if (currentPreset !== undefined && currentPreset !== LIANGSHEN_PRESET_ID) {
       this.rememberPrevious(currentPreset)
@@ -318,13 +366,7 @@ export class LeverController {
 
     const previous = this.previous ?? this.detectPreset()
 
-    return {
-      blank: summary?.blank === true,
-      agentPreset: currentPreset,
-      available,
-      fallback,
-      previous,
-    }
+    return { blank, agentPreset: currentPreset, available, fallback, previous }
   }
 
   private currentSessionId(): string | undefined {

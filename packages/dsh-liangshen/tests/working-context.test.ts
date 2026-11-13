@@ -16,6 +16,12 @@ import {
   planModeState,
   renderWorkingContext,
 } from '../presets/liangshen/working-context.mjs'
+import { foldFactLedger, renderLedgerField } from '../presets/liangshen/fact-ledger.mjs'
+import {
+  DEFAULT_MAX_ACTIVE_NAMESPACES,
+  DEFAULT_PAGED_TOOL_PATTERNS,
+  replayActivations,
+} from '../presets/liangshen/paging.mjs'
 
 type Listener = (first: any, second: any, third: any) => Promise<any>
 
@@ -132,6 +138,73 @@ describe('liangshen-working-context', () => {
       { type: 'todo/write', data: { todos: [{ content: 'Fix auth', status: 'in_progress' }] } },
     ])
     expect(line).toBe('[Working Context: plan mode: on | active namespaces: github | in progress: Fix auth]')
+  })
+
+  test('operator gets the same line from the single-pass fold as from the standalone folds', () => {
+    // Given interleaved events: a plan-mode switch, successful activations on both
+    // wire shapes, a failed activation, todos cleared and rewritten, and pins plus
+    // a revocation, with a non-object plan/mode event in between.
+    const events = [
+      { type: 'plan/mode', data: { active: true } },
+      ...activation('github', 'c1'),
+      { type: 'tool/call', data: { callId: 'c2', name: 'tool_activate', arguments: JSON.stringify({ namespace: 'ssh' }) } },
+      { type: 'tool/result', data: { message: { source: { callId: 'c2' }, content: [{ type: 'text', text: 'failed' }], isError: true } } },
+      factCall({ fact: 'User prefers tabs', tag: 'style' }),
+      { type: 'todo/write', data: { todos: [{ content: 'Wire the fold', status: 'in_progress' }] } },
+      factDispatch({ fact: 'Auth decided: JWT', tag: 'auth' }),
+      { type: 'tool/ptc-dispatch', data: { name: 'tool_activate', arguments: { namespace: 'ui' }, isError: false } },
+      { type: 'turn/start' },
+      { type: 'todo/write', data: { todos: [{ content: 'Ship the fold', status: 'in_progress' }, { content: 'Done', status: 'completed' }] } },
+      factDispatch({ revoke: 'style' }),
+      { type: 'plan/mode', data: {} },
+    ]
+
+    // When the line renders, Then it is exactly what the standalone folds compose,
+    // and the failed activation never took effect on the way.
+    const line = renderWorkingContext(events, {
+      pagedToolPatterns: DEFAULT_PAGED_TOOL_PATTERNS,
+      maxActiveNamespaces: DEFAULT_MAX_ACTIVE_NAMESPACES,
+    })
+    const plan = planModeState(events)
+    const { active } = replayActivations(events, DEFAULT_MAX_ACTIVE_NAMESPACES, DEFAULT_PAGED_TOOL_PATTERNS)
+    const titles = inProgressTodos(events)
+    const ledger = renderLedgerField(foldFactLedger(events))
+    const composed = [
+      `plan mode: ${plan.active ? 'on' : 'off'}`,
+      `active namespaces: ${[...active].sort().join(', ')}`,
+      `in progress: ${titles.join('; ')}`,
+      ledger,
+    ]
+    expect(line).toBe(`[Working Context: ${composed.join(' | ')}]`)
+    expect(active).toEqual(['github', 'ui'])
+    expect(line).toContain('key facts: Auth decided: JWT [auth]')
+    expect(line).not.toContain('ssh')
+  })
+
+  test('operator gets an untouched step when the session log cannot be read', async () => {
+    // Given a session whose event source throws whenever it is read,
+    // When a step is prepared, Then the read folds to nothing, the step still
+    // reaches the model, and no line is injected for a log that was not read.
+    const harness = register()
+    const agent = {
+      session: {
+        snapshotEvents: () => { throw new Error('session log unavailable') },
+      },
+    }
+    const result = await preStep(harness, agent)
+    expect(result.messages.map((message: any) => message.id)).toEqual(['user'])
+  })
+
+  test('operator still gets the todo and fact fields from a log without any activation', () => {
+    // Given a log that never recorded an activation but carries a todo and a pin,
+    // When the line renders, Then those fields render and no namespace field does:
+    // the skipped activation replay cannot cost the other fields.
+    const line = renderWorkingContext([
+      { type: 'todo/write', data: { todos: [{ content: 'Fold once', status: 'in_progress' }] } },
+      factCall({ fact: 'Build uses pnpm', tag: 'build' }),
+      { type: 'tool/ptc-dispatch', data: { name: 'bash', arguments: { command: 'ls' }, isError: false } },
+    ])
+    expect(line).toBe('[Working Context: in progress: Fold once | key facts: Build uses pnpm [build]]')
   })
 
   test('operator sees a ptc-pinned key fact on the working-context line', () => {

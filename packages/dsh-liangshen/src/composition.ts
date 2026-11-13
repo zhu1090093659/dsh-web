@@ -319,7 +319,15 @@ function parseMap(cursor: Cursor, indent: number): Record<string, unknown> {
       throw new CompositionError(`line ${String(cursor.index + 1)}: duplicate key "${entry.key}"`)
     }
     cursor.index += 1
-    map[entry.key] = parseValue(cursor, indent, entry.rest)
+    // Defined rather than assigned: a '__proto__' key is ordinary data here,
+    // and a plain assignment would rewrite the map's prototype instead of
+    // carrying the entry, letting a parsed document reach the prototype chain.
+    Object.defineProperty(map, entry.key, {
+      value: parseValue(cursor, indent, entry.rest),
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    })
   }
   return map
 }

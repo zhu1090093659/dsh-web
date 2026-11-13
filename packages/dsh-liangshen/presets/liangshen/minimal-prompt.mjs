@@ -765,20 +765,26 @@ export function apply(ctx, config) {
       }
       sessionStateMap.set(session, state)
 
-      // Reconstruct touched directories from durable history if available
-      if (typeof session?.snapshotEvents === 'function') {
+      // Reconstruct touched directories from the durable history, but ONLY in
+      // system-prompt mode: that is the one mode that discovers subdirectory
+      // instructions itself, so the other two never pay for a log read they
+      // cannot use (the harness's own row, or the hint, owns the channel there).
+      if (instructionSource === 'system-prompt' && typeof session?.snapshotEvents === 'function') {
         try {
           const events = session.snapshotEvents()
           const cwd = session.header?.cwd ?? process.cwd()
           for (const ev of events) {
-            if (ev?.type === 'tool/call' && ev.data) {
-              let args = ev.data.arguments
-              if (typeof args === 'string') {
-                try { args = JSON.parse(args) } catch {}
-              }
-              const p = filePathFromExecution({ name: ev.data.name, arguments: args })
-              if (p) state.touchedDirs.add(dirname(resolve(cwd, p)))
+            // Both wire shapes count: a top-level call, and the program dispatch
+            // a PTC session records for the same tool. A dispatch that reported
+            // an error touched nothing.
+            if (ev?.type !== 'tool/call' && ev?.type !== 'tool/ptc-dispatch') continue
+            if (!ev.data || ev.data.isError === true) continue
+            let args = ev.data.arguments
+            if (typeof args === 'string') {
+              try { args = JSON.parse(args) } catch {}
             }
+            const p = filePathFromExecution({ name: ev.data.name, arguments: args })
+            if (p) state.touchedDirs.add(dirname(resolve(cwd, p)))
           }
         } catch {
           // Replay reconstruction fallback
@@ -852,8 +858,15 @@ export function apply(ctx, config) {
     }
   }, { prepend: true })
 
-  // 2. Synchronous tool result tracking (no fake emit, no async work in emit listener)
+  // 2. Synchronous tool result tracking (no fake emit, no async work in emit listener).
+  //
+  // Tracking exists for the dynamic subdirectory discovery of system-prompt mode,
+  // so the other two modes return before touching the session at all: host mode
+  // hands the channel to the harness's own row, and hint mode never reads the log.
+  // The listener stays registered in every mode, because the hook surface is part
+  // of this preset's contract whatever a mode does with it.
   ctx.on('tools/result', (exec, result) => {
+    if (instructionSource !== 'system-prompt') return
     if (result?.isError || !exec?.agent || exec?.signal?.aborted) return
     const path = filePathFromExecution(exec)
     if (!path) return
@@ -873,18 +886,20 @@ export function apply(ctx, config) {
 
     const agent = payload?.agent
     const session = agent?.session
+
+    // Host mode: the harness's agent-instructions row owns the channel, so every
+    // message it queued — baseline and dynamic alike — passes through verbatim:
+    // no filterInstructionMessages, no dynamic subdirectory discovery, no
+    // plugin-authored message, and no per-session state to build. Handing the
+    // decision back unchanged is the point.
+    if (instructionSource === 'host') return decision
+
     const state = session ? getSessionState(session) : undefined
 
     if (instructionSource === 'hint') {
       if (session === undefined) return decision
       return { ...decision, messages: instructionHintMessages(decision.messages, state) }
     }
-
-    // Host mode: the harness's agent-instructions row owns the channel, so every
-    // message it queued — baseline and dynamic alike — passes through verbatim:
-    // no filterInstructionMessages, no dynamic subdirectory discovery, no
-    // plugin-authored message. Handing the decision back unchanged is the point.
-    if (instructionSource === 'host') return decision
 
     // System-prompt mode:
     const cwd = session?.header?.cwd
@@ -921,8 +936,12 @@ export function apply(ctx, config) {
   }, { prepend: true })
 
   // 4. Session lifecycle / compaction recovery
+  //
+  // Host mode writes no per-session state (the harness's own row owns the
+  // channel), so it has nothing to reset and the map is never consulted there.
   ctx.on('session/event', (session, event) => {
     if (event?.type === 'compaction/end') {
+      if (instructionSource === 'host') return
       const state = sessionStateMap.get(session)
       if (state) {
         state.hinted = false

@@ -14,15 +14,22 @@ TypeError: Cannot read properties of undefined (reading 'length')
 
 ## Decision
 
-修改 `packages/dsh-liangshen/presets/liangshen/tool-catalog.mjs`（当时为 `tool-bootstrap.mjs`），采用兼容方式提取事件序列：
+`packages/dsh-liangshen/presets/liangshen/paging.mjs` 中的 `sessionEvents(session)`（自 `tool-catalog.mjs`、最初的 `tool-bootstrap.mjs` 收敛至此，由 `tool-catalog.mjs`、`working-context.mjs`、`tool-activate.mjs` 与 `subagent-routes.mjs` 共享；见[热路径收敛与辅助函数去重笔记](2026-11-13-liangshen-hot-path-and-dedup.zh.md)）采用兼容方式提取事件序列，并用 `try/catch` 包裹 `snapshotEvents()`：
 ```javascript
-const events = Array.isArray(session?.events)
-  ? session.events
-  : typeof session?.snapshotEvents === 'function'
-    ? session.snapshotEvents()
-    : []
+export function sessionEvents(session) {
+  if (Array.isArray(session?.events)) return session.events
+  if (typeof session?.snapshotEvents === 'function') {
+    try {
+      const snapshot = session.snapshotEvents()
+      if (Array.isArray(snapshot)) return snapshot
+    } catch {
+      // Unreadable log: fall through to the empty one.
+    }
+  }
+  return []
+}
 ```
-该改动同时兼容持有 `session.events` 的旧版本 SDK 以及提供 `session.snapshotEvents()` 的新版 SDK cohort。
+该实现同时兼容持有 `session.events` 的旧版本 SDK 以及提供 `session.snapshotEvents()` 的新版 SDK cohort。
 
 ## Testing
 

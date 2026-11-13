@@ -16,6 +16,14 @@
  * Least-recently-used eviction keeps at most MAX active namespaces: activating
  * beyond the cap evicts the namespace whose latest activation or use is the
  * oldest, returning its tools to the paged summary.
+ *
+ * SHARED DURABLE-LOG HELPERS: the same replay reads one session log in every
+ * projection row of this preset, so the readers live here once — the tolerant
+ * event source ({@link sessionEvents}), the message text and visibility rules
+ * ({@link textOf}, {@link latestVisiblePluginMessage}), the step-message
+ * reconciliation every durable plugin message goes through
+ * ({@link reconcileStepMessage}), and the failed-call index both the activation
+ * replay and the working-context fold collect ({@link erroredCallId}).
  */
 
 /**
@@ -187,6 +195,33 @@ export function resultIsError(data) {
 }
 
 /**
+ * The callId one event reports as failed, or undefined when it reports no
+ * failure at all.
+ *
+ * The activation replay skips a failed call because it never took effect, and
+ * the working-context projection collects the same index inside the single pass
+ * it is already making over the log. One definition of "this call failed" keeps
+ * a failure from meaning two different things in the two folds.
+ * @param event - one durable session event.
+ * @returns the failed call's id as a string, or undefined.
+ */
+export function erroredCallId(event) {
+  if (event?.type !== 'tool/result' || !resultIsError(event.data)) return undefined
+  const callId = event.data?.message?.source?.callId ?? event.data?.callId
+  return callId === undefined ? undefined : String(callId)
+}
+
+/** The failed callIds of one log, as the activation replay reads them. */
+function failedCallIdsOf(events) {
+  const errored = new Set()
+  for (const event of events) {
+    const callId = erroredCallId(event)
+    if (callId !== undefined) errored.add(callId)
+  }
+  return errored
+}
+
+/**
  * Replay the durable session event stream into the active namespace set.
  *
  * Events are the source of truth: a `tool_activate` call whose result did not
@@ -195,15 +230,16 @@ export function resultIsError(data) {
  * Activating beyond the capacity evicts the least recently used namespace.
  * Returns the active namespaces oldest-first and every evicted namespace in
  * eviction order.
+ *
+ * @param events - the durable log to replay.
+ * @param capacity - how many namespaces stay active at once.
+ * @param patterns - the paging patterns that name a tool's namespace.
+ * @param failedCallIds - the failed callIds when the caller already folded them
+ *   ({@link erroredCallId}); omitted, this replay collects them itself.
  */
-export function replayActivations(events, capacity = DEFAULT_MAX_ACTIVE_NAMESPACES, patterns = DEFAULT_PAGED_TOOL_PATTERNS) {
+export function replayActivations(events, capacity = DEFAULT_MAX_ACTIVE_NAMESPACES, patterns = DEFAULT_PAGED_TOOL_PATTERNS, failedCallIds) {
   const list = Array.isArray(events) ? events : []
-  const errored = new Set()
-  for (const event of list) {
-    if (event?.type !== 'tool/result') continue
-    const callId = event.data?.message?.source?.callId ?? event.data?.callId
-    if (callId !== undefined && resultIsError(event.data)) errored.add(String(callId))
-  }
+  const errored = failedCallIds instanceof Set ? failedCallIds : failedCallIdsOf(list)
 
   const active = []
   const evicted = []
@@ -249,6 +285,103 @@ export function replayActivations(events, capacity = DEFAULT_MAX_ACTIVE_NAMESPAC
     if (namespace !== undefined && active.includes(namespace)) touch(namespace)
   }
   return { active, evicted }
+}
+
+/**
+ * The durable events of one session, tolerating both shapes a host exposes and
+ * an unreadable log.
+ *
+ * An event source that throws, or a session that exposes none, contributes an
+ * empty log: every projection in this preset is a fold over what is readable,
+ * and a step that cannot read the log still has to run — a resume that hits a
+ * broken snapshot loses the derived state for one step, not the request.
+ * @param session - Session-like record.
+ * @returns the session's events, never undefined.
+ */
+export function sessionEvents(session) {
+  if (Array.isArray(session?.events)) return session.events
+  if (typeof session?.snapshotEvents === 'function') {
+    try {
+      const snapshot = session.snapshotEvents()
+      if (Array.isArray(snapshot)) return snapshot
+    } catch {
+      // Unreadable log: fall through to the empty one.
+    }
+  }
+  return []
+}
+
+/** The text one message contributes, joined across its text blocks. */
+export function textOf(message) {
+  const blocks = Array.isArray(message?.content) ? message.content : []
+  return blocks
+    .filter(block => block?.type === 'text' && typeof block.text === 'string')
+    .map(block => block.text)
+    .join('\n')
+}
+
+/**
+ * The latest copy of one plugin's durable message that is still on the visible
+ * surface, plus whether the log carries one at all.
+ *
+ * Two facts a republishing decision needs, and they are different facts: a
+ * message the log holds is "published" even when a compaction shadowed it, and
+ * that is exactly the case where the copy has to travel again. Visibility is a
+ * position check against the live surface, so an array of nodes answers it with
+ * one scan instead of a Set built on every step.
+ * @param agent - agent scope whose session log and surface are read.
+ * @param matcher - predicate matching one durable message record.
+ * @returns the published flag plus the visible text, absent when none is visible.
+ */
+export function latestVisiblePluginMessage(agent, matcher) {
+  const session = agent?.session
+  if (typeof matcher !== 'function') return { published: false }
+  const events = sessionEvents(session)
+  const nodes = session?.surface?.nodes
+  let published = false
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index]
+    if (event?.type !== 'user/message' || !matcher(event.data)) continue
+    published = true
+    const visible = !Array.isArray(nodes) || typeof event.seq !== 'number' || nodes.lastIndexOf(event.seq) !== -1
+    if (visible) return { published, text: textOf(event.data) }
+  }
+  return { published }
+}
+
+/**
+ * Reconcile one plugin's durable step message against the decision a step just
+ * built: publish it when its text changed, keep an already-current copy in the
+ * admitted batch, and drop a stale copy when the published one is still on the
+ * visible surface.
+ *
+ * Three states decide the outcome, and the order they are read in is the
+ * behavior: the text this step wants, the text the log already shows, and the
+ * copy the harness put in the batch. A message is never published twice and
+ * never left twice.
+ *
+ * @param decision - the step decision the hook received.
+ * @param history - the visible published state, as the reader above returns it.
+ * @param candidate - the text this step wants on the wire, or undefined when the
+ *   step has nothing to say.
+ * @param createMessage - builds the durable message for this step; returning
+ *   nothing means this step has nothing to publish.
+ * @param isMatch - predicate recognizing this plugin's message.
+ * @returns the decision to hand back, unchanged when nothing moved.
+ */
+export function reconcileStepMessage(decision, history, candidate, createMessage, isMatch) {
+  const messages = Array.isArray(decision?.messages) ? decision.messages : undefined
+  if (messages === undefined || typeof isMatch !== 'function') return decision
+  const existing = messages.find(isMatch)
+  const drop = () => (existing === undefined
+    ? decision
+    : { ...decision, messages: messages.filter(message => message.id !== existing.id) })
+  if (candidate === undefined || history?.text === candidate) return drop()
+  if (existing !== undefined && textOf(existing) === candidate) return decision
+  const message = typeof createMessage === 'function' ? createMessage() : undefined
+  if (message === undefined || message === null) return drop()
+  if (existing === undefined) return { ...decision, messages: [...messages, message] }
+  return { ...decision, messages: messages.map(item => (item.id === existing.id ? message : item)) }
 }
 
 /**

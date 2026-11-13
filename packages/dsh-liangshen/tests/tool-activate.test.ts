@@ -129,7 +129,7 @@ describe('paging helpers', () => {
       'bash', 'pwsh', 'read', 'read_image', 'write', 'edit', 'str_replace_editor',
       'glob', 'grep', 'job_output', 'job_list', 'job_kill', 'skill',
       'ask_user_question', 'todo_write', 'web_search', 'subagent', 'subagent_fork',
-      'list_subagent_models', 'send_message', 'list_agents', 'interrupt_agent', 'ralph',
+      'list_subagent_models', 'send_message', 'list_agents', 'wait_agent', 'interrupt_agent', 'ralph',
       'exit_plan_mode', 'create_goal', 'get_goal', 'update_goal', 'fact_register',
       'tool_activate', 'run_code', 'list_mcp_resources', 'list_mcp_resource_templates',
       'read_mcp_resource',

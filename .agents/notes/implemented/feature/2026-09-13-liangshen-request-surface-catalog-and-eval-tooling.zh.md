@@ -14,7 +14,7 @@ Status: implemented
 
 - 原生呈现的条目取自该次请求自己的 wire：锚定回合取收窄后的锚定集，PTC 被拒绝或关闭后取组装出的原生清单。`mergeProjectedSchemas` 按名字把注册表投影中更完整的 schema 覆盖到这些条目上，因此 wire 定义更薄时也不会丢掉完整参数语义。
 - PTC 呈现的条目取自注册表投影（即经 SDK 可达的工具面），程序契约明确只有 `run_code` 可直接调用，列出的每个工具都要在程序内部触达。过时的"首轮只有 shell"表述已删除。
-- 条目的单行摘要优先取 `CURATED_TOOL_SUMMARIES` 策展表：为本 preset 实际挂载的 33 个宿主内置工具各配一行人工策展文案（含关键参数提示），命中即整行使用；未命中的工具仍按 `descriptionMaxLength` 机械截断其 schema 描述——字符数截断会切掉说明用途的那句话。`present`/`web_fetch`/`workflow` 刻意缺席（本组合未挂载对应行，策展它们会宣告一个不存在的面）；策展键集与挂载名册的恒等由测试钉住，行增删工具时该测试会红。设计参照 dsh-ops 的 schema 投影层。 shell 行（bash/pwsh）的批处理指向不在该表内：策展表跨呈现共享，而 native 下 wire 没有 `run_code`，写死会宣告一个不存在的传输；批处理提示由 `CO_RESIDENT_SHELL_HINTS` 承载，经 `toolSummary` 的 `coResident` 选项仅在 `run_code` 同驻时追加。
+- 条目的单行摘要优先取 `CURATED_TOOL_SUMMARIES` 策展表：为本 preset 实际挂载的 33 个宿主内置工具各配一行人工策展文案（含关键参数提示，含 `@deepseek-ai/dsh-tool-subagent-control` 上的 `wait_agent`、`send_message`/`interrupt_agent` 的 `agent` 参数，以及无参的 `list_agents`），命中即整行使用；未命中的工具仍按 `descriptionMaxLength` 机械截断其 schema 描述——字符数截断会切掉说明用途的那句话。`present`/`web_fetch`/`workflow` 刻意缺席（本组合未挂载对应行，策展它们会宣告一个不存在的面）；策展键集与挂载名册的恒等由测试钉住，行增删工具时该测试会红。设计参照 dsh-ops 的 schema 投影层。 shell 行（bash/pwsh）的批处理指向不在该表内：策展表跨呈现共享，而 native 下 wire 没有 `run_code`，写死会宣告一个不存在的传输；批处理提示由 `CO_RESIDENT_SHELL_HINTS` 承载，经 `toolSummary` 的 `coResident` 选项仅在 `run_code` 同驻时追加。
 - both 的程序契约触发条件由「三个或以上独立目标」改为两个可计数条件（任一满足）：一个意图有两个或以上独立目标；或一次调用的原始输出预计庞大而下一步只需要结论/汇总/计数（上下文经济条款，程序只 return 结论、原文不进对话）。单步直调优先与程序内自兜 ToolCallError 的纪律保持原文。persona 纪律的 Parallel Inspection 行同步追加打包指向，纪律条目总数钉为 7。
 - `catalogStateFor` 在 pre-step 从当前呈现状态解析目录，因此晋升回合第一步描述的就已经是晋升面，而不是锚定回合组装时留存的状态。
 - 回退、撤销、压缩恢复、会话恢复与去重的行为保持不变。

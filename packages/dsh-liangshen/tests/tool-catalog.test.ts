@@ -837,7 +837,7 @@ describe('liangshen-tool-catalog', () => {
       'bash', 'pwsh', 'read', 'read_image', 'write', 'edit', 'str_replace_editor',
       'glob', 'grep', 'job_output', 'job_list', 'job_kill', 'todo_write',
       'create_goal', 'get_goal', 'update_goal', 'exit_plan_mode',
-      'subagent', 'subagent_fork', 'list_subagent_models', 'send_message', 'list_agents', 'interrupt_agent',
+      'subagent', 'subagent_fork', 'list_subagent_models', 'send_message', 'list_agents', 'wait_agent', 'interrupt_agent',
       'ask_user_question', 'web_search', 'skill', 'tool_activate', 'fact_register', 'ralph',
       'list_mcp_resources', 'list_mcp_resource_templates', 'read_mcp_resource',
     ].sort()
@@ -855,6 +855,26 @@ describe('liangshen-tool-catalog', () => {
       expect(/^[\x20-\x7e]+$/u.test(line)).toBe(true)
       expect(line.length).toBeLessThanOrEqual(200)
     }
+  })
+
+  test('operator gets the delegation control arguments read off the host schemas', () => {
+    // Given the subagent-control tools the preset's row mounts, When the
+    // curated lines are inspected, Then each names the argument the host schema
+    // actually declares: a peer is addressed by 'agent', 'list_agents' declares
+    // no parameters at all, and the wait tool carries its optional timeout. A
+    // stale 'agent_id' or a team-era 'scope' would teach the model a call the
+    // tool rejects.
+    const sendMessage = CURATED_TOOL_SUMMARIES.get('send_message')!
+    const listAgents = CURATED_TOOL_SUMMARIES.get('list_agents')!
+    const interruptAgent = CURATED_TOOL_SUMMARIES.get('interrupt_agent')!
+    const waitAgent = CURATED_TOOL_SUMMARIES.get('wait_agent')!
+    expect(sendMessage).toContain('`agent`')
+    expect(sendMessage).not.toContain('agent_id')
+    expect(interruptAgent).toContain('`agent`')
+    expect(interruptAgent).not.toContain('agent_id')
+    expect(listAgents).not.toContain('scope')
+    expect(listAgents).toContain('no arguments')
+    expect(waitAgent).toContain('`timeout_ms`')
   })
 
   test('renderCatalogText frames a list, the contracts, and the paged summary', () => {

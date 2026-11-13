@@ -57,11 +57,11 @@ export const DEFAULT_EXPLICIT_TOOLS = ['subagent']
 
 /**
  * Delegation tools that start their child on the caller's own route.
- * `subagent_fork` is the shipped one; `spawn_teammate` belongs here for the
- * same reason at one remove — it creates its child with no `agentOptions`, so
- * policing it as an explicit tool would deny every creation.
+ * `subagent_fork` is the only one: it publishes no route fields at all, so
+ * policing it as an explicit tool would demand a pair no call could name and
+ * deny every delegation.
  */
-export const DEFAULT_INHERIT_TOOLS = ['subagent_fork', 'spawn_teammate']
+export const DEFAULT_INHERIT_TOOLS = ['subagent_fork']
 
 /** How far the policy lookup follows the Session chain before giving up. */
 export const MAX_ANCESTOR_DEPTH = 8

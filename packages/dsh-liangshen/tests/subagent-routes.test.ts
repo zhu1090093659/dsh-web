@@ -61,7 +61,9 @@ describe('liangshen-subagent-routes', () => {
     // preset's own load audit instead of installing the guard.
     expect(inject).toEqual(['tools'])
     expect(DEFAULT_EXPLICIT_TOOLS).toEqual(['subagent'])
-    expect(DEFAULT_INHERIT_TOOLS).toContain('subagent_fork')
+    // The harness dropped the legacy Agent Teams tool, so the fork is the only
+    // inherit-mode row this guard polices.
+    expect(DEFAULT_INHERIT_TOOLS).toEqual(['subagent_fork'])
   })
 
   it('operator parses only a well-formed allowedModels payload', () => {
@@ -226,6 +228,9 @@ describe('liangshen-subagent-routes', () => {
     expect(delegationModeOf('subagent', DEFAULT_EXPLICIT_TOOLS, DEFAULT_INHERIT_TOOLS)).toBe('explicit')
     expect(delegationModeOf('subagent_fork', DEFAULT_EXPLICIT_TOOLS, DEFAULT_INHERIT_TOOLS)).toBe('inherit')
     expect(delegationModeOf('read', DEFAULT_EXPLICIT_TOOLS, DEFAULT_INHERIT_TOOLS)).toBeUndefined()
+    // Then: a name the roster no longer carries is policed in no mode at all,
+    // so a tool the harness removed cannot revive an inherit-mode denial.
+    expect(delegationModeOf('spawn_teammate', DEFAULT_EXPLICIT_TOOLS, DEFAULT_INHERIT_TOOLS)).toBeUndefined()
     expect(namedRouteOf({ provider: 'alpha', model: 'a1' })).toEqual({ provider: 'alpha', model: 'a1' })
     expect(namedRouteOf(undefined)).toEqual({ provider: undefined, model: undefined })
     expect(routesInclude(ROUTES, 'alpha', 'a1')).toBe(true)

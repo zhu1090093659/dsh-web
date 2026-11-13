@@ -51,11 +51,11 @@ DSH Web GUI 的 Agent 小队：可复用的成员定义（agent 预设、权限�
 - 页面从共享的客户端会话仓库读取宿主的 `subagentCatalog` 投影：Lead 会话的每个直接子会话，形状为 `{ id, createdAt, mode, label?, name? }`。该投影属于部署自己的 subagent 运行期，读取它既不花请求也不轮询。
 - 目录已发布却还没有任何一行时读作 pending——Lead 还没派出任何人；部署没有会话目录时读作 unavailable。两种情况都不轮询。
 - Lead 行由小队自己的 `leadPreset` 渲染，因为目录只描述子会话。成员行按 label 与目录 join，这也是名册要求 Lead 把 `description` 设成成员名的原因；对不上任何定义的行走自己的 label，并把各项钉住读作继承。
-- 一行的状态优先取宿主上报的 `running`，会话仓库没有上报时改用它被启动的方式：`one-shot`、`continuable`、`external`、`unknown`。`agentTeam` 投影不是成员来源——它只装保存下来的 Team 模式与任务板，wire 形状里没有成员行。
+- 一行的状态优先取宿主上报的 `running`，会话仓库没有上报时改用它被启动的方式：`one-shot`、`continuable`、`external`、`unknown`。`agentTeam` 投影不是成员来源——它只装保存下来的 Team 模式与任务板，wire 形状里没有成员行。`external` 子会话在本 Host 之外运行，因此它的行完全不提供会话动作；其余行保留动作，只有部署没有导航时才置灰并写明理由。
 
 ### 会话入口与运行记录
 
-- 会话入口（成员卡、实时名册行、运行记录行）把 GUI 的会话导航（`uiWorkspace`）与共享会话目录（`sessions`）当作**其他插件的可选面实时解析**，而不是在页面挂载时探测一次：部署没有导航时会话入口仍然可见、置灰并写明原因；工作区插件或会话控制器后挂载时它自行启用，卸载后重新置灰。从未运行过的成员不出现该动作。
+- 会话入口（成员卡、实时名册行、运行记录行）把 GUI 的会话导航（`uiWorkspace`）与共享会话目录（`sessions`）当作**其他插件的可选面实时解析**，而不是在页面挂载时探测一次：部署没有导航时（`external` 子会话除外）会话入口仍然可见、置灰并写明原因；工作区插件或会话控制器后挂载时它自行启用，卸载后重新置灰。从未运行过的成员不出现该动作。
 - 运行记录同时覆盖两类：带 Lead 会话与目标的整队运行，以及带成员名与「打开会话」动作的成员运行；最新在前，上限是 Host 保留的 200 条。
 - 页面把每一种失败变成一句话：传输层失败读作 not-mounted、unauthorized、forbidden、timeout、unreachable 或 unexpected；Host 拒绝在 unknown-preset、no-workspace、squad-missing、lead-create-failed、lead-prepare-failed、ledger-unavailable 上保留自己的类别；其余 code 一律读作普通拒绝，引用 Host 那句有界原文。
 - 运行结算不在此处观察：已启动的运行保持 `running`，直到后续里程碑接管其结果。

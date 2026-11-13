@@ -650,7 +650,7 @@ describe('liangshen-minimal-prompt', () => {
         '[Role Identification]',
         '[Coordinator Identity]',
         '## R0 · Complexity Triage',
-        '## R0.5 · Compatibility Gate',
+        '[Agent Teams Board]',
         '## R-G · Clarification Interview',
         '## R1 · Execution Topology & Boundary',
         '## R2 · Model Routing',
@@ -658,12 +658,12 @@ describe('liangshen-minimal-prompt', () => {
         '## R4 · Subagent Role',
         '## R5 · Dispatch Discipline',
         '## R-W · Turn Boundary',
-        '## R6 · Review & Acceptance',
+        '## R6 · Lead Acceptance',
         '## R7 · Documentation',
         '## R8 · Fallback',
         '## R9 · Plan Pipeline',
         '## Anti-Patterns (Any Occurrence Is a Violation)',
-        '16. Second-guessing list_subagent_models',
+        '15. Second-guessing list_subagent_models',
         // The 2026-11-02 re-sync against upstream 0.55.0: the coordinator
         // contract, the four new rule paragraphs, the plan pipeline, and the
         // anti-patterns that name their failure modes.
@@ -675,16 +675,19 @@ describe('liangshen-minimal-prompt', () => {
         '[Non-Penalized hand_back]',
         '[UI Visual Evidence Gate]',
         '[Clause Deletion Test]',
-        '25. Accepting a visible UI change',
+        '23. Accepting a regression-risk visual change',
         // The 2026-11-03 re-sync against upstream 0.56.0 plus its unreleased
-        // Agent Teams pass: the Lead identity, the three execution topologies,
-        // and the split between the legacy team runtime and the current one.
+        // Agent Teams pass: the Lead identity and the three execution topologies.
         'You are the Lead & Dispatch Agent',
         '- Lead-Core:',
         '- Hybrid:',
         '- Fan-out:',
-        'The current runtime adds nothing but a shared task board',
-        'Never gate on wait_agent, send_message, list_agents or interrupt_agent',
+        // The 2026-11-13 re-sync against 0.72.0: the R0.5 gate is gone (upstream
+        // c182e68), its surviving board contract is a standing paragraph, the
+        // R0 split adds Execution Economy, and R-G now owns external prior art.
+        '- [Execution Economy] Use one cheap probe',
+        'search the web (GitHub docs/repos, official docs, research papers, specs)',
+        'Regression-risk visual layout/styling changes require Before and After',
         'G7 to G14 below are the local additions to G1 to G6 above',
         'G15 below is a separate addition to R5',
         '- G7 Asking budget',
@@ -748,30 +751,29 @@ describe('liangshen-minimal-prompt', () => {
       // appendix: the 2026-11-02 re-sync moved the tail from 20 to 25, and this
       // pin is what makes the next re-extraction a deliberate edit rather than a
       // slip.
-      expect(DISPATCHER_RULES.endsWith('25. Accepting a visible UI change without Before and After comparison evidence taken under the same scenario, viewport, and theme (R6).')).toBe(true)
+      expect(DISPATCHER_RULES.endsWith('23. Accepting a regression-risk visual change without Before and After captures or an After-only note (R6).')).toBe(true)
       expect(DISPATCHER_RULES).not.toContain('G7')
       expect(DISPATCHER_RULES).not.toContain('Task board is not a dispatch')
       // The reference block is the current upstream text: it carries the R-W
-      // turn-boundary section and the R0.5 compatibility gate, and it carries
-      // no R-T section and no teammate-support section: upstream removed both
-      // when it dropped teammate support, so the block names no teammate
-      // tooling of its own. The gate still names the tools it detects, which is
-      // what makes it a gate rather than a support path.
+      // turn-boundary section and no R-T section and no teammate-support
+      // section, so the block names no teammate tooling of its own. The R0.5
+      // compatibility gate is gone because upstream deleted it (c182e68); the
+      // board contract it carried now stands on its own as a paragraph.
       expect(DISPATCHER_RULES).toContain('## R-W · Turn Boundary')
-      expect(DISPATCHER_RULES).toContain('## R0.5 · Compatibility Gate')
+      expect(DISPATCHER_RULES).not.toContain('R0.5')
+      expect(DISPATCHER_RULES).toContain('[Agent Teams Board]')
       // Every section heading, in order: an R-T section or any teammate-support
       // section added upstream would appear here and fail this list.
       const headings = DISPATCHER_RULES.split('\n').filter(line => line.startsWith('## '))
       expect(headings).toEqual([
-        '## R0.5 · Compatibility Gate (Once per New Session, Before R0)',
-        '## R0 · Complexity Triage (Triage First, Then Choose the Workflow)',
-        '## R-G · Clarification Interview (L2 Only, Always Before Planning)',
+        '## R0 · Complexity Triage',
+        '## R-G · Clarification Interview (L2-Governed Only, Before R9)',
         '## R1 · Execution Topology & Boundary (Coupling × Fan-out ROI)',
         '## R2 · Model Routing (Check Availability First, Then Decide How to Dispatch)',
         '## R3 · Subagent Autonomy',
         '## R4 · Subagent Role',
         '## R5 · Dispatch Discipline',
-        '## R6 · Review & Acceptance',
+        '## R6 · Lead Acceptance',
         '## R-W · Turn Boundary (Waiting / Goals / Questions)',
         '## R7 · Documentation',
         '## R8 · Fallback',
@@ -848,9 +850,22 @@ describe('liangshen-minimal-prompt', () => {
       // in place is named there, so dropping one in a later re-extraction is a
       // failing test rather than a silent revert.
       expect(DISPATCHER_RULES_PROVENANCE.package).toBe('@eddyskywalker/dsh-chatgpt-subscription')
-      expect(DISPATCHER_RULES_PROVENANCE.reExtractedAt).toBe('2026-11-03')
-      expect(DISPATCHER_RULES_PROVENANCE.inheritedVersion).toBe('0.56.0')
-      expect(DISPATCHER_RULES_PROVENANCE.corrections.map((entry) => entry.rule)).toEqual(['R2', 'R8', 'R6/R7', 'R0/R5', 'R2 fork'])
+      expect(DISPATCHER_RULES_PROVENANCE.reExtractedAt).toBe('2026-11-13')
+      expect(DISPATCHER_RULES_PROVENANCE.inheritedVersion).toBe('0.72.0')
+      expect(DISPATCHER_RULES_PROVENANCE.corrections.map((entry) => entry.rule)).toEqual([
+        'R2',
+        'R8',
+        'R6/R7',
+        'R0/R5',
+        'R2 fork',
+        'R6 [UI Visual Evidence Gate]',
+        'G4 [Facts & Prior Art]',
+      ])
+      // A removal is neither an omission nor a correction: R0.5 once ran here and
+      // upstream deleted it, so the record names it so a later re-extraction does
+      // not quietly restore a dead compatibility gate.
+      expect(DISPATCHER_RULES_PROVENANCE.removals.map((entry) => entry.rule)).toEqual(['R0.5 · Compatibility Gate'])
+      expect(DISPATCHER_RULES_PROVENANCE.removals.every((entry) => entry.why.length > 40)).toBe(true)
       // The additions are recorded separately from the corrections: an addition
       // fills a gap, a correction replaces a wrong reading, and a later reader
       // must be able to tell which one a sentence came from.
@@ -870,7 +885,8 @@ describe('liangshen-minimal-prompt', () => {
         'R2 [State: Unlisted]',
         'R6 [Noticed but not handled]',
         'R8',
-        'R0.5',
+        '[Execution Economy]',
+        '[Agent Teams Board]',
       ])
       // The two entries this preset deliberately does NOT carry name tools it
       // does not mount, so the omission is a deployment fact and not a missed
@@ -885,7 +901,7 @@ describe('liangshen-minimal-prompt', () => {
       expect(DISPATCHER_RULES).toContain('A status: hand_back report adds a one-sentence hand_back_reason')
       expect(DISPATCHER_RULES).toContain('the dispatch-guard row refuses them from a delegated caller')
       expect(DISPATCHER_RULES).toContain('Effort spent is not the yardstick; blast radius is.')
-      expect(DISPATCHER_RULES).toContain('does not increment the brief\'s 3-run counter')
+      expect(DISPATCHER_RULES).toContain('does not increment a failure count or trigger R8 by itself')
       // R9 is adapted, not transcribed: the mode is the user's switch, and the
       // block must never send the dispatcher off to ask for it.
       expect(DISPATCHER_RULES).toContain('There is no enter_plan_mode and no leave_plan_mode tool')
@@ -896,12 +912,19 @@ describe('liangshen-minimal-prompt', () => {
       expect(DISPATCHER_RULES).toContain('is not one, because delegation still works there')
       expect(DISPATCHER_RULES).toContain('1 first attempt + at most 2 re-dispatches = at most 3 runs total')
       expect(DISPATCHER_RULES).toContain('(5 is a cap, not a range and not a target)')
-      expect(DISPATCHER_RULES).toContain('[Before every turn] Scan the task list for items that will escalate')
+      expect(DISPATCHER_RULES).toContain('[Before every turn] Prioritize items that will escalate')
       expect(DISPATCHER_RULES).toContain('The built-in assertion does not check an inherited route')
       // The superseded readings are gone: a mounted tool is not an allowlist, and
       // an empty allowlist is not a fallback ground.
       expect(DISPATCHER_RULES).not.toContain('always appear or disappear together, so this single signal is sufficient')
       expect(DISPATCHER_RULES).not.toContain('allowlist is empty and the user has not enabled it')
+      // The 2026-11-13 corrections: the UI gate narrowed, and G4 now owns
+      // external prior art instead of sending the model to the user for it.
+      expect(DISPATCHER_RULES).toContain('Regression-risk visual layout/styling changes require Before and After captures')
+      expect(DISPATCHER_RULES).toContain('Pure copy, logic-only, or additive changes need neither')
+      expect(DISPATCHER_RULES).not.toContain('A task that changes visible UI, layout, styling or a client component is not accepted on After evidence alone')
+      expect(DISPATCHER_RULES).toContain('search the web (GitHub docs/repos, official docs, research papers, specs)')
+      expect(DISPATCHER_RULES).not.toContain('never ask for a repository fact you can verify by reading code, searching, or running a command')
     })
 
     test('operator keeps the additions when the persona already carries the reference block', async () => {

@@ -141,7 +141,7 @@ export function SquadTeamSection({ team, snapshot, openSession }: SquadTeamSecti
                 badge={t('squad.teammate')}
                 status={statusOf(row)}
                 facts={factsOf(definition?.preset, definition?.permission, definition?.model)}
-                onOpenSession={openSession === undefined || row.mode === 'external' ? undefined : () => { openSession(row.id) }}
+                {...(row.mode === 'external' ? { openable: false } : { onOpenSession: openSession === undefined ? undefined : () => { openSession(row.id) } })}
                 openLabel={t('member.openSession')}
               />
             </li>

@@ -95,6 +95,31 @@ describe('agents live team', () => {
     expect(must(rows[1], '[role="status"]').textContent).toBe(t('squad.mode.oneShot'))
   })
 
+  it('operator sees an external child without a session entry', async () => {
+    // Given a squad run whose Lead started one child that runs outside this Host
+    const transport = fakeTransport({
+      state: async () => stateOf([teamOf({ members: [memberOf()] })], [squadRunOf({ sessionId: 'lead-1' })]),
+    })
+    const teamSource = fakeTeamSource({
+      state: 'ready',
+      leadSessionId: 'lead-1',
+      rows: [{ id: 'external-1', label: 'Remote', mode: 'external', createdAt: 3 }],
+    })
+    const view = mount(<AgentsPage transport={transport} teamSource={teamSource} openSession={() => {}} />)
+    await flush()
+    // When the operator opens that squad
+    openSquad(view.container)
+    const rows = view.container.querySelectorAll('[data-dsh-part="squad-team-row"]')
+    expect(rows).toHaveLength(2)
+    // Then the external row states how it was started and offers no action at
+    // all: there is no local session to open, so a disabled button would borrow
+    // the wrong reason
+    expect(must(rows[1], '[role="status"]').textContent).toBe(t('squad.mode.external'))
+    expect(rows[1].querySelector('button')).toBeNull()
+    // And the Lead row keeps its own entry
+    must(rows[0], 'button')
+  })
+
   it('operator sees a plain member run keep its M1 card and join the history unchanged', async () => {
     // Given a squad whose newest run is a single member session
     const transport = fakeTransport({

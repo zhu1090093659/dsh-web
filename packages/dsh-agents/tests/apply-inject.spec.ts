@@ -220,6 +220,7 @@ describe('native Team mode for a squad Lead', () => {
     const root = new Context()
     const routes: WebRoute[] = []
     const enabled: string[] = []
+    const calls: Array<{ method: string; enabled: number }> = []
     let leadEnabled = false
 
     root.plugin({
@@ -233,6 +234,7 @@ describe('native Team mode for a squad Lead', () => {
         })
         provider.provide('typertGateway', {
           invoke: async (request: { namespace: string; method: string }): Promise<unknown> => {
+            calls.push({ method: request.method, enabled: enabled.length })
             return request.namespace === 'session' && request.method === 'create' ? { sessionId: 'lead-session' } : {}
           },
         })
@@ -307,11 +309,13 @@ describe('native Team mode for a squad Lead', () => {
 
       const created = await post('/dsh-agents/api/team', { team: { name: 'Squad' } })
       const teamId = (created.team as { id: string }).id
-      const run = await post('/dsh-agents/api/squad/run', { teamId })
+      const run = await post('/dsh-agents/api/squad/run', { teamId, firstMessage: 'go' })
       expect(run.run).toMatchObject({ sessionId: 'lead-session', kind: 'squad', status: 'running' })
 
       // The run record itself switched the Lead, with no announce involved.
       await vi.waitFor(() => { expect(enabled).toEqual(['lead-session']) })
+      expect(calls.map(call => call.method)).toContain('prompt')
+      expect(calls.find(call => call.method === 'prompt')?.enabled).toBe(1)
 
       // An ordinary session and a teammate under the Lead: untouched. A later
       // announce of the already-enabled Lead has nothing to do.

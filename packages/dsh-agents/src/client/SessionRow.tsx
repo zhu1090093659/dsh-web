@@ -43,6 +43,14 @@ export interface SessionRowProps {
   time?: { iso: string; label: string }
   /** Switch the GUI to this session; absent when the deployment serves no opener, and the action is then disabled. */
   onOpenSession?: () => void
+  /**
+   * Whether this row names a session the GUI can open at all.
+   *
+   * False suppresses the action instead of disabling it: an external child runs
+   * outside this Host, so there is no local session to open and a disabled
+   * button would borrow the "this deployment serves no navigation" reason.
+   */
+  openable?: boolean
   /** Label of the open-session action; defaults to the shared label. */
   openLabel?: string
 }
@@ -67,7 +75,7 @@ const PARTS: Record<SessionRowVariant, string> = {
  * Render one session row.
  * @param props - the row's facts, status and actions.
  */
-export function SessionRow({ variant, title, badge, status, facts, detail, time, onOpenSession, openLabel }: SessionRowProps): ReactNode {
+export function SessionRow({ variant, title, badge, status, facts, detail, time, onOpenSession, openable, openLabel }: SessionRowProps): ReactNode {
   return (
     <article className={css.row} data-dsh-part={PARTS[variant]} data-dsh-variant={variant}>
       <div className={css.rowHead}>
@@ -90,21 +98,24 @@ export function SessionRow({ variant, title, badge, status, facts, detail, time,
       )}
       {detail === undefined || detail === '' ? null : <p className={css.rowDetail} data-dsh-part="squad-row-detail">{detail}</p>}
       {time === undefined ? null : <time className={css.rowTime} dateTime={time.iso}>{time.label}</time>}
-      {/* Every row here names a real session, so the action is always present.
-          When no opener serves this deployment it stays visible and disabled,
-          carrying the reason: a row whose session cannot be opened must not
-          read as a row without a session. */}
-      <div className={css.rowActions}>
-        <button
-          type="button"
-          className={css.secondary}
-          disabled={onOpenSession === undefined}
-          {...(onOpenSession === undefined ? { title: t('member.openSessionUnavailable') } : {})}
-          onClick={onOpenSession}
-        >
-          {openLabel ?? t('member.openSession')}
-        </button>
-      </div>
+      {/* A row that names a local session always offers the action; when no
+          opener serves this deployment it stays visible and disabled, carrying
+          the reason, because a row whose session cannot be opened must not read
+          as a row without a session. A row whose session is not local at all
+          (an external child) offers nothing: there is nothing to open. */}
+      {openable === false ? null : (
+        <div className={css.rowActions}>
+          <button
+            type="button"
+            className={css.secondary}
+            disabled={onOpenSession === undefined}
+            {...(onOpenSession === undefined ? { title: t('member.openSessionUnavailable') } : {})}
+            onClick={onOpenSession}
+          >
+            {openLabel ?? t('member.openSession')}
+          </button>
+        </div>
+      )}
     </article>
   )
 }

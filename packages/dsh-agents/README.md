@@ -12,22 +12,53 @@ Agent squads for the DSH Web GUI: reusable member definitions (agent preset, per
 - The brief becomes part of **that member session's system prompt**, never the first user message; ordinary sessions are untouched, and every other assembly receives an empty section that the Host drops.
 - Running a member resolves its preset through the host agent-preset registry, creates the session through the host gateway, renames it `<team name> / <member name>`, pins the permission and model route, and records a run.
 
-## Agent Teams runtime
+## Squads on the native Agent Teams runtime
+
+The deployment's own Agent Teams runtime owns collaboration: the `agent-team` and `tool-agent-team` rows of the base bundle serve the `agentTeams` service, the `team_task_*` shared task board, the `team:policy` prompt section and the `agentTeam` session projection, and this package mounts none of them. On top of that runtime it contributes four things: the squad definition ledger, the panel, member runs, and whole-squad orchestration — the roster context that tells the Lead who its members are, and the Team-mode switch that makes the native board reachable from the Lead's first turn.
+
+### Launch order
 
 - Running the whole squad is one action on the squad page: an optional goal and an optional Lead preset. The goal travels on the run request; the Lead preset is a field of the squad (`TeamDefinition.leadPreset`), so that choice survives the request, the page reload and the next device instead of dying with one run.
 - The Lead preset picker offers only the ids `GET /state` reports under `presets`, and a preset the registry marks unusable is not offered. A deployment whose preset registry is absent or failing omits the field, and so does a registry with nothing usable left in it; the page then states the squad's own pin rather than an empty list.
 - The launch order is the contract: the team's pinned workspace is validated, the Lead preset is resolved against the registry before any session exists, the session is renamed `<team name> / Lead`, and the squad run record is written before the first message is queued, so the Lead's own first assembly already knows which squad it leads.
-- The Lead's model-facing tools spawn one teammate per member. Each teammate is composed from its member definition's pins: the preset is resolved before the child session exists, and the permission and model route are applied before the teammate's first prompt is checkpointed. A pin this deployment cannot honour fails that spawn with a named error instead of running the member as the deployment default.
-- The squad roster and the goal reach the Lead as a `team:squad` system-prompt **context**, not a section, so a member preset that declares a `complete` section cannot drop them.
-- The live team view reads the forked runtime's `agentTeam` session projection (`stateVersion` 4) out of the shared client session store: the Lead, every teammate it spawned, each row's role and phase, and the failure text of a member that never started. While that projection answers, the page polls nothing.
+
+### Team mode for the Lead
+
+- The native service starts every new root session with Team mode off unless a deployment sets its own `defaultEnabled`, and a Lead without it opens with no task board and no team policy. This package makes no assumption about that default.
+- The switch happens when the squad run record is durable, before the Lead's first message is queued: this package looks the Lead's live agent up and enables it with `agentTeams.setEnabled(agent, true)`. That timing is the contract, not a preference — the Host announces `agent/created` INSIDE session creation, before this package has a record to match, so an announce-time check can never see the run it just launched.
+- The `agent/created` listener stays as the fallback for a Lead announced later (a resumed session, or a host that announces again). Both paths run the same switch, which touches only a ROOT session — one whose header carries no parent session — that the ledger records as a squad Lead. An ordinary session never matches, and a teammate is never a root, so no session the user opened has its own Team mode touched.
+- A deployment that serves no `agentTeams` service keeps the ledger, the panel, member runs and the roster context, and loses only this automatic switch; the warning names the Lead that opened without the native board.
+
+### What the Lead is told
+
+- The roster and the goal reach the Lead as a `team:squad` system-prompt **context**, not a section, so a member preset that declares a `complete` section cannot drop them. This package registers it at order 125, between the subagent delegation context and the harness source, and holds that position itself instead of reading it from the Host's central table.
+- One row per member carries the name, the preset, the permission stated as inherited from the Lead, the model and the member's full brief. The whole brief travels, never a summary: the Lead opens that member's spawn prompt with it verbatim.
+- The same context states the spawn contract: `description` is the member name exactly as listed and becomes that teammate's label, `agent_preset` is the member preset id, `provider`, `model` and `reasoning_effort` carry the model pin, and `prompt` opens with the member brief, because a teammate's system prompt belongs to its preset and the brief can only travel in its first message. A pin this deployment cannot honour is stated in the Lead's reply instead of being dropped silently.
+- It also states the board contract: one shared task per work item, `blockedBy` for dependencies, each teammate claims and finishes its own task, `send_message` steers a running teammate and `wait_agent` collects it.
+
+### Permission is inherited
+
+- A teammate's permission is captured from its parent session at the moment of delegation, and the native subagent tool has no permission parameter at all. A member's declared permission is therefore a statement the roster carries for a squad run, not a pin this package can apply to a teammate: the Lead must hold everything its members need.
+- A member RUN is the other path — this package creates that session, so it applies the pinned permission through the host command dispatcher before the first message, and a refusal fails the run as `session-pin-failed`.
+
+### Member briefs
+
+- The `dsh-agents:member-brief` section resolves a member-run session's brief from the ledger at assemble time, so an edited brief reaches the next turn. It applies to member-run sessions only and is empty for every other session, which the Host drops.
+- A teammate receives its brief through the Lead's spawn prompt instead, which is why `team:squad` carries every brief in full. This is a deliberate narrowing of the earlier fork, where a teammate's brief joined its system prompt: the native delegation surface carries no system-prompt seam for a child, so the brief travels as the opening of its first message. Re-deriving it as a section would mean matching every announced child back to a definition by label, which is possible but unproven — the current contract states the trade-off instead of hiding it.
+
+### The live team view
+
+- The page reads the Host's `subagentCatalog` projection out of the shared client session store: every direct child of the Lead session, as `{ id, createdAt, mode, label?, name? }`. The projection belongs to the deployment's subagent runtime, so reading it costs no request and no poll.
+- A published catalog that carries no row yet reads as pending — the Lead has not started anyone — and a deployment that serves no session catalog reads as unavailable. Neither case polls.
+- The Lead row is rendered from the squad's own `leadPreset`, because a catalog describes children only. A member row joins the catalog on the label, which is why the roster tells the Lead to set `description` to the member name, and a row that matches no definition keeps its label and states its pins as inherited.
+- A row's status is the Host's own `running` flag when the session store reports one, and otherwise the mode the child was started under: `one-shot`, `continuable`, `external` or `unknown`. The `agentTeam` projection is not a member source — it carries the saved Team mode and the task board only, and its wire shape has no member row.
+
+### Session entry points and run history
+
 - The session entry points - a member card, a live roster row, a run-history row - read the GUI's session opener (`uiWorkspace`) and the shared session catalog (`sessions`) as OPTIONAL faces of other plugins, resolved live instead of once while the page mounts. While a deployment serves no opener the action stays visible, disabled, and states the reason; it enables itself the moment the workspace plugin or the session controller mounts, and disables again if that plugin unloads. A member that never ran never gets the action.
-- Team tools install only into sessions this Host started as a squad run. An ordinary session - everyday chat, an ordinary coordinator turn - sees no Team tool and keeps the native subagent tools, which this package never disables.
 - Run history covers both kinds: squad runs with their Lead session and goal, and member runs with their member name and their open-session action, newest first and capped at the 200 records the Host keeps.
 - The page turns every failure into one sentence: a transport failure reads as not-mounted, unauthorized, forbidden, timeout, unreachable or unexpected; a Host refusal keeps its own class for unknown-preset, no-workspace, squad-missing, lead-create-failed, lead-prepare-failed and ledger-unavailable; every other code reads as a plain rejection quoting the Host's bounded sentence.
 - Run settlement is not observed here: a launched run stays `running` until a later milestone owns its outcome.
-- When the deployment already serves its own Agent Teams runtime (`agentTeams`, either the legacy experimental profile bundle or the current `@deepseek-ai/dsh-agent-team`), this package keeps the ledger, the routes and member runs but leaves the forked runtime and its Team tools unmounted together: one service name keeps one owner, so no second `TeamService` and no second `agentTeam` projection are registered. The live team view still resolves, because the official runtime publishes the same `agentTeam` projection at `stateVersion` 4.
-
-Each of those deltas, and the exact upstream baseline it departs from, is recorded in [docs/fork-provenance.md](docs/fork-provenance.md) and [docs/runtime-deltas.md](docs/runtime-deltas.md); both are maintainer contracts, not suggestions.
 
 ## Model-facing tools
 
@@ -58,9 +89,9 @@ The two run tools launch through the methods the page uses — `AgentsHostServic
 - `squads_delete` and `squad_member_remove` require `confirm: true`. Any other value answers `{ ok: false, code: 'invalid-request' }` before the ledger is touched, and a success carries the deleted object's name so the caller can report what it removed.
 - `squads_update` and `squad_member_update` merge partially: an omitted field keeps its current value, an empty string clears that optional field, and `name` refuses an empty string. Changing one field never restates the rest.
 
-### Tool surface versus the team tools
+### Tool surface versus the board tools
 
-These ten are cross-session definition management, so every session sees them. The team tools — `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, `team_task_create`, `team_task_list`, `team_task_get`, `team_task_update` — install only into a session this Host started as a squad run, and they coordinate a live team rather than a stored definition. Neither set replaces the other, and neither removes the native subagent tools.
+These ten are cross-session definition management, so every session sees them and none of them needs Team mode. The board tools — `team_task_create`, `team_task_list`, `team_task_get` and `team_task_update` — belong to the deployment's own Agent Teams row and are scoped by the native Team mode this package switches on for a squad Lead, which is also where the one shared task board comes from. `send_message`, `wait_agent` and `interrupt_agent` are the Host's own subagent coordination tools. This package mounts none of them itself, replaces no tool and disables no native one: an ordinary session keeps the native subagent surface untouched, and a squad Lead keeps the board its Team mode unlocks.
 
 ### Failure surface
 
@@ -76,7 +107,7 @@ Mount the row through a profile patch; the bundle ships one host-half row named 
 
 ## Config
 
-- `enabled` (default `true`): mount the ledger, the routes, the model-facing tools and the member-brief section. When off, the row registers nothing, keeps no lock and registers no tool.
+- `enabled` (default `true`): mount the ledger, the routes, the model-facing tools, the member-brief section, the `team:squad` roster context and the Team-mode switch a squad Lead needs. When off, the row registers nothing, keeps no lock and registers no tool.
 - `announceToAgent` (default `false`): add the `plugin:agents` announcement of the tool surface to agent system prompts. Volatile, so an edit binds the next prompt; left off, a prompt is untouched and an agent learns the tools from its own tool list alone.
 - The ledger directory is `$DSH_HOME/dsh-agents`, resolved the way every plugin in this family resolves its own storage.
 - The `announceToAgent` switch is on this plugin's settings card on the settings page, which writes the running config: toggling it applies without a restart. `enabled` is not on that card but on the bundle's profile row, so turning the plugin off means editing that row and reloading it; the card carries one read-only line saying so, together with what the master switch stops.
@@ -108,7 +139,7 @@ POST /dsh-agents/api/describe
 
 - The route fence refuses a cross-site marker, a non-loopback socket, and a request that carries no browser same-origin signal at all.
 - Ids and timestamps are minted by the Host; a draft that carries an unknown field is refused rather than merged, so a caller cannot stamp its own row.
-- A member brief is user-authored text: it reaches only sessions this plugin opened for that member, and only through the system prompt.
+- A member brief is user-authored text: it reaches that member's own run session through the system prompt, and the Lead session of a whole-squad run through the `team:squad` roster context, which is where the Lead's spawn prompt takes it from. No other session sees it.
 
 ## Known limitations
 
@@ -121,6 +152,8 @@ POST /dsh-agents/api/describe
 - The squad-run tool carries a goal but no first message, so a Lead that must begin from a user instruction is launched from the page; `squads_run_member` does take `firstMessage`.
 - An agent that creates and runs definitions is spending quota on its own initiative: the tools are model-driven, and each run is a real session.
 - `squads_create` with `members` is not one atomic write: every argument is validated first, then the call creates the squad and adds the members one at a time, so a squad holding only some of its members — the intermediate state — can appear only when a ledger write itself fails, a disk error for example. Calling `squad_member_add` again completes the squad.
+- A member's declared permission binds a member run only. A teammate inherits its parent session's permission at the moment it is started, so a squad whose members need more than the Lead holds cannot get it from the definition.
+- The live team view needs the deployment to publish `subagentCatalog` for the Lead session; a deployment that publishes none states the roster as unavailable, and the run history still works.
 
 ## Tests
 

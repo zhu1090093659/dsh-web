@@ -19,7 +19,7 @@ import { bridgeSessionFaces, createSessionFaces, openerFrom } from '../src/clien
 import type { SquadTeamSnapshot } from '../src/client/team-source.ts'
 import { t } from '../src/client/locales.ts'
 import { buttonByText, click, flush, mount, unmountAll } from './render.tsx'
-import { agentTeamOf, fakeTransport, memberOf, runOf, sessionListOf, stateOf, teamOf } from './agents-fixtures.ts'
+import { subagentCatalogOf, fakeTransport, memberOf, runOf, sessionListOf, stateOf, teamOf } from './agents-fixtures.ts'
 
 afterEach(() => { unmountAll() })
 
@@ -40,17 +40,17 @@ describe('session faces on a real cordis tree', () => {
     // Given a browser root whose deployment serves neither the workspace nor the
     // session catalog when this plugin applies
     const root = new Context()
-    const store = createSessionFaces(fakeTransport({ state: async () => stateOf([]) }))
+    const store = createSessionFaces()
     const versions: number[] = []
     const stop = store.subscribe(() => { versions.push(store.getSnapshot().version) })
     bridgeSessionFaces(root, store)
 
     expect(store.getSnapshot().openSession).toBeUndefined()
-    expect(store.getSnapshot().teamSource.kind).toBe('poll')
+    expect(store.getSnapshot().teamSource.kind).toBe('catalog')
 
     // When the workspace plugin and the session controller mount afterwards
     const opened: string[] = []
-    const list = sessionListOf({ 'lead-1': { agentTeam: agentTeamOf([], { leadSessionId: 'lead-1' }) } })
+    const list = sessionListOf({ 'lead-1': { subagentCatalog: subagentCatalogOf([{ id: 'teammate-1', label: 'Reviewer' }]) } })
     const workspace = root.plugin({
       name: 'late-workspace',
       apply(provider: Context) {
@@ -68,7 +68,7 @@ describe('session faces on a real cordis tree', () => {
       expect(store.getSnapshot().openSession).toBeTypeOf('function')
     })
     await vi.waitFor(() => {
-      expect(store.getSnapshot().teamSource.kind).toBe('projection')
+      expect(store.getSnapshot().teamSource.kind).toBe('catalog')
     })
 
     // Then the opener switches to the exact session id it is handed...
@@ -77,18 +77,24 @@ describe('session faces on a real cordis tree', () => {
     // ...the live team is read from the published projection, with no request...
     const snapshots: SquadTeamSnapshot[] = []
     const stopWatch = store.getSnapshot().teamSource.watch('lead-1', snapshot => { snapshots.push(snapshot) })
-    expect(snapshots.at(-1)).toMatchObject({ state: 'ready', rows: [{ id: 'lead-1', role: 'lead' }] })
+    expect(snapshots.at(-1)).toMatchObject({ state: 'ready', rows: [{ id: 'teammate-1', label: 'Reviewer' }] })
+    const liveSource = store.getSnapshot().teamSource
     stopWatch()
     // ...and every change was announced exactly once
     expect(versions.length).toBe(2)
     expect(versions[1]).toBeGreaterThan(versions[0])
 
-    // When the session controller unloads, the page falls back to the proposed
-    // route instead of keeping a dead projection source
+    // When the session controller unloads, the page stops claiming a catalog it
+    // can no longer read instead of keeping a dead source
     await sessions.dispose()
     await vi.waitFor(() => {
-      expect(store.getSnapshot().teamSource.kind).toBe('poll')
+      expect(store.getSnapshot().teamSource).not.toBe(liveSource)
     })
+    // The withdrawn source answers "no catalog" instead of keeping a dead one:
+    // a kind check cannot tell those apart, an answer can.
+    const afterWithdrawal: SquadTeamSnapshot[] = []
+    store.getSnapshot().teamSource.watch('lead-1', snapshot => { afterWithdrawal.push(snapshot) })
+    expect(afterWithdrawal).toEqual([{ state: 'unavailable' }])
 
     // When the workspace plugin unloads too, the opener is withdrawn
     await workspace.dispose()
@@ -103,7 +109,7 @@ describe('session faces on a real cordis tree', () => {
 describe('session faces store', () => {
   it('operator sees one notification per real change and none for a repeated face', () => {
     // Given a store with its initial snapshot
-    const store = createSessionFaces(fakeTransport({ state: async () => stateOf([]) }))
+    const store = createSessionFaces()
     const initial = store.getSnapshot()
     let notified = 0
     const stop = store.subscribe(() => { notified += 1 })
@@ -152,7 +158,7 @@ describe('panel over a live capability store', () => {
     const transport = fakeTransport({
       state: async () => stateOf([teamOf({ members: [memberOf()] })], [runOf({ sessionId: 'session-7' })]),
     })
-    const store = createSessionFaces(transport)
+    const store = createSessionFaces()
     const opened: string[] = []
     const view = mount(<AgentsPanelPage transport={transport} faces={store} />)
     await flush()

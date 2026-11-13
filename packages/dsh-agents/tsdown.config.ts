@@ -18,13 +18,8 @@ export default clientBundle('@linxin666/dsh-agents', ['src/index.ts'], {
   libExternal: [
     '@deepseek-ai/dsh-agent',
     '@deepseek-ai/dsh-api-gateway',
-    '@deepseek-ai/dsh-brand',
-    '@deepseek-ai/dsh-commands',
     '@deepseek-ai/dsh-host-webserver',
     '@deepseek-ai/dsh-llm',
-    '@deepseek-ai/dsh-session',
-    '@deepseek-ai/dsh-session-persistence',
-    '@deepseek-ai/dsh-session-projection',
     '@deepseek-ai/dsh-subagent',
     '@deepseek-ai/dsh-system-prompt',
     '@deepseek-ai/dsh-tools',

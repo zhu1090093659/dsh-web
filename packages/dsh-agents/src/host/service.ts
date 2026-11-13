@@ -16,8 +16,8 @@
  *   unpinned squad simply made none.
  * - A squad run record is written BEFORE the Lead's first message is queued: the
  *   Lead's own assembly reads that record to learn which squad it leads, and the
- *   Team tool installer reads it to decide whether this session may see the Team
- *   surface at all.
+ *   Team-mode hook reads the same record to switch the native task board on for
+ *   that one session.
  *
  * @module @linxin666/dsh-agents/host/service
  */
@@ -30,7 +30,7 @@ import { agentsHomeDirectory } from './home.ts'
 import { DescribeError, type SquadDescriber } from './describe.ts'
 import { listOfferedModelCatalog, preferredModelRoute } from './model-catalog.ts'
 import { listOfferedPresets, listOfferedWorkspaces, resolvePinnedPreset, type MemberRunGateway, type WorkspaceRegistryFace } from './run-gateway.ts'
-import { isSquadSession, squadContextText } from './squad.ts'
+import { squadContextText, squadRunFor } from './squad.ts'
 import type {
   AgentsStateView,
   DescribeRequestBody,
@@ -58,8 +58,11 @@ export interface AgentsHostServiceOptions {
   workspaces?: () => WorkspaceRegistryFace | undefined
   /**
    * Called with the squad run record once it is durable and before the Lead's
-   * first message is queued, so the Team tool installer can publish the tool
-   * surface for a Lead whose session already exists.
+   * first message is queued.
+   *
+   * This is the only moment a Lead can be switched into Team mode: the Host
+   * announces `agent/created` INSIDE session creation, which happens before the
+   * run record exists, so an announce-time check can never see this run.
    */
   onSquadRun?: (run: RunRecord) => void
   /**
@@ -386,13 +389,15 @@ export class AgentsHostService {
   }
 
   /**
-   * Whether one live session belongs to a squad run this Host started.
+   * Whether one live session leads a squad run this Host started.
+   *
+   * The native Team service switches collaboration on per ROOT session, so only
+   * the Lead answers true here; a teammate is a subagent the Lead started.
    * @param sessionId - the session's own id.
-   * @param parentSessionId - its direct parent session id, when it has one.
-   * @returns whether the session leads a squad run or is a teammate under one.
+   * @returns whether this session is the Lead of a recorded squad run.
    */
-  isSquadSession(sessionId: string | undefined, parentSessionId: string | undefined): boolean {
-    return isSquadSession(sessionId, parentSessionId, this.promptView())
+  leadsSquadRun(sessionId: string | undefined): boolean {
+    return squadRunFor(sessionId, this.promptView()) !== undefined
   }
 
   /**
@@ -411,7 +416,7 @@ export class AgentsHostService {
    * optional pinned preset, title, first message). The difference is ordering:
    * the squad run record is written BEFORE the first message is queued, because
    * the Lead's first assembly reads it to learn which squad it leads, and the
-   * Team tool installer reads it to decide whether the Team surface belongs here.
+   * Team-mode hook reads the same record to switch the native task board on.
    * @param request - the validated squad run body.
    * @returns the squad run record of the launched Lead session.
    */

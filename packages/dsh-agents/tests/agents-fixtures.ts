@@ -15,8 +15,6 @@ import type {
   MemberDraft,
   RunRecord,
   SquadRunRequestBody,
-  SquadTeamMemberWire,
-  SquadTeamResponseBody,
   TeamDefinition,
   TeamDraft,
 } from '../src/protocol.ts'
@@ -79,22 +77,27 @@ export function squadRunOf(overrides: Partial<RunRecord> = {}): RunRecord {
 }
 
 /**
- * The `agentTeam` projection value exactly as the host publishes it: the Lead
- * first (the projection names it `lead`), then the teammates it spawned.
- * @param members - the teammates, in spawn order.
- * @param overrides - a projection failure, when the fold broke.
+ * The `subagentCatalog` projection value exactly as the Host publishes it: one
+ * row per direct child of the session that owns the catalog.
+ * @param members - the direct children, in spawn order.
+ * @returns the published value.
  */
-export function agentTeamOf(
-  members: readonly Omit<SquadTeamMemberWire, 'role'>[],
-  overrides: { failure?: string; leadSessionId?: string } = {},
-): SquadTeamResponseBody {
-  return {
-    members: [
-      { id: overrides.leadSessionId ?? 'lead-session-1', name: 'lead', role: 'lead', phase: 'active' },
-      ...members.map(member => ({ ...member, role: 'teammate' as const })),
-    ],
-    ...(overrides.failure === undefined ? {} : { failure: overrides.failure }),
-  }
+export function subagentCatalogOf(
+  members: readonly {
+    id: string
+    label?: string
+    name?: string
+    mode?: 'one-shot' | 'continuable' | 'external' | 'unknown'
+    createdAt?: number
+  }[],
+): Array<{ id: string; mode: string; createdAt: number; label?: string; name?: string }> {
+  return members.map((member, index) => ({
+    id: member.id,
+    mode: member.mode ?? 'continuable',
+    createdAt: member.createdAt ?? 1_700_000_000_000 + index,
+    ...(member.label === undefined ? {} : { label: member.label }),
+    ...(member.name === undefined ? {} : { name: member.name }),
+  }))
 }
 
 /** One published state. */
@@ -118,7 +121,6 @@ export interface FakeTransportConfig {
   state: (read: number) => Promise<AgentsStateView>
   run?: (teamId: string, memberId: string) => Promise<RunRecord>
   runSquad?: (request: SquadRunRequestBody) => Promise<RunRecord>
-  squadTeam?: (sessionId: string) => Promise<SquadTeamResponseBody>
   createTeam?: (draft: TeamDraft) => Promise<TeamDefinition>
   deleteTeam?: (teamId: string) => Promise<void>
   saveMember?: (teamId: string, member: MemberDraft) => Promise<TeamDefinition>
@@ -131,7 +133,6 @@ export interface FakeTransport extends AgentsTransport {
   readonly reads: number
   readonly runs: number
   readonly squadRuns: number
-  readonly teamReads: number
   /** Every squad-run request the page posted, in order. */
   readonly squadRequests: readonly SquadRunRequestBody[]
   /** Every team draft the page saved, in order. */
@@ -148,7 +149,6 @@ export function fakeTransport(config: FakeTransportConfig): FakeTransport {
   let reads = 0
   let runs = 0
   let squadRuns = 0
-  let teamReads = 0
   const squadRequests: SquadRunRequestBody[] = []
   const teamSaves: TeamDraft[] = []
   const describes: DescribeRequestBody[] = []
@@ -157,7 +157,6 @@ export function fakeTransport(config: FakeTransportConfig): FakeTransport {
     get reads(): number { return reads },
     get runs(): number { return runs },
     get squadRuns(): number { return squadRuns },
-    get teamReads(): number { return teamReads },
     get squadRequests(): readonly SquadRunRequestBody[] { return squadRequests },
     get teamSaves(): readonly TeamDraft[] { return teamSaves },
     get describes(): readonly DescribeRequestBody[] { return describes },
@@ -173,10 +172,6 @@ export function fakeTransport(config: FakeTransportConfig): FakeTransport {
       squadRuns += 1
       squadRequests.push(request)
       return config.runSquad === undefined ? missing('runSquad') : config.runSquad(request)
-    },
-    async squadTeam(sessionId: string): Promise<SquadTeamResponseBody> {
-      teamReads += 1
-      return config.squadTeam === undefined ? missing('squadTeam') : config.squadTeam(sessionId)
     },
     async createTeam(draft: TeamDraft): Promise<TeamDefinition> {
       teamSaves.push(draft)
@@ -218,7 +213,7 @@ export function fakeTeamSource(initial: SquadTeamSnapshot | undefined): FakeTeam
   let listeners: Array<(snapshot: SquadTeamSnapshot) => void> = []
   let current = initial
   return {
-    kind: 'projection',
+    kind: 'catalog',
     get watches(): readonly string[] { return watches },
     get watchers(): number { return listeners.length },
     watch(sessionId: string, onChange: (snapshot: SquadTeamSnapshot) => void): () => void {
@@ -245,13 +240,16 @@ export interface FakeSessionList extends SessionListFace {
  * surface the official UI reads `agentTeam` from.
  * @param initial - projection values by Lead session id.
  */
-export function sessionListOf(initial: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {}): FakeSessionList {
+export function sessionListOf(
+  initial: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {},
+  byId: Readonly<Record<string, { readonly running?: boolean }>> = {},
+): FakeSessionList {
   const bySession: Record<string, { values: Readonly<Record<string, unknown>> }> = {}
   for (const [sessionId, values] of Object.entries(initial)) bySession[sessionId] = { values }
   let listeners: Array<() => void> = []
   return {
     getSnapshot() {
-      return { projectionsBySession: bySession }
+      return { projectionsBySession: bySession, byId }
     },
     subscribe(listener: () => void): () => void {
       listeners = [...listeners, listener]

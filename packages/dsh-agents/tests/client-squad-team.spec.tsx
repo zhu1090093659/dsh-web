@@ -2,25 +2,23 @@
 /**
  * The live team of the newest whole-squad run, and the run history beside it.
  *
- * The roster is read through `src/client/team-source.ts`: the shared session
- * store's `agentTeam` projection when this context serves one, and the proposed
- * read-only route otherwise. These cases prove both surfaces, the join between
- * the projected teammate and the member definition it runs as, that a live
- * surface update lands without a page reload, and that a plain M1 member run
- * keeps working exactly as it did.
+ * The roster is read through `src/client/team-source.ts` off the Host's own
+ * `subagentCatalog` projection, which lists the direct children of the Lead
+ * session. These cases prove the catalog surface, the join between a teammate and
+ * the member definition it runs as, that a live catalog update lands without a
+ * page reload, that a deployment with no session catalog says so once, and that a
+ * plain M1 member run keeps working exactly as it did.
  */
 import { act } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { AgentsPage } from '../src/client/AgentsPage.tsx'
-import { AgentsApiError } from '../src/client/host-api.ts'
 import { t } from '../src/client/locales.ts'
-import { projectionTeamSource, pollTeamSource, SQUAD_TEAM_POLL_INTERVAL_MS } from '../src/client/team-source.ts'
+import { catalogTeamSource, createTeamSource } from '../src/client/team-source.ts'
 import type { SquadTeamSnapshot } from '../src/client/team-source.ts'
 import { buttonByText, click, flush, mount, unmountAll } from './render.tsx'
-import { agentTeamOf, fakeTeamSource, fakeTransport, memberOf, runOf, sessionListOf, squadRunOf, stateOf, teamOf } from './agents-fixtures.ts'
+import { fakeTeamSource, fakeTransport, memberOf, runOf, sessionListOf, squadRunOf, stateOf, subagentCatalogOf, teamOf } from './agents-fixtures.ts'
 
 afterEach(() => {
-  vi.useRealTimers()
   unmountAll()
 })
 
@@ -38,13 +36,14 @@ function openSquad(container: HTMLElement): void {
 
 describe('agents live team', () => {
   it('operator sees the Lead and its teammates with their status, model and permission', async () => {
-    // Given a squad run whose Lead published a roster with one teammate
+    // Given a squad run whose Lead has already started one teammate
     const transport = fakeTransport({
       state: async () => stateOf([teamOf({ members: [memberOf()] })], [squadRunOf({ sessionId: 'lead-1' })]),
     })
     const teamSource = fakeTeamSource({
       state: 'ready',
-      rows: agentTeamOf([{ id: 'teammate-session-1', name: 'Reviewer', phase: 'active' }], { leadSessionId: 'lead-1' }).members,
+      leadSessionId: 'lead-1',
+      rows: [{ id: 'teammate-session-1', label: 'Reviewer', mode: 'continuable', createdAt: 1, running: true }],
     })
     const opened: string[] = []
     const view = mount(<AgentsPage transport={transport} teamSource={teamSource} openSession={(sessionId: string) => { opened.push(sessionId) }} />)
@@ -55,25 +54,23 @@ describe('agents live team', () => {
     expect(teamSource.watches).toEqual(['lead-1'])
     const rows = view.container.querySelectorAll('[data-dsh-part="squad-team-row"]')
     expect(rows).toHaveLength(2)
-    // And the Lead row names the session the way the Host titled it, badges the
-    // role instead of the bare machine name, and states its live phase
+    // And the Lead row names the squad, badges the role, and opens the Lead session
     expect(must(rows[0], 'h5').textContent).toBe('Squad one')
     expect(rows[0].textContent).toContain(t('squad.lead'))
-    expect(rows[0].textContent).not.toContain('lead')
-    expect(must(rows[0], '[role="status"]').textContent).toBe(t('squad.phase.active'))
-    // And the teammate row carries the name the runtime gave it plus its pins
+    // And the teammate row carries the member name the Lead was told to pass plus its pins
     expect(rows[1].textContent).toContain('Reviewer')
     expect(rows[1].textContent).toContain(t('squad.teammate'))
     expect(rows[1].textContent).toContain(t('permission.read-only'))
     expect(rows[1].textContent).toContain('deepseek/deepseek-v4')
-    expect(must(rows[1], '[role="status"]').textContent).toBe(t('squad.phase.active'))
+    // And its status is the Host's own activity report
+    expect(must(rows[1], '[role="status"]').textContent).toBe(t('squad.status.running'))
     // And its session entry point opens exactly that teammate session
     click(buttonByText(rows[1] as HTMLElement, t('member.openSession')))
     expect(opened).toEqual(['teammate-session-1'])
   })
 
   it('operator sees a teammate appear without leaving the page', async () => {
-    // Given a squad run whose Lead has published nothing yet
+    // Given a squad run whose Lead has started nobody yet
     const transport = fakeTransport({
       state: async () => stateOf([teamOf({ members: [memberOf()] })], [squadRunOf({ sessionId: 'lead-1' })]),
     })
@@ -82,22 +79,24 @@ describe('agents live team', () => {
     await flush()
     openSquad(view.container)
     expect(must(view.container, '[data-dsh-part="squad-team-state"]').textContent).toBe(t('squad.livePending'))
-    // When the Lead publishes its first teammate
+    // When the Lead starts its first teammate
     act(() => {
       teamSource.publish({
         state: 'ready',
-        rows: agentTeamOf([{ id: 'teammate-session-2', name: 'Reviewer', phase: 'provisioning' }], { leadSessionId: 'lead-1' }).members,
+        leadSessionId: 'lead-1',
+        rows: [{ id: 'teammate-session-2', label: 'Reviewer', mode: 'one-shot', createdAt: 2 }],
       })
     })
-    // Then the waiting line is replaced by the roster, in the state it reports
+    // Then the waiting line is replaced by the roster, and a session the store
+    // says nothing about is stated by the mode it was started under
     expect(view.container.querySelector('[data-dsh-part="squad-team-state"]')).toBeNull()
     const rows = view.container.querySelectorAll('[data-dsh-part="squad-team-row"]')
     expect(rows).toHaveLength(2)
-    expect(must(rows[1], '[role="status"]').textContent).toBe(t('squad.phase.provisioning'))
+    expect(must(rows[1], '[role="status"]').textContent).toBe(t('squad.mode.oneShot'))
   })
 
   it('operator sees a plain member run keep its M1 card and join the history unchanged', async () => {
-    // Given a squad whose newest run is a single member session recorded before M2
+    // Given a squad whose newest run is a single member session
     const transport = fakeTransport({
       state: async () => stateOf([teamOf({ members: [memberOf()] })], [runOf({ id: 'run-1', sessionId: 'session-1', createdAt: 500 })]),
     })
@@ -118,64 +117,54 @@ describe('agents live team', () => {
     expect(must(view.container, '[data-dsh-part="squad-team"]').textContent).toContain(t('squad.liveNoRun'))
   })
 
-  it('operator sees the live roster read from the shared session projection', () => {
-    // Given a session catalog publishing the agentTeam projection of one Lead
-    const published = { agentTeam: agentTeamOf([{ id: 'teammate-session-1', name: 'Reviewer', phase: 'active' }], { leadSessionId: 'lead-1' }) }
-    const list = sessionListOf({ 'lead-1': published })
-    const source = projectionTeamSource(list)
+  it('operator reads the live roster from the Host subagent catalog', () => {
+    // Given a session catalog publishing the subagentCatalog projection of one Lead
+    const published = { subagentCatalog: subagentCatalogOf([{ id: 'teammate-session-1', label: 'Reviewer' }]) }
+    const list = sessionListOf({ 'lead-1': published }, { 'teammate-session-1': { running: true } })
+    const source = catalogTeamSource(list)
     const seen: SquadTeamSnapshot[] = []
     // When the page follows that Lead session
     const stop = source.watch('lead-1', (snapshot: SquadTeamSnapshot) => { seen.push(snapshot) })
-    // Then the roster arrives with no request at all, and the same published
-    // reference never re-renders it
-    expect(source.kind).toBe('projection')
+    // Then the roster arrives with no request at all, carrying the activity the store reports
+    expect(source.kind).toBe('catalog')
     expect(seen).toHaveLength(1)
-    expect(seen[0]).toMatchObject({ state: 'ready' })
+    expect(seen[0]).toMatchObject({ state: 'ready', leadSessionId: 'lead-1' })
+    expect(seen[0]).toMatchObject({ rows: [{ id: 'teammate-session-1', label: 'Reviewer', running: true }] })
+    // And the same published reference never re-renders it
     list.set('lead-1', published)
     expect(seen).toHaveLength(1)
-    // And a new published roster lands as one more snapshot
-    list.set('lead-1', { agentTeam: agentTeamOf([
-      { id: 'teammate-session-1', name: 'Reviewer', phase: 'active' },
-      { id: 'teammate-session-2', name: 'Builder', phase: 'active' },
-    ], { leadSessionId: 'lead-1' }) })
+    // And a new published catalog lands as one more snapshot
+    list.set('lead-1', {
+      subagentCatalog: subagentCatalogOf([
+        { id: 'teammate-session-1', label: 'Reviewer' },
+        { id: 'teammate-session-2', label: 'Builder' },
+      ]),
+    })
     expect(seen).toHaveLength(2)
+    expect((seen[1] as { rows: readonly unknown[] }).rows).toHaveLength(2)
     // And nothing lands after the page stops following
     stop()
-    list.set('lead-1', { agentTeam: agentTeamOf([], { leadSessionId: 'lead-1' }) })
+    list.set('lead-1', { subagentCatalog: [] })
     expect(seen).toHaveLength(2)
   })
 
-  it('operator sees the proposed roster route answer when the session store is out of reach', async () => {
-    // Given a deployment whose only live-team surface is the proposed read route
-    const transport = fakeTransport({
-      state: async () => stateOf([teamOf({ members: [memberOf()] })], [squadRunOf({ sessionId: 'lead-1' })]),
-      squadTeam: async (sessionId: string) => agentTeamOf([{ id: 'teammate-session-1', name: 'Reviewer', phase: 'active' }], { leadSessionId: sessionId }),
-    })
-    const view = mount(<AgentsPage transport={transport} teamSource={pollTeamSource(transport)} />)
-    await flush()
-    // When the operator opens that squad
-    openSquad(view.container)
-    await flush()
-    // Then the roster renders from that route, asked for the Lead session
-    expect(view.container.querySelectorAll('[data-dsh-part="squad-team-row"]')).toHaveLength(2)
-    expect(transport.teamReads).toBe(1)
+  it('operator reads an empty catalog as the Lead before it starts anyone', () => {
+    // Given a Lead whose published catalog is still empty
+    const list = sessionListOf({ 'lead-1': { subagentCatalog: [] } })
+    const seen: SquadTeamSnapshot[] = []
+    // When the page follows it
+    catalogTeamSource(list).watch('lead-1', (snapshot: SquadTeamSnapshot) => { seen.push(snapshot) })
+    // Then the page waits instead of rendering an empty roster
+    expect(seen).toEqual([{ state: 'pending' }])
   })
 
-  it('operator sees a deployment without the roster route say so once instead of polling forever', async () => {
-    // Given a Host that does not serve the proposed route
-    vi.useFakeTimers()
-    const transport = fakeTransport({
-      state: async () => stateOf([]),
-      squadTeam: async () => { throw new AgentsApiError('not-mounted', t('error.notMounted')) },
-    })
+  it('operator sees a deployment with no session catalog say so once', async () => {
+    // Given a deployment that serves no session catalog at all
     const seen: SquadTeamSnapshot[] = []
-    // When the page follows a Lead session through the fallback poll
-    const stop = pollTeamSource(transport).watch('lead-1', (snapshot: SquadTeamSnapshot) => { seen.push(snapshot) })
-    await vi.advanceTimersByTimeAsync(0)
-    // Then live state reads as unavailable, and the poll stops for good
+    // When the page follows a Lead session
+    const stop = createTeamSource(undefined).watch('lead-1', (snapshot: SquadTeamSnapshot) => { seen.push(snapshot) })
+    // Then live state reads as unavailable, once, with nothing left to poll
     expect(seen).toEqual([{ state: 'unavailable' }])
-    await vi.advanceTimersByTimeAsync(SQUAD_TEAM_POLL_INTERVAL_MS * 3)
-    expect(transport.teamReads).toBe(1)
     stop()
   })
 })

@@ -1,18 +1,18 @@
 /**
- * "What is this squad doing now": the Lead and the teammates the runtime
- * spawned for the newest whole-squad run.
+ * "What is this squad doing now": the Lead of the newest whole-squad run and the
+ * teammates it has started so far.
  *
- * The roster comes from the `agentTeam` projection (or, where that surface is
- * out of reach, from the proposed roster route) through `team-source.ts`; this
- * file only joins it with the squad's definitions and renders it. The join key
- * is the teammate NAME: the projection drops the member description, and the
- * Lead names each teammate after the member it was told to spawn. A teammate
- * the Lead named something else keeps its row and reads its pins as inherited.
+ * The roster is the Host's own subagent catalog (through `team-source.ts`): every
+ * direct child of the Lead session, with the mode it was started under and, when
+ * the store reports it, whether it is running. This file only joins that catalog
+ * with the squad's definitions and renders it. The join key is the LABEL the Lead
+ * passed to the subagent tool, which the squad context tells it to set to the
+ * member name; a teammate started under another label keeps its row and reads its
+ * pins as inherited.
  *
- * Each row's session entry point is the session id the projection reports, so
- * opening a teammate needs no extra host call. A row's badge names the role it
- * plays and its title names the session the way the Host titled it (the Lead
- * session carries the squad name), so nothing on the row repeats itself.
+ * Each row's session entry point is the teammate session id the catalog reports,
+ * so opening a teammate needs no extra host call. The Lead row is rendered beside
+ * them from the squad's own pin, because the catalog describes children only.
  */
 import type { ReactNode } from 'react'
 import { t } from './locales.ts'
@@ -20,26 +20,45 @@ import { permissionLabel } from './permissions.ts'
 import { SessionRow } from './SessionRow.tsx'
 import type { SessionRowFact } from './SessionRow.tsx'
 import type { StatusTone } from './runs.ts'
-import type { SquadTeamMemberWire, TeamDefinition, MemberDefinition } from '../protocol.ts'
-import type { SquadTeamSnapshot } from './team-source.ts'
+import type { TeamDefinition, MemberDefinition } from '../protocol.ts'
+import type { SquadTeammateRow, SquadTeamSnapshot } from './team-source.ts'
 import css from './agents.module.css'
 
-/** The state one phase reads as. */
-const PHASE_TONE: Record<SquadTeamMemberWire['phase'], StatusTone> = {
-  provisioning: 'pending',
-  active: 'active',
-  failed: 'error',
+/** The label and tone one teammate row reads as. */
+interface RowStatus {
+  label: string
+  tone: StatusTone
 }
 
-const PHASE_KEY = {
-  provisioning: 'squad.phase.provisioning',
-  active: 'squad.phase.active',
-  failed: 'squad.phase.failed',
+const MODE_KEY = {
+  'one-shot': 'squad.mode.oneShot',
+  'continuable': 'squad.mode.continuable',
+  'external': 'squad.mode.external',
+  'unknown': 'squad.mode.unknown',
 } as const
 
-/** The member definition a teammate session runs as, when the squad still holds it. */
-function definitionFor(team: TeamDefinition, name: string): MemberDefinition | undefined {
-  return team.members.find(member => member.name === name)
+/**
+ * Read one row's status: the Host's activity when it reports one, else the mode
+ * the child was started under. A teammate whose session is running is stated as
+ * running; a session the store says nothing about is stated by how it was started.
+ * @param row - the catalog row.
+ * @returns the label and tone to render.
+ */
+function statusOf(row: SquadTeammateRow): RowStatus {
+  if (row.running === true) return { label: t('squad.status.running'), tone: 'active' }
+  if (row.running === false) return { label: t('squad.status.idle'), tone: 'pending' }
+  return { label: t(MODE_KEY[row.mode]), tone: 'pending' }
+}
+
+/** The member definition a teammate session runs as, matched by the label the Lead was told to pass. */
+function definitionFor(team: TeamDefinition, row: SquadTeammateRow): MemberDefinition | undefined {
+  const key = row.label ?? row.name
+  return key === undefined ? undefined : team.members.find(member => member.name === key)
+}
+
+/** A row title: the definition's name, the label the Lead passed, then the session id. */
+function titleOf(row: SquadTeammateRow, definition: MemberDefinition | undefined): string {
+  return definition?.name ?? row.label ?? row.name ?? row.id.slice(0, 8)
 }
 
 /** The pinned facts of one row; an unpinned value reads as inherited, never blank. */
@@ -84,14 +103,6 @@ export function SquadTeamSection({ team, snapshot, openSession }: SquadTeamSecti
       </section>
     )
   }
-  if (snapshot.state === 'error') {
-    return (
-      <section className={css.section} data-dsh-part="squad-team" aria-label={t('squad.liveTitle')}>
-        {header}
-        <p className={css.noticeError} role="alert" data-dsh-part="squad-team-state">{snapshot.message}</p>
-      </section>
-    )
-  }
   if (snapshot.state === 'pending') {
     return (
       <section className={css.section} data-dsh-part="squad-team" aria-label={t('squad.liveTitle')}>
@@ -100,27 +111,37 @@ export function SquadTeamSection({ team, snapshot, openSession }: SquadTeamSecti
       </section>
     )
   }
+  const leadStatus: RowStatus = snapshot.leadRunning === undefined
+    ? { label: t('squad.lead'), tone: 'active' }
+    : snapshot.leadRunning
+      ? { label: t('squad.status.running'), tone: 'active' }
+      : { label: t('squad.status.idle'), tone: 'pending' }
   return (
     <section className={css.section} data-dsh-part="squad-team" aria-label={t('squad.liveTitle')}>
       {header}
-      {snapshot.failure === undefined ? null : (
-        <p className={css.noticeError} role="alert">{t('squad.liveFailure', { detail: snapshot.failure })}</p>
-      )}
       <ul className={css.teamGrid}>
+        <li className={css.memberItem}>
+          <SessionRow
+            variant="lead"
+            title={team.name}
+            badge={t('squad.lead')}
+            status={leadStatus}
+            facts={factsOf(team.leadPreset, undefined, undefined)}
+            onOpenSession={openSession === undefined ? undefined : () => { openSession(snapshot.leadSessionId) }}
+            openLabel={t('member.openSession')}
+          />
+        </li>
         {snapshot.rows.map(row => {
-          const definition = row.role === 'lead' ? undefined : definitionFor(team, row.name)
+          const definition = definitionFor(team, row)
           return (
             <li key={row.id} className={css.memberItem}>
               <SessionRow
-                variant={row.role}
-                title={row.role === 'lead' ? team.name : row.name}
-                badge={row.role === 'lead' ? t('squad.lead') : t('squad.teammate')}
-                status={{ label: t(PHASE_KEY[row.phase]), tone: PHASE_TONE[row.phase] }}
-                facts={row.role === 'lead'
-                  ? factsOf(team.leadPreset, undefined, undefined)
-                  : factsOf(definition?.preset, definition?.permission, definition?.model)}
-                detail={row.error}
-                onOpenSession={openSession === undefined ? undefined : () => { openSession(row.id) }}
+                variant="teammate"
+                title={titleOf(row, definition)}
+                badge={t('squad.teammate')}
+                status={statusOf(row)}
+                facts={factsOf(definition?.preset, definition?.permission, definition?.model)}
+                onOpenSession={openSession === undefined || row.mode === 'external' ? undefined : () => { openSession(row.id) }}
                 openLabel={t('member.openSession')}
               />
             </li>

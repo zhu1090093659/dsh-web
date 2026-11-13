@@ -1,40 +1,48 @@
 /**
- * Where the squad page reads the live roster of one whole-squad run.
+ * Where the squad page reads the live team of one whole-squad run.
  *
- * Preferred surface: the shared session store the official UI reads. The client
- * session catalog publishes every host-computed projection under
- * `projectionsBySession[leadSessionId].values.agentTeam`, and this plugin's host
- * half registers exactly that `agentTeam` projection (stateVersion 4) for the
- * Lead session of a squad run. Reading it costs no request and no poll.
+ * The source is the Host's own: `@deepseek-ai/dsh-subagent` publishes the
+ * `subagentCatalog` projection on the parent Session, and the shared client
+ * session catalog carries it under
+ * `projectionsBySession[leadSessionId].values.subagentCatalog`. Reading it costs
+ * no request and no poll.
  *
- * Fallback surface: a bounded poll of the PROPOSED read-only Host route
- * (`GET /dsh-agents/api/squad/team?sessionId=…`, declared in protocol.ts but not
- * served by this build). It is used only when the session store is out of reach
- * from this plugin's context, stops on its own once the route answers "not
- * mounted", and gives up after {@link SQUAD_TEAM_POLL_MAX_FAILURES} consecutive
- * transport failures. Adopting the route Host-side therefore needs no page
- * change: {@link createTeamSource} is the single place that picks a surface.
+ * The `agentTeam` projection is NOT a member source: since 0.2.2-rc.2 it carries
+ * the task board and the saved Team mode only (`{ enabled, tasks, failure? }`,
+ * stateVersion 7) and its wire schema is strict, so a member row is not something
+ * it can ever publish again.
  *
  * @module @linxin666/dsh-agents/client
  */
-import { failureOf } from './host-api.ts'
-import type { AgentsTransport } from './host-api.ts'
-import type { SquadTeamMemberWire } from '../protocol.ts'
+/** One live child session of the Lead, as the Host's catalog reports it. */
+export interface SquadTeammateRow {
+  /** Session id of the teammate session. */
+  id: string
+  /** The `description` the Lead passed to the subagent tool: the member name when the roster was followed. */
+  label?: string
+  /** Agent name the Host minted, when it reports one. */
+  name?: string
+  /** How this child was started; the catalog's own vocabulary. */
+  mode: 'one-shot' | 'continuable' | 'external' | 'unknown'
+  /** Creation instant of the child session. */
+  createdAt: number
+  /** Whether the Host reports this session as running; undefined when the store says nothing about it. */
+  running?: boolean
+}
 
 /** What the page knows about the live team of one squad run. */
 export type SquadTeamSnapshot =
-  /** No surface answers in this deployment: say so instead of polling forever. */
+  /** No catalog surface answers in this deployment: say so instead of polling forever. */
   | { state: 'unavailable' }
-  /** The surface is reachable but has published no team yet (the Lead has not spawned one). */
-  | { state: 'pending' }
-  | { state: 'ready'; rows: readonly SquadTeamMemberWire[]; failure?: string }
-  /** The surface answered with a transport failure the page reports. */
-  | { state: 'error'; message: string }
+  /** The surface is reachable but reports no teammate yet (the Lead has not spawned one). */
+  | { state: 'pending'; leadRunning?: boolean }
+  /** The Lead session and the children it has started so far. */
+  | { state: 'ready'; leadSessionId: string; rows: readonly SquadTeammateRow[]; leadRunning?: boolean }
 
 /** One place the page can read the live team from. */
 export interface SquadTeamSource {
-  /** Which surface this source is: the shared projection, or the proposed route. */
-  readonly kind: 'projection' | 'poll'
+  /** Which surface this source is: the Host's published subagent catalog. */
+  readonly kind: 'catalog'
   /**
    * Follow one Lead session.
    * @param sessionId - the Lead session id of the newest squad run.
@@ -46,7 +54,11 @@ export interface SquadTeamSource {
 
 /** The slice of the client session catalog this adapter reads. */
 export interface SessionListFace {
-  getSnapshot(): { readonly projectionsBySession?: Readonly<Record<string, SessionProjectionFace | undefined>> }
+  getSnapshot(): {
+    readonly projectionsBySession?: Readonly<Record<string, SessionProjectionFace | undefined>>
+    /** Session summaries by id; the running flag is what the Host publishes about activity. */
+    readonly byId?: Readonly<Record<string, { readonly running?: boolean } | undefined>>
+  }
   subscribe(listener: () => void): () => void
 }
 
@@ -55,80 +67,139 @@ export interface SessionProjectionFace {
   readonly values: Readonly<Record<string, unknown>>
 }
 
-/** Refresh cadence of the fallback route while a squad page is open. */
-export const SQUAD_TEAM_POLL_INTERVAL_MS = 4000
+/** The projection key the Host's subagent runtime publishes direct children under. */
+export const SUBAGENT_CATALOG_PROJECTION_KEY = 'subagentCatalog'
 
-/** Consecutive transport failures the fallback poll tolerates before it stops. */
-export const SQUAD_TEAM_POLL_MAX_FAILURES = 3
-
-/** The projection key this plugin's host half registers. */
-export const AGENT_TEAM_PROJECTION_KEY = 'agentTeam'
+/** Modes the catalog can report, kept as a closed set so an unknown mode is skipped rather than rendered. */
+const CATALOG_MODES = ['one-shot', 'continuable', 'external', 'unknown'] as const
 
 function text(value: unknown): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined
 }
 
+function modeOf(value: unknown): SquadTeammateRow['mode'] | undefined {
+  return typeof value === 'string' && (CATALOG_MODES as readonly string[]).includes(value)
+    ? value as SquadTeammateRow['mode']
+    : undefined
+}
+
 /**
- * Read one published team value.
- * @param value - whatever the projection key (or the proposed route) carried.
- * @returns the roster, or undefined when the value is not a shape this build reads.
+ * Read one published `subagentCatalog` value.
+ *
+ * A row this build cannot read is skipped: the catalog is another plugin's wire,
+ * so one malformed entry must not blank the whole roster.
+ * @param value - whatever the projection key carried.
+ * @returns the parsed rows, or undefined when the value is not a catalog at all.
  */
-export function readTeamValue(value: unknown): { rows: SquadTeamMemberWire[]; failure?: string } | undefined {
-  if (typeof value !== 'object' || value === null) return undefined
-  const record = value as { members?: unknown; failure?: unknown }
-  if (!Array.isArray(record.members)) return undefined
-  const rows: SquadTeamMemberWire[] = []
-  for (const candidate of record.members as unknown[]) {
-    if (typeof candidate !== 'object' || candidate === null) return undefined
-    const member = candidate as Record<string, unknown>
-    const id = text(member.id)
-    const name = text(member.name)
-    const role = member.role
-    const phase = member.phase
-    if (id === undefined || name === undefined) return undefined
-    if (role !== 'lead' && role !== 'teammate') return undefined
-    if (phase !== 'provisioning' && phase !== 'active' && phase !== 'failed') return undefined
-    const error = text(member.error)
-    rows.push({ id, name, role, phase, ...(error === undefined ? {} : { error }) })
+export function readCatalogValue(value: unknown): SquadTeammateRow[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const rows: SquadTeammateRow[] = []
+  for (const candidate of value as unknown[]) {
+    if (typeof candidate !== 'object' || candidate === null) continue
+    const entry = candidate as Record<string, unknown>
+    const id = text(entry.id)
+    const mode = modeOf(entry.mode)
+    const createdAt = typeof entry.createdAt === 'number' ? entry.createdAt : undefined
+    if (id === undefined || mode === undefined || createdAt === undefined) continue
+    const label = text(entry.label)
+    const name = text(entry.name)
+    rows.push({
+      id,
+      mode,
+      createdAt,
+      ...(label === undefined ? {} : { label }),
+      ...(name === undefined ? {} : { name }),
+    })
   }
-  const failure = text(record.failure)
-  return { rows, ...(failure === undefined ? {} : { failure }) }
+  return rows
 }
 
-/** Turn one published value into the snapshot the page renders. */
-function snapshotOf(value: unknown): SquadTeamSnapshot {
-  if (value === undefined) return { state: 'pending' }
-  const read = readTeamValue(value)
-  // A value this build cannot read is reported as no capability rather than as
-  // a broken roster: the page then says live state is unavailable, which is the
-  // honest reading of "the deployment and this build disagree about the shape".
-  if (read === undefined) return { state: 'unavailable' }
-  return { state: 'ready', rows: read.rows, ...(read.failure === undefined ? {} : { failure: read.failure }) }
+/**
+ * Read the Host's running flag for one session, when the store reports it.
+ * @param list - the session catalog.
+ * @param sessionId - the session to look up.
+ * @returns the flag, or undefined when the store says nothing about that session.
+ */
+function summaryOf(list: SessionListFace, sessionId: string): boolean | undefined {
+  try {
+    const running = list.getSnapshot().byId?.[sessionId]?.running
+    return typeof running === 'boolean' ? running : undefined
+  } catch {
+    return undefined
+  }
 }
 
-/** The raw `agentTeam` value of one session, or undefined while it carries none. */
-function projectionValue(list: SessionListFace, sessionId: string): unknown {
+/** Attach the Host's running flag to one row, when the store reports it. */
+function withActivity(list: SessionListFace, rows: readonly SquadTeammateRow[]): SquadTeammateRow[] {
+  let summaries: Readonly<Record<string, { readonly running?: boolean } | undefined>> | undefined
+  try {
+    summaries = list.getSnapshot().byId
+  } catch {
+    summaries = undefined
+  }
+  if (summaries === undefined || summaries === null) return [...rows]
+  return rows.map(row => {
+    const running = summaries?.[row.id]?.running
+    return typeof running === 'boolean' ? { ...row, running } : row
+  })
+}
+
+/** The raw `subagentCatalog` value of one session, or undefined while it carries none. */
+function catalogValue(list: SessionListFace, sessionId: string): unknown {
   const rows = list.getSnapshot().projectionsBySession
   if (rows === undefined || rows === null) return undefined
   const row = rows[sessionId]
   if (row === undefined || row === null) return undefined
   const values = row.values
   if (values === undefined || values === null) return undefined
-  return values[AGENT_TEAM_PROJECTION_KEY]
+  return values[SUBAGENT_CATALOG_PROJECTION_KEY]
+}
+
+/**
+ * Build the snapshot for one published catalog value.
+ * @param list - the session catalog, read again for activity.
+ * @param sessionId - the Lead session the catalog belongs to.
+ * @param value - the published catalog value.
+ * @returns the snapshot the page renders.
+ */
+function snapshotOf(list: SessionListFace, sessionId: string, value: unknown): SquadTeamSnapshot {
+  // No published catalog yet (or an empty one) is the Lead before it starts
+  // anyone: a blank roster would read as "this squad has no members".
+  if (value === undefined) return { state: 'pending' }
+  const rows = readCatalogValue(value)
+  // A value this build cannot read is reported as no capability rather than as a
+  // broken roster: the page then says live state is unavailable, which is the
+  // honest reading of "the deployment and this build disagree about the shape".
+  if (rows === undefined) return { state: 'unavailable' }
+  const leadRunning = summaryOf(list, sessionId)
+  if (rows.length === 0) return { state: 'pending', ...(leadRunning === undefined ? {} : { leadRunning }) }
+  return { state: 'ready', leadSessionId: sessionId, rows: withActivity(list, rows), ...(leadRunning === undefined ? {} : { leadRunning }) }
+}
+
+/** A source that answers "this deployment has no session catalog" once. */
+export function unavailableTeamSource(): SquadTeamSource {
+  return {
+    kind: 'catalog',
+    watch(_sessionId: string, onChange: (snapshot: SquadTeamSnapshot) => void): () => void {
+      onChange({ state: 'unavailable' })
+      return () => {}
+    },
+  }
 }
 
 /**
  * Read the live team from the shared session store.
  * @param list - the client session catalog's list face.
+ * @returns the source the page watches.
  */
-export function projectionTeamSource(list: SessionListFace): SquadTeamSource {
+export function catalogTeamSource(list: SessionListFace): SquadTeamSource {
   return {
-    kind: 'projection',
+    kind: 'catalog',
     watch(sessionId: string, onChange: (snapshot: SquadTeamSnapshot) => void): () => void {
       /** Read the current value; a catalog that throws is a surface this build cannot read. */
       const read = (): { readable: boolean; value: unknown } => {
         try {
-          return { readable: true, value: projectionValue(list, sessionId) }
+          return { readable: true, value: catalogValue(list, sessionId) }
         } catch {
           return { readable: false, value: undefined }
         }
@@ -138,14 +209,14 @@ export function projectionTeamSource(list: SessionListFace): SquadTeamSource {
         onChange({ state: 'unavailable' })
         return () => {}
       }
-      let raw = initial.value
-      onChange(snapshotOf(raw))
+      let raw: unknown = initial.value
+      onChange(snapshotOf(list, sessionId, raw))
       /** The store keeps one reference per published value, so an unchanged value is a no-op. */
       function publish(): void {
         const next = read()
         if (!next.readable || next.value === raw) return
         raw = next.value
-        onChange(snapshotOf(raw))
+        onChange(snapshotOf(list, sessionId, raw))
       }
       let stop: () => void
       try {
@@ -159,70 +230,12 @@ export function projectionTeamSource(list: SessionListFace): SquadTeamSource {
 }
 
 /**
- * Read the live team by polling the proposed read-only route.
- * @param transport - the squad transport (only its roster read is used).
- * @param intervalMs - refresh cadence; the default is the shipped one.
- */
-export function pollTeamSource(
-  transport: Pick<AgentsTransport, 'squadTeam'>,
-  intervalMs: number = SQUAD_TEAM_POLL_INTERVAL_MS,
-): SquadTeamSource {
-  return {
-    kind: 'poll',
-    watch(sessionId: string, onChange: (snapshot: SquadTeamSnapshot) => void): () => void {
-      let stopped = false
-      let failures = 0
-      let timer: ReturnType<typeof globalThis.setInterval> | undefined
-      const stop = (): void => {
-        stopped = true
-        if (timer !== undefined) globalThis.clearInterval(timer)
-        timer = undefined
-      }
-      const read = (): void => {
-        void (async () => {
-          try {
-            const body = await transport.squadTeam(sessionId)
-            if (stopped) return
-            failures = 0
-            onChange(snapshotOf(body))
-          } catch (error) {
-            if (stopped) return
-            const described = failureOf(error)
-            // The route is not served here: say live state is unavailable and
-            // stop, instead of polling a missing route for the life of the page.
-            if (described.failure === 'not-mounted') {
-              onChange({ state: 'unavailable' })
-              stop()
-              return
-            }
-            if (described.failure === 'unauthorized' || described.failure === 'forbidden') {
-              onChange({ state: 'error', message: described.message })
-              stop()
-              return
-            }
-            failures += 1
-            if (failures >= SQUAD_TEAM_POLL_MAX_FAILURES) {
-              onChange({ state: 'error', message: described.message })
-              stop()
-            }
-          }
-        })()
-      }
-      read()
-      timer = globalThis.setInterval(read, intervalMs)
-      return stop
-    },
-  }
-}
-
-/**
  * Pick the live-team surface for this deployment.
  * @param list - the shared session catalog face, when this context serves one.
- * @param transport - the squad transport, used by the fallback poll.
- * @returns the projection source when the session store is reachable, else the poll.
+ * @returns the catalog source when the session store is reachable, else a source that says so.
  */
-export function createTeamSource(list: SessionListFace | undefined, transport: AgentsTransport): SquadTeamSource {
-  return list === undefined ? pollTeamSource(transport) : projectionTeamSource(list)
+export function createTeamSource(list: SessionListFace | undefined): SquadTeamSource {
+  return list === undefined ? unavailableTeamSource() : catalogTeamSource(list)
 }
 
 /**

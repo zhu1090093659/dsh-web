@@ -12,7 +12,7 @@ import { AgentsError } from '../src/core/errors.ts'
 import { AGENTS_LEDGER_FILE } from '../src/host/ledger.ts'
 import type { MemberRunGateway } from '../src/host/run-gateway.ts'
 import { AgentsHostService } from '../src/host/service.ts'
-import { briefSummary, isSquadSession, squadContextText, squadRunFor, type SquadLedgerView } from '../src/host/squad.ts'
+import { briefText, squadContextText, squadRunFor, type SquadLedgerView } from '../src/host/squad.ts'
 import {
   DSH_AGENTS_ROUTE_PATHS,
   parseSquadRunRequestBody,
@@ -143,9 +143,10 @@ describe('team:squad context', () => {
     expect(text).toContain('Research squad')
     expect(text).toContain('Squad goal: Ship the M2 runtime')
     expect(text).toContain('Members (2):')
-    expect(text).toContain('- Scout | preset xundong | permission read-only | model deepseek/deepseek-v4 | brief: Reads the diff and names the risky parts')
-    expect(text).toContain('- Builder | preset michun | permission workspace-write | model deepseek/deepseek-v4 | brief: Builds the change and runs the suite')
-    expect(text).toContain('spawn_teammate')
+    expect(text).toContain('- Scout | preset xundong | permission read-only, inherited from you: a teammate always runs with its parent session permission | model deepseek/deepseek-v4 | brief: Reads the diff and names the risky parts')
+    expect(text).toContain('- Builder | preset michun | permission workspace-write, inherited from you: a teammate always runs with its parent session permission | model deepseek/deepseek-v4 | brief: Builds the change and runs the suite')
+    expect(text).toContain('Start each member with the subagent tool')
+    expect(text).toContain('asks the Host to switch Team mode on for this session')
   })
 
   it('operator renders nothing for a session that leads no squad run', () => {
@@ -159,23 +160,11 @@ describe('team:squad context', () => {
     expect(squadRunFor('lead-session', view)?.run.id).toBe('run-1')
   })
 
-  it('operator collapses and bounds a member brief', () => {
-    // Given briefs that are missing, multi-line, or over-long, When their summaries are derived, Then they are single-line, bounded, and placeholdered when absent.
-    expect(briefSummary(undefined)).toBe('no brief')
-    expect(briefSummary('  two\n lines  ')).toBe('two lines')
-    expect(briefSummary('x'.repeat(400)).length).toBe(240)
-  })
-
-  it('operator recognizes the squad Lead and its teammates, and no other session', () => {
-    // Given one recorded squad run, When the gate is asked about its Lead, a teammate under it, and two unrelated sessions, Then only the squad sessions pass.
-    const view: SquadLedgerView = {
-      teams: [teamOf()],
-      runs: [{ id: 'run-1', teamId: 'team-1', sessionId: 'lead-session', createdAt: NOW, status: 'running', kind: 'squad' as const }],
-    }
-    expect(isSquadSession('lead-session', undefined, view)).toBe(true)
-    expect(isSquadSession('teammate-session', 'lead-session', view)).toBe(true)
-    expect(isSquadSession('ordinary-session', undefined, view)).toBe(false)
-    expect(isSquadSession('ordinary-child', 'ordinary-parent', view)).toBe(false)
+  it('operator flattens a member brief without truncating it', () => {
+    // Given briefs that are missing, multi-line, or long, When the roster renders them, Then each is one line and the whole brief survives: the Lead pastes it verbatim into the spawn prompt, so a truncated brief would reach the teammate as a broken instruction.
+    expect(briefText(undefined)).toBe('none; state the task in the spawn prompt')
+    expect(briefText('  two\n lines  ')).toBe('two lines')
+    expect(briefText('x'.repeat(400)).length).toBe(400)
   })
 })
 
@@ -197,14 +186,12 @@ describe('whole-squad run', () => {
         runsAtPrompt = instance.state.runs
       }),
     } as MemberRunGateway
-    const onSquadRun = vi.fn()
     instance = new AgentsHostService({
       dir: tempDir(),
       gateway: pins,
       workspaces: () => workspaces,
       now: () => NOW,
       idFactory: () => 'id-' + (++minted),
-      onSquadRun,
     })
     services.push(instance)
     const seeded = seedTeam(instance)
@@ -220,8 +207,8 @@ describe('whole-squad run', () => {
     expect(run.status).toBe('running')
     expect(pins.createSession).toHaveBeenCalledWith({ workspaceId: 'ws-1', agentPreset: 'xundong' })
     expect(pins.renameSession).toHaveBeenCalledWith('lead-session', 'Research squad / Lead')
-    expect(onSquadRun).toHaveBeenCalledWith(run)
-    expect(instance.isSquadSession('lead-session', undefined)).toBe(true)
+    expect(instance.leadsSquadRun('lead-session')).toBe(true)
+    expect(instance.leadsSquadRun('ordinary-session')).toBe(false)
     expect(instance.squadContext('lead-session')).toContain('Squad goal: Ship the M2 runtime')
   })
 

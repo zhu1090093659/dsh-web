@@ -15,8 +15,8 @@
  * the callback runs when the providing plugin appears, its `inner.effect`
  * cleanup runs when that plugin goes away, and every change bumps the snapshot
  * version so the mounted page re-renders. The initial snapshot is exactly the
- * no-workspace deployment: no opener, and the live team read through the
- * fallback poll.
+ * no-workspace deployment: no opener, and a live-team source that answers
+ * "unavailable" until a session catalog is served.
  *
  * @module @linxin666/dsh-agents/client
  */
@@ -26,8 +26,7 @@ import type { Context as ClientContext } from '@deepseek-ai/cordis'
 // of either package is shipped in this bundle.
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
-import type { AgentsTransport } from './host-api.ts'
-import { pollTeamSource, projectionTeamSource, sessionListFace } from './team-source.ts'
+import { catalogTeamSource, sessionListFace, unavailableTeamSource } from './team-source.ts'
 import type { SquadTeamSource } from './team-source.ts'
 
 /** The slice of the GUI workspace service this plugin calls. */
@@ -75,8 +74,8 @@ export interface SessionFacesStore {
   offerOpener(opener: ((sessionId: string) => void) | undefined): void
   /**
    * Publish or withdraw the live-team surface.
-   * @param source - the projection source when the session catalog is reachable,
-   *   or undefined to fall back to the proposed roster route.
+   * @param source - the catalog source when the session catalog is reachable,
+   *   or undefined to answer "this deployment publishes no catalog".
    */
   offerTeamSource(source: SquadTeamSource | undefined): void
 }
@@ -97,13 +96,12 @@ export function openerFrom(workspace: unknown): ((sessionId: string) => void) | 
 /**
  * Build the capability store one plugin instance owns.
  *
- * The fallback surface is created once, so withdrawing the projection source
+ * The withdrawn surface is created once, so withdrawing the catalog source
  * returns the page to the very source it started with.
- * @param transport - the frozen-contract transport, used by the fallback poll.
  * @returns the store the bridges write and the page subscribes to.
  */
-export function createSessionFaces(transport: AgentsTransport): SessionFacesStore {
-  const fallback = pollTeamSource(transport)
+export function createSessionFaces(): SessionFacesStore {
+  const fallback = unavailableTeamSource()
   const listeners = new Set<() => void>()
   let openSession: ((sessionId: string) => void) | undefined
   let teamSource: SquadTeamSource = fallback
@@ -153,7 +151,7 @@ export function bridgeSessionFaces(ctx: ClientContext, store: SessionFacesStore)
   ctx.inject(['sessions'], (inner) => {
     inner.effect(() => {
       const list = sessionListFace(inner.get('sessions'))
-      store.offerTeamSource(list === undefined ? undefined : projectionTeamSource(list))
+      store.offerTeamSource(list === undefined ? undefined : catalogTeamSource(list))
       return () => { store.offerTeamSource(undefined) }
     }, 'dsh-agents: live team bridge')
   })

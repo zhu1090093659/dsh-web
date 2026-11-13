@@ -2,23 +2,19 @@
  * The squad-run seam: which sessions belong to a whole-squad run this Host
  * started, and what the Lead is told about the squad it leads.
  *
- * Two facts put this file in charge of the M2 tool surface:
- * - The forked Team runtime answers `tryMembership` with `{ role: 'lead' }` for
- *   any root Session, so membership alone would install the Team tools into the
- *   user's everyday chat and hide the native delegation tools behind them. The
- *   ledger's squad-run records are the authority instead: a session sees the
- *   Team surface only when this Host launched it as a squad Lead (or as a
- *   teammate under that Lead).
- * - The Lead's roster must arrive as a system-prompt CONTEXT, not a section: a
- *   preset that registers a `complete` section drops every untagged section
- *   (docs/member-prompt.md), and contexts survive it.
+ * The native Agent Teams runtime owns collaboration: its task board is the plan,
+ * its policy section is the rule, and its members are ordinary subagents. This
+ * file therefore owns exactly two facts:
+ * - Which live Session leads a squad run this Host launched, so that session's
+ *   Team mode is switched on and no other session is touched.
+ * - What the Lead must know about its members BEFORE it spawns anything: each
+ *   member's name, preset, model route and brief. It arrives as a system-prompt
+ *   CONTEXT, not a section: a preset that registers a `complete` section drops
+ *   every untagged section (docs/member-prompt.md), and contexts survive it.
  *
  * @module @linxin666/dsh-agents/host/squad
  */
 import type { RunRecord, TeamDefinition } from '../protocol.ts'
-
-/** Longest one-line member brief summary carried into the Lead's context. */
-export const SQUAD_BRIEF_SUMMARY_LENGTH = 240
 
 /** A squad run and the definition it launched. */
 export interface SquadRunView {
@@ -51,33 +47,17 @@ export function squadRunFor(sessionId: string | undefined, view: SquadLedgerView
 }
 
 /**
- * Whether one live session belongs to a squad run this Host started.
- * @param sessionId - the session's own id.
- * @param parentSessionId - its direct parent session id, when it has one.
- * @param view - the ledger snapshot.
- * @returns whether the session leads a squad run, or is a teammate under one.
- */
-export function isSquadSession(
-  sessionId: string | undefined,
-  parentSessionId: string | undefined,
-  view: SquadLedgerView,
-): boolean {
-  if (squadRunFor(sessionId, view) !== undefined) return true
-  return parentSessionId !== undefined && squadRunFor(parentSessionId, view) !== undefined
-}
-
-/**
- * One-line, bounded member brief summary. The Lead needs to know what a member
- * is for; it does not need the whole brief re-pasted into its own prompt.
+ * One member's brief, flattened to a single line.
+ *
+ * The whole brief travels, not a summary: the Lead opens its spawn prompt with
+ * this text verbatim, so a truncated brief is a member that never learns its own
+ * operating instructions.
  * @param brief - the member's brief, when it has one.
- * @returns the collapsed summary, or a placeholder for a member without one.
+ * @returns the collapsed brief, or a placeholder for a member without one.
  */
-export function briefSummary(brief: string | undefined): string {
+export function briefText(brief: string | undefined): string {
   const single = (brief ?? '').replace(/\s+/gu, ' ').trim()
-  if (single === '') return 'no brief'
-  return single.length > SQUAD_BRIEF_SUMMARY_LENGTH
-    ? single.slice(0, SQUAD_BRIEF_SUMMARY_LENGTH - 3) + '...'
-    : single
+  return single === '' ? 'none; state the task in the spawn prompt' : single
 }
 
 /**
@@ -86,7 +66,7 @@ export function briefSummary(brief: string | undefined): string {
  * The Lead must know who exists and what each member runs as BEFORE it spawns
  * anything: a member preset with a `complete` section drops untagged sections,
  * so the roster cannot ride a section and cannot ride the member briefs either
- * (those belong to the teammate sessions themselves).
+ * (those are the Lead's own spawn prompts).
  * @param sessionId - the assembling session id.
  * @param view - the ledger snapshot.
  * @returns the roster and goal for a squad Lead, or '' for every other session.
@@ -100,19 +80,25 @@ export function squadContextText(sessionId: string | undefined, view: SquadLedge
     run.goal === undefined
       ? 'Squad goal: not stated yet; ask the user what the squad must achieve before splitting the work.'
       : 'Squad goal: ' + run.goal,
+    'This run asks the Host to switch Team mode on for this session. When it did, the shared task board (team_task_create, team_task_list, team_task_get, team_task_update) and the team collaboration policy are available to you and to every teammate you start, and the board is the plan: a step that is not on it does not exist. If this session has no team_task_* tool, the switch did not happen — say so and plan without a board instead of inventing one.',
     '',
     'Members (' + String(team.members.length) + '):',
   ]
   for (const member of team.members) {
     lines.push('- ' + member.name
       + ' | preset ' + (member.preset ?? 'deployment default')
-      + ' | permission ' + (member.permission ?? 'deployment default')
+      + ' | permission ' + (member.permission ?? 'deployment default') + ', inherited from you: a teammate always runs with its parent session permission'
       + ' | model ' + (member.model ?? 'deployment default')
-      + ' | brief: ' + briefSummary(member.brief))
+      + ' | brief: ' + briefText(member.brief))
   }
   lines.push(
     '',
-    'Create each member with spawn_teammate and pass its preset, permission, and model so it runs exactly as defined above. A pin this Host cannot honour fails the spawn; never drop one.',
+    'Start each member with the subagent tool:',
+    '- description: the member name exactly as listed above; it becomes that teammate label.',
+    '- agent_preset: the member preset id. Like the model parameters it appears only when this deployment offers a selectable preset list; when it is missing, say in your reply which pin this deployment cannot honour instead of dropping it silently.',
+    '- provider, model and reasoning_effort: the member model pin. A session that offers no subagent model selection does not show these parameters; when one is missing, say in your reply which pin this deployment cannot honour instead of dropping it silently.',
+    '- prompt: begin with that member brief verbatim, then the concrete task. A teammate system prompt belongs to its preset, so the brief travels in this first message.',
+    'Put one task per work item on the board, use blockedBy for dependencies, and let each teammate claim and finish its own task. Steer a running teammate with send_message and collect it with wait_agent.',
   )
   return lines.join('\n')
 }

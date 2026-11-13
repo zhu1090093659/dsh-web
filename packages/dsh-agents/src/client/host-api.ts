@@ -9,7 +9,7 @@
  */
 import { t } from './locales.ts'
 import type { AgentsKey } from './locales.ts'
-import { DSH_AGENTS_API_PREFIX, DSH_AGENTS_SQUAD_TEAM_PATH } from '../protocol.ts'
+import { DSH_AGENTS_API_PREFIX } from '../protocol.ts'
 import type {
   AgentsErrorCode,
   AgentsStateView,
@@ -18,7 +18,6 @@ import type {
   MemberDraft,
   RunRecord,
   SquadRunRequestBody,
-  SquadTeamResponseBody,
   TeamDefinition,
   TeamDraft,
 } from '../protocol.ts'
@@ -238,13 +237,6 @@ export interface AgentsTransport {
   /** Start one whole squad: the Lead session whose model spawns the teammates. */
   runSquad(request: SquadRunRequestBody): Promise<RunRecord>
   /**
-   * Read the live roster of one squad run from the PROPOSED read-only route.
-   * The page only calls it when the shared projection store is out of reach, so
-   * a Host that never adopts the route answers "not mounted" and the page says
-   * live state is unavailable instead of polling a missing route forever.
-   */
-  squadTeam(sessionId: string, signal?: AbortSignal): Promise<SquadTeamResponseBody>
-  /**
    * Draft one squad description with this deployment's model.
    *
    * The Host spends a model call here, so the caller decides when to ask; a
@@ -286,13 +278,6 @@ export function createAgentsTransport(fetchImpl: typeof fetch = fetch): AgentsTr
     async runSquad(request: SquadRunRequestBody): Promise<RunRecord> {
       const body = await readJson<{ run: RunRecord }>(await send('squad/run', postInit(request)))
       return body.run
-    },
-    async squadTeam(sessionId: string, signal?: AbortSignal): Promise<SquadTeamResponseBody> {
-      // The proposed route is addressed document-relative like every other one, so
-      // only its part BELOW the shared prefix is appended to `send`; the id rides
-      // a query parameter because the route path itself stays exact.
-      const route = DSH_AGENTS_SQUAD_TEAM_PATH.slice(DSH_AGENTS_API_PREFIX.length + 1)
-      return readJson<SquadTeamResponseBody>(await send(route + '?sessionId=' + encodeURIComponent(sessionId), { method: 'GET', headers: JSON_HEADERS }, signal))
     },
     async describe(request: DescribeRequestBody, signal?: AbortSignal): Promise<string> {
       const body = await readJson<DescribeResponseBody>(await send('describe', postInit(request), signal, DESCRIBE_TIMEOUT_MS))

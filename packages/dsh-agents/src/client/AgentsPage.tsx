@@ -8,10 +8,10 @@
  * good read keeps the last snapshot on screen and reports the failure as a
  * banner, so a flaky phone link never blanks the list.
  *
- * M2 adds the whole-squad action and the live team of its Lead. The live team is
- * read through `team-source.ts`, which prefers the shared session store's
- * `agentTeam` projection and only falls back to a bounded poll when that
- * surface is out of reach from this context.
+ * The whole-squad action launches a Lead, and the live team of that Lead is read
+ * through `team-source.ts`, which reads the Host's own `subagentCatalog`
+ * projection out of the shared session store. A deployment without that store
+ * reports the live team as unavailable instead of polling for it.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'

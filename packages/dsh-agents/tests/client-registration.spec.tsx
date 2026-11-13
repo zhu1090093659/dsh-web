@@ -48,7 +48,7 @@ const transport = createAgentsTransport()
 
 /** The capability store one registration hands the page: no faces yet. */
 function faces() {
-  return createSessionFaces(transport)
+  return createSessionFaces()
 }
 
 afterEach(() => {
@@ -206,7 +206,7 @@ describe('agents dictionaries', () => {
       'squad.liveUnavailable',
       'squad.lead',
       'squad.teammate',
-      'squad.phase.active',
+      'squad.status.running',
       'squad.historyTitle',
       'squad.kind.squad',
       'squad.memberGone',

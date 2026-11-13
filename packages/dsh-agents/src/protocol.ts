@@ -620,38 +620,6 @@ export function parseDescribeRequestBody(value: unknown): DescribeRequestBody | 
 }
 
 /**
- * The read-only roster route the browser falls back to when the shared session
- * store's `agentTeam` projection is not reachable from its context.
- *
- * PROPOSED, not served by this build: it is deliberately OUTSIDE
- * {@link DSH_AGENTS_ROUTE_PATHS}, which stays the exact list of routes the Host
- * registers today. A Host that adopts it answers
- * `{ members, failure? }` for one Lead session id and nothing else; the browser
- * half reads it through `src/client/team-source.ts`, so adopting it is one file
- * (plus this route) and no page change.
- */
-export const DSH_AGENTS_SQUAD_TEAM_PATH = DSH_AGENTS_API_PREFIX + '/squad/team'
-
-/** One live squad session as the proposed roster route would report it. */
-export interface SquadTeamMemberWire {
-  /** Session id of the Lead or of one teammate session. */
-  id: string
-  /** Display name the Lead gave the teammate; the projection names the Lead `lead`. */
-  name: string
-  role: 'lead' | 'teammate'
-  phase: 'provisioning' | 'active' | 'failed'
-  /** Why this member failed to start, when it did. */
-  error?: string
-}
-
-/** `GET {DSH_AGENTS_SQUAD_TEAM_PATH}?sessionId=<lead session id>` reply. */
-export interface SquadTeamResponseBody {
-  members: SquadTeamMemberWire[]
-  /** The Lead's own projection failure, when the team state could not be folded. */
-  failure?: string
-}
-
-/**
  * The exact path of every route this plugin serves. The Host registers these
  * and nothing else; a caller that wants a new operation amends this list first.
  */

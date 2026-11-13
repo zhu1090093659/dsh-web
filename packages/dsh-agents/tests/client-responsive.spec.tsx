@@ -197,7 +197,7 @@ describe('agents squad rows on a narrow viewport', () => {
         variant="teammate"
         title={longName}
         badge={t('squad.teammate')}
-        status={{ label: t('squad.phase.active'), tone: 'active' }}
+        status={{ label: t('squad.status.running'), tone: 'active' }}
       />,
     )
     // Then the whole name renders inside the wrapping title

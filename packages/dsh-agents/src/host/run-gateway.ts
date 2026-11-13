@@ -1,12 +1,11 @@
 /**
  * The definition/run seam.
  *
- * M1 launches ONE member session per run. Everything that touches the DSH host
- * — the agent-preset registry, session creation, the title, the pinned
- * permission/model, the first message — sits behind {@link MemberRunGateway}, so
- * the squad service owns definitions and launch ordering while M2 can fork the
- * official agent-team service behind this same interface without touching the
- * ledger or the routes.
+ * One member session per run. Everything that touches the DSH host — the
+ * agent-preset registry, session creation, the title, the pinned permission and
+ * model, the first message — sits behind {@link MemberRunGateway}, so the squad
+ * service owns definitions and launch ordering while a whole-squad run reuses the
+ * same session faces without touching the ledger or the routes.
  *
  * @module @linxin666/dsh-agents/host/run-gateway
  */
@@ -14,9 +13,6 @@ import type { InvokeRemoteRequest } from '@deepseek-ai/dsh-api-gateway'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { AgentsError, isAgentsError } from '../core/errors.ts'
 import { parseModelPin, type ModelRoute } from '../core/model-pin.ts'
-import { TeamError } from '../team/error.ts'
-import type { TeammatePins } from '../team/pins.ts'
-import type { SpawnTeammateRequest } from '../team/types.ts'
 import type { AgentsPermission, AgentsWorkspaceOption } from '../protocol.ts'
 import type { Workspace } from '@deepseek-ai/dsh-workspace/types'
 
@@ -268,9 +264,8 @@ function ownerPeer(signal?: AbortSignal): GatewayPeer {
 /**
  * Resolve one pinned agent preset against the host registry.
  *
- * The M1 member launch and the M2 teammate spawn share this one rule, so a pin
- * that neither can honour is refused with the same named failure before any
- * session exists.
+ * One rule for every launch this package starts: a pin this Host cannot honour
+ * is refused with a named failure before any session exists.
  * @param gateway - the preset-registry face.
  * @param preset - the pinned preset id, or undefined when nothing is pinned.
  * @returns the preset id to compose the session from, or undefined for no pin.
@@ -318,63 +313,4 @@ export async function listOfferedPresets(gateway: Pick<MemberRunGateway, 'listPr
   if (presets === undefined) return undefined
   const offered = presets.filter(preset => preset.broken === undefined).map(preset => preset.id)
   return offered.length === 0 ? undefined : offered
-}
-
-/** The member-launch faces a teammate spawn reuses for its pins. */
-export type TeammatePinFaces = Pick<MemberRunGateway, 'listPresets' | 'applyPermission' | 'selectModel'>
-
-/**
- * Stable Team-domain code per refused preset pin. A pin this Host cannot honour
- * must fail the spawn by name, never fall back to the deployment default.
- */
-const PRESET_PIN_CODES: Readonly<Record<string, string>> = {
-  'preset-registry-unavailable': 'TEAM_PRESET_REGISTRY_UNAVAILABLE',
-  'preset-unknown': 'TEAM_PRESET_UNKNOWN',
-  'preset-unavailable': 'TEAM_PRESET_UNAVAILABLE',
-}
-
-/**
- * Build the teammate pin applier over M1's own run faces.
- *
- * Reusing the member launch path is the point: a squad member pinned to preset
- * `xundong`, read-only, and one model route is spawned through exactly the
- * validation, permission dispatch, and model selection a member run uses.
- * @param faces - the member-launch faces.
- * @returns the applier the forked Team roster calls around one spawn.
- */
-export function createTeammatePins(faces: TeammatePinFaces): TeammatePins {
-  return {
-    async resolvePreset(preset) {
-      try {
-        return await resolvePinnedPreset(faces, preset)
-      } catch (error) {
-        if (isAgentsError(error)) {
-          throw new TeamError(error.message, PRESET_PIN_CODES[error.code] ?? 'TEAM_MEMBER_PIN_REJECTED', { cause: error })
-        }
-        throw error
-      }
-    },
-    async applyToSession(sessionId, request: SpawnTeammateRequest) {
-      // A half-parsed route must never select a model the user did not pin, so
-      // the route is validated before the session is touched at all.
-      const route = parseModelPin(request.model)
-      if (request.model !== undefined && route === undefined) {
-        throw new TeamError('member pins the model "' + request.model + '" which is not a usable route', 'TEAM_MODEL_PIN_INVALID')
-      }
-      if (request.permission !== undefined) {
-        try {
-          await faces.applyPermission(sessionId, request.permission)
-        } catch (error) {
-          throw new TeamError('the teammate session refused the pinned permission: ' + describe(error), 'TEAM_PERMISSION_PIN_FAILED', { cause: error })
-        }
-      }
-      if (route !== undefined) {
-        try {
-          await faces.selectModel(sessionId, route, request.reasoningEffort)
-        } catch (error) {
-          throw new TeamError('the teammate session refused the pinned model: ' + describe(error), 'TEAM_MODEL_PIN_FAILED', { cause: error })
-        }
-      }
-    },
-  }
 }

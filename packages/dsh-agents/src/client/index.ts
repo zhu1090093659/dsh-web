@@ -135,7 +135,7 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => registerAgentLocales(ctx as unknown as { locale?: LocaleRegistrar }), 'dsh-agents: dictionaries')
 
   const transport = createAgentsTransport()
-  const faces = createSessionFaces(transport)
+  const faces = createSessionFaces()
   bridgeSessionFaces(ctx, faces)
   ctx.effect(() => registerAgentsPanel(ctx, transport, faces), 'dsh-agents: sidebar row and page')
 

@@ -201,6 +201,20 @@ describe('removeTempProfile', () => {
     await unlink(join(outside, 'marker.txt'))
     await rmdir(outside)
   })
+
+  it('operator launches a binary that exits early and the temporary profile does not leak (#2051)', async () => {
+    // Given a binary that immediately exits before opening DevTools
+    const { readdir } = await import('node:fs/promises')
+    const dirTag = `dsh-browser-view-`
+    const existing = new Set((await readdir(tmpdir())).filter(name => name.startsWith(dirTag)))
+
+    // When ChromeProcess.launch rejects on early process exit
+    await expect(ChromeProcess.launch({ chromePath: process.execPath })).rejects.toThrow(/Chrome exited before its DevTools endpoint came up/)
+
+    // Then removeTempProfile cleaned up the created temporary profile directory
+    const remaining = (await readdir(tmpdir())).filter(name => name.startsWith(dirTag) && !existing.has(name))
+    expect(remaining).toEqual([])
+  })
 })
 describe('dispose decides on evidence', () => {
   it('operator disposes a browser whose launcher exited while DevTools still answers and the profile survives', async () => {

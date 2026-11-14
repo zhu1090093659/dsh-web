@@ -9,6 +9,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { WebSocket } from 'ws'
 import { CdpClient, CdpError, CDP_COMMAND_TIMEOUT_MS, CDP_HANDSHAKE_TIMEOUT_MS } from '../../src/core/cdp.ts'
 import { startFakeCdpEndpoint, startSilentEndpoint, type FakeCdpEndpoint, type SilentEndpoint } from '../helpers/fake-cdp-endpoint.ts'
 
@@ -21,6 +22,7 @@ function track<T extends FakeCdpEndpoint | SilentEndpoint>(endpoint: T): T {
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks()
   vi.useRealTimers()
   for (const endpoint of endpoints.splice(0)) await endpoint.close()
 })
@@ -91,5 +93,25 @@ describe('closed transport', () => {
     // Then it reports closed and refuses further commands with that reason
     expect(client.closed).toBe(true)
     await expect(client.send('Page.navigate')).rejects.toThrow('the DevTools client was closed')
+  })
+
+  it('operator sees transport marked closed and all pending commands failed immediately on a socket write error (#2051)', async () => {
+    // Given a connected client with an in-flight command when the next write fails asynchronously
+    const endpoint = track(await startFakeCdpEndpoint())
+    const client = await CdpClient.connect(endpoint.wsUrl, { handshakeTimeoutMs: 5_000, commandTimeoutMs: 5_000 })
+    const inFlight = client.send('Runtime.evaluate', { expression: '1+1' })
+    const spy = vi.spyOn(WebSocket.prototype, 'send') // test-standards-allow: no-ad-hoc-mock - CdpClient.connect owns ws.WebSocket without a socket factory seam; afterEach restores mocks
+    spy.mockImplementationOnce(function (_data: unknown, cb?: unknown) {
+      if (typeof cb === 'function') (cb as (err: Error) => void)(new Error('broken pipe'))
+    })
+
+    // When a command encounters a write failure callback
+    const failed = client.send('Page.navigate', { url: 'https://a.test/' })
+
+    // Then the failed write, the already-pending call, and subsequent calls reject and `closed` flips true
+    await expect(failed).rejects.toThrow('the DevTools socket write failed: broken pipe')
+    await expect(inFlight).rejects.toThrow('the DevTools socket write failed: broken pipe')
+    expect(client.closed).toBe(true)
+    await expect(client.send('Target.getTargets')).rejects.toThrow('the DevTools socket write failed: broken pipe')
   })
 })

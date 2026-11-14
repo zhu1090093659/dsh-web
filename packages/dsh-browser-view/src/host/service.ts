@@ -137,9 +137,12 @@ export interface BrowserViewServiceOptions {
 async function openIsolatedSession(options: OpenSessionOptions): Promise<BrowserSession> {
   const chrome = await ChromeProcess.launch({ viewport: options.viewport })
   let cdp: CdpClient
+  let unbindExit: (() => void) | undefined
   try {
     cdp = await CdpClient.connect(chrome.info.webSocketDebuggerUrl)
+    unbindExit = chrome.onExit(() => { cdp.close() })
   } catch (error) {
+    unbindExit?.()
     await chrome.dispose()
     throw error
   }
@@ -156,6 +159,7 @@ async function openIsolatedSession(options: OpenSessionOptions): Promise<Browser
     tabs,
     chrome,
     async dispose() {
+      unbindExit?.()
       await tabs.dispose()
       cdp.close()
       await chrome.dispose()
@@ -302,18 +306,19 @@ export class BrowserViewService implements BrowserViewBackend {
     }
   }
 
-  /** Whether a browser is currently running. */
+  /** Whether a browser is currently running with an open transport. */
   get running(): boolean {
-    return this.session !== undefined
+    return this.session !== undefined && !this.session.transport.closed
   }
 
   /** The current panel-facing state; safe to call before anything started. */
   state(): BrowserPanelState {
     const config = this.resolveConfig()
+    const live = this.session !== undefined && !this.session.transport.closed ? this.session : undefined
     const state: BrowserPanelState = {
-      tabs: this.session?.tabs.list() ?? [],
-      activeTabId: this.session === undefined ? null : this.displayedOrDefault(),
-      running: this.session !== undefined,
+      tabs: live?.tabs.list() ?? [],
+      activeTabId: live === undefined ? null : this.displayedOrDefault(),
+      running: live !== undefined,
       mode: config.mode,
     }
     if (config.mode === 'cdp' && config.cdpEndpoint !== undefined) {
@@ -519,6 +524,10 @@ export class BrowserViewService implements BrowserViewBackend {
    * @returns the tab view.
    */
   async tabFor(sessionId: string | undefined, tabId?: string): Promise<BrowserTabView> {
+    return await this.runWithSession(async () => await this.doTabFor(sessionId, tabId))
+  }
+
+  private async doTabFor(sessionId: string | undefined, tabId?: string): Promise<BrowserTabView> {
     const tabs = await this.requireTabs()
     const tab = await this.resolveTabFor(tabs, sessionId, tabId)
     // Every tool call that resolves a tab counts as activity. That is the whole
@@ -594,6 +603,10 @@ export class BrowserViewService implements BrowserViewBackend {
    * @returns the tab view.
    */
   async ensureTab(sessionId?: string): Promise<BrowserTabView> {
+    return await this.runWithSession(async () => await this.doEnsureTab(sessionId))
+  }
+
+  private async doEnsureTab(sessionId?: string): Promise<BrowserTabView> {
     const tabs = await this.requireTabs()
     if (sessionId !== undefined) {
       const bound = this.bindings.get(sessionId)
@@ -654,20 +667,22 @@ export class BrowserViewService implements BrowserViewBackend {
     tabId?: string,
     options: { newTab?: boolean } = {},
   ): Promise<{ outcome: ActionOutcome; tab: BrowserTabView }> {
-    // An explicit request for a new tab wins over a tab id: the caller is
-    // describing where the page should open, not which existing tab to reuse.
-    const tab = options.newTab === true
-      ? await this.openTab(sessionId)
-      : await this.tabFor(sessionId, tabId)
-    try {
-      const outcome = await navigateTo(this.scope(), tab.id, url)
-      await this.topUpAuthTicket(tab.id, url)
-      return { outcome: this.trace('navigate', outcome), tab: this.refreshTab(tab.id) }
-    } finally {
-      // Every navigation gets its own single retry: a later one may be a
-      // different page, and a rotated or expired cookie needs the same top-up.
-      this.authTopUpSpent.delete(tab.id)
-    }
+    return await this.runWithSession(async () => {
+      // An explicit request for a new tab wins over a tab id: the caller is
+      // describing where the page should open, not which existing tab to reuse.
+      const tab = options.newTab === true
+        ? await this.openTab(sessionId)
+        : await this.doTabFor(sessionId, tabId)
+      try {
+        const outcome = await navigateTo(this.scope(), tab.id, url)
+        await this.topUpAuthTicket(tab.id, url)
+        return { outcome: this.trace('navigate', outcome), tab: this.refreshTab(tab.id) }
+      } finally {
+        // Every navigation gets its own single retry: a later one may be a
+        // different page, and a rotated or expired cookie needs the same top-up.
+        this.authTopUpSpent.delete(tab.id)
+      }
+    })
   }
 
   /**
@@ -742,9 +757,11 @@ export class BrowserViewService implements BrowserViewBackend {
    * @returns the recorded outcome.
    */
   async click(sessionId: string | undefined, target: ElementTarget, tabId?: string): Promise<ActionOutcome> {
-    const tab = await this.tabFor(sessionId, tabId)
-    const outcome = await clickElement(this.scope(), tab.id, target)
-    return this.trace('click', outcome)
+    return await this.runWithSession(async () => {
+      const tab = await this.doTabFor(sessionId, tabId)
+      const outcome = await clickElement(this.scope(), tab.id, target)
+      return this.trace('click', outcome)
+    })
   }
 
   /**
@@ -756,9 +773,11 @@ export class BrowserViewService implements BrowserViewBackend {
    * @returns the recorded outcome.
    */
   async type(sessionId: string | undefined, text: string, target: ElementTarget = {}, tabId?: string): Promise<ActionOutcome> {
-    const tab = await this.tabFor(sessionId, tabId)
-    const outcome = await typeText(this.scope(), tab.id, text, target)
-    return this.trace('type', outcome)
+    return await this.runWithSession(async () => {
+      const tab = await this.doTabFor(sessionId, tabId)
+      const outcome = await typeText(this.scope(), tab.id, text, target)
+      return this.trace('type', outcome)
+    })
   }
 
   /**
@@ -769,9 +788,11 @@ export class BrowserViewService implements BrowserViewBackend {
    * @returns the recorded outcome.
    */
   async press(sessionId: string | undefined, key: string, tabId?: string): Promise<ActionOutcome> {
-    const tab = await this.tabFor(sessionId, tabId)
-    const outcome = await pressKey(this.scope(), tab.id, key)
-    return this.trace('press', outcome)
+    return await this.runWithSession(async () => {
+      const tab = await this.doTabFor(sessionId, tabId)
+      const outcome = await pressKey(this.scope(), tab.id, key)
+      return this.trace('press', outcome)
+    })
   }
 
   /**
@@ -782,9 +803,11 @@ export class BrowserViewService implements BrowserViewBackend {
    * @returns the recorded outcome.
    */
   async scroll(sessionId: string | undefined, delta: { deltaX?: number; deltaY?: number; x?: number; y?: number }, tabId?: string): Promise<ActionOutcome> {
-    const tab = await this.tabFor(sessionId, tabId)
-    const outcome = await scrollBy(this.scope(), tab.id, delta)
-    return this.trace('scroll', outcome)
+    return await this.runWithSession(async () => {
+      const tab = await this.doTabFor(sessionId, tabId)
+      const outcome = await scrollBy(this.scope(), tab.id, delta)
+      return this.trace('scroll', outcome)
+    })
   }
 
   /**
@@ -794,16 +817,18 @@ export class BrowserViewService implements BrowserViewBackend {
    * @returns the snapshot the model sees.
    */
   async snapshot(sessionId: string | undefined, tabId?: string): Promise<BrowserSnapshot> {
-    const tab = await this.tabFor(sessionId, tabId)
-    const tabs = await this.requireTabs()
-    const result: SnapshotResult = await buildSnapshot(this.transport(), tab.id, tabs.sessionOf(tab.id), {
-      url: tab.url,
-      title: tab.title,
+    return await this.runWithSession(async () => {
+      const tab = await this.doTabFor(sessionId, tabId)
+      const tabs = this.scope().tabs
+      const result: SnapshotResult = await buildSnapshot(this.transport(), tab.id, tabs.sessionOf(tab.id), {
+        url: tab.url,
+        title: tab.title,
+      })
+      // Record before returning: the very next call is usually the click that
+      // uses one of these refs.
+      tabs.setSnapshotRefs(tab.id, result.refs)
+      return result.snapshot
     })
-    // Record before returning: the very next call is usually the click that
-    // uses one of these refs.
-    tabs.setSnapshotRefs(tab.id, result.refs)
-    return result.snapshot
   }
 
   /**
@@ -836,25 +861,27 @@ export class BrowserViewService implements BrowserViewBackend {
     width: number
     height: number
   }> {
-    const tab = await this.tabFor(sessionId, tabId)
-    const tabs = await this.requireTabs()
-    // Plan against the size this tab really renders at, not the configured one:
-    // a tab adopted from a real browser keeps its window's viewport, so a clip
-    // that fits the page would be refused and the reported pixel size would
-    // describe an image that was never produced.
-    const viewport = await tabs.viewportOf(tab.id)
-    const plan = planScreenshot(viewport, request, this.jpegQuality)
-    const data = await tabs.captureScreenshot(tab.id, plan.params)
-    const current = tabs.list().find(candidate => candidate.id === tab.id) ?? tab
-    return {
-      tabId: current.id,
-      url: current.url,
-      title: current.title,
-      data,
-      mediaType: plan.mediaType,
-      width: plan.width,
-      height: plan.height,
-    }
+    return await this.runWithSession(async () => {
+      const tab = await this.doTabFor(sessionId, tabId)
+      const tabs = this.scope().tabs
+      // Plan against the size this tab really renders at, not the configured one:
+      // a tab adopted from a real browser keeps its window's viewport, so a clip
+      // that fits the page would be refused and the reported pixel size would
+      // describe an image that was never produced.
+      const viewport = await tabs.viewportOf(tab.id)
+      const plan = planScreenshot(viewport, request, this.jpegQuality)
+      const data = await tabs.captureScreenshot(tab.id, plan.params)
+      const current = tabs.list().find(candidate => candidate.id === tab.id) ?? tab
+      return {
+        tabId: current.id,
+        url: current.url,
+        title: current.title,
+        data,
+        mediaType: plan.mediaType,
+        width: plan.width,
+        height: plan.height,
+      }
+    })
   }
 
   /**
@@ -888,9 +915,16 @@ export class BrowserViewService implements BrowserViewBackend {
   /** Open tabs, for `browser_tabs`. */
   async listTabs(): Promise<{ tabs: BrowserTabView[]; activeTabId: string | null }> {
     if (this.session === undefined || this.session.transport.closed) {
-      // Isolated listing stays a cheap no-launch probe. Real-browser listing is
-      // the explicit discovery entry point for tabs that already exist.
-      if (this.resolveConfig().mode !== 'cdp') return { tabs: [], activeTabId: null }
+      // Isolated listing stays a cheap no-launch probe. Drop any dead stale
+      // handle so state()/running stop presenting closed tabs as healthy (#2051).
+      if (this.resolveConfig().mode !== 'cdp') {
+        if (this.session !== undefined && this.session.transport.closed) {
+          const stale = this.forgetSession()
+          if (stale !== undefined) void stale.dispose().catch(() => undefined)
+          this.broadcast({ v: 1, kind: 'state', state: this.state() })
+        }
+        return { tabs: [], activeTabId: null }
+      }
       await this.requireSession()
     }
     const session = this.session
@@ -1029,11 +1063,30 @@ export class BrowserViewService implements BrowserViewBackend {
     return session
   }
 
-  /** Start the browser once, recording failures for the panel. */
+  /**
+   * Run one operation against a live session; if a reused transport closes
+   * mid-command, recycle the dead session and replay once so transient socket
+   * drops self-heal in-flight (#2051).
+   */
+  private async runWithSession<T>(operation: () => Promise<T>): Promise<T> {
+    const session = await this.requireSession()
+    try {
+      return await operation()
+    } catch (error) {
+      if (!session.transport.closed || this.disposed) throw error
+      await this.requireSession()
+      return await operation()
+    }
+  }
+
+  /**
+   * Start the browser once (retrying isolated launches once on transient
+   * startup errors), recording persistent failures for the panel.
+   */
   private async startSession(): Promise<BrowserSession> {
     const generation = this.generation
     const config = this.resolveConfig()
-    try {
+    const attemptOpen = async (): Promise<BrowserSession> => {
       const session = await this.openSession({
         ...config,
         jpegQuality: this.jpegQuality,
@@ -1044,6 +1097,22 @@ export class BrowserViewService implements BrowserViewBackend {
       if (generation !== this.generation || this.disposed) {
         await session.dispose()
         throw new Error('the browser configuration changed while the session was opening')
+      }
+      return session
+    }
+    try {
+      let session: BrowserSession
+      try {
+        session = await attemptOpen()
+      } catch (firstError) {
+        const message = firstError instanceof Error ? firstError.message : String(firstError)
+        const canRetryIsolated =
+          config.mode === 'isolated' &&
+          generation === this.generation &&
+          !this.disposed &&
+          !/No Chrome binary found/i.test(message)
+        if (!canRetryIsolated) throw firstError
+        session = await attemptOpen()
       }
       this.session = session
       this.lastError = undefined

@@ -175,11 +175,16 @@ export class CdpClient implements CdpTransport {
         // `ws` calls back with `null` on a clean write and an Error otherwise;
         // treating null as a failure would reject every successful command.
         if (error === null || error === undefined) return
-        const call = this.pending.get(id)
-        if (call === undefined) return
-        this.pending.delete(id)
-        clearTimeout(call.timer)
-        call.reject(new CdpError(method, -1, error.message))
+        // A broken write means the socket is dead even before 'close' arrives;
+        // fail every pending command and flip `closed` immediately so callers
+        // replace the transport instead of reusing a zombie socket (#2051).
+        const reason = `the DevTools socket write failed: ${error.message}`
+        this.failAll(reason)
+        try {
+          this.socket.close()
+        } catch {
+          // Ignore close errors when tearing down a broken socket.
+        }
       })
     })
   }

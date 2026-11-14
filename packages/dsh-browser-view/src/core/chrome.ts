@@ -374,6 +374,21 @@ export class ChromeProcess {
   }
 
   /**
+   * Subscribe to child-process exit so attached transports mark themselves
+   * closed without waiting for idle WebSocket teardown (#2051).
+   */
+  onExit(listener: () => void): () => void {
+    if (this.child.exitCode !== null || this.child.signalCode !== null) {
+      listener()
+      return () => undefined
+    }
+    this.child.once('exit', listener)
+    return () => {
+      this.child.off('exit', listener)
+    }
+  }
+
+  /**
    * What the disposal achieved, once it ran. A caller that needs to know
    * whether a browser survived the shutdown reads this instead of assuming.
    * @returns the recorded outcome, or undefined before {@link dispose}.
@@ -448,6 +463,9 @@ function describeExitHint(port: number): string {
 
 /**
  * Terminate one child process, escalating to SIGKILL after a grace period.
+ * On Windows, `child.kill()` stops only the parent PID while Chrome's GPU and
+ * Crashpad children linger and lock the temp profile; invoke `taskkill /T /F`
+ * beside it so the whole process tree shuts down cleanly (#2051).
  * @param child - the process launched for this browser.
  */
 async function terminate(child: ChildProcess): Promise<void> {
@@ -456,6 +474,13 @@ async function terminate(child: ChildProcess): Promise<void> {
     child.once('exit', () => resolve())
     child.once('error', () => resolve())
   })
+  if (process.platform === 'win32' && child.pid !== undefined) {
+    await killProcessTreeWin32(child.pid)
+  }
+  if (child.exitCode !== null || child.signalCode !== null) {
+    await exited
+    return
+  }
   try {
     child.kill()
   } catch {
@@ -477,9 +502,36 @@ async function terminate(child: ChildProcess): Promise<void> {
   ])
 }
 
+/** Force-terminate a Windows process tree rooted at `pid`, ignoring already-gone errors. */
+async function killProcessTreeWin32(pid: number): Promise<void> {
+  await new Promise<void>((resolve) => {
+    let settled = false
+    const finish = (): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve()
+    }
+    const timer = setTimeout(finish, CHROME_EXIT_TIMEOUT_MS)
+    const unref = (timer as unknown as { unref?: () => void }).unref
+    if (typeof unref === 'function') unref.call(timer)
+    try {
+      const killer = spawn('taskkill', ['/PID', String(pid), '/T', '/F'], {
+        stdio: 'ignore',
+        windowsHide: true,
+      })
+      killer.once('close', finish)
+      killer.once('error', finish)
+    } catch {
+      finish()
+    }
+  })
+}
+
 /**
  * Delete the profile directory this launch created, without ever following a
- * link out of it.
+ * link out of it. Retries briefly on transient file locks left behind while
+ * browser subprocesses release handles (#2051).
  *
  * `fs.rm({ recursive: true })` is banned repository-wide: recursion walks a
  * junction or symlink happily and deletes whatever it points at, so a temp
@@ -489,13 +541,28 @@ async function terminate(child: ChildProcess): Promise<void> {
  * Failures are swallowed: a leftover file in the OS temp directory is a lesser
  * problem than failing the dispose path that the caller is awaiting.
  * @param dir - absolute path of the profile directory created by this launch.
+ * @param retryDelaysMs - backoff delays after locked removals.
  */
-export async function removeTempProfile(dir: string): Promise<void> {
+export async function removeTempProfile(
+  dir: string,
+  retryDelaysMs: readonly number[] = [50, 150, 350],
+): Promise<void> {
   // Only ever clean a directory this module created under the OS temp dir.
   const root = tmpdir()
   if (!dir.startsWith(root) || dir === root) return
-  await emptyDirectory(dir)
-  await rmdir(dir).catch(() => undefined)
+  for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
+    await emptyDirectory(dir)
+    try {
+      await rmdir(dir)
+      return
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException | undefined)?.code
+      if (code === 'ENOENT') return
+      const delay = retryDelaysMs[attempt]
+      if (delay === undefined) return
+      await new Promise<void>(resolve => { setTimeout(resolve, delay) })
+    }
+  }
 }
 
 /** Recursively empty one directory, refusing to descend through links. */

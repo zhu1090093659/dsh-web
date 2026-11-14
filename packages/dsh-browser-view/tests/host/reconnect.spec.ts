@@ -89,7 +89,12 @@ function harness(harnessOptions: HarnessOptions = {}): Harness {
       transport.onSend = call => {
         // A created tab navigates to about:blank and waits for its load; the
         // scripted browser settles it at once instead of after the grace period.
-        if (call.method === 'Page.navigate') transport.emit('Page.loadEventFired', {}, call.sessionId)
+        if (call.method === 'Page.navigate') {
+          if (typeof call.params.url === 'string') {
+            transport.emit('Page.frameNavigated', { frame: { url: call.params.url } }, call.sessionId)
+          }
+          transport.emit('Page.loadEventFired', {}, call.sessionId)
+        }
       }
       pendingTargets = []
       const tabs = new TabManager({
@@ -227,5 +232,63 @@ describe('isolated browser replacement', () => {
     expect(h.sessions[1]?.transport.callsOf('Target.createTarget')).toHaveLength(1)
     expect(recovered.id).not.toBe(first.id)
     expect(h.service.state()).toMatchObject({ mode: 'isolated', running: true })
+  })
+
+  it('operator recycles a reused session and replays in-flight when a mid-command write closes the transport (#2051)', async () => {
+    // Given an isolated session that looks connected until navigate triggers a socket write failure
+    const h = harness({ mode: 'isolated' })
+    await h.service.ensureTab('session-a')
+    const first = h.sessions[0]!
+    const prevOnSend = first.transport.onSend
+    first.transport.onSend = (call) => {
+      if (call.method === 'Page.navigate' && call.params.url === 'https://heal.test/') {
+        first.transport.close()
+        throw new Error('the DevTools socket write failed: EPIPE')
+      }
+      prevOnSend?.(call)
+    }
+
+    // When navigate runs once on the stale session
+    const result = await h.service.navigate('session-a', 'https://heal.test/')
+
+    // Then the dead session is disposed, a replacement launches, and the navigation succeeds on the first call
+    expect(h.sessions).toHaveLength(2)
+    expect(first.disposed).toBe(true)
+    expect(h.attempts).toEqual(['isolated', 'isolated'])
+    expect(result.outcome.summary).toContain('heal.test')
+    expect(result.tab.url).toBe('https://heal.test/')
+  })
+
+  it('operator retries isolated startup once on a transient launch failure (#2051)', async () => {
+    // Given an isolated browser where the first launch fails transiently on a port lock
+    const h = harness({ mode: 'isolated' })
+    h.failNext(new Error('Chrome exited before its DevTools endpoint came up'))
+
+    // When the first tool call triggers startup
+    const tab = await h.service.ensureTab('session-a')
+
+    // Then isolated mode recovers automatically on the second attempt without failing the call
+    expect(h.attempts).toEqual(['isolated', 'isolated'])
+    expect(h.sessions).toHaveLength(1)
+    expect(tab.id).toBe('tab-1-1')
+    expect(h.service.state()).toMatchObject({ mode: 'isolated', running: true })
+  })
+
+  it('operator sees running: false and clears dead isolated handle on listTabs without cold-starting (#2051)', async () => {
+    // Given an isolated session whose transport then died cleanly
+    const h = harness({ mode: 'isolated' })
+    await h.service.ensureTab('session-a')
+    expect(h.service.running).toBe(true)
+    expect(h.service.state().running).toBe(true)
+
+    // When the transport closes
+    h.sessions[0]?.transport.close()
+
+    // Then state reports stopped immediately, and listTabs drops the zombie without launching a new Chrome
+    expect(h.service.running).toBe(false)
+    expect(h.service.state()).toMatchObject({ mode: 'isolated', running: false, tabs: [], activeTabId: null })
+    expect(await h.service.listTabs()).toEqual({ tabs: [], activeTabId: null })
+    expect(h.sessions).toHaveLength(1)
+    expect(h.sessions[0]?.disposed).toBe(true)
   })
 })

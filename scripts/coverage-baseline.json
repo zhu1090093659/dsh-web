@@ -7,7 +7,6 @@
     "dsh-i18n": { "lines": 100, "statements": 100, "functions": 100, "branches": 100 },
     "dsh-liangshen": { "lines": 85.14, "statements": 82.39, "functions": 84.39, "branches": 73.92 },
     "dsh-market": { "lines": 86.43, "statements": 82.81, "functions": 78.64, "branches": 74 },
-    "dsh-message-edit": { "lines": 95.34, "statements": 91.91, "functions": 77.27, "branches": 83.82 },
     "dsh-plugin-manager": { "lines": 86.32, "statements": 83.01, "functions": 77.8, "branches": 77.08 },
     "dsh-remote-bridge": { "lines": 90.6, "statements": 85.22, "functions": 87.21, "branches": 80.87 },
     "dsh-remote-web-ui": { "lines": 74.92, "statements": 71.39, "functions": 68.9, "branches": 65.64 },

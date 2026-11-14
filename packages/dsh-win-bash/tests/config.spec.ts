@@ -7,7 +7,6 @@ import {
   CONFIG_DEFAULTS,
   DEFAULT_ENABLE_RUN_IN_BACKGROUND,
   DEFAULT_REPLACE_PWSH,
-  DEFAULT_SYNC_WITH_LIANGSHEN,
   DEFAULT_TIMEOUT_MS,
   TIMEOUT_MAX_MS,
   TIMEOUT_MIN_MS,
@@ -43,16 +42,6 @@ describe('configuration resolution', () => {
     expect(config.description).toBe('Run this project shell command.')
   })
 
-  it('operator mounting the shipped default gets the LiangShen availability gate on', () => {
-    // Given a profile row that supplies no config,
-    // When the config is resolved,
-    const config = resolveConfig(undefined)
-    // Then the gate ships ON: win_bash follows the preset by default, and the
-    // escape hatch is a deliberate opt-out rather than the shipped state.
-    expect(config.syncWithLiangShen).toBe(DEFAULT_SYNC_WITH_LIANGSHEN)
-    expect(config.syncWithLiangShen).toBe(true)
-  })
-
   it('operator mounting the shipped default gets the host pwsh replacement on', () => {
     // Given a profile row that supplies no config,
     const config = resolveConfig(undefined)
@@ -69,7 +58,6 @@ describe('configuration resolution', () => {
     const config = resolveConfig({ replacePwsh: false })
     // Then the opt-out survives resolution while the defaults hold elsewhere.
     expect(config.replacePwsh).toBe(false)
-    expect(config.syncWithLiangShen).toBe(DEFAULT_SYNC_WITH_LIANGSHEN)
   })
 
   it('operator mounting the shipped default gets the background capability on', () => {
@@ -91,14 +79,13 @@ describe('configuration resolution', () => {
     expect(config.timeoutMs).toBe(DEFAULT_TIMEOUT_MS)
   })
 
-  it('operator turning the escape hatch off gets that value through to the running config', () => {
-    // Given a row that opts out of the availability gate,
+  it('operator supplying the retired sync switch gets it ignored', () => {
+    // Given a profile row that still carries the retired availability key,
     // When the config is resolved,
-    const config = resolveConfig({ syncWithLiangShen: false })
-    // Then the opt-out survives resolution, so the entry skips the gate.
-    expect(config.syncWithLiangShen).toBe(false)
-    // And every other field keeps its default.
+    const config = resolveConfig({ syncWithLiangShen: false } as never)
+    // Then the stray key is not a rejection, and every real field keeps its default.
     expect(config.timeoutMs).toBe(DEFAULT_TIMEOUT_MS)
+    expect(config.replacePwsh).toBe(DEFAULT_REPLACE_PWSH)
   })
 })
 
@@ -166,14 +153,6 @@ describe('configuration rejection', () => {
     const violations = validateConfig({ ...CONFIG_DEFAULTS, enableRunInBackground: 'yes' as unknown as boolean })
     // Then the offending field is named, so an operator can fix the row.
     expect(violations).toEqual([{ field: 'enableRunInBackground', message: 'must be a boolean' }])
-  })
-
-  it('operator supplying a non-boolean sync switch gets a rejection naming the field', () => {
-    // Given a row whose sync switch is not a boolean,
-    // When the config is validated,
-    const violations = validateConfig({ ...CONFIG_DEFAULTS, syncWithLiangShen: 'yes' as unknown as boolean })
-    // Then the offending field is named, so an operator can fix the row.
-    expect(violations).toEqual([{ field: 'syncWithLiangShen', message: 'must be a boolean' }])
   })
 
   it('operator supplying a valid maximum gets acceptance rather than an off-by-one rejection', () => {

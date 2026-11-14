@@ -167,7 +167,6 @@ const MANIFEST = [
     source: 'shared/client/telemetry.ts',
     targets: [
       'packages/dsh-market/src/client/telemetry.ts',
-      'packages/dsh-message-edit/src/client/telemetry.ts',
       'packages/dsh-plugin-manager/src/client/telemetry.ts',
       'packages/dsh-session-id/src/client/telemetry.ts',
       'packages/dsh-skill-explorer/src/client/telemetry.ts',

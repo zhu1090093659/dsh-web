@@ -34,15 +34,6 @@ export const STDERR_MIN_BYTES = 1024
 export const STDERR_MAX_BYTES = 512 * 1024
 
 /**
- * Whether win_bash follows the LiangShen agent preset's declaration by
- * default. When true (the shipped setting) the tool registers only for a
- * deployment that declares the `liangshen` preset; false skips the gate and
- * always registers, which is the escape hatch for a session that wants this
- * shell without the preset.
- */
-export const DEFAULT_SYNC_WITH_LIANGSHEN = true
-
-/**
  * Model-facing tool description. Active voice; states the shell preference and
  * the persistence guarantee, so a model knows which shell to reach for before
  * it knows anything else about this tool.
@@ -97,8 +88,6 @@ export interface WinBashConfigInput {
   maxStderrBytes?: number
   /** Model-facing tool description override. */
   description?: string
-  /** Whether the tool's availability follows the LiangShen preset declaration. */
-  syncWithLiangShen?: boolean
   /** Whether the host's pwsh tool is hidden while win_bash is registered. */
   replacePwsh?: boolean
   /** Whether run_in_background is available (also requires a job registry). */
@@ -115,8 +104,6 @@ export interface WinBashConfig {
   maxStderrBytes: number
   /** Model-facing tool description. */
   description: string
-  /** Whether the tool's availability follows the LiangShen preset declaration. */
-  syncWithLiangShen: boolean
   /** Whether the host's pwsh tool is hidden while win_bash is registered. */
   replacePwsh: boolean
   /** Whether run_in_background is available (also requires a job registry). */
@@ -129,7 +116,6 @@ export const Config: z<WinBashConfigInput, WinBashConfig> = z.object({
   maxStdoutBytes: z.number().min(STDOUT_MIN_BYTES).max(STDOUT_MAX_BYTES).default(DEFAULT_MAX_STDOUT_BYTES),
   maxStderrBytes: z.number().min(STDERR_MIN_BYTES).max(STDERR_MAX_BYTES).default(DEFAULT_MAX_STDERR_BYTES),
   description: z.string().default(DEFAULT_DESCRIPTION),
-  syncWithLiangShen: z.boolean().default(DEFAULT_SYNC_WITH_LIANGSHEN),
   replacePwsh: z.boolean().default(DEFAULT_REPLACE_PWSH),
   enableRunInBackground: z.boolean().default(DEFAULT_ENABLE_RUN_IN_BACKGROUND),
 })
@@ -140,7 +126,6 @@ export const CONFIG_DEFAULTS: WinBashConfig = {
   maxStdoutBytes: DEFAULT_MAX_STDOUT_BYTES,
   maxStderrBytes: DEFAULT_MAX_STDERR_BYTES,
   description: DEFAULT_DESCRIPTION,
-  syncWithLiangShen: DEFAULT_SYNC_WITH_LIANGSHEN,
   replacePwsh: DEFAULT_REPLACE_PWSH,
   enableRunInBackground: DEFAULT_ENABLE_RUN_IN_BACKGROUND,
 }
@@ -195,9 +180,6 @@ export function validateConfig(config: WinBashConfig): ConfigViolation[] {
   bounded('maxStderrBytes', STDERR_MIN_BYTES, STDERR_MAX_BYTES)
   if (typeof config.description !== 'string' || config.description.trim() === '') {
     violations.push({ field: 'description', message: 'must be a non-empty string' })
-  }
-  if (typeof config.syncWithLiangShen !== 'boolean') {
-    violations.push({ field: 'syncWithLiangShen', message: 'must be a boolean' })
   }
   if (typeof config.replacePwsh !== 'boolean') {
     violations.push({ field: 'replacePwsh', message: 'must be a boolean' })

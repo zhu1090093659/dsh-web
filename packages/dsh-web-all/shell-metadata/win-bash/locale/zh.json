@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Windows Bash",
-    "description": "Windows 上为梁神预设启用 bash"
+    "description": "为 Windows 会话提供常驻 bash"
   }
 }

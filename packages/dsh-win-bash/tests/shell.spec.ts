@@ -300,7 +300,7 @@ describe.skipIf(!RUNNABLE)('the persistent shell over the real payload', () => {
     const owner = {}
     const target = join(binDir(), '..', '..', 'etc')
     const result = await shells.run(owner, { bash: bashPath(), bin: binDir() }, process.cwd(),
-      "cd '" + target.replace(/\\/g, '/') + "' && pwd -W && ls fstab'", BUDGET)
+      "cd '" + target.replace(/\\/g, '/') + "' && pwd -W && ls fstab", BUDGET)
     // When the command runs,
     // Then it resolved inside the payload, so a Windows path with backslashes
     // reached bash intact.

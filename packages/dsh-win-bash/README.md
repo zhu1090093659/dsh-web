@@ -85,11 +85,11 @@ listed shell - so the mnemonic the `win_bash` description carries is
 - **Per session, never process-wide.** The withdrawal is a scoped tool
   restriction on the sessions this plugin serves. Anything else in the same
   deployment keeps the surface it composed.
-- **Only while `win_bash` is actually mounted.** A refused availability gate,
-  a payload that fails verification, a non-Windows host, or a row with
-  `replacePwsh: false` leaves `pwsh` exactly where it was. Withdrawing the
-  only usable shell of a deployment that ends up with no replacement shell
-  would leave the session with neither.
+- **Only while `win_bash` is actually mounted.** A payload that fails
+  verification, a non-Windows host, or a row with `replacePwsh: false` leaves
+  `pwsh` exactly where it was. Withdrawing the only usable shell of a
+  deployment that ends up with no replacement shell would leave the session
+  with neither.
 - **Windows only.** On POSIX the host shell is bash, win_bash does not mount,
   and this logic produces no restriction, no listener and no effect at all.
 - **Reversible.** Every restriction is lifted when its session is disposed and
@@ -100,30 +100,9 @@ preference with the tool description alone.
 
 ## Availability
 
-The tool serves sessions that run the LiangShen (梁神) agent preset, so its
-availability follows that preset's **declaration**. At mount the plugin asks the
-harness's agent-preset registry whether a preset with id `liangshen` is
-declared; when it is, the tool registers, and when it is not, no tool is
-registered at all and one info line states the reason. A tool that mounted and
-refused every call would teach the model a capability the session does not have,
-which is worse than an honest absence.
+The tool registers on any supported Windows x64 host once the vendored payload verifies against its manifest and the row's configuration resolves. Availability follows the platform, the shipped payload and the configuration alone — no preset needs to be declared and no other plugin row needs to be enabled.
 
-Three verdicts are distinguishable in the log, because they need different
-actions: the preset is declared (registered), no such preset is declared (enable
-the `dsh-liangshen` plugin row), and no usable agent-preset registry is
-published in this deployment. Setting `syncWithLiangShen: false` skips the gate
-entirely and always registers the tool.
-
-The verdict waits for the host plugin tree to settle and then reads the roster.
-A read that already carries the declaration decides at once; one that does not is
-re-read on a short bounded schedule, because the declaring plugin publishes its
-preset off its own activation return and the two can therefore land in either
-order. A late declaration is never turned into a refusal.
-
-The registry declares no roster-change event, so the verdict is decided once per
-mount. Toggling the LiangShen row takes effect for `win_bash` after the plugin
-manager refreshes the profile — the same freshness model the rest of the family
-uses, not an immediate one.
+A host that is not Windows x64, or a payload that fails verification, refuses the mount with one warning line, and an invalid configuration is rejected before registration. Each leaves `win_bash` unregistered rather than mounting a tool whose every call would fail.
 
 ## Install
 
@@ -149,7 +128,6 @@ so a POSIX profile can carry the same composition without mounting anything.
 | `maxStderrBytes` | 32768 | Visible stderr byte budget (1024..524288). |
 | `enableRunInBackground` | true | Whether `run_in_background` is offered. The parameter is advertised only when this is true and the deployment composes a job registry; a deployment without one never offers it, and a call that asks for it anyway is refused rather than run in the foreground. |
 | `description` | built-in | Model-facing tool description; deployments may describe their own environment. |
-| `syncWithLiangShen` | true | When true, the tool registers only while the `liangshen` agent preset is declared; false skips that gate and always registers. |
 | `replacePwsh` | true | While this tool is registered, withdraw the host's `pwsh` tool from each session's model-facing surface. Visibility only: a deliberate `pwsh` call still runs. False lists both shells. |
 
 ## Tool interface

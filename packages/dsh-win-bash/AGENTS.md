@@ -7,25 +7,18 @@ packages/AGENTS.md 的全局/包级规则。
 
 - **host-only 包**：只有 `src/index.ts`（host 半区）与 `src/shell.ts`、`src/tool.ts`、
   `src/background.ts`、`src/protocol.ts`、`src/runtime.ts`、`src/integrity.ts`、
-  `src/config.ts`、`src/gate.ts`，以及 `src/dsh-home.ts`（sync-shared 生成的同步副本，
-  禁止手改）。
+  `src/config.ts`，以及 `src/dsh-home.ts`（sync-shared 生成的同步副本，禁止手改）。
   没有 `src/client/`，因此 `shared/tsdown.client.ts` 自动跳过浏览器 bundle；`dsh.client` 不声明。
-- **可用性门控跟随梁神预设声明**（`src/gate.ts`）：挂载时向 agent-preset 注册表
-  查询是否声明了 id `liangshen` 的预设，未声明即不注册工具（绝不注册一个总会报错
-  的工具），`syncWithLiangShen: false` 为逃生口。门控读的是注册表的公开 `list()`
-  （定义名册，含激活失败的条目），不依赖该 SDK 包——只用结构化镜像，签名依据写在
-  `gate.ts` 模块头。
-- **门控不得从 apply 里 await**：注册表的 `list()` 会对每个已声明预设做审计，必要时
-  await 宿主 loader 树（`diagnostic` → `loader.await()`），而当前行的激活本身正是那棵树
-  在等的任务，两边互等即死锁。因此 `apply` 同步返回，判定在 `mountWithGate` 的续延里
-  完成；fiber 在判定期间被销毁就不再注册。注册表关闭时不挂声明变更事件（它只声明
-  `agent-preset/selected`，那是单会话的持久日志事件，与名册无关），开关切换经插件管理器
-  刷新行后生效。
-- **门控的两段等待都有上限**：先 `settleHostTree` 等宿主 loader 树（同一组内的行并发挂载，
-  不能假设梁神行先跑完），再读名册；首读未命中则按 `GATE_POLL_INTERVAL_MS` 在
-  `GATE_DECLARATION_WAIT_MS` 内重读——声明方插件在自己的激活返回之后才发布预设，两者
-  先后不固定，迟到的声明不能被判成拒绝。两段都有界，任何一段超时都不挂死宿主启动。
-  `GateOptions` 是测试缩减这些时限的唯一入口，不要在测试里用真实秒级等待。
+- **可用性只跟随平台、载荷与配置**：`apply()` 在随包载荷通过 `prepareRuntime` 校验、
+  配置经 `resolveConfig` 通过之后，直接 `registerWinBash` 注册工具；不查询任何 agent-preset
+  注册表，也不要求 dsh-liangshen 插件行或预设处于启用/声明状态。平台不支持（非 Windows x64）
+  或载荷校验失败即拒绝挂载，配置非法即抛错。
+- **注册失败被捕获记 error，不逃逸**：`apply()` 同步注册；工具注册失败经 try/catch 捕获并
+  记 error 日志，不得从 apply 逃逸成未处理拒绝、拖垮宿主启动。`registerWinBash` 内部经
+  `ctx.effect` 持有工具注册与 shell 生命周期，卸载时先注销工具再 `disposeAll` 回收 shell，
+  不留注册泄漏。
+- **遗留配置键被忽略**：旧 profile 行若仍带 `syncWithLiangShen`，schema 不再声明该键，
+  `resolveConfig` 忽略它且不抛错，工具照常注册。
 - **工具名固定 `win_bash`，行 id 固定 `dsh-win-bash`**，且行的 `name` 恰好等于包名。
   改名会撞上宿主自带的 `bash`/`pwsh` 行，或让 loader 静默丢弃同行 id 的其它行
   （见 packages/AGENTS.md 的行 id 纪律）。
@@ -74,7 +67,7 @@ packages/AGENTS.md 的全局/包级规则。
   provider 的托管进程范围内，销毁该范围会杀掉其中所有存活进程，所以壳内 `&` 起的任务会随壳
   而死。后台一律走独立 pinned 进程 + `ctx.jobs` 注册，输出经 registry 的 pull 源（
   `handle.collected.*.readFrom`），不得自行无界缓冲。
-- **`ctx.jobs` 只做结构化镜像**（同 `src/gate.ts` 的先例）：本包不依赖 `@deepseek-ai/dsh-jobs`，
+- **`ctx.jobs` 只做结构化镜像**：本包不依赖 `@deepseek-ai/dsh-jobs`，
   只用 `src/background.ts` 头部抄录的公开签名。组合没有该服务时**诚实拒绝**
   （`BACKGROUND_UNAVAILABLE`），绝不静默退化到前台执行——那会让调用方等到命令结束，
   然后随那个 shell 一起死。`enableRunInBackground` 与「是否有 registry」共同决定该参数是否

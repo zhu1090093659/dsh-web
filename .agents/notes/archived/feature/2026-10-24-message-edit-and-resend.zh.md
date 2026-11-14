@@ -1,6 +1,7 @@
 # Agent Note: 文本消息编辑重发使用精确前缀 fork
 
 Status: implemented
+Archived: 2026-11-14
 
 替代关系检查：[better-session-replaces-chat-recovery](../architecture/2026-08-27-better-session-replaces-chat-recovery.md) 曾因与 better-session 重叠而让旧的最后消息编辑器退役，[drop-deprecated-better-session-integration](../simplification/2026-09-02-drop-deprecated-better-session-integration.md) 后来又移除了那个外部集成。本决定不逆转其中任何一项：`dsh-chat-recovery` 及其重试监督器保持退役，better-session 保持移除。本 Note 归属 `dsh-message-edit` 这项独立的任意历史回合、纯文本编辑能力。
 

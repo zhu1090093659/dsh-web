@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-10-16-dsh-win-bash-pinned-bash.md: ed0de5ca848843f77cec038ae3caad9823981cf0
-2026-10-16-dsh-win-bash-pinned-bash.zh.md: 5aa11923d6e4a099dd458c070483ce6a7a34f5fa
+2026-10-16-dsh-win-bash-pinned-bash.md: 30033ac1a722bb86a2db0847567684512d1ab6e8
+2026-10-16-dsh-win-bash-pinned-bash.zh.md: e28c4b92c0a3d44fb407e9200e3dd3473c5b82e2

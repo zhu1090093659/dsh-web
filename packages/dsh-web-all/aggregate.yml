@@ -57,9 +57,11 @@ patchFrom:
   - ../dsh-skill-explorer
   - ../dsh-usage
   - ../dsh-session-archive
-  - ../dsh-message-edit
-  # dsh-win-bash 是 host-only 包（无 src/client/），排在 dsh-liangshen 之后：
-  # 它的 win_bash 可用性跟随梁神预设的声明状态，门控在挂载后异步求值。
+  # dsh-message-edit 已彻底移除（包目录删除，消息编辑并重发不再提供）：聚合不再挂载它
+  # 的行、也不再依赖它；它没有 tombstones 子路径与 shell-metadata 展示资源，因此不留
+  # 退役空壳，老 profile 里残留的行名在 import 阶段硬报错。
+  # dsh-win-bash 是 host-only 包（无 src/client/）：win_bash 的可用性只跟随平台与随包
+  # 载荷，与是否启用梁神预设无关，注册在 apply 内同步完成。
   - ../dsh-win-bash
   # dsh-i18n 语言包无宿主行为、无时序依赖，放列表末尾：注册 ru 语言与全部
   # 家族插件命名空间的 ru 字典（见 packages/dsh-i18n）。
@@ -92,7 +94,6 @@ deps:
   - ../dsh-skill-explorer
   - ../dsh-usage
   - ../dsh-session-archive
-  - ../dsh-message-edit
   - ../dsh-win-bash
   - ../dsh-web-settings
   - ../dsh-i18n
@@ -159,7 +160,7 @@ shellNotes:
   - {"id":"task-board-github","title":{"zh":"GitHub 同步","en":"GitHub sync"},"zh":"把 GitHub 议题同步进看板","en":"Sync GitHub issues into the board.","ru":"Синхронизация задач GitHub с доской."}
   - {"id":"update","title":{"zh":"版本升级","en":"Version upgrade"},"zh":"检查并升级已装扩展的新版本","en":"Check for and install newer releases of the bundle.","ru":"Проверка и установка новых версий сборки."}
   - {"id":"usage","title":{"zh":"用量统计","en":"Usage"},"zh":"查看令牌与会话用量统计","en":"Token and session usage statistics.","ru":"Статистика использования токенов и сессий."}
-  - {"id":"win-bash","title":{"zh":"Windows Bash","en":"Windows bash"},"zh":"Windows 上为梁神预设启用 bash","en":"Bash tool support for the Liangshen preset on Windows.","ru":"Поддержка bash для пресета «Ляншэнь» в Windows."}
+  - {"id":"win-bash","title":{"zh":"Windows Bash","en":"Windows bash"},"zh":"为 Windows 会话提供常驻 bash","en":"A persistent bash for Windows sessions.","ru":"Постоянный bash для сессий Windows."}
   - {"id":"community-plugins","title":{"zh":"社区插件","en":"Community plugins"},"zh":"浏览社区插件与一键安装","en":"Browse community plugins and install them in one click.","ru":"Просмотр плагинов сообщества и установка в один клик."}
   - {"id":"pet","title":{"zh":"桌面宠物","en":"Desktop pet"},"zh":"桌面上的互动宠物","en":"An interactive pet on the desktop.","ru":"Интерактивный питомец на рабочем столе."}
   - {"id":"preset-center","title":{"zh":"预设中心","en":"Preset center"},"zh":"浏览并启用社区预设","en":"Browse and enable community presets.","ru":"Просмотр и включение пресетов сообщества."}

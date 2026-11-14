@@ -8,8 +8,9 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 
 /**
  * Pinned union of dsh.client.inject module ids across every workspace
- * package. Re-verified for the 0.2.2-rc.3 cohort (the sixteen names are
- * unchanged from rc.2):
+ * package. Re-verified for the 0.2.2-rc.3 cohort (sixteen names, unchanged
+ * from rc.2, until message-edit's removal dropped the three it alone injected,
+ * leaving thirteen):
  * each name is a browser
  * roster row of the shell composition (dsh-web-app cordis.patch.yml
  * dsh.client rows) or a frozen static module (dsh-client-ui-slots;
@@ -25,9 +26,10 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
  * `main` seat plus the ctx.layout panel-navigation service the board selects
  * its page through, so the row must be live before the board can contribute
  * (the board's own registrations wait on the seat declaration either way).
- * dsh-client-ui-chat and dsh-client-ui-session joined with message-edit:
- * ui-chat owns conversation.chat.turnTail, while ui-session supplies the
- * Session standard props and useAccess gate that the editor consumes.
+ * dsh-client-ui-chat and dsh-client-ui-session left with message-edit: only
+ * that package injected them (ui-chat for the conversation.chat.turnTail seat
+ * and ui-session for the Session standard props and useAccess gate the editor
+ * consumed), so no workspace package declares them now that it is gone.
  * dsh-client-ui-sidebar-right joined with browser-view's live tab: it is the
  * ui-sidebar-right row of dsh-web-app and the owner of ctx.sidebarRightTabs,
  * the service that tab type registers into, so the row must be live before
@@ -42,11 +44,8 @@ const APPROVED_INJECT_MODULES = [
   '@deepseek-ai/dsh-client-connection',
   '@deepseek-ai/dsh-client-locale',
   '@deepseek-ai/dsh-client-store',
-  '@deepseek-ai/dsh-client-ui-chat',
-  '@deepseek-ai/dsh-client-ui-conversation',
   '@deepseek-ai/dsh-client-ui-layout',
   '@deepseek-ai/dsh-client-ui-renderer',
-  '@deepseek-ai/dsh-client-ui-session',
   '@deepseek-ai/dsh-client-ui-settings',
   '@deepseek-ai/dsh-client-ui-sidebar',
   '@deepseek-ai/dsh-client-ui-sidebar-right',

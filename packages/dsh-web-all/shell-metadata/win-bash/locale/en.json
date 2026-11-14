@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Windows bash",
-    "description": "Bash tool support for the Liangshen preset on Windows."
+    "description": "A persistent bash for Windows sessions."
   }
 }

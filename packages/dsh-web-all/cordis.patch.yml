@@ -84,11 +84,6 @@
     - id: web-ui-session-archive
       name: '@linxin666/dsh-session-archive'
 
-# from ../dsh-message-edit
-- insert:
-    - id: web-ui-message-edit
-      name: '@linxin666/dsh-client-ui-message-edit'
-
 # from ../dsh-win-bash
 - insert:
     - id: web-ui-win-bash

@@ -11,22 +11,20 @@
  * The platform is passed EXPLICITLY in the module-level cases rather than read
  * from the runner, because the contract is "Windows hides, POSIX does not" - a
  * suite that inherited process.platform could only ever assert one half of it.
- * The mount cases do carry a Windows gate, since there the decision is
- * production's own. Nothing here waits on real time: mode switches are driven
- * by the module's own listener through the structural event trigger.
+ * The registration cases do carry a Windows gate, since there the mount is
+ * production's own registration path. Nothing here waits on real time: mode
+ * switches are driven by the module's own listener through the structural
+ * event trigger.
  */
 import { describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
-import { installPwshReplacement, mountWithGate } from '../src/index.ts'
+import { installPwshReplacement, registerWinBash } from '../src/index.ts'
 import { CONFIG_DEFAULTS, resolveConfig } from '../src/config.ts'
 import { resolveRuntime } from '../src/runtime.ts'
 
 const runtime = resolveRuntime({ platform: process.platform, arch: process.arch })
 const isWindowsX64 = process.platform === 'win32' && process.arch === 'x64'
-
-/** Gate deadlines small enough to exercise the bounded waits without a slow suite. */
-const FAST_GATE = { settleTimeoutMs: 200, readTimeoutMs: 200, declarationWaitMs: 20, pollIntervalMs: 5 } as const
 
 /** One session's scoped tools view, its sandbox mode, and what it has received. */
 interface Session {
@@ -563,15 +561,15 @@ describe('the host pwsh replacement off Windows', () => {
   })
 })
 
-describe('the replacement follows the win_bash mount', () => {
-  const gateIt = isWindowsX64 ? it : it.skip
+describe('the replacement follows the win_bash registration', () => {
+  const registrationIt = isWindowsX64 ? it : it.skip
 
   /**
-   * A context that records the registrations one gate verdict produces.
-   * @param declaring - whether the stand-in preset roster declares liangshen.
+   * A context that records the registrations one mount produces, carrying a
+   * full-access session so the replacement has somewhere to act.
    * @returns the context, the registered names, and the session's state.
    */
-  function mountContext(declaring: boolean) {
+  function mountContext() {
     const { agent, state } = session(['win_bash', 'pwsh'])
     const { ctx } = hostContext([{ agent, state }])
     const registered: string[] = []
@@ -579,21 +577,16 @@ describe('the replacement follows the win_bash mount', () => {
       ...(ctx as unknown as Record<string, unknown>),
       tools: { register: (tool: { name: string }) => { registered.push(tool.name); return () => {} } },
       subprocess: { spawn: () => { throw new Error('this host must never reach a spawn') } },
-      get: (service: string) => {
-        if (service === 'agentPresets') return { list: async () => [{ id: declaring ? 'liangshen' : 'standard' }] }
-        return (ctx as unknown as { get: (key: string) => unknown }).get(service)
-      },
     } as unknown as Context
     return { context, registered, state }
   }
 
-  gateIt('operator whose gate admits win_bash gets the host pwsh tool withdrawn in the same mount', async () => {
-    // Given a Windows deployment that declares the liangshen preset and serves
-    // a full-access session,
-    const { context, registered, state } = mountContext(true)
+  registrationIt('operator whose win_bash registers gets the host pwsh tool withdrawn in the same mount', () => {
+    // Given a Windows deployment that serves a full-access session,
+    const { context, registered, state } = mountContext()
     if ('code' in runtime) throw new Error('this host cannot serve the vendored payload')
-    // When the entry mounts,
-    await mountWithGate(context, resolveConfig(undefined), runtime, FAST_GATE)
+    // When the entry registers the tool,
+    registerWinBash(context, resolveConfig(undefined), runtime)
     // Then win_bash is on the wire and pwsh is not: the ladder's top rung is
     // the only shell the session is offered.
     expect(registered).toEqual(['win_bash'])
@@ -601,26 +594,12 @@ describe('the replacement follows the win_bash mount', () => {
     expect(state.names).toEqual(['win_bash'])
   })
 
-  gateIt('operator whose gate refuses win_bash keeps the host pwsh tool untouched', async () => {
-    // Given a Windows deployment whose roster declares no liangshen preset,
-    const { context, registered, state } = mountContext(false)
+  registrationIt('operator turning replacement off gets both shells side by side', () => {
+    // Given a deployment that opts out of replacement,
+    const { context, registered, state } = mountContext()
     if ('code' in runtime) throw new Error('this host cannot serve the vendored payload')
-    // When the entry mounts,
-    await mountWithGate(context, resolveConfig(undefined), runtime, FAST_GATE)
-    // Then nothing registered AND nothing was hidden: withdrawing the only
-    // usable shell of a deployment that ends up with no replacement shell
-    // would leave the session with neither.
-    expect(registered).toEqual([])
-    expect(state.restrictions).toEqual([])
-    expect(state.names).toEqual(['win_bash', 'pwsh'])
-  })
-
-  gateIt('operator turning replacement off gets both shells side by side', async () => {
-    // Given a deployment that declares the preset and opts out of replacement,
-    const { context, registered, state } = mountContext(true)
-    if ('code' in runtime) throw new Error('this host cannot serve the vendored payload')
-    // When the entry mounts,
-    await mountWithGate(context, resolveConfig({ replacePwsh: false }), runtime, FAST_GATE)
+    // When the entry registers the tool,
+    registerWinBash(context, resolveConfig({ replacePwsh: false }), runtime)
     // Then win_bash registers and pwsh stays exactly where it was.
     expect(registered).toEqual(['win_bash'])
     expect(state.restrictions).toEqual([])

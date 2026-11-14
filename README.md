@@ -195,9 +195,8 @@ dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方�
 
 ### 更多插件（More Plugins）
 
-- **消息编辑并重发**（[`@linxin666/dsh-client-ui-message-edit`](packages/dsh-message-edit/README.zh.md)）：在纯文本用户消息回合末尾提供“编辑并重发”入口，按该消息前序事件边界精确 fork 新分支会话并重发，不改动源会话历史。
 - **图示渲染**（[`@linxin666/dsh-client-ui-diagrams`](packages/dsh-diagrams/README.zh.md)）：在会话正文与文档预览面板中将 `mermaid` 代码块按需原地渲染为 SVG 图示，跟随界面明暗主题重绘并经双重安全消毒。
-- **Windows 常驻 Bash**（[`@linxin666/dsh-win-bash`](packages/dsh-win-bash/README.zh.md)）：为配合梁神模式运行的 Windows x64 会话提供经 SHA256 与强制完整性标签校验的随包 MinGit 常驻 `win_bash` 进程，保留跨调用目录与环境变量状态并自动剥离终端转义序列。
+- **Windows 常驻 Bash**（[`@linxin666/dsh-win-bash`](packages/dsh-win-bash/README.zh.md)）：为 Windows x64 会话提供经 SHA256 与强制完整性标签校验的随包 MinGit 常驻 `win_bash` 进程，保留跨调用目录与环境变量状态并自动剥离终端转义序列。
 - **任务看板 GitHub 同步**（[`@linxin666/dsh-client-ui-task-board-github`](packages/dsh-task-board-github/README.zh.md)）：为任务看板无缝接入 GitHub Issues 与 PR 状态双向同步，自动化驱动 AI Agent 修复缺陷与提 PR。
 - **任务看板团队协作**（[`@linxin666/dsh-client-ui-task-board-team`](packages/dsh-task-board-team/README.zh.md)）：将本地 `dsh-agents` 成员绑定至云端 `team-hub`，按租约认领指派 Issue 为镜像卡执行，支持问题路由、`team_comment` 评论与审阅返工。
 - **任务看板远端面**（[`@linxin666/dsh-task-board-remote`](packages/dsh-task-board-remote/README.zh.md)）：将任务看板能力面（`board.v1`）挂载至 `dsh-remote-bridge` 扩展缝，使已配对手机直接读写同一份宿主账本。
@@ -283,7 +282,6 @@ dsh plugin --profile web add @linxin666/dsh-task-board-remote@latest            
 dsh plugin --profile web add @linxin666/dsh-ssh@latest                             # 远程连接（SSH 终端与集群运维）
 dsh plugin --profile web add @linxin666/dsh-usage@latest                           # 使用统计与 Token 银行
 dsh plugin --profile web add @linxin666/dsh-session-archive@latest                 # 会话归档管理
-dsh plugin --profile web add @linxin666/dsh-client-ui-message-edit@latest          # 消息编辑并重发
 dsh plugin --profile web add @linxin666/dsh-client-ui-diagrams@latest              # Mermaid 图示原地渲染
 dsh plugin --profile web add @linxin666/dsh-win-bash@latest                        # Windows 常驻私有 Bash
 dsh plugin --profile web add @linxin666/dsh-client-ui-skin-center@latest           # 皮肤中心
@@ -300,7 +298,7 @@ dsh plugin --profile web add @linxin666/dsh-i18n@latest                         
 <details>
 <summary><strong>全部 npm 包一览</strong></summary>
 
-所有插件均以 `@linxin666/dsh-*` 命名空间公开发布于 npm（涵盖本仓 `packages/` 下 23 个家族包与 4 个独立卫星仓包）：
+所有插件均以 `@linxin666/dsh-*` 命名空间公开发布于 npm（涵盖本仓 `packages/` 下 22 个家族包与 4 个独立卫星仓包）：
 
 | npm 包名 | 文档入口 | 功能说明 |
 | --- | --- | --- |
@@ -316,9 +314,8 @@ dsh plugin --profile web add @linxin666/dsh-i18n@latest                         
 | [@linxin666/dsh-ssh](https://www.npmjs.com/package/@linxin666/dsh-ssh) | [README](packages/dsh-ssh/README.zh.md) | 远程运维面板：Web 终端、SFTP 传输、端口转发隧道、集群批量执行与 6 项 `ssh_*` 智能体工具 |
 | [@linxin666/dsh-usage](https://www.npmjs.com/package/@linxin666/dsh-usage) | [README](packages/dsh-usage/README.zh.md) | 用量统计：Token 消耗明细、供应商余额预警、编程套餐追踪与 Token 银行鲸元券 |
 | [@linxin666/dsh-session-archive](https://www.npmjs.com/package/@linxin666/dsh-session-archive) | [README](packages/dsh-session-archive/README.zh.md) | 会话归档管理：全量会话多维检索、批量归档恢复、级联物理清理与自动化生命周期策略 |
-| [@linxin666/dsh-client-ui-message-edit](https://www.npmjs.com/package/@linxin666/dsh-client-ui-message-edit) | [README](packages/dsh-message-edit/README.zh.md) | 消息编辑并重发：在纯文本用户消息回合末尾按精确前序事件边界 fork 新分支会话并重发 |
 | [@linxin666/dsh-client-ui-diagrams](https://www.npmjs.com/package/@linxin666/dsh-client-ui-diagrams) | [README](packages/dsh-diagrams/README.zh.md) | 图示渲染：把会话正文与文档预览面板中的 `mermaid` 代码块按需原地渲染为 SVG 图示 |
-| [@linxin666/dsh-win-bash](https://www.npmjs.com/package/@linxin666/dsh-win-bash) | [README](packages/dsh-win-bash/README.zh.md) | Windows 常驻私有 Bash：面向梁神模式 Windows x64 会话的 SHA256 校验随包 MinGit 常驻 `win_bash` 进程 |
+| [@linxin666/dsh-win-bash](https://www.npmjs.com/package/@linxin666/dsh-win-bash) | [README](packages/dsh-win-bash/README.zh.md) | Windows 常驻私有 Bash：面向 Windows x64 会话的 SHA256 校验随包 MinGit 常驻 `win_bash` 进程 |
 | [@linxin666/dsh-client-ui-market](https://www.npmjs.com/package/@linxin666/dsh-client-ui-market) | [README](packages/dsh-market/README.zh.md) | 创意工坊客户端：在线浏览与一键下载安装主题皮肤、桌面宠物、插件与社区预设 |
 | [@linxin666/dsh-client-ui-plugin-manager](https://www.npmjs.com/package/@linxin666/dsh-client-ui-plugin-manager) | [README](packages/dsh-plugin-manager/README.zh.md) | 插件增强（更新与开关）：官方插件页注册表版本检测、运行时版本门控升级与可视化状态配置 |
 | [@linxin666/dsh-client-ui-skill-explorer](https://www.npmjs.com/package/@linxin666/dsh-client-ui-skill-explorer) | [README](packages/dsh-skill-explorer/README.zh.md) | Skill 中心：按来源集中浏览、检索、启停、新建与管理已加载的 agent skills |
@@ -498,7 +495,7 @@ dsh-web 针对主流操作系统、现代化浏览器及网络拓扑进行了深
 
 **插件**
 
-- **dsh-task-board / dsh-task-board-github / dsh-task-board-remote / dsh-task-board-team / dsh-agents / dsh-browser-view / dsh-message-edit / dsh-win-bash / dsh-pet / dsh-remote-bridge / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n / dsh-diagrams** — 本仓库原创（zhu1090093659），Apache-2.0（zhu1090093659；`dsh-win-bash` 随包分发的 Git for Windows / MSYS2 运行时载荷许可证与来源清单见 [PROVENANCE.md](packages/dsh-win-bash/PROVENANCE.md)）
+- **dsh-task-board / dsh-task-board-github / dsh-task-board-remote / dsh-task-board-team / dsh-agents / dsh-browser-view / dsh-win-bash / dsh-pet / dsh-remote-bridge / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n / dsh-diagrams** — 本仓库原创（zhu1090093659），Apache-2.0（zhu1090093659；`dsh-win-bash` 随包分发的 Git for Windows / MSYS2 运行时载荷许可证与来源清单见 [PROVENANCE.md](packages/dsh-win-bash/PROVENANCE.md)）
 - **dsh-diagrams** — 随包分发 [mermaid](https://github.com/mermaid-js/mermaid) 运行库（MIT）：构建时从 npm 的 `mermaid` 包复制到 `lib/assets/mermaid.min.js` 并由宿主路由伺服，仓库不提交任何第三方源码；本包自身代码为本仓库 Apache-2.0（zhu1090093659）
 - **dsh-ssh** — 依据 [badseal/ssh-skill](https://github.com/badseal/ssh-skill) 的能力清单实现；代码为本仓库 Apache-2.0（zhu1090093659），上游能力清单归属 badseal/ssh-skill
 - **社区插件索引** — 100+ 项外部插件，来源与版权由各作者声明，登记于 [community.json](https://github.com/zhu1090093659/dsh-community-plugins/blob/main/community.json)，可在「设置 → 社区插件」与 dsh-market.com 查看

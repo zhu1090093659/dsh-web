@@ -1,6 +1,7 @@
 # Agent Note: Text message edit-and-resend uses an exact-prefix fork
 
 Status: implemented
+Archived: 2026-11-14
 
 Supersession check: [better-session-replaces-chat-recovery](../architecture/2026-08-27-better-session-replaces-chat-recovery.md) retired the old last-message editor because it overlapped better-session, and [drop-deprecated-better-session-integration](../simplification/2026-09-02-drop-deprecated-better-session-integration.md) later removed that external integration. Neither decision is reversed: `dsh-chat-recovery` and its retry supervisor stay retired, and better-session stays removed. This Note owns the distinct arbitrary-Turn, text-only editing capability in `dsh-message-edit`.
 

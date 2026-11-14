@@ -1,5 +1,0 @@
-# Bundle patch for dsh-message-edit. Install the package as a profile bundle;
-# the aggregate generator namespaces this row as web-ui-message-edit.
-- insert:
-    - id: ui-message-edit
-      name: '@linxin666/dsh-client-ui-message-edit'

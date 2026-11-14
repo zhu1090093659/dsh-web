@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-11-14-retire-message-edit-and-win-bash-gate.md: 733c25a70339543fe4c9593f6ed5d28432cac343
+2026-11-14-retire-message-edit-and-win-bash-gate.zh.md: 6ef5c935312b4f1fc50edcde9bc2265866ba6871

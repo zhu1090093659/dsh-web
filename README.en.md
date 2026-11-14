@@ -195,9 +195,8 @@ Permanent deletions cannot be undone, and all operational routes bind strictly t
 
 ### More Plugins
 
-- **Message Edit & Resend** ([`@linxin666/dsh-client-ui-message-edit`](packages/dsh-message-edit/README.md)): Adds an "Edit and resend" action at the end of text-only user turns, forking a new branch session at the exact preceding event boundary without mutating the source conversation.
 - **Mermaid Diagram Rendering** ([`@linxin666/dsh-client-ui-diagrams`](packages/dsh-diagrams/README.md)): Renders fenced `mermaid` code blocks in place as SVG diagrams across chat transcripts and document previews, automatically redrawing on theme switches with two-stage SVG sanitization.
-- **Windows Persistent Bash** ([`@linxin666/dsh-win-bash`](packages/dsh-win-bash/README.md)): Provides Windows x64 LiangShen sessions with a SHA256-verified and integrity-checked vendored MinGit persistent `win_bash` process per session, preserving working directories and environment variables across calls while stripping terminal escape sequences.
+- **Windows Persistent Bash** ([`@linxin666/dsh-win-bash`](packages/dsh-win-bash/README.md)): Provides Windows x64 sessions with a SHA256-verified and integrity-checked vendored MinGit persistent `win_bash` process per session, preserving working directories and environment variables across calls while stripping terminal escape sequences.
 - **Task Board GitHub Sync** ([`@linxin666/dsh-client-ui-task-board-github`](packages/dsh-task-board-github/README.md)): Connects GitHub Issues and Pull Requests bidirectionally with task board cards, driving autonomous AI agent bug triage and automated PR delivery.
 - **Task Board Team Collaboration** ([`@linxin666/dsh-client-ui-task-board-team`](packages/dsh-task-board-team/README.md)): Binds local `dsh-agents` members to cloud `team-hub` issues with lease-backed claiming, question routing, `team_comment` threads, and review rework.
 - **Task Board Remote Surface** ([`@linxin666/dsh-task-board-remote`](packages/dsh-task-board-remote/README.md)): Mounts the task board capability surface (`board.v1`) onto the `dsh-remote-bridge` extension seam so paired phones read and write the same host ledger.
@@ -283,7 +282,6 @@ dsh plugin --profile web add @linxin666/dsh-task-board-remote@latest            
 dsh plugin --profile web add @linxin666/dsh-ssh@latest                             # SSH Remote Ops (Terminal & Cluster)
 dsh plugin --profile web add @linxin666/dsh-usage@latest                           # Usage Statistics & Token Bank
 dsh plugin --profile web add @linxin666/dsh-session-archive@latest                 # Session Archive Manager
-dsh plugin --profile web add @linxin666/dsh-client-ui-message-edit@latest          # Message Edit & Branch Resend
 dsh plugin --profile web add @linxin666/dsh-client-ui-diagrams@latest              # Mermaid In-Place Diagram Renderer
 dsh plugin --profile web add @linxin666/dsh-win-bash@latest                        # Windows Persistent Private Bash
 dsh plugin --profile web add @linxin666/dsh-client-ui-skin-center@latest           # Skin Center
@@ -300,7 +298,7 @@ dsh plugin --profile web add @linxin666/dsh-i18n@latest                         
 <details>
 <summary><strong>Full npm Package Directory</strong></summary>
 
-All plugins are published under the `@linxin666/dsh-*` npm scope (covering all 23 in-repository family packages under `packages/` and 4 satellite repository packages):
+All plugins are published under the `@linxin666/dsh-*` npm scope (covering all 22 in-repository family packages under `packages/` and 4 satellite repository packages):
 
 | Package Name | Docs | Description |
 | --- | --- | --- |
@@ -316,9 +314,8 @@ All plugins are published under the `@linxin666/dsh-*` npm scope (covering all 2
 | [@linxin666/dsh-ssh](https://www.npmjs.com/package/@linxin666/dsh-ssh) | [README](packages/dsh-ssh/README.md) | SSH operations: web terminal, SFTP transfers, port-forward tunnels, cluster execution, and 6 `ssh_*` agent tools |
 | [@linxin666/dsh-usage](https://www.npmjs.com/package/@linxin666/dsh-usage) | [README](packages/dsh-usage/README.md) | Usage statistics: daily token consumption breakdown, provider balance alerts, coding-plan quota tracking, and Token Bank |
 | [@linxin666/dsh-session-archive](https://www.npmjs.com/package/@linxin666/dsh-session-archive) | [README](packages/dsh-session-archive/README.md) | Session archive manager: multi-filter session search, batch archive/restore, cascade physical pruning, and automated lifecycle policies |
-| [@linxin666/dsh-client-ui-message-edit](https://www.npmjs.com/package/@linxin666/dsh-client-ui-message-edit) | [README](packages/dsh-message-edit/README.md) | Message edit & resend: forks a new branch session at the preceding event boundary of a text-only user message and resends |
 | [@linxin666/dsh-client-ui-diagrams](https://www.npmjs.com/package/@linxin666/dsh-client-ui-diagrams) | [README](packages/dsh-diagrams/README.md) | Diagrams: renders fenced `mermaid` code blocks in place as SVG across chat transcripts and document previews |
-| [@linxin666/dsh-win-bash](https://www.npmjs.com/package/@linxin666/dsh-win-bash) | [README](packages/dsh-win-bash/README.md) | Windows persistent private bash: SHA256-verified vendored MinGit persistent `win_bash` process per session for Windows x64 LiangShen sessions |
+| [@linxin666/dsh-win-bash](https://www.npmjs.com/package/@linxin666/dsh-win-bash) | [README](packages/dsh-win-bash/README.md) | Windows persistent private bash: SHA256-verified vendored MinGit persistent `win_bash` process per session for Windows x64 sessions |
 | [@linxin666/dsh-client-ui-market](https://www.npmjs.com/package/@linxin666/dsh-client-ui-market) | [README](packages/dsh-market/README.md) | Workshop client: browse and install skins, desktop pets, plugins, and community presets with one click |
 | [@linxin666/dsh-client-ui-plugin-manager](https://www.npmjs.com/package/@linxin666/dsh-client-ui-plugin-manager) | [README](packages/dsh-plugin-manager/README.md) | Plugin manager: registry update checking, DSH runtime minimum version gating, one-click upgrades, and visual plugin settings |
 | [@linxin666/dsh-client-ui-skill-explorer](https://www.npmjs.com/package/@linxin666/dsh-client-ui-skill-explorer) | [README](packages/dsh-skill-explorer/README.md) | Skill explorer: browse, search, toggle, create, and manage loaded agent skills by origin |
@@ -498,7 +495,7 @@ Licensed under [Apache-2.0](LICENSE). Imported third-party code must retain orig
 
 **Plugins**
 
-- **dsh-task-board / dsh-task-board-github / dsh-task-board-remote / dsh-task-board-team / dsh-agents / dsh-browser-view / dsh-message-edit / dsh-win-bash / dsh-pet / dsh-remote-bridge / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n / dsh-diagrams** — authored by zhu1090093659, Apache-2.0 (zhu1090093659; upstream licenses and provenance for the Git for Windows / MSYS2 runtime payload redistributed in `dsh-win-bash` are documented in [PROVENANCE.md](packages/dsh-win-bash/PROVENANCE.md))
+- **dsh-task-board / dsh-task-board-github / dsh-task-board-remote / dsh-task-board-team / dsh-agents / dsh-browser-view / dsh-win-bash / dsh-pet / dsh-remote-bridge / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n / dsh-diagrams** — authored by zhu1090093659, Apache-2.0 (zhu1090093659; upstream licenses and provenance for the Git for Windows / MSYS2 runtime payload redistributed in `dsh-win-bash` are documented in [PROVENANCE.md](packages/dsh-win-bash/PROVENANCE.md))
 - **dsh-diagrams** — ships the [mermaid](https://github.com/mermaid-js/mermaid) runtime (MIT): the build copies it from the npm `mermaid` package into `lib/assets/mermaid.min.js`, served by the host route; no third-party source is committed. The package's own code is this repository's Apache-2.0 (zhu1090093659)
 - **dsh-ssh** — implemented against the capability list of [badseal/ssh-skill](https://github.com/badseal/ssh-skill); code is this repository's Apache-2.0 (zhu1090093659), the upstream capability list belongs to badseal/ssh-skill
 - **Community plugin index** — 100+ external plugins with sources and licenses declared by their authors, registered in [community.json](https://github.com/zhu1090093659/dsh-community-plugins/blob/main/community.json), browsable in Settings → Community Plugins and on dsh-market.com

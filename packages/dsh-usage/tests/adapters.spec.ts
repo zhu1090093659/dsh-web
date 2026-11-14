@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { adapterFor, balanceAppliesToRoute, isDeepSeekProviderRoute, originOf, providerErrorMessage, PROVIDER_ADAPTERS } from '../src/core/adapters.ts'
+import { adapterFor, balanceAppliesToRoute, isDeepSeekProviderRoute, originOf, providerErrorMessage, PROVIDER_ADAPTERS, quotaUsedPercent, resolveRouteAdapter } from '../src/core/adapters.ts'
 
 describe('adapterFor', () => {
   it('serves every documented route id', () => {
@@ -176,6 +176,68 @@ describe('kimi coding plan parse', () => {
     expect(parse('soon')).toBeUndefined()
     expect(parse('')).toBeUndefined()
     expect(parse(null)).toBeUndefined()
+  })
+
+  it('operator derives used percent from limit - remaining when used is omitted (#2045)', () => {
+    // Given a provider response that omits `used` on fresh or exhausted rows
+    const parsed = adapter.plan?.parse(200, {
+      usage: { limit: '100', remaining: '0', resetTime: '2026-08-31T00:00:00Z' },
+      limits: [
+        { window: { duration: 300, timeUnit: 'TIME_UNIT_MINUTE' }, detail: { limit: '100', remaining: '100', resetTime: '2026-08-29T12:00:00Z' } },
+        { window: { duration: 60, timeUnit: 'TIME_UNIT_MINUTE' }, detail: { limit: '200', remaining: '50' } },
+      ],
+    })
+    // When percentages are calculated
+    // Then 0 remaining yields 100%, full remaining yields 0%, and partial yields 75%
+    expect(parsed?.windows).toEqual([
+      { key: '5h', name: undefined, percent: 0, resetsAt: '2026-08-29T12:00:00.000Z' },
+      { key: 'w-60', name: undefined, percent: 75, resetsAt: undefined },
+      { key: 'week', name: 'Weekly', percent: 100, resetsAt: '2026-08-31T00:00:00.000Z' },
+    ])
+    // And direct quotaUsedPercent prefers `used`, clamps bounds, and guards missing inputs
+    expect(quotaUsedPercent('25', '100', '100')).toBe(25)
+    expect(quotaUsedPercent(undefined, '150', '100')).toBe(0)
+    expect(quotaUsedPercent(undefined, '-10', '100')).toBe(100)
+    expect(quotaUsedPercent(undefined, undefined, '100')).toBeUndefined()
+    expect(quotaUsedPercent('10', undefined, '0')).toBeUndefined()
+  })
+})
+
+describe('resolveRouteAdapter (#2045)', () => {
+  it('operator resolves secondary custom route ids by trusted official HTTPS baseURL', () => {
+    // Given custom secondary provider route ids paired with official inference endpoints
+    // When resolving each route id with its configured baseURL
+    // Then each endpoint maps to its vendor adapter
+    expect(resolveRouteAdapter('kimi-coding-2', 'https://api.kimi.com/coding/v1')).toBe(adapterFor('kimi-coding'))
+    expect(resolveRouteAdapter('deepseek-work', 'https://api.deepseek.com/v1')).toBe(adapterFor('deepseek'))
+    expect(resolveRouteAdapter('moonshot-2', 'https://api.moonshot.cn/v1')).toBe(adapterFor('moonshotai-cn'))
+    expect(resolveRouteAdapter('moonshot-intl-2', 'https://api.moonshot.ai/v1')).toBe(adapterFor('moonshotai'))
+    expect(resolveRouteAdapter('siliconflow-2', 'https://api.siliconflow.cn/v1')).toBe(adapterFor('siliconflow'))
+    expect(resolveRouteAdapter('openrouter-2', 'https://openrouter.ai/api/v1')).toBe(adapterFor('openrouter'))
+    expect(resolveRouteAdapter('minimax-2', 'https://api.minimaxi.com/v1')).toBe(adapterFor('minimax-cn'))
+    expect(resolveRouteAdapter('glm-2', 'https://open.bigmodel.cn/api/paas/v4')).toBe(adapterFor('zai-coding-cn'))
+    expect(resolveRouteAdapter('glm-coding-2', 'https://open.bigmodel.cn/api/coding/paas/v4')).toBe(adapterFor('zai-coding-cn'))
+    expect(resolveRouteAdapter('zenmux-2', 'https://zenmux.ai/api/v1')).toBe(adapterFor('zenmux'))
+    expect(resolveRouteAdapter('opencode-2', 'HTTPS://OPENCODE.AI/zen/go/v1')).toBe(adapterFor('opencode-go'))
+  })
+
+  it('operator rejects path-prefix mismatches, non-https origins, unknown hosts, and family-only routes', () => {
+    // Given mismatched path boundaries, plaintext or unknown URLs, and guarded route ids
+    // When resolving their adapters
+    // Then only the known catalog id keeps its catalog entry while untrusted endpoints return undefined
+    // Path boundary prevents matching unrelated sibling routes on the same host
+    expect(resolveRouteAdapter('kimi-api-2', 'https://api.kimi.com/v1')).toBeUndefined()
+    expect(resolveRouteAdapter('kimi-bad', 'https://api.kimi.com/coding2/v1')).toBeUndefined()
+    expect(resolveRouteAdapter('openrouter-web', 'https://openrouter.ai/docs')).toBeUndefined()
+    // Plaintext or unknown reseller endpoints never resolve an adapter
+    expect(resolveRouteAdapter('deepseek-http', 'http://api.deepseek.com/v1')).toBeUndefined()
+    expect(resolveRouteAdapter('reseller-custom', 'https://proxy.example.com/v1')).toBeUndefined()
+    expect(resolveRouteAdapter('broken-url', 'not a url')).toBeUndefined()
+    // #1772 guard: family-only route id stays outside API-key endpoint probing even on api.deepseek.com
+    expect(resolveRouteAdapter('deepseek-account', 'https://api.deepseek.com')).toBeUndefined()
+    expect(resolveRouteAdapter('deepseek-account', 'https://api.deepseek.com/v1')).toBeUndefined()
+    // #1688 guard: known catalog id on a customized gateway still maps to DEEPSEEK so balanceSupported = false
+    expect(resolveRouteAdapter('deepseek', 'https://custom-gateway.example/v1')).toBe(adapterFor('deepseek'))
   })
 })
 

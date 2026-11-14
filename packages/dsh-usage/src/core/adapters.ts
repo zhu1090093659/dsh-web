@@ -129,12 +129,20 @@ function toIso(value: unknown): string | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString()
 }
 
-/** Used-percent helper guarding zero/absent limits. */
-function usedPercent(used: unknown, limit: unknown): number | undefined {
-  const usedNum = toNum(used)
+/**
+ * Used-percent helper for quota rows reporting `limit` plus `used` and/or
+ * `remaining`. Prefers `used` when present; when a provider omits `used` and
+ * reports only `remaining` + `limit` (issue #2045), derives used as
+ * `limit - remaining`, clamped to 0-100.
+ */
+export function quotaUsedPercent(used: unknown, remaining: unknown, limit: unknown): number | undefined {
   const limitNum = toNum(limit)
-  if (usedNum === undefined || limitNum === undefined || limitNum <= 0) return undefined
-  return Math.max(0, Math.min(100, (usedNum / limitNum) * 100))
+  if (limitNum === undefined || limitNum <= 0) return undefined
+  const usedNum = toNum(used)
+  if (usedNum !== undefined) return clampPercent((usedNum / limitNum) * 100)
+  const remainingNum = toNum(remaining)
+  if (remainingNum !== undefined) return clampPercent(((limitNum - remainingNum) / limitNum) * 100)
+  return undefined
 }
 
 function bearer(apiKey: string): Record<string, string> {
@@ -214,7 +222,7 @@ const KIMI_CODING: ProviderAdapter = {
           const duration = typeof window === 'object' && window !== null ? toNum((window as Record<string, unknown>).duration) : undefined
           const unit = typeof window === 'object' && window !== null ? str((window as Record<string, unknown>).timeUnit) : undefined
           const key = duration === 300 && unit === 'TIME_UNIT_MINUTE' ? '5h' : duration !== undefined ? `w-${duration}` : 'window'
-          const percent = usedPercent(row.used, row.limit)
+          const percent = quotaUsedPercent(row.used, row.remaining, row.limit)
           windows.push({ key, name: str(row.name), percent, resetsAt: toIso(row.resetTime) })
         }
       }
@@ -224,7 +232,7 @@ const KIMI_CODING: ProviderAdapter = {
         windows.push({
           key: 'week',
           name: 'Weekly',
-          percent: usedPercent(weekly.used, weekly.limit),
+          percent: quotaUsedPercent(weekly.used, weekly.remaining, weekly.limit),
           resetsAt: toIso(weekly.resetTime),
         })
       }
@@ -474,6 +482,15 @@ function codexWindowKey(seconds: number | undefined): string {
   return hours >= 24 ? `${Math.round(hours / 24)}_day` : `${Math.round(hours)}_hour`
 }
 
+const MOONSHOT_CN = moonshotBalance('api.moonshot.cn', 'CNY', ['moonshotai-cn'])
+const MOONSHOT_INTL = moonshotBalance('api.moonshot.ai', 'USD', ['moonshotai'])
+const GLM_CN = glmPlan('open.bigmodel.cn', ['zai-coding-cn'])
+const GLM_INTL = glmPlan('api.z.ai', ['zai', 'zai-coding'])
+const MINIMAX_CN = minimaxPlan('api.minimaxi.com', ['minimax-cn'])
+const MINIMAX_INTL = minimaxPlan('api.minimax.io', ['minimax'])
+const SILICONFLOW_CN = siliconFlow('api.siliconflow.cn', ['siliconflow', 'siliconflow-cn'], 'CNY')
+const SILICONFLOW_INTL = siliconFlow('api.siliconflow.com', ['siliconflow-intl'], 'USD')
+
 /**
  * The adapter registry, in no particular order. Route keys come from the
  * pi-ai provider catalog plus the routes this deployment observed in user
@@ -481,24 +498,86 @@ function codexWindowKey(seconds: number | undefined): string {
  */
 export const PROVIDER_ADAPTERS: readonly ProviderAdapter[] = [
   DEEPSEEK,
-  moonshotBalance('api.moonshot.cn', 'CNY', ['moonshotai-cn']),
-  moonshotBalance('api.moonshot.ai', 'USD', ['moonshotai']),
+  MOONSHOT_CN,
+  MOONSHOT_INTL,
   KIMI_CODING,
-  glmPlan('open.bigmodel.cn', ['zai-coding-cn']),
-  glmPlan('api.z.ai', ['zai', 'zai-coding']),
+  GLM_CN,
+  GLM_INTL,
   OPENCODE_GO,
-  minimaxPlan('api.minimaxi.com', ['minimax-cn']),
-  minimaxPlan('api.minimax.io', ['minimax']),
+  MINIMAX_CN,
+  MINIMAX_INTL,
   OPENAI_CODEX,
   OPENROUTER,
-  siliconFlow('api.siliconflow.cn', ['siliconflow', 'siliconflow-cn'], 'CNY'),
-  siliconFlow('api.siliconflow.com', ['siliconflow-intl'], 'USD'),
+  SILICONFLOW_CN,
+  SILICONFLOW_INTL,
   ZENMUX,
+]
+
+interface EndpointAdapterRule {
+  readonly host: string
+  readonly pathPrefix: string
+  readonly adapter: ProviderAdapter
+}
+
+/**
+ * Trusted official HTTPS endpoint rules so secondary custom-id accounts
+ * (e.g. `kimi-coding-2` with `baseURL: https://api.kimi.com/coding/v1`)
+ * resolve the vendor adapter without coupling to the route name (issue #2045).
+ * Order matters only when rules share a host (longest prefix first).
+ */
+const ENDPOINT_ADAPTERS: readonly EndpointAdapterRule[] = [
+  { host: 'api.kimi.com', pathPrefix: '/coding', adapter: KIMI_CODING },
+  { host: 'api.deepseek.com', pathPrefix: '', adapter: DEEPSEEK },
+  { host: 'api.moonshot.cn', pathPrefix: '', adapter: MOONSHOT_CN },
+  { host: 'api.moonshot.ai', pathPrefix: '', adapter: MOONSHOT_INTL },
+  { host: 'open.bigmodel.cn', pathPrefix: '/api/coding/paas', adapter: GLM_CN },
+  { host: 'open.bigmodel.cn', pathPrefix: '/api/paas', adapter: GLM_CN },
+  { host: 'open.bigmodel.cn', pathPrefix: '/api/anthropic', adapter: GLM_CN },
+  { host: 'api.z.ai', pathPrefix: '/api/coding/paas', adapter: GLM_INTL },
+  { host: 'api.z.ai', pathPrefix: '/api/paas', adapter: GLM_INTL },
+  { host: 'api.z.ai', pathPrefix: '/api/anthropic', adapter: GLM_INTL },
+  { host: 'opencode.ai', pathPrefix: '/zen/go', adapter: OPENCODE_GO },
+  { host: 'api.minimaxi.com', pathPrefix: '', adapter: MINIMAX_CN },
+  { host: 'api.minimax.io', pathPrefix: '', adapter: MINIMAX_INTL },
+  { host: 'openrouter.ai', pathPrefix: '/api', adapter: OPENROUTER },
+  { host: 'api.siliconflow.cn', pathPrefix: '', adapter: SILICONFLOW_CN },
+  { host: 'api.siliconflow.com', pathPrefix: '', adapter: SILICONFLOW_INTL },
+  { host: 'zenmux.ai', pathPrefix: '/api', adapter: ZENMUX },
 ]
 
 /** Find the adapter serving a provider route key, if any. */
 export function adapterFor(provider: string): ProviderAdapter | undefined {
   return PROVIDER_ADAPTERS.find((adapter) => adapter.ids.includes(provider))
+}
+
+/**
+ * Resolve the adapter for a configured route: known catalog ids stay bound
+ * through `adapterFor()` (preserving #1688 origin checks on resellers),
+ * family-only non-key routes like `deepseek-account` stay excluded even when
+ * pointed at an official endpoint (#1772 guard), and custom route ids fall
+ * back to matching trusted official HTTPS inference endpoints (#2045).
+ */
+export function resolveRouteAdapter(provider: string, baseURL: string | undefined): ProviderAdapter | undefined {
+  if (PROVIDER_ADAPTERS.some((adapter) => adapter.familyOnlyIds?.includes(provider))) return undefined
+  const byId = adapterFor(provider)
+  if (byId !== undefined) return byId
+  if (baseURL === undefined || baseURL.trim() === '') return undefined
+  let url: URL
+  try {
+    url = new URL(baseURL)
+  } catch {
+    return undefined
+  }
+  if (url.protocol !== 'https:') return undefined
+  const host = url.hostname.toLowerCase()
+  const path = url.pathname
+  for (const rule of ENDPOINT_ADAPTERS) {
+    if (rule.host !== host) continue
+    if (rule.pathPrefix === '' || path === rule.pathPrefix || path.startsWith(`${rule.pathPrefix}/`)) {
+      return rule.adapter
+    }
+  }
+  return undefined
 }
 
 /** Origin of a configured base URL, or undefined when it cannot be parsed. */

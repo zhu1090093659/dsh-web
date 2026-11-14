@@ -15,7 +15,7 @@ import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { TokenUsage } from '@deepseek-ai/dsh-llm'
 import { dshHome } from '../dsh-home.ts'
 import { withIdentityEncoding } from './http.ts'
-import { adapterFor, balanceAppliesToRoute, isDeepSeekProviderRoute, providerErrorMessage } from '../core/adapters.ts'
+import { adapterFor, balanceAppliesToRoute, isDeepSeekProviderRoute, providerErrorMessage, resolveRouteAdapter } from '../core/adapters.ts'
 import type { BalanceParse, PlanParse } from '../core/adapters.ts'
 import { foldAliasRoutes } from '../core/provider-routes.ts'
 import { deepseekModelSpend } from '../core/pricing.ts'
@@ -55,6 +55,59 @@ interface ProviderRoute {
   displayName: string
   /** Whether the LLM runtime serves requests on this route; a catalog-only entry is dormant. */
   live: boolean
+}
+
+/** Optional host-mounted DeepSeek Account service wallet entry (#2047). */
+interface DeepSeekAccountWallet {
+  readonly currency: 'CNY' | 'USD'
+  readonly balance: string
+}
+
+/**
+ * Minimal duck-typed contract for `@deepseek-ai/dsh-deepseek-account` when
+ * mounted on the host context (App-managed desktop routing).
+ */
+interface DeepSeekAccountServiceLike {
+  getState(): Promise<{ readonly status: 'signed-out' | 'credential-stored' }>
+  getBalance(client: {
+    readonly version: string
+    readonly locale: string
+    readonly timezoneOffsetSeconds: number
+  }): Promise<
+    | {
+        readonly status: 'ready'
+        readonly value: readonly DeepSeekAccountWallet[]
+        readonly bonusWallets: readonly DeepSeekAccountWallet[]
+      }
+    | { readonly status: 'failed' }
+    | null
+  >
+}
+
+/** Combine recharge wallets and bonus wallets into one display balance, preferring CNY. */
+function mergeDeepSeekAccountBalance(
+  value: readonly DeepSeekAccountWallet[],
+  bonusWallets: readonly DeepSeekAccountWallet[],
+): { currency: string; totalBalance: string } {
+  let cnyTotal = 0
+  let hasCny = false
+  let usdTotal = 0
+  let hasUsd = false
+  for (const wallet of [...value, ...bonusWallets]) {
+    const amount = Number(wallet.balance)
+    if (!Number.isFinite(amount)) continue
+    const code = wallet.currency.toUpperCase()
+    if (code === 'CNY') {
+      cnyTotal += amount
+      hasCny = true
+    } else if (code === 'USD') {
+      usdTotal += amount
+      hasUsd = true
+    }
+  }
+  if (hasCny) return { currency: 'CNY', totalBalance: cnyTotal.toFixed(2) }
+  if (hasUsd) return { currency: 'USD', totalBalance: usdTotal.toFixed(2) }
+  return { currency: 'CNY', totalBalance: '0.00' }
 }
 
 /** Poll-loop options; re-applied live on settings change. */
@@ -309,24 +362,27 @@ export class UsageService {
   overview(): UsageOverviewView {
     const todayKey = localDateKey(Date.now())
     const routes = this.listProviderRoutes()
+    const deepseekAccount = this.deepseekAccountService()
     const providers: ProviderSnapshotView[] = []
     for (const route of routes) {
-      const adapter = adapterFor(route.id)
+      const baseUrl = this.routeBaseUrl(route.id)
+      const adapter = resolveRouteAdapter(route.id, baseUrl)
+      const accountManaged = route.id === 'deepseek-account' && deepseekAccount !== undefined
       const snapshot = this.snapshots.get(route.id)
       const error = snapshot?.balanceError ?? snapshot?.planError
       providers.push({
         provider: route.id,
-        displayName: route.displayName || adapter?.displayName || route.id,
+        displayName: route.displayName || adapter?.displayName || (accountManaged ? 'DeepSeek Account' : route.id),
         credential: snapshot?.credential ?? 'none',
-        supported: adapter !== undefined && (adapter.balance !== undefined || adapter.plan !== undefined),
+        supported: accountManaged || (adapter !== undefined && (adapter.balance !== undefined || adapter.plan !== undefined)),
         // A balance endpoint that belongs to another origin does not report
         // THIS route's account: it is supported by the adapter but not
         // applicable here, and the UI renders it as unsupported rather than
         // showing the other account's number (issue #1688).
-        ...(adapter?.balance !== undefined && balanceAppliesToRoute(adapter, this.routeBaseUrl(route.id))
+        ...(accountManaged || (adapter?.balance !== undefined && balanceAppliesToRoute(adapter, baseUrl))
           ? { balanceSupported: true }
           : {}),
-        ...(adapter?.balance !== undefined && !balanceAppliesToRoute(adapter, this.routeBaseUrl(route.id))
+        ...(!accountManaged && adapter?.balance !== undefined && !balanceAppliesToRoute(adapter, baseUrl)
           ? { balanceSupported: false }
           : {}),
         ...(adapter?.plan !== undefined ? { planSupported: true } : {}),
@@ -473,7 +529,7 @@ export class UsageService {
    */
   private routeDisplayName(provider: string): string {
     const route = this.listProviderRoutes().find((entry) => entry.id === provider)
-    return route?.displayName || adapterFor(provider)?.displayName || provider
+    return route?.displayName || resolveRouteAdapter(provider, this.routeBaseUrl(provider))?.displayName || provider
   }
 
   // ------------------------------------------------------------------
@@ -664,12 +720,17 @@ export class UsageService {
         this.pruneIfNeeded()
         const routes = this.listProviderRoutes()
         const seen = new Set<string>()
+        const deepseekAccount = this.deepseekAccountService()
         for (const route of routes) {
           // Probes serialize at up to 2 × PROBE_TIMEOUT_MS per route; bail
           // out of a cycle that outlived the service.
           if (this.disposed) return
           seen.add(route.id)
-          const adapter = adapterFor(route.id)
+          if (route.id === 'deepseek-account' && deepseekAccount !== undefined) {
+            await this.probeDeepSeekAccount(route, deepseekAccount)
+            continue
+          }
+          const adapter = resolveRouteAdapter(route.id, this.routeBaseUrl(route.id))
           if (adapter === undefined || (adapter.balance === undefined && adapter.plan === undefined)) continue
           await this.probeRoute(route, adapter)
         }
@@ -847,6 +908,85 @@ export class UsageService {
   /** The effective base URL for a provider route (pi-ai or deepseek). */
   private routeBaseUrl(provider: string): string | undefined {
     return this.piAiProfile(provider)?.baseURL ?? (isDeepSeekProviderRoute(provider) ? this.deepseekBaseUrl() : undefined)
+  }
+
+  /** Optional host-mounted App-managed DeepSeek account service (#2047). */
+  private deepseekAccountService(): DeepSeekAccountServiceLike | undefined {
+    return service<DeepSeekAccountServiceLike>(this.ctx, 'deepseekAccount')
+  }
+
+  /**
+   * Read App-managed DeepSeek account balance through the host service without
+   * ever touching API-key endpoints or `DEEPSEEK_API_KEY` fallbacks (#2047).
+   */
+  private async probeDeepSeekAccount(route: ProviderRoute, accountService: DeepSeekAccountServiceLike): Promise<void> {
+    const previous = this.snapshots.get(route.id)
+    const displayName = route.displayName || 'DeepSeek Account'
+    let credential: CredentialKind = previous?.credential ?? 'none'
+    try {
+      const state = await accountService.getState()
+      if (state.status !== 'credential-stored') {
+        this.snapshots.set(route.id, {
+          provider: route.id,
+          displayName,
+          credential: 'none',
+          supported: true,
+          updatedAt: Date.now(),
+        })
+        return
+      }
+      credential = 'oauth'
+      const offsetMin = new Date().getTimezoneOffset()
+      const client = {
+        version: '0.2.2',
+        locale: 'zh-CN',
+        timezoneOffsetSeconds: offsetMin === 0 ? 0 : -offsetMin * 60,
+      }
+      const outcome = await accountService.getBalance(client)
+      if (outcome === null) {
+        this.snapshots.set(route.id, {
+          provider: route.id,
+          displayName,
+          credential: 'none',
+          supported: true,
+          updatedAt: Date.now(),
+        })
+        return
+      }
+      if (outcome.status === 'failed') {
+        this.snapshots.set(route.id, {
+          provider: route.id,
+          displayName,
+          credential: 'oauth',
+          supported: true,
+          ...(previous?.balance !== undefined ? { balance: previous.balance } : {}),
+          balanceError: 'account balance query failed',
+          updatedAt: Date.now(),
+        })
+        return
+      }
+      const now = Date.now()
+      const merged = mergeDeepSeekAccountBalance(outcome.value, outcome.bonusWallets)
+      this.snapshots.set(route.id, {
+        provider: route.id,
+        displayName,
+        credential: 'oauth',
+        supported: true,
+        balance: { ...merged, updatedAt: now },
+        updatedAt: now,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message.slice(0, 200) : String(error)
+      this.snapshots.set(route.id, {
+        provider: route.id,
+        displayName,
+        credential,
+        supported: true,
+        ...(previous?.balance !== undefined ? { balance: previous.balance } : {}),
+        balanceError: message || 'account balance query failed',
+        updatedAt: Date.now(),
+      })
+    }
   }
 
 }

@@ -791,5 +791,122 @@ describe('DSH 0.1.7 foreign settings resolution (#1739)', () => {
     expect(snapshot?.balance).toBeUndefined()
     await service.stop()
   })
+
+  it('operator with a secondary custom-id account probes quota by baseURL and computes percent from remaining (#2045)', async () => {
+    // Given two Kimi For Coding accounts (catalog id and secondary custom id with official baseURL)
+    const probes: Array<{ url: string; auth: string | null }> = []
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = input instanceof Request ? input.url : String(input)
+      const auth = new Headers(init?.headers).get('authorization')
+      probes.push({ url, auth })
+      if (auth === 'Bearer sk-kimi-1') {
+        return jsonResponse({
+          usage: { limit: '100', used: '40', resetTime: '2026-08-31T00:00:00Z' },
+          limits: [{ window: { duration: 300, timeUnit: 'TIME_UNIT_MINUTE' }, detail: { limit: '100', used: '10' } }],
+        })
+      }
+      return jsonResponse({
+        usage: { limit: '100', remaining: '20', resetTime: '2026-08-31T00:00:00Z' },
+        limits: [{ window: { duration: 300, timeUnit: 'TIME_UNIT_MINUTE' }, detail: { limit: '100', remaining: '100' } }],
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const llm = {
+      listProviders: () => [
+        { id: 'kimi-coding', name: 'Kimi Account 1' },
+        { id: 'kimi-coding-2', name: 'Kimi Account 2' },
+      ],
+      listConfigurableProviders: () => [],
+    }
+    const credentials = {
+      readRecord: async (key: unknown) => String(key).includes('kimi-coding-2')
+        ? { kind: 'api-key', key: 'sk-kimi-2' }
+        : { kind: 'api-key', key: 'sk-kimi-1' },
+      resolve: async () => undefined,
+    }
+    const settings = {
+      get: (ns: string) => ns === 'llm-pi-ai'
+        ? { providers: { 'kimi-coding-2': { baseURL: 'https://api.kimi.com/coding/v1' } } }
+        : undefined,
+    }
+    const { ctx } = makeCtx({ llm, credentials, settings })
+    const service = new UsageService(ctx, OPTIONS)
+
+    // When the poll cycle runs
+    await service.refresh()
+
+    // Then both accounts appear with plan quotas, including the remaining-only response
+    const rows = service.overview().providers
+    const second = rows.find((p) => p.provider === 'kimi-coding-2')
+    expect(second?.supported).toBe(true)
+    expect(second?.planSupported).toBe(true)
+    expect(second?.credential).toBe('api-key')
+    expect(second?.plan?.windows).toEqual([
+      { key: '5h', name: undefined, percent: 0, resetsAt: undefined },
+      { key: 'week', name: 'Weekly', percent: 80, resetsAt: '2026-08-31T00:00:00.000Z' },
+    ])
+    expect(rows.find((p) => p.provider === 'kimi-coding')?.plan?.windows.find((w) => w.key === 'week')?.percent).toBe(40)
+    expect(probes.map((p) => p.auth).sort()).toEqual(['Bearer sk-kimi-1', 'Bearer sk-kimi-2'])
+    await service.stop()
+  })
+
+  it('user signed in to App-managed DeepSeek sees combined recharge and bonus balance and observed spend (#2047)', async () => {
+    // Given a host mounting deepseekAccount beside credential storage
+    const fetchMock = stubFetch(() => jsonResponse(BALANCE_BODY))
+    let status: 'signed-out' | 'credential-stored' = 'credential-stored'
+    let balanceOutcome: { status: 'ready'; value: Array<{ currency: 'CNY' | 'USD'; balance: string }>; bonusWallets: Array<{ currency: 'CNY' | 'USD'; balance: string }> } | { status: 'failed' } | null = {
+      status: 'ready',
+      value: [{ currency: 'CNY', balance: '12.50' }],
+      bonusWallets: [{ currency: 'CNY', balance: '7.50' }],
+    }
+    const deepseekAccount = {
+      getState: async () => ({ status }),
+      getBalance: async () => balanceOutcome,
+    }
+    const { ctx } = makeCtx({ llm: LLM_DEEPSEEK_ACCOUNT, credentials: CREDENTIALS_ENV, deepseekAccount })
+    const service = new UsageService(ctx, OPTIONS)
+
+    // When the first poll cycle runs
+    await service.refresh()
+
+    // Then no HTTP request touches the API-key endpoint and the combined CNY balance is shown
+    expect(fetchMock).not.toHaveBeenCalled()
+    let row = service.overview().providers.find((p) => p.provider === 'deepseek-account')
+    expect(row).toMatchObject({
+      provider: 'deepseek-account',
+      displayName: 'DeepSeek Account',
+      credential: 'oauth',
+      supported: true,
+      balanceSupported: true,
+      balance: { currency: 'CNY', totalBalance: '20.00' },
+    })
+    expect(service.overview().usage.observedSpend).toBeUndefined()
+
+    // When the next cycle sees balance decrease, observed spend accrues the delta
+    balanceOutcome = {
+      status: 'ready',
+      value: [{ currency: 'CNY', balance: '10.70' }],
+      bonusWallets: [{ currency: 'CNY', balance: '7.50' }],
+    }
+    await service.refresh()
+    expect(service.overview().providers.find((p) => p.provider === 'deepseek-account')?.balance?.totalBalance).toBe('18.20')
+    expect(service.overview().usage.observedSpend?.cny).toBeCloseTo(1.8)
+
+    // When the balance query fails transiently, the previous balance survives beside an error message
+    balanceOutcome = { status: 'failed' }
+    await service.refresh()
+    row = service.overview().providers.find((p) => p.provider === 'deepseek-account')
+    expect(row?.balance?.totalBalance).toBe('18.20')
+    expect(row?.error).toBe('account balance query failed')
+
+    // When the user signs out, stale balance and error clear immediately
+    status = 'signed-out'
+    await service.refresh()
+    row = service.overview().providers.find((p) => p.provider === 'deepseek-account')
+    expect(row?.credential).toBe('none')
+    expect(row?.balance).toBeUndefined()
+    expect(row?.error).toBeUndefined()
+    await service.stop()
+  })
 })
 

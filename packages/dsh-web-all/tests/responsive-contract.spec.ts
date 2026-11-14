@@ -211,7 +211,7 @@ describe('aggregate responsive compat contract', () => {
     expect(RESPONSIVE_CSS).toContain(':not(:first-child)')
     expect(RESPONSIVE_CSS).toContain('[data-dsh-part="summon-button"] {')
     expect(RESPONSIVE_CSS).toContain('z-index: 40 !important')
-    expect(RESPONSIVE_CSS).toMatch(/\[data-dsh-frame\]:not\(\[data-sidebar-collapsed\]\)::after\s*\{[^}]*z-index:\s*1050;[^}]*background:/s)
+    expect(RESPONSIVE_CSS).toMatch(/\[data-dsh-frame\]:where\(:not\(\[data-mobile-nav\]\)\):not\(\[data-sidebar-collapsed\]\)::after\s*\{[^}]*z-index:\s*1050;[^}]*background:/s)
     expect(RESPONSIVE_CSS).toMatch(/\[data-dsh-frame\]\[data-sidebar-collapsed\] \[data-dsh-center-view-back\]\s*\{[^}]*margin-inline-start:\s*52px;/s)
     document.body.innerHTML = `
       <main class="shell_frame" data-sidebar-collapsed>
@@ -358,8 +358,9 @@ describe('aggregate responsive compat contract', () => {
   it('user on a narrow viewport keeps the drawer contract above any skin override', () => {
     // Given the mobile breakpoint block declares the sidebar pane as a drawer
     const mobile = RESPONSIVE_CSS.slice(RESPONSIVE_CSS.indexOf('@media (max-width: 768px)'))
-    const selector = mobile.match(/([^{}]*)\{[^}]*position: absolute !important/)?.[1] ?? ''
-    const drawer = mobile.match(/\[data-dsh-frame\] \[data-pane="sidebar"\][^{]*\{([^}]*)\}/)?.[1] ?? ''
+    const drawerRuleMatch = mobile.match(/(\[data-dsh-frame\]:where\(:not\(\[data-mobile-nav\]\)\) \[data-pane="sidebar"\][^{]*)\{([^}]*)\}/)
+    const selector = drawerRuleMatch?.[1] ?? ''
+    const drawer = drawerRuleMatch?.[2] ?? ''
 
     // When a skin ships its sidebar rule under the loader's scope, then the
     // drawer must outrank BOTH shapes it can take: 0-2-2 (a plain skin
@@ -370,14 +371,16 @@ describe('aggregate responsive compat contract', () => {
     // The :is() is what supplies the third attribute selector, lifting the
     // rule to 0-3-0 so an equally-important 0-2-3 skin rule loses. It is
     // redundant as a matcher by construction: it repeats an attribute the
-    // rule already requires. Count across the whole selector - the frame
-    // attribute is a separate ancestor compound, not part of the subject.
+    // rule already requires. Note the :where(:not([data-mobile-nav])) guard
+    // has zero specificity weight and yields the compat drawer to dsh-web-mobile.
     expect(selector).toContain(':is(')
-    const attributeCount = (selector.match(/\[[^\]]+\]/g) ?? []).length
-    expect(attributeCount).toBeGreaterThanOrEqual(3)
+    expect(selector).toContain(':where(:not([data-mobile-nav]))')
+    const stripWhere = (s: string): string => s.replace(/:where\(:not\(\[[^\]]+\]\)\)/g, '')
+    const attributeCount = (stripWhere(selector).match(/\[[^\]]+\]/g) ?? []).length
+    expect(attributeCount).toBe(3)
 
-    // The stable substring every other assertion and the shell rely on stays.
-    expect(RESPONSIVE_CSS).toContain('[data-dsh-frame] [data-pane="sidebar"]')
+    // The stable substrings every other assertion and the shell rely on stay.
+    expect(RESPONSIVE_CSS).toContain('[data-dsh-frame]:where(:not([data-mobile-nav])) [data-pane="sidebar"]')
 
     // The remaining drawer declarations stay as they are
     expect(drawer).toContain('inset-block: 0')
@@ -397,8 +400,8 @@ describe('aggregate responsive compat contract', () => {
   it('user tapping an open drawer on a narrow viewport hits the drawer, not the frame', () => {
     // Given the mobile breakpoint declares the drawer and its dimming
     const mobile = RESPONSIVE_CSS.slice(RESPONSIVE_CSS.indexOf('@media (max-width: 768px)'))
-    const drawer = mobile.match(/\[data-dsh-frame\] \[data-pane="sidebar"\][^{]*\{([^}]*)\}/)?.[1] ?? ''
-    const mask = mobile.match(/\[data-dsh-frame\]:not\(\[data-sidebar-collapsed\]\)::after\s*\{([^}]*)\}/)?.[1] ?? ''
+    const drawer = mobile.match(/\[data-dsh-frame\][^{]*\[data-pane="sidebar"\][^{]*\{([^}]*)\}/)?.[1] ?? ''
+    const mask = mobile.match(/\[data-dsh-frame\]:where\(:not\(\[data-mobile-nav\]\)\):not\(\[data-sidebar-collapsed\]\)::after\s*\{([^}]*)\}/)?.[1] ?? ''
     expect(drawer).not.toBe('')
     expect(mask).not.toBe('')
 
@@ -418,5 +421,37 @@ describe('aggregate responsive compat contract', () => {
     // The dimming still sits under the drawer it dims, and still above content.
     expect(zIndexOf(mask)).toBeLessThan(zIndexOf(drawer))
     expect(zIndexOf(mask)).toBeGreaterThan(0)
+  })
+
+  // #2050: when dsh-web-mobile is installed alongside dsh-web-all, the mobile
+  // plugin stamps data-mobile-nav="frame" onto the root frame and owns the
+  // drawer stacking order and backdrop capture handler cleanly.
+  it('user on mobile sees compat drawer rules and capture-phase dismissal yield when dsh-web-mobile owns the frame (#2050)', () => {
+    // Given a narrow viewport frame stamped with data-mobile-nav="frame" by dsh-web-mobile
+    document.body.innerHTML = `<main data-dsh-frame data-mobile-nav="frame"><aside data-pane="sidebar"><div data-slot="sidebar"><div><div><button data-dsh-responsive-part="sidebar-toggle">toggle</button></div></div></div></aside><section data-pane="conversation"><button id="underlay">underlay</button></section></main>`
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 1 })
+    vi.stubGlobal('cancelAnimationFrame', () => {})
+    vi.stubGlobal('matchMedia', () => ({ matches: true }))
+    const frame = document.querySelector<HTMLElement>('[data-dsh-frame]')!
+    const toggle = document.querySelector<HTMLButtonElement>('[data-dsh-responsive-part="sidebar-toggle"]')!
+    const underlay = document.querySelector<HTMLButtonElement>('#underlay')!
+    const toggleHandler = vi.fn(() => { frame.toggleAttribute('data-sidebar-collapsed') })
+    const underlayHandler = vi.fn()
+    toggle.addEventListener('click', toggleHandler)
+    underlay.addEventListener('click', underlayHandler)
+    let cleanup: (() => void) | undefined
+    apply({ effect: (effect: () => (() => void) | void) => { cleanup = effect() ?? undefined } } as never)
+
+    // When clicking the conversation underlay outside the sidebar
+    const outsideClick = new MouseEvent('click', { bubbles: true, cancelable: true })
+    const dispatched = underlay.dispatchEvent(outsideClick)
+
+    // Then the compat capture listener yields without cancelling or folding the drawer
+    expect(dispatched).toBe(true)
+    expect(outsideClick.defaultPrevented).toBe(false)
+    expect(toggleHandler).not.toHaveBeenCalled()
+    expect(underlayHandler).toHaveBeenCalledOnce()
+    expect(frame.hasAttribute('data-sidebar-collapsed')).toBe(false)
+    cleanup?.()
   })
 })

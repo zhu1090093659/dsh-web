@@ -142,7 +142,10 @@ html[data-platform="darwin"] body > :is(
      position and the layer are therefore !important: which layer the drawer
      lives on must not be decided by the order two injected stylesheets happen
      to load in. */
-  [data-dsh-frame] [data-pane="sidebar"]:is([data-pane="sidebar"]) {
+  /* When dsh-web-mobile mounts its own navigation controller on the frame
+     (marked with data-mobile-nav), yield the compat drawer layer and mask
+     without raising specificity above 0-3-0 via zero-specificity :where(). */
+  [data-dsh-frame]:where(:not([data-mobile-nav])) [data-pane="sidebar"]:is([data-pane="sidebar"]) {
     position: absolute !important;
     inset-block: 0;
     inset-inline-start: 0;
@@ -162,7 +165,7 @@ html[data-platform="darwin"] body > :is(
      and both stay: the official drawer mask the layout paints under its own
      drawer (it closes the drawer through the app), and the capture-phase click
      handler that folds the drawer on any click outside the sidebar. */
-  [data-dsh-frame]:not([data-sidebar-collapsed])::after {
+  [data-dsh-frame]:where(:not([data-mobile-nav])):not([data-sidebar-collapsed])::after {
     content: "";
     position: fixed;
     inset: 0;
@@ -410,6 +413,7 @@ function installMobileSidebarDismiss(frame: HTMLElement): () => void {
     if (!(target instanceof Element)) return
     if (typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 768px)').matches) return
     const sidebar = frame.querySelector<HTMLElement>('[data-pane="sidebar"]')
+    if (sidebar !== null && sidebar.closest('[data-mobile-nav]') !== null) return
     const toggle = frame.querySelector<HTMLElement>('[data-dsh-responsive-part="sidebar-toggle"]')
     if (!frame.hasAttribute('data-sidebar-collapsed') && sidebar !== null && !sidebar.contains(target)) {
       event.preventDefault()

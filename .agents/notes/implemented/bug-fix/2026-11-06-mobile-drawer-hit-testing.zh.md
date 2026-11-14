@@ -16,9 +16,9 @@ Status: implemented
 
 层级契约由拥有它的那条声明决定，而不是由两份被注入的样式表谁先谁后决定。
 
-`packages/dsh-web-all/src/client/index.ts` 保留 0-3-0 选择器，并把抽屉的层级声明为 important：在已经 important 的 `position: absolute` 旁边写下 `z-index: 1100 !important`。`:is()` 依旧只负责把特异性抬到皮肤 0-2-2 / 0-2-3 之上；与官方表同权重时的平手由 `!important` 结束。
+`packages/dsh-web-all/src/client/index.ts` 保留 0-3-0 选择器上限，并把抽屉的层级声明为 important：在已经 important 的 `position: absolute` 旁边写下 `z-index: 1100 !important`。`:is()` 依旧只负责把特异性抬到皮肤 0-2-2 / 0-2-3 之上；与官方表同权重时的平手由 `!important` 结束。同时，窄屏抽屉规则（`[data-dsh-frame]:where(:not([data-mobile-nav])) [data-pane="sidebar"]:is([data-pane="sidebar"])`）与 `::after` 遮罩都在 `[data-dsh-frame]` 上追加零特异性的 `:where(:not([data-mobile-nav]))`，使之在保持 0-3-0 上限的同时，于同装 `dsh-web-mobile` 且宿主帧带有 `data-mobile-nav="frame"` 时自动让位（#2050），不再以 `1100 !important` 覆盖移动插件抽屉或截留点击。
 
-compat 遮罩继续只做抽屉的压暗，永不成为命中面：同一条 `::after` 上写 `pointer-events: none`。关闭动作保持它既有的两个归属者不变：布局在我方抽屉之下绘制的官方 `.drawerMask`，以及 `installMobileSidebarDismiss` 里捕获阶段对「点击落在侧栏之外」折起抽屉的处理器（见[#1716 关闭行为笔记](2026-09-25-issue-batch-1716-1719-and-ci-unblock.md)）。
+compat 遮罩继续只做抽屉的压暗，永不成为命中面：同一条 `::after` 上写 `pointer-events: none`。关闭动作保持它既有的两个归属者不变：布局在我方抽屉之下绘制的官方 `.drawerMask`，以及 `installMobileSidebarDismiss` 里捕获阶段对「点击落在侧栏之外」折起抽屉的处理器（见[#1716 关闭行为笔记](2026-09-25-issue-batch-1716-1719-and-ci-unblock.md)），同时在 `sidebar.closest('[data-mobile-nav]') !== null` 时立即返回让位给 `dsh-web-mobile`。
 
 `packages/dsh-remote-web-ui/src/client/mobile-adapt.ts` 在 `ADAPT_CSS` 里声明同一套阶梯：`[class*="_sidebarCol"]{z-index:1100 !important}` 与 `[class*="_drawerMask"]{z-index:1050 !important}`。竖屏面因此不依赖聚合 compat 层（本包也会被单独安装），官方的压暗层留在它所压暗的抽屉之下、它所要变暗的内容之上。没有任何节点被 portal：两层的宿主仍归 React 所有。
 

@@ -373,9 +373,14 @@ test('the child runner carries the secret payload in a 0600 file that the run re
     staged = file
     return spawnAttempt(process.execPath, ['-e', script, '@' + file], undefined, { capture: true })
   })
-  // Then the child read the exact value from a file only its owner can read
+  // Then the child read the exact value from a file only its owner can read.
+  // The mode bits only exist on POSIX: Windows reports 0o666 for every file and
+  // treats the write mode as advisory, so there the child's read and the cleanup
+  // below are the observable half of the guarantee.
   assert.equal(result.status, 0)
-  assert.match(result.output, /mode:600 read:turnstile-secret-value/)
+  assert.match(result.output, process.platform === 'win32'
+    ? /mode:[0-7]+ read:turnstile-secret-value/
+    : /mode:600 read:turnstile-secret-value/)
   // And nothing is left on disk afterwards
   assert.equal(fs.existsSync(staged), false)
 })

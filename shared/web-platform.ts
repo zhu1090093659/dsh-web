@@ -2,7 +2,7 @@
  * Shared browser platform modules. Seeding, bundling externals, and Vite
  * aliases consume this list so their module identities cannot drift.
  * Mirrors the shell's frozen module table (dsh-web-frontend staticModules,
- * verified against the 0.2.2-rc.2 cohort dist bundle
+ * verified against the 0.2.2-rc.3 cohort dist bundle
  * (dsh-web-frontend/dist/assets/index-*.js, the `staticModules` table): react,
  * react/jsx-runtime, react-dom, react-dom/client, cordis, zod,
  * @tanstack/react-virtual, dsh-client-store, dsh-client-ui-slots,

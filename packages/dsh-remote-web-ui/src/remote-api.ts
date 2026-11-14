@@ -191,7 +191,13 @@ export function makeRemoteApiRoutes(deps: RemoteApiDeps): WebRoute[] {
     proxyLoopbackHttp(req, res, port, `${inner}${url.search}`, deps.auth)
   }
 
-  return [{ kind: 'prefix', path: REMOTE_PREFIX, handler }]
+  const route: {
+    readonly kind: 'prefix'
+    readonly path: string
+    readonly auth: 'anonymous'
+    readonly handler: typeof handler
+  } = { kind: 'prefix', path: REMOTE_PREFIX, auth: 'anonymous', handler }
+  return [route]
 }
 
 /**
@@ -273,8 +279,10 @@ export function makeRemoteApiUpgradeRoutes(deps: RemoteApiDeps): WebUpgradeRoute
       })
   }
 
-  return REMOTE_UPGRADE_PATHS.map((path) => ({
+  type AuthAwareUpgradeRoute = WebUpgradeRoute & { readonly auth?: 'anonymous' | 'required' | 'deny' }
+  return REMOTE_UPGRADE_PATHS.map((path): AuthAwareUpgradeRoute => ({
     path,
+    auth: 'anonymous',
     handler: handlerFor(path.slice(REMOTE_PREFIX.length)),
   }))
 }

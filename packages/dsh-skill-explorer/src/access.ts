@@ -10,9 +10,10 @@ import type { IncomingMessage } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import { isPairedOrLoopbackAllowed } from './pair-access.ts'
 
-/** Structural lookup of the host connection service. */
+/** Structural lookup of the host connection service across SDK cohorts. */
 interface HostConnectionService {
   requestRejection?: (request: IncomingMessage) => unknown
+  admit?: (request: IncomingMessage) => { readonly peer?: unknown; readonly rejection?: unknown }
 }
 
 /**
@@ -25,7 +26,9 @@ function resolveConnection(ctx: Context): HostConnectionService | undefined {
     const candidate = typeof ctx.get === 'function'
       ? (ctx.get('connection', false) ?? ctx.get('connection'))
       : (ctx as { connection?: HostConnectionService }).connection
-    return candidate !== undefined && candidate !== null && typeof candidate.requestRejection === 'function'
+    return candidate !== undefined && candidate !== null && (
+      typeof candidate.admit === 'function' || typeof candidate.requestRejection === 'function'
+    )
       ? candidate
       : undefined
   } catch {
@@ -41,8 +44,15 @@ function resolveConnection(ctx: Context): HostConnectionService | undefined {
  */
 export function isSkillExplorerAllowed(ctx: Context, request: IncomingMessage): boolean {
   const connection = resolveConnection(ctx)
-  if (connection !== undefined && connection.requestRejection?.(request) === undefined) {
-    return true
+  if (connection !== undefined) {
+    if (typeof connection.admit === 'function') {
+      const admission = connection.admit(request)
+      if (admission.rejection === undefined && 'peer' in admission && admission.peer !== undefined) {
+        return true
+      }
+    } else if (typeof connection.requestRejection === 'function' && connection.requestRejection(request) === undefined) {
+      return true
+    }
   }
   return isPairedOrLoopbackAllowed(ctx, request)
 }

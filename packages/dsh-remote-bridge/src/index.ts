@@ -1668,10 +1668,16 @@ function applyImpl(ctx: Context, config?: unknown): void {
   const lanOrigin = (): { address: string; port: number } | undefined => lanOriginOf(liveIngress.forward?.())
 
   ctx.effect(() => {
-    const disposeUpgrade = ctx.webServer.registerUpgrade({
+    const upgradeRoute: Parameters<typeof ctx.webServer.registerUpgrade>[0] & {
+      readonly auth?: 'anonymous' | 'required' | 'deny'
+    } = {
       path: WS_PATH,
+      // Protocol v1 accepts unauthenticated connections in UNPAIRED state and restricts
+      // them to hello / pair.begin / pair.finish until device-token verification succeeds.
+      auth: 'anonymous',
       handler: makeUpgradeHandler(hub, roster, log),
-    })
+    }
+    const disposeUpgrade = ctx.webServer.registerUpgrade(upgradeRoute)
     const disposeRoute = ctx.webServer.register(makePairTokenRoute({
       pairing,
       log,

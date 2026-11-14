@@ -64,35 +64,41 @@ export function makeRoutes(ctx: Context, deps: DiagramRouteDeps = {}): WebRoute[
     return cached
   }
 
-  return [
-    {
-      kind: 'exact',
-      path: RUNTIME_ROUTE,
-      handler: (req: IncomingMessage, res: ServerResponse): void => {
-        if (!isPairedOrLoopbackAllowed(ctx, req)) {
-          writeError(res, 403, 'forbidden: loopback-only')
-          return
-        }
-        if (!ALLOWED_METHODS.has(req.method ?? '')) {
-          writeError(res, 405, `method not allowed: ${req.method ?? ''}`)
-          return
-        }
-        const asset = readAsset()
-        if (asset === null) {
-          writeError(res, 404, 'mermaid runtime asset unavailable')
-          return
-        }
-        res.statusCode = 200
-        res.setHeader('Content-Type', 'text/javascript; charset=utf-8')
-        res.setHeader('Content-Length', String(asset.byteLength))
-        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
-        res.setHeader('X-Content-Type-Options', 'nosniff')
-        if ((req.method ?? '') === 'HEAD') {
-          res.end()
-          return
-        }
-        res.end(asset)
-      },
+  const runtimeRoute: {
+    readonly kind: 'exact'
+    readonly path: string
+    readonly auth: 'anonymous'
+    readonly handler: (req: IncomingMessage, res: ServerResponse) => void
+  } = {
+    kind: 'exact',
+    path: RUNTIME_ROUTE,
+    // Protected by isPairedOrLoopbackAllowed so paired mobile browsers and loopback continue working cleanly.
+    auth: 'anonymous',
+    handler: (req: IncomingMessage, res: ServerResponse): void => {
+      if (!isPairedOrLoopbackAllowed(ctx, req)) {
+        writeError(res, 403, 'forbidden: loopback-only')
+        return
+      }
+      if (!ALLOWED_METHODS.has(req.method ?? '')) {
+        writeError(res, 405, `method not allowed: ${req.method ?? ''}`)
+        return
+      }
+      const asset = readAsset()
+      if (asset === null) {
+        writeError(res, 404, 'mermaid runtime asset unavailable')
+        return
+      }
+      res.statusCode = 200
+      res.setHeader('Content-Type', 'text/javascript; charset=utf-8')
+      res.setHeader('Content-Length', String(asset.byteLength))
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+      res.setHeader('X-Content-Type-Options', 'nosniff')
+      if ((req.method ?? '') === 'HEAD') {
+        res.end()
+        return
+      }
+      res.end(asset)
     },
-  ]
+  }
+  return [runtimeRoute]
 }

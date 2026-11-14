@@ -13,7 +13,8 @@
  *    would mount the host half only and leave the update-check section dead;
  * 2. the row's `id` is claimed by nobody else: not an official DSH bundle row
  *    (the roster below, snapshotted from the installed
- *    `@deepseek-ai/dsh-web-app` across the 0.2.2-rc.1..0.2.2-rc.2 cohorts) and
+ *    `@deepseek-ai/dsh-web-app` across the 0.2.2-rc.1..0.2.2-rc.3 cohorts and
+ *    DSH master preview rows) and
  *    not another family package. Reusing the official `ui-plugin-manager` id
  *    dropped the official row, and because only the official client registers
  *    `sidebar.panellist`, the sidebar "Plugins" entry and the whole plugin
@@ -65,7 +66,8 @@ function familyClaimedIds(): Map<string, string[]> {
 /**
  * Row ids the official DSH bundles already claim, snapshotted from the
  * installed `@deepseek-ai/dsh-base` and `@deepseek-ai/dsh-web-app` bundle
- * patches (union of cohorts 0.2.2-rc.1 and 0.2.2-rc.2, both bundles: the
+ * patches (union of cohorts 0.2.2-rc.1..0.2.2-rc.3 and DSH master preview rows,
+ * both bundles: the
  * official id space is not only `ui-*` — `dsh-base` claims a bare
  * `plugin-manager`, which is why this package's own id could not simply drop
  * the prefix). A family row must stay out of this set: the loader cannot mount
@@ -76,7 +78,8 @@ function familyClaimedIds(): Map<string, string[]> {
 const OFFICIAL_ROW_IDS: ReadonlySet<string> = new Set([
   'account-controller', 'agent', 'agent-default-model', 'agent-instructions', 'agent-loop',
   'agent-preset-registry', 'agent-team', 'api-remotes', 'approval', 'attachment-local',
-  'authorization', 'bash-sandbox', 'client-hmr', 'command-compact', 'command-feedback',
+  'authentication-token', 'authorization', 'bash-sandbox', 'client-hmr', 'command-compact',
+  'command-feedback',
   'command-goal', 'commands', 'compaction-basic', 'config-editor', 'connection',
   'cordis-client-runner', 'cordis-host-runner', 'cordis-inspect-providers', 'credentials',
   'deepseek-account', 'deepseek-llm-api-extensions', 'deliverable-file-references',
@@ -106,7 +109,8 @@ const OFFICIAL_ROW_IDS: ReadonlySet<string> = new Set([
   'ui-cordis', 'ui-deliverables', 'ui-file-actions', 'ui-file-drag', 'ui-goal',
   'ui-input-trigger', 'ui-jobs', 'ui-layout', 'ui-message-feedback', 'ui-model-selection',
   'ui-open-in-app', 'ui-permission', 'ui-plan', 'ui-plugin-manager', 'ui-reference',
-  'ui-renderer', 'ui-schedule', 'ui-secret-mask', 'ui-session', 'ui-settings',
+  'ui-renderer', 'ui-schedule', 'ui-secret-mask', 'ui-session', 'ui-session-status',
+  'ui-settings',
   'ui-settings-account', 'ui-settings-agent-loop', 'ui-settings-general', 'ui-settings-models',
   'ui-settings-plugin-inventory', 'ui-settings-plugins', 'ui-settings-session-log',
   'ui-settings-shell', 'ui-settings-subagent', 'ui-settings-web-search', 'ui-shortcuts',

@@ -651,4 +651,17 @@ describe('remote desktop channel (/remote)', () => {
     }
     expect(pairedDeviceIdOf(request({ host: 'x', 'x-dsh-remote-device': 'revoked' }), service)).toBeUndefined()
   })
+
+  it('user sees anonymous webServer auth declared on all remote API HTTP routes', () => {
+    // Given remote API HTTP routes protected by paired-device credentials
+    const service = makeService()
+    const routes = makeRemoteApiRoutes({ service, port: () => 3000 })
+
+    // When checking the auth policy of every registered route
+    const policies = routes.map((route) => (route as { readonly auth?: string }).auth)
+
+    // Then each route sets auth to anonymous so paired mobile devices can reach /remote
+    expect(policies.length).toBeGreaterThan(0)
+    expect(policies.every((policy) => policy === 'anonymous')).toBe(true)
+  })
 })

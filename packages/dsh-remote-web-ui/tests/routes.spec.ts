@@ -1557,4 +1557,21 @@ describe('tunneled mobile pairing (issue #1919)', () => {
       await close()
     }
   })
+
+  it('guest: pairing and phone-app routes opt into anonymous webServer auth policy', () => {
+    // Given a complete set of remote-web-ui routes with landing, LAN bind, and service worker enabled
+    const service = makeService()
+    const routes = makeRoutes({
+      service,
+      indexDocument: async () => '<html><body>official</body></html>',
+      lanBindStatus: () => ({ enabled: true, bound: true }),
+    })
+
+    // When inspecting the declared auth policy of every generated route
+    const policies = routes.map((route) => (route as { readonly auth?: string }).auth)
+
+    // Then every route sets auth to anonymous so self-fenced pairing flows are not blocked
+    expect(policies.length).toBeGreaterThan(0)
+    expect(policies.every((policy) => policy === 'anonymous')).toBe(true)
+  })
 })

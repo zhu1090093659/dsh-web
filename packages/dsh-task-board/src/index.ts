@@ -310,7 +310,8 @@ export const DEFAULT_TRUST_FORWARDED_PROXY = false
 export function resolveConnectionTrust(ctx: Context): TaskBoardConnectionTrust | undefined {
   try {
     const connection = ctx.get('connection') as Partial<TaskBoardConnectionTrust> | undefined
-    return connection !== undefined && typeof connection.requestRejection === 'function'
+    if (connection === undefined || connection === null) return undefined
+    return typeof connection.admit === 'function' || typeof connection.requestRejection === 'function'
       ? connection as TaskBoardConnectionTrust
       : undefined
   } catch {

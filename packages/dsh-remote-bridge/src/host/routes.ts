@@ -140,7 +140,17 @@ export function makePairTokenHandler(deps: PairTokenRouteDeps): WebRoute['handle
   }
 }
 
+type AuthAwareWebRoute = WebRoute & { readonly auth?: 'anonymous' | 'required' | 'deny' }
+
 /** The route as the host web server takes it: one exact path, no trailing slash. */
 export function makePairTokenRoute(deps: PairTokenRouteDeps): WebRoute {
-  return { kind: 'exact', path: PAIR_TOKEN_PATH, handler: makePairTokenHandler(deps) }
+  // This endpoint runs its own strict loopback-and-Host trust fence (plus pair-token
+  // semantics) without requiring a desktop browser session cookie.
+  const route: AuthAwareWebRoute = {
+    kind: 'exact',
+    path: PAIR_TOKEN_PATH,
+    auth: 'anonymous',
+    handler: makePairTokenHandler(deps),
+  }
+  return route
 }

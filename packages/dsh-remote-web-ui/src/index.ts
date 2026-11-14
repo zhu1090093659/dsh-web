@@ -912,14 +912,11 @@ function applyImpl(ctx: Context, config?: ResolvedConfigFields): void {
   // redeems its own launch token once and attaches the cookie to inner
   // requests; the credential is only ever exercised behind the pairing gate
   // in remote-api.ts.
-  const innerAuth = createInnerAuth(() => {
-    if (!Number.isFinite(ctx.webServer.port)) return undefined
-    try {
-      return (ctx.connection as { authenticatedUrl?: (base: string) => string }).authenticatedUrl?.(`http://127.0.0.1:${String(ctx.webServer.port)}/`)
-    } catch {
-      return undefined
-    }
-  })
+  const innerAuth = createInnerAuth(() => (
+    Number.isFinite(ctx.webServer.port)
+      ? resolveLaunchTokenUrl(ctx, `http://127.0.0.1:${String(ctx.webServer.port)}/`)
+      : undefined
+  ))
   // The official index document for the /pair-app landing, fetched from the
   // inner loopback with the process credential and cached briefly (the shell
   // is static; skins/injections settle right after boot).
@@ -1465,4 +1462,73 @@ function applyImpl(ctx: Context, config?: ResolvedConfigFields): void {
   // from the exported `Config` schema, whose volatile fields are what make the
   // page writable and what route a save through the live path above.
   sync()
+}
+
+interface LegacyLaunchConnection {
+  authenticatedUrl?(baseUrl: string): string
+}
+
+interface EntryUrlCandidate {
+  readonly url?: string
+  readonly open?: boolean
+}
+
+/** Minimal Cordis context surface needed to mint a DSH launch-token URL. */
+export interface LaunchTokenContext {
+  readonly connection?: unknown
+  get?(name: string): unknown
+  readonly webServer?: unknown
+  emit?(subject: unknown, event: string, baseUrl: string, entries: EntryUrlCandidate[]): unknown
+}
+
+function readLegacyLaunchConnection(ctx: LaunchTokenContext): LegacyLaunchConnection | undefined {
+  try {
+    if (ctx.connection !== undefined && ctx.connection !== null) {
+      return ctx.connection as LegacyLaunchConnection
+    }
+    if (typeof ctx.get === 'function') {
+      return ctx.get('connection') as LegacyLaunchConnection | undefined
+    }
+  } catch {
+    return undefined
+  }
+  return undefined
+}
+
+function readEntryUrlWebServer(ctx: LaunchTokenContext): unknown {
+  if (ctx.webServer !== undefined) return ctx.webServer
+  if (typeof ctx.get !== 'function') return undefined
+  try {
+    return ctx.get('webServer')
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Resolve a launch-token authenticated DSH URL for `baseUrl` across SDK cohorts:
+ * legacy hosts expose `connection.authenticatedUrl(baseUrl)`, while peer-auth
+ * hosts collect entry URLs via `ctx.emit(webServer, 'webserver/entry-url', baseUrl, entries)`.
+ */
+export function resolveLaunchTokenUrl(ctx: LaunchTokenContext, baseUrl: string): string | undefined {
+  const connection = readLegacyLaunchConnection(ctx)
+  if (connection !== undefined && typeof connection.authenticatedUrl === 'function') {
+    try {
+      return connection.authenticatedUrl(baseUrl)
+    } catch {
+      return undefined
+    }
+  }
+  const webServer = readEntryUrlWebServer(ctx)
+  if (webServer === undefined || typeof ctx.emit !== 'function') return undefined
+  const entries: EntryUrlCandidate[] = []
+  try {
+    ctx.emit(webServer, 'webserver/entry-url', baseUrl, entries)
+  } catch {
+    return undefined
+  }
+  const preferred = entries.find((entry) => entry.open === true && typeof entry.url === 'string' && entry.url.length > 0)
+  if (preferred?.url !== undefined) return preferred.url
+  const fallback = entries.find((entry) => typeof entry.url === 'string' && entry.url.length > 0)
+  return fallback?.url
 }

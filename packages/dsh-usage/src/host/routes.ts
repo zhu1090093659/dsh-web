@@ -9,6 +9,8 @@ import type { UsageService } from './usage-service.ts'
 
 export const USAGE_API_PREFIX = '/api/dsh-usage'
 
+type AuthAwareWebRoute = WebRoute & { readonly auth?: 'anonymous' | 'required' | 'deny' }
+
 /**
  * Overview route: provider balances, plan quotas, and token usage totals.
  * Personal account data behind the family trust fence — loopback always
@@ -20,9 +22,11 @@ export const USAGE_API_PREFIX = '/api/dsh-usage'
  * @returns the route.
  */
 export function makeUsageOverviewRoute(ctx: Context, service: UsageService): WebRoute {
-  return {
+  const route: AuthAwareWebRoute = {
     kind: 'exact',
     path: USAGE_API_PREFIX + '/overview',
+    // Self-fenced by isUsageAllowed (loopback or live remote-web-ui paired device).
+    auth: 'anonymous',
     handler: async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
       if (!isUsageAllowed(ctx, req)) {
         writeJson(res, 403, { ok: false, error: 'forbidden: loopback-only' })
@@ -31,6 +35,7 @@ export function makeUsageOverviewRoute(ctx: Context, service: UsageService): Web
       writeJson(res, 200, service.overview(), { 'cache-control': 'no-store' })
     },
   }
+  return route
 }
 
 /**
@@ -44,9 +49,10 @@ export function makeUsageOverviewRoute(ctx: Context, service: UsageService): Web
  * @returns the route.
  */
 export function makeUsageDayRoute(ctx: Context, service: UsageService): WebRoute {
-  return {
+  const route: AuthAwareWebRoute = {
     kind: 'exact',
     path: USAGE_API_PREFIX + '/day',
+    auth: 'anonymous',
     handler: (req: IncomingMessage, res: ServerResponse): void => {
       if (!isUsageAllowed(ctx, req)) {
         writeJson(res, 403, { ok: false, error: 'forbidden: loopback-only' })
@@ -60,6 +66,7 @@ export function makeUsageDayRoute(ctx: Context, service: UsageService): WebRoute
       writeJson(res, 200, { ok: true, day: service.day(date) } satisfies UsageDayResponse, { 'cache-control': 'no-store' })
     },
   }
+  return route
 }
 
 /**
@@ -70,9 +77,10 @@ export function makeUsageDayRoute(ctx: Context, service: UsageService): WebRoute
  * @returns the route.
  */
 export function makeUsageRefreshRoute(ctx: Context, service: UsageService): WebRoute {
-  return {
+  const route: AuthAwareWebRoute = {
     kind: 'exact',
     path: USAGE_API_PREFIX + '/refresh',
+    auth: 'anonymous',
     handler: async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
       if (!isUsageAllowed(ctx, req)) {
         writeJson(res, 403, { ok: false, error: 'forbidden: loopback-only' })
@@ -91,4 +99,5 @@ export function makeUsageRefreshRoute(ctx: Context, service: UsageService): WebR
       writeJson(res, 200, service.overview(), { 'cache-control': 'no-store' })
     },
   }
+  return route
 }

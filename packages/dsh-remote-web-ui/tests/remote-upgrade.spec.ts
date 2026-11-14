@@ -290,4 +290,17 @@ describe('remote desktop event-stream upgrades', () => {
       await upstream.close()
     }
   })
+
+  it('user sees anonymous webServer auth declared on all remote API upgrade routes', () => {
+    // Given remote API upgrade routes mounted for paired remote devices
+    const service = makeService()
+    const routes = makeRemoteApiUpgradeRoutes({ service, port: () => 3000 })
+
+    // When checking the auth policy of every upgrade descriptor
+    const policies = routes.map((route) => (route as { readonly auth?: string }).auth)
+
+    // Then each upgrade route opts into anonymous auth because it checks device credentials itself
+    expect(policies.length).toBeGreaterThan(0)
+    expect(policies.every((policy) => policy === 'anonymous')).toBe(true)
+  })
 })

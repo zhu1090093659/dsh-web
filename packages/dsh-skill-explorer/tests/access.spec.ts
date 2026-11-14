@@ -109,4 +109,44 @@ describe('isSkillExplorerAllowed', () => {
     expect(remoteAllowed).toBe(false)
     expect(loopbackAllowed).toBe(true)
   })
+
+  it('operator admits authenticated peer-auth requests via connection.admit(request)', () => {
+    // Given a peer-auth host connection exposing admit(request) returning a peer identity
+    const ctx = {
+      get: (name: string) => (name === 'connection'
+        ? { admit: () => ({ peer: { kind: 'browser-session', id: 'sess-1' } }) }
+        : undefined),
+    }
+    const remoteReq = request({
+      remoteAddress: '192.168.15.24',
+      host: 'dsh.example.internal',
+    })
+
+    // When checking admission for a remote request authenticated by the host peer provider
+    const allowed = isSkillExplorerAllowed(ctx as never, remoteReq)
+
+    // Then the host peer admission allows the request through
+    expect(allowed).toBe(true)
+  })
+
+  it('operator falls back to loopback or pairing fence when connection.admit rejects', () => {
+    // Given a peer-auth host connection whose admit(request) rejects the request
+    const ctx = {
+      get: (name: string) => (name === 'connection'
+        ? { admit: () => ({ rejection: 401 }) }
+        : undefined),
+    }
+    const remoteReq = request({
+      remoteAddress: '192.168.15.24',
+      host: 'dsh.example.internal',
+    })
+
+    // When checking admission for an unauthenticated remote request vs direct loopback
+    const remoteAllowed = isSkillExplorerAllowed(ctx as never, remoteReq)
+    const loopbackAllowed = isSkillExplorerAllowed(ctx as never, request())
+
+    // Then the remote request is refused while direct loopback remains allowed
+    expect(remoteAllowed).toBe(false)
+    expect(loopbackAllowed).toBe(true)
+  })
 })

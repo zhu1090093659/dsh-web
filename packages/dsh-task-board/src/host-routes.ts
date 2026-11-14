@@ -47,7 +47,11 @@ export const TASK_BOARD_PROXY_TOKEN_HEADER = 'x-dsh-task-board-proxy-token'
  * import.
  */
 export interface TaskBoardConnectionTrust {
-  requestRejection(request: { readonly headers: IncomingMessage['headers'] }): 401 | 403 | undefined
+  requestRejection?(request: { readonly headers: IncomingMessage['headers'] }): 401 | 403 | undefined
+  admit?(request: { readonly headers: IncomingMessage['headers'] }): {
+    readonly peer?: unknown
+    readonly rejection?: 401 | 403
+  }
 }
 
 /** Optional authenticated reverse-proxy access layered over the loopback default. */
@@ -226,7 +230,14 @@ function matchesToken(candidate: string | string[] | undefined, expected: string
  */
 export function isTrustedTaskBoardRequest(req: IncomingMessage, access: ResolvedRouteAccess): boolean {
   const connection = access.connection?.()
-  if (connection !== undefined && connection.requestRejection(req) === undefined) return true
+  if (connection !== undefined) {
+    if (typeof connection.admit === 'function') {
+      const admission = connection.admit(req)
+      if (admission.rejection === undefined && 'peer' in admission && admission.peer !== undefined) return true
+    } else if (typeof connection.requestRejection === 'function' && connection.requestRejection(req) === undefined) {
+      return true
+    }
+  }
   if (!browserSameOriginMarker(req)) return false
   if (isLoopbackRequest(req)) return true
   // The tunnel makes the socket and the Host describe the proxy, so the
@@ -520,5 +531,10 @@ export function makeTaskBoardRoutes(
       }
     },
   }
-  return [state, action, events, parse, modelCatalog, attachmentUpload, attachmentImage]
+  // Task board routes enforce their own Host/Origin, DSH connection, and
+  // paired-device trust fence and must stay reachable when webServer defaults routes to auth: 'required'.
+  type AuthAwareWebRoute = WebRoute & { readonly auth?: 'anonymous' | 'required' | 'deny' }
+  return [state, action, events, parse, modelCatalog, attachmentUpload, attachmentImage].map(
+    (route): AuthAwareWebRoute => ({ ...route, auth: 'anonymous' }),
+  )
 }

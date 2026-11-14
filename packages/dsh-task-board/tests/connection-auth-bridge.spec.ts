@@ -247,4 +247,53 @@ describe('connection trust resolution', () => {
     // Then it bridges the mounted service itself, so its Host/Origin fence and signed cookie decide
     expect(resolved).toBe(service)
   })
+
+  it('operator resolves peer-auth connection.admit and routes admit or reject accordingly', async () => {
+    // Given a peer-auth host connection exposing only admit(request)
+    const admitService: TaskBoardConnectionTrust = {
+      admit: () => ({ peer: { kind: 'browser-session', id: 'sess-1' } }),
+    }
+    const rejectService: TaskBoardConnectionTrust = {
+      admit: () => ({ rejection: 401 }),
+    }
+    const resolved = resolveConnectionTrust({ get: (name: string) => (name === 'connection' ? admitService : undefined) } as never)
+    const admittedBoard = await startBoard({ connection: () => admitService }, GATEWAY_ADDRESS)
+    const rejectedBoard = await startBoard({ connection: () => rejectService }, GATEWAY_ADDRESS)
+    try {
+      // When requests arrive through a trusted proxy for admitted vs rejected peer sessions
+      const admittedStatus = await send(`${admittedBoard.base}/api/task-board/state`, PROXY_BROWSER)
+      const rejectedStatus = await send(`${rejectedBoard.base}/api/task-board/action`, {
+        ...PROXY_BROWSER,
+        'content-type': 'application/json',
+      }, CREATE_BODY)
+
+      // Then resolveConnectionTrust returns the admit service, admitted requests succeed, and rejected requests fail closed
+      expect(resolved).toBe(admitService)
+      expect(admittedStatus).toBe(200)
+      expect(rejectedStatus).toBe(403)
+      expect(rejectedBoard.applied()).toBe(0)
+    } finally {
+      await admittedBoard.close()
+      await rejectedBoard.close()
+    }
+  })
+
+  it('operator registers every task-board route with anonymous webServer auth policy', () => {
+    // Given task-board routes wired with the plugin's own trust fence
+    const service = {
+      snapshot: () => snapshot,
+      apply: () => snapshot,
+      applyVerified: () => snapshot,
+      ledger: { allTasks: () => [] },
+      subscribe: () => () => undefined,
+    } as unknown as TaskBoardHostService
+    const routes = makeTaskBoardRoutes(service)
+
+    // When checking the declared webServer auth policy across all board routes
+    const policies = routes.map((route) => (route as { readonly auth?: string }).auth)
+
+    // Then every route explicitly sets auth to anonymous
+    expect(policies.length).toBeGreaterThan(0)
+    expect(policies.every((policy) => policy === 'anonymous')).toBe(true)
+  })
 })

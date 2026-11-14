@@ -258,4 +258,17 @@ describe('the mounted plugin', () => {
     expect(host.routes).toEqual([])
     expect(host.upgrades).toEqual([])
   })
+
+  it('operator registers anonymous auth policy on self-fenced pairing HTTP and WebSocket routes', () => {
+    // Given a newly mounted remote-bridge host on a webServer that defaults routes to required auth
+    const host = mountPlugin()
+
+    // When inspecting the registered HTTP and WebSocket upgrade route descriptors
+    const routeAuth = host.routes.map((route) => (route as { readonly auth?: string }).auth)
+    const upgradeAuth = host.upgrades.map((route) => (route as { readonly auth?: string }).auth)
+
+    // Then both routes explicitly opt into anonymous access for the plugin's own fence
+    expect(routeAuth).toEqual(['anonymous'])
+    expect(upgradeAuth).toEqual(['anonymous'])
+  })
 })

@@ -26,7 +26,7 @@ test('the plugin scaffold declares a >= floor and the current cohort matches it'
   assert.match(floor, /^>=\s*\d+\.\d+\.\d+/)
   // The scaffold floor names the cohort the repository installs; when the
   // cohort moves, this assertion and the manifest move together.
-  assert.equal(floor, '>=0.2.2-rc.2')
+  assert.equal(floor, '>=0.2.2-rc.3')
 })
 
 test('satisfiesFloor follows semver prerelease ordering', () => {

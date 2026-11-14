@@ -287,4 +287,18 @@ describe('the line the route writes to the host log', () => {
     expect(lines[0]).toBe('pair a device with ws://127.0.0.1:3000/ios/v1?token=' + body.token)
     expect(lines[0]).not.toContain('(phone:')
   })
+
+  it('operator registers the pair-token route with anonymous webServer auth policy', () => {
+    // Given a standalone pair-token route constructed for a peer-auth webServer
+    const route = makePairTokenRoute({
+      pairing: new PairingService(),
+      log: () => undefined,
+    })
+
+    // When checking the route's declared webServer auth policy
+    const auth = (route as { readonly auth?: string }).auth
+
+    // Then the route opts into anonymous access because it enforces its own loopback-and-Host fence
+    expect(auth).toBe('anonymous')
+  })
 })

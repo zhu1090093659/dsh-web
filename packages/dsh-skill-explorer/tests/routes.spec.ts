@@ -1306,4 +1306,21 @@ describe('import (#1881)', () => {
       rmSync(fixture.root, { recursive: true, force: true })
     }
   })
+
+  it('operator declares anonymous webServer auth across skill-explorer routes', () => {
+    // Given mounted skill-explorer API routes with their own access guard
+    const fixture = importFixture()
+    try {
+      const routes = fixture.mount()
+
+      // When inspecting the auth policy on every registered route
+      const policies = routes.map((route) => (route as { readonly auth?: string }).auth)
+
+      // Then every route explicitly sets auth to anonymous
+      expect(policies.length).toBeGreaterThan(0)
+      expect(policies.every((policy) => policy === 'anonymous')).toBe(true)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
 })

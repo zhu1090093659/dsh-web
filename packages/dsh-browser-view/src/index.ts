@@ -56,12 +56,68 @@ interface AttachmentStoreLike {
 /**
  * The connection service as this package uses it. Typed structurally for the
  * same reason as the attachment store: the connection SDK package is not a
- * dependency of this one, and the shape needed here is one method — the
- * process launch-token URL a navigation to DSH's own auth page is retried
- * with.
+ * dependency of this one, and the shape needed here is the legacy
+ * launch-token URL helper on hosts prior to peer-based auth providers.
  */
 interface ConnectionLike {
-  authenticatedUrl(baseUrl: string): string
+  authenticatedUrl?(baseUrl: string): string
+}
+
+interface EntryUrlCandidate {
+  readonly url?: string
+  readonly open?: boolean
+}
+
+/** Minimal Cordis context surface needed to resolve an authenticated DSH URL. */
+export interface AuthenticatedUrlContext {
+  get?(name: string): unknown
+  readonly webServer?: unknown
+  emit?(subject: unknown, event: string, baseUrl: string, entries: EntryUrlCandidate[]): unknown
+}
+
+function readWebServer(ctx: AuthenticatedUrlContext): unknown {
+  if (ctx.webServer !== undefined) return ctx.webServer
+  if (typeof ctx.get !== 'function') return undefined
+  try {
+    return ctx.get('webServer')
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Resolve the host's authenticated entry URL for `url` across SDK cohorts:
+ * legacy hosts expose `connection.authenticatedUrl(url)`, while peer-auth
+ * hosts collect entry URLs via `ctx.emit(webServer, 'webserver/entry-url', url, entries)`.
+ */
+export function resolveAuthenticatedUrl(ctx: AuthenticatedUrlContext, url: string): string | undefined {
+  let connection: ConnectionLike | undefined
+  if (typeof ctx.get === 'function') {
+    try {
+      connection = ctx.get('connection') as ConnectionLike | undefined
+    } catch {
+      connection = undefined
+    }
+  }
+  if (connection !== undefined && typeof connection.authenticatedUrl === 'function') {
+    try {
+      return connection.authenticatedUrl(url)
+    } catch {
+      return undefined
+    }
+  }
+  const webServer = readWebServer(ctx)
+  if (webServer === undefined || typeof ctx.emit !== 'function') return undefined
+  const entries: EntryUrlCandidate[] = []
+  try {
+    ctx.emit(webServer, 'webserver/entry-url', url, entries)
+  } catch {
+    return undefined
+  }
+  const preferred = entries.find((entry) => entry.open === true && typeof entry.url === 'string' && entry.url.length > 0)
+  if (preferred?.url !== undefined) return preferred.url
+  const fallback = entries.find((entry) => typeof entry.url === 'string' && entry.url.length > 0)
+  return fallback?.url
 }
 
 /**
@@ -83,15 +139,7 @@ export function apply(ctx: Context, config?: RuntimeConfig): void {
     // process launch token, may mount after this plugin, and answers with a
     // URL that is only good for this process. A host that mounts none simply
     // keeps showing the authentication page.
-    authenticatedUrl: (url: string) => {
-      const connection = ctx.get('connection') as ConnectionLike | undefined
-      if (connection === undefined || typeof connection.authenticatedUrl !== 'function') return undefined
-      try {
-        return connection.authenticatedUrl(url)
-      } catch {
-        return undefined
-      }
-    },
+    authenticatedUrl: (url: string) => resolveAuthenticatedUrl(ctx, url),
   })
 
   // Resolved per call, not at mount: the screenshot tool must see the

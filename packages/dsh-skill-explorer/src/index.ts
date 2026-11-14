@@ -13,6 +13,7 @@ import { homedir } from 'node:os'
 import { sep } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
+import { captureConnection } from './access.ts'
 import { makeRoutes, ROUTES } from './routes.ts'
 import { customSkillDirsFromLoader, normalizeSkillRoots, type CollectOptions, type LoaderEntryLike } from './collect.ts'
 import { mountOnce } from './mount-once.ts'
@@ -102,6 +103,10 @@ function applyImpl(ctx: Context, config?: Config): void {
     }
   }
 
+  // The peer-auth connection bridge reads `connection.authentication` through
+  // the calling context, so it is captured in a scope that injects it; a
+  // deployment that serves no such service keeps the bare lookup.
+  const connection = captureConnection(ctx)
   const routes = makeRoutes(ctx, {
     dshHome,
     agentsHome,
@@ -109,6 +114,7 @@ function applyImpl(ctx: Context, config?: Config): void {
     registry: skillCtx.skills,
     activeSessionCwds,
     logger: { warn: (error: unknown) => ctx.logger.warn(error) },
+    connection,
   })
 
   ctx.effect(() => {

@@ -19,7 +19,7 @@ import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
-import { isSkillExplorerAllowed } from './access.ts'
+import { isSkillExplorerAllowed, type HostConnectionService } from './access.ts'
 import { buildPayload, collectSkills, findProjectRoot, isSkillName, overwriteSkillFile, projectSkillRoot, trashSkillFile, userSkillRoot, writeSkillFile, type CollectOptions, type SkillEntry } from './collect.ts'
 import { parseFrontmatter, setFrontmatterField, stripFrontmatter } from './frontmatter.ts'
 import { readJsonBody, writeJson } from './http.ts'
@@ -69,6 +69,12 @@ export interface SkillRoutesDeps {
   activeSessionCwds(): string[]
   /** Logger. */
   logger: { warn(error: unknown): void }
+  /**
+   * Host connection service captured in a scope that injects its
+   * `connection.authentication` sub-service, read per request. Omitted means
+   * the route falls back to a bare lookup, exactly as before.
+   */
+  connection?: () => HostConnectionService | undefined
 }
 
 /** Default process cwd fallback (overridable in tests). */
@@ -116,6 +122,8 @@ function resolveImportSource(source: unknown): ImportSource | string {
  */
 export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
   const { dshHome, agentsHome, registry, activeSessionCwds, logger } = deps
+  /** This deployment's connection service, captured through its injected sub-service when available. */
+  const connection = (): HostConnectionService | undefined => deps.connection?.()
 
   /** Resolve the configured custom roots (degraded to [] when the resolver throws). */
   const resolveCustomSkillDirs = (): string[] => {
@@ -129,7 +137,7 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
 
   /** Guard helper: fence + method check. */
   const guard = (req: IncomingMessage, res: ServerResponse, method: string): boolean => {
-    if (!isSkillExplorerAllowed(ctx, req)) {
+    if (!isSkillExplorerAllowed(ctx, req, connection())) {
       writeJson(res, 403, { error: 'forbidden: loopback-only' })
       return false
     }

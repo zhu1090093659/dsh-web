@@ -278,6 +278,29 @@ describe('connection trust resolution', () => {
     }
   })
 
+  it('operator whose connection bridge throws keeps the loopback fence instead of failing the route', async () => {
+    // Given a host whose connection service is mounted but cannot answer from this
+    // fiber (post-#8266 admit() reads connection.authentication without an inject)
+    const broken: TaskBoardConnectionTrust = {
+      admit: () => {
+        throw new Error('cannot get property "connection.authentication" without inject')
+      },
+    }
+    const board = await startBoard({ connection: () => broken })
+    try {
+      // When the browser reaches the board directly over loopback
+      const direct = await send(`${board.base}/api/task-board/state`, { 'sec-fetch-site': 'same-origin' })
+      // Then the bridge failure is not an admission decision: the pre-existing
+      // loopback fence still answers, and the route never escapes as a 400
+      expect(direct).toBe(200)
+      // And it is not an admission either: a foreign proxy authority stays refused
+      const proxied = await send(`${board.base}/api/task-board/state`, PROXY_BROWSER)
+      expect(proxied).toBe(403)
+    } finally {
+      await board.close()
+    }
+  })
+
   it('operator registers every task-board route with anonymous webServer auth policy', () => {
     // Given task-board routes wired with the plugin's own trust fence
     const service = {

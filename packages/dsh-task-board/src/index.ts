@@ -714,12 +714,37 @@ function applyImpl(ctx: Context, config?: Config): void {
     })
   }
 
+  /**
+   * The connection service captured in a scope that injects BOTH `connection`
+   * and `connection.authentication`. Post-#8266 hosts answer the peer-auth
+   * fence through `connection.admit(request)`, and that method reads
+   * `connection.authentication` through the CALLING context: a bare
+   * `ctx.get('connection')` from this row throws "cannot get property
+   * \"connection.authentication\" without inject", which escaped every route
+   * handler as a bare 400. The scope keeps the row's own inject list unchanged
+   * (the service stays optional: a deployment without it keeps the loopback
+   * fence), and a cohort whose connection has no authentication sub-service
+   * simply never activates this scope, leaving the `requestRejection` bridge.
+   */
+  let admittedConnection: TaskBoardConnectionTrust | undefined
+  const scopedInjectConnection = (ctx as { inject?: (names: readonly string[], callback: (scoped: Context) => unknown) => unknown }).inject
+  if (typeof scopedInjectConnection === 'function') {
+    scopedInjectConnection.call(ctx, ['connection', 'connection.authentication'], (scoped: Context) => {
+      scoped.effect(() => {
+        admittedConnection = resolveConnectionTrust(scoped)
+        return () => {
+          admittedConnection = undefined
+        }
+      }, 'task-board: connection trust')
+    })
+  }
+
   ctx.effect(() => {
     const disposers: Array<() => void> = []
     try {
       const routes = makeTaskBoardRoutes(host, {
         ...resolveProxyAccess(config),
-        connection: () => resolveConnectionTrust(ctx),
+        connection: () => admittedConnection ?? resolveConnectionTrust(ctx),
       }, {
         attachments: () => resolveAttachmentStore(ctx),
         parseTask: async (request, signal) => {

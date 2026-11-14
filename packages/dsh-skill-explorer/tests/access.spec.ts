@@ -129,6 +129,29 @@ describe('isSkillExplorerAllowed', () => {
     expect(allowed).toBe(true)
   })
 
+  it('operator keeps the loopback fence when the connection bridge throws', () => {
+    // Given a peer-auth host connection whose admit(request) cannot answer from
+    // this fiber (post-#8266 reads connection.authentication without an inject)
+    const ctx = {
+      get: (name: string) => (name === 'connection'
+        ? { admit: () => { throw new Error('cannot get property "connection.authentication" without inject') } }
+        : undefined),
+    }
+    const remoteReq = request({
+      remoteAddress: '192.168.15.24',
+      host: 'dsh.example.internal',
+    })
+
+    // When checking admission for a remote request vs a direct loopback request
+    const remoteAllowed = isSkillExplorerAllowed(ctx as never, remoteReq)
+    const loopbackAllowed = isSkillExplorerAllowed(ctx as never, request())
+
+    // Then the bridge failure is neither an admission nor a handler error: the
+    // remote request stays refused and the direct loopback request stays admitted
+    expect(remoteAllowed).toBe(false)
+    expect(loopbackAllowed).toBe(true)
+  })
+
   it('operator falls back to loopback or pairing fence when connection.admit rejects', () => {
     // Given a peer-auth host connection whose admit(request) rejects the request
     const ctx = {

@@ -231,11 +231,22 @@ function matchesToken(candidate: string | string[] | undefined, expected: string
 export function isTrustedTaskBoardRequest(req: IncomingMessage, access: ResolvedRouteAccess): boolean {
   const connection = access.connection?.()
   if (connection !== undefined) {
-    if (typeof connection.admit === 'function') {
-      const admission = connection.admit(req)
-      if (admission.rejection === undefined && 'peer' in admission && admission.peer !== undefined) return true
-    } else if (typeof connection.requestRejection === 'function' && connection.requestRejection(req) === undefined) {
-      return true
+    // The Host connection service is a cross-cohort bridge: the npm 0.2.2-rc.3
+    // shape answers `requestRejection`, the post-#8266 shape answers `admit`,
+    // and `admit` reaches into `connection.authentication`, which throws when
+    // the calling fiber does not inject it. A bridge that cannot answer is not
+    // an admission decision: it must keep the fence below instead of escaping
+    // as a handler error (the Host answers a throwing handler with a bare 400,
+    // which the panel can only render as an unreadable response).
+    try {
+      if (typeof connection.admit === 'function') {
+        const admission = connection.admit(req)
+        if (admission.rejection === undefined && 'peer' in admission && admission.peer !== undefined) return true
+      } else if (typeof connection.requestRejection === 'function' && connection.requestRejection(req) === undefined) {
+        return true
+      }
+    } catch {
+      // Fall through to the pre-existing loopback / proxy fence.
     }
   }
   if (!browserSameOriginMarker(req)) return false

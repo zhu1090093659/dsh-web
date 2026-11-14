@@ -1324,3 +1324,239 @@ describe('import (#1881)', () => {
     }
   })
 })
+
+describe('slash-menu catalog invalidation (#2041)', () => {
+  /** Mount routes with a spying host context covering ctx.get('skills'), ctx.emit, and session.append. */
+  function catalogSpyFixture(options: { providerSkillName?: string; providerDir?: string } = {}) {
+    const root = mkdtempSync(join(tmpdir(), 'skill-explorer-invalidate-'))
+    const home = join(root, 'home')
+    const project = join(root, 'project')
+    const agents = join(root, 'agents')
+    mkdirSync(join(home, 'skills'), { recursive: true })
+    mkdirSync(join(project, '.git'), { recursive: true })
+    mkdirSync(join(project, '.dsh', 'skills'), { recursive: true })
+
+    let providerSkills: Array<{
+      name: string
+      description: string
+      source: 'plugin'
+      provider?: string
+      path?: string
+    }> = []
+    if (options.providerSkillName !== undefined && options.providerDir !== undefined) {
+      const skillFile = join(root, 'plugins', options.providerDir, 'SKILL.md')
+      mkdirSync(join(skillFile, '..'), { recursive: true })
+      writeFileSync(skillFile, `---\nname: ${options.providerSkillName}\ndescription: provider skill\n---\nbody\n`, 'utf8')
+      providerSkills = [{
+        name: options.providerSkillName,
+        description: 'provider skill',
+        source: 'plugin',
+        provider: 'ext-pack',
+        path: skillFile,
+      }]
+    }
+
+    const invalidateCache = vi.fn()
+    const emit = vi.fn()
+    const append = vi.fn()
+    const spyCtx = {
+      get: (service: string) => (service === 'skills' ? { invalidateCache } : undefined),
+      emit,
+      session: { append },
+    } as never
+
+    const spyRoutes = makeRoutes(spyCtx, {
+      ...deps,
+      dshHome: home,
+      agentsHome: agents,
+      registry: { snapshot: async () => ({ skills: providerSkills, complete: true }) },
+      activeSessionCwds: () => [project],
+    })
+    const post = async (routePath: string, body: unknown) => {
+      const route = spyRoutes.find((candidate) => candidate.path === routePath)!
+      const captured = response()
+      await route.handler(request(routePath, 'POST', { body }), captured.res)
+      return captured.status()
+    }
+    return { root, home, project, invalidateCache, emit, append, post }
+  }
+
+  it('operator invalidates host skill cache and emits plugin-manager/changed across create, update, setEnabled, and delete', async () => {
+    // Given an empty workspace with spying host services
+    const fixture = catalogSpyFixture()
+    try {
+      const createdPath = join(fixture.home, 'skills', 'fresh-skill', 'SKILL.md')
+
+      // When creating, updating, toggling, and deleting a local skill
+      const createStatus = await fixture.post(ROUTES.create, {
+        root: 'user',
+        cwd: fixture.project,
+        name: 'fresh-skill',
+        description: 'v1',
+        content: 'step 1',
+      })
+      const updateStatus = await fixture.post(ROUTES.update, {
+        name: 'fresh-skill',
+        path: createdPath,
+        description: 'v2',
+        content: 'step 2',
+      })
+      const toggleStatus = await fixture.post(ROUTES.setEnabled, {
+        name: 'fresh-skill',
+        path: createdPath,
+        enabled: false,
+      })
+      const deleteStatus = await fixture.post(ROUTES.delete, {
+        name: 'fresh-skill',
+        path: createdPath,
+      })
+
+      // Then every committed mutation refreshes both caches without touching session history
+      expect([createStatus, updateStatus, toggleStatus, deleteStatus]).toEqual([200, 200, 200, 200])
+      expect(fixture.invalidateCache).toHaveBeenCalledTimes(4)
+      expect(fixture.emit).toHaveBeenCalledTimes(4)
+      expect(fixture.emit).toHaveBeenNthCalledWith(1, 'plugin-manager/changed', { reason: 'plugin' })
+      expect(fixture.emit).toHaveBeenNthCalledWith(4, 'plugin-manager/changed', { reason: 'plugin' })
+      expect(fixture.append).not.toHaveBeenCalled()
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('operator invalidates caches when toggling a plugin-provided skill off and back on', async () => {
+    // Given one plugin-provided skill in the host registry
+    const fixture = catalogSpyFixture({ providerSkillName: 'ext-helper', providerDir: 'ext-helper' })
+    try {
+      // When disabling and re-enabling that provider skill
+      const disableStatus = await fixture.post(ROUTES.setProviderEnabled, {
+        name: 'ext-helper',
+        provider: 'ext-pack',
+        enabled: false,
+      })
+      const enableStatus = await fixture.post(ROUTES.setProviderEnabled, {
+        name: 'ext-helper',
+        provider: 'ext-pack',
+        enabled: true,
+      })
+
+      // Then both switches refresh the skill registry and slash menu
+      expect([disableStatus, enableStatus]).toEqual([200, 200])
+      expect(fixture.invalidateCache).toHaveBeenCalledTimes(2)
+      expect(fixture.emit).toHaveBeenCalledTimes(2)
+      expect(fixture.emit).toHaveBeenNthCalledWith(1, 'plugin-manager/changed', { reason: 'plugin' })
+      expect(fixture.emit).toHaveBeenNthCalledWith(2, 'plugin-manager/changed', { reason: 'plugin' })
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('operator invalidates caches when importing skills from a directory', async () => {
+    // Given a valid import source directory
+    const fixture = catalogSpyFixture()
+    try {
+      const importSource = join(fixture.root, 'import-pack')
+      mkdirSync(join(importSource, 'imported-one'), { recursive: true })
+      writeFileSync(
+        join(importSource, 'imported-one', 'SKILL.md'),
+        '---\nname: imported-one\ndescription: imported skill\n---\nbody\n',
+        'utf8',
+      )
+
+      // When posting the import
+      const importStatus = await fixture.post(ROUTES.import, {
+        root: 'user',
+        cwd: fixture.project,
+        source: { kind: 'directory', path: importSource },
+      })
+
+      // Then both caches refresh once
+      expect(importStatus).toBe(200)
+      expect(fixture.invalidateCache).toHaveBeenCalledTimes(1)
+      expect(fixture.emit).toHaveBeenCalledWith('plugin-manager/changed', { reason: 'plugin' })
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('operator leaves caches untouched when write routes reject with client errors', async () => {
+    // Given an empty workspace
+    const fixture = catalogSpyFixture()
+    try {
+      // When invalid requests fail validation or lookup before disk mutation
+      const badCreate = await fixture.post(ROUTES.create, {
+        root: 'user',
+        cwd: fixture.project,
+        name: 'INVALID NAME',
+        description: 'bad',
+        content: 'body',
+      })
+      const missingToggle = await fixture.post(ROUTES.setEnabled, {
+        name: 'missing-skill',
+        path: join(fixture.home, 'skills', 'missing-skill', 'SKILL.md'),
+        enabled: false,
+      })
+
+      // Then neither cache invalidation nor client refresh events fire
+      expect([badCreate, missingToggle]).toEqual([400, 404])
+      expect(fixture.invalidateCache).not.toHaveBeenCalled()
+      expect(fixture.emit).not.toHaveBeenCalled()
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('operator invalidates isolated preset-scoped skills instances mounted in ctx.reflect.store', async () => {
+    // Given: a host context with both the root skills service and a preset-scoped skills instance in reflect.store
+    const root = mkdtempSync(join(tmpdir(), 'skill-explorer-preset-invalidate-'))
+    const home = join(root, 'home')
+    const project = join(root, 'project')
+    const agents = join(root, 'agents')
+    mkdirSync(join(home, 'skills'), { recursive: true })
+    mkdirSync(join(project, '.git'), { recursive: true })
+    mkdirSync(join(project, '.dsh', 'skills'), { recursive: true })
+
+    const rootInvalidate = vi.fn()
+    const presetInvalidate = vi.fn()
+    const rootSkills = { invalidateCache: rootInvalidate }
+    const presetSkills = { invalidateCache: presetInvalidate }
+    const spyCtx = {
+      get: (service: string) => (service === 'skills' ? rootSkills : undefined),
+      emit: vi.fn(),
+      reflect: {
+        store: {
+          [Symbol('root-skills')]: { name: 'skills', value: rootSkills },
+          [Symbol('preset-skills')]: { name: 'skills', value: presetSkills },
+          [Symbol('other-service')]: { name: 'settings', value: { invalidateCache: vi.fn() } },
+        },
+      },
+    } as never
+    const spyRoutes = makeRoutes(spyCtx, {
+      ...deps,
+      dshHome: home,
+      agentsHome: agents,
+      registry: { snapshot: async () => ({ skills: [], complete: true }) },
+      activeSessionCwds: () => [project],
+    })
+    const route = spyRoutes.find((candidate) => candidate.path === ROUTES.create)!
+    const captured = response()
+    try {
+      // When: creating a local skill commits cleanly
+      await route.handler(request(ROUTES.create, 'POST', {
+        body: {
+          root: 'user',
+          cwd: project,
+          name: 'preset-aware-skill',
+          description: 'desc',
+          content: 'body',
+        },
+      }), captured.res)
+
+      // Then: both root (deduped) and preset-scoped skills caches are invalidated once
+      expect(captured.status()).toBe(200)
+      expect(rootInvalidate).toHaveBeenCalledTimes(1)
+      expect(presetInvalidate).toHaveBeenCalledTimes(1)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})

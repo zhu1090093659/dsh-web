@@ -204,6 +204,52 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
   }
 
   /**
+   * Drop host and preset-scoped skill registry caches and signal the client
+   * slash-menu cache after any disk write commits (#2041). Never emits session
+   * events or touches session history.
+   */
+  const notifySkillCatalogChanged = (): void => {
+    const skillTargets = new Set<unknown>()
+    try {
+      const liveSkills = (ctx as unknown as {
+        get?(name: string, strict?: boolean): unknown
+      }).get?.('skills', false) ?? (ctx as unknown as { skills?: unknown }).skills ?? registry
+      if (liveSkills !== undefined && liveSkills !== null) skillTargets.add(liveSkills)
+    } catch {
+      // Cache lookup stays best-effort after the skill file mutation succeeded.
+    }
+    try {
+      const store = (ctx as unknown as {
+        reflect?: { store?: Record<symbol, { name?: string; value?: unknown }> }
+      }).reflect?.store
+      if (store !== undefined && store !== null) {
+        for (const sym of Object.getOwnPropertySymbols(store)) {
+          const entry = store[sym]
+          if (entry?.name === 'skills' && entry.value !== undefined && entry.value !== null) {
+            skillTargets.add(entry.value)
+          }
+        }
+      }
+    } catch {
+      // Preset-scoped cache discovery stays best-effort.
+    }
+    for (const target of skillTargets) {
+      try {
+        ;(target as { invalidateCache?(): void }).invalidateCache?.()
+      } catch {
+        // Cache invalidation stays best-effort after the skill file mutation succeeded.
+      }
+    }
+    try {
+      ;(ctx as unknown as {
+        emit?(event: string, payload: { reason: 'plugin' }): void
+      }).emit?.('plugin-manager/changed', { reason: 'plugin' })
+    } catch {
+      // Client refresh signals must never turn a committed write into a 500.
+    }
+  }
+
+  /**
    * Find a currently listed plugin-provided skill by its stable identity.
    *
    * The write route for the panel-local switch has no path to certify, so it
@@ -318,6 +364,7 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
           if (skill === undefined) return
           // Disabled = disable-model-invocation: true; enabled = false.
           const frontmatter = setFrontmatterField(skill.path, 'disable-model-invocation', !enabled)
+          notifySkillCatalogChanged()
           writeJson(res, 200, {
             name,
             enabled: frontmatter.disableModelInvocation !== true,
@@ -358,6 +405,7 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
             // while its record is still stored, and that record must remain
             // removable. Nothing is written when it is already absent.
             await setProviderSkillEnabled(dshHome, identity, true)
+            notifySkillCatalogChanged()
             writeJson(res, 200, { ok: true, name: identity.name, provider: identity.provider, disabled: false })
             return
           }
@@ -371,6 +419,7 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
             return
           }
           await setProviderSkillEnabled(dshHome, identity, false)
+          notifySkillCatalogChanged()
           writeJson(res, 200, { ok: true, name: identity.name, provider: identity.provider, disabled: true })
         } catch (error) {
           logger.warn(error)
@@ -419,6 +468,7 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
             ? userSkillRoot(dshHome)
             : projectSkillRoot(findProjectRoot(cwd))
           const target = await writeSkillFile(baseDir, name, description, typeof whenToUse === 'string' ? whenToUse : undefined, content)
+          notifySkillCatalogChanged()
           writeJson(res, 200, { ok: true, name, path: target })
         } catch (error) {
           if (error instanceof Error && /already exists/.test(error.message)) {
@@ -465,6 +515,7 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
           const baseDir = root === 'user' ? userSkillRoot(dshHome) : projectSkillRoot(findProjectRoot(cwd))
           const { skills } = await collectSkills(await collectOptions(workspace))
           const report = await importSkills({ baseDir, targetLevel, source: resolved, existing: skills })
+          notifySkillCatalogChanged()
           writeJson(res, 200, { ok: true, ...report })
         } catch (error) {
           // A malformed archive or an unreadable source directory is the
@@ -519,6 +570,7 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
           // edit never silently re-enables a disabled skill.
           const disabled = parseFrontmatter(readFileSync(skill.path, 'utf8')).disableModelInvocation === true
           const target = await overwriteSkillFile(skill.path, name, description.trim(), typeof whenToUse === 'string' ? whenToUse : undefined, content, disabled)
+          notifySkillCatalogChanged()
           writeJson(res, 200, { ok: true, name, path: target, disabled })
         } catch (error) {
           logger.warn(error)
@@ -553,6 +605,7 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
             return
           }
           const moved = await trashSkillFile(skill.path)
+          notifySkillCatalogChanged()
           writeJson(res, 200, { ok: true, name, moved })
         } catch (error) {
           logger.warn(error)

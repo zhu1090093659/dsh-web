@@ -50,18 +50,78 @@ test('relay encoding replays a streamed body in order', async () => {
   assert.equal(await normalized.text(), 'first-second-third')
 })
 
-test('relay encoding leaves a declared encoding untouched', async () => {
-  // Given the origin already said its bytes are gzip
+test('relay encoding peels one declared gzip layer and states identity bytes', async () => {
+  // Given an origin that declared gzip and a body that really is one gzip member
   const body = gzipped('declared-body')
-  const response = new Response(body, { status: 200, headers: { 'content-encoding': 'gzip' } })
+  const response = new Response(body, {
+    status: 200,
+    headers: { 'content-encoding': 'gzip', 'content-length': String(body.byteLength), 'content-type': 'text/html; charset=utf-8' },
+  })
 
   // When the hop normalizes it
   const normalized = await normalizeWireEncoding(response)
 
-  // Then the declaration and the compressed bytes both travel unchanged: the
-  // origin stated the encoding, so re-encoding here would only move the problem
-  assert.equal(normalized.headers.get('content-encoding'), 'gzip')
-  assert.deepEqual(new Uint8Array(await normalized.arrayBuffer()), new Uint8Array(body))
+  // Then the phone receives plain bytes with the length that counted the
+  // compressed ones gone: what the phone decodes by is not reliably what this
+  // hop declares, so the hop hands on bytes that need no decoding at all
+  assert.equal(await normalized.text(), 'declared-body')
+  assert.equal(normalized.headers.get('content-encoding'), null)
+  assert.equal(normalized.headers.get('content-length'), null)
+  assert.equal(normalized.headers.get('cache-control'), 'no-transform')
+  assert.equal(normalized.headers.get('content-type'), 'text/html; charset=utf-8')
+})
+
+test('relay encoding peels both layers of a body the origin compressed twice', async () => {
+  // Given the exact shape issue #2052 measured: gzip(gzip(html)) under a single
+  // content-encoding declaration
+  const html = '<!doctype html><html><body><script type="module" src="/assets/index-Ciz7DZxv.js"></script></body></html>'
+  const response = new Response(gzipSync(gzipped(html)), {
+    status: 200,
+    headers: { 'content-encoding': 'gzip', 'content-type': 'text/html; charset=utf-8' },
+  })
+
+  // When the hop normalizes it
+  const normalized = await normalizeWireEncoding(response)
+
+  // Then stopping after one layer would have handed the phone a body it still
+  // cannot read, so the hop keeps going until the bytes are the document
+  assert.equal(await normalized.text(), html)
+  assert.equal(normalized.headers.get('content-encoding'), null)
+  assert.equal(normalized.headers.get('cache-control'), 'no-transform')
+})
+
+test('relay encoding peels a gzip member the origin split across chunks', async () => {
+  // Given one gzip member delivered in two chunks
+  const member = gzipped('split-member-body')
+  const response = new Response(chunked(member.subarray(0, 7), member.subarray(7)), {
+    status: 200,
+    headers: { 'content-encoding': 'gzip' },
+  })
+
+  // When the hop peels it
+  const normalized = await normalizeWireEncoding(response)
+
+  // Then the decoded bytes are complete, even though the header of the member
+  // and its payload arrived in different chunks
+  assert.equal(await normalized.text(), 'split-member-body')
+  assert.equal(normalized.headers.get('content-encoding'), null)
+})
+
+test('relay encoding leaves a coding it cannot decode untouched', async () => {
+  // Given an origin that declared brotli, which this hop has no decoder for
+  const response = new Response('brotli-bytes-nobody-here-reads', {
+    status: 200,
+    headers: { 'content-encoding': 'br', 'content-length': '31', 'content-type': 'text/javascript' },
+  })
+
+  // When the hop normalizes it
+  const normalized = await normalizeWireEncoding(response)
+
+  // Then every byte and every header travels exactly as the origin sent them
+  assert.equal(await normalized.text(), 'brotli-bytes-nobody-here-reads')
+  assert.equal(normalized.headers.get('content-encoding'), 'br')
+  assert.equal(normalized.headers.get('content-length'), '31')
+  assert.equal(normalized.headers.get('cache-control'), null)
 })
 
 test('relay encoding decompresses a gzip body the origin never declared', async () => {

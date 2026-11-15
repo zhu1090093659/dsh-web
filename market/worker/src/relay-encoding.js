@@ -9,22 +9,27 @@
  * own gzip, and the phone then decodes exactly one of the two layers -- the
  * page arrives as mojibake (issue #2030).
  *
- * This hop therefore states what the bytes actually are, in one place both
- * transports share:
+ * The bridge transport produced the same reading by a different route (issue
+ * #2052): it carries the origin's bytes across a socket, so an already-gzipped
+ * body arrives here with its `content-encoding` intact, and the edge
+ * compressed it a second time all the same. Declaring the encoding once is
+ * therefore not enough on this hop -- what the phone decodes by is not reliably
+ * what this hop says.
  *
- * - a body with no `content-encoding` (or `identity`, which declares nothing) is
- *   sniffed for the gzip magic. A plain body is returned byte-identical with
- *   every header intact.
- * - an undeclared gzip body is decompressed HERE and handed on as identity
- *   bytes with `cache-control: no-transform`, so anything downstream that
- *   compresses again produces one decodable layer instead of two opaque ones.
- * - a declared `content-encoding` passes through untouched: the origin already
- *   said what its bytes are, and re-encoding them would only move the same
- *   problem one hop later.
+ * So this hop guarantees one thing about every response it hands on, and both
+ * transports leave through it: the bytes it delivers are not compressed.
  *
- * Nothing else is interpreted: br/zstd/zstd bodies that arrive undeclared keep
- * today's behaviour, because guessing an undeclared codec is how a relay turns
- * a working instance into a broken one.
+ * - a body that starts with the gzip magic is decompressed HERE, one layer at a
+ *   time, and handed on as identity bytes with `cache-control: no-transform`.
+ *   Whatever compresses it downstream then produces one decodable layer instead
+ *   of two opaque ones.
+ * - a plain body is returned byte-identical with every header intact.
+ * - a coding this hop cannot decode (br, zstd, deflate) passes through
+ *   untouched: rewriting bytes nobody here can read is how a relay turns a
+ *   working instance into a broken one. What keeps those out of the path is the
+ *   connector asking its own upstream for `identity`, so a bridged body is
+ *   never compressed in the first place (see `bridgeUpstreamHeaders` in
+ *   `packages/dsh-remote-web-ui` and `packages/dsh-remote-bridge`).
  */
 
 /** Gzip's two magic bytes, in order, as the first two bytes of a gzip member. */
@@ -35,6 +40,20 @@ const LENGTH_HEADER = 'content-length'
 
 /** Header that declares the transfer coding of the body it travels with. */
 const ENCODING_HEADER = 'content-encoding'
+
+/** The declared codings that state no coding at all, so the bytes get sniffed. */
+const NO_CODING = new Set(['', 'identity'])
+
+/** The one coding this hop decodes. */
+const GZIP_CODING = 'gzip'
+
+/**
+ * How many gzip layers one answer is peeled through. One is the origin's own
+ * layer; two is the double-compressed shape issue #2052 measured. A body only
+ * gets deeper by being wrong, so a third layer is handed on rather than looped
+ * over.
+ */
+const MAX_GZIP_LAYERS = 2
 
 /**
  * Whether the first chunk starts a gzip member.
@@ -74,9 +93,35 @@ function replayStream(reader, first) {
 }
 
 /**
- * Normalize one proxied response so the phone decodes at least what it was
- * promised. Only the undeclared-gzip case changes bytes; every other response
- * leaves this function exactly as it entered, headers and all.
+ * Open one gzip layer: the bytes under it, beginning at their first chunk.
+ * @param reader - the reader positioned right after `first`.
+ * @param first - the raw first chunk of the encoded layer.
+ * @returns a reader for the decoded bytes and its first chunk.
+ */
+async function decodeGzipLayer(reader, first) {
+  const decoded = replayStream(reader, first).pipeThrough(new DecompressionStream(GZIP_CODING)).getReader()
+  return { reader: decoded, first: await decoded.read() }
+}
+
+/**
+ * The headers of a response this hop states as identity bytes: the declaration
+ * and the length that counted the compressed bytes are gone, and `no-transform`
+ * states the intent to every cache and intermediary the response crosses --
+ * the bytes are already what the client should receive.
+ * @param source - the origin's response, whose headers are copied.
+ * @returns the rewritten header set.
+ */
+function identityHeaders(source) {
+  const headers = new Headers(source.headers)
+  headers.delete(ENCODING_HEADER)
+  headers.delete(LENGTH_HEADER)
+  headers.set('cache-control', 'no-transform')
+  return headers
+}
+
+/**
+ * Normalize one proxied response so the phone decodes exactly what it was
+ * promised: identity bytes, compressed at most once on the way out.
  * @param response - the origin's response as this hop received it.
  * @returns a response whose declared encoding matches its bytes.
  */
@@ -84,10 +129,11 @@ export async function normalizeWireEncoding(response) {
   // A 101 upgrade, a 204/304 and a HEAD answer carry no body to judge, and a
   // rebuilt status text is the one thing a socket-backed 101 cannot survive.
   if (response.body === null) return response
-  const declared = response.headers.get(ENCODING_HEADER)
-  if (declared !== null && declared.trim().toLowerCase() !== 'identity') return response
+  const declared = (response.headers.get(ENCODING_HEADER) ?? '').trim().toLowerCase()
+  // A coding this hop cannot decode, and a list of them, travel as they arrived.
+  if (!NO_CODING.has(declared) && declared !== GZIP_CODING) return response
 
-  const reader = response.body.getReader()
+  let reader = response.body.getReader()
   let first
   try {
     first = await reader.read()
@@ -100,16 +146,40 @@ export async function normalizeWireEncoding(response) {
     })
   }
   if (first.done) return new Response(null, { status: response.status, statusText: response.statusText, headers: response.headers })
-  if (!startsWithGzip(first.value)) {
-    return new Response(replayStream(reader, first.value), { status: response.status, statusText: response.statusText, headers: response.headers })
+
+  let bytes = first.value
+  let layers = 0
+  while (layers < MAX_GZIP_LAYERS && startsWithGzip(bytes)) {
+    let opened
+    try {
+      opened = await decodeGzipLayer(reader, bytes)
+    } catch (error) {
+      // The declaration said gzip and the bytes were not: there is no honest
+      // layer count to state, so the answer says the hop could not read it
+      // instead of handing the phone a body it cannot decode either.
+      console.warn(JSON.stringify({ relay: 'encoding-decode-failed', message: error instanceof Error ? error.message : String(error) }))
+      return new Response('relay: the instance answered a body this hop could not decode', {
+        status: 502,
+        headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
+      })
+    }
+    layers += 1
+    reader = opened.reader
+    if (opened.first.done) {
+      return new Response(null, { status: response.status, statusText: response.statusText, headers: identityHeaders(response) })
+    }
+    bytes = opened.first.value
   }
 
-  const headers = new Headers(response.headers)
-  headers.delete(ENCODING_HEADER)
-  headers.delete(LENGTH_HEADER)
-  // `no-transform` states the intent to every cache and intermediary this
-  // response crosses: the bytes are already what the client should receive.
-  headers.set('cache-control', 'no-transform')
-  const body = replayStream(reader, first.value).pipeThrough(new DecompressionStream('gzip'))
-  return new Response(body, { status: response.status, statusText: response.statusText, headers })
+  // Nothing was compressed. Every header travels exactly as the origin sent it.
+  if (layers === 0) {
+    return new Response(replayStream(reader, bytes), { status: response.status, statusText: response.statusText, headers: response.headers })
+  }
+  // Deeper than this hop peels. The origin's own declaration still describes
+  // one decodable layer, so it stays in force rather than being dropped here.
+  if (startsWithGzip(bytes)) {
+    console.warn(JSON.stringify({ relay: 'encoding-layers', layers: MAX_GZIP_LAYERS }))
+    return new Response(replayStream(reader, bytes), { status: response.status, statusText: response.statusText, headers: response.headers })
+  }
+  return new Response(replayStream(reader, bytes), { status: response.status, statusText: response.statusText, headers: identityHeaders(response) })
 }

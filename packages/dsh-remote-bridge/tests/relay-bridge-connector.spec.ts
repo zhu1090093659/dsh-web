@@ -277,7 +277,20 @@ describe('the bridge connector forwards what the phone dialed', () => {
     expect(bridgeUpstreamHeaders([['host', '127.0.0.1:55220'], ['accept', 'text/html']], HOSTNAME)).toEqual({
       accept: 'text/html',
       host: HOSTNAME,
+      'accept-encoding': 'identity',
     })
+  })
+
+  it('operator asks its own upstream for identity so no compressed body enters the bridge', () => {
+    // Given a phone that can decode four codecs and says so on the wire
+    // When the connector builds the upstream headers of one bridged request
+    // Then the codecs the phone happens to support never reach the origin: a
+    // body compressed on this side arrives at the edge already opaque, and the
+    // edge compresses it a second time, which is issue #2052
+    const headers = bridgeUpstreamHeaders([['accept-encoding', 'gzip, deflate, br, zstd'], ['accept', 'text/html']], HOSTNAME)
+    expect(headers['accept-encoding']).toBe('identity')
+    expect(headers.accept).toBe('text/html')
+    expect(headers.host).toBe(HOSTNAME)
   })
 
   it('operator reconnects with the same long-lived credential and no ticket', async () => {

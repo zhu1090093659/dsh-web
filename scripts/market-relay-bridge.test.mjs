@@ -308,6 +308,36 @@ test('a bridged answer states its encoding before the phone decodes it', async (
   }
 })
 
+test('a bridged answer compressed twice under one declaration reaches the phone whole', async () => {
+  // Given an object forwarding a body the origin compressed twice while
+  // declaring one content-encoding: the shape issue #2052 measured through the
+  // relay, where the bridge carries the origin's bytes rather than the edge
+  const db = bridgeDb({
+    registration: { id: ID, secret_hash: 'unused', target: TARGET },
+    lease: { id: ID, secret_hash: 'unused', mode: 'bridge' },
+  })
+  const page = '<!doctype html><html><body><script type="module" src="/assets/index-Ciz7DZxv.js"></script></body></html>'
+  const namespace = bridgeNamespace(async () => new BridgeResponse(gzipSync(gzipSync(Buffer.from(page, 'utf8'))), {
+    status: 200,
+    headers: { 'content-type': 'text/html; charset=utf-8', 'content-encoding': 'gzip', [RELAY_TRANSPORT_HEADER]: 'bridge' },
+  }))
+  const realFetch = globalThis.fetch
+  globalThis.fetch = async () => { throw new Error('the quick tunnel must not be dialed') }
+  try {
+    // When the phone asks for the page through its relay hostname
+    const response = await worker.fetch(phone(), { DB: db, RELAY_BRIDGE: namespace })
+
+    // Then the body arrives as the document itself: one decompression would
+    // still have left the browser holding compressed bytes it cannot read
+    assert.equal(response.status, 200)
+    assert.equal(response.headers.get('content-encoding'), null)
+    assert.equal(response.headers.get('cache-control'), 'no-transform')
+    assert.equal(await response.text(), page)
+  } finally {
+    globalThis.fetch = realFetch
+  }
+})
+
 test('a bridge-mode instance with no connector falls back to quick inside the same request', async () => {
   // Given a flipped lease row whose object holds no connector socket
   const db = bridgeDb({

@@ -133,17 +133,37 @@ export function bridgeUpstreamHost(frameHost: unknown, hostname: string): string
   return hostname
 }
 
+/** The header the connector answers with its own choice, not the phone's. */
+const UPSTREAM_ENCODING_HEADER = 'accept-encoding'
+/**
+ * The one wire encoding this transport asks its upstream for. The edge is the
+ * only thing allowed to compress a bridged body: a body the origin compressed
+ * and this socket carries verbatim arrives at the edge already opaque, and the
+ * edge compresses it once more -- the phone then decodes one of two layers and
+ * renders mojibake (issue #2052, the residual of #2030). Asking for `identity`
+ * makes the question moot at this hop: the bytes handed on are plain by
+ * construction, and `market/worker/src/relay-encoding.js` states them as such.
+ */
+const UPSTREAM_ENCODING = 'identity'
+
 /**
  * The upstream headers of one bridged request: the phone's own, minus the hops
  * this transport owns, with the public `Host` put back explicitly.
+ *
+ * The phone's `accept-encoding` is dropped: what the phone can decode is a fact
+ * about the edge hop, not about the loopback hop this connector owns, and
+ * forwarding it is what let a compressed body enter a socket whose far end
+ * re-compresses unconditionally.
  */
 export function bridgeUpstreamHeaders(frameHeaders: unknown, host: string): Record<string, string> {
   const headers: Record<string, string> = {}
   for (const [name, value] of headerPairs(frameHeaders)) {
-    if (BRIDGE_HOP_BY_HOP.has(name.toLowerCase())) continue
+    const lowered = name.toLowerCase()
+    if (BRIDGE_HOP_BY_HOP.has(lowered) || lowered === UPSTREAM_ENCODING_HEADER) continue
     headers[name] = value
   }
   headers.host = host
+  headers[UPSTREAM_ENCODING_HEADER] = UPSTREAM_ENCODING
   return headers
 }
 

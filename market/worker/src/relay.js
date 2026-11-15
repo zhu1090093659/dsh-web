@@ -357,9 +357,10 @@ async function fetchThroughBridge(request, env, id, pathname) {
   // object hands the connector's own headers through, and the tunneled instance
   // sends no Cache-Control on its content-hashed build assets, so without this
   // a phone re-fetches the whole shell on every load through the bridge too.
-  // The encoding is stated here exactly as on the quick path: the connector
-  // forwards the origin's bytes, including a gzip body the origin never
-  // declared (issue #2030).
+  // The hop hands on identity bytes exactly as it does on the quick path: the
+  // connector asks its own upstream for `identity` (so a bridged body is plain
+  // by construction), and this function still peels whatever a host that
+  // ignores that request sends (issues #2030 and #2052).
   return await normalizeWireEncoding(withImmutableAssetCache(response, pathname, request.method))
 }
 
@@ -449,7 +450,7 @@ export async function handleRelayProxy(request, env, id) {
   }
   const shaped = withImmutableAssetCache(response, target.pathname, request.method)
   // The origin gzips whatever `accept-encoding` a request carried and does not
-  // always declare it, so the hop states what the bytes are before the edge can
+  // always declare it, so the hop hands on plain bytes before the edge can
   // compress an already-compressed body (issue #2030).
   return await normalizeWireEncoding(transport === 'bridge' ? withFallbackMark(shaped) : shaped)
 }

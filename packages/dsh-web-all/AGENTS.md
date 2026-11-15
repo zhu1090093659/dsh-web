@@ -50,6 +50,13 @@
   导出 `./package.json`），渲染在全部 `patchFrom` 行之后。行 id 仍走 `web-ui-*` 命名
   空间，与 `patchFrom` 时期逐字一致；外部包声明 `dsh.bundle.patch` 时展开它自己的
   patch 行（bundle-only 包不能被 loader 直接 import）。
+- **外部行的展示元数据归卫星包自己**：本包的 `shell-metadata` 只服务 `tombstones:` 里
+  那些子路径 specifier（`@linxin666/dsh-web-all/<family>`），外部行的 specifier 是真实包名，
+  官方 `readPluginMeta` 只读该包自己的 `locale/{en,zh}.json` 与包根 `icon`。卫星包因此
+  必须自带 `locale/en.json` + `locale/zh.json`、`./locale/<lang>.json` exports 键与
+  `files` 白名单里的 `locale`，否则插件页回落成 npm 包名加英文 description（外壳的
+  中文标题救不了它）。四个卫星仓各自用 `tests/display-metadata.spec.ts` 钉住这条契约；
+  搬动本清单时两者一起改。
 - `tombstones:` 段保留已退役、已迁出或已改为裸行的子路径 exports 空壳（指向
   `lib/shells/shell.js`），避免老 profile 残留旧行名时 Node 抛
   ERR_PACKAGE_PATH_NOT_EXPORTED。迁出为独立仓库的 `pet` / `skin-center` /

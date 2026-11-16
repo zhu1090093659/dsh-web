@@ -12,6 +12,15 @@ function codeBlock(language: string, source: string): HTMLDivElement {
   return block
 }
 
+/** The 0.2.2-rc.3 renderer shape: a `_language_` span in a card banner, no infostring. */
+function languageCodeBlock(label: string, source: string): HTMLDivElement {
+  const block = document.createElement('div')
+  block.className = 'md-code-block _card_7gxqk_107'
+  block.innerHTML = `<div class="_header_x1" data-code-block-banner><div class="_heading_x1"><span class="_language_x1">${label}</span></div></div>`
+    + `<div data-code-block-content><pre>${source}</pre></div>`
+  return block
+}
+
 describe('mermaid block discovery', () => {
   it('user reading a transcript has the mermaid fence offered and the typescript fence ignored', () => {
     // Given a transcript holding one mermaid fence and one typescript fence
@@ -44,6 +53,78 @@ describe('mermaid block discovery', () => {
     // When the scan starts at that block
     const found = findMermaidBlocks(block)
     // Then the block's pre is found
+    expect(found).toHaveLength(1)
+  })
+})
+
+
+describe('mermaid block discovery across renderer banner shapes (#2056)', () => {
+  it('user pasting a mermaid fence on the rc.3 renderer gets the diagram although the banner shows the localized placeholder', () => {
+    // Given the rc.3 card shape whose highlighter does not know mermaid, so the
+    // banner carries the Chinese and English placeholder labels
+    document.body.innerHTML = ''
+    document.body.append(
+      languageCodeBlock('代码块', 'flowchart LR\nA-->B'),
+      languageCodeBlock('Code block', 'sequenceDiagram\nAlice->>Bob: hi'),
+    )
+    // When discovery walks the document
+    const found = findMermaidBlocks(document.body)
+    // Then both fences are offered by their source signature
+    expect(found).toHaveLength(2)
+    expect(found[0]?.textContent).toContain('flowchart LR')
+    expect(found[1]?.textContent).toContain('sequenceDiagram')
+  })
+
+  it('user reading a plain shell snippet under a placeholder banner keeps the code block', () => {
+    // Given a placeholder-labelled fence whose source is not a mermaid diagram
+    document.body.innerHTML = ''
+    document.body.append(languageCodeBlock('代码块', 'ls -al /tmp'))
+    // When discovery runs
+    const found = findMermaidBlocks(document.body)
+    // Then nothing is offered
+    expect(found).toHaveLength(0)
+  })
+
+  it('user reading a real language fence is never claimed even when its source looks like mermaid', () => {
+    // Given rc.3 banners naming highlighter languages beside mermaid-shaped and plain sources
+    document.body.innerHTML = ''
+    document.body.append(languageCodeBlock('js', 'flowchart LR\nA-->B'), languageCodeBlock('typescript', 'const a = 1'))
+    // When discovery runs
+    const found = findMermaidBlocks(document.body)
+    // Then the real language label wins and neither fence is offered
+    expect(found).toHaveLength(0)
+  })
+
+  it('user labelling a fence mermaid gets it claimed whatever the source starts with', () => {
+    // Given a banner naming mermaid itself and a source opening with an init directive
+    document.body.innerHTML = ''
+    document.body.append(languageCodeBlock('mermaid', '%%{init: {"theme": "dark"}}%%\ngraph LR\nA-->B'))
+    // When discovery runs
+    const found = findMermaidBlocks(document.body)
+    // Then the label alone claims the fence
+    expect(found).toHaveLength(1)
+  })
+
+  it('user writing the fence infostring in mixed case still gets the diagram', () => {
+    // Given the older infostring banner carrying `Mermaid`
+    document.body.innerHTML = ''
+    document.body.append(codeBlock('Mermaid', 'graph LR\nA-->B'))
+    // When discovery runs
+    const found = findMermaidBlocks(document.body)
+    // Then the label matches case-insensitively
+    expect(found).toHaveLength(1)
+  })
+
+  it('user on a renderer shape with no language banner at all still gets mermaid sources offered', () => {
+    // Given a code block whose banner carries no language element
+    document.body.innerHTML = ''
+    const block = document.createElement('div')
+    block.className = 'md-code-block'
+    block.innerHTML = '<div data-code-block-content><pre>mindmap\n  root((dsh))</pre></div>'
+    document.body.append(block)
+    // When discovery runs
+    const found = findMermaidBlocks(document.body)
+    // Then the source signature decides
     expect(found).toHaveLength(1)
   })
 })

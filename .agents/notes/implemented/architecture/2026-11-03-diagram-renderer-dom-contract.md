@@ -22,8 +22,12 @@ re-implementing it would only fight the host.
   through the same component.
 - **The integration point is the rendered DOM.** A page-side observer watches
   \`document.body\`, maps each mutation batch to the owning \`div.md-code-block\`, and reads the
-  fence language from the banner's infostring element. The names are pinned in one module
-  (\`src/core/contract.ts\`) with a test beside them.
+  fence language from the banner in both known shapes: the \`_infostring_\` element carrying the
+  raw infostring, and the 0.2.2-rc.3 \`_language_\` span. The span shows a localized placeholder
+  (\`代码块\`, \`Code block\`) for every language the highlighter does not know, mermaid among them,
+  so a label that is not a real language token falls back to the source's first mermaid keyword,
+  while a real language label (js, bash, json, ...) is never claimed (#2056). The names are pinned
+  in one module (\`src/core/contract.ts\`) with a test beside them.
 - **The original block is hidden, never removed.** The renderer's copy button keeps reading
   the source from the \`<pre>\`; a failed render restores the block exactly.
 - **The runtime is served by the package, fetched on demand.** The host half owns one
@@ -56,9 +60,12 @@ re-implementing it would only fight the host.
 ## Consequences
 
 - **The DOM hooks are not a contract.** A host release that renames \`md-code-block\` or the
-  infostring class stops diagram rendering; fences simply stay code blocks. The pinned
-  constants and their test are what turn that into a visible failure during an SDK cohort
-  bump rather than a silent regression.
+  banner language classes (\`_infostring_\` / \`_language_\`) stops diagram rendering; fences simply
+  stay code blocks. The pinned constants and their test are what turn that into a visible
+  failure during an SDK cohort bump rather than a silent regression.
+- **Placeholder labels are indistinguishable from generic non-language fences.** A fence
+  labelled \`text\` / \`plain\` / \`code\` whose source opens with a mermaid keyword is claimed: the
+  renderer shows the same placeholder for it, so the DOM cannot tell the two apart (#2056).
 - **Streaming fences render late.** An unclosed fence cannot be parsed; the fence is retried
   after a quiet period once its source changed, and the diagram appears once the fence closes.
 - **Rendering is scheduled, not fired at once.** Mermaid parses and lays out synchronously on the
@@ -77,8 +84,8 @@ re-implementing it would only fight the host.
 
 ## Testing
 
-\`pnpm --filter @linxin666/dsh-client-ui-diagrams typecheck\` and \`test\` (21 cases: block
-discovery, claim/restore, SVG sanitizing, observer render + failure fallback + theme
+\`pnpm --filter @linxin666/dsh-client-ui-diagrams typecheck\` and \`test\` (35 cases: block
+discovery across both banner shapes, claim/restore, SVG sanitizing, observer render + failure fallback + theme
 re-render, mutation scoping, the vendor route's 200/403/404/405/HEAD paths, and the contract
 pins). A live check needs the package mounted (a host restart), so it is handed to the user
 rather than claimed here.

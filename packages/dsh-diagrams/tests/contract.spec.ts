@@ -3,19 +3,22 @@ import {
   CODE_BLOCK_CLASS,
   DIAGRAM_CLASS,
   INFOSTRING_CLASS_FRAGMENT,
+  LANGUAGE_CLASS_FRAGMENT,
   RENDERED_LANGUAGE,
   RUNTIME_ROUTE,
 } from '../src/core/contract.ts'
 
 describe('renderer DOM contract', () => {
   it('operator gets a failing pin when the renderer renames a hook', () => {
-    // Given the official markdown renderer (ui-primitives CodeBlock at
-    // 0.2.2-rc.1) emits these exact names
+    // Given the official markdown renderer (ui-primitives CodeBlock) emits
+    // these exact names across its two known banner shapes: the older
+    // infostring element and the 0.2.2-rc.3 _language_ span (#2056)
     // When this package's constants are read
     // Then they still match: a renderer rename must fail here, not silently
     // disable diagrams in production.
     expect(CODE_BLOCK_CLASS).toBe('md-code-block')
     expect(INFOSTRING_CLASS_FRAGMENT).toBe('_infostring_')
+    expect(LANGUAGE_CLASS_FRAGMENT).toBe('_language_')
     expect(RENDERED_LANGUAGE).toBe('mermaid')
     expect(DIAGRAM_CLASS).toBe('dsh-diagrams-figure')
   })

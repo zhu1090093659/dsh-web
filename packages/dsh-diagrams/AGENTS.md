@@ -6,7 +6,7 @@ packages/AGENTS.md 的全局规则。
 ## 本包要点
 
 - **唯一接入点是官方渲染器的 DOM，不是契约**：官方 markdown 渲染器没有代码块扩展缝，
-  所以本包观察 `div.md-code-block` 并从 banner 的 infostring 文本读围栏语言。这些名字
+  所以本包观察 `div.md-code-block` 并从 banner 读围栏语言（infostring 元素与 `_language_` span 两种形态；占位符标签回退到源码首行 mermaid 关键字）。这些名字
   全部集中在 `src/core/contract.ts`，旁边 `tests/contract.spec.ts` 把它们钉住；宿主
   升级后改名的唯一表现是「图不渲染、围栏退回代码块」，不会抛错。钩子的来历与代价见
   Agent Note `.agents/notes/implemented/architecture/2026-11-03-diagram-renderer-dom-contract.md`。

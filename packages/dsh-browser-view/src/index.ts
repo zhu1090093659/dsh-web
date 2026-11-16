@@ -140,6 +140,16 @@ export function apply(ctx: Context, config?: RuntimeConfig): void {
     // URL that is only good for this process. A host that mounts none simply
     // keeps showing the authentication page.
     authenticatedUrl: (url: string) => resolveAuthenticatedUrl(ctx, url),
+    // Read per navigation, never cached: the listener binds after this plugin
+    // mounts, and only an origin that exists can tell this host's own bare
+    // admission refusal apart from the same word on another local service.
+    hostOrigin: () => {
+      try {
+        return ctx.webServer.getOrigin()
+      } catch {
+        return undefined
+      }
+    },
   })
 
   // Resolved per call, not at mount: the screenshot tool must see the

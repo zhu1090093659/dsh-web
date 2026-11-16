@@ -37,6 +37,15 @@ import type { BrowserViewBackend, BrowserViewSink } from './service.ts'
 /** Status route of the family; the panel's fallback probe when the socket fails. */
 export const BROWSER_VIEW_STATE_PATH = '/api/dsh-browser-view/state'
 
+/**
+ * A route that declares its own admission policy. Post-#8266 Host versions
+ * default every route to `auth: 'required'`; the field is optional here so
+ * this package still compiles against the 0.2.2-rc.3 SDK types, which do not
+ * declare it.
+ */
+type AuthAwareWebRoute = WebRoute & { readonly auth?: 'anonymous' | 'required' | 'deny' }
+type AuthAwareUpgradeRoute = WebUpgradeRoute & { readonly auth?: 'anonymous' | 'required' | 'deny' }
+
 /** Close code used when the panel speaks a contract version we do not have. */
 export const PROTOCOL_MISMATCH_CLOSE_CODE = 1002
 
@@ -148,12 +157,17 @@ export interface BrowserViewRoutesDeps {
  * @returns exact routes plus the socket upgrade.
  */
 export function makeRoutes(deps: BrowserViewRoutesDeps): { routes: WebRoute[]; upgrade: WebUpgradeRoute } {
+  // The declarations above add admission policy for hosts that enforce it; the
+  // exported shape stays the SDK's own route type, which that host accepts.
   const { backend } = deps
 
-  const routes: WebRoute[] = [
+  const routes: AuthAwareWebRoute[] = [
     {
       kind: 'exact',
       path: BROWSER_VIEW_STATE_PATH,
+      // Self-fenced by isLoopbackRequest below; anonymous admission keeps the
+      // route reachable on hosts that default unspecified routes to required.
+      auth: 'anonymous',
       handler: (req: IncomingMessage, res: ServerResponse) => {
         if (!isLoopbackRequest(req)) {
           writeJson(res, 403, { error: 'forbidden: loopback-only' })
@@ -168,8 +182,10 @@ export function makeRoutes(deps: BrowserViewRoutesDeps): { routes: WebRoute[]; u
     },
   ]
 
-  const upgrade: WebUpgradeRoute = {
+  const upgrade: AuthAwareUpgradeRoute = {
     path: BROWSER_VIEW_SOCKET_PATH,
+    // Same loopback fence as the state route, applied to the handshake below.
+    auth: 'anonymous',
     handler: (req: IncomingMessage, socket: Duplex, head: Buffer) => {
       if (!isLoopbackRequest(req)) {
         socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')

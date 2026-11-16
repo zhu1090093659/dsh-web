@@ -26,7 +26,14 @@ import { ChromeProcess } from '../core/chrome.ts'
 import { TabManager, type ScreencastFrame } from '../core/tabs.ts'
 import { buildSnapshot, type SnapshotResult } from '../core/snapshot.ts'
 import { planScreenshot, type ScreenshotPlan, type ScreenshotRequest } from '../core/screenshot.ts'
-import { DOCUMENT_TEXT_EXPRESSION, isAuthChallengeText, isLoopbackTarget } from './auth.ts'
+import {
+  DOCUMENT_TEXT_EXPRESSION,
+  isAdmissionRejectionText,
+  isAuthChallengeText,
+  isHostRootUrl,
+  isLoopbackTarget,
+  isSameLoopbackOrigin,
+} from './auth.ts'
 import { fetchCdpVersion, parseCdpEndpoint, realBrowserConnectionError } from './cdp-endpoint.ts'
 import {
   clickElement,
@@ -120,6 +127,12 @@ export interface BrowserViewServiceOptions {
    * the loader from `ctx.get('connection')`; absent here means no auth top-up.
    */
   authenticatedUrl?: (url: string) => string | undefined
+  /**
+   * The running host's own listener origin, or undefined while it has not
+   * bound. It decides whether a bare `unauthorized` page came from this host
+   * rather than from another local service on its own port.
+   */
+  hostOrigin?: () => string | undefined
   /** Live browser source; called for state and every new connection. */
   resolveConfig?: () => BrowserConnectionConfig
   /**
@@ -251,6 +264,7 @@ export class BrowserViewService implements BrowserViewBackend {
   private readonly openSession: NonNullable<BrowserViewServiceOptions['openSession']>
   private readonly resolveConfig: () => BrowserConnectionConfig
   private readonly authenticatedUrl: BrowserViewServiceOptions['authenticatedUrl']
+  private readonly hostOrigin: BrowserViewServiceOptions['hostOrigin']
   private readonly idleCloseDays: () => number
   private readonly sweepIntervalMs: number
   private idleTimer: ReturnType<typeof setInterval> | undefined
@@ -292,6 +306,7 @@ export class BrowserViewService implements BrowserViewBackend {
     this.openSession = options.openSession ?? openConfiguredSession
     this.resolveConfig = options.resolveConfig ?? (() => ({ mode: 'isolated' }))
     this.authenticatedUrl = options.authenticatedUrl
+    this.hostOrigin = options.hostOrigin
     this.idleCloseDays = options.idleCloseDays ?? (() => 0)
     this.sweepIntervalMs = options.sweepIntervalMs ?? IDLE_SWEEP_INTERVAL_MS
     if (this.sweepIntervalMs > 0) {
@@ -718,7 +733,7 @@ export class BrowserViewService implements BrowserViewBackend {
     const mint = this.authenticatedUrl
     if (mint === undefined) return undefined
     if (!isLoopbackTarget(url)) return undefined
-    if (!(await this.documentShowsAuthChallenge(tabId))) return undefined
+    if (!(await this.documentShowsAuthChallenge(tabId, url))) return undefined
     try {
       const ticket = mint(url)
       return typeof ticket === 'string' && ticket !== '' ? ticket : undefined
@@ -728,13 +743,17 @@ export class BrowserViewService implements BrowserViewBackend {
   }
 
   /**
-   * Whether the tab's current document is DSH's authentication page. Reading
-   * the document is best-effort: a tab that refuses the script, or reports
-   * something other than text, simply does not match.
+   * Whether the tab's current document is DSH's authentication page. Two
+   * pages count: the token exchange's own sentence, and the bare
+   * `unauthorized` a post-#8266 Host answers when route admission refuses the
+   * site root before that exchange runs. The bare refusal is generic to every
+   * local service, so it only counts when the requested URL names this host's
+   * own listener.
    * @param tabId - tab to read.
+   * @param url - the URL the caller asked to open.
    * @returns true when the page body is the challenge.
    */
-  private async documentShowsAuthChallenge(tabId: string): Promise<boolean> {
+  private async documentShowsAuthChallenge(tabId: string, url: string): Promise<boolean> {
     try {
       const scope = this.scope()
       const result = await scope.transport.send<{ result?: { value?: unknown } }>(
@@ -743,7 +762,11 @@ export class BrowserViewService implements BrowserViewBackend {
         scope.tabs.sessionOf(tabId),
       )
       const text = result.result?.value
-      return typeof text === 'string' && isAuthChallengeText(text)
+      if (typeof text !== 'string') return false
+      if (isAuthChallengeText(text)) return true
+      if (!isAdmissionRejectionText(text)) return false
+      const origin = this.hostOrigin?.()
+      return origin !== undefined && isSameLoopbackOrigin(url, origin) && isHostRootUrl(url)
     } catch {
       return false
     }

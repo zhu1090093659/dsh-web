@@ -23,10 +23,18 @@
 import { isLoopbackHostname } from './loopback.ts'
 
 /**
- * Body text of the page DSH serves when a request carries neither the launch
- * token nor a valid cookie. This is the one page the top-up reacts to.
+ * Body text of the page DSH serves from its own token exchange when a request
+ * carries neither the launch token nor a valid cookie.
  */
 const AUTH_CHALLENGE_TEXT = /dsh web authentication required/i
+
+/**
+ * Body of the bare refusal a post-#8266 Host answers when route admission
+ * rejects a request before its resource runs. That cohort admits every route
+ * as authenticated unless it declares otherwise, so a navigation to the site
+ * root is refused here instead of reaching the friendly exchange page above.
+ */
+const ADMISSION_REJECTION_TEXT = /^\s*unauthorized\s*$/i
 
 /**
  * Script that reads the document's visible text. `document.body` is absent on
@@ -54,6 +62,58 @@ export interface AuthenticatedUrlSource {
  */
 export function isAuthChallengeText(text: string): boolean {
   return AUTH_CHALLENGE_TEXT.test(text)
+}
+
+/**
+ * Whether a page's visible text is the bare refusal of route admission. The
+ * body is generic — any local service can answer it — so a caller must also
+ * know the page came from this host's own listener before trusting it.
+ * @param text - `document.body.innerText` of the page that just loaded.
+ * @returns true when the document is only the word `unauthorized`.
+ */
+export function isAdmissionRejectionText(text: string): boolean {
+  return ADMISSION_REJECTION_TEXT.test(text)
+}
+
+/**
+ * Whether a URL names the same loopback listener as an origin: both
+ * authorities loopback, the same protocol, and the same port. A different
+ * port is a different local service, and a non-loopback host is never ours.
+ * @param url - the URL a navigation was asked to open.
+ * @param origin - the host's own listener origin.
+ * @returns true when the two name one loopback listener.
+ */
+export function isSameLoopbackOrigin(url: string, origin: string): boolean {
+  let target: URL
+  let own: URL
+  try {
+    target = new URL(url)
+    own = new URL(origin)
+  } catch {
+    return false
+  }
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') return false
+  if (target.protocol !== own.protocol) return false
+  if (!isLoopbackHostname(target.hostname) || !isLoopbackHostname(own.hostname)) return false
+  if (target.port !== own.port) return false
+  // Another loopback literal on the same port is a different listener: only
+  // the same literal, or the conventional localhost name, is this host.
+  return target.hostname === own.hostname || target.hostname === 'localhost'
+}
+
+/**
+ * Whether a URL names the site root. DSH's token exchange answers only
+ * `GET /` with the cookie-setting redirect, so a bare refusal anywhere else
+ * cannot be cleared by a ticketed retry.
+ * @param url - the URL a navigation was asked to open.
+ * @returns true when the URL has no path beyond the root.
+ */
+export function isHostRootUrl(url: string): boolean {
+  try {
+    return new URL(url).pathname === '/'
+  } catch {
+    return false
+  }
 }
 
 /**

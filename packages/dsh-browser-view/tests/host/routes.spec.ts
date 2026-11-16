@@ -23,6 +23,16 @@ import {
 import type { BrowserViewBackend, BrowserViewSink } from '../../src/host/service.ts'
 import { waitForSignal, waitUntil } from '../helpers/wait.ts'
 
+/**
+ * Read the admission policy a route declares. The SDK cohort this package
+ * compiles against does not type the field; hosts that enforce it do read it.
+ * @param route - one registered route or upgrade.
+ * @returns the declared policy, or undefined when the route declares none.
+ */
+function authOf(route: object): unknown {
+  return (route as { readonly auth?: unknown }).auth
+}
+
 /** A backend that records what reached it and answers like the real one. */
 class StubBackend implements BrowserViewBackend {
   readonly sinks: BrowserViewSink[] = []
@@ -144,6 +154,20 @@ describe('first-frame protocol gate', () => {
     await expect(handleClientFrame(backend, sink, JSON.stringify({ v: 1, kind: 'select-tab', tabId: 7 }), false))
       .resolves.toBe('accept')
     expect(backend.commands).toEqual([])
+  })
+})
+
+describe('route admission declarations', () => {
+  it('operator mounts the family on a host that defaults routes to required admission and both surfaces are self-fenced', () => {
+    // Given the route family every Host builds
+    const { routes, upgrade } = makeRoutes({ backend: new StubBackend() })
+
+    // When the host applies its own admission policy to each surface
+    // Then both declare anonymous admission and keep the loopback fence in their handlers
+    expect(routes.map(route => ({ path: route.path, auth: authOf(route) }))).toEqual([
+      { path: BROWSER_VIEW_STATE_PATH, auth: 'anonymous' },
+    ])
+    expect(authOf(upgrade)).toBe('anonymous')
   })
 })
 

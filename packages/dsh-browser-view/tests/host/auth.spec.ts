@@ -10,12 +10,16 @@
 
 import { describe, expect, it } from 'vitest'
 import { resolveAuthenticatedUrl, type AuthenticatedUrlContext } from '../../src/index.ts'
+import { isAdmissionRejectionText, isHostRootUrl, isSameLoopbackOrigin } from '../../src/host/auth.ts'
 import { BrowserViewService, type BrowserSession } from '../../src/host/service.ts'
 import { TabManager } from '../../src/core/tabs.ts'
 import { FakeTransport, type RecordedCall } from '../helpers/fake-cdp.ts'
 
 /** Body text of the page `dsh web` serves without the launch token or cookie. */
 const AUTH_PAGE_TEXT = 'dsh web authentication required; reopen the URL printed by dsh web.'
+
+/** Body of the bare refusal a post-#8266 Host answers when route admission denies the request. */
+const ADMISSION_REJECTION_TEXT = 'unauthorized'
 
 /** The page one navigation request results in. */
 interface ScriptedPage {
@@ -30,6 +34,8 @@ interface AuthBrowserOptions {
   resolve: (url: string) => ScriptedPage
   /** The top-up seam; omit it to model a host that mounts no connection service. */
   mintTicket?: (url: string) => string
+  /** The host's own listener origin; omit it to model a host that has not bound. */
+  hostOrigin?: string
 }
 
 /** What a test needs from the scripted GUI. */
@@ -76,6 +82,7 @@ function createAuthBrowser(options: AuthBrowserOptions): AuthBrowser {
         tickets.push(url)
         return options.mintTicket?.(url)
       },
+    hostOrigin: options.hostOrigin === undefined ? undefined : () => options.hostOrigin,
     openSession: async (): Promise<BrowserSession> => {
       const tabs = new TabManager({ transport })
       return {
@@ -196,6 +203,61 @@ describe('auth top-up', () => {
     expect(browser.tickets()).toEqual(['http://127.0.0.1:3080/', 'http://127.0.0.1:3080/'])
   })
 
+  it('operator opens the GUI on a host whose route admission answers a bare refusal and one ticketed navigation replaces it', async () => {
+    // Given a post-#8266 host that refuses the clean root with the bare admission body before its token exchange runs
+    // When the operator navigates to the GUI root
+    // Then the bare body is read as the challenge, exactly one token is minted and the ticketed page loads
+    const browser = createAuthBrowser({
+      hostOrigin: 'http://127.0.0.1:3080',
+      resolve: url => url.includes('token=')
+        ? { url: 'http://127.0.0.1:3080/', title: 'DeepSeek Harness', text: 'Conversations' }
+        : { url, title: '401', text: ADMISSION_REJECTION_TEXT },
+      mintTicket: withTicket,
+    })
+
+    const navigated = await browser.service.navigate('session-a', 'http://127.0.0.1:3080/')
+
+    expect(browser.tickets()).toEqual(['http://127.0.0.1:3080/'])
+    expect(browser.navigations()).toEqual([
+      'http://127.0.0.1:3080/',
+      'http://127.0.0.1:3080/?token=process-token',
+    ])
+    expect(navigated.tab.title).toBe('DeepSeek Harness')
+  })
+
+  it('operator opens another local service that answers a bare refusal and no token is minted', async () => {
+    // Given a different loopback port that answers the same generic refusal body
+    // When the operator navigates to it
+    // Then the page is another local service rather than this host, so nothing is re-ticketed
+    const browser = createAuthBrowser({
+      hostOrigin: 'http://127.0.0.1:3080',
+      resolve: url => ({ url, title: '401', text: ADMISSION_REJECTION_TEXT }),
+      mintTicket: withTicket,
+    })
+
+    const navigated = await browser.service.navigate('session-a', 'http://127.0.0.1:5173/')
+
+    expect(browser.tickets()).toEqual([])
+    expect(browser.navigations()).toEqual(['http://127.0.0.1:5173/'])
+    expect(navigated.tab.title).toBe('401')
+  })
+
+  it('operator opens this host before its listener publishes an origin and the bare refusal is left alone', async () => {
+    // Given a host that has not bound its listener origin yet
+    // When the operator navigates to the GUI root and the answer is the bare refusal
+    // Then the generic body cannot be attributed to this host, so no token is minted
+    const browser = createAuthBrowser({
+      resolve: url => ({ url, title: '401', text: ADMISSION_REJECTION_TEXT }),
+      mintTicket: withTicket,
+    })
+
+    const navigated = await browser.service.navigate('session-a', 'http://127.0.0.1:3080/')
+
+    expect(browser.tickets()).toEqual([])
+    expect(browser.navigations()).toEqual(['http://127.0.0.1:3080/'])
+    expect(navigated.tab.title).toBe('401')
+  })
+
   it('operator opens the GUI when minting the token throws and the navigation result is untouched', async () => {
     // Given a connection service whose token request fails
     // When the operator navigates to the auth page on loopback
@@ -286,5 +348,53 @@ describe('resolveAuthenticatedUrl', () => {
     // Then both return undefined safely
     expect(emptyResolved).toBeUndefined()
     expect(throwingResolved).toBeUndefined()
+  })
+})
+
+describe('admission refusal detection', () => {
+  it('operator loads a page that only says unauthorized and it is read as the admission refusal', () => {
+    // Given the body a post-#8266 host answers when route admission denies the request
+    // When the body is inspected as a possible challenge
+    // Then the bare word matches, with surrounding whitespace tolerated
+    expect(isAdmissionRejectionText(ADMISSION_REJECTION_TEXT)).toBe(true)
+    expect(isAdmissionRejectionText('  unauthorized\n')).toBe(true)
+  })
+
+  it('operator loads an ordinary page that happens to contain the word and it is not an admission refusal', () => {
+    // Given a real page whose text merely mentions the word
+    // When the body is inspected as a possible challenge
+    // Then only a body that is nothing but that word counts
+    expect(isAdmissionRejectionText('Conversations')).toBe(false)
+    expect(isAdmissionRejectionText('Error: unauthorized access is not allowed for this file')).toBe(false)
+    expect(isAdmissionRejectionText('')).toBe(false)
+  })
+
+  it('operator navigates to this host and the same listener is recognized by protocol and port', () => {
+    // Given the host's own published listener origin
+    // When candidate URLs name the same listener, another port, or another scheme
+    // Then only the same loopback listener matches
+    expect(isSameLoopbackOrigin('http://127.0.0.1:3080/', 'http://127.0.0.1:3080')).toBe(true)
+    expect(isSameLoopbackOrigin('http://localhost:3080/page', 'http://127.0.0.1:3080')).toBe(true)
+    expect(isSameLoopbackOrigin('http://127.0.0.1:5173/', 'http://127.0.0.1:3080')).toBe(false)
+    expect(isSameLoopbackOrigin('https://127.0.0.1:3080/', 'http://127.0.0.1:3080')).toBe(false)
+    expect(isSameLoopbackOrigin('http://127.0.0.2:3080/', 'http://127.0.0.1:3080')).toBe(false)
+  })
+
+  it('operator navigates to a remote site and it never matches a loopback listener', () => {
+    // Given a non-loopback host and a malformed origin
+    // When the comparison runs
+    // Then no remote authority is treated as this host
+    expect(isSameLoopbackOrigin('https://example.test:3080/', 'http://127.0.0.1:3080')).toBe(false)
+    expect(isSameLoopbackOrigin('not a url', 'http://127.0.0.1:3080')).toBe(false)
+  })
+
+  it('operator navigates to a deeper path and only the site root qualifies for the bare refusal', () => {
+    // Given the token exchange answers only GET /, a bare refusal elsewhere cannot be cleared
+    // When the candidate URLs are inspected
+    // Then only the root path counts
+    expect(isHostRootUrl('http://127.0.0.1:3080/')).toBe(true)
+    expect(isHostRootUrl('http://127.0.0.1:3080/?x=1')).toBe(true)
+    expect(isHostRootUrl('http://127.0.0.1:3080/api/health')).toBe(false)
+    expect(isHostRootUrl('not a url')).toBe(false)
   })
 })

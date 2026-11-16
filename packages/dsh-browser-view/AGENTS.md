@@ -52,9 +52,16 @@ DSH Web GUI 插件 dsh-browser-view（实时浏览器视图）。包级规则：
   伪造图片或改走临时文件。
 
 - 鉴权补票（`src/host/auth.ts`）：只对 loopback 目标、且文档确实是 DSH 自己的鉴权页
-  时才向 `ctx.connection.authenticatedUrl` 取令牌，每次导航最多补一次；无 connection
-  服务、取票抛错、补票后仍是鉴权页都必须**静默退化**，不得报错或改变导航结果。令牌
-  只经内存流转，不落盘。
+  时才取令牌，每次导航最多补一次；无 connection 服务、取票抛错、补票后仍是鉴权页都必须
+  **静默退化**，不得报错或改变导航结果。令牌只经内存流转，不落盘。鉴权页有两种形态：
+  token 交换页的 `dsh web authentication required` 文本，以及 post-#8266 宿主在路由准入
+  阶段拒绝时返回的裸 `unauthorized`；后者是任何本地服务都可能返回的通用正文，只有
+  当请求 URL 与 `ctx.webServer.getOrigin()` 是同一个 loopback 监听者（协议与端口都一致）
+  时才当作本宿主的鉴权页。
+- 路由准入：state 路由与 socket upgrade 必须声明 `auth: 'anonymous'`。post-#8266 宿主把
+  未声明策略的路由默认按 `required` 拒绝，面板会看不到状态、socket 也升不上去；准入
+  放行后仍由插件自己的 loopback 围栏（`isLoopbackRequest`）裁决。这条与 diagrams /
+  usage / task-board 等自围栏路由同一写法。
 
 ## 提交前检查
 

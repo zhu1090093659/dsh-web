@@ -102,6 +102,9 @@ type Translate = BuiltinPluginsProps['t']
  */
 const FALLBACK_CODE = 'operation-error'
 
+/** Keep the expanded inventory bounded: the full result stays available to search. */
+const BUILTIN_PAGE_SIZE = 20
+
 /** Log one caught failure where a developer can read it, naming what failed. */
 function warnFailure(what: string, error: unknown): void {
   console.warn(`plugin-manager: ${what}`, error)
@@ -255,6 +258,8 @@ export function BuiltinPlugins(props: BuiltinPluginsProps) {
    * row's enablement, so a reader can widen the list without the Loader moving.
    */
   const [scope, setScope] = useState<'default' | 'all'>('default')
+  const [query, setQuery] = useState('')
+  const [page, setPage] = useState(1)
   const listId = useId()
 
   const ready = state.kind === 'ready' ? state : undefined
@@ -262,18 +267,31 @@ export function BuiltinPlugins(props: BuiltinPluginsProps) {
   /** Rows the default scope leaves out: what the scope control would add. */
   const ownedCount = ready === undefined ? 0 : ready.allRows.length - ready.rows.length
   const presets = ready === undefined ? [] : ready.presets
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredRows = normalizedQuery === ''
+    ? rows
+    : rows.filter(row => [
+      rowTitle(row, resolveText),
+      row.moduleName,
+      row.entryId,
+      row.ownedBy ?? '',
+    ].some(text => text.toLowerCase().includes(normalizedQuery)))
+  const pageCount = Math.max(1, Math.ceil(filteredRows.length / BUILTIN_PAGE_SIZE))
+  const currentPage = Math.min(page, pageCount)
+  const pageStart = (currentPage - 1) * BUILTIN_PAGE_SIZE
+  const visibleRows = filteredRows.slice(pageStart, pageStart + BUILTIN_PAGE_SIZE)
 
   /**
    * The visible label of each row: its name, and the line under it — the module, or
    * the entry id when the name already is that module. Two rows carrying the same
    * pair read identically, which is the only case where the row has to say which
    * entry it is; a title two rows share is exactly that case, and so is a module
-   * several rows name. Counted over the list on screen, so each scope answers for
-   * itself and switching scope neither reads nor writes anything.
+   * several rows name. Counted over the filtered result, so paging cannot hide
+   * the other half of a collision; each scope still answers for itself.
    */
   const labels = new Map<string, string>()
   const labelCounts = new Map<string, number>()
-  for (const row of rows) {
+  for (const row of filteredRows) {
     const title = rowTitle(row, resolveText)
     const label = `${title}\u0000${title === row.moduleName ? row.entryId : row.moduleName}`
     labels.set(row.entryId, label)
@@ -339,7 +357,7 @@ export function BuiltinPlugins(props: BuiltinPluginsProps) {
       <div className={css.builtinHead}>
         <h3 className={css.builtinTitle}>{t('builtinGroup')}</h3>
         {ready !== undefined && ready.bundles === 'confirmed' && (
-          <span className={css.builtinCount} data-builtin-count={rows.length}>{rows.length}</span>
+          <span className={css.builtinCount} data-builtin-count={filteredRows.length}>{filteredRows.length}</span>
         )}
         {ownedCount > 0 && (
           <button
@@ -348,7 +366,10 @@ export function BuiltinPlugins(props: BuiltinPluginsProps) {
             data-dsh-part="builtin-scope"
             aria-expanded={scope === 'all'}
             aria-controls={listId}
-            onClick={() => { setScope(scope === 'all' ? 'default' : 'all') }}
+            onClick={() => {
+              setScope(scope === 'all' ? 'default' : 'all')
+              setPage(1)
+            }}
           >
             {t(scope === 'all' ? 'builtinScopeCollapse' : 'builtinScopeExpand', { count: String(ownedCount) })}
           </button>
@@ -376,8 +397,37 @@ export function BuiltinPlugins(props: BuiltinPluginsProps) {
       {ready !== undefined && rows.length === 0 && <p className={css.hint}>{t('builtinEmpty')}</p>}
 
       {rows.length > 0 && (
+        <div className={css.builtinTools}>
+          <input
+            className={css.builtinSearch}
+            type="search"
+            value={query}
+            spellCheck={false}
+            autoComplete="off"
+            aria-label={t('builtinSearchLabel')}
+            aria-controls={listId}
+            placeholder={t('builtinSearchPlaceholder')}
+            data-builtin-search
+            onChange={(event) => {
+              setQuery(event.target.value)
+              setPage(1)
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && query !== '') {
+                setQuery('')
+                setPage(1)
+              }
+            }}
+          />
+        </div>
+      )}
+      {rows.length > 0 && filteredRows.length === 0 && (
+        <p className={css.hint} role="status">{t('builtinSearchEmpty')}</p>
+      )}
+
+      {rows.length > 0 && (
         <ul className={css.builtinList} id={listId}>
-          {rows.map(row => {
+          {visibleRows.map(row => {
             const title = rowTitle(row, resolveText)
             const reason = writeReason(row.write, t)
             const locked = row.write !== 'writable'
@@ -417,6 +467,33 @@ export function BuiltinPlugins(props: BuiltinPluginsProps) {
             )
           })}
         </ul>
+      )}
+      {filteredRows.length > BUILTIN_PAGE_SIZE && (
+        <div className={css.builtinPagination} data-dsh-part="pagination">
+          <button
+            type="button"
+            className={css.button}
+            disabled={currentPage === 1}
+            onClick={() => { setPage(currentPage - 1) }}
+          >
+            {t('builtinPagePrevious')}
+          </button>
+          <span className={css.builtinPageInfo} aria-live="polite">
+            {t('builtinPageInfo', {
+              page: String(currentPage),
+              pages: String(pageCount),
+              count: String(filteredRows.length),
+            })}
+          </span>
+          <button
+            type="button"
+            className={css.button}
+            disabled={currentPage === pageCount}
+            onClick={() => { setPage(currentPage + 1) }}
+          >
+            {t('builtinPageNext')}
+          </button>
+        </div>
       )}
 
       {presets.length > 0 && (

@@ -401,6 +401,47 @@
   outline-offset: 2px;
 }
 
+.builtinTools {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 0 4px;
+}
+
+/* The official page also styles search inputs. Own both flexibility and width
+ * at the wrapper + class specificity so the field follows the list's measure. */
+.builtinTools .builtinSearch {
+  flex: 1 1 0;
+  box-sizing: border-box;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md, 8px);
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.builtinTools .builtinSearch:hover {
+  border-color: var(--dsw-alias-border-l3);
+}
+
+.builtinTools .builtinSearch::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.builtinTools .builtinSearch:focus-visible {
+  border-color: var(--dsw-alias-state-business-primary);
+  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
+
 .builtinList {
   display: flex;
   flex-direction: column;
@@ -424,6 +465,27 @@
 
 .builtinRow:last-child {
   border-bottom: 0;
+}
+
+.builtinPagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  column-gap: 16px;
+  row-gap: 8px;
+  padding: 12px 2px 6px;
+}
+
+.builtinPageInfo {
+  flex: 0 1 auto;
+  min-width: 140px;
+  padding: 0 4px;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 .builtinMain {

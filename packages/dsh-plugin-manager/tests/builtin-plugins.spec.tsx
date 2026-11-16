@@ -636,6 +636,149 @@ describe('builtin list scope', () => {
   })
 })
 
+describe('built-in list search and pagination', () => {
+  const MANY_ROWS: LoaderEntry[] = Array.from({ length: 25 }, (_, index) => {
+    const suffix = String(index + 1).padStart(2, '0')
+    return {
+      entryId: 'global-' + suffix,
+      moduleName: '@example/global-' + suffix,
+      enabled: true,
+      fiberPhase: 'active',
+    }
+  })
+
+  function searchInput(): HTMLInputElement {
+    const found = document.querySelector<HTMLInputElement>('[data-builtin-search]')
+    if (found === null) throw new Error('the group rendered no search input')
+    return found
+  }
+
+  function listedEntryIds(): (string | null)[] {
+    return [...document.querySelectorAll<HTMLElement>('[data-dsh-part="builtin-row"]')]
+      .map(node => node.getAttribute('data-entry-id'))
+  }
+
+  function pagination(): HTMLElement {
+    const found = document.querySelector<HTMLElement>('[data-dsh-part="pagination"]')
+    if (found === null) throw new Error('the group rendered no pagination')
+    return found
+  }
+
+  async function search(value: string): Promise<void> {
+    fireEvent.change(searchInput(), { target: { value } })
+    await waitFor(() => { expect(searchInput().value).toBe(value) })
+  }
+
+  it('user finds a row by its localized title, module package, or entry id without another Loader read', async () => {
+    // Given rows whose searchable fields are deliberately different
+    const titled: LoaderEntry = {
+      entryId: 'alpha-row',
+      moduleName: '@example/alpha',
+      meta: { title: { en: 'Visible Name', zh: '可见名称' } },
+      enabled: true,
+      fiberPhase: 'active',
+    }
+    const under = deployment({ entries: [titled, COMPUTER_USE, INVENTORY_ROW] })
+    await renderGroup(under)
+    const readsBefore = under.reads()
+
+    // When the user searches each field in turn
+    await search('visible name')
+    expect(listedEntryIds()).toEqual(['alpha-row'])
+    await search('DSH-COMPUTER-USE')
+    expect(listedEntryIds()).toEqual(['computer-use'])
+    await search('PLUGIN-INVENTORY')
+    expect(listedEntryIds()).toEqual(['plugin-inventory'])
+
+    // Then matching is case-insensitive and entirely local to the snapshot already read
+    expect(searchInput().getAttribute('aria-label')).toBe(t('builtinSearchLabel'))
+    expect(document.querySelector('[data-builtin-count]')?.getAttribute('data-builtin-count')).toBe('1')
+    expect(under.reads()).toBe(readsBefore)
+    expect(under.calls).toEqual([])
+  })
+
+  it('user finds a bundle-owned row by its owner in the wider scope', async () => {
+    // Given the wider scope, where the owner is visible on the contributed row
+    const under = deployment({ entries: [BUNDLE_ROW, COMPUTER_USE] })
+    await renderGroup(under)
+    fireEvent.click(document.querySelector('[data-dsh-part="builtin-scope"]') as HTMLElement)
+    await waitFor(() => { expect(listedEntryIds()).toHaveLength(2) })
+
+    // When the user searches the bundle package name rather than the row's own module
+    await search('dsh-web-app')
+
+    // Then only that contributed row remains
+    expect(listedEntryIds()).toEqual(['ui-settings-general'])
+  })
+
+  it('user sees a specific empty result and restores the list with Escape', async () => {
+    // Given a search that matches no row
+    const under = deployment({ entries: [COMPUTER_USE] })
+    await renderGroup(under)
+    await search('nothing-matches-this')
+
+    // Then the search stays available and the empty state does not claim the inventory is empty
+    expect(listedEntryIds()).toEqual([])
+    expect(document.querySelector('[role="status"]')?.textContent).toBe(t('builtinSearchEmpty'))
+    expect(document.querySelector('[data-builtin-count]')?.getAttribute('data-builtin-count')).toBe('0')
+
+    // When the user presses Escape, the original rows return
+    fireEvent.keyDown(searchInput(), { key: 'Escape' })
+    await waitFor(() => { expect(listedEntryIds()).toEqual(['computer-use']) })
+    expect(searchInput().value).toBe('')
+  })
+
+  it('user pages through at most twenty rows without reading or writing again', async () => {
+    // Given twenty-five global rows
+    const under = deployment({ entries: MANY_ROWS })
+    await renderGroup(under)
+    const readsBefore = under.reads()
+
+    // Then the first page stops at twenty and names the complete result size
+    expect(listedEntryIds()).toEqual(MANY_ROWS.slice(0, 20).map(row => row.entryId))
+    expect(pagination().textContent).toContain(t('builtinPageInfo', { page: '1', pages: '2', count: '25' }))
+    const firstButtons = pagination().querySelectorAll('button')
+    expect(firstButtons[0]?.hasAttribute('disabled')).toBe(true)
+    expect(firstButtons[1]?.hasAttribute('disabled')).toBe(false)
+
+    // When the user opens the next page
+    fireEvent.click(firstButtons[1] as HTMLElement)
+    await waitFor(() => { expect(listedEntryIds()).toEqual(MANY_ROWS.slice(20).map(row => row.entryId)) })
+
+    // Then only the render window moved, not the Loader or the manager
+    expect(pagination().textContent).toContain(t('builtinPageInfo', { page: '2', pages: '2', count: '25' }))
+    expect(pagination().querySelectorAll('button')[1]?.hasAttribute('disabled')).toBe(true)
+    expect(under.reads()).toBe(readsBefore)
+    expect(under.calls).toEqual([])
+
+    // And a search, then clearing it, returns through the first page rather than preserving a stale offset
+    await search('global-03')
+    expect(listedEntryIds()).toEqual(['global-03'])
+    fireEvent.keyDown(searchInput(), { key: 'Escape' })
+    await waitFor(() => { expect(listedEntryIds()).toEqual(MANY_ROWS.slice(0, 20).map(row => row.entryId)) })
+    expect(pagination().textContent).toContain(t('builtinPageInfo', { page: '1', pages: '2', count: '25' }))
+  })
+
+  it('user returns to the first page when the list scope changes', async () => {
+    // Given page two of the expanded inventory
+    const under = deployment({ entries: [BUNDLE_ROW, ...MANY_ROWS] })
+    await renderGroup(under)
+    fireEvent.click(document.querySelector('[data-dsh-part="builtin-scope"]') as HTMLElement)
+    await waitFor(() => { expect(listedEntryIds()).toHaveLength(20) })
+    fireEvent.click(pagination().querySelectorAll('button')[1] as HTMLElement)
+    await waitFor(() => {
+      expect(pagination().textContent).toContain(t('builtinPageInfo', { page: '2', pages: '2', count: '26' }))
+    })
+
+    // When the user narrows the scope again
+    fireEvent.click(document.querySelector('[data-dsh-part="builtin-scope"]') as HTMLElement)
+
+    // Then the default inventory starts from its first page
+    await waitFor(() => { expect(listedEntryIds()).toEqual(MANY_ROWS.slice(0, 20).map(row => row.entryId)) })
+    expect(pagination().textContent).toContain(t('builtinPageInfo', { page: '1', pages: '2', count: '25' }))
+  })
+})
+
 describe('agent preset compositions', () => {
   const presets: AgentPreset[] = [
     {

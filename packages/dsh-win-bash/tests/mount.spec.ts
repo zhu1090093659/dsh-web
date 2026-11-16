@@ -14,7 +14,7 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import { apply, inject, name } from '../src/index.ts'
-import { CONFIG_DEFAULTS, resolveConfig } from '../src/config.ts'
+import { resolveConfig } from '../src/config.ts'
 import { RUNTIME_ROOT_ENV, resolveRuntime } from '../src/runtime.ts'
 
 /** The plugin surface one host would see, recorded instead of asserted on a mock. */

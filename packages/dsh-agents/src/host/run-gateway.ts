@@ -11,8 +11,8 @@
  */
 import type { InvokeRemoteRequest } from '@deepseek-ai/dsh-api-gateway'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { AgentsError, isAgentsError } from '../core/errors.ts'
-import { parseModelPin, type ModelRoute } from '../core/model-pin.ts'
+import { AgentsError } from '../core/errors.ts'
+import { type ModelRoute } from '../core/model-pin.ts'
 import type { AgentsPermission, AgentsWorkspaceOption } from '../protocol.ts'
 import type { Workspace } from '@deepseek-ai/dsh-workspace/types'
 
@@ -158,10 +158,6 @@ function wireArgs(namespace: string, method: string, request: Record<string, unk
   if (namespace === 'agentPresets' && method === 'list') return {}
   if (namespace === 'session' && method === 'modelCatalog') return {}
   return { request }
-}
-
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }
 
 /**

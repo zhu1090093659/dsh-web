@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-≤768px 时聚合包 compat 层把侧栏列变成浮层抽屉：`RESPONSIVE_CSS` 里把侧栏面板绝对定位、给 `z-index: 1100`，并在 frame 上以 `::after` 画一层 `z-index: 1050` 的遮罩。抽屉与遮罩此前只按视觉验收过，从未按命中目标验收。
+<768px 且非 Windows 桌面标题栏时（[移动资格笔记](2026-11-16-compat-mobile-eligibility-mirrors-official-drawer.md)，#2054），聚合包 compat 层把侧栏列变成浮层抽屉：`RESPONSIVE_CSS` 里把侧栏面板绝对定位、给 `z-index: 1100`，并在 frame 上以 `::after` 画一层 `z-index: 1050` 的遮罩。抽屉与遮罩此前只按视觉验收过，从未按命中目标验收。
 
 官方布局自己也有 drawer 模式：`.frame[data-sidebar-drawer] .sidebarCol` 声明 `position: absolute; z-index: 71`，`.drawerMask` 声明 `z-index: 70`，而 ui-layout 客户端模块是在运行时通过 `document.head.appendChild` 注入这份样式表的，也就是落在 compat 标签之后。compat 选择器 `[data-dsh-frame] [data-pane="sidebar"]:is([data-pane="sidebar"])` 与官方 `.frame[data-sidebar-drawer] .sidebarCol` 同为 0-3-0，于是层叠把同权重的平手交给了文档顺序：后注入的官方表赢下了这里每一条普通声明。`position` 因为带 `!important` 活了下来，`z-index: 1100` 没有，抽屉的 computed 值是 **71**；而 compat 遮罩以非 important 的 1050 声明、并且保持可命中，正好盖在它本来要压暗的抽屉之上。
 
@@ -17,6 +17,8 @@ Status: implemented
 层级契约由拥有它的那条声明决定，而不是由两份被注入的样式表谁先谁后决定。
 
 `packages/dsh-web-all/src/client/index.ts` 保留 0-3-0 选择器上限，并把抽屉的层级声明为 important：在已经 important 的 `position: absolute` 旁边写下 `z-index: 1100 !important`。`:is()` 依旧只负责把特异性抬到皮肤 0-2-2 / 0-2-3 之上；与官方表同权重时的平手由 `!important` 结束。同时，窄屏抽屉规则（`[data-dsh-frame]:where(:not([data-mobile-nav])) [data-pane="sidebar"]:is([data-pane="sidebar"])`）与 `::after` 遮罩都在 `[data-dsh-frame]` 上追加零特异性的 `:where(:not([data-mobile-nav]))`，使之在保持 0-3-0 上限的同时，于同装 `dsh-web-mobile` 且宿主帧带有 `data-mobile-nav="frame"` 时自动让位（#2050），不再以 `1100 !important` 覆盖移动插件抽屉或截留点击。
+
+同一套零特异性手法也承载桌面标题栏守卫：每条移动规则都带 `:where(html:not([data-windows-titlebar]))` 前缀，使整个移动契约在 Windows 桌面外壳下让位，而 0-3-0 上限不动（[资格笔记](2026-11-16-compat-mobile-eligibility-mirrors-official-drawer.md)）。
 
 compat 遮罩继续只做抽屉的压暗，永不成为命中面：同一条 `::after` 上写 `pointer-events: none`。关闭动作保持它既有的两个归属者不变：布局在我方抽屉之下绘制的官方 `.drawerMask`，以及 `installMobileSidebarDismiss` 里捕获阶段对「点击落在侧栏之外」折起抽屉的处理器（见[#1716 关闭行为笔记](2026-09-25-issue-batch-1716-1719-and-ci-unblock.md)），同时在 `sidebar.closest('[data-mobile-nav]') !== null` 时立即返回让位给 `dsh-web-mobile`。
 

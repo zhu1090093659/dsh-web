@@ -88,9 +88,18 @@ html[data-platform="darwin"] body > :is(
 [data-dsh-frame] [data-dsh-responsive-part="composer"],
 [data-dsh-frame] [data-dsh-responsive-part="sidebar-toggle"],
   [data-dsh-frame] [data-dsh-responsive-part="menu"] { touch-action: manipulation; }
-@media (max-width: 768px) {
-  [data-dsh-frame] [data-dsh-responsive-part="sidebar-toggle"] { min-width: 44px; min-height: 44px; }
-  [data-dsh-frame] {
+/* Mobile eligibility mirrors the official layout (ui-layout AppFrame: drawer =
+   viewport < SIDEBAR_DRAWER_BREAKPOINT && !windowsTitlebar, breakpoint 768).
+   Two guards keep the mobile contract off the Windows desktop shell (#2054):
+   the query is strictly below 768 (767.98px, the sub-pixel-safe spelling within
+   this sheet's :has() browser floor), so a 125%-scaling split window at exactly
+   768 CSS px keeps the official three-column grid; and every rule in both mobile
+   blocks carries the zero-specificity :where(html:not([data-windows-titlebar]))
+   prefix, because the desktop titlebar shell never enters drawer mode at ANY
+   width. :where() adds no specificity, so the 0-3-0 ceiling below is intact. */
+@media (max-width: 767.98px) {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-dsh-responsive-part="sidebar-toggle"] { min-width: 44px; min-height: 44px; }
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] {
     box-sizing: border-box;
     height: 100dvh;
     min-height: 100dvh;
@@ -145,7 +154,7 @@ html[data-platform="darwin"] body > :is(
   /* When dsh-web-mobile mounts its own navigation controller on the frame
      (marked with data-mobile-nav), yield the compat drawer layer and mask
      without raising specificity above 0-3-0 via zero-specificity :where(). */
-  [data-dsh-frame]:where(:not([data-mobile-nav])) [data-pane="sidebar"]:is([data-pane="sidebar"]) {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame]:where(:not([data-mobile-nav])) [data-pane="sidebar"]:is([data-pane="sidebar"]) {
     position: absolute !important;
     inset-block: 0;
     inset-inline-start: 0;
@@ -165,7 +174,7 @@ html[data-platform="darwin"] body > :is(
      and both stay: the official drawer mask the layout paints under its own
      drawer (it closes the drawer through the app), and the capture-phase click
      handler that folds the drawer on any click outside the sidebar. */
-  [data-dsh-frame]:where(:not([data-mobile-nav])):not([data-sidebar-collapsed])::after {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame]:where(:not([data-mobile-nav])):not([data-sidebar-collapsed])::after {
     content: "";
     position: fixed;
     inset: 0;
@@ -173,7 +182,7 @@ html[data-platform="darwin"] body > :is(
     background: rgb(0 0 0 / 24%);
     pointer-events: none;
   }
-  [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] {
     width: 52px !important;
     transform: none;
     pointer-events: none;
@@ -181,13 +190,13 @@ html[data-platform="darwin"] body > :is(
     border: 0 !important;
     box-shadow: none;
   }
-  [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] > [data-slot="sidebar"] > :first-child > :not(:first-child),
-  [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] > [data-slot="sidebar"] > :first-child > :first-child > :not([data-dsh-responsive-part="sidebar-toggle"]) {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] > [data-slot="sidebar"] > :first-child > :not(:first-child),
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] > [data-slot="sidebar"] > :first-child > :first-child > :not([data-dsh-responsive-part="sidebar-toggle"]) {
     display: none !important;
   }
-  [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] > [data-slot="sidebar"],
-  [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] > [data-slot="sidebar"] > :first-child { background: transparent !important; }
-  [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] [data-dsh-responsive-part="sidebar-toggle"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] > [data-slot="sidebar"],
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] > [data-slot="sidebar"] > :first-child { background: transparent !important; }
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] [data-dsh-responsive-part="sidebar-toggle"] {
     pointer-events: auto;
     display: inline-flex !important;
   }
@@ -195,23 +204,23 @@ html[data-platform="darwin"] body > :is(
      the rail would both hide it (the rule above) and freeze it (a collapsed pane
      sets pointer-events: none). Restore only the subtree that actually carries an
      open dialog; with no dialog open the collapsed rail is unchanged (issue #1510). */
-  [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] > [data-slot="sidebar"] > :first-child > :not(:first-child):has([role="dialog"], [aria-modal="true"]) {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame][data-sidebar-collapsed] [data-pane="sidebar"] > [data-slot="sidebar"] > :first-child > :not(:first-child):has([role="dialog"], [aria-modal="true"]) {
     display: flex !important;
     pointer-events: auto;
   }
   /* Center-view plugins own this marker; the aggregate shell owns its mobile offset. */
-  [data-dsh-frame][data-sidebar-collapsed] [data-dsh-center-view-back] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame][data-sidebar-collapsed] [data-dsh-center-view-back] {
     margin-inline-start: 52px;
   }
-  [data-dsh-frame] [data-pane="conversation"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-pane="conversation"] {
     min-width: 0;
     width: 100%;
     min-height: 0;
   }
-  [data-dsh-frame] [data-pane="details"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-pane="details"] {
     display: none;
   }
-  [data-dsh-frame]:not([data-details-collapsed]) [data-pane="details"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame]:not([data-details-collapsed]) [data-pane="details"] {
     display: block;
     position: absolute;
     inset: 0;
@@ -219,40 +228,40 @@ html[data-platform="darwin"] body > :is(
     width: 100%;
     background: var(--dsw-alias-bg-base);
   }
-  [data-dsh-frame][data-details-collapsed] [data-pane="details"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame][data-details-collapsed] [data-pane="details"] {
     display: none;
   }
-  [data-dsh-frame] [data-dsh-responsive-part="composer"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-dsh-responsive-part="composer"] {
     max-width: 100%;
     padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
   }
-  [data-dsh-frame] [data-slot="conversation.composer"],
-  [data-dsh-frame] [data-composer-card],
-  [data-dsh-frame] [data-input-scroll] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-slot="conversation.composer"],
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-composer-card],
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-input-scroll] {
     min-width: 0;
     max-width: 100%;
   }
-  [data-dsh-frame] [data-composer-card] > :last-child {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-composer-card] > :last-child {
     min-width: 0;
     max-width: 100%;
     flex-wrap: wrap;
   }
-  [data-dsh-frame] [data-slot="conversation.input.model"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-slot="conversation.input.model"] {
     min-width: 0;
     max-width: 45%;
   }
-  [data-dsh-frame] [data-slot="conversation.input.model"] :is(button, span) {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-slot="conversation.input.model"] :is(button, span) {
     min-width: 0;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  [data-dsh-frame] textarea[data-phase] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] textarea[data-phase] {
     min-width: 0;
     font-size: 16px;
   }
-  [data-dsh-part="summon-button"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-part="summon-button"] {
     right: max(12px, env(safe-area-inset-right));
     bottom: max(12px, env(safe-area-inset-bottom));
     z-index: 40 !important;
@@ -264,7 +273,7 @@ html[data-platform="darwin"] body > :is(
     border-radius: 50% !important;
     font-size: 0 !important;
   }
-  [data-dsh-part="summon-button"]::before {
+  :where(html:not([data-windows-titlebar])) [data-dsh-part="summon-button"]::before {
     content: "";
     display: block;
     width: 18px;
@@ -274,27 +283,29 @@ html[data-platform="darwin"] body > :is(
     border-radius: 55% 65% 45% 55%;
     transform: rotate(-8deg);
   }
-  [data-dsh-frame] [data-dsh-responsive-part="code"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-dsh-responsive-part="code"] {
     max-width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  [data-dsh-frame] [data-dsh-responsive-part="menu"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-dsh-responsive-part="menu"] {
     max-width: min(92vw, 360px);
   }
 }
-@media (max-width: 768px) {
-  [data-dsh-frame] [data-dsh-responsive-part="conversation-header"] {
+/* Same eligibility guards as the drawer block above (#2054): strictly below
+   768px, and never under the Windows desktop titlebar. */
+@media (max-width: 767.98px) {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-dsh-responsive-part="conversation-header"] {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: minmax(32px, auto) minmax(44px, auto);
     column-gap: 8px;
     padding: 8px 8px 0 60px !important;
   }
-  [data-dsh-frame] [data-dsh-responsive-part="session-title-row"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-dsh-responsive-part="session-title-row"] {
     display: contents;
   }
-  [data-dsh-frame] [data-dsh-responsive-part="session-title-cluster"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-dsh-responsive-part="session-title-cluster"] {
     box-sizing: border-box;
     grid-column: 1 / -1;
     grid-row: 1;
@@ -302,7 +313,7 @@ html[data-platform="darwin"] body > :is(
     padding-inline-end: 44px;
     overflow: hidden;
   }
-  [data-dsh-frame] [data-dsh-responsive-part="session-tablist"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-dsh-responsive-part="session-tablist"] {
     grid-column: 1;
     grid-row: 2;
     min-width: 0;
@@ -312,14 +323,14 @@ html[data-platform="darwin"] body > :is(
     overflow-x: auto;
     scrollbar-width: none;
   }
-  [data-dsh-frame] [data-dsh-responsive-part="session-tablist"]::-webkit-scrollbar {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-dsh-responsive-part="session-tablist"]::-webkit-scrollbar {
     display: none;
   }
-  [data-dsh-frame] [data-dsh-responsive-part="session-tablist"] > [role="tab"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-dsh-responsive-part="session-tablist"] > [role="tab"] {
     min-height: 44px;
     flex: none;
   }
-  [data-dsh-frame] [data-dsh-responsive-part="session-utilities"] {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-dsh-responsive-part="session-utilities"] {
     grid-column: 2;
     grid-row: 2;
     z-index: 2;
@@ -329,10 +340,10 @@ html[data-platform="darwin"] body > :is(
     overflow-x: auto;
     scrollbar-width: none;
   }
-  [data-dsh-frame] [data-dsh-responsive-part="session-utilities"]::-webkit-scrollbar {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-dsh-responsive-part="session-utilities"]::-webkit-scrollbar {
     display: none;
   }
-  [data-dsh-frame] [data-dsh-responsive-part="session-utilities"] :is(button, [role="button"]) {
+  :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-dsh-responsive-part="session-utilities"] :is(button, [role="button"]) {
     min-width: 44px;
     min-height: 44px;
     flex: none;
@@ -411,7 +422,11 @@ function installMobileSidebarDismiss(frame: HTMLElement): () => void {
   const onClick = (event: Event): void => {
     const target = event.target
     if (!(target instanceof Element)) return
-    if (typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 768px)').matches) return
+    // Mirror the official drawer eligibility (ui-layout AppFrame: viewport < 768
+    // && !windowsTitlebar). The Windows desktop shell keeps the three-column
+    // layout at every width, so the compat drawer must never fold it (#2054).
+    if (document.documentElement.hasAttribute('data-windows-titlebar')) return
+    if (typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 767.98px)').matches) return
     const sidebar = frame.querySelector<HTMLElement>('[data-pane="sidebar"]')
     if (sidebar !== null && sidebar.closest('[data-mobile-nav]') !== null) return
     const toggle = frame.querySelector<HTMLElement>('[data-dsh-responsive-part="sidebar-toggle"]')

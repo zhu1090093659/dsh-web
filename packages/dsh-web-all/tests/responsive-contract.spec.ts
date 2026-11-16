@@ -6,11 +6,51 @@ afterEach(() => {
   vi.unstubAllGlobals()
   document.body.innerHTML = ''
   document.documentElement.removeAttribute('data-dsh-frame-active')
+  document.documentElement.removeAttribute('data-windows-titlebar')
   document.head.querySelectorAll('style[data-dsh-compat="responsive"]').forEach(style => style.remove())
 })
 
 /** The layer a declaration block puts its subject on. */
 const zIndexOf = (declarations: string): number => Number(/z-index:\s*(\d+)/.exec(declarations)?.[1])
+
+/** The zero-specificity guard every mobile rule carries against the desktop shell. */
+const TITLEBAR_GUARD = ':where(html:not([data-windows-titlebar]))'
+
+/** Inner text of each strict sub-768 mobile media block, brace-matched, comments stripped. */
+function mobileBlocks(css: string): string[] {
+  const clean = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  const head = '@media (max-width: 767.98px) {'
+  const blocks: string[] = []
+  let from = 0
+  for (;;) {
+    const start = clean.indexOf(head, from)
+    if (start === -1) break
+    let depth = 1
+    let i = start + head.length
+    while (i < clean.length && depth > 0) {
+      if (clean[i] === '{') depth++
+      else if (clean[i] === '}') depth--
+      i++
+    }
+    blocks.push(clean.slice(start + head.length, i - 1))
+    from = i
+  }
+  return blocks
+}
+
+/** Comma-separated selector heads, splitting only outside parentheses. */
+function selectorHeads(selector: string): string[] {
+  const heads: string[] = []
+  let depth = 0
+  let current = ''
+  for (const ch of selector) {
+    if (ch === '(') depth++
+    if (ch === ')') depth--
+    if (ch === ',' && depth === 0) { heads.push(current); current = '' } else current += ch
+  }
+  if (current.trim().length > 0) heads.push(current)
+  return heads
+}
 
 describe('aggregate responsive compat contract', () => {
   it('stamps new content in the shared frame without queueing a second frame', async () => {
@@ -125,7 +165,7 @@ describe('aggregate responsive compat contract', () => {
     // Given env(safe-area-inset-bottom) is content-box padding by default, when
     // it is non-zero, then 100dvh of CONTENT plus the inset would overflow the
     // viewport and stretch the page downward by the inset.
-    const mobile = RESPONSIVE_CSS.match(/@media \(max-width: 768px\) \{\s*\[data-dsh-frame\] \[data-dsh-responsive-part="sidebar-toggle"\][^@]*?\[data-dsh-frame\] \{([^}]*)\}/s)?.[1] ?? ''
+    const mobile = RESPONSIVE_CSS.match(/@media \(max-width: 767\.98px\) \{\s*:where\(html:not\(\[data-windows-titlebar\]\)\) \[data-dsh-frame\] \[data-dsh-responsive-part="sidebar-toggle"\][^@]*?:where\(html:not\(\[data-windows-titlebar\]\)\) \[data-dsh-frame\] \{([^}]*)\}/s)?.[1] ?? ''
     expect(mobile).toContain('box-sizing: border-box')
     expect(mobile).toContain('height: 100dvh')
     expect(mobile).toContain('max-height: 100dvh')
@@ -136,8 +176,9 @@ describe('aggregate responsive compat contract', () => {
     expect(RESPONSIVE_CSS).toContain('[data-dsh-frame]')
     expect(RESPONSIVE_CSS).toContain('[data-pane="sidebar"]')
     expect(RESPONSIVE_CSS).toContain('[data-pane="conversation"]')
-    expect(RESPONSIVE_CSS).toContain('@media (max-width: 768px)')
-    expect(RESPONSIVE_CSS.match(/@media \(max-width: 768px\)/g)).toHaveLength(2)
+    expect(RESPONSIVE_CSS).toContain('@media (max-width: 767.98px)')
+    expect(RESPONSIVE_CSS.match(/@media \(max-width: 767\.98px\)/g)).toHaveLength(2)
+    expect(RESPONSIVE_CSS).not.toContain('@media (max-width: 768px)')
     expect(RESPONSIVE_CSS).not.toContain('@media (max-width: 480px)')
     expect(RESPONSIVE_CSS).toContain('100dvh')
     expect(RESPONSIVE_CSS).toContain('env(safe-area-inset-bottom)')
@@ -357,7 +398,7 @@ describe('aggregate responsive compat contract', () => {
   // that lifts it to 0-3-0. Either half alone regresses a real skin.
   it('user on a narrow viewport keeps the drawer contract above any skin override', () => {
     // Given the mobile breakpoint block declares the sidebar pane as a drawer
-    const mobile = RESPONSIVE_CSS.slice(RESPONSIVE_CSS.indexOf('@media (max-width: 768px)'))
+    const mobile = RESPONSIVE_CSS.slice(RESPONSIVE_CSS.indexOf('@media (max-width: 767.98px)'))
     const drawerRuleMatch = mobile.match(/(\[data-dsh-frame\]:where\(:not\(\[data-mobile-nav\]\)\) \[data-pane="sidebar"\][^{]*)\{([^}]*)\}/)
     const selector = drawerRuleMatch?.[1] ?? ''
     const drawer = drawerRuleMatch?.[2] ?? ''
@@ -375,7 +416,7 @@ describe('aggregate responsive compat contract', () => {
     // has zero specificity weight and yields the compat drawer to dsh-web-mobile.
     expect(selector).toContain(':is(')
     expect(selector).toContain(':where(:not([data-mobile-nav]))')
-    const stripWhere = (s: string): string => s.replace(/:where\(:not\(\[[^\]]+\]\)\)/g, '')
+    const stripWhere = (s: string): string => s.replace(/:where\(:not\(\[[^\]]+\]\)\)/g, '').replace(/:where\(html:not\(\[[^\]]+\]\)\)/g, '')
     const attributeCount = (stripWhere(selector).match(/\[[^\]]+\]/g) ?? []).length
     expect(attributeCount).toBe(3)
 
@@ -399,7 +440,7 @@ describe('aggregate responsive compat contract', () => {
   // first tap.
   it('user tapping an open drawer on a narrow viewport hits the drawer, not the frame', () => {
     // Given the mobile breakpoint declares the drawer and its dimming
-    const mobile = RESPONSIVE_CSS.slice(RESPONSIVE_CSS.indexOf('@media (max-width: 768px)'))
+    const mobile = RESPONSIVE_CSS.slice(RESPONSIVE_CSS.indexOf('@media (max-width: 767.98px)'))
     const drawer = mobile.match(/\[data-dsh-frame\][^{]*\[data-pane="sidebar"\][^{]*\{([^}]*)\}/)?.[1] ?? ''
     const mask = mobile.match(/\[data-dsh-frame\]:where\(:not\(\[data-mobile-nav\]\)\):not\(\[data-sidebar-collapsed\]\)::after\s*\{([^}]*)\}/)?.[1] ?? ''
     expect(drawer).not.toBe('')
@@ -454,4 +495,90 @@ describe('aggregate responsive compat contract', () => {
     expect(frame.hasAttribute('data-sidebar-collapsed')).toBe(false)
     cleanup?.()
   })
+
+  // #2054: the official drawer eligibility is viewport < 768 && !windowsTitlebar
+  // (ui-layout AppFrame, SIDEBAR_DRAWER_BREAKPOINT = 768). A Windows 125%-scaling
+  // split window at exactly 768 CSS px keeps the desktop three-column grid, and
+  // the desktop titlebar shell never enters drawer mode at any width. The compat
+  // mobile contract must mirror both halves, or it forces the single-column
+  // drawer layout onto a desktop frame: the sidebar leaves a 1fr empty track,
+  // the conversation column is squeezed right, and the header's new-session
+  // button disappears.
+  it('user on a Windows desktop split window at exactly 768px keeps the official three-column layout (#2054)', () => {
+    // Given the compat sheet's two mobile media blocks
+    const blocks = mobileBlocks(RESPONSIVE_CSS)
+    // When the boundary query and the desktop-titlebar guard are read
+    // Then both blocks exist and use the strict sub-768 query, never the inclusive one
+    expect(blocks).toHaveLength(2)
+    expect(RESPONSIVE_CSS).not.toContain('@media (max-width: 768px)')
+    // And every selector head in every mobile rule carries the zero-specificity
+    // desktop-titlebar guard, so the whole mobile layout steps aside on Windows
+    for (const block of blocks) {
+      const selectors = block.split('}').map(chunk => chunk.split('{')[0]?.trim() ?? '').filter(sel => sel.length > 0)
+      expect(selectors.length).toBeGreaterThan(0)
+      for (const selector of selectors) {
+        for (const head of selectorHeads(selector)) {
+          expect(head.trim()).toContain(TITLEBAR_GUARD)
+        }
+      }
+    }
+  })
+
+  it('user on the Windows desktop shell keeps the sidebar open on outside clicks at narrow width (#2054)', () => {
+    // Given a narrow viewport under the Windows desktop titlebar, where the
+    // official layout keeps the three-column desktop frame (no drawer)
+    document.body.innerHTML = `<main data-dsh-frame><aside data-pane="sidebar"><div data-slot="sidebar"><div><div><button data-dsh-responsive-part="sidebar-toggle">toggle</button></div></div></div></aside><section data-pane="conversation"><button id="underlay">underlay</button></section></main>`
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 1 })
+    vi.stubGlobal('cancelAnimationFrame', () => {})
+    vi.stubGlobal('matchMedia', () => ({ matches: true }))
+    document.documentElement.setAttribute('data-windows-titlebar', '')
+    const frame = document.querySelector<HTMLElement>('[data-dsh-frame]')!
+    const toggle = document.querySelector<HTMLButtonElement>('[data-dsh-responsive-part="sidebar-toggle"]')!
+    const underlay = document.querySelector<HTMLButtonElement>('#underlay')!
+    const toggleHandler = vi.fn(() => { frame.toggleAttribute('data-sidebar-collapsed') })
+    const underlayHandler = vi.fn()
+    toggle.addEventListener('click', toggleHandler)
+    underlay.addEventListener('click', underlayHandler)
+    let cleanup: (() => void) | undefined
+    apply({ effect: (effect: () => (() => void) | void) => { cleanup = effect() ?? undefined } } as never)
+
+    // When the user clicks the conversation outside the sidebar
+    const outsideClick = new MouseEvent('click', { bubbles: true, cancelable: true })
+    const dispatched = underlay.dispatchEvent(outsideClick)
+
+    // Then the capture handler yields: no fold, no cancellation, the click lands
+    expect(dispatched).toBe(true)
+    expect(outsideClick.defaultPrevented).toBe(false)
+    expect(toggleHandler).not.toHaveBeenCalled()
+    expect(underlayHandler).toHaveBeenCalledOnce()
+    expect(frame.hasAttribute('data-sidebar-collapsed')).toBe(false)
+    cleanup?.()
+  })
+
+  it('user on a genuinely narrow viewport gets the drawer folded through the strict sub-768 gate (#2054)', () => {
+    // Given a matchMedia that only matches the strict sub-768 form, so a handler
+    // still asking the old inclusive 768px query would see matches: false
+    document.body.innerHTML = `<main data-dsh-frame><aside data-pane="sidebar"><div data-slot="sidebar"><div><div><button data-dsh-responsive-part="sidebar-toggle">toggle</button></div></div></div></aside><section data-pane="conversation"><button id="underlay">underlay</button></section></main>`
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 1 })
+    vi.stubGlobal('cancelAnimationFrame', () => {})
+    const queries: string[] = []
+    vi.stubGlobal('matchMedia', (query: string) => { queries.push(query); return { matches: query === '(max-width: 767.98px)' } })
+    const frame = document.querySelector<HTMLElement>('[data-dsh-frame]')!
+    const toggle = document.querySelector<HTMLButtonElement>('[data-dsh-responsive-part="sidebar-toggle"]')!
+    const underlay = document.querySelector<HTMLButtonElement>('#underlay')!
+    const toggleHandler = vi.fn(() => { frame.toggleAttribute('data-sidebar-collapsed') })
+    toggle.addEventListener('click', toggleHandler)
+    let cleanup: (() => void) | undefined
+    apply({ effect: (effect: () => (() => void) | void) => { cleanup = effect() ?? undefined } } as never)
+
+    // When the user clicks outside the sidebar on a genuinely narrow viewport
+    underlay.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+
+    // Then the drawer folds, and the gate asked the strict query
+    expect(toggleHandler).toHaveBeenCalledOnce()
+    expect(queries).toContain('(max-width: 767.98px)')
+    expect(queries).not.toContain('(max-width: 768px)')
+    cleanup?.()
+  })
 })
+

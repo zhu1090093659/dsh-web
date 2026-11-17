@@ -77,15 +77,21 @@ from it.
   Inside that section the repository list is a second disclosure of its own
   (`setupDisclosure` in the extension stylesheet, collapsed on arrival): a
   deployment syncing several repositories showed every row at once and pushed the
-  credential form and the connection test off the column. A row is two lines - the
-  repository name with its take-unassigned and remove buttons beside it, and the
-  inclusion-label, assignee and unassigned chips wrapping on the line below -
-  because one line let the chips be ellipsised to `d...`/`@...` by the actions
-  sharing it (`setupRepositoryHead` / `setupRepositoryTags`). The toggle carries
-  `aria-expanded`/`aria-controls` and names the repository count in its accessible
-  label, and the rows leave the DOM while it is closed.
+  credential form and the connection test off the column. A row is one line - the
+  repository name (truncating with a title tooltip) followed by the inclusion-label
+  and assignee chips, a chip-shaped take-unassigned toggle (`aria-pressed`) and an
+  icon-only remove action; the chips never shrink, so a long label cannot squeeze
+  them into an ellipsis, and on a narrow column they wrap below the name as a group
+  (`setupRepositoryRow` / `setupRepositoryTags` / `setupUnassignedToggle`). The
+  take-unassigned toggle replaces the earlier separate button plus status chip that
+  stated the same fact twice. The disclosure carries `aria-expanded`/`aria-controls`
+  and names the repository count in its accessible label, and the rows leave the DOM
+  while it is closed.
 - The disclosure changed no stored value, wire field or ledger schema and added no
-  settings key of its own: only presentation and copy keys.
+  settings key of its own: only presentation and copy keys. The block's hint copy is
+  trimmed to one short line each (credential, proxy, token, repository rules); the two
+  switches keep their full explanation as the hint's title tooltip, so the detail stays
+  one hover away.
 - Coverage: `packages/dsh-task-board/tests/settings-card-disclosure.spec.tsx` drives
   the whole disclosure in jsdom (one header while collapsed, four collapsed
   topics after expanding, each topic's controls and the provider seat inside one
@@ -97,3 +103,6 @@ from it.
   (`tb-settings-topics-collapsed.png`, `tb-settings-board-topic-open.png`,
   `tb-settings-acceptance-topic-open.png`, plus the transcript). The user's own
   host was never restarted or re-bound; a page refresh picks the rebuilt bundle up.
+  The later single-line row / copy-trim simplification was captured before and after in
+  the user's own host (`packages/dsh-task-board-github/docs/e2e/gh-settings-before-top.png`,
+  `gh-settings-before-repos.png`, `gh-settings-after-top.png`, `gh-settings-after-repos.png`).

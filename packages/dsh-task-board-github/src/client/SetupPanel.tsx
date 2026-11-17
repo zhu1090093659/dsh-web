@@ -370,49 +370,52 @@ export function GitHubSetupPanel({ t, api, disabled = false }: GitHubSetupPanelP
         </button>
         {repositoriesOpen && (
         <div className={css.setupRepositoriesBody} id={repositoriesRegionId}>
-        {repositories.map(repository => (
-          <div key={repository.owner + '/' + repository.repository} className={css.setupRepositoryRow} data-dsh-part="github-repository">
-            <div className={css.setupRepositoryHead}>
-              <span className={css.setupRepository}>
-                {repository.owner}/{repository.repository}
-              </span>
-              <span className={css.setupRepositoryActions}>
+        {repositories.map(repository => {
+          const fullName = repository.owner + '/' + repository.repository
+          const assignee = repository.assignee
+          // The chip reads as a handle (@me, @octocat); the full "assignee"
+          // wording stays available as the chip's title.
+          const assigneeHandle = assignee !== undefined && assignee !== ''
+            ? (assignee.startsWith('@') ? assignee : '@' + assignee)
+            : undefined
+          return (
+            <div key={fullName} className={css.setupRepositoryRow} data-dsh-part="github-repository">
+              <span className={css.setupRepository} title={fullName}>{fullName}</span>
+              <span className={css.setupRepositoryTags}>
+                <span className={css.cardTag}>{repository.inclusionLabel ?? 'dsh'}</span>
+                {assigneeHandle !== undefined && (
+                  <span className={css.cardTag} data-dsh-part="github-repository-assignee" title={t('setup.assignee')}>
+                    {t('setup.assigneeChip', { login: assigneeHandle })}
+                  </span>
+                )}
                 <button
                   type="button"
-                  className={css.ghostButton}
+                  className={css.setupUnassignedToggle}
                   data-dsh-part="github-repository-unassigned-toggle"
                   aria-pressed={repository.includeUnassigned === true}
+                  title={t('setup.unassignedChip')}
                   disabled={disabled || repositoryBusy}
                   onClick={() => { toggleUnassigned(repository, repository.includeUnassigned !== true) }}
                 >
-                  {repository.includeUnassigned === true ? t('setup.unassignedOn') : t('setup.unassignedOff')}
-                </button>
-                <button
-                  type="button"
-                  className={css.ghostButton}
-                  data-dsh-part="github-repository-remove"
-                  disabled={disabled || repositoryBusy}
-                  onClick={() => { remove(repository) }}
-                >
-                  {t('setup.repositoryRemove')}
+                  <span data-dsh-part="github-repository-unassigned">{t('setup.unassignedChip')}</span>
                 </button>
               </span>
+              <button
+                type="button"
+                className={css.setupRepositoryRemove}
+                data-dsh-part="github-repository-remove"
+                aria-label={t('setup.repositoryRemove')}
+                title={t('setup.repositoryRemove')}
+                disabled={disabled || repositoryBusy}
+                onClick={() => { remove(repository) }}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M2.5 2.5L9.5 9.5M9.5 2.5L2.5 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+              </button>
             </div>
-            <div className={css.setupRepositoryTags}>
-              <span className={css.cardTag}>{repository.inclusionLabel ?? 'dsh'}</span>
-              {repository.assignee !== undefined && repository.assignee !== '' && (
-                <span className={css.cardTag} data-dsh-part="github-repository-assignee">
-                  {t('setup.assigneeChip', { login: repository.assignee })}
-                </span>
-              )}
-              {repository.includeUnassigned === true && (
-                <span className={css.cardTag} data-dsh-part="github-repository-unassigned">
-                  {t('setup.unassignedChip')}
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
+          )
+        })}
         <div className={css.setupRow}>
           <input
             type="text"

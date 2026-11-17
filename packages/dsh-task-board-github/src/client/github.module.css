@@ -233,6 +233,8 @@
 .ghostButton:focus-visible,
 .linkButton:focus-visible,
 .setupDisclosure:focus-visible,
+.setupUnassignedToggle:focus-visible,
+.setupRepositoryRemove:focus-visible,
 .input:focus-visible,
 .scheduleToggle input:focus-visible {
   outline: 2px solid var(--dsw-alias-state-business-primary);
@@ -243,6 +245,8 @@
 .ghostButton,
 .linkButton,
 .setupDisclosure,
+.setupUnassignedToggle,
+.setupRepositoryRemove,
 .input,
 .scheduleToggle input {
   transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease, outline-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
@@ -251,6 +255,8 @@
 .primaryButton:active:not(:disabled),
 .ghostButton:active:not(:disabled),
 .setupDisclosure:active:not(:disabled),
+.setupUnassignedToggle:active:not(:disabled),
+.setupRepositoryRemove:active:not(:disabled),
 .linkButton:active:not(:disabled) {
   transform: translateY(1px);
 }
@@ -413,42 +419,97 @@
   margin-top: 2px;
 }
 
-/* One synchronized repository: the name and its actions share the top line,
-   and the chips wrap onto their own line below, so a long label can no longer
-   squeeze them into an ellipsis. */
+/* One synchronized repository on a single line: the name takes the remaining
+   width and truncates with a title tooltip, while the chips and the remove
+   action never shrink, so a long label can no longer squeeze them into an
+   ellipsis. On a narrow column the chips wrap below the name as a group. */
 .setupRepositoryRow {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 8px 0;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 2px;
 }
 
-.setupRepositoryHead {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
+.setupRepositoryRow + .setupRepositoryRow {
+  border-top: 1px solid var(--dsw-alias-separator-primary);
 }
 
 .setupRepository {
-  font-size: 12px;
+  flex: 1 1 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.setupRepositoryActions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-left: auto;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .setupRepositoryTags {
   display: flex;
+  align-items: center;
+  flex: none;
   flex-wrap: wrap;
   gap: 4px;
+}
+
+/* The unassigned channel is a chip-shaped toggle: the pressed state fills it
+   on the business accent, replacing the former separate button plus status
+   chip that repeated the same fact twice. */
+.setupUnassignedToggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+  background: transparent;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.setupUnassignedToggle:hover:not(:disabled) {
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.setupUnassignedToggle[aria-pressed='true'] {
+  color: var(--dsw-alias-state-business-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
+  border-color: var(--dsw-alias-state-business-primary);
+}
+
+.setupUnassignedToggle:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Icon-only remove action; the accessible name carries the verb. */
+.setupRepositoryRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--dsw-alias-label-tertiary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.setupRepositoryRemove:hover:not(:disabled) {
+  color: var(--dsw-alias-state-error-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.setupRepositoryRemove:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .setupReport {

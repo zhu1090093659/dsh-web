@@ -290,6 +290,22 @@ describe('GitHub setup panel', () => {
       .toBe(zh['setup.assigneeChip'].replace('{login}', '@me'))
   })
 
+  it('operator reads a bare assignee login as a handle and removes a row by its icon action', async () => {
+    // Given a repository whose assignee is stored without the @ prefix
+    const { api } = apiDouble([{ owner: 'deepseek-ai', repository: 'dsh-web', assignee: 'octocat' }])
+    const container = await renderPanel(api)
+
+    // When the operator opens the list
+    await expandRepositories(container)
+
+    // Then the assignee chip reads as a handle, and the remove action is an
+    // icon button whose accessible name carries the verb instead of visible text
+    expect(container.querySelector('[data-dsh-part="github-repository-assignee"]')?.textContent).toBe('@octocat')
+    const remove = container.querySelector('[data-dsh-part="github-repository-remove"]') as HTMLButtonElement
+    expect(remove.getAttribute('aria-label')).toBe(zh['setup.repositoryRemove'])
+    expect(remove.textContent).toBe('')
+  })
+
   it('operator adding the same repository twice is told instead of silently getting one row', async () => {
     // Given a configuration that already carries the repository
     const { api, calls } = apiDouble([{ owner: 'deepseek-ai', repository: 'dsh-web' }])

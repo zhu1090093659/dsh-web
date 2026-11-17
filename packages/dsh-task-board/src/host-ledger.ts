@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { chmodSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { dshHome } from './dsh-home.ts'
 import { isValidCron, isValidTimeZone, nextRunAtMs, resolveHostTimeZone } from './core/schedule.ts'
@@ -357,8 +357,34 @@ const LEGACY_START_TOLERANCE_MS = 2000
  * live owner; only one that has been unreadable for longer than any write can
  * take is treated as an unclean-shutdown leftover (issue #1528: a 0-byte lock
  * kept the Host half from mounting until it was deleted by hand).
+ *
+ * The same window bounds the identity-unprobeable takeover below: it is two
+ * heartbeat intervals, so an owner that keeps beating is never mistaken for a
+ * leftover (issue #2061).
  */
 const UNREADABLE_LOCK_GRACE_MS = 60_000
+
+/**
+ * How often the lock owner refreshes its lock file's mtime (issue #2061). The
+ * record itself never changes, only the timestamp moves, so a later start can
+ * tell a live owner from a hard-kill leftover even when the platform identity
+ * probe reads nothing (a protected process, a WMI/CIM timeout). Two missed
+ * beats age the lock past UNREADABLE_LOCK_GRACE_MS and make it reclaimable; a
+ * beating owner stays protected.
+ */
+const LOCK_HEARTBEAT_MS = 30_000
+
+/**
+ * The process identity reads the lock decision depends on. Injectable so the
+ * unprobeable-identity branch is testable on every platform without a real
+ * PowerShell/CIM round trip.
+ */
+export interface LockProcessProbe {
+  isAlive(pid: number): boolean
+  startTimeMs(pid: number): number | undefined
+}
+
+const defaultLockProcessProbe: LockProcessProbe = { isAlive: processIsAlive, startTimeMs: processStartTimeMs }
 
 /** Whether the recorded start time proves the recorded PID is another process. */
 function startTimeMismatch(recorded: number, actual: number, exact: boolean): boolean {
@@ -457,6 +483,10 @@ export class HostTaskLedger {
   private readonly requestCache = new Map<string, CachedRequest>()
   private readonly lockToken = crypto.randomUUID()
   private lockFd: number | undefined
+  private lockHeartbeat: ReturnType<typeof setInterval> | undefined
+  private readonly processProbe: LockProcessProbe
+  /** Warning sink; defaults to console.warn, tests inject a collector. */
+  private readonly warn: (message: string) => void
   readonly file: string
   readonly lockFile: string
   /** Small sidecar for the 30 s scheduler heartbeat (lastTickAt only). */
@@ -494,7 +524,7 @@ export class HostTaskLedger {
   /** Today's measured spend in tokens, or undefined when nothing can be measured. */
   private readonly spendUsed: (now: number) => number | undefined
 
-  constructor(dir: string = join(dshHome(), 'task-board'), private readonly now: () => number = Date.now, options: { sessionDefaultPermission?: TaskPermission | (() => TaskPermission); maxSubtaskDepth?: number; cardDefaults?: () => CardDefaults; spendBudgetTokens?: () => number; spendUsedToday?: (now: number) => number | undefined } = {}) {
+  constructor(dir: string = join(dshHome(), 'task-board'), private readonly now: () => number = Date.now, options: { sessionDefaultPermission?: TaskPermission | (() => TaskPermission); maxSubtaskDepth?: number; cardDefaults?: () => CardDefaults; spendBudgetTokens?: () => number; spendUsedToday?: (now: number) => number | undefined; processProbe?: LockProcessProbe; warn?: (message: string) => void } = {}) {
     // Resolved before the load/repair passes below: they can evaluate the gate.
     const baseline = options.sessionDefaultPermission
     this.sessionDefault = typeof baseline === 'function' ? baseline : () => baseline ?? DEFAULT_SESSION_PERMISSION
@@ -502,12 +532,15 @@ export class HostTaskLedger {
     this.cardDefaults = options.cardDefaults ?? (() => ({}))
     this.spendBudget = options.spendBudgetTokens ?? (() => DEFAULT_SPEND_BUDGET_TOKENS)
     this.spendUsed = options.spendUsedToday ?? (now => usedTokensToday(now))
+    this.processProbe = options.processProbe ?? defaultLockProcessProbe
+    this.warn = options.warn ?? ((message) => { console.warn(message) })
     mkdirSync(dir, { recursive: true })
     this.file = join(dir, 'ledger-v2.json')
     this.lockFile = join(dir, 'ledger-v2.lock')
     this.schedulerFile = join(dir, 'scheduler-v2.json')
     this.cleanStaleTemporaryFiles(dir)
     this.lockFd = this.acquireLock()
+    this.startLockHeartbeat()
     try {
       this.document = this.load(dir)
       for (const request of this.document.recentRequests) {
@@ -674,7 +707,46 @@ export class HostTaskLedger {
     return () => { this.listeners.delete(listener) }
   }
 
+  /**
+   * Refresh the lock's mtime so a later start can distinguish a live owner from
+   * a hard-kill leftover without reading the process identity (issue #2061).
+   * Best-effort: a failed beat only ages the lock, and a record that no longer
+   * carries this owner's token stops the heartbeat instead of beating for
+   * whoever holds the lock now.
+   */
+  renewLock(): void {
+    if (this.lockFd === undefined) return
+    try {
+      const owner = JSON.parse(readFileSync(this.lockFile, 'utf8')) as { token?: unknown }
+      if (owner.token !== this.lockToken) {
+        // Another start took the ledger over. Stop beating for a lock that is
+        // not ours and say so once: an operator needs to know two hosts met.
+        this.warn(`[task-board] lost the ledger lock to another owner; this instance stops renewing ${this.lockFile}`)
+        this.stopLockHeartbeat()
+        return
+      }
+      const seconds = this.now() / 1000
+      utimesSync(this.lockFile, seconds, seconds)
+    } catch {
+      // A missing or unreadable lock is not ours to refresh.
+    }
+  }
+
+  private startLockHeartbeat(): void {
+    const timer = setInterval(() => { this.renewLock() }, LOCK_HEARTBEAT_MS)
+    // The beat must never keep a stopping Host alive.
+    timer.unref?.()
+    this.lockHeartbeat = timer
+  }
+
+  private stopLockHeartbeat(): void {
+    if (this.lockHeartbeat === undefined) return
+    clearInterval(this.lockHeartbeat)
+    this.lockHeartbeat = undefined
+  }
+
   dispose(): void {
+    this.stopLockHeartbeat()
     const fd = this.lockFd
     if (fd === undefined) return
     this.lockFd = undefined
@@ -1794,6 +1866,28 @@ export class HostTaskLedger {
     for (const listener of [...this.listeners]) listener()
   }
 
+  /**
+   * Move an unidentifiable, heartbeat-aged lock aside instead of deleting it:
+   * the record is the only evidence of which process held the ledger, and the
+   * takeover is a judgment call an operator may need to audit (issue #2061).
+   * A refused rename falls back to removal, because the takeover itself must
+   * not depend on the filesystem allowing the rename.
+   */
+  private quarantineOrphanLock(pid: number, age: number): void {
+    const orphan = `${this.lockFile}.orphan-${this.now()}`
+    let kept = true
+    try {
+      renameSync(this.lockFile, orphan)
+    } catch {
+      kept = false
+      try { unlinkSync(this.lockFile) } catch (unlinkError) {
+        if ((unlinkError as NodeJS.ErrnoException).code !== 'ENOENT') throw unlinkError
+      }
+    }
+    const seconds = Number.isFinite(age) ? `${Math.round(age / 1000)}s` : 'an unreadable age'
+    this.warn(`[task-board] reclaimed the ledger lock of process ${pid}: its identity could not be probed and its heartbeat is ${seconds} old${kept ? `; the record was kept as ${orphan}` : ''}`)
+  }
+
   private acquireLock(): number {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
@@ -1836,8 +1930,8 @@ export class HostTaskLedger {
           }
           continue
         }
-        if (pid !== undefined && processIsAlive(pid)) {
-          const actualStartedAt = pid === process.pid ? ownProcessStartTimeMs() : processStartTimeMs(pid)
+        if (pid !== undefined && this.processProbe.isAlive(pid)) {
+          const actualStartedAt = pid === process.pid ? ownProcessStartTimeMs() : this.processProbe.startTimeMs(pid)
           // A reused PID is exposed when the live process identity no longer
           // matches the recorded one: either the recorded start time differs
           // beyond the probe's resolution (strict for ms-precise 'exact'
@@ -1853,13 +1947,27 @@ export class HostTaskLedger {
                 try { return statSync(this.lockFile).mtimeMs < actualStartedAt } catch { return true }
               })()
           )
-          if (!staleReuse) {
+          // A live PID whose identity cannot be read at all (a protected
+          // process, a WMI/CIM timeout) used to fail closed forever, so a
+          // hard-kill leftover whose PID was reused kept the Host half, and
+          // every cron card with it, unmounted until someone deleted the lock
+          // by hand (issue #2061). The owner's heartbeat is the second identity
+          // source: a lock untouched for longer than two beats cannot belong to
+          // a running owner, so it is quarantined and taken over. A fresh lock
+          // still fails closed, and a confirmed live owner is never stolen from
+          // however old its lock looks.
+          const lockAge = (() => {
+            try { return this.now() - statSync(this.lockFile).mtimeMs } catch { return Number.POSITIVE_INFINITY }
+          })()
+          const staleHeartbeat = actualStartedAt === undefined && lockAge >= UNREADABLE_LOCK_GRACE_MS
+          if (!staleReuse && !staleHeartbeat) {
             const confirmedOwner = ownerStartedAt !== undefined && actualStartedAt !== undefined && !startTimeMismatch(ownerStartedAt, actualStartedAt, ownerExact)
             const hint = confirmedOwner
               ? ''
               : `; if this PID was reused after a crash and no other DSH host is running, remove ${this.lockFile} manually and retry`
             throw new Error(`task-board ledger is already owned by process ${pid}${hint}`, { cause: error })
           }
+          if (staleHeartbeat && !staleReuse) this.quarantineOrphanLock(pid, lockAge)
         }
         try { unlinkSync(this.lockFile) } catch (unlinkError) {
           if ((unlinkError as NodeJS.ErrnoException).code !== 'ENOENT') throw unlinkError

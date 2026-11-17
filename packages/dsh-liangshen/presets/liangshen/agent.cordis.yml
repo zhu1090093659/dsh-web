@@ -23,7 +23,11 @@
 # `ssh_*` — stay paged out, the durable tool-catalog message summarizes their
 # namespaces with an activation pointer, and the preset's own `tool_activate`
 # tool (the tool-activate row) loads one namespace back — at most three stay
-# active, LRU eviction pages the oldest back out. The pattern's own head decides
+# active, LRU eviction pages the oldest back out. Optional deferred idle
+# reclaim (`idleReclaimSteps`, default 0 = off): a namespace idle for N steps
+# expires, but the replay removes it only at the next activation or a
+# compaction boundary — moments the prompt prefix changes anyway — so reclaim
+# never adds a prefix-cache rebuild (issue #2066). The pattern's own head decides
 # the family: a head ending in `__` is an MCP bridge and takes the first `__`
 # segment of the tool name (`mcp__codegraph__x` -> `codegraph`), any other head
 # names the family literally with one trailing `_` dropped (`task_board_*` ->
@@ -37,7 +41,10 @@
 # the same shipped list and the settings overlay rewrites all three together: a
 # row left on its own default would disagree about what is active, and the
 # activation tool would refuse to re-activate a namespace the registry had
-# already withheld.
+# already withheld. `idleReclaimSteps` is the same kind of shared fact: the
+# deferred-reclaim threshold (0 = off, the shipped behavior) must reach all
+# three replays together, or the catalog would withhold a namespace the
+# activation tool still reports as active.
 # The activation state replays from the durable session event
 # stream on every assembly, so resume and compaction rebuild it without process
 # memory. Paging is enforced twice, because the wire is not the only surface a
@@ -203,6 +210,7 @@
     presentation: 'ptc'
     pagedToolPatterns: ['mcp__*', 'browser_*', 'task_board_*', 'team_*', 'squad*', 'ui_*', 'ssh_*']
     maxResidentTokens: 8000
+    idleReclaimSteps: 0
 
 # ── the wire ────────────────────────────────────────────────────────────────
 #
@@ -231,6 +239,7 @@
   name: ./working-context.mjs
   config:
     pagedToolPatterns: ['mcp__*', 'browser_*', 'task_board_*', 'team_*', 'squad*', 'ui_*', 'ssh_*']
+    idleReclaimSteps: 0
 
 # The paging activation handle the catalog points at: with `pagedToolPatterns`
 # non-empty this row is what lets `tool_activate({ namespace })` bring one
@@ -243,6 +252,7 @@
   name: ./tool-activate.mjs
   config:
     pagedToolPatterns: ['mcp__*', 'browser_*', 'task_board_*', 'team_*', 'squad*', 'ui_*', 'ssh_*']
+    idleReclaimSteps: 0
 
 # The key-fact register: the model pins a hard constraint / confirmed decision /
 # failed path with `fact_register`, the fold rebuilds the register from the

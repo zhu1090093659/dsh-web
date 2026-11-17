@@ -15,7 +15,7 @@ import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { LiangShenMark } from './LiangShenMark.tsx'
 import { BooleanField, ChoiceField, PluginSettingsCard, ValueField } from './PluginSettingsCard.tsx'
-import { CardForm, booleanField, choiceField, textField, type CardActions, type CardShell, type FieldSpec, type FieldState as CardFieldState } from './settings-form.ts'
+import { CardForm, booleanField, choiceField, numberField, textField, type CardActions, type CardShell, type FieldSpec, type FieldState as CardFieldState } from './settings-form.ts'
 
 /** A tool family entry: a prefix ending in exactly one trailing star. */
 const FAMILY_ENTRY_RE = /^[^*]+\*$/
@@ -52,6 +52,8 @@ export interface LiangShenSettings {
   dispatcher?: boolean
   /** Comma-separated on-demand tool families the Host writes to the tool-catalog row. */
   pagedToolPatterns?: string
+  /** Deferred idle-reclaim threshold in steps the Host writes to every paging row. */
+  idleReclaimSteps?: number
 }
 
 /** What the LiangShen card renders. */
@@ -61,6 +63,7 @@ export interface LiangShenSettingsCardState extends CardShell {
   presentation: CardFieldState
   dispatcher: CardFieldState
   pagedToolPatterns: CardFieldState
+  idleReclaimSteps: CardFieldState
 }
 
 /** The registration-side face the card's slot entry injects. */
@@ -84,6 +87,7 @@ export class LiangShenSettingsCardController {
       choiceField('presentation', PRESENTATION_CHOICES),
       booleanField('dispatcher'),
       pagedToolPatternsField('pagedToolPatterns'),
+      numberField('idleReclaimSteps', { integer: true, min: 0 }),
     ])
     this.store = this.form.bind(() => this.projection())
   }
@@ -96,6 +100,7 @@ export class LiangShenSettingsCardController {
       presentation: this.form.field('presentation'),
       dispatcher: this.form.field('dispatcher'),
       pagedToolPatterns: this.form.field('pagedToolPatterns'),
+      idleReclaimSteps: this.form.field('idleReclaimSteps'),
     }
   }
 
@@ -201,6 +206,17 @@ export function LiangShenSettingsCard(props: LiangShenSettingsCardProps) {
         {...state.pagedToolPatterns}
         onEdit={(text) => { props.edit('pagedToolPatterns', text) }}
         onReset={() => { props.resetField('pagedToolPatterns') }}
+      />
+      <ValueField
+        id="settings-liangshen-idle-reclaim-steps"
+        label={t('settings.idleReclaimSteps')}
+        hint={t('settings.idleReclaimStepsHint')}
+        placeholder="0"
+        {...fieldProps}
+        invalidLabel={t('settings.idleReclaimStepsInvalid')}
+        {...state.idleReclaimSteps}
+        onEdit={(text) => { props.edit('idleReclaimSteps', text) }}
+        onReset={() => { props.resetField('idleReclaimSteps') }}
       />
     </PluginSettingsCard>
   )

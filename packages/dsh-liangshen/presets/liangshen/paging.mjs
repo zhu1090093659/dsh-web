@@ -17,6 +17,17 @@
  * beyond the cap evicts the namespace whose latest activation or use is the
  * oldest, returning its tools to the paged summary.
  *
+ * Deferred idle reclaim (optional, `idleReclaimSteps`, default 0 = off): a
+ * namespace with no successful activation or use for N steps is expired, but
+ * the fold removes it only at a moment the request's prompt prefix changes
+ * anyway — the next activation touch, or a `compaction/end` boundary. Until
+ * then it stays resident and reachable, and any successful call into it
+ * refreshes its recency and cancels the expiry. The deferral is the cache
+ * contract (issue #2066): the applied active set, and therefore the withheld
+ * names and the `tools:sdk` section rendered from them, changes only where it
+ * already changes without reclaim, plus compaction boundaries whose history
+ * rewrite already cold-starts the prefix cache — never one extra rebuild.
+ *
  * SHARED DURABLE-LOG HELPERS: the same replay reads one session log in every
  * projection row of this preset, so the readers live here once — the tolerant
  * event source ({@link sessionEvents}), the message text and visibility rules
@@ -37,6 +48,9 @@ export const DEFAULT_PAGED_TOOL_PATTERNS = ['mcp__*', 'browser_*', 'task_board_*
 
 /** The LRU cap on simultaneously active paged namespaces. */
 export const DEFAULT_MAX_ACTIVE_NAMESPACES = 3
+
+/** Idle-step threshold of the deferred reclaim; 0 keeps every activation resident (the shipped behavior). */
+export const DEFAULT_IDLE_RECLAIM_STEPS = 0
 
 /** The activation tool this preset registers. */
 export const TOOL_ACTIVATE_NAME = 'tool_activate'
@@ -222,6 +236,108 @@ function failedCallIdsOf(events) {
 }
 
 /**
+ * The paging fold: one state machine both the replay and the activation
+ * projection run, so the page of the next assembly and the report of this
+ * activation can never disagree.
+ *
+ * With `idleReclaimSteps` 0 (the shipped default) the fold is exactly the
+ * historical LRU replay: activations and successful uses touch the recency
+ * list, and only the capacity evicts. With a positive threshold the fold also
+ * records the step of the latest successful activation or use of each
+ * namespace (`step/start` events advance the counter) and removes expired
+ * namespaces at the two application points — an activation touch and
+ * `compaction/end` — never at the idle detection itself, an ordinary use, a
+ * turn boundary, or a resume. A log without `step/start` events never
+ * reclaims: no step evidence, no expiry.
+ */
+function pagingFold(capacity, patterns, idleReclaimSteps, errored) {
+  const active = []
+  const evicted = []
+  const reclaimed = []
+  const lastUse = new Map()
+  let step = 0
+
+  const reclaimExpired = () => {
+    if (idleReclaimSteps <= 0) return
+    for (let index = 0; index < active.length;) {
+      const namespace = active[index]
+      const used = lastUse.get(namespace)
+      if (used !== undefined && step - used >= idleReclaimSteps) {
+        reclaimed.push(namespace)
+        active.splice(index, 1)
+      } else {
+        index += 1
+      }
+    }
+  }
+  const reorder = (namespace) => {
+    const index = active.indexOf(namespace)
+    if (index >= 0) active.splice(index, 1)
+    active.push(namespace)
+  }
+  const activate = (namespace) => {
+    // The activation refreshes its own recency first, so reclaiming the OTHER
+    // expired namespaces can never remove the one being activated, and the
+    // capacity reclaim frees may spare an LRU eviction.
+    lastUse.set(namespace, step)
+    reclaimExpired()
+    reorder(namespace)
+    while (active.length > capacity) evicted.push(active.shift())
+  }
+  const use = (namespace) => {
+    // A use only refreshes recency. Applying reclaim here would move the
+    // prompt prefix on an ordinary call — the extra rebuild the deferral
+    // exists to prevent.
+    lastUse.set(namespace, step)
+    reorder(namespace)
+  }
+  const applyEvent = (event) => {
+    if (event?.type === 'step/start') {
+      step += 1
+      return
+    }
+    if (event?.type === 'compaction/end') {
+      reclaimExpired()
+      return
+    }
+    // Under the `ptc` presentation the wire carries `run_code` alone, so the model
+    // reaches EVERY tool from inside a program and the harness records each call as
+    // a `tool/ptc-dispatch` event — never as a top-level `tool/call`. Reading only
+    // `tool/call` therefore found no activation at all: every activation reported
+    // success, the page never lifted, and the same namespace could be activated
+    // again for ever. Both event shapes feed the same recency list, in the order
+    // the session recorded them, and the dispatch branch repeats BOTH rules the
+    // top-level branch applies: an activation activates, and any other call into
+    // an already-active family refreshes it. Without the second rule the LRU
+    // silently degraded to activation order — the only shape a real tool call
+    // takes under the default presentation refreshed nothing.
+    if (event?.type === 'tool/ptc-dispatch') {
+      const dispatch = event.data
+      if (dispatch?.isError === true) return
+      if (dispatch?.name === TOOL_ACTIVATE_NAME) {
+        const namespace = callArguments(dispatch)?.namespace
+        if (typeof namespace === 'string' && namespace !== '') activate(namespace)
+        return
+      }
+      const namespace = namespaceOf(dispatch?.name, patterns)
+      if (namespace !== undefined && active.includes(namespace)) use(namespace)
+      return
+    }
+    if (event?.type !== 'tool/call') return
+    const data = event.data
+    if (data?.callId !== undefined && errored.has(String(data.callId))) return
+    if (data?.name === TOOL_ACTIVATE_NAME) {
+      const namespace = callArguments(data)?.namespace
+      if (typeof namespace === 'string' && namespace !== '') activate(namespace)
+      return
+    }
+    const namespace = namespaceOf(data?.name, patterns)
+    if (namespace !== undefined && active.includes(namespace)) use(namespace)
+  }
+  return { active, evicted, reclaimed, activate, applyEvent }
+}
+
+/**
  * Replay the durable session event stream into the active namespace set.
  *
  * Events are the source of truth: a `tool_activate` call whose result did not
@@ -236,55 +352,49 @@ function failedCallIdsOf(events) {
  * @param patterns - the paging patterns that name a tool's namespace.
  * @param failedCallIds - the failed callIds when the caller already folded them
  *   ({@link erroredCallId}); omitted, this replay collects them itself.
+ * @param idleReclaimSteps - idle steps after which a namespace expires; 0 (the
+ *   default) keeps the historical resident-until-evicted behavior. Expiry is
+ *   applied only at activation touches and `compaction/end` boundaries.
  */
-export function replayActivations(events, capacity = DEFAULT_MAX_ACTIVE_NAMESPACES, patterns = DEFAULT_PAGED_TOOL_PATTERNS, failedCallIds) {
+export function replayActivations(events, capacity = DEFAULT_MAX_ACTIVE_NAMESPACES, patterns = DEFAULT_PAGED_TOOL_PATTERNS, failedCallIds, idleReclaimSteps = DEFAULT_IDLE_RECLAIM_STEPS) {
   const list = Array.isArray(events) ? events : []
   const errored = failedCallIds instanceof Set ? failedCallIds : failedCallIdsOf(list)
+  const fold = pagingFold(capacity, patterns, idleReclaimSteps, errored)
+  for (const event of list) fold.applyEvent(event)
+  return { active: fold.active, evicted: fold.evicted }
+}
 
-  const active = []
-  const evicted = []
-  const touch = (namespace) => {
-    const index = active.indexOf(namespace)
-    if (index >= 0) active.splice(index, 1)
-    active.push(namespace)
-    while (active.length > capacity) evicted.push(active.shift())
+/**
+ * Project one activation about to be recorded: fold the log as it stands, then
+ * apply the activation transition the next replay applies once the call lands
+ * in the stream. The activation tool reports from this projection, so its
+ * eviction/reclaim report and the page of the next assembly are one fact.
+ *
+ * @param events - the durable log, excluding the call being projected.
+ * @param capacity - how many namespaces stay active at once.
+ * @param patterns - the paging patterns that name a tool's namespace.
+ * @param namespace - the namespace this activation targets.
+ * @param idleReclaimSteps - the deferred-reclaim threshold, as the replay reads it.
+ * @param failedCallIds - the failed callIds when the caller already folded them.
+ * @returns wasActive (the target already resident before this call), the
+ *   post-activation active set oldest-first, and the namespaces THIS activation
+ *   evicted (LRU) or reclaimed (applied expiry), in removal order.
+ */
+export function projectActivation(events, capacity, patterns, namespace, idleReclaimSteps = DEFAULT_IDLE_RECLAIM_STEPS, failedCallIds) {
+  const list = Array.isArray(events) ? events : []
+  const errored = failedCallIds instanceof Set ? failedCallIds : failedCallIdsOf(list)
+  const fold = pagingFold(capacity, patterns, idleReclaimSteps, errored)
+  for (const event of list) fold.applyEvent(event)
+  const wasActive = fold.active.includes(namespace)
+  const evictedBefore = fold.evicted.length
+  const reclaimedBefore = fold.reclaimed.length
+  fold.activate(namespace)
+  return {
+    wasActive,
+    active: fold.active,
+    evicted: fold.evicted.slice(evictedBefore),
+    reclaimed: fold.reclaimed.slice(reclaimedBefore),
   }
-  for (const event of list) {
-    // Under the `ptc` presentation the wire carries `run_code` alone, so the model
-    // reaches EVERY tool from inside a program and the harness records each call as
-    // a `tool/ptc-dispatch` event — never as a top-level `tool/call`. Reading only
-    // `tool/call` therefore found no activation at all: every activation reported
-    // success, the page never lifted, and the same namespace could be activated
-    // again for ever. Both event shapes feed the same recency list, in the order
-    // the session recorded them, and the dispatch branch repeats BOTH rules the
-    // top-level branch applies: an activation activates, and any other call into
-    // an already-active family refreshes it. Without the second rule the LRU
-    // silently degraded to activation order — the only shape a real tool call
-    // takes under the default presentation refreshed nothing.
-    if (event?.type === 'tool/ptc-dispatch') {
-      const dispatch = event.data
-      if (dispatch?.isError === true) continue
-      if (dispatch?.name === TOOL_ACTIVATE_NAME) {
-        const namespace = callArguments(dispatch)?.namespace
-        if (typeof namespace === 'string' && namespace !== '') touch(namespace)
-        continue
-      }
-      const namespace = namespaceOf(dispatch?.name, patterns)
-      if (namespace !== undefined && active.includes(namespace)) touch(namespace)
-      continue
-    }
-    if (event?.type !== 'tool/call') continue
-    const data = event.data
-    if (data?.callId !== undefined && errored.has(String(data.callId))) continue
-    if (data?.name === TOOL_ACTIVATE_NAME) {
-      const namespace = callArguments(data)?.namespace
-      if (typeof namespace === 'string' && namespace !== '') touch(namespace)
-      continue
-    }
-    const namespace = namespaceOf(data?.name, patterns)
-    if (namespace !== undefined && active.includes(namespace)) touch(namespace)
-  }
-  return { active, evicted }
 }
 
 /**

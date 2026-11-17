@@ -21,7 +21,7 @@ import {
   type LiangShenSettingsCardState,
   type LiangShenSettings,
 } from '../src/client/LiangShenSettingsCard.tsx'
-import type { FieldState } from '../src/client/settings-form.ts'
+import { numberField, type FieldState } from '../src/client/settings-form.ts'
 
 afterEach(() => { cleanup() })
 
@@ -43,6 +43,7 @@ function baseState(overrides: Partial<LiangShenSettingsCardState> = {}): LiangSh
     presentation: field,
     dispatcher: field,
     pagedToolPatterns: field,
+    idleReclaimSteps: field,
     ...overrides,
   }
 }
@@ -96,6 +97,7 @@ describe('LiangShenSettingsCard', () => {
       'settings-liangshen-presentation',
       'settings-liangshen-dispatcher',
       'settings-liangshen-paged-tool-patterns',
+      'settings-liangshen-idle-reclaim-steps',
     ]) {
       expect(document.getElementById(id), id).not.toBeNull()
     }
@@ -229,6 +231,27 @@ describe('LiangShenSettingsCard', () => {
     expect(spec.parse('mcp_*_x*')).toBeUndefined()
     expect(spec.parse('mcp**')).toBeUndefined()
     expect(spec.parse('ok*, bad')).toBeUndefined()
+    expect(spec.parse('  ')).toEqual({ kind: 'clear' })
+  })
+
+  it('operator can edit the idle-reclaim threshold from the card', () => {
+    // Given the card rendered with the field inheriting, When the operator
+    // types a step count, Then the card stages that exact text.
+    const { edit } = renderCard(baseState())
+    fireEvent.change(document.getElementById('settings-liangshen-idle-reclaim-steps')!, { target: { value: '30' } })
+    expect(edit).toHaveBeenCalledWith('idleReclaimSteps', '30')
+  })
+
+  it('operator holds a malformed reclaim draft unwritten and clears a blank one', () => {
+    // Given the numeric field spec the card binds, When drafts are parsed, Then
+    // a non-negative integer is stored, blank inherits, and anything else writes
+    // nothing: the Host schema accepts no negative or fractional step count.
+    const spec = numberField('idleReclaimSteps', { integer: true, min: 0 })
+    expect(spec.parse('30')).toEqual({ kind: 'set', value: 30 })
+    expect(spec.parse('0')).toEqual({ kind: 'set', value: 0 })
+    expect(spec.parse('-5')).toBeUndefined()
+    expect(spec.parse('2.5')).toBeUndefined()
+    expect(spec.parse('abc')).toBeUndefined()
     expect(spec.parse('  ')).toEqual({ kind: 'clear' })
   })
 

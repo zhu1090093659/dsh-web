@@ -23,16 +23,21 @@
  * eviction is named in this tool's result so the catalog's next publication
  * reflects it.
  *
+ * With `idleReclaimSteps` enabled, the same projection also applies expired
+ * namespaces at this activation and names them in the result; the report comes
+ * from `projectActivation`, the same fold transition the next replay applies.
+ *
  * Validation: the target must name a namespace that currently has paged,
  * inactive tools — an unknown namespace fails with the list of available ones,
  * and an already-active namespace is a no-op error instead of a silent success.
  */
 
 import {
+  DEFAULT_IDLE_RECLAIM_STEPS,
   DEFAULT_MAX_ACTIVE_NAMESPACES,
   integerAtLeast,
   namespaceOf,
-  replayActivations,
+  projectActivation,
   sessionEvents,
   validatePagedToolPatterns,
 } from './paging.mjs'
@@ -53,6 +58,13 @@ export function apply(ctx, config) {
     'maxActiveNamespaces',
     1,
     DEFAULT_MAX_ACTIVE_NAMESPACES,
+  )
+  const idleReclaimSteps = integerAtLeast(
+    name,
+    config?.idleReclaimSteps,
+    'idleReclaimSteps',
+    0,
+    DEFAULT_IDLE_RECLAIM_STEPS,
   )
 
   /**
@@ -120,6 +132,7 @@ export function apply(ctx, config) {
     description: [
       `Load one paged tool namespace back into this session's reach — onto the wire, and the generated SDK along with it. The session catalog summarizes the paged namespaces; activating one makes its tools callable from the next request on.`,
       `At most ${maxActiveNamespaces} namespaces stay active at once: activating beyond the cap evicts the least recently used namespace back to the catalog summary.`,
+      ...(idleReclaimSteps > 0 ? [`Idle namespaces (no successful call for ${idleReclaimSteps} steps) are reclaimed at the next activation or compaction, never mid-turn; a reclaimed namespace returns to the catalog summary and can be activated again.`] : []),
       'The target must be a paged, currently inactive namespace exactly as the catalog names it.',
     ].join('\n'),
     parameters: {
@@ -177,20 +190,21 @@ export function apply(ctx, config) {
         && event.data?.name === 'tool_activate'
         && String(event.data?.callId) === String(selfCallId)
       ))
-      const { active } = replayActivations(events, maxActiveNamespaces, pagedToolPatterns)
-      if (active.includes(namespace)) {
+      const projection = projectActivation(events, maxActiveNamespaces, pagedToolPatterns, namespace, idleReclaimSteps)
+      if (projection.wasActive) {
         throw new Error(`namespace "${namespace}" is already active; its tools are on the wire`)
       }
 
-      const next = [...active, namespace]
-      const evicted = next.length > maxActiveNamespaces ? next.shift() : undefined
       const tools = paged.get(namespace)
       const lines = [
         `Activated namespace "${namespace}" (${tools.length} tool${tools.length === 1 ? '' : 's'}): ${tools.join(', ')}.`,
         'Its tools are on the wire from the next request; call them directly by name.',
       ]
-      if (evicted !== undefined) {
+      for (const evicted of projection.evicted) {
         lines.push(`Least recently used namespace "${evicted}" was paged out (capacity ${maxActiveNamespaces}); its summary stays in the catalog and tool_activate can reload it.`)
+      }
+      for (const reclaimed of projection.reclaimed) {
+        lines.push(`Idle namespace "${reclaimed}" was reclaimed (no successful call for ${idleReclaimSteps} steps); its summary stays in the catalog and tool_activate can reload it.`)
       }
       return { text: lines.join(' ') }
     },

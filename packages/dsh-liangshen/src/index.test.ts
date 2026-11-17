@@ -111,6 +111,7 @@ describe('resolveConfig', () => {
       presentation: 'ptc',
       dispatcher: true,
       pagedToolPatterns: '',
+      idleReclaimSteps: 0,
     })
   })
 

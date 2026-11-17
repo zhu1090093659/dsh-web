@@ -151,6 +151,10 @@ describe('liangshen preset composition', () => {
       expect(row(id), id).toContain(declared)
       // The LRU cap stays at three, so a wider default cannot silently widen it.
       expect(row(id), id).not.toContain('maxActiveNamespaces')
+      // The deferred-reclaim threshold ships off on every paging row, so the
+      // three replays cannot disagree about expiry either (issue #2066).
+      expect((matched[0].config as Record<string, unknown>).idleReclaimSteps, id).toBe(0)
+      expect(row(id), id).toContain('idleReclaimSteps: 0')
     }
   })
 

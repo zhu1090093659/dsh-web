@@ -14,7 +14,9 @@
  *   not depend on.
  * - `active namespaces: ...` — the paged tool namespaces currently on the
  *   wire, replayed from `tool_activate` calls exactly the way the wire
- *   partition in tool-catalog replays them.
+ *   partition in tool-catalog replays them. Deferred idle reclaim
+ *   (`idleReclaimSteps`) is applied by the same replay, so the line names
+ *   exactly the applied active set.
  * - `in progress: ...` — the in-progress todo titles from the latest
  *   `todo/write` event, cleared by the next `turn/start`, mirroring the host's
  *   todos projection.
@@ -32,6 +34,7 @@
  */
 
 import {
+  DEFAULT_IDLE_RECLAIM_STEPS,
   DEFAULT_MAX_ACTIVE_NAMESPACES,
   DEFAULT_PAGED_TOOL_PATTERNS,
   TOOL_ACTIVATE_NAME,
@@ -114,6 +117,7 @@ function clipTitle(title) {
 export function renderWorkingContext(events, options) {
   const patterns = options?.pagedToolPatterns ?? DEFAULT_PAGED_TOOL_PATTERNS
   const maxActive = options?.maxActiveNamespaces ?? DEFAULT_MAX_ACTIVE_NAMESPACES
+  const idleReclaim = options?.idleReclaimSteps ?? DEFAULT_IDLE_RECLAIM_STEPS
   const list = Array.isArray(events) ? events : []
   const plan = { seen: false, active: false }
   const facts = []
@@ -135,7 +139,7 @@ export function renderWorkingContext(events, options) {
   if (plan.seen) fields.push(`plan mode: ${plan.active ? 'on' : 'off'}`)
 
   if (sawActivation) {
-    const { active } = replayActivations(list, maxActive, patterns, errored)
+    const { active } = replayActivations(list, maxActive, patterns, errored, idleReclaim)
     if (active.length > 0) fields.push(`active namespaces: ${[...active].sort().join(', ')}`)
   }
 
@@ -181,6 +185,13 @@ export function apply(ctx, config) {
     1,
     DEFAULT_MAX_ACTIVE_NAMESPACES,
   )
+  const idleReclaimSteps = integerAtLeast(
+    name,
+    config?.idleReclaimSteps,
+    'idleReclaimSteps',
+    0,
+    DEFAULT_IDLE_RECLAIM_STEPS,
+  )
 
   ctx.on('agent/pre-step', async (payload, next) => {
     const decision = await next()
@@ -191,6 +202,7 @@ export function apply(ctx, config) {
     const line = renderWorkingContext(sessionEvents(agent.session), {
       pagedToolPatterns,
       maxActiveNamespaces,
+      idleReclaimSteps,
     })
 
     // Nothing objective to say: inject nothing (a stale published line is left

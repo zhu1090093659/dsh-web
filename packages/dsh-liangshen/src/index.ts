@@ -111,6 +111,15 @@ export interface Config {
    * malformed text is ignored.
    */
   pagedToolPatterns?: ConfigField<string>
+  /**
+   * Deferred idle-reclaim threshold in steps, written to every row that replays
+   * the page (tool-catalog, tool-activate, working-context). 0 (the default)
+   * keeps every activation resident until LRU eviction — the shipped behavior.
+   * A positive N expires a namespace with no successful call for N steps, but
+   * the replay applies the expiry only at the next activation or compaction,
+   * so reclaim never adds a prefix-cache rebuild (issue #2066).
+   */
+  idleReclaimSteps?: ConfigField<number>
 }
 
 export const Config = z.object({
@@ -122,6 +131,7 @@ export const Config = z.object({
   ]).default('ptc').volatile(),
   dispatcher: z.boolean().default(true).volatile(),
   pagedToolPatterns: z.string().default('').volatile(),
+  idleReclaimSteps: z.number().min(0).default(0).volatile(),
 })
 
 /** The settings the runtime acts on, every field read at its use site. */
@@ -136,6 +146,8 @@ export interface ResolvedConfig {
   dispatcher: boolean
   /** On-demand tool family text; empty inherits the preset's shipped list. */
   pagedToolPatterns: string
+  /** Deferred idle-reclaim threshold in steps; 0 keeps the shipped resident behavior. */
+  idleReclaimSteps: number
 }
 
 /** Schema defaults, re-read for hand-built test contexts. */
@@ -145,6 +157,7 @@ export const DEFAULT_CONFIG: ResolvedConfig = {
   presentation: 'ptc',
   dispatcher: true,
   pagedToolPatterns: '',
+  idleReclaimSteps: 0,
 }
 
 /**
@@ -173,11 +186,12 @@ export function resolveConfig(config?: Config): ResolvedConfig {
     presentation: rawPresentation === 'both' ? 'ptc' : rawPresentation,
     dispatcher: readField(config?.dispatcher, DEFAULT_CONFIG.dispatcher),
     pagedToolPatterns: readField(config?.pagedToolPatterns, DEFAULT_CONFIG.pagedToolPatterns),
+    idleReclaimSteps: readField(config?.idleReclaimSteps, DEFAULT_CONFIG.idleReclaimSteps),
   }
 }
 
 /** Model-facing announcement: plugin presence, principle, and limits. */
-export const LIANGSHEN_GUIDANCE = '本机已安装 dsh-liangshen 插件（梁神模式 agent preset）：新建会话的预设选择器中可选「梁神模式」。原理：系统提示词保持极简 persona（minimal-prompt 放行该段与 plan 模式的 plan:policy），persona 内置本模式工作纪律（反思熔断——同一假设推演不超过两轮、缺事实立即闭合思考并调用原生检测工具；行动导向——思考只决定下一步具体操作、不在思考中预演代码实现；并发探索——多处独立检查或搜索在单轮内并发发射多个工具调用；YAGNI/PDCA——单步验证单一假设、不写冗余注释；有界收敛——不无限下钻依赖链、前置检查最多2-3轮后立即收敛并作答或编辑），并在组装时追加工作区目录行 Your working directory is <cwd>.。AGENTS.md 工作区指令默认交还宿主自身的 agent-instructions 行，以 user 角色注入，本插件不追加任何系统提示词段、也不改动 pre-step 的消息批次；可选 instructionSource: system-prompt 才由本插件在组装时读取 AGENTS.md 链并追加 workspace-instructions 段（65536 字节预算，每次组装重读）。wire 呈现由 tool-catalog 按会话一次声明，取值 \'ptc\'（默认：wire 收拢为唯一的 run_code，其余工具经生成的 SDK 调用）或 \'native\'（组装出的原生清单，无程序化传输），并可在插件设置界面切换（写入所声明预设的 tool-catalog 行）；未挂载 code runtime 时不做声明，会话运行原生工具面。按需工具族出厂开启（pagedToolPatterns 默认 [\'mcp__*\', \'browser_*\', \'task_board_*\', \'team_*\', \'squad*\', \'ui_*\', \'ssh_*\']，可在插件设置的「按需工具族」中用逗号分隔的前缀改写）：匹配工具在激活前被作用域级工具限制移出可见面（既不在 wire，也不在生成的 SDK 声明中），目录消息列出常驻工具签名与未激活命名空间摘要，调用 tool_activate({ namespace }) 按需激活（LRU 上限 3 个活跃命名空间，驱逐最久未用）；激活状态从持久会话事件流重建，resume/压缩后自然恢复。关键事实登记簿（fact_register）让模型把硬约束/已确认决策/失败路径登记为单行事实，随 working-context 行每步投射进局部注意力窗口。working-context 插件在 pre-step 注入单行 [Working Context: ...] 就近状态投射（plan 模式、活跃命名空间、进行中 todo、登记事实，全部从事件流折叠，读不到则省略，全部为空则不注入）。历史工具结果修剪为 4096 字符阈值（head 2048 / tail 1024）。文件操作受宿主沙箱约束；shell 在每个平台都挂上游标准 Stdio 栈（POSIX 为 bash，Windows 为 pwsh），带简短描述标题卡片与确定性退出码。真实推理探针通过不等于模式集成通过，更不等于统计效果提升。预设由插件在激活时向 agent-preset registry 直接注册（不写任何预设目录），插件停用即注销；默认预设由用户自行选择。用户提到「梁神模式 / 锚定模式 / anchored standard」时即指本插件，请据此协作。'
+export const LIANGSHEN_GUIDANCE = '本机已安装 dsh-liangshen 插件（梁神模式 agent preset）：新建会话的预设选择器中可选「梁神模式」。原理：系统提示词保持极简 persona（minimal-prompt 放行该段与 plan 模式的 plan:policy），persona 内置本模式工作纪律（反思熔断——同一假设推演不超过两轮、缺事实立即闭合思考并调用原生检测工具；行动导向——思考只决定下一步具体操作、不在思考中预演代码实现；并发探索——多处独立检查或搜索在单轮内并发发射多个工具调用；YAGNI/PDCA——单步验证单一假设、不写冗余注释；有界收敛——不无限下钻依赖链、前置检查最多2-3轮后立即收敛并作答或编辑），并在组装时追加工作区目录行 Your working directory is <cwd>.。AGENTS.md 工作区指令默认交还宿主自身的 agent-instructions 行，以 user 角色注入，本插件不追加任何系统提示词段、也不改动 pre-step 的消息批次；可选 instructionSource: system-prompt 才由本插件在组装时读取 AGENTS.md 链并追加 workspace-instructions 段（65536 字节预算，每次组装重读）。wire 呈现由 tool-catalog 按会话一次声明，取值 \'ptc\'（默认：wire 收拢为唯一的 run_code，其余工具经生成的 SDK 调用）或 \'native\'（组装出的原生清单，无程序化传输），并可在插件设置界面切换（写入所声明预设的 tool-catalog 行）；未挂载 code runtime 时不做声明，会话运行原生工具面。按需工具族出厂开启（pagedToolPatterns 默认 [\'mcp__*\', \'browser_*\', \'task_board_*\', \'team_*\', \'squad*\', \'ui_*\', \'ssh_*\']，可在插件设置的「按需工具族」中用逗号分隔的前缀改写）：匹配工具在激活前被作用域级工具限制移出可见面（既不在 wire，也不在生成的 SDK 声明中），目录消息列出常驻工具签名与未激活命名空间摘要，调用 tool_activate({ namespace }) 按需激活（LRU 上限 3 个活跃命名空间，驱逐最久未用）；激活状态从持久会话事件流重建，resume/压缩后自然恢复。可选 idleReclaimSteps（设置「空闲收回步数」，默认 0=不收回）让连续 N 步无成功调用的已激活命名空间过期，但只在下次激活或压缩时延迟收回——这些时机前缀缓存本就要重建，因此不新增任何全量重建；应用前命名空间仍常驻可达，再次调用即续命。关键事实登记簿（fact_register）让模型把硬约束/已确认决策/失败路径登记为单行事实，随 working-context 行每步投射进局部注意力窗口。working-context 插件在 pre-step 注入单行 [Working Context: ...] 就近状态投射（plan 模式、活跃命名空间、进行中 todo、登记事实，全部从事件流折叠，读不到则省略，全部为空则不注入）。历史工具结果修剪为 4096 字符阈值（head 2048 / tail 1024）。文件操作受宿主沙箱约束；shell 在每个平台都挂上游标准 Stdio 栈（POSIX 为 bash，Windows 为 pwsh），带简短描述标题卡片与确定性退出码。真实推理探针通过不等于模式集成通过，更不等于统计效果提升。预设由插件在激活时向 agent-preset registry 直接注册（不写任何预设目录），插件停用即注销；默认预设由用户自行选择。用户提到「梁神模式 / 锚定模式 / anchored standard」时即指本插件，请据此协作。'
 
 /** Order of the announcement section within the tool-guidance band. */
 const SECTION_ORDER = 150

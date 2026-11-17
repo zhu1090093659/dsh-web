@@ -33,6 +33,11 @@
  * process-memory state. At most a few namespaces stay active; the LRU
  * eviction falls out of the same replay.
  *
+ * `idleReclaimSteps` (default 0 = off) adds deferred idle reclaim: a namespace
+ * idle for N steps expires, but the replay applies the expiry only at the next
+ * activation touch or a `compaction/end` boundary — moments the prompt prefix
+ * changes anyway — so reclaim adds no prefix-cache rebuild (issue #2066).
+ *
  * Paging is enforced in ONE place: a per-scope registry restriction
  * (agent.ctx.tools.restrict) that removes the paged names from every scoped
  * reader, the request's own wire included.
@@ -87,6 +92,7 @@
  */
 
 import {
+  DEFAULT_IDLE_RECLAIM_STEPS,
   DEFAULT_MAX_ACTIVE_NAMESPACES,
   TOOL_ACTIVATE_NAME,
   integerAtLeast,
@@ -666,6 +672,13 @@ export function apply(ctx, config) {
     1,
     DEFAULT_MAX_RESIDENT_TOKENS,
   )
+  const idleReclaimSteps = integerAtLeast(
+    name,
+    config?.idleReclaimSteps,
+    'idleReclaimSteps',
+    0,
+    DEFAULT_IDLE_RECLAIM_STEPS,
+  )
 
   // One-time warnings, per concern so each retired/legacy key reports itself.
   const warned = new Set()
@@ -760,7 +773,7 @@ export function apply(ctx, config) {
     // there is nothing to restrict, and the activation tool must still know the
     // namespace exists to report it as active instead of unknown.
     publishPagedSurface(agent, allPaged.inactive)
-    const active = replayActivations(sessionEvents(agent?.session), maxActiveNamespaces, pagedToolPatterns).active
+    const active = replayActivations(sessionEvents(agent?.session), maxActiveNamespaces, pagedToolPatterns, undefined, idleReclaimSteps).active
     const activeNames = new Set(active)
     const withheld = []
     const inactive = new Map()

@@ -512,6 +512,12 @@ export interface PresetOverrides {
    * when blank or malformed.
    */
   pagedToolPatterns?: string
+  /**
+   * Deferred idle-reclaim threshold in steps; written to every row that pages
+   * from the list (tool-catalog, tool-activate, working-context), skipped when
+   * absent.
+   */
+  idleReclaimSteps?: number
 }
 
 /**
@@ -546,13 +552,18 @@ function overrideTargets(overrides: PresetOverrides): OverrideTarget[] {
   // working-context renders it — so a row left on its own default would
   // disagree about what is active and could strand a withheld namespace.
   const pagedPatch = () => (paged === undefined ? {} : { pagedToolPatterns: [...paged] })
+  // The reclaim threshold is the same kind of three-row fact: all three rows
+  // replay the log with it, so a row left on its own default would disagree
+  // about which namespaces are still active.
+  const idlePatch = () => (overrides.idleReclaimSteps === undefined ? {} : { idleReclaimSteps: overrides.idleReclaimSteps })
   return [
     ['tool-catalog', {
       ...overrides.presentation === undefined ? {} : { presentation: overrides.presentation },
       ...pagedPatch(),
+      ...idlePatch(),
     }],
-    ['tool-activate', pagedPatch()],
-    ['working-context', pagedPatch()],
+    ['tool-activate', { ...pagedPatch(), ...idlePatch() }],
+    ['working-context', { ...pagedPatch(), ...idlePatch() }],
     ['minimal-prompt', { ...overrides.dispatcher === undefined ? {} : { dispatcher: overrides.dispatcher } }],
   ]
 }

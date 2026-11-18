@@ -14,16 +14,16 @@ English | [中文](README.zh.md)
 
 <p align="center">
   <strong>All-in-One Plugin Bundle for DeepSeek Harness (DSH) Web GUI & Desktop Client</strong><br>
-  <em>Task Board · Mobile Remote · SSH Terminal · Session Archive · Usage Stats · Themes</em>
+  <em>Task Board · Agent Squads · Browser View · Mobile Remote · SSH · Usage Stats · Themes · Presets</em>
 </p>
 
-The official all-in-one aggregate plugin bundle for DeepSeek Harness (DSH) Web GUI and desktop client: install all family plugins with a single command (Task Board / Desktop Pet / Mobile Remote / Remote Bridge / SSH Ops / Session Archive / Skin Center / Settings / Community Plugins, as defined in `aggregate.yml`). The client compat layer is integrated directly (`src/client`) eliminating separate compat packages.
+The official all-in-one aggregate plugin bundle for DeepSeek Harness (DSH) Web GUI and desktop client: install the complete family plugin suite with one command (Task Board + GitHub/Team/Remote extensions, Agent Squads, LiangShen Mode, Live Browser View, Mobile Remote Bridge, SSH Terminal, Session Archive, Usage Stats, Skill Explorer, Mermaid Diagrams, Windows Bash, Russian i18n, Skin Center, Desktop Pet, Workshop, Preset Center, Community Plugins, and Settings, as declared in `aggregate.yml`). The client compat layer is integrated directly (`src/client`), eliminating separate compat npm packages.
 
-> Note (alpha branch, 2026-09-17): this branch vendors no external third-party plugins.
+> Note: this bundle vendors no external third-party plugins.
 
 ## What it is
 
-- **One install, everything on**: its dependencies pull in every sub-plugin package of the family (task board, pet, mobile remote, remote bridge, SSH, skins, settings, community plugins and the rest — `aggregate.yml` is the complete list), and this branch bundles no external npm plugin at all. `@mlgbnb/dsh-archive-manager` (the community archive manager: group by project, search and filter, preview conversations, restore and delete) is not bundled — its upstream build still imports the removed `@deepseek-ai/dsh-client-runtime` face.
+- **One install, everything on**: its dependencies pull in the 18 in-repository sub-plugin packages and the 4 satellite repository packages (`aggregate.yml` is the complete list), while bundling no external third-party npm plugins. `@mlgbnb/dsh-archive-manager` (the community archive manager) is not bundled because its upstream build still imports the removed `@deepseek-ai/dsh-client-runtime` surface.
 - **Aggregation carrier**: `cordis.patch.yml` aggregates the `insert` lines of each sub-plugin plus the external plugin rows, mounted through the dsh plugin profile mechanism. External profile bundles are expanded by the generator: their patch rows become importable aggregate rows, the bundle's own harness-row patches are preserved, and an external row marked `"inactive": true` gains trailing `disabled: true` overrides so nothing mounts until you opt in.
 - **Family rows mount the real packages**: each family row's `name` is the plugin's own npm package, so the official `dsh-client-modules` serves that package's browser half directly — enabling one panel downloads one panel, instead of one copy of every family UI (issue #1901: the old shape inlined 13 family clients into this package's `lib/client.js`, a single 2.9 MB file). Row ids stay `web-ui-*`, so per-row switches recorded in an existing profile keep applying, and the row's own `disabled` now decides the family at the loader — no browser-side gate is needed. Subpath row names an older profile recorded (`@linxin666/dsh-web-all/<family>`) still resolve to a compat shell export after the upgrade.
 - **Compat is the optional patch layer**: the `web-ui-compat` row now only ships compatibility patches — the `data-pane` / `data-dsh-frame` semantic hooks plugins and skins rely on, the responsive contract, and the boot splash — and no family plugin code. Keep it on when you need those patches; it can be switched off per row in the plugin manager.
@@ -53,7 +53,7 @@ dsh web
 ```sh
 git clone https://github.com/zhu1090093659/dsh-web.git
 cd dsh-web
-pnpm install && pnpm -r build
+pnpm run deps:install && pnpm build
 node scripts/link-profile.mjs
 dsh plugin --profile web add link:$(pwd)/packages/dsh-web-all
 ```
@@ -81,5 +81,5 @@ See [issue #513](https://github.com/zhu1090093659/dsh-web/issues/513).
 ## Known limitations
 
 - Every sub-plugin activates together. For only a subset, install that sub-plugin package directly.
-- Aggregate rows are namespaced `web-ui-*`, so the bundle can coexist with a standalone install of the same plugin: the loader no longer rejects the duplicate id, the host half runs once (the second source is a no-op), and the browser half is deduped by package name. Keeping both sources has no benefit; prefer one. When the bundle is the source, profile patch config rows must use the `web-ui-*` id (e.g. `web-ui-remote-web-ui` for the remote-web-ui `autoTunnel` row); standalone installs keep the plugin's own id. A bundled row's config carries the shell key `plugin` — the module the row loads — with the plugin's own fields beside it; the settings card writes that shape, and a hand-written override must keep `plugin` or the row mounts nothing.
+- Aggregate rows are namespaced `web-ui-*`, so the bundle can coexist with a standalone install of the same plugin: the loader no longer rejects the duplicate id, the host half runs once (the second source is a no-op), and the browser half is deduped by package name. Keeping both sources has no benefit; prefer one. When the bundle is the source, profile patch config rows must use the `web-ui-*` id (e.g. `web-ui-task-board` or `web-ui-ssh`); standalone installs keep the plugin's own id. A bundled row's config carries the shell key `plugin` — the module the row loads — with the plugin's own fields beside it; the settings card writes that shape, and a hand-written override must keep `plugin` or the row mounts nothing. Retired families (`remote-web-ui`, `update`, `git-graph`) remain registered as silent no-op tombstones so existing profiles migrate without load errors.
 - Dependencies on the `@deepseek-ai/*` SDK are pinned; compatibility follows the repository's release cadence.

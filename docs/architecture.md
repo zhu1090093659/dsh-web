@@ -78,7 +78,7 @@ flowchart LR
 flowchart LR
     A["aggregate.yml：patchFrom、deps、rows、inactive"] -- "node scripts/aggregate.mjs 生成" --> B["dsh-web-all：cordis.patch.yml + package.json"]
     B -- "dsh plugin --profile web add link" --> C["web profile（hoisted 布局）"]
-    C -- "web-ui-* 行逐条挂载" --> D["15 个仓内家族子包 + 4 个卫星仓外部行"]
+    C -- "web-ui-* 行逐条挂载" --> D["18 个仓内家族子包 + self + 4 个卫星仓外部行"]
     E["mount-once 防重：双源只注册一次"] -.-> D
     F["inactive：ssh、skill-explorer 出厂默认关闭"] -.-> D
 ```
@@ -99,11 +99,11 @@ flowchart TB
 
 ## 皮肤系统
 
-皮肤是纯资产目录：事实源在独立仓 [dsh-skins](https://github.com/zhu1090093659/dsh-skins) 的 `skins/`（60 个内置皮肤，本仓以 submodule `satellites/dsh-skins` 的 gitlink 固定要读的提交），npm 包 `files` 白名单只随发默认皮肤 blue-fantasy，其余由创意工坊按需安装到 `$DSH_HOME/skins/<id>/`（同 id 遮蔽内置）。skin-repo 双源发现并做 v2 manifest fail-closed 校验；样式经 `transformSkinCss` 安全管线强制作用域到 `html[data-dsh-skin]` 并按白名单过滤，该管线运行在宿主 fork 出的短生命周期 worker 进程里（每请求一个 worker，应答后等其退出才写回响应），宿主进程因此从不加载 lightningcss、不映射其原生 addon（dsh-skins issue #98）；启用互斥由 `dsh-skin use` 客户端原子切换管理，不改 `cordis.patch.yml`。插件输出语义属性（`data-dsh-plugin` / `data-dsh-part`）才承诺完整换肤覆盖，契约见 [semantic-attrs-v1.md](https://github.com/zhu1090093659/dsh-skins/blob/main/contracts/semantic-attrs-v1.md)。
+皮肤是纯资产目录：事实源在独立仓 [dsh-skins](https://github.com/zhu1090093659/dsh-skins) 的 `skins/`（66 个内置皮肤，本仓以 submodule `satellites/dsh-skins` 的 gitlink 固定要读的提交），npm 包 `files` 白名单只随发默认皮肤 blue-fantasy，其余由创意工坊按需安装到 `$DSH_HOME/skins/<id>/`（同 id 遮蔽内置）。skin-repo 双源发现并做 v2 manifest fail-closed 校验；样式经 `transformSkinCss` 安全管线强制作用域到 `html[data-dsh-skin]` 并按白名单过滤，该管线运行在宿主 fork 出的短生命周期 worker 进程里（每请求一个 worker，应答后等其退出才写回响应），宿主进程因此从不加载 lightningcss、不映射其原生 addon（dsh-skins issue #98）；启用互斥由 `dsh-skin use` 客户端原子切换管理，不改 `cordis.patch.yml`。插件输出语义属性（`data-dsh-plugin` / `data-dsh-part`）才承诺完整换肤覆盖，契约见 [semantic-attrs-v1.md](https://github.com/zhu1090093659/dsh-skins/blob/main/contracts/semantic-attrs-v1.md)。
 
 ```mermaid
 flowchart LR
-    B["内置：独立仓 dsh-skins 的 skins/ 下 60 个皮肤目录（按 gitlink 固定提交）"] --> R["skin-repo 双源发现：v2 manifest fail-closed 校验"]
+    B["内置：独立仓 dsh-skins 的 skins/ 下 66 个皮肤目录（按 gitlink 固定提交）"] --> R["skin-repo 双源发现：v2 manifest fail-closed 校验"]
     U["$DSH_HOME/skins/：工坊按需安装，同 id 遮蔽内置"] --> R
     R -- "transformSkinCss：作用域 + 白名单" --> CSS["html data-dsh-skin 作用域样式"]
     CSS --> SW["运行时无刷新原子切换（dsh-skin use 互斥）"]
@@ -181,8 +181,13 @@ flowchart LR
 | dsh-pet | 注册表驱动桌宠：响应模型活动、命名与好感度（独立仓，以已发布包消费） |
 | dsh-task-board | 宿主权威任务板：真实会话执行与 cron 调度 |
 | dsh-task-board-github | 任务看板外部提供方扩展：GitHub Issues 同步（默认开启，设置可关） |
+| dsh-task-board-team | 任务看板外部提供方扩展：团队协作与多成员汇总（Team Hub） |
+| dsh-task-board-remote | 任务看板扩展：把 `board.v1` 能力面绑定到手机远程桥接 |
+| dsh-agents | Agent 编队协同（Squads）：定义、分组与多 Agent 并行真实会话执行（`squads_*` / `squad_member_*`） |
+| dsh-browser-view | 实时浏览器视图：嵌入式 Playwright / CDP 实时预览与人工接管侧栏面板 |
 | dsh-ssh | 远程 SSH：PTY 终端、SFTP、端口转发与 agent 工具 |
 | dsh-remote-bridge | 手机 App 远程访问：协议 v1 宿主适配与公网/局域网接入栈 |
+| dsh-remote-web-ui | 独立远程 Web UI 访问通道（已从聚合包退役进入弃用期，仍可独立安装） |
 | dsh-session-archive | 会话归档：批量归档恢复、级联删除、自动清理策略 |
 | dsh-session-id | 侧栏底部 Session ID 面板（纯浏览器半区） |
 | dsh-usage | 用量统计：provider 余额、套餐配额与实时 token 流水 |

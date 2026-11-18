@@ -334,6 +334,7 @@ test('worker serves a markdown homepage via Accept: text/markdown', async () => 
         '/manifest/skins.json': JSON.stringify({ items: [{ id: 'harbor', name: '港湾', nameEn: 'Harbor', author: 'linxin', rank: 1, description: '海港灯火主题' }] }),
         '/manifest/pets.json': JSON.stringify({ items: [{ id: 'whale', displayName: '鲸鱼', rank: 1 }] }),
         '/manifest/plugins.json': JSON.stringify({ items: [{ id: 'dsh-ssh', name: 'SSH', rank: 1, category: 'dev', description: 'Remote shell host' }] }),
+        '/manifest/presets.json': JSON.stringify({ items: [{ id: 'analyst', name: '分析师', nameEn: 'Analyst', author: 'linxin', rank: 1, category: 'research', description: 'Research preset' }] }),
       }
       return new Response(bodies[pathname] || '{}', { headers: { 'content-type': 'application/json' } })
     },
@@ -347,6 +348,7 @@ test('worker serves a markdown homepage via Accept: text/markdown', async () => 
   assert.match(body, /^# DSH Web UI/)
   assert.match(body, /港湾/)
   assert.match(body, /HTTP\/dsh-ssh|dsh-ssh/) // plugin listed
+  assert.match(body, /分析师/) // preset listed
 })
 
 test('worker keeps HTML when a browser Accept header is sent', async () => {

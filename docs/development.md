@@ -6,7 +6,7 @@ dsh-web 是 DeepSeek Harness Web 的插件 monorepo（皮肤以「皮肤」插�
 
 ## 环境准备
 
-- Node.js >= 22 与 pnpm 11；
+- Node.js >= 24.9 与 pnpm 11；
 - 依赖解析官方 NPM SDK（registry.npmjs.org）。仍使用私有 scope 认证时需
   `NPM_TOKEN` 环境变量（真实令牌只放环境变量，勿提交）；token 配置放
   用户级 `~/.npmrc`，项目 `.npmrc` 只留 scope 映射（见

@@ -1769,9 +1769,22 @@
       "subcategory": "bridge"
     },
     {
+      "id": "rss-pal-dsh",
+      "name": "RSS Pal",
+      "rank": 139,
+      "nameEn": "RSS Pal",
+      "author": "MoreFreeze",
+      "description": "本地优先的 RSS/Atom 阅读器，支持全文搜索、批量标记已读、按需 AI 总结和原生伴读。",
+      "descriptionEn": "Local-first RSS/Atom reader with full-text search, bulk read marking, on-demand AI summaries and native reading companion.",
+      "repo": "https://github.com/morefreeze/dsh-plugin-rss-pal",
+      "npm": "rss-pal-dsh",
+      "category": "knowledge",
+      "subcategory": "reading"
+    },
+    {
       "id": "session-chains",
       "name": "交接鏈",
-      "rank": 139,
+      "rank": 140,
       "nameEn": "Session Chains",
       "author": "HildebrandYu",
       "description": "把互相交接的對話自動聚成一條鏈：從交接提示詞判定、場次編號、就地改名、搜尋與拖拉多選歸鏈、置頂與封存、本場上下文與請求數讀數。每條鏈預設只顯示最近 5 場（可調 0–50，0＝全部列出），較舊的折成一行、點一下展開 —— 折疊不等於封存。自動交接、語音播報、工作區收合三項預設關閉，需到設定裡自行打開；自動編號會改寫既有會話標題，第一次要先按「套用」確認，卸載後不會自動還原，面板另有「還原全部原標題」入口。",
@@ -1784,7 +1797,7 @@
     {
       "id": "slumberpavilion",
       "name": "沉眠阁",
-      "rank": 140,
+      "rank": 141,
       "nameEn": "Slumber Pavilion",
       "author": "AngleNaris",
       "description": "把 DSH 里已归档会话的日志与投影记录搬出加载路径，装好后约 15 秒开始自动搬移；提供归档、读取、还原、删除五个工具，其中 archive_delete 不可恢复且没有二次确认，启用前建议先备份会话。",
@@ -1797,7 +1810,7 @@
     {
       "id": "smart-compaction",
       "name": "智能压缩",
-      "rank": 141,
+      "rank": 142,
       "nameEn": "Smart Compaction",
       "author": "JoblessJoe",
       "description": "让模型在安全时机自己压缩上下文：compact_now 工具基于 dsh 公开的 compactRegion() 接口，回合中途也可用；context_status 工具对照会话实际的上下文窗口报告真实 token 用量（需要 dsh-token-meter）。另外，待办事项标记为完成且用量超过 safePointRatio（默认 0.5）时会自动压缩。dsh 自带的 80% 阈值仍作为兜底。不改动 dsh 核心。安装不运行任何脚本，也无需额外步骤：在 web 配置的各 preset 中，插件通过 preset 注册表找到该 agent 自己的压缩服务。需要 dsh 0.2.0-rc.2 及以上。",
@@ -1806,6 +1819,18 @@
       "npm": "smart-compaction",
       "category": "tools",
       "subcategory": "context"
+    },
+    {
+      "id": "travel-agent",
+      "name": "旅行模式 Travel Story",
+      "rank": 143,
+      "nameEn": "Travel Story Mode",
+      "author": "wang-bool",
+      "description": "把完整 Travel Story 旅行规划应用搬进 DSH：地图、时间线、播放整页接管，对话变浮窗；18 个 agent 工具覆盖地点搜索、天气预报、路线计算与行程编辑，消息自动注入当前界面上下文（「这一站」「第 5 天」可直接引用），自带 travel-story-planner skill。",
+      "descriptionEn": "Bundles the full Travel Story app into DSH as a Travel Mode: map, timeline and playback take over the page with chat as a floating panel; 18 agent tools cover place search, weather forecast, routing and itinerary editing, with live UI-context injection and a bundled travel-story-planner skill.",
+      "repo": "https://github.com/wang-bool/travel-story-dsh",
+      "category": "agent",
+      "subcategory": "preset"
     }
   ]
 }

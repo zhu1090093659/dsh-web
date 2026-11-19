@@ -18,7 +18,7 @@ import type { Context, Volatile } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { resolveDshSshService, resolveTaskBoardHostFace } from './core/contract.ts'
 import { SSH_AGENT_KINDS, type SshAgentKind, type SshExecutionMode } from './core/target.ts'
-import { readBoardActionSeat } from './host/board.ts'
+import { resolveBoardActionSeat } from './host/board.ts'
 import { SSH_EXTENSION_ID, createSshExtension } from './host/extension.ts'
 import {
   parseSshSettings,
@@ -152,7 +152,9 @@ export function apply(ctx: Context, config?: Config): void {
         settings,
         settingsWriter,
         timers: processTimers,
-        seat: () => readBoardActionSeat(board),
+        // The applier belongs to the board service, not to the read face this
+        // package restates, so it is resolved off the same service by name.
+        seat: () => resolveBoardActionSeat(scope),
         workspaces,
         localRepository,
       }))

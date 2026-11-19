@@ -91,8 +91,13 @@ export interface SshSettingsCardFace extends CardActions {
   }
 }
 
-/** Bounds of the per-host cap, matching the Host's own normalization. */
-const HOST_CAP = { min: 1, max: 8, step: 1, fallback: 2 } as const
+/**
+ * Bounds of the per-host cap, restated from the Host's own normalization
+ * (`src/host/queue.ts`'s `PER_HOST_CAP_MIN`/`PER_HOST_CAP_MAX`, which the Config
+ * schema in `src/index.ts` bounds too). The client may not import the host half,
+ * so `tests/client-limits.spec.ts` pins the two restatements against each other.
+ */
+export const HOST_CAP = { min: 1, max: 16, step: 1, fallback: 2 } as const
 
 /** Whether a value is a plain object (not an array, not null). */
 function isPlainObject(value: unknown): value is Record<string, unknown> {

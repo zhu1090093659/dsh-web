@@ -12,6 +12,7 @@
  */
 import type { SshCardDecorationProps } from '../seat-props.ts'
 import { sshCardView, type SshCardPhase } from './model.ts'
+import { useHostHalfStatus } from './summary.ts'
 import { t, type TaskBoardSshKey } from '../locales.ts'
 import css from '../ssh.module.css'
 
@@ -30,8 +31,11 @@ export function phaseKey(phase: SshCardPhase): TaskBoardSshKey {
  */
 export function SshCardDecoration({ task }: SshCardDecorationProps) {
   const view = sshCardView(task)
+  const hostHalf = useHostHalfStatus()
   const target = view.target
   if (target === undefined) return null
+  // Nothing is mounted to keep this chip true, so the card claims nothing.
+  if (hostHalf === 'unmounted') return null
   const state = t(phaseKey(view.phase))
   return (
     <span
@@ -42,7 +46,9 @@ export function SshCardDecoration({ task }: SshCardDecorationProps) {
       title={t('card.badgeTitle', { host: target.host, state })}
     >
       <span className={css.badgeDot} aria-hidden="true" />
-      {state}
+      <span className={css.badgeHost}>{target.host}</span>
+      <span className={css.badgeSeparator} aria-hidden="true">{' · '}</span>
+      <span className={css.badgeState}>{state}</span>
     </span>
   )
 }

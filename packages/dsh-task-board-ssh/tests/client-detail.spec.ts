@@ -14,11 +14,11 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createElement } from 'react'
 import { SshCardDecoration } from '../src/client/ssh/card-decoration.tsx'
 import { SshDetailSection } from '../src/client/ssh/detail-section.tsx'
-import { acceptPublishedSummary, clearSummary } from '../src/client/ssh/summary.ts'
+import { acceptPublishedSummary, resetSummaryStore } from '../src/client/ssh/summary.ts'
 import type { TaskBoardExtensionActionRequest } from '../src/core/contract.ts'
 import type { TaskRecord } from '../src/core/task-record.ts'
 
-beforeEach(() => { clearSummary() })
+beforeEach(() => { resetSummaryStore() })
 afterEach(cleanup)
 
 /** A card carrying whatever SSH payload the case needs. */
@@ -56,9 +56,14 @@ function board(): { calls: TaskBoardExtensionActionRequest[], dispatch: (request
   }
 }
 
+/** Accept one client mirror frame, exactly as the board hands it over. */
+function publishFrame(extensions: Record<string, unknown>): void {
+  act(() => { acceptPublishedSummary(extensions) })
+}
+
 /** Publish a provider summary, as one mirror frame would. */
 function publish(summary: Record<string, unknown>): void {
-  act(() => { acceptPublishedSummary({ ssh: summary }) })
+  publishFrame({ ssh: summary })
 }
 
 /** The log rows the section actually mounted, in reading order. */
@@ -134,9 +139,9 @@ describe('the five run states', () => {
       const { container } = render(createElement(SshCardDecoration, { task: card({ target: TARGET, ...entry.parts }) }))
       const chip = container.querySelector('[data-dsh-part="badge"]')
 
-      // Then the chip repeats the phase in words, in its mark, and in its title
-      expect(chip?.textContent).toBe(entry.label)
+      // Then the chip names the host, repeats the phase, and keeps both in its title
       expect(chip?.getAttribute('data-run')).toBe(entry.phase)
+      expect(chip?.textContent).toBe('devbox · ' + entry.label)
       expect(chip?.getAttribute('title')).toBe('devbox · ' + entry.label)
     }
   })
@@ -255,6 +260,111 @@ describe('the follow-up box', () => {
       dispatch: channel.dispatch,
     }))
     expect(screen.getByText('运行中').getAttribute('data-run')).toBe('running')
+  })
+})
+
+describe('a deployment without the SSH plugin', () => {
+  /** The notice a reader gets when nothing is mounted to serve the section. */
+  const MISSING = '需要先在插件管理里启用 SSH 插件'
+
+  it('user opening a card before the first mirror frame gets the usual surface, not a notice', () => {
+    // Given a page that has not received a mirror frame yet
+    const task = card({ target: TARGET })
+
+    // When the detail panel opens
+    render(createElement(SshDetailSection, { task, dispatch: board().dispatch }))
+
+    // Then the section behaves as it always has: the run surface, and no claim
+    // about a plugin it cannot see
+    expect(screen.queryByText(MISSING)).toBeNull()
+    expect(screen.getByRole('button', { name: '编辑目标' }).textContent).toBe('编辑目标')
+  })
+
+  it('user whose frames never carry a summary is told to enable the SSH plugin, and gets no form', () => {
+    // Given mirror frames that never carried this extension's summary
+    const task = card()
+    publishFrame({})
+
+    // When the detail panel opens
+    render(createElement(SshDetailSection, { task, dispatch: board().dispatch }))
+
+    // Then the section is that one line: no form, no log, no follow-up, no cancel
+    expect(screen.getByText(MISSING).textContent).toBe(MISSING)
+    expect(screen.queryByLabelText('主机')).toBeNull()
+    expect(screen.queryByRole('group', { name: '运行日志' })).toBeNull()
+    expect(screen.queryByLabelText('追问')).toBeNull()
+    expect(screen.queryByRole('button', { name: '取消执行' })).toBeNull()
+
+    // And the card carries no chip either
+    cleanup()
+    const badge = render(createElement(SshCardDecoration, { task: card({ target: TARGET, activeRun: run('r1', 'running') }) }))
+    expect(badge.container.firstChild).toBeNull()
+  })
+
+  it('user on a mounted deployment gets the form back the moment a summary arrives', () => {
+    // Given a page whose frames carry the summary
+    const task = card()
+    publish({ hosts: [{ alias: 'devbox', host: '10.0.0.5', user: 'zcl', port: 22 }] })
+
+    // When the detail panel opens
+    render(createElement(SshDetailSection, { task, dispatch: board().dispatch }))
+
+    // Then the target form is there, fed by the published host list
+    expect(screen.queryByText(MISSING)).toBeNull()
+    const host = screen.getByLabelText('主机') as HTMLSelectElement
+    expect(Array.from(host.options).map(option => option.value)).toEqual(['', 'devbox'])
+  })
+
+  it('user whose extension went off after it ran keeps the surface instead of a missing-plugin notice', () => {
+    // Given a page that saw the summary, then frames without it
+    const task = card({ target: TARGET, activeRun: run('r1', 'running') })
+    publish({ hosts: [] })
+    publishFrame({})
+
+    // When the detail panel opens
+    render(createElement(SshDetailSection, { task, dispatch: board().dispatch }))
+
+    // Then the provider is still installed: the run surface stays and nothing
+    // claims the plugin is missing
+    expect(screen.queryByText(MISSING)).toBeNull()
+    expect(screen.getByText('运行中').getAttribute('data-run')).toBe('running')
+  })
+})
+
+describe('the chip on a card', () => {
+  it('user reading the chip sees where the card runs and how the run stands', () => {
+    // Given a mounted deployment and a card pinned to a host
+    publish({})
+    const { container } = render(createElement(SshCardDecoration, { task: card({ target: TARGET, activeRun: run('r1', 'running') }) }))
+    const chip = container.querySelector('[data-dsh-part="badge"]')
+
+    // When its parts are read
+    const spans = [...(chip?.querySelectorAll('span') ?? [])]
+    const [dot, host, separator, state] = spans
+
+    // Then the dot is decoration, the alias is its own element, and the phase is
+    // the last word so a long alias can only ever truncate itself
+    expect(dot?.getAttribute('aria-hidden')).toBe('true')
+    expect(host?.textContent).toBe('devbox')
+    expect(separator?.textContent).toBe(' · ')
+    expect(state?.textContent).toBe('运行中')
+    expect(chip?.textContent).toBe('devbox · 运行中')
+  })
+
+  it('user reading a card on a host with a long alias keeps the full name in the title', () => {
+    // Given a card pinned to a host whose alias is longer than the chip shows
+    publish({})
+    const alias = 'staging-worker-eu-west-1'
+    const { container } = render(createElement(SshCardDecoration, {
+      task: card({ target: { ...TARGET, host: alias }, activeRun: run('r1', 'queued') }),
+    }))
+    const chip = container.querySelector('[data-dsh-part="badge"]')
+
+    // When it renders
+    // Then the truncation is a style on the alias element, not a lost value
+    expect(chip?.getAttribute('title')).toBe(alias + ' · 排队')
+    expect(chip?.querySelector('span:nth-child(2)')?.textContent).toBe(alias)
+    expect(chip?.textContent).toBe(alias + ' · 排队')
   })
 })
 

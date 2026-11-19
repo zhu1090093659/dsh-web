@@ -223,13 +223,35 @@ export function decodeSummary(value: unknown): SshSummary | undefined {
   return summary
 }
 
+/**
+ * What the browser can tell about the provider's host half.
+ *
+ * The board carries a published summary only while the extension's host half is
+ * registered and running: the ssh row mounts its extension behind one dependency
+ * scope that needs both `taskBoard` and `dshSsh`, and its `start()` publishes
+ * before that registration returns. So a mirror frame WITHOUT the `ssh` key is
+ * positive evidence that nothing is mounted — the case a deployment hits when
+ * `dsh-ssh` ships disabled and this row therefore never registers. What follows
+ * is the opposite mistake: no frame has arrived yet, so nothing is known and
+ * nothing is claimed.
+ */
+export type SshHostHalfStatus =
+  /** No mirror frame has been observed yet: nothing is known, nothing is claimed. */
+  | 'unknown'
+  /** A frame has carried this extension's summary, now or earlier in this page. */
+  | 'mounted'
+  /** Frames have arrived and never carried it: the host half is not mounted. */
+  | 'unmounted'
+
 let current: SshSummary | undefined
+/** How many mirror frames this page has observed. */
+let framesSeen = 0
+/** Whether any observed frame carried this extension's summary. */
+let publishedEver = false
 const listeners = new Set<() => void>()
 
-/** Replace the stored summary; an unchanged value notifies nobody. */
-function setSummary(next: SshSummary | undefined): void {
-  if (current === next) return
-  current = next
+/** Notify every subscriber, isolating each one. */
+function notify(): void {
   for (const listener of [...listeners]) {
     try {
       listener()
@@ -239,17 +261,54 @@ function setSummary(next: SshSummary | undefined): void {
   }
 }
 
+/** Replace the stored summary; an unchanged value notifies nobody. */
+function setSummary(next: SshSummary | undefined): void {
+  if (current === next) return
+  current = next
+  notify()
+}
+
 /**
- * Read this extension's summary out of the board mirror and store it.
+ * Read one client mirror frame: store this extension's summary and record
+ * whether the frame carried it at all.
+ *
+ * The presence of the key is the evidence, not the shape of its value: a
+ * registered provider publishes a summary even before it has anything to report,
+ * and an unregistered one publishes nothing at all.
  * @param published - the mirror's `extensions` map.
  */
 export function acceptPublishedSummary(published: Readonly<Record<string, unknown>>): void {
+  const before = getHostHalfStatus()
+  framesSeen += 1
+  if (Object.hasOwn(published, SSH_EXTENSION_ID)) publishedEver = true
   setSummary(decodeSummary(published[SSH_EXTENSION_ID]))
+  // A frame can settle the mount question without changing the summary at all.
+  if (getHostHalfStatus() !== before) notify()
 }
 
 /** Drop the summary (the board reports the extension is not running). */
 export function clearSummary(): void {
   setSummary(undefined)
+}
+
+/**
+ * Whether the provider's host half is mounted, as far as this page can tell.
+ * @returns the status; `unknown` until the first mirror frame arrives.
+ */
+export function getHostHalfStatus(): SshHostHalfStatus {
+  if (publishedEver) return 'mounted'
+  return framesSeen === 0 ? 'unknown' : 'unmounted'
+}
+
+/**
+ * Forget everything about this page's mirror history: for a fresh mount and for
+ * a spec that models one.
+ */
+export function resetSummaryStore(): void {
+  current = undefined
+  framesSeen = 0
+  publishedEver = false
+  notify()
 }
 
 /** The current summary, or undefined while none is published. */
@@ -268,4 +327,12 @@ function subscribe(listener: () => void): () => void {
  */
 export function usePublishedSummary(): SshSummary | undefined {
   return useSyncExternalStore(subscribe, getSummary, getSummary)
+}
+
+/**
+ * Observe whether the provider's host half is mounted.
+ * @returns the status, re-rendering when the first frame settles it.
+ */
+export function useHostHalfStatus(): SshHostHalfStatus {
+  return useSyncExternalStore(subscribe, getHostHalfStatus, getHostHalfStatus)
 }

@@ -110,6 +110,26 @@
   box-sizing: border-box;
 }
 
+/* The alias names where the card runs, so it is read first and gives way to the
+   state when space runs out: the chip truncates the host, never the phase. */
+.badgeHost {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 9ch;
+  min-width: 0;
+}
+
+.badgeSeparator {
+  white-space: pre;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.badgeState {
+  flex: none;
+}
+
 /* One slot per phase, painted on the dot and the pill's edge. The words carry
    the state in the primary label slot, so the reading never depends on hue —
    and the hue stays where the 3:1 non-text threshold applies. Hollow = waiting,

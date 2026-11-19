@@ -21,7 +21,7 @@ import type { SshDetailSectionProps } from '../seat-props.ts'
 import { SshLogBuffer } from './log-buffer.ts'
 import { SshLogView } from './log-view.tsx'
 import { draftOf, isSshRunActive, sshCardView, targetSummaryParts } from './model.ts'
-import { usePublishedSummary } from './summary.ts'
+import { useHostHalfStatus, usePublishedSummary } from './summary.ts'
 import { SshTargetForm } from './target-form.tsx'
 import css from '../ssh.module.css'
 
@@ -51,6 +51,7 @@ function messageOf(error: unknown): string {
 export function SshDetailSection({ task, dispatch }: SshDetailSectionProps) {
   const view = sshCardView(task)
   const summary = usePublishedSummary()
+  const hostHalf = useHostHalfStatus()
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [cancelling, setCancelling] = useState(false)
@@ -145,6 +146,17 @@ export function SshDetailSection({ task, dispatch }: SshDetailSectionProps) {
     if (!accepted) return
     setText('')
     if (view.phase === 'running') setQueued(delivered)
+  }
+
+  // A deployment that ships dsh-ssh disabled never mounts this provider's host
+  // half, so no summary can ever arrive and every control below would write into
+  // a surface nothing serves. The section says what to enable instead.
+  if (hostHalf === 'unmounted') {
+    return (
+      <section className={css.section} data-dsh-plugin={PLUGIN_ATTR} data-dsh-part="unmounted">
+        <p className={css.meta}>{t('detail.hostHalfMissing')}</p>
+      </section>
+    )
   }
 
   if (!targeted) {

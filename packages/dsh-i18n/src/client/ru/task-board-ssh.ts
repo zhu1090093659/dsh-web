@@ -33,6 +33,7 @@ export const ru: Record<string, string> = {
   "settings.readOnly": "В этом развёртывании настройки доступны только для чтения.",
   "settings.saveFailed": "Развёртывание не приняло эти значения; они сохранены, чтобы вы могли их исправить.",
   "detail.target": "Цель выполнения",
+  "detail.hostHalfMissing": "Сначала включите плагин SSH в менеджере плагинов",
   "detail.setTarget": "Задать цель выполнения",
   "detail.editTarget": "Изменить цель",
   "detail.cancelEdit": "Свернуть цель",

@@ -42,6 +42,7 @@ export const zh = {
   'settings.saveFailed': '部署未接受这些值，已保留供你修改。',
 
   'detail.target': '执行目标',
+  'detail.hostHalfMissing': '需要先在插件管理里启用 SSH 插件',
   'detail.setTarget': '设置执行目标',
   'detail.editTarget': '编辑目标',
   'detail.cancelEdit': '收起目标',
@@ -141,6 +142,7 @@ export const en: Record<TaskBoardSshKey, string> = {
   'settings.saveFailed': 'The deployment did not accept these values; they are kept for you to edit.',
 
   'detail.target': 'Execution target',
+  'detail.hostHalfMissing': 'Enable the SSH plugin in the plugin manager first',
   'detail.setTarget': 'Set an execution target',
   'detail.editTarget': 'Edit target',
   'detail.cancelEdit': 'Collapse target',

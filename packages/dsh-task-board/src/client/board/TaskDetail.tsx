@@ -988,8 +988,6 @@ export function TaskDetail({ controller, task, phase = 'open' }: { controller: B
                   <p className={css.detailMeta}>{t('detail.handover.bundledAt', { time: formatHostTimestamp(current.handover.bundledAt, timeZone) })}</p>
                 </section>
               )}
-
-              {seats.detailSection({ task: current, dispatch })}
             </div>
 
             <div className={css.detailColumn} data-detail-column="execution">
@@ -1011,16 +1009,25 @@ export function TaskDetail({ controller, task, phase = 'open' }: { controller: B
                   blocks around the group keep the panel's 16px rhythm. */}
               <div className={css.detailFolds}>
                 {!archived && (
-                  <>
-                    <ExecutionSettingsSection
-                      controller={controller}
-                      task={current}
-                      pending={pending}
-                      executionOptions={snapshot.executionOptions}
-                    />
-                    <ScheduleSection controller={controller} task={current} pending={pending} />
-                  </>
+                  <ExecutionSettingsSection
+                    controller={controller}
+                    task={current}
+                    pending={pending}
+                    executionOptions={snapshot.executionOptions}
+                  />
                 )}
+
+                {/* The providers' own task-detail sections are the same decision
+                    the pickers above them make — where and how this card runs —
+                    so they close the settings block instead of trailing the
+                    card's content. The wrapper is the rhythm: a seat is a
+                    section, not a fold row, so it keeps the panel's 16px
+                    section pitch inside the run stack. */}
+                <div className={css.detailSeat}>
+                  {seats.detailSection({ task: current, dispatch })}
+                </div>
+
+                {!archived && <ScheduleSection controller={controller} task={current} pending={pending} />}
 
                 <FoldSection title={t('detail.execution')} summary={historySummary}>
                   {current.executions.length === 0 ? (

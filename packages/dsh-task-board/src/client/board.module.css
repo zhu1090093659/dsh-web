@@ -1392,6 +1392,22 @@
   min-width: 0;
 }
 
+/* A provider seat is a section, not a fold row: it carries the panel's own
+   heading level and its 8px inner rhythm. It therefore keeps the 16px section
+   pitch (the group's 8px gap plus its own 8px) instead of the 8px that belongs
+   between two fold rows. */
+.detailSeat {
+  display: block;
+  min-width: 0;
+  margin-block: 8px;
+}
+
+/* A page whose providers contribute nothing keeps the fold pitch untouched: an
+   empty wrapper is no box, so it neither spaces nor separates the rows. */
+.detailSeat:empty {
+  display: none;
+}
+
 /* The two tracks only exist while the panel can carry them; below this the
    reading order is the single column above. */
 @media (min-width: 1024px) {

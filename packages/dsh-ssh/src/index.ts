@@ -253,9 +253,12 @@ function applyImpl(ctx: Context, config?: ResolvedConfig): void {
       disposeTools()
       disposeTools = undefined
     }
-    if (disposeService !== undefined) {
+    // The service follows the master switch only: a settings edit that keeps
+    // the plugin on leaves the provision — and every dependent's inject scope —
+    // alone, so an unrelated field does not reboot consumers.
+    if (disposeService !== undefined && !value.enabled) {
       // Unproviding releases every dependent fiber that injected the service;
-      // their scopes unload before this instance can register anything else.
+      // each of those scopes unloads with it.
       disposeService()
       disposeService = undefined
     }
@@ -292,7 +295,7 @@ function applyImpl(ctx: Context, config?: ResolvedConfig): void {
       },
       'dsh-ssh: tools',
     )
-    if (typeof (ctx as { provide?: unknown }).provide === 'function') {
+    if (disposeService === undefined && typeof (ctx as { provide?: unknown }).provide === 'function') {
       disposeService = ctx.provide(DSH_SSH_SERVICE, createService(engine))
     }
   }

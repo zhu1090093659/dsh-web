@@ -363,6 +363,29 @@ describe('dshSsh service', () => {
   })
 })
 
+describe('dshSsh provision stability', () => {
+  it('operator changing an unrelated setting keeps the dependent scope and its face loaded', async () => {
+    // Given a running instance whose service a sibling plugin has loaded
+    useDshHome()
+    const root = new Context()
+    provideHostServices(root, { tools: [] })
+    const config = Config({})
+    const { plugin, record } = await mountBoth(root, { tools: [] }, config)
+    const face = publishedService(record)
+
+    // When the operator edits the terminal font, a field the service does not describe
+    const font = config.terminalFontFamily as unknown as Record<symbol, (next: string) => void>
+    font[VOLATILE_WRITE]('"SauceCodePro Nerd Font", monospace')
+    plugin.ctx.emit('loader/volatile-update', [['terminalFontFamily']])
+    await settle()
+
+    // Then the same face is still served and the dependent was never unloaded
+    expect(record.loads).toBe(1)
+    expect(record.releases).toBe(0)
+    expect(root.get(DSH_SSH_SERVICE)).toBe(face)
+  })
+})
+
 describe.skipIf(process.platform === 'win32' || !existsSync('/usr/sbin/sshd'))('dshSsh transfers over a real sshd', () => {
   it('operator\'s sibling plugin uploads a file, reads it remotely, and downloads it back', async () => {
     // Given a real sshd host and a local file to move

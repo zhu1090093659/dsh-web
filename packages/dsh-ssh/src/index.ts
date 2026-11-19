@@ -2,10 +2,11 @@
  * dsh-ssh — host half. Mounts the SSH engine (persistent ssh2 connection
  * pool, exec / PTY shell / SFTP / tunnels / cluster), the /api/dsh-ssh route
  * family plus the terminal WebSocket upgrade, the agent tools (ssh_list,
- * ssh_exec, ssh_upload, ssh_download, ssh_tunnel, ssh_cluster), and a
- * system-prompt announcement. The browser half (./client) renders the host
- * manager and web terminal. Everything rides official NPM SDK packages —
- * no dsh source changes.
+ * ssh_exec, ssh_upload, ssh_download, ssh_tunnel, ssh_cluster), a
+ * system-prompt announcement, and the `dshSsh` cordis service a sibling plugin
+ * injects to reuse the host inventory and the connection pool. The browser half
+ * (./client) renders the host manager and web terminal. Everything rides
+ * official NPM SDK packages — no dsh source changes.
  */
 
 import type { Context, Fiber } from '@deepseek-ai/cordis'
@@ -16,6 +17,8 @@ import type {} from '@deepseek-ai/dsh-tools'
 import { SshEngine } from './engine.ts'
 import { DEFAULT_CONNECT_TIMEOUT_MS } from './engine/connection-pool.ts'
 import { makeRoutes } from './routes.ts'
+import type { SshHostSummary } from './protocol.ts'
+import { DSH_SSH_API_VERSION, DSH_SSH_SERVICE, type DshSshHost, type DshSshService } from './service.ts'
 import { HostStore } from './store.ts'
 import { sshClusterTool, sshDownloadTool, sshExecTool, sshListTool, sshTunnelTool, sshUploadTool } from './tools.ts'
 import { mountOnce } from './mount-once.ts'
@@ -139,7 +142,48 @@ const SSH_TOOL_NAMES = ['ssh_list', 'ssh_exec', 'ssh_upload', 'ssh_download', 's
 export const SSH_GUIDANCE = '本机已安装 dsh-ssh 插件（DSH 远程 SSH 运维）：侧边栏「SSH」入口；在 dsh-web 插件全家桶仓库（packages/dsh-ssh）统一维护。能力：主机配置存 $DSH_HOME/dsh-ssh.json（默认 ~/.dsh）（可从 ~/.ssh/config 导入）；持久连接池复用长连接（空闲 30 分钟自动断开）；ssh_list 列出主机、ssh_exec 执行远程命令、ssh_upload/ssh_download 传输文件、ssh_tunnel 本地端口转发（访问远程数据库/内网服务）、ssh_cluster 按 aliases/environment/tags 至少一种非空 selector 筛选后集群并发执行；支持密钥/密码/ssh-agent 认证、passphrase 密钥、ProxyJump 跳板机（别名或 [user@]host[:port] 地址）与 OpenSSH 语义的 ProxyCommand（跳过堡垒机客户端场景，只能由用户在 GUI 配置，agent 不可写）；Web 终端走 WebSocket。限制：主机操作由用户在 GUI 中配置后 agent 方可使用；密码以明文存在用户主目录私有文件（权限 0600）；命令输出原样返回、可能含敏感信息；断线重连可能重放非幂等命令；传输/执行消耗真实远程资源，先确认再操作。路径区分：本机（dsh host）上的文件与命令一律用本地工具（read / write / edit / bash），ssh_* 工具只针对远程主机上的路径。用户提到「SSH / 远程服务器 / 服务器操作 / 跳板机 / 隧道 / 部署 / 上传下载」时即指本插件，请据此协作。'
 
 /**
- * Mount the SSH engine, routes, tools, and announcement.
+ * Project one stored-host summary onto the service face.
+ *
+ * Everything the summary publishes is forwarded except the ProxyCommand text:
+ * the command is a shell line the host process executes with its own
+ * privileges, and a sibling plugin drives the host without ever needing it.
+ * @param summary - the plugin's own secret-free projection.
+ * @returns the same host as the service face reports it.
+ */
+function toServiceHost(summary: SshHostSummary): DshSshHost {
+  const { proxyCommand: _proxyCommand, ...host } = summary
+  return host
+}
+
+/**
+ * Build the face a sibling plugin receives.
+ *
+ * Every member forwards to the engine instance this plugin already serves its
+ * routes, tools and panel from, so a consumer shares one host store and one
+ * connection pool with them instead of opening its own.
+ * @param engine - the plugin's engine for this apply.
+ * @returns the published service face.
+ */
+function createService(engine: SshEngine): DshSshService {
+  return {
+    apiVersion: DSH_SSH_API_VERSION,
+    hosts: {
+      list: () => engine.list().map(toServiceHost),
+      find: (alias) => {
+        const summary = engine.find(alias)
+        return summary === undefined ? undefined : toServiceHost(summary)
+      },
+    },
+    exec: (alias, command, options) => engine.exec(alias, command, options?.timeoutMs, options?.signal),
+    // A single file: the face carries no recursive/streaming transfer, so a
+    // directory upload is refused by the engine rather than walked silently.
+    upload: (alias, localPath, remotePath) => engine.upload(alias, localPath, remotePath, false),
+    download: (alias, remotePath, localPath) => engine.download(alias, remotePath, localPath),
+  }
+}
+
+/**
+ * Mount the SSH engine, routes, tools, the sibling-plugin service, and announcement.
  * @param ctx - host plugin context carrying webServer/tools/systemPrompt.
  * @param config - resolved plugin config (schema defaults applied by the loader).
  */
@@ -183,6 +227,11 @@ function applyImpl(ctx: Context, config?: ResolvedConfig): void {
   // System-prompt announcement.
   let disposeSection: (() => void) | undefined
 
+  // The sibling-plugin service (`dshSsh`): published while the master switch
+  // is on, withdrawn with it. A hand-built context without a cordis registry
+  // provides no service store, and the plugin still serves its own surfaces.
+  let disposeService: (() => void) | undefined
+
   // Register (or drop) every surface to match the resolved config. Each group
   // is kept under one disposer: re-registering first tears the old one down
   // so duplicate-name registrations never throw.
@@ -203,6 +252,12 @@ function applyImpl(ctx: Context, config?: ResolvedConfig): void {
     if (disposeTools !== undefined) {
       disposeTools()
       disposeTools = undefined
+    }
+    if (disposeService !== undefined) {
+      // Unproviding releases every dependent fiber that injected the service;
+      // their scopes unload before this instance can register anything else.
+      disposeService()
+      disposeService = undefined
     }
     if (!value.enabled) return
     if (value.announceToAgent) {
@@ -237,6 +292,9 @@ function applyImpl(ctx: Context, config?: ResolvedConfig): void {
       },
       'dsh-ssh: tools',
     )
+    if (typeof (ctx as { provide?: unknown }).provide === 'function') {
+      disposeService = ctx.provide(DSH_SSH_SERVICE, createService(engine))
+    }
   }
 
   // A settings edit is committed into this instance's config references and

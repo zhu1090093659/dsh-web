@@ -351,7 +351,6 @@ export function SshSettingsSection(props: SshSettingsSectionProps) {
                     id={`settings-task-board-ssh-command-${kind}`}
                     label={agentName(kind)}
                     hint={label(agentCommandHint(kind))}
-                    placeholder={label('settings.agentCommandPlaceholder')}
                     {...fieldCopy}
                     {...state.agentCommands}
                     text={row?.command ?? ''}

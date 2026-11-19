@@ -175,9 +175,11 @@ export function SshDetailSection({ task, dispatch }: SshDetailSectionProps) {
           {t(editing ? 'detail.cancelEdit' : 'detail.editTarget')}
         </button>
       </div>
-      <p className={css.targetLine} title={parts.workspace}>
-        {t('detail.targetSummary', { host: parts.host, agent: agentLabel(parts.agent), workspace: parts.workspace })}
-      </p>
+      {!editing && (
+        <p className={css.targetLine} title={parts.workspace}>
+          {t('detail.targetSummary', { host: parts.host, agent: agentLabel(parts.agent), workspace: parts.workspace })}
+        </p>
+      )}
 
       {editing && (
         <SshTargetForm

@@ -51,7 +51,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--dsw-alias-label-secondary);
   overflow-wrap: anywhere;
 }
 
@@ -106,27 +106,32 @@
   height: 6px;
   flex: none;
   border-radius: 50%;
-  border: 1.5px solid currentColor;
+  border: 1.5px solid var(--ssh-run-tone, currentColor);
   box-sizing: border-box;
 }
 
-/* One slot per phase: the text carries the state and the dot repeats it, so the
-   chip never depends on colour alone. Hollow = waiting, filled = settled or
-   live. */
-[data-run='idle'] { color: var(--dsw-alias-label-tertiary); }
-[data-run='queued'] { color: var(--dsw-alias-state-business-primary); }
-[data-run='running'] { color: var(--dsw-alias-state-business-primary); }
-[data-run='succeeded'] { color: var(--dsw-alias-state-success-primary); }
-[data-run='failed'] { color: var(--dsw-alias-state-error-primary); }
-[data-run='cancelled'] { color: var(--dsw-alias-state-idle-primary); }
-[data-run='lost'] { color: var(--dsw-alias-state-warn-primary); }
+/* One slot per phase, painted on the dot and the pill's edge. The words carry
+   the state in the primary label slot, so the reading never depends on hue —
+   and the hue stays where the 3:1 non-text threshold applies. Hollow = waiting,
+   filled = settled or live. */
+.statePill {
+  border-color: var(--ssh-run-tone, var(--dsw-alias-border-l2));
+}
+
+[data-run='idle'] { --ssh-run-tone: var(--dsw-alias-label-tertiary); }
+[data-run='queued'] { --ssh-run-tone: var(--dsw-alias-state-business-primary); }
+[data-run='running'] { --ssh-run-tone: var(--dsw-alias-state-business-primary); }
+[data-run='succeeded'] { --ssh-run-tone: var(--dsw-alias-state-success-primary); }
+[data-run='failed'] { --ssh-run-tone: var(--dsw-alias-state-error-primary); }
+[data-run='cancelled'] { --ssh-run-tone: var(--dsw-alias-state-idle-primary); }
+[data-run='lost'] { --ssh-run-tone: var(--dsw-alias-state-warn-primary); }
 
 [data-run='running'] .badgeDot,
 [data-run='succeeded'] .badgeDot,
 [data-run='failed'] .badgeDot,
 [data-run='cancelled'] .badgeDot,
 [data-run='lost'] .badgeDot {
-  background: currentColor;
+  background: var(--ssh-run-tone, currentColor);
 }
 
 /* A live run breathes once a second; the outline stands in for travel when the
@@ -196,9 +201,9 @@
 
 .logEmpty {
   margin: 0;
-  padding: 0 10px;
-  font-family: inherit;
-  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-secondary);
 }
 
 .logNotices {
@@ -211,7 +216,7 @@
 .logNotice {
   margin: 0;
   font-size: 12px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--dsw-alias-label-secondary);
 }
 
 /* --- controls -------------------------------------------------------------- */
@@ -329,7 +334,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.45;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--dsw-alias-label-secondary);
 }
 
 .fieldError {
@@ -430,9 +435,10 @@
 }
 
 .segment input:checked + span {
-  color: var(--dsw-alias-label-primary-foreground);
-  background: var(--dsw-alias-button-primary-fill);
-  border-color: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+  background: var(--dsw-alias-interactive-bg-hover);
+  border-color: var(--dsw-alias-label-secondary);
 }
 
 .segment input:disabled + span {
@@ -446,8 +452,9 @@
 
 .actions {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
   min-width: 0;
 }
 
@@ -483,5 +490,5 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--dsw-alias-label-secondary);
 }

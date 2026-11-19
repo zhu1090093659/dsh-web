@@ -91,6 +91,16 @@ export function SshLogView({ buffer, live, labels, version }: SshLogViewProps) {
 
   const jumpToLatest = useCallback(() => { setFollowing(true) }, [])
 
+  // An empty log is one line, not a bordered box: a run that has printed
+  // nothing yet should not own a third of the panel.
+  if (count === 0) {
+    return (
+      <div className={css.log} data-dsh-part="log">
+        <p className={css.logEmpty}>{labels.empty}</p>
+      </div>
+    )
+  }
+
   return (
     <div className={css.log} data-dsh-part="log">
       <div
@@ -103,22 +113,18 @@ export function SshLogView({ buffer, live, labels, version }: SshLogViewProps) {
         aria-live="off"
         onScroll={onScroll}
       >
-        {count === 0 ? (
-          <p className={css.logEmpty}>{labels.empty}</p>
-        ) : (
-          <div className={css.logSurface} style={{ height: `${window.totalHeight}px` }}>
-            <div className={css.logBlock} style={{ transform: `translateY(${window.offsetY}px)` }}>
-              {Array.from({ length: window.end - window.start }, (_unused, offset) => {
-                const index = window.start + offset
-                return (
-                  <div key={index} className={css.logRow} style={{ height: `${LOG_ROW_HEIGHT}px` }}>
-                    {buffer.lineAt(index)}
-                  </div>
-                )
-              })}
-            </div>
+        <div className={css.logSurface} style={{ height: `${window.totalHeight}px` }}>
+          <div className={css.logBlock} style={{ transform: `translateY(${window.offsetY}px)` }}>
+            {Array.from({ length: window.end - window.start }, (_unused, offset) => {
+              const index = window.start + offset
+              return (
+                <div key={index} className={css.logRow} style={{ height: `${LOG_ROW_HEIGHT}px` }}>
+                  {buffer.lineAt(index)}
+                </div>
+              )
+            })}
           </div>
-        )}
+        </div>
       </div>
       {(snapshot.truncated || (!following && live)) && (
         <div className={css.logNotices}>

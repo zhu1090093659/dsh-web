@@ -2,7 +2,7 @@
 
 Status: implemented
 
-This note implements Seam 1 of [the Task Board SSH provider proposal](../../proposed/feature/2026-11-19-task-board-ssh-remote-execution.md). The consumer that motivated it — a provider that runs board cards on remote hosts — reaches them through this service; the board-side seam is [Task Board external provider extension contract](2026-09-30-task-board-extension-contract.md).
+This note implements Seam 1 of [the Task Board SSH provider decision](../feature/2026-11-19-task-board-ssh-remote-execution.md). The consumer that motivated it — a provider that runs board cards on remote hosts — reaches them through this service; the board-side seam is [Task Board external provider extension contract](2026-09-30-task-board-extension-contract.md).
 
 ## Problem
 

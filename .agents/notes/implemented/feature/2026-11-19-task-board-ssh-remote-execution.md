@@ -2,9 +2,9 @@
 
 English | [中文](2026-11-19-task-board-ssh-remote-execution.zh.md)
 
-Status: proposed
+Status: implemented
 
-This proposal extends the [Task Board external provider extension contract](../../implemented/architecture/2026-09-30-task-board-extension-contract.md) with one optional host member; that note stays the owner of the contract and is updated when the seam ships.
+This decision adds one optional host member to the [Task Board external provider extension contract](../architecture/2026-09-30-task-board-extension-contract.md); that note stays the owner of the contract and carries the seam's shape.
 
 ## Problem
 
@@ -12,9 +12,9 @@ The task board runs every card in a local DSH session (`HostExecutionRunner.laun
 
 The two existing providers (`dsh-task-board-github`, `dsh-task-board-team`) bring outside work in and run it locally; nothing sends a local card out. Two seams are missing: the provider contract has no launch member (`packages/dsh-task-board/src/core/extension.ts`), and `dsh-ssh` offers its host list and connection pool to no other plugin (`packages/dsh-ssh/src/index.ts` injects `webServer`, `tools`, `systemPrompt` and provides nothing).
 
-## Proposal
+## Decision
 
-A third provider package, `packages/dsh-task-board-ssh` (npm `@linxin666/dsh-client-ui-task-board-ssh`, row id `ui-task-board-ssh`, extension id `ssh`). Decisions settled with the maintainer:
+A third provider package, `packages/dsh-task-board-ssh` (npm `@linxin666/dsh-client-ui-task-board-ssh`, standalone row id `ui-task-board-ssh`, aggregate row id `web-ui-task-board-ssh`, extension id `ssh`). The decisions settled with the maintainer:
 
 - **Two execution modes per card.** `direct` (default): the provider starts a headless agent CLI on the remote host and no local session exists. `proxy`: the card runs as an ordinary local session that is told to drive the remote host with the `ssh_*` tools. `proxy` cannot survive the local host going offline and is documented as such.
 - **Workspace: two mechanisms covering three user modes.** `in-place` runs in an existing remote directory. `git` runs in a per-run worktree whose source is either a remote-reachable repository URL or the local workspace repository; the result comes back as a branch. A local directory that is not a git repository is not supported.
@@ -34,7 +34,7 @@ A third provider package, `packages/dsh-task-board-ssh` (npm `@linxin666/dsh-cli
 - `{ kind: 'local', promptPreamble }`: run locally, with the preamble injected ahead of the prompt on the same path as tag prefixes (proxy mode).
 - `{ kind: 'external' }`: the board creates no session and no execution record, moves the card to the running column, and the provider later closes it through the existing `record-external-outcome` action.
 
-A throwing handler is isolated and treated as `undefined`. With no handler registered the launch path is byte-for-byte what it is today.
+A throwing handler is isolated and treated as `undefined`. With no handler registered the launch path is byte-for-byte what it is without the seam.
 
 ### Remote run protocol (direct mode)
 
@@ -46,16 +46,16 @@ A throwing handler is isolated and treated as `undefined`. With no handler regis
 
 ### Agent adapters
 
-Pure functions in `src/core/` map `{ agent, promptFile, cwd, resumeSessionId }` to a command line and parse the output for the session id and the final summary.
+Pure functions in `src/core/adapters/` map `{ agent, promptFile, cwd, resumeSessionId }` to a command line and parse the output for the session id and the final summary.
 
-| Agent | Start | Resume | Verified |
+| Agent | Start | Resume | Verification |
 | --- | --- | --- | --- |
-| dsh | `dsh headless --json --permission-mode <preset>` | `--session-id <id>` | flags read from `dsh headless --help`; preset name to verify |
-| Claude Code | `claude -p --output-format stream-json --verbose --dangerously-skip-permissions` | `--resume <id>` | flags read from `claude --help` |
-| Codex | `codex exec --json` plus its bypass flag | `codex exec resume <id>` | not installed locally; fixture-tested, marked unverified until run on a host that has it |
+| dsh | `dsh headless --json --permission-mode danger-full-access` | `--session-id <id>` | Recorded from a real CLI run; the preset name comes from the CLI's own error text |
+| Claude Code | `claude -p --output-format stream-json --verbose --dangerously-skip-permissions` | `--resume <id>` | Recorded from a real CLI run |
+| Codex | `codex exec --json --sandbox danger-full-access --skip-git-repo-check` | `codex exec resume <id>` | Documented only: no host here installs Codex |
 | custom | user command template with `{prompt_file}`, `{cwd}`, `{session}` | optional | - |
 
-An agent without a working resume degrades follow-up and rework to a fresh run that carries the earlier summary.
+The recorded streams and the exact recording commands live in `packages/dsh-task-board-ssh/tests/fixtures/RECORDING.md`. An agent without a working resume degrades follow-up and rework to a fresh run that carries the earlier summary.
 
 ### Workspace strategies
 
@@ -63,18 +63,11 @@ One interface, `prepare(run) -> { cwd }` and `collect(run) -> { branch? }`.
 
 - `in-place`: `cwd` is the pinned remote directory; `collect` is a no-op.
 - `git` from a URL: a bare cache under `~/.dsh/task-board-ssh/repos/`, a worktree per run on branch `dsh-task/<runId>`; `collect` pushes the branch to that remote when it has commits.
-- `git` from the local workspace: `git bundle` of `HEAD` (plus tracked uncommitted changes through `git stash create`), uploaded over `dshSsh.upload`; `collect` bundles the result branch, downloads it and fetches it into the local repository as `dsh-task/<runId>`. Nothing in the local working tree is overwritten. Untracked files are not sent, and the card says so.
+- `git` from the local workspace: `git bundle` of `HEAD` (plus tracked uncommitted changes through `git stash create`), uploaded over `dshSsh.upload`; `collect` bundles the result branch, downloads it and fetches it into the local repository as `dsh-task/<runId>`. Nothing in the local working tree is overwritten. Untracked files are not sent, and the card says how many were left behind: `prepare` counts them and the count reaches the run summary.
 
 ### Card surface
 
 Detail section: target form (mode, host, agent, workspace), run state, log viewer, follow-up box, cancel. Card decoration: host and run state (queued, running, lost contact). Settings section inside the board settings card: enable switch, defaults, per-host cap, agent command overrides. Three model-visible tools: `task_board_ssh_target`, `task_board_ssh_status`, `task_board_ssh_follow_up`.
-
-### Delivery slices
-
-1. `dsh-ssh` service; board launch seam; package scaffold with core types, adapters and launcher (parallel).
-2. Host run engine; workspace strategies; browser half (parallel, against the core types frozen in slice 1).
-3. Aggregate registration, documentation, full gates, end-to-end run against a real sshd.
-4. Independent acceptance.
 
 ## Context & Efficiency Impact
 
@@ -94,22 +87,20 @@ Direct mode spends no local model tokens. The provider adds three tools and one 
 
 **`git push ssh://` or rsync for the local workspace.** Rejected: system `ssh` does not share `dsh-ssh` credentials (passwords, jump hosts), and rsync has no answer for which side wins on pull-back; bundles travel over the pool and land as a branch.
 
-## Acceptance criteria
+## Consequences
 
-- A card pinned to a host in direct mode runs a headless agent there; the native run button, a schedule and `task_board_run` all take that path, and no local session is created.
-- Stopping and restarting the local host during a run loses nothing: the log replays from the start and the outcome is recorded once.
+- The native run button, a schedule, `task_board_run` and a rework all reach the same launch gate, so a card pinned to a host runs there and no local session exists for it.
+- Stopping and restarting the local host loses nothing: the log replays from its start and the outcome is recorded once.
 - A replayed `start` for the same `runId` starts no second agent.
-- A follow-up or rework on a finished card continues the same remote agent session for dsh and Claude Code.
+- A follow-up or a rework on a finished card continues the same remote agent session for dsh and Claude Code; an agent that cannot resume degrades to a fresh run carrying the previous summary.
 - Runs beyond a host's cap wait in the queue and start in FIFO order.
-- The three workspace modes each produce their result: files in place, a pushed branch, a branch fetched into the local repository with the working tree untouched.
+- The three workspace modes each produce their result: files in place, a pushed branch, or a branch fetched into the local repository with its working tree untouched.
 - Proxy mode runs a local session whose prompt carries the target preamble.
 - With the provider disabled or absent, board and `dsh-ssh` behavior is unchanged, and `grep -rn "ssh" packages/dsh-task-board/src` finds no provider vocabulary.
-- Repository gates pass: `pnpm typecheck && pnpm test && pnpm test:standards && pnpm docs:check && pnpm i18n:check`, plus `aggregate:check` and `libs:check`.
-
-## Risks
-
-- **Unattended full permission on remote hosts** is the maintainer's decision; a prompt-injected card can do anything the remote account can.
+- The repository gates that cover it pass: `pnpm typecheck && pnpm test && pnpm test:standards && pnpm docs:check && pnpm i18n:check`, plus `aggregate:check` and `libs:check`.
+- **Unattended full permission on remote hosts** is the maintainer's decision, and it is the largest accepted risk: a prompt-injected card can do anything the remote account can.
 - **Running-column cards have no running lock**, so a manual move is read as a cancel. A user who drags by mistake stops a remote run.
-- **Codex is unverified** until exercised on a host that has it.
+- **Codex is unverified** until it is exercised on a host that has it.
 - **Remote output returns unredacted** into the card log, the same trust model as `ssh_exec`.
 - **The board seam changes the launch path of every card**; the no-handler path must stay byte-for-byte identical and is pinned by a contract test.
+- **Untracked files stay behind** in a local-workspace run, because a bundle carries commits; the count is published in the run summary rather than guessed silently.

@@ -2,9 +2,9 @@
 
 [English](2026-11-19-task-board-ssh-remote-execution.md) | 中文
 
-Status: proposed
+Status: implemented
 
-本提案给 [Task Board external provider extension contract](../../implemented/architecture/2026-09-30-task-board-extension-contract.zh.md) 增加一个可选的宿主成员；契约仍归那篇 Note 所有，这道缝落地时在那里更新。
+本决策给 [Task Board external provider extension contract](../architecture/2026-09-30-task-board-extension-contract.zh.md) 增加一个可选的宿主成员；契约仍归那篇 Note 所有，那道缝的形状也写在那里。
 
 ## Problem
 
@@ -12,9 +12,9 @@ Status: proposed
 
 现有两个提供方（`dsh-task-board-github`、`dsh-task-board-team`）都是把外面的活拿进来、在本机执行，没有任何东西把本机卡片送出去。缺两道缝：提供方契约没有启动成员（`packages/dsh-task-board/src/core/extension.ts`）；`dsh-ssh` 不向其他插件提供主机列表与连接池（`packages/dsh-ssh/src/index.ts` 只注入 `webServer`、`tools`、`systemPrompt`，自己什么都不提供）。
 
-## Proposal
+## Decision
 
-新增第三个提供方包 `packages/dsh-task-board-ssh`（npm `@linxin666/dsh-client-ui-task-board-ssh`，行 id `ui-task-board-ssh`，扩展 id `ssh`）。已与维护者定下的决策：
+第三个提供方包 `packages/dsh-task-board-ssh`（npm `@linxin666/dsh-client-ui-task-board-ssh`，独立安装行 id `ui-task-board-ssh`，聚合行 id `web-ui-task-board-ssh`，扩展 id `ssh`）。已与维护者定下的决策：
 
 - **每张卡两种执行模式。** `direct`（默认）：提供方在远端拉起无头 Agent CLI，本机不开会话。`proxy`：卡片照常开本机会话，由它用 `ssh_*` 工具指挥远端。`proxy` 撑不过本机离线，文档里明说。
 - **工作区：两套机制覆盖三种用法。** `in-place` 在远端已有目录里执行。`git` 在每次执行独立的工作树里执行，来源可以是远端可达的仓库地址，也可以是本机工作区仓库；结果以分支取回。非 Git 的本机目录不支持。
@@ -34,7 +34,7 @@ Status: proposed
 - `{ kind: 'local', promptPreamble }`：本机执行，前言与标签前缀走同一条路径注入到 Prompt 之前（proxy 模式）。
 - `{ kind: 'external' }`：看板不建会话、不写执行记录，把卡片移入运行列，提供方之后用既有的 `record-external-outcome` 动作收口。
 
-handler 抛错被隔离，按 `undefined` 处理。没有 handler 注册时，启动路径与今天逐字节一致。
+handler 抛错被隔离，按 `undefined` 处理。没有 handler 注册时，启动路径与没有这道缝时逐字节一致。
 
 ### 远端执行协议（direct 模式）
 
@@ -46,16 +46,16 @@ handler 抛错被隔离，按 `undefined` 处理。没有 handler 注册时，�
 
 ### Agent 适配器
 
-`src/core/` 里的纯函数把 `{ agent, promptFile, cwd, resumeSessionId }` 映射成命令行，并从输出里解析会话 id 与最终摘要。
+`src/core/adapters/` 里的纯函数把 `{ agent, promptFile, cwd, resumeSessionId }` 映射成命令行，并从输出里解析会话 id 与最终摘要。
 
 | Agent | 启动 | 续接 | 核实情况 |
 | --- | --- | --- | --- |
-| dsh | `dsh headless --json --permission-mode <preset>` | `--session-id <id>` | 参数读自 `dsh headless --help`；预设名待核实 |
-| Claude Code | `claude -p --output-format stream-json --verbose --dangerously-skip-permissions` | `--resume <id>` | 参数读自 `claude --help` |
-| Codex | `codex exec --json` 加它的跳过确认开关 | `codex exec resume <id>` | 本机未安装；用夹具测试，在装有它的主机上跑通之前标为未核实 |
+| dsh | `dsh headless --json --permission-mode danger-full-access` | `--session-id <id>` | 真实 CLI 录制；预设名取自该 CLI 自己的报错文本 |
+| Claude Code | `claude -p --output-format stream-json --verbose --dangerously-skip-permissions` | `--resume <id>` | 真实 CLI 录制 |
+| Codex | `codex exec --json --sandbox danger-full-access --skip-git-repo-check` | `codex exec resume <id>` | 仅按文档书写：本机没有装 Codex 的主机 |
 | custom | 用户命令模板，占位符 `{prompt_file}`、`{cwd}`、`{session}` | 可选 | - |
 
-续接不可用的 Agent，追问与返工降级为带上前次摘要的全新执行。
+录制的输出流与逐字录制命令在 `packages/dsh-task-board-ssh/tests/fixtures/RECORDING.md`。续接不可用的 Agent，追问与返工降级为带上前次摘要的全新执行。
 
 ### 工作区策略
 
@@ -63,18 +63,11 @@ handler 抛错被隔离，按 `undefined` 处理。没有 handler 注册时，�
 
 - `in-place`：`cwd` 即钉住的远端目录；`collect` 为空操作。
 - 来自地址的 `git`：`~/.dsh/task-board-ssh/repos/` 下的裸仓缓存，每次执行一个工作树、分支 `dsh-task/<runId>`；有提交时 `collect` 把分支推到该远端。
-- 来自本机工作区的 `git`：对 `HEAD` 做 `git bundle`（已跟踪的未提交改动经 `git stash create` 一并带上），经 `dshSsh.upload` 上传；`collect` 把结果分支打包、下载，并以 `dsh-task/<runId>` 取回本机仓库。本机工作树里的任何文件都不会被覆盖。未跟踪文件不会发送，卡片上会说明。
+- 来自本机工作区的 `git`：对 `HEAD` 做 `git bundle`（已跟踪的未提交改动经 `git stash create` 一并带上），经 `dshSsh.upload` 上传；`collect` 把结果分支打包、下载，并以 `dsh-task/<runId>` 取回本机仓库。本机工作树里的任何文件都不会被覆盖。未跟踪文件不会发送，卡片会说明留下了多少个：`prepare` 数出数量，该数字进入执行摘要。
 
 ### 卡片界面
 
 详情区：目标表单（模式、主机、Agent、工作区）、执行状态、日志查看、追问输入、取消。卡片徽标：主机与执行状态（排队、运行、失联）。看板设置卡内的配置区块：开关、默认值、每主机上限、Agent 命令覆盖。三个模型可见工具：`task_board_ssh_target`、`task_board_ssh_status`、`task_board_ssh_follow_up`。
-
-### 交付切片
-
-1. `dsh-ssh` 服务；看板启动缝；包脚手架连同核心类型、适配器与启动器（并行）。
-2. 宿主执行引擎；工作区策略；浏览器半区（并行，依据切片 1 冻结的核心类型）。
-3. 聚合登记、文档、全量门禁、对真实 sshd 的端到端执行。
-4. 独立验收。
 
 ## Context & Efficiency Impact
 
@@ -94,22 +87,20 @@ direct 模式不消耗本机模型 token。提供方新增三个工具与一小�
 
 **用 `git push ssh://` 或 rsync 同步本机工作区。** 被拒：系统 `ssh` 不共享 `dsh-ssh` 的凭据（密码、跳板机）；rsync 在回拉时回答不了以哪一侧为准；bundle 走连接池传输，并以分支落地。
 
-## Acceptance criteria
+## Consequences
 
-- direct 模式下钉到某主机的卡片在该主机上跑起无头 Agent；原生执行按钮、定时与 `task_board_run` 都走这条路径，本机不创建会话。
+- 原生执行按钮、定时、`task_board_run` 与返工都走同一个启动闸口，因此钉到主机的卡片在那台主机上执行，本机不为它创建会话。
 - 执行期间停掉再启动本机宿主不丢任何东西：日志能从头回放，结论只落账一次。
 - 对同一 `runId` 重放 `start` 不会拉起第二个 Agent。
-- 对已结束卡片的追问或返工，在 dsh 与 Claude Code 上续接同一个远端 Agent 会话。
+- 对已结束卡片的追问或返工，在 dsh 与 Claude Code 上续接同一个远端 Agent 会话；不能续接的 Agent 降级为带上前次摘要的全新执行。
 - 超出主机上限的执行在队列里等待，并按先进先出启动。
 - 三种工作区用法各自产出结果：原地的文件、推上去的分支、取回本机仓库且工作树未被触碰的分支。
 - proxy 模式开出本机会话，其 Prompt 带有目标前言。
 - 提供方关闭或缺席时，看板与 `dsh-ssh` 行为不变，且 `grep -rn "ssh" packages/dsh-task-board/src` 找不到提供方词汇。
-- 仓库门禁通过：`pnpm typecheck && pnpm test && pnpm test:standards && pnpm docs:check && pnpm i18n:check`，以及 `aggregate:check` 与 `libs:check`。
-
-## Risks
-
-- **远端无人值守全权限**是维护者的决定；被提示词注入的卡片能做远端账号能做的任何事。
+- 覆盖它的仓库门禁通过：`pnpm typecheck && pnpm test && pnpm test:standards && pnpm docs:check && pnpm i18n:check`，以及 `aggregate:check` 与 `libs:check`。
+- **远端无人值守全权限**是维护者的决定，也是接受下来的最大风险：被提示词注入的卡片能做远端账号能做的任何事。
 - **运行列里的卡片没有运行中锁**，所以手动移动被读作取消。误拖会停掉远端执行。
 - **Codex 未核实**，直到在装有它的主机上跑过。
 - **远端输出不脱敏**地进入卡片日志，与 `ssh_exec` 同一信任模型。
 - **看板这道缝改动了每张卡片的启动路径**；无 handler 的路径必须逐字节不变，并由契约测试钉住。
+- **未跟踪文件留在本机**，因为 bundle 只带提交；该数量写进执行摘要，而不是被静默忽略。

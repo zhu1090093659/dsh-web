@@ -2,7 +2,7 @@
 
 Status: implemented
 
-本笔记实现[任务看板 SSH 提供方方案](../../proposed/feature/2026-11-19-task-board-ssh-remote-execution.md)的 Seam 1。促成它的消费方——把看板卡片放到远端主机上执行的提供方——经该服务到达主机；看板那一侧是[任务看板外部提供方扩展契约](2026-09-30-task-board-extension-contract.md)。
+本笔记实现[任务看板 SSH 提供方决策](../feature/2026-11-19-task-board-ssh-remote-execution.md)的 Seam 1。促成它的消费方——把看板卡片放到远端主机上执行的提供方——经该服务到达主机；看板那一侧是[任务看板外部提供方扩展契约](2026-09-30-task-board-extension-contract.md)。
 
 ## Problem
 

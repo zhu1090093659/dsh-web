@@ -53,6 +53,12 @@ patchFrom:
   # familyIds 覆盖。
   - ../dsh-task-board-remote
   - ../dsh-ssh
+  # dsh-task-board-ssh 是看板的第三个外部提供方（把钉住主机的卡片送到远端执行），
+  # 同时依赖看板的提供方席位与 dsh-ssh 的 dshSsh 服务，因此排在两者之后：
+  # 行自身会等这两个服务，先挂载只是少一次等待，不是硬依赖。
+  # 行 id 派生为 web-ui-task-board-ssh、行 name 就是真实包名，与官方行名册和
+  # 独立安装行 id（ui-task-board-ssh）都不相交，因此不需要 familyIds 覆盖。
+  - ../dsh-task-board-ssh
   - ../dsh-liangshen
   - ../dsh-skill-explorer
   - ../dsh-usage
@@ -90,6 +96,8 @@ deps:
   # 与 patchFrom 同序：看板的远程能力面行紧跟在桥之后（它绑桥的扩展缝）。
   - ../dsh-task-board-remote
   - ../dsh-ssh
+  # 与 patchFrom 同序：看板的远端执行提供方行紧跟 dsh-ssh 之后（它要这两个服务）。
+  - ../dsh-task-board-ssh
   - ../dsh-liangshen
   - ../dsh-skill-explorer
   - ../dsh-usage

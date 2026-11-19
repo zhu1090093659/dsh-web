@@ -1469,6 +1469,9 @@ importers:
       '@linxin666/dsh-client-ui-task-board-github':
         specifier: workspace:*
         version: link:../dsh-task-board-github
+      '@linxin666/dsh-client-ui-task-board-ssh':
+        specifier: workspace:*
+        version: link:../dsh-task-board-ssh
       '@linxin666/dsh-client-ui-task-board-team':
         specifier: workspace:*
         version: link:../dsh-task-board-team

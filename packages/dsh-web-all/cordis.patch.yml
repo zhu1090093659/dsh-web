@@ -64,6 +64,11 @@
     - id: web-ui-ssh
       name: '@linxin666/dsh-ssh'
 
+# from ../dsh-task-board-ssh
+- insert:
+    - id: web-ui-task-board-ssh
+      name: '@linxin666/dsh-client-ui-task-board-ssh'
+
 # from ../dsh-liangshen
 - insert:
     - id: web-ui-liangshen

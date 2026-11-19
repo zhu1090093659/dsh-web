@@ -169,6 +169,7 @@
     "@linxin666/dsh-remote-bridge": "workspace:*",
     "@linxin666/dsh-task-board-remote": "workspace:*",
     "@linxin666/dsh-ssh": "workspace:*",
+    "@linxin666/dsh-client-ui-task-board-ssh": "workspace:*",
     "@linxin666/dsh-liangshen": "workspace:*",
     "@linxin666/dsh-client-ui-skill-explorer": "workspace:*",
     "@linxin666/dsh-usage": "workspace:*",

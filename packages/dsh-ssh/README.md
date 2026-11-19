@@ -34,6 +34,14 @@ A dedicated remote Linux server operations and cluster management plugin for Dee
 
 The panel loads its contents on first open. Closing and reopening it preserves the selected tab, form drafts and every terminal tab. A terminal tab that is not on screen keeps its remote shell in the Host: the view detaches, and returning to the tab reattaches by session id and replays the host's scrollback into the single xterm. A remote shell that exits keeps its tab and its last screen instead of vanishing, and a tab closed in the background is only removed once the Host confirms the close — a close that cannot be delivered keeps the tab and says so. The tunnel list refreshes every five seconds while its tab, panel and browser page are visible; automatic reads pause when hidden, resume immediately on return, and do not overlap slow reads. Port forwarding itself continues in the Host.
 
+## Sibling-plugin service
+
+The host half publishes one cordis service, `dshSsh` (`DSH_SSH_API_VERSION = 1`), so another plugin running in the same DSH host reuses this plugin's host inventory and connection pool instead of keeping a second one: `hosts.list()`, `hosts.find(alias)`, `exec(alias, command, { timeoutMs, signal })`, `upload(alias, localPath, remotePath)` and `download(alias, remotePath, localPath)`. A consumer injects it with `ctx.inject(['dshSsh'], ...)` and restates the types from `src/service.ts`; it never imports this package.
+
+The face is a thin forwarder over the engine that serves the panel, the web terminal and the `ssh_*` tools, so a consumer shares the pooled connection, the connection ceiling and the host store with them. It keeps no state of its own and exposes no terminal, tunnel, cluster or streaming member: a log a consumer has to replay is a remote file it reads by offset through `exec`.
+
+The service is published only while the master switch is on, and it is withdrawn with the plugin: turning the switch off or unloading the plugin unloads every dependent's inject scope, so no consumer keeps operating hosts on behalf of a plugin the user turned off.
+
 ## Security model
 
 - All `/api/dsh-ssh/*` routes are loopback-only (with same-origin checks) — the interfaces that execute commands against remote servers are not exposed to the LAN.
@@ -48,6 +56,7 @@ The panel loads its contents on first open. Closing and reopening it preserves t
 - `ssh_upload` / `ssh_download` read/write arbitrary local paths on this machine with host-process privileges (not through the bash sandbox) — same host-local-path semantics as ssh-skill, be aware of that permission surface.
 - Agent transfer tools move files only between this machine and a remote SSH host; local-file reads and writes must use the local file tools (read / write / edit / bash), never the `ssh_*` tools.
 - The remote output of exec / cluster is returned verbatim (not sanitized); a command like `env` may bring secrets from the remote environment back into the conversation log.
+- `dshSsh` is a host-process service, not a network surface: any plugin loaded into this host can execute commands and transfer files on the configured hosts through it, with the same reach as the `ssh_*` tools and no per-consumer permission. What it never hands out is credential material — `hosts.list()` and `hosts.find()` return the public host fields only, with no password, passphrase, private-key path, agent path or `proxyCommand` text.
 
 ## Install
 

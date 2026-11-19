@@ -26,6 +26,10 @@ dsh Web GUI 的远程 SSH 运维插件：Host 进程内的持久 ssh2 连接池 
 - `agentPath` **不是机密**（它是地址串，不是凭据）：留空表示自动检测，任何情况下都要照常
   提交。主机表单里只有密码与私钥路径走「编辑时留空即保留旧值」的规则——把 agent 路径也
   当 secret 会让 PATCH 丢掉整个 `auth` 块，静默保留旧的认证方式（#1910）。
+- 跨插件服务 `dshSsh` 是**宿主进程内的能力面，不是网络面**：装载进本宿主的任何插件都能
+  经它执行远程命令、传输文件，可达范围与 `ssh_*` 工具相同，没有按消费方的权限分级。
+  它只交出主机的公开字段，`proxyCommand` 原文与任何凭据永不外露；纪律见下节「宿主服务
+  dshSsh」。
 
 ## Agent 工具面
 
@@ -33,6 +37,20 @@ dsh Web GUI 的远程 SSH 运维插件：Host 进程内的持久 ssh2 连接池 
   `ssh_tunnel` / `ssh_cluster`，GUI 与 Agent 共享同一份主机配置。
 - Agent 只能用**用户在 GUI 配置过**（或从 `~/.ssh/config` 导入）的主机；别名
   未配置时先告知用户去 GUI 配置，不得臆造。
+
+## 宿主服务 dshSsh（跨插件复用）
+
+- 服务面唯一事实源是 `src/service.ts`：`DSH_SSH_SERVICE` / `DSH_SSH_API_VERSION`、服务类型
+  与 `declare module` 都在这一份 import-free 文件里。消费方包**同形重述**它并按服务名
+  取值，禁止 import 本包 `src/**`；也不为某个消费方在服务面加特例成员。
+- 服务面是 `SshEngine` 的薄转发，成员固定为 `apiVersion`、`hosts.list()`、
+  `hosts.find(alias)`、`exec`、`upload`、`download`：不复制引擎逻辑，不加流式、目录树、
+  终端、隧道或集群成员。需要新的引擎能力先加进引擎，再由服务面转发。
+- 服务面不交出机密：`hosts.*` 只给 `SshHostSummary` 已公开的字段，`proxyCommand` 原文
+  投影掉（与 `ssh_list` 同一规则），密码 / 口令 / 私钥路径 / agent 路径永不出现；
+  `tests/service.test.ts` 逐字段钉住这条。
+- 发布时机跟随总开关：在 `sync()` 里与其它面同批 `ctx.provide`、同批撤走，停用或卸载即
+  释放依赖方的 inject 作用域。不得改成无条件提供，也不得绕过 `sync()` 常驻。
 
 ## 面板与终端会话
 

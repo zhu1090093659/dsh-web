@@ -31,7 +31,7 @@ import { applyDeleteTag, applyRenameTag } from './core/use-cases/task-tag.ts'
 import { applyUpdateTask, canEditTaskContent, hasContentPatch } from './core/use-cases/task-update.ts'
 import { TASK_BOARD_MIGRATABLE_SCHEMA_VERSIONS, TASK_BOARD_SCHEMA_VERSION, TASK_BOARD_ZONE_STAMP_SCHEMA_VERSION, type TaskBoardAction, type TaskBoardSchedulerSnapshot } from './protocol.ts'
 import { DEFAULT_SESSION_PERMISSION, requiresPermissionConfirmation, type TaskPermission } from './core/handover.ts'
-import type { TaskBoardLaunchContext, TaskBoardLaunchDecision, TaskBoardLaunchHandler, TaskBoardLaunchTrigger } from './core/extension.ts'
+import type { TaskBoardLaunchDecision, TaskBoardLaunchHandler, TaskBoardLaunchTrigger } from './core/extension.ts'
 
 interface PersistedScheduler extends TaskBoardSchedulerSnapshot {
   importedSources?: string[]

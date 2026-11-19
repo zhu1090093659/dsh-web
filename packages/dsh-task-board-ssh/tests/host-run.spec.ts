@@ -205,6 +205,50 @@ describe('a direct card', () => {
   })
 })
 
+describe('a git workspace run', () => {
+  it('operator running a card in a git workspace gets the branch its strategy collected', async () => {
+    // Given a card whose target asks for a per-run worktree and a strategy that brings a branch back
+    const ssh = createScriptedSsh()
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    const workspaces = fakeWorkspaces({ cwd: '/home/runner/worktrees/run-1', branch: 'dsh-task/run-1' })
+    const mounted = mountEngine({ board, ssh: ssh.service, workspaces: workspaces.resolver, now: () => NOW })
+    cleanups.push(() => { mounted.release() })
+    const taskId = board.createCard('task-1', { title: 'fix the parser' }).id
+    await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'set-target',
+      taskId,
+      payload: {
+        target: {
+          mode: 'direct',
+          host: 'build-box',
+          agent: { kind: 'dsh' },
+          workspace: { kind: 'git', source: { kind: 'url', url: 'https://example.invalid/repo.git', base: 'main' } },
+        },
+      },
+    })
+
+    // When it runs to its verdict
+    board.apply({ kind: 'run', taskId })
+    await mounted.tick(0)
+    await vi.waitFor(() => { expect(ssh.commands('start')).toHaveLength(1) })
+    const runId = payloadOf(board, taskId)?.activeRun?.runId ?? ''
+    ssh.finish(runId, { output: dshOutput({ sessionId: 'sess-git', text: 'parser fixed' }) })
+    await vi.waitFor(async () => {
+      await mounted.tick()
+      expect(board.task(taskId)?.status).toBe('done')
+    })
+
+    // Then the strategy was asked to place the run and to collect it, and the
+    // branch it produced is on the card's record
+    expect(workspaces.recorder.prepared).toEqual([runId])
+    expect(workspaces.recorder.collected).toEqual([runId])
+    expect(payloadOf(board, taskId)?.history[0]?.branch).toBe('dsh-task/run-1')
+    expect(executionsOf(board.task(taskId))[0]?.error).toBe('parser fixed')
+  })
+})
+
 describe('the card surface', () => {
   it('operator starting a pinned card from the card surface takes the same remote path', async () => {
     // Given a pinned card and a host that answers the launcher

@@ -28,9 +28,18 @@ export type SshGitSource =
   | {
       /** A repository the remote host can reach on its own. */
       kind: 'url'
-      /** Clone URL: https, ssh or `user@host:path` form. */
+      /**
+       * Clone URL: https, ssh or `user@host:path` form. It reaches `git fetch`
+       * and `git push` as a bare word, so a leading dash — which git reads as
+       * an option, including the `--upload-pack` that runs a command — is
+       * refused by the parser rather than escaped.
+       */
       url: string
-      /** Branch the per-run worktree starts from; absent uses the remote HEAD. */
+      /**
+       * Branch the per-run worktree starts from; absent uses the remote HEAD.
+       * A leading dash is refused for the same reason: the value is composed
+       * into ref names and refspecs, and one future caller will pass it bare.
+       */
       base?: string
     }
   | {
@@ -144,6 +153,18 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return prototype === Object.prototype || prototype === null
 }
 
+/** Why a value that git would read as an option is refused. */
+const OPTION_INJECTION_REASON = 'must not start with "-": git reads a leading dash as an option, not as a word'
+
+/**
+ * Whether git would read a value as an option instead of as a word.
+ * @param value - the candidate argument.
+ * @returns true for a value whose first character is a dash.
+ */
+function startsWithDash(value: string): boolean {
+  return value.startsWith('-')
+}
+
 /** Whether a string is a usable absolute POSIX path. */
 function isAbsolutePath(value: string): boolean {
   return value.startsWith('/') && !value.includes('\u0000') && !value.includes('\n')
@@ -205,11 +226,25 @@ function parseGitSource(value: unknown, path: string, issues: IssueList): SshGit
   }
   if (value.kind === 'url') {
     rejectUnknownKeys(value, ['kind', 'url', 'base'], path, issues)
-    const url = readText(value.url, IssueList.join(path, 'url'), issues)
-    const base = value.base === undefined ? undefined : readText(value.base, IssueList.join(path, 'base'), issues)
+    const urlPath = IssueList.join(path, 'url')
+    const basePath = IssueList.join(path, 'base')
+    const url = readText(value.url, urlPath, issues)
+    const base = value.base === undefined ? undefined : readText(value.base, basePath, issues)
     if (url === undefined) return undefined
+    // Option injection is checked before whitespace so the classic
+    // `--upload-pack=touch /x` reports what is actually wrong with it. Both
+    // words are handed to git as argv entries, and git parses a leading dash as
+    // an option — which is how a repository URL becomes a command.
+    if (startsWithDash(url)) {
+      issues.add(urlPath, OPTION_INJECTION_REASON)
+      return undefined
+    }
     if (/\s/.test(url)) {
-      issues.add(IssueList.join(path, 'url'), 'must not contain whitespace')
+      issues.add(urlPath, 'must not contain whitespace')
+      return undefined
+    }
+    if (base !== undefined && startsWithDash(base)) {
+      issues.add(basePath, OPTION_INJECTION_REASON)
       return undefined
     }
     return base === undefined ? { kind: 'url', url } : { kind: 'url', url, base }

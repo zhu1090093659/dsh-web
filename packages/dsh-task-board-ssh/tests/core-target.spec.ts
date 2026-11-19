@@ -199,3 +199,97 @@ describe('run record parsing', () => {
     expect(terminal).toEqual([false, false, true, true, true, true])
   })
 })
+
+describe('git source option injection', () => {
+  /** One direct target whose git source is the given URL and base. */
+  function gitTarget(url: unknown, base?: unknown) {
+    return {
+      mode: 'direct',
+      host: 'build-box',
+      agent: { kind: 'dsh' },
+      workspace: { kind: 'git', source: { kind: 'url', url, ...(base === undefined ? {} : { base }) } },
+    }
+  }
+
+  /** The one reason a value was refused. */
+  function refusedAt(target: unknown): { path: string, message: string }[] {
+    const parsed = parseSshTarget(target)
+    return parsed.ok ? [] : [...parsed.errors]
+  }
+
+  it('operator pinning a repository URL that git would read as an option is refused', () => {
+    // Given URLs shaped like git options, including the one that runs a command
+    const attacks = [
+      '--upload-pack=touch /x',
+      '-oProxyCommand=touch /x',
+      '--config=core.pager=touch /x',
+      '--',
+    ]
+
+    // When each is pinned through a whole target
+    const refused = attacks.map(attack => refusedAt(gitTarget(attack)))
+
+    // Then every one is refused where it was written
+    expect(refused).toEqual(attacks.map(() => [{
+      path: 'workspace.source.url',
+      message: 'must not start with "-": git reads a leading dash as an option, not as a word',
+    }]))
+  })
+
+  it('operator hiding the dash behind leading whitespace is refused as well', () => {
+    // Given the same attacks behind every whitespace a paste can carry
+    const attacks = [
+      '  --upload-pack=touch /x',
+      '\t--upload-pack=touch /x',
+      '\n-x',
+      '\u00a0--upload-pack=touch /x',
+    ]
+
+    // When each is pinned
+    const refused = attacks.map(attack => refusedAt(gitTarget(attack)))
+
+    // Then each is refused on the URL itself, so no parser has to trim first
+    expect(refused).toEqual(attacks.map(() => [{
+      path: 'workspace.source.url',
+      message: 'must not contain whitespace',
+    }]))
+  })
+
+  it('operator pinning a start branch that git would read as an option is refused', () => {
+    // Given a start branch shaped like an option
+    const attacks = ['--upload-pack=touch /x', '-b', '-']
+
+    // When each is pinned beside an ordinary URL
+    const refused = attacks.map(attack => refusedAt(gitTarget('https://example.com/team/repo.git', attack)))
+
+    // Then each is refused on the branch field
+    expect(refused).toEqual(attacks.map(() => [{
+      path: 'workspace.source.base',
+      message: 'must not start with "-": git reads a leading dash as an option, not as a word',
+    }]))
+  })
+
+  it('operator pinning ordinary repository URLs and branches still gets them accepted', () => {
+    // Given the URL forms and branch names a person actually uses
+    const cases: { url: string, base: string }[] = [
+      { url: 'https://example.com/team/repo.git', base: 'main' },
+      { url: 'git@example.com:team/repo.git', base: 'release/2.0' },
+      { url: 'ssh://git@example.com/team/repo.git', base: 'feature/one-two' },
+    ]
+
+    // When each is pinned
+    const parsed = cases.map(item => parseSshTarget(gitTarget(item.url, item.base)))
+
+    // Then all of them survive unchanged, so the guard refuses nothing legitimate
+    expect(parsed).toEqual(cases.map(item => ({
+      ok: true,
+      value: {
+        mode: 'direct',
+        host: 'build-box',
+        agent: { kind: 'dsh' },
+        workspace: { kind: 'git', source: { kind: 'url', url: item.url, base: item.base } },
+      },
+    })))
+  })
+})
+

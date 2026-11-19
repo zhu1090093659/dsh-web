@@ -1,0 +1,15 @@
+# dsh-task-board-ssh bundle patch: inserts the SSH provider extension row into
+# the web profile roster. Applied as a profile bundle layer (the
+# `dsh.bundle.patch` manifest field) over dsh-base; activate with
+# `dsh plugin --profile web add link:<repo>/packages/dsh-task-board-ssh`.
+#
+# The row is a bare plugin by package name: the node half (exports ".") runs in
+# the host process, and the `dsh.client` declaration in package.json makes the
+# browser half (exports "./client", served at /plugins/<id>/client.js) load in
+# the web GUI. In the aggregate bundle this row is namespaced
+# web-ui-task-board-ssh and must stay behind web-ui-task-board: the extension
+# registers into the task board's provider surface, so the board has to be
+# there first.
+- insert:
+    - id: ui-task-board-ssh
+      name: '@linxin666/dsh-client-ui-task-board-ssh'

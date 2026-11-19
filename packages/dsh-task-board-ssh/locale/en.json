@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Task Board SSH Provider",
+    "description": "Runs a pinned card as a headless agent session on a remote host reached through dsh-ssh."
+  }
+}

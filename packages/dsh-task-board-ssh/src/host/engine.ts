@@ -110,6 +110,16 @@ interface SshJob {
   failures: number
   /** Whether this run carries a follow-up the agent could not be resumed for. */
   degraded: boolean
+  /**
+   * Whether this process is still preparing the run's remote side.
+   *
+   * The job is registered and the card enters the running column before the
+   * remote directory exists, because a concurrent admission must see the slot
+   * taken. A poll that lands in that window reads "no such run" from a host
+   * whose directory has not been written yet, which is not a lost run: the
+   * start owns the verdict until it has an answer of its own.
+   */
+  starting: boolean
 }
 
 /** A reply to a card action or a tool call: a value the caller can act on, never a throw. */
@@ -732,7 +742,7 @@ export class SshRunEngine {
         running += 1
         this.logs.adopt(entry.task.id, run.runId, run.bytes ?? 0)
         if (!this.jobs.has(entry.task.id)) {
-          this.jobs.set(entry.task.id, { taskId: entry.task.id, runId: run.runId, alias, failures: 0, degraded: false })
+          this.jobs.set(entry.task.id, { taskId: entry.task.id, runId: run.runId, alias, failures: 0, degraded: false, starting: false })
         }
         continue
       }
@@ -756,7 +766,7 @@ export class SshRunEngine {
     if (task === undefined || payload === undefined || run === undefined || target === undefined) return
     if (run.runId !== runId || run.phase !== 'queued') return
     const settings = this.settings()
-    const job: SshJob = { taskId, runId, alias, failures: 0, degraded: false }
+    const job: SshJob = { taskId, runId, alias, failures: 0, degraded: false, starting: true }
     this.jobs.set(taskId, job)
     this.logs.adopt(taskId, runId, run.bytes ?? 0)
     // The slot is taken before any remote work: a concurrent admission sees a
@@ -800,6 +810,9 @@ export class SshRunEngine {
         },
       })
       let status = await this.remote.start({ alias, stateDir, runId })
+      // From here the remote side owns the verdict: the run directory exists, so
+      // a poll's "no such run" is a real disappearance.
+      job.starting = false
       if (status.state !== 'running' && status.state !== 'exited') {
         // A second starter that loses the race for the run's lock answers
         // "lost" even though the run it was racing is alive, so an inconclusive
@@ -917,6 +930,12 @@ export class SshRunEngine {
       return
     }
     job.failures = 0
+    if (job.starting && (status.state === 'missing' || status.state === 'lost')) {
+      // The start is still preparing this run: the remote directory it is about
+      // to write is absent by definition, and the start's own answer settles
+      // the card when it has one.
+      return
+    }
     if (status.state === 'running') {
       const bytes = status.bytes ?? run.bytes
       if (bytes !== undefined && bytes !== run.bytes) {
@@ -1210,7 +1229,7 @@ export class SshRunEngine {
       this.known.set(entry.task.id, { alias: target.host, runId: run.runId })
       if (run.phase === 'queued') continue
       if (!isTerminalRunPhase(run.phase)) {
-        this.jobs.set(entry.task.id, { taskId: entry.task.id, runId: run.runId, alias: target.host, failures: 0, degraded: false })
+        this.jobs.set(entry.task.id, { taskId: entry.task.id, runId: run.runId, alias: target.host, failures: 0, degraded: false, starting: false })
         this.logs.adopt(entry.task.id, run.runId, run.bytes ?? 0)
         continue
       }

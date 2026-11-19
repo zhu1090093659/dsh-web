@@ -128,6 +128,66 @@ describe('a direct card', () => {
     expect(readFileSync(join(stateDirForHome(home), 'runs', runId, 'stdout.log'), 'utf8')).toContain('sess-real')
   })
 
+  it('operator whose placement outlasts one poll tick keeps the run instead of reading it as lost', async () => {
+    // Given a card whose remote directory cannot exist yet: the workspace the
+    // run works in is still being prepared on this side
+    const home = scratch('dsh-ssh-home-')
+    const work = scratch('dsh-ssh-work-')
+    const ssh = createLocalSsh({ home })
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    let release: () => void = () => { /* replaced below */ }
+    const preparing = new Promise<void>(resolve => { release = resolve })
+    const mounted = mountEngine({
+      board,
+      ssh: ssh.service,
+      workspaces: () => ({
+        kind: 'in-place' as const,
+        async prepare() { await preparing; return { cwd: work } },
+        async collect() { return {} },
+      }),
+      now: () => NOW,
+      settings: SCRIPTED_AGENT,
+    })
+    cleanups.push(() => { mounted.release() })
+    const taskId = board.createCard('task-1', {
+      title: 'build the thing',
+      prompt: printingPrompt(dshLines({ sessionId: 'sess-slow-placement', text: 'done' })),
+    }).id
+    await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'set-target',
+      taskId,
+      payload: { target: directTarget(work) },
+    })
+
+    // When the operator starts it and a poll tick lands inside that preparation
+    board.apply({ kind: 'run', taskId })
+    await vi.waitFor(() => { expect(payloadOf(board, taskId)?.activeRun?.phase).toBe('running') })
+    await mounted.tick()
+    await vi.waitFor(() => { expect(ssh.calls.some(call => call.verb === 'status')).toBe(true) })
+    // The launcher answered "no such run" for a directory the start has not
+    // written yet; give that answer every chance to be acted on
+    await mounted.tick()
+
+    // Then the card is still the run in flight, and nothing was recorded
+    expect(payloadOf(board, taskId)?.history).toEqual([])
+    expect(payloadOf(board, taskId)?.activeRun?.phase).toBe('running')
+    expect(board.task(taskId)?.status).toBe('running')
+
+    // When the placement finishes and the run reaches a verdict of its own
+    release()
+    await vi.waitFor(() => { expect(ssh.calls.some(call => call.verb === 'start')).toBe(true) })
+    await vi.waitFor(async () => {
+      await mounted.tick()
+      expect(board.task(taskId)?.status).toBe('done')
+    })
+
+    // Then exactly one outcome was recorded, and it is the run's own
+    expect(payloadOf(board, taskId)?.history.map(run => run.phase)).toEqual(['succeeded'])
+    expect(executionsOf(board.task(taskId))).toHaveLength(1)
+  })
+
   it('operator replaying the start of a live run leaves one remote process behind', async () => {
     // Given a run that is still working on the host
     const home = scratch('dsh-ssh-home-')

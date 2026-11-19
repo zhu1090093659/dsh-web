@@ -332,6 +332,16 @@
   min-width: 0;
 }
 
+/* The field set itself: the detail seat's form and the create dialog's picker
+   render these same fields, so the rhythm belongs here rather than to either
+   frame. */
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -502,6 +512,56 @@
 
 .actionRow .primaryButton {
   margin-left: auto;
+}
+
+/* --- the create dialog's picker -------------------------------------------- */
+
+/* One row at rest and the shared field set when expanded: the dialog's default
+   is a card with no remote target, so the collapsed state is what most cards
+   cost. */
+.compose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* The switch owns the rows under it, so its label box is the hit area and it
+   carries the same rhythm as the board's own switches in this region. */
+.composeToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.composeToggle input {
+  flex: none;
+  margin: 0;
+  accent-color: var(--dsw-alias-state-business-primary);
+  cursor: pointer;
+}
+
+.composeToggle input:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .composeToggle {
+    min-height: 44px;
+  }
+}
+
+.composeFields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
 }
 
 /* --- the settings topic ---------------------------------------------------- */

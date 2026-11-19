@@ -2,10 +2,12 @@
  * Browser half of the task-board SSH provider.
  *
  * It registers the extension's copy, contributes one settings section into the
- * task board's own settings card, and installs the provider's two child seats
- * into the board. Both halves of the extension's own switch are followed live:
- * the seats appear and disappear with the settings section's `enabled` value,
- * while the section itself stays reachable so the switch can be turned back on.
+ * task board's own settings card, and installs the provider's three rendering
+ * seats into the board: the task-detail section, the card badge, and the
+ * new-card section of the create dialog. Both halves of the extension's own
+ * switch are followed live: the seats appear and disappear with the settings
+ * section's `enabled` value, while the section itself stays reachable so the
+ * switch can be turned back on.
  *
  * Failure policy: a missing slot, settings surface, or board service is handled,
  * never thrown — the web shell fails the whole boot when a plugin apply throws,
@@ -61,6 +63,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'task-board.settings.section': { kind: 'list'; scope: 'root'; owner: import('./seat-props.ts').SshSettingsSectionProps }
     /** Provider card decoration; the board declares and renders it. */
     'task-board.card.decoration': { kind: 'list'; scope: 'root'; owner: import('./seat-props.ts').SshCardDecorationProps }
+    /** Provider new-card section; the board renders it inside the create dialog's execution settings. */
+    'task-board.compose.section': { kind: 'list'; scope: 'root'; owner: import('./seat-props.ts').SshComposeSectionProps }
   }
 
   interface LocaleNamespaceMap {
@@ -175,10 +179,11 @@ export function apply(ctx: ClientContext): void {
     return
   }
 
-  // Seats. The rendering seats (task-detail section and card decoration) sit
-  // behind both switches; the configuration section sits behind the board
-  // service alone, because it is where this extension's own switch lives — a
-  // section gated by that switch could never turn it back on.
+  // Seats. The rendering seats (task-detail section, card decoration and the
+  // create dialog's new-card section) sit behind both switches; the
+  // configuration section sits behind the board service alone, because it is
+  // where this extension's own switch lives — a section gated by that switch
+  // could never turn it back on.
   ctx.effect(() => installSshClientHalf(ctx, enabledSource, {
     inject: () => controller.inject(),
     component: SshSettingsSection,

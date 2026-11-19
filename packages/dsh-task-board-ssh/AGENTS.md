@@ -26,8 +26,11 @@
   `workspace/` 是三种工作区机制（`in-place`、`git`+地址、`git`+本机仓库）与
   `layout.ts` 的远端路径/引用派生，`extension.ts` 是看板扩展面，`board.ts` 解析看板
   自己的动作应用器。
-- `src/client/`：浏览器半区。`ssh/extension.ts` 登记详情席位与卡片徽标，
-  `ssh/detail-section.tsx` 放目标表单、运行状态、日志视图、追问与取消，
+- `src/client/`：浏览器半区。`ssh/extension.ts` 登记详情席位、卡片徽标与新建弹窗
+  席位，`ssh/detail-section.tsx` 放目标表单、运行状态、日志视图、追问与取消，
+  `ssh/compose-section.tsx` 是新建弹窗「执行方式」区块里的目标选择（默认「不指定」，
+  未挂载宿主半区时什么都不渲染），`ssh/target-form.tsx` 里的 `SshTargetFields` 是
+  上述两处共用的字段集（字段可见性与拒绝文案只有这一份），
   `ssh/log-buffer.ts` 是日志窗口，`ssh/summary.ts` 把执行记录渲染成摘要，
   `ssh/settings-section.tsx` 是看板设置卡里的本扩展区块。
 

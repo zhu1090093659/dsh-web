@@ -6,8 +6,10 @@
  *
  * Prefixes: `settings.*` is the section inside the board's own settings card
  * (its shared chrome plus this provider's switches), `detail.*` is the
- * task-detail seat, `run.*` is the run-phase vocabulary the detail seat and
- * the card badge share, and `card.*` is the badge itself.
+ * task-detail seat and the field set it shares with the create dialog,
+ * `compose.*` is the create dialog's own row, `run.*` is the run-phase
+ * vocabulary the detail seat and the card badge share, and `card.*` is the
+ * badge itself.
  *
  * @module dsh-task-board-ssh/client/locales
  */
@@ -110,6 +112,8 @@ export const zh = {
   'run.lost': '失联',
 
   'card.badgeTitle': '{host} · {state}',
+
+  'compose.remote': '在远程主机上执行',
 } as const
 
 /** The English counterpart; the same key set, verified by the locale audit. */
@@ -210,6 +214,8 @@ export const en: Record<TaskBoardSshKey, string> = {
   'run.lost': 'Lost contact',
 
   'card.badgeTitle': '{host} · {state}',
+
+  'compose.remote': 'Run on a remote host',
 }
 
 /** One key of this extension's catalog. */

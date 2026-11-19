@@ -98,4 +98,5 @@ export const ru: Record<string, string> = {
   "run.cancelled": "Отменено",
   "run.lost": "Связь потеряна",
   "card.badgeTitle": "{host} · {state}",
+  "compose.remote": "Выполнять на удалённом хосте",
 }

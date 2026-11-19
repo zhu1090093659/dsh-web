@@ -43,6 +43,12 @@ export const TASK_BOARD_DETAIL_SECTION = 'task-board.detail.section'
 export const TASK_BOARD_SETTINGS_SECTION = 'task-board.settings.section'
 /** Child seat a provider registers its card decoration into. */
 export const TASK_BOARD_CARD_DECORATION = 'task-board.card.decoration'
+/**
+ * Child seat a provider registers its new-card section into: its own
+ * create-time configuration, rendered inside the create dialog's execution
+ * settings, whose draft the board stores on the card it creates.
+ */
+export const TASK_BOARD_COMPOSE_SECTION = 'task-board.compose.section'
 
 /** Largest accepted extension payload, in bytes of its JSON serialization. */
 export const TASK_BOARD_PAYLOAD_LIMIT_BYTES = 64 * 1024

@@ -332,3 +332,23 @@ export function parseSshLedgerPayload(value: unknown): SshValidationResult<SshLe
   if (pending !== undefined) payload.pending = pending
   return { ok: true, value: payload }
 }
+
+/**
+ * The payload a create dialog reports for a card that does not exist yet: the
+ * target the new card pins, and no run account beside it.
+ *
+ * A card being created has never run, so the document carries an empty history
+ * and no active run or queued instruction — exactly what the host half stores
+ * when it pins a target on an existing card, minus the runs. The result is read
+ * back through {@link parseSshLedgerPayload} before it is returned: a draft this
+ * build could store but not read back is never reported at all, so a card
+ * created through a create dialog always opens on a payload its own detail seat
+ * can account for.
+ * @param target - the target the reader picked, already parsed.
+ * @param updatedAt - instant the draft is reported (ms epoch).
+ * @returns the payload, or undefined when the document does not parse.
+ */
+export function composeDraftPayload(target: SshTarget, updatedAt: number): SshLedgerPayload | undefined {
+  const draft: SshLedgerPayload = { version: SSH_LEDGER_VERSION, updatedAt, history: [], target }
+  return parseSshLedgerPayload(draft).ok ? draft : undefined
+}

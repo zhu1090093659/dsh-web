@@ -10,6 +10,7 @@ A task-board provider extension that runs a pinned card as a headless agent sess
 - Starts dsh, Claude Code, Codex or a custom command on the host through one POSIX `sh` launcher, detached with `setsid nohup`, so a run outlives the SSH connection and the local host.
 - Keeps the run account in the card's own payload and the output in a remote file read back by byte offset, so a log replays from its start at any time.
 - Adds three model-visible tools (`task_board_ssh_target`, `task_board_ssh_status`, `task_board_ssh_follow_up`) and one task-detail seat holding the target form, the run state, the log viewer, the follow-up box and cancel.
+- Offers the same target choice in the create dialog's own execution settings, so a card can be created already pinned to a host. The choice starts as no target at all: such a card is created untargeted and its detail seat sets the target afterwards, exactly as before.
 - Cancelling a run from the task-detail seat stops the remote process and puts the card back in the to-do column, with no verdict written.
 
 ## Execution modes
@@ -29,7 +30,7 @@ Untracked files are not synced: a bundle carries commits, so untracked and ignor
 
 ## Install
 
-The host half takes the board and dsh-ssh through one cordis dependency scope: while either service is missing it registers nothing, and it unloads the moment either is withdrawn. In the aggregate bundle the `dsh-ssh` row (`web-ui-ssh`) ships disabled by default, so turn it on in the plugin manager first; until then a card's detail seat only says "Enable the SSH plugin in the plugin manager first".
+The host half takes the board and dsh-ssh through one cordis dependency scope: while either service is missing it registers nothing, and it unloads the moment either is withdrawn. In the aggregate bundle the `dsh-ssh` row (`web-ui-ssh`) ships disabled by default, so turn it on in the plugin manager first; until then a card's detail seat only says "Enable the SSH plugin in the plugin manager first", and the create dialog shows no SSH rows at all.
 
 ### From npm
 
@@ -51,6 +52,8 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board-ssh
 
 ### Per card
 
+A card's target is chosen in the create dialog's execution settings, or on its detail seat afterwards. Both surfaces edit these same four fields, and a card created without a target keeps none: nothing is pinned until one of them says where it runs.
+
 - `mode`: `direct` or `proxy`, as described under execution modes.
 - `host`: the dsh-ssh host alias the run addresses.
 - `agent`: `dsh`, `claude`, `codex` or `custom`; a custom agent needs a start command template carrying `{prompt_file}` and optionally a resume template.
@@ -58,7 +61,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board-ssh
 
 ### Extension settings
 
-- `enabled`: the master switch; off withdraws the detail seat, the card badge, the three tools and the launch interceptor, and stops polling every run it follows.
+- `enabled`: the master switch; off withdraws the detail seat, the card badge, the create dialog's row, the three tools and the launch interceptor, and stops polling every run it follows.
 - `defaultMode`, `defaultAgent` and `defaultHost`: what a card opens with before anyone pins a target.
 - `perHostCap`: how many runs one host executes at once, from 1 to 16, default 2; the rest wait in submission order.
 - `agentCommands`: per-agent command templates that replace the built-in command line.

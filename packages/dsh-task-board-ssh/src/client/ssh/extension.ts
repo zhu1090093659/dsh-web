@@ -25,11 +25,13 @@ import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import {
   resolveTaskBoardClientFace,
   TASK_BOARD_CARD_DECORATION,
+  TASK_BOARD_COMPOSE_SECTION,
   TASK_BOARD_DETAIL_SECTION,
   TASK_BOARD_SETTINGS_SECTION,
 } from '../../core/contract.ts'
 import { SSH_EXTENSION_ID } from '../../core/action.ts'
 import { SshCardDecoration } from './card-decoration.tsx'
+import { SshComposeSection } from './compose-section.tsx'
 import { SshDetailSection } from './detail-section.tsx'
 import { acceptPublishedSummary, clearSummary } from './summary.ts'
 
@@ -173,7 +175,7 @@ function registerSettingsSection(ctx: ClientContext, seat: SshSettingsSectionSea
 }
 
 /**
- * Register the two rendering seats for as long as the board's own master switch
+ * Register the three rendering seats for as long as the board's own master switch
  * is on, and mirror the published summary into the browser-side store.
  * @param ctx - client context.
  * @returns disposer releasing every contribution.
@@ -201,6 +203,7 @@ function installSeats(ctx: ClientContext): () => void {
     try {
       seats.push(slots.register({ name: TASK_BOARD_DETAIL_SECTION, id: SSH_EXTENSION_ID, locale: LOCALE_NS }, SshDetailSection as never))
       seats.push(slots.register({ name: TASK_BOARD_CARD_DECORATION, id: SSH_EXTENSION_ID }, SshCardDecoration as never))
+      seats.push(slots.register({ name: TASK_BOARD_COMPOSE_SECTION, id: SSH_EXTENSION_ID, locale: LOCALE_NS }, SshComposeSection as never))
     } catch (error) {
       console.error('[dsh-task-board-ssh] seat registration failed', error)
     }

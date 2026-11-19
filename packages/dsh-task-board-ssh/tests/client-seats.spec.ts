@@ -18,10 +18,11 @@ import { SshSettingsSection, type SshSettingsCardState, type SshSettingsSectionP
 import { en, setRuntimeTranslate, t, zh, type TaskBoardSshKey } from '../src/client/locales.ts'
 import type { CardShell, FieldState } from '../src/client/settings-form.ts'
 
-/** The board's three provider seats, restated (this package may not import the board). */
+/** The board's four provider seats, restated (this package may not import the board). */
 const DETAIL_SECTION = 'task-board.detail.section'
 const SETTINGS_SECTION = 'task-board.settings.section'
 const CARD_DECORATION = 'task-board.card.decoration'
+const COMPOSE_SECTION = 'task-board.compose.section'
 
 interface Registration {
   name: string
@@ -178,21 +179,21 @@ afterEach(() => {
 })
 
 describe('the extension switch', () => {
-  it('operator turning the extension off sees both rendering seats withdrawn and the settings section kept', async () => {
+  it('operator turning the extension off sees every rendering seat withdrawn and the settings section kept', async () => {
     // Given a running extension whose board is on
     const harness = mount()
     const names = () => harness.registrations.map(entry => entry.name)
-    expect(names()).toEqual(expect.arrayContaining([DETAIL_SECTION, CARD_DECORATION, SETTINGS_SECTION]))
+    expect(names()).toEqual(expect.arrayContaining([DETAIL_SECTION, CARD_DECORATION, COMPOSE_SECTION, SETTINGS_SECTION]))
 
     // When the operator turns the extension off
     await act(async () => { await harness.setEnabled(false) })
 
-    // Then the two rendering seats are gone and the section that turns it back
-    // on is still registered
+    // Then the rendering seats are gone — including the create dialog's own
+    // row — and the section that turns it back on is still registered
     expect(names()).toEqual([SETTINGS_SECTION])
   })
 
-  it('operator turning it back on sees both rendering seats rebuilt', async () => {
+  it('operator turning it back on sees every rendering seat rebuilt', async () => {
     // Given an extension that was switched off
     const harness = mount({ enabled: false })
     const names = () => harness.registrations.map(entry => entry.name)
@@ -201,8 +202,8 @@ describe('the extension switch', () => {
     // When the switch is turned on again
     await act(async () => { await harness.setEnabled(true) })
 
-    // Then both rendering seats come back next to the section
-    expect(names()).toEqual(expect.arrayContaining([DETAIL_SECTION, CARD_DECORATION, SETTINGS_SECTION]))
+    // Then every rendering seat comes back next to the section
+    expect(names()).toEqual(expect.arrayContaining([DETAIL_SECTION, CARD_DECORATION, COMPOSE_SECTION, SETTINGS_SECTION]))
   })
 
   it('operator whose board master switch is off loses the seats and gets them back on the next mirror frame', () => {
@@ -220,7 +221,7 @@ describe('the extension switch', () => {
     act(() => { harness.boardMirror(true) })
 
     // Then the seats are rebuilt without re-registering the provider
-    expect(names()).toEqual(expect.arrayContaining([DETAIL_SECTION, CARD_DECORATION]))
+    expect(names()).toEqual(expect.arrayContaining([DETAIL_SECTION, CARD_DECORATION, COMPOSE_SECTION]))
   })
 
   it('user reading the seat registrations sees the ssh identity and the catalog namespace', () => {
@@ -229,10 +230,11 @@ describe('the extension switch', () => {
 
     // When the registrations are read
     // Then every seat is owned by "ssh", every name is a board seat, and the
-    // detail seat binds this extension's catalog
-    expect(harness.registrations.map(entry => entry.id)).toEqual(['ssh', 'ssh', 'ssh'])
+    // two seats that render this extension's copy bind its catalog
+    expect(harness.registrations.map(entry => entry.id)).toEqual(['ssh', 'ssh', 'ssh', 'ssh'])
     expect(harness.registrations.every(entry => entry.name.startsWith('task-board.'))).toBe(true)
     expect(harness.registrations.find(entry => entry.name === DETAIL_SECTION)?.locale).toBe(NS)
+    expect(harness.registrations.find(entry => entry.name === COMPOSE_SECTION)?.locale).toBe(NS)
     expect(harness.followedSeats).toEqual([SETTINGS_SECTION])
   })
 

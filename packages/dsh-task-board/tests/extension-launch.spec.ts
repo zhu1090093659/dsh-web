@@ -271,6 +271,23 @@ describe('a launch a provider keeps local', () => {
   })
 })
 
+describe('a local launch with nothing to say', () => {
+  it('operator sees a local interception without a preamble leave the prompt untouched', async () => {
+    // Given a provider that answers local but states no context of its own
+    const { host, prompts } = boardWithHandler(() => ({ kind: 'local' }))
+    seedCard(host)
+
+    // When the operator runs the card
+    host.apply('run-card', { kind: 'run', taskId: 'card' })
+    await flushLaunchChain()
+
+    // Then the prompt is exactly the one an unintercepted run produces: no
+    // separator, no empty section
+    expect(prompts).toEqual([{ sessionId: 'session-1', text: UNTOUCHED_PROMPT, mode: 'queue' }])
+    host.dispose()
+  })
+})
+
 describe('a launch a provider takes over', () => {
   it('operator sees no session and no open execution, and the provider settles the card through the ledger', async () => {
     // Given a provider that takes every run over

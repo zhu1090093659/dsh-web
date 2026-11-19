@@ -70,6 +70,19 @@ export interface Mounted {
 export const TICK_MS = 1_000
 
 /**
+ * Run one registered tool the way the model runtime would.
+ * @param mounted - the mounted provider.
+ * @param name - tool to run.
+ * @param args - its arguments.
+ * @returns the value the tool answered.
+ */
+export async function runTool(mounted: Mounted, name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const tool = mounted.tools.get(name)
+  if (tool === undefined) throw new Error('the extension registered no tool named ' + name)
+  return await tool.execute(args as never, {} as never) as Record<string, unknown>
+}
+
+/**
  * Mount the provider on the board.
  * @param options - the board, the ssh face and the deployment's seats.
  * @returns the mounted provider.

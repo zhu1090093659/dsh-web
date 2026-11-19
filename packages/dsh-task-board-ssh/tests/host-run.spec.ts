@@ -205,6 +205,50 @@ describe('a direct card', () => {
   })
 })
 
+describe('the card surface', () => {
+  it('operator starting a pinned card from the card surface takes the same remote path', async () => {
+    // Given a pinned card and a host that answers the launcher
+    const ssh = createScriptedSsh()
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    const { mounted, taskId } = await pinCard({ board, ssh: ssh.service, work: '/srv/work' })
+
+    // When the card surface asks for a run
+    const reply = await mounted.extension.handleAction?.({ extensionId: 'ssh', action: 'run', taskId }) as { ok: boolean }
+    await mounted.tick(0)
+    await vi.waitFor(() => { expect(ssh.commands('start')).toHaveLength(1) })
+
+    // Then it runs on the host, with no local session
+    expect(reply.ok).toBe(true)
+    expect(board.task(taskId)?.status).toBe('running')
+    expect(board.prompts).toEqual([])
+  })
+
+  it('operator pinning a card to a host this deployment does not know is refused by name', async () => {
+    // Given a mounted provider with one configured host
+    const ssh = createScriptedSsh()
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    const workspaces = fakeWorkspaces({ cwd: '/srv/work' })
+    const mounted = mountEngine({ board, ssh: ssh.service, workspaces: workspaces.resolver, now: () => NOW })
+    cleanups.push(() => { mounted.release() })
+    const taskId = board.createCard('task-1', { title: 'card' }).id
+
+    // When the target names an alias nobody configured
+    const reply = await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'set-target',
+      taskId,
+      payload: { target: { mode: 'direct', host: 'ghost-box', agent: { kind: 'dsh' }, workspace: { kind: 'in-place', path: '/srv/work' } } },
+    }) as { ok: boolean; error: string }
+
+    // Then the card keeps no target and the refusal names the alias
+    expect(reply.ok).toBe(false)
+    expect(reply.error).toContain('ghost-box')
+    expect(payloadOf(board, taskId)?.target).toBeUndefined()
+  })
+})
+
 describe('a host that restarts mid-run', () => {
   it('operator restarting the local host records a finished remote run once and keeps polling a live one', async () => {
     // Given two running cards when the local host goes away

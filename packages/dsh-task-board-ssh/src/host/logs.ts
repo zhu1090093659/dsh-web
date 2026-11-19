@@ -274,17 +274,4 @@ export class SshLogWindows {
       state.truncated = state.cursor > state.end
     }
   }
-
-  /** The window one card currently holds, without clearing it. */
-  peek(taskId: string): SshLogWindow | undefined {
-    const state = this.states.get(taskId)
-    if (state === undefined) return undefined
-    return {
-      runId: state.runId,
-      baseOffset: state.base,
-      endOffset: state.end,
-      text: state.text,
-      ...(state.truncated ? { truncated: true } : {}),
-    }
-  }
 }

@@ -70,6 +70,8 @@ export interface ExtensionRegistrySeat {
   setToolRegistry(resolver: (() => ToolRegistrySeat | undefined) | undefined): void
   /** Whether one extension is currently running (board x extension). */
   isActive(extensionId: string): boolean
+  /** Apply the board's master switch; every provider starts or stops with it. */
+  setEnabled(enabled: boolean): void
 }
 
 /** The board the specs drive. */
@@ -80,6 +82,8 @@ export interface BoardHarness {
     apply(requestId: string, action: unknown, initiator?: string): unknown
     /** Admit one provider extension; the returned disposer releases it. */
     registerExtension(extension: { id: string; apiVersion: number }): () => void
+    /** Apply the board's master switch, its idle-sleep assertion and its poll cadence. */
+    setConfiguration(active: boolean, preventIdleSleep: boolean, sessionPollSeconds?: number): void
     /** Release the board. */
     dispose(): void
     /** The extension registry. */

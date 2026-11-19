@@ -12,7 +12,7 @@
  *
  * @module dsh-task-board-ssh/host/board
  */
-import type { TaskRecord, TaskStatus } from '../core/task-record.ts'
+import type { TaskRecord } from '../core/task-record.ts'
 
 /** One action this package submits to the board. Field names are the board's own. */
 export type BoardAction =
@@ -81,10 +81,4 @@ export function alreadyRecorded(task: TaskRecord, runId: string): boolean {
     const initiator = executionInitiator(record)
     return initiator !== undefined && initiator.startsWith(marker)
   })
-}
-
-/** Whether a card still occupies the column a remote run puts it in. */
-export function inRunningColumn(task: TaskRecord): boolean {
-  const status: TaskStatus = task.status
-  return status === 'running'
 }

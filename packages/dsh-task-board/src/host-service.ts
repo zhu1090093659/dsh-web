@@ -14,7 +14,7 @@ import { TASK_BOARD_SCHEMA_VERSION, type TaskBoardAction, type TaskBoardEventPay
 import { projectSnapshotForWire } from './core/wire-projection.ts'
 import type { CardDefaults } from './core/card-defaults.ts'
 import { TaskBoardExtensionRegistry } from './host/extension-registry.ts'
-import type { TaskBoardExtension } from './core/extension.ts'
+import type { TaskBoardExtension, TaskBoardLaunchTrigger } from './core/extension.ts'
 import { isTaskPermission, normalizeTargetId, type ExecutionOutcome, type ExecutionSummary, type ScheduleMode, type TaskRecord, type TaskStatus } from './core/tasks.ts'
 import type { ModelCatalogView } from './core/model-catalog.ts'
 import type { TaskPermission } from './core/handover.ts'
@@ -378,6 +378,11 @@ export class TaskBoardHostService {
       },
       now: this.now,
     })
+    // The board's single launch gate. Every run — manual, rerun, rework, a due
+    // schedule, the run tool — is opened by the ledger, so attaching the gate
+    // there is what makes one point cover all of them, before a session exists
+    // and before an execution record is written.
+    this.ledger.setLaunchGate((task, context) => this.extensions.interceptLaunch(task, context))
     installStreamErrorGuards()
     this.ledger.subscribe(() => {
       this.syncPowerReasons()
@@ -579,10 +584,10 @@ export class TaskBoardHostService {
     await verifyAttachments(store, attachments)
   }
 
-  apply(requestId: string, action: Extract<TaskBoardAction, { kind: 'extension-action' }>, initiator?: string): Promise<TaskBoardSnapshot>
-  apply(requestId: string, action: Exclude<TaskBoardAction, { kind: 'extension-action' }>, initiator?: string): TaskBoardSnapshot
-  apply(requestId: string, action: TaskBoardAction, initiator?: string): TaskBoardSnapshot | Promise<TaskBoardSnapshot>
-  apply(requestId: string, action: TaskBoardAction, initiator?: string): TaskBoardSnapshot | Promise<TaskBoardSnapshot> {
+  apply(requestId: string, action: Extract<TaskBoardAction, { kind: 'extension-action' }>, initiator?: string, trigger?: TaskBoardLaunchTrigger): Promise<TaskBoardSnapshot>
+  apply(requestId: string, action: Exclude<TaskBoardAction, { kind: 'extension-action' }>, initiator?: string, trigger?: TaskBoardLaunchTrigger): TaskBoardSnapshot
+  apply(requestId: string, action: TaskBoardAction, initiator?: string, trigger?: TaskBoardLaunchTrigger): TaskBoardSnapshot | Promise<TaskBoardSnapshot>
+  apply(requestId: string, action: TaskBoardAction, initiator?: string, trigger?: TaskBoardLaunchTrigger): TaskBoardSnapshot | Promise<TaskBoardSnapshot> {
     if (!this.active) throw new Error('task board is disabled')
     // A caller that never met the HTTP envelope parser can name a kind this build
     // does not implement. It is refused here, in the board's own vocabulary: the
@@ -602,7 +607,7 @@ export class TaskBoardHostService {
     // The answer to a write is a read like any other — it crosses the same wire
     // (the HTTP action route and the remote bridge's board.apply) — so it leaves
     // through the same projection as snapshot().
-    return projectSnapshotForWire(this.applyBoardAction(requestId, action, initiator))
+    return projectSnapshotForWire(this.applyBoardAction(requestId, action, initiator, false, trigger))
   }
 
   /**
@@ -610,7 +615,13 @@ export class TaskBoardHostService {
    * calls and the same-origin wire both land here, so the two surfaces can
    * never disagree about a card.
    */
-  private applyBoardAction(requestId: string, action: Exclude<TaskBoardAction, { kind: 'extension-action' }>, initiator?: string, attachmentVerified = false): TaskBoardSnapshot {
+  private applyBoardAction(
+    requestId: string,
+    action: Exclude<TaskBoardAction, { kind: 'extension-action' }>,
+    initiator?: string,
+    attachmentVerified = false,
+    trigger?: TaskBoardLaunchTrigger,
+  ): TaskBoardSnapshot {
     // Attachments reach the ledger only through the VERIFIED action path: the
     // in-process capability face, the agent tools and the legacy import never
     // carry them, and an action that does is refused here rather than
@@ -620,7 +631,7 @@ export class TaskBoardHostService {
     }
     const before = this.statusMap()
     if (action.kind === 'run' || action.kind === 'rerun' || action.kind === 'rework') this.assertSpendCap()
-    const result = this.ledger.applyRequest(requestId, this.withInheritedWorkspace(action, initiator), initiator)
+    const result = this.ledger.applyRequest(requestId, this.withInheritedWorkspace(action, initiator), initiator, trigger)
     if (result.runs !== undefined) this.dispatchRuns(result.runs)
     // A committed write that can move a rule moves the nearest trigger;
     // re-arm from the ledger so a created or edited schedule fires at its own
@@ -737,6 +748,10 @@ export class TaskBoardHostService {
       // A cron-triggered run additionally states its own firing instant and
       // rule zone, so a scheduled job can resolve "today" without guessing.
       const contextParts = {
+        // The launch gate's preamble opens the prompt: a provider that keeps the
+        // run local states its own context once, ahead of everything the board
+        // would have said on this run.
+        ...(opened.promptPreamble === undefined ? {} : { launchPreamble: opened.promptPreamble }),
         ...(descendants.length === 0 ? {} : {
           descendants: descendants.map(descendant => ({
             id: descendant.id,

@@ -505,6 +505,7 @@ describe('the host ledger face', () => {
       armedScheduleCount: () => 0,
       dueSchedules: () => [],
       subscribe: () => () => undefined,
+      setLaunchGate: () => undefined,
     } as unknown as HostTaskLedger
     const { TaskBoardHostService } = await import('../src/host-service.ts')
     const service = new TaskBoardHostService({ invoke: vi.fn() } as never, { ledger, attachments: () => fakeStore().store })
@@ -542,6 +543,7 @@ describe('the host ledger face', () => {
       armedScheduleCount: () => 0,
       dueSchedules: () => [],
       subscribe: () => () => undefined,
+      setLaunchGate: () => undefined,
     } as unknown as HostTaskLedger
     const { TaskBoardHostService } = await import('../src/host-service.ts')
     const service = new TaskBoardHostService({ invoke: vi.fn() } as never, { ledger, attachments: () => fakeStore().store })

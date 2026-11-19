@@ -26,6 +26,10 @@ import {
   type TaskBoardExtensionHost,
   type TaskBoardExtensionPayload,
   type TaskBoardIntegrationFace,
+  type TaskBoardLaunchContext,
+  type TaskBoardLaunchDecision,
+  type TaskBoardLaunchFace,
+  type TaskBoardLaunchHandler,
   type TaskBoardLinkedTask,
   type TaskBoardSessionsFace,
   type TaskBoardStatusChangedEvent,
@@ -99,6 +103,8 @@ interface RegistryEntry {
   readonly subscriptions: Record<keyof TaskBoardEventFace, Set<RegistryEventCallback>>
   /** Tool definitions the provider registered, with their live disposers. */
   tools: Array<{ definition: ToolDefinition; dispose?: () => void }>
+  /** Launch handlers this provider holds, in registration order. */
+  readonly launchHandlers: Set<TaskBoardLaunchHandler>
   published?: TaskBoardExtensionPayload
 }
 
@@ -174,6 +180,43 @@ function extensionText(value: string, what: string): string {
     throw new TaskBoardExtensionError('invalid-text', `a ${what} is limited to ${TASK_BOARD_MESSAGE_MAX_LENGTH} characters`)
   }
   return text
+}
+
+/**
+ * Read one handler answer as a launch decision.
+ *
+ * A handler is provider code reached synchronously from the launch path, so its
+ * return value is judged here instead of trusted: anything the board cannot act
+ * on is reported and treated as "not mine", exactly like a throw. A local
+ * decision with a blank preamble is normalized to no preamble, so a provider
+ * that answers local to take no visible part changes nothing at all.
+ * @param answer - what the handler returned.
+ * @param warn - sink for a refusal the provider can read.
+ * @returns the decision to act on, or undefined.
+ */
+function launchDecision(
+  answer: unknown,
+  warn: (message: string) => void,
+): TaskBoardLaunchDecision | undefined {
+  if (answer === undefined) return undefined
+  if (typeof answer !== 'object' || answer === null) {
+    warn('returned a non-object decision')
+    return undefined
+  }
+  const kind = (answer as { kind?: unknown }).kind
+  if (kind === 'external') return { kind: 'external' }
+  if (kind !== 'local') {
+    warn('returned an unknown decision kind')
+    return undefined
+  }
+  const preamble = (answer as { promptPreamble?: unknown }).promptPreamble
+  if (preamble === undefined) return { kind: 'local' }
+  if (typeof preamble !== 'string') {
+    warn('returned a non-string promptPreamble')
+    return undefined
+  }
+  const trimmed = preamble.trim()
+  return trimmed === '' ? { kind: 'local' } : { kind: 'local', promptPreamble: trimmed }
 }
 
 /**
@@ -272,7 +315,7 @@ export class TaskBoardExtensionRegistry {
       this.logger.error('[dsh-task-board] ' + message)
       throw new TaskBoardExtensionError('api-version-mismatch', message)
     }
-    const entry: RegistryEntry = { extension, active: false, subscriptions: emptySubscriptions(), tools: [] }
+    const entry: RegistryEntry = { extension, active: false, subscriptions: emptySubscriptions(), tools: [], launchHandlers: new Set() }
     this.entries.set(extension.id, entry)
     this.reconcile(entry)
     return () => { this.unregister(extension.id) }
@@ -303,6 +346,42 @@ export class TaskBoardExtensionRegistry {
       throw new TaskBoardExtensionError('unsupported-action', `extension "${request.extensionId}" handles no actions`)
     }
     return await handler.call(entry.extension, request)
+  }
+
+  /**
+   * The board's single launch gate: ask every running provider whether this run
+   * is theirs.
+   *
+   * Consulted by the ledger at the one point every trigger passes — before a
+   * session exists and before an execution record is written — so the order
+   * here is the only ordering a provider can observe: registration order, first
+   * decision wins. A handler that throws is isolated and treated as "not mine",
+   * exactly as if it had answered undefined, because a provider's bug must cost
+   * its own interception and never the launch. Without a registered handler
+   * this answers nothing at all and the launch path is untouched.
+   * @param task - the card about to run.
+   * @param context - which entry asked for this run.
+   * @returns the first decision a running provider made, or undefined.
+   */
+  interceptLaunch(task: TaskRecord, context: TaskBoardLaunchContext): TaskBoardLaunchDecision | undefined {
+    if (this.disposed) return undefined
+    for (const entry of this.entries.values()) {
+      if (!entry.active) continue
+      for (const handler of [...entry.launchHandlers]) {
+        let answer: unknown
+        try {
+          answer = handler(task, context)
+        } catch (error) {
+          this.logger.error(`[dsh-task-board] extension "${entry.extension.id}" launch handler failed; the launch proceeds unhandled`, error)
+          continue
+        }
+        const decision = launchDecision(answer, (message) => {
+          this.logger.warn(`[dsh-task-board] extension "${entry.extension.id}" launch handler ${message}; the launch proceeds unhandled`)
+        })
+        if (decision !== undefined) return decision
+      }
+    }
+    return undefined
   }
 
   /** Published summaries of currently running providers, keyed by extension id. */
@@ -389,8 +468,10 @@ export class TaskBoardExtensionRegistry {
     }
     this.disposeTools(entry)
     // A stopped provider re-registers its tools from start(); keeping the old
-    // definitions would double-register them on the next enable.
+    // definitions would double-register them on the next enable. Launch
+    // handlers go with them: a switched-off provider is never consulted.
     entry.tools.length = 0
+    entry.launchHandlers.clear()
   }
 
   /** (Re)register every buffered tool against the current tool registry. */
@@ -463,9 +544,16 @@ export class TaskBoardExtensionRegistry {
       onExecutionSettled: (callback) => subscribe('onExecutionSettled', callback as RegistryEventCallback),
       onTaskDeleted: (callback) => subscribe('onTaskDeleted', callback as RegistryEventCallback),
     }
+    const launch: TaskBoardLaunchFace = {
+      intercept: (handler) => {
+        assertActive('intercept a launch')
+        return this.addLaunchHandler(entry, handler)
+      },
+    }
     return {
       tasks,
       sessions,
+      launch,
       integration,
       events,
       publish: (summary) => { this.publish(entry, summary) },
@@ -634,6 +722,19 @@ export class TaskBoardExtensionRegistry {
       throw new TaskBoardExtensionError('invalid-payload', 'published summary must be a pure JSON object within the size limit')
     }
     entry.published = summary
+  }
+
+  /**
+   * Hold one launch handler for a running provider. The handler is dropped when
+   * the provider stops or is unregistered, so the disposer only has to cover the
+   * provider's own early withdrawal.
+   */
+  private addLaunchHandler(entry: RegistryEntry, handler: TaskBoardLaunchHandler): () => void {
+    if (typeof handler !== 'function') {
+      throw new TaskBoardExtensionError('invalid-handler', 'a launch handler must be a function')
+    }
+    entry.launchHandlers.add(handler)
+    return () => { entry.launchHandlers.delete(handler) }
   }
 
   private registerTool(entry: RegistryEntry, definition: ToolDefinition): () => void {

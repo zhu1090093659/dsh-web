@@ -267,6 +267,79 @@ export interface TaskBoardSessionsFace {
   followUp(taskId: string, text: string): Promise<void>
 }
 
+/**
+ * Why the board is opening a run. The four entries reach the launch path from
+ * different places and a provider may want to answer only some of them: the
+ * board's own run action ({@link 'manual'}), a settled card sent back to run
+ * again ({@link 'rerun'}), an armed schedule ({@link 'schedule'}), and the
+ * `task_board_run` model-visible tool ({@link 'tool'}).
+ *
+ * A rework arrives as `manual`: it is the same human entry point, opening a
+ * run in the card's own conversation rather than a fresh one.
+ */
+export type TaskBoardLaunchTrigger = 'manual' | 'rerun' | 'schedule' | 'tool'
+
+/** Context of one launch the board is about to open. */
+export interface TaskBoardLaunchContext {
+  /** Which entry asked for this run. */
+  trigger: TaskBoardLaunchTrigger
+}
+
+/**
+ * What a launch handler decided for one run.
+ *
+ * `local` keeps the board's own execution and only adds context, so a provider
+ * that runs a card through an ordinary session (a session told to drive
+ * something else, for instance) reads exactly the launch the board would have
+ * made. `external` hands the whole run to the provider: the board opens no
+ * session and writes no execution record.
+ */
+export type TaskBoardLaunchDecision =
+  /**
+   * Run the card locally through the board's own session, with `promptPreamble`
+   * injected ahead of the card's prompt on the same path the board's tag
+   * prompts take. A blank preamble injects nothing.
+   */
+  | { kind: 'local'; promptPreamble?: string }
+  /**
+   * The provider takes this run over. The board creates no session and records
+   * no execution; it only moves the card into the running column, which is
+   * already the board's own way of saying work is under way outside a Host-run
+   * session. The provider closes the card through the existing
+   * `record-external-outcome` action once its own run settles.
+   */
+  | { kind: 'external' }
+
+/**
+ * Decide whether one launch belongs to the provider, and how it runs.
+ * @param task - the card about to run.
+ * @param context - which entry asked for this run.
+ * @returns a decision, or undefined to leave the run to the board unchanged.
+ */
+export type TaskBoardLaunchHandler = (
+  task: TaskRecord,
+  context: TaskBoardLaunchContext,
+) => TaskBoardLaunchDecision | undefined
+
+/**
+ * Launch interception: the seam through which a provider takes a run over.
+ *
+ * The board consults the registered handlers at its single launch gate — before
+ * any session exists and before any execution record is written — for every
+ * trigger. Handlers run in registration order and the first one that answers
+ * anything other than undefined decides that launch. A handler that throws is
+ * isolated and treated as undefined, so a broken provider costs one run's
+ * interception and never the launch itself.
+ */
+export interface TaskBoardLaunchFace {
+  /**
+   * Register one launch handler. The returned disposer unregisters it, and the
+   * handler is released with the extension's own stop, so a switched-off
+   * provider is never consulted.
+   */
+  intercept(handler: TaskBoardLaunchHandler): () => void
+}
+
 /** Storage face for one extension's own payload on a task. */
 export interface TaskBoardIntegrationFace {
   /** Read this extension's payload, or undefined when the task carries none. */
@@ -324,6 +397,14 @@ export interface TaskBoardExtensionHost {
    * probes the face and keeps working against a board that serves none.
    */
   sessions?: TaskBoardSessionsFace
+  /**
+   * Launch interception: the provider decides, per run, whether the board's own
+   * session launches it or whether this provider takes the run over. Optional
+   * on the same terms as {@link TaskBoardExtensionHost.sessions} — the API
+   * version stays 1, so a provider probes the face before using it, and a board
+   * that serves no launch gate keeps launching every card itself.
+   */
+  launch?: TaskBoardLaunchFace
   integration: TaskBoardIntegrationFace
   events: TaskBoardEventFace
   /**
@@ -444,8 +525,13 @@ export interface TaskBoardHostFace {
    * retries one envelope does not apply it twice. Refusals are the ledger's:
    * they throw with the Host's own text, which is why this face adds no code
    * table of its own.
+   *
+   * `trigger` says which entry asked for a run, when the caller knows better
+   * than the board's default: the `task_board_run` tool passes `tool` so a
+   * launch handler can tell an agent's run from a person's. Only a `run` action
+   * reads it — `rerun`, `rework` and the human run path are their own triggers.
    */
-  apply(requestId: string, action: TaskBoardAction, initiator?: string): TaskBoardSnapshot | Promise<TaskBoardSnapshot>
+  apply(requestId: string, action: TaskBoardAction, initiator?: string, trigger?: TaskBoardLaunchTrigger): TaskBoardSnapshot | Promise<TaskBoardSnapshot>
   /**
    * Follow the board's change notifications. The listener receives no payload —
    * a consumer that needs the state reads {@link snapshot} — and the returned

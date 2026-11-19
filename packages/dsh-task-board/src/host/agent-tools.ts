@@ -32,6 +32,7 @@ import {
 import type { SetSchedulePatch } from '../core/use-cases/task-schedule.ts'
 import type { TaskUpdatePatch } from '../core/use-cases/task-update.ts'
 import type { TaskBoardAction, TaskBoardSnapshot } from '../protocol.ts'
+import type { TaskBoardLaunchTrigger } from '../core/extension.ts'
 
 /**
  * The narrow Host face the tools need. TaskBoardHostService satisfies it
@@ -40,8 +41,12 @@ import type { TaskBoardAction, TaskBoardSnapshot } from '../protocol.ts'
 export interface TaskBoardToolHost {
   /** Current board snapshot (tasks + scheduler + power + deployment constants). */
   snapshot(): TaskBoardSnapshot
-  /** Submit one confirmed Host action; returns the resulting snapshot. */
-  apply(requestId: string, action: TaskBoardAction, initiator?: string): TaskBoardSnapshot | Promise<TaskBoardSnapshot>
+  /**
+   * Submit one confirmed Host action; returns the resulting snapshot. `trigger`
+   * names the entry that asked for a run when the tool knows it is the tool, so
+   * a provider's launch handler can tell an agent's run from a person's.
+   */
+  apply(requestId: string, action: TaskBoardAction, initiator?: string, trigger?: TaskBoardLaunchTrigger): TaskBoardSnapshot | Promise<TaskBoardSnapshot>
 }
 
 /** Registered tool names, in registration order. */
@@ -323,6 +328,7 @@ function buildRunTool(host: TaskBoardToolHost): ToolDefinition {
           crypto.randomUUID(),
           { kind: args.rerun === true ? 'rerun' : 'run', taskId: args.taskId },
           callingSessionId(exec),
+          'tool',
         )
         const beforeById = new Map(before.tasks.map(task => [task.id, task]))
         const started = snapshot.tasks.flatMap(task => {

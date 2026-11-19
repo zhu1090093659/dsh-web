@@ -31,6 +31,7 @@ import { applyDeleteTag, applyRenameTag } from './core/use-cases/task-tag.ts'
 import { applyUpdateTask, canEditTaskContent, hasContentPatch } from './core/use-cases/task-update.ts'
 import { TASK_BOARD_MIGRATABLE_SCHEMA_VERSIONS, TASK_BOARD_SCHEMA_VERSION, TASK_BOARD_ZONE_STAMP_SCHEMA_VERSION, type TaskBoardAction, type TaskBoardSchedulerSnapshot } from './protocol.ts'
 import { DEFAULT_SESSION_PERMISSION, requiresPermissionConfirmation, type TaskPermission } from './core/handover.ts'
+import type { TaskBoardLaunchContext, TaskBoardLaunchDecision, TaskBoardLaunchHandler, TaskBoardLaunchTrigger } from './core/extension.ts'
 
 interface PersistedScheduler extends TaskBoardSchedulerSnapshot {
   importedSources?: string[]
@@ -74,6 +75,26 @@ function bindingRefusalMessage(
 export interface OpenedRun {
   task: TaskRecord
   execution: ExecutionRecord
+  /**
+   * The prompt preamble the launch gate asked for, injected ahead of the card's
+   * own prompt text. Present only when a provider answered `local` with one.
+   */
+  promptPreamble?: string
+}
+
+/**
+ * What one run-opening call produced.
+ *
+ * A call that opened a run writes its own commit, and so does an intercepted
+ * launch that only parked the card in the running column; a call that found
+ * nothing to do leaves the document for its caller, which is why the caller has
+ * to know the difference instead of guessing from an empty run list.
+ */
+interface StartRunOutcome {
+  /** Executions the call opened; empty when no session will be created. */
+  runs: OpenedRun[]
+  /** Whether this call already committed its own write. */
+  committed: boolean
 }
 
 /**
@@ -524,7 +545,18 @@ export class HostTaskLedger {
   /** Today's measured spend in tokens, or undefined when nothing can be measured. */
   private readonly spendUsed: (now: number) => number | undefined
 
-  constructor(dir: string = join(dshHome(), 'task-board'), private readonly now: () => number = Date.now, options: { sessionDefaultPermission?: TaskPermission | (() => TaskPermission); maxSubtaskDepth?: number; cardDefaults?: () => CardDefaults; spendBudgetTokens?: () => number; spendUsedToday?: (now: number) => number | undefined; processProbe?: LockProcessProbe; warn?: (message: string) => void } = {}) {
+  /**
+   * The board's launch gate, or undefined when no consumer is attached.
+   *
+   * The ledger is where every run is opened — the run actions, a due schedule,
+   * the run tool, a rework all arrive here — so this is the one point a run can
+   * be handed to someone else before an execution record exists. Installed by
+   * the Host service after construction, because the gate belongs to the
+   * extension registry that is built around this ledger.
+   */
+  private launchGate: TaskBoardLaunchHandler | undefined
+
+  constructor(dir: string = join(dshHome(), 'task-board'), private readonly now: () => number = Date.now, options: { sessionDefaultPermission?: TaskPermission | (() => TaskPermission); maxSubtaskDepth?: number; cardDefaults?: () => CardDefaults; spendBudgetTokens?: () => number; spendUsedToday?: (now: number) => number | undefined; processProbe?: LockProcessProbe; warn?: (message: string) => void; launchGate?: TaskBoardLaunchHandler } = {}) {
     // Resolved before the load/repair passes below: they can evaluate the gate.
     const baseline = options.sessionDefaultPermission
     this.sessionDefault = typeof baseline === 'function' ? baseline : () => baseline ?? DEFAULT_SESSION_PERMISSION
@@ -532,6 +564,7 @@ export class HostTaskLedger {
     this.cardDefaults = options.cardDefaults ?? (() => ({}))
     this.spendBudget = options.spendBudgetTokens ?? (() => DEFAULT_SPEND_BUDGET_TOKENS)
     this.spendUsed = options.spendUsedToday ?? (now => usedTokensToday(now))
+    this.launchGate = options.launchGate
     this.processProbe = options.processProbe ?? defaultLockProcessProbe
     this.warn = options.warn ?? ((message) => { console.warn(message) })
     mkdirSync(dir, { recursive: true })
@@ -576,6 +609,19 @@ export class HostTaskLedger {
     if (next === this.depthLimit) return
     this.depthLimit = next
     this.notify()
+  }
+
+  /**
+   * Install the launch gate, or remove it with undefined.
+   *
+   * The Host service owns it: the board's extension registry is built around
+   * this ledger, so the gate is attached once that registry exists. A ledger
+   * with no gate — every ledger a test drives on its own — opens every run
+   * itself, exactly as it did before the seam existed.
+   * @param gate - the gate to consult before a run opens, or undefined.
+   */
+  setLaunchGate(gate: TaskBoardLaunchHandler | undefined): void {
+    this.launchGate = gate
   }
 
   /** Remove leftover *.tmp-* files from previous crashes or interrupted writes. */
@@ -763,6 +809,7 @@ export class HostTaskLedger {
     requestId: string,
     action: TaskBoardAction,
     initiator?: string,
+    trigger?: TaskBoardLaunchTrigger,
   ): { state: LedgerState; runs?: OpenedRun[] } {
     const fingerprint = createHash('sha256').update(JSON.stringify(action)).digest('hex')
     const cached = this.requestCache.get(requestId)
@@ -777,12 +824,32 @@ export class HostTaskLedger {
     while (this.requestCache.size > MAX_REQUEST_CACHE) this.requestCache.delete(this.requestCache.keys().next().value as string)
     this.syncRecentRequests()
     try {
-      return this.apply(action, initiator)
+      return this.apply(action, initiator, trigger)
     } catch (error) {
       this.requestCache.delete(requestId)
       this.syncRecentRequests()
       throw error
     }
+  }
+
+  /**
+   * Open the run one due occurrence produced, with the occurrence's own progress
+   * written in the same commit.
+   *
+   * The occurrence is spent either way: a launch gate that hands the run to a
+   * provider still consumed this trigger, so the rule's budget advances here
+   * exactly as it does for a run the Host opens itself. A call that opened
+   * nothing commits the progress it recorded on its own, because the fire path
+   * has no other commit behind it.
+   * @param task - the card whose rule fired.
+   * @param triggeredAt - the instant the occurrence came due.
+   * @param progress - the rule's advance, recorded atomically with the launch.
+   * @returns the executions the occurrence opened.
+   */
+  private scheduledRun(task: TaskRecord, triggeredAt: number, progress: ScheduleProgress): OpenedRun[] {
+    const started = this.startRun(task, triggeredAt, undefined, false, progress, undefined, 'schedule')
+    if (!started.committed) this.commit()
+    return started.runs
   }
 
   /**
@@ -843,7 +910,7 @@ export class HostTaskLedger {
     if (schedule.mode === 'once') {
       // The single planned instant is due: open its one run and stop the rule
       // in the same commit, so the budget can never produce a second one.
-      return this.startRun(task, triggeredAt, undefined, false, {
+      return this.scheduledRun(task, triggeredAt, {
         consumed: 1,
         lastTriggeredAt: triggeredAt,
         endedReason: 'fired',
@@ -858,7 +925,7 @@ export class HostTaskLedger {
     const consumed = schedule.runCount + 1
     const budget = scheduleRunBudget(schedule)
     const spent = budget !== undefined && consumed >= budget
-    return this.startRun(task, triggeredAt, undefined, false, {
+    return this.scheduledRun(task, triggeredAt, {
       consumed: 1,
       nextRunAt: spent ? undefined : next,
       lastTriggeredAt: triggeredAt,
@@ -1128,9 +1195,11 @@ export class HostTaskLedger {
     this.commit()
   }
 
-  private apply(action: TaskBoardAction, initiator?: string): { state: LedgerState; runs?: OpenedRun[] } {
+  private apply(action: TaskBoardAction, initiator?: string, trigger?: TaskBoardLaunchTrigger): { state: LedgerState; runs?: OpenedRun[] } {
     const now = this.now()
     let runs: OpenedRun[] | undefined
+    /** Whether the run path already committed this action's write. */
+    let startCommitted = false
     switch (action.kind) {
       case 'import': {
         const sources = new Set(this.document.scheduler.importedSources ?? [])
@@ -1339,7 +1408,19 @@ export class HostTaskLedger {
         // unconfirmed as the parent would be without its own stamp.
         const refusal = this.bindingRefusal(task)
         if (refusal !== undefined) throw new Error(bindingRefusalMessage(refusal, this.sessionDefaultPermission, 'run'))
-        runs = this.startRun(task, now, initiator, action.kind !== 'run', undefined, rework)
+        const started = this.startRun(
+          task,
+          now,
+          initiator,
+          action.kind !== 'run',
+          undefined,
+          rework,
+          // A rework is the human entry point again, so only an explicit caller
+          // hint (the run tool) and the rerun action name their own trigger.
+          action.kind === 'run' ? trigger ?? 'manual' : action.kind === 'rerun' ? 'rerun' : 'manual',
+        )
+        runs = started.runs
+        startCommitted = started.committed
         break
       }
       default: {
@@ -1352,9 +1433,10 @@ export class HostTaskLedger {
         throw new Error(`unknown task board action kind: ${String((action as { kind?: unknown }).kind)}`)
       }
     }
-    // startRun committed the opened execution itself; committing again here
-    // would bump the revision twice for one action.
-    if (runs === undefined || runs.length === 0) this.commit()
+    // The run path commits a write of its own — the opened execution, or the
+    // running column an intercepted launch parked the card in; committing again
+    // here would bump the revision twice for one action.
+    if (runs === undefined || !startCommitted) this.commit()
     return { state: this.state(), ...(runs === undefined ? {} : { runs }) }
   }
 
@@ -1441,6 +1523,15 @@ export class HostTaskLedger {
    * subagents inside this session), and the group id is what later lets the
    * settlement fold a HISTORICAL multi-member group it opened before this
    * behavior changed.
+   *
+   * This is also the launch gate: every entry that opens a run — the run and
+   * rerun actions, a due schedule, the run tool, a rework — arrives here, which
+   * makes it the only point where a provider can take a run over before an
+   * execution record exists and before any session can be created. A gate that
+   * answers `external` writes the running column instead of an execution and
+   * nothing else: no session, no run record, no settlement. A gate that answers
+   * `local` runs the card exactly as it would have, carrying the preamble the
+   * provider asked for to the prompt.
    * @param root - the task the user ran.
    * @param now - clock instant (ms epoch).
    * @param initiator - the DSH session that asked for the run (audit only).
@@ -1450,12 +1541,39 @@ export class HostTaskLedger {
    *   atomic commit that opened the execution.
    * @param rework - the reviewer's instructions, when this run redoes previous
    *   work; recorded on the execution it opens.
+   * @param trigger - which entry asked for this run, handed to the gate.
    */
-  private startRun(root: TaskRecord, now: number, initiator?: string, rerun = false, progress?: ScheduleProgress, rework?: ExecutionRework): OpenedRun[] {
+  private startRun(
+    root: TaskRecord,
+    now: number,
+    initiator?: string,
+    rerun = false,
+    progress?: ScheduleProgress,
+    rework?: ExecutionRework,
+    trigger: TaskBoardLaunchTrigger = 'manual',
+  ): StartRunOutcome {
     const before = this.document.tasks
     const [participant] = cascadeTargets(before, root.id)
-    if (participant === undefined || participant.archivedAt !== undefined) return []
-    if (hasOpenExecution(participant)) return []
+    if (participant === undefined || participant.archivedAt !== undefined) return { runs: [], committed: false }
+    if (hasOpenExecution(participant)) return { runs: [], committed: false }
+    // The gate is consulted on the card that would actually run, before the
+    // document is touched: a decision to hand the run over is not a mutation
+    // the ledger has to roll back.
+    const decision: TaskBoardLaunchDecision | undefined = this.launchGate?.(participant, { trigger })
+    if (decision?.kind === 'external') {
+      // The provider runs this card outside the board. The Host writes no
+      // execution record, so nothing here can be inspected, settled or
+      // recovered as a run — only the column moves, which is already how the
+      // board says work is under way without a tracked session. The provider
+      // closes the card through `record-external-outcome` when its own run ends.
+      let handed: readonly TaskRecord[] = before.map(task => task.id === participant.id
+        ? withStatus(participant, 'running', now)
+        : task)
+      if (progress !== undefined) handed = applyScheduleProgress(handed, root.id, progress, now)
+      this.document.tasks = [...handed]
+      this.commit()
+      return { runs: [], committed: true }
+    }
     const groupId = crypto.randomUUID()
     const base = rerun ? withStatus(participant, 'todo', now) : participant
     const opened = startExecution(base, now, crypto.randomUUID(), initiator, groupId, rework)
@@ -1463,7 +1581,15 @@ export class HostTaskLedger {
     if (progress !== undefined) tasks = applyScheduleProgress(tasks, root.id, progress, now)
     this.document.tasks = [...tasks]
     this.commit()
-    return [{ task: resolveExecutionTargets(opened.task, before, this.maxSubtaskDepth), execution: opened.execution }]
+    const preamble = decision?.kind === 'local' ? decision.promptPreamble : undefined
+    return {
+      runs: [{
+        task: resolveExecutionTargets(opened.task, before, this.maxSubtaskDepth),
+        execution: opened.execution,
+        ...(preamble === undefined ? {} : { promptPreamble: preamble }),
+      }],
+      committed: true,
+    }
   }
 
   /**

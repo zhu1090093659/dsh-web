@@ -16,6 +16,7 @@
  */
 import type { Context, Volatile } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
+import { resolveDshSshService, resolveTaskBoardHostFace } from './core/contract.ts'
 import { SSH_AGENT_KINDS, type SshAgentKind, type SshExecutionMode } from './core/target.ts'
 import { readBoardActionSeat } from './host/board.ts'
 import { SSH_EXTENSION_ID, createSshExtension } from './host/extension.ts'
@@ -127,8 +128,8 @@ export function apply(ctx: Context, config?: Config): void {
 
   ctx.inject(['taskBoard', 'dshSsh'], (scope: Context) => {
     scope.effect(() => {
-      const board = scope.taskBoard
-      const ssh = scope.dshSsh
+      const board = resolveTaskBoardHostFace(scope)
+      const ssh = resolveDshSshService(scope)
       if (board === undefined || ssh === undefined) return () => {}
       // The placement strategies are assembled behind one entry
       // (`src/host/workspace/index.ts`), which is the only thing this file knows
@@ -140,7 +141,7 @@ export function apply(ctx: Context, config?: Config): void {
         settings,
         settingsWriter,
         timers: processTimers,
-        seat: () => readBoardActionSeat(scope.taskBoard),
+        seat: () => readBoardActionSeat(board),
         workspaces,
       }))
       return () => { dispose() }

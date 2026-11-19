@@ -15,6 +15,17 @@
  * `download` forwards. A deployment that serves neither keeps working, because
  * every new member is optional and probed before use.
  *
+ * This module augments no cordis `Context`. Each service already owns its own
+ * `Context` member in the package that publishes it, and a provider that
+ * restated one would collide the moment a type program held both restatements
+ * and the published contract (TypeScript refuses two declarations of one
+ * property that are not identical, and a restatement is never identical: it is
+ * deliberately narrower). Every face is therefore read structurally through
+ * {@link resolveTaskBoardHostFace}, {@link resolveTaskBoardClientFace} and
+ * {@link resolveDshSshService}, which is how the board's own team provider does
+ * it, and which also means an older or newer deployment degrades instead of
+ * failing to compile.
+ *
  * @module dsh-task-board-ssh/core/contract
  */
 import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
@@ -422,7 +433,7 @@ export interface DshSshService {
   download(alias: string, remotePath: string, localPath: string): Promise<DshSshDownloadResult>
 }
 
-/** The narrow context seat both resolvers need. */
+/** The narrow context seat every resolver needs: one service read by name. */
 export interface ServiceLookupSeat {
   /** Read one service by name. */
   get(name: string): unknown
@@ -439,6 +450,26 @@ export function resolveTaskBoardClientFace(ctx: ServiceLookupSeat): TaskBoardCli
   try {
     const face = ctx.get(TASK_BOARD_SERVICE_NAME) as TaskBoardClientFace | undefined
     return face !== undefined && typeof (face as { dispatch?: unknown }).dispatch === 'function' ? face : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Resolve the board's host face by service name.
+ *
+ * Registration-side consumers call this instead of reading the property a
+ * cordis augmentation would declare: the check is the member they actually
+ * need, so a board revision without it answers undefined and the caller
+ * degrades visibly rather than throwing.
+ * @param ctx - host context.
+ * @returns the host face, or undefined when the board is not loaded.
+ */
+export function resolveTaskBoardHostFace(ctx: ServiceLookupSeat): TaskBoardHostFace | undefined {
+  try {
+    const face = ctx.get(TASK_BOARD_SERVICE_NAME) as TaskBoardHostFace | undefined
+    if (face === undefined) return undefined
+    return typeof (face as { registerExtension?: unknown }).registerExtension === 'function' ? face : undefined
   } catch {
     return undefined
   }
@@ -462,11 +493,6 @@ export function resolveDshSshService(ctx: ServiceLookupSeat): DshSshService | un
   }
 }
 
-declare module '@deepseek-ai/cordis' {
-  interface Context {
-    /** The board's extension service (host face). */
-    taskBoard: TaskBoardHostFace
-    /** `dsh-ssh`'s host forwarder. */
-    dshSsh: DshSshService
-  }
-}
+// No `declare module '@deepseek-ai/cordis'` here: see the module comment. The
+// board owns `Context.taskBoard` and dsh-ssh owns `Context.dshSsh`, and a
+// restatement of either one would be a second, non-identical declaration.

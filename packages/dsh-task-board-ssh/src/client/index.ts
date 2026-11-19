@@ -42,7 +42,7 @@ export const SETTINGS_NAMESPACE = 'task-board-ssh'
 const AGGREGATE_ENTRY_ID = 'web-ui-task-board-ssh'
 
 /** Profile entry ids this package's patch rows carry, most specific first. */
-const ENTRY_IDS: readonly string[] = [AGGREGATE_ENTRY_ID, 'ui-task-board-ssh', SETTINGS_NAMESPACE]
+const ENTRY_IDS: readonly string[] = [AGGREGATE_ENTRY_ID, 'ui-task-board-ssh', 'dsh-task-board-ssh']
 
 /**
  * The family settings binder published by dsh-web-settings; absent when that

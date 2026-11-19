@@ -60,6 +60,8 @@ export interface SshSummaryLogWindow {
 
 /** Defaults the provider prefills a new target from. */
 export interface SshSummaryDefaults {
+  /** Host alias a new target opens with. */
+  host?: string
   /** Execution mode. */
   mode?: SshExecutionMode
   /** Agent CLI. */
@@ -118,6 +120,7 @@ function decodeHosts(value: unknown): SshSummaryHost[] | undefined {
 function decodeDefaults(value: unknown): SshSummaryDefaults | undefined {
   if (!isPlainObject(value)) return undefined
   const defaults: SshSummaryDefaults = {}
+  if (typeof value.host === 'string' && value.host !== '') defaults.host = value.host
   if (value.mode === 'direct' || value.mode === 'proxy') defaults.mode = value.mode
   if (value.agent === 'dsh' || value.agent === 'claude' || value.agent === 'codex' || value.agent === 'custom') defaults.agent = value.agent
   if (value.workspace === 'in-place' || value.workspace === 'git') defaults.workspace = value.workspace

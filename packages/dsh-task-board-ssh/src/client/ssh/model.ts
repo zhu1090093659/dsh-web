@@ -235,10 +235,10 @@ export function validateDraft(
  * @param defaults - the published defaults, when the provider publishes any.
  * @returns the draft the form opens with.
  */
-export function draftOf(target: SshTarget | undefined, defaults?: { mode?: SshExecutionMode, agent?: SshAgentKind, workspace?: SshWorkspaceKind }): SshTargetDraft {
+export function draftOf(target: SshTarget | undefined, defaults?: { host?: string, mode?: SshExecutionMode, agent?: SshAgentKind, workspace?: SshWorkspaceKind }): SshTargetDraft {
   const draft: SshTargetDraft = {
     mode: defaults?.mode ?? 'direct',
-    host: '',
+    host: defaults?.host ?? '',
     agent: defaults?.agent ?? 'dsh',
     agentCommand: '',
     agentResumeCommand: '',

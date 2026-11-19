@@ -13,11 +13,12 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { TypertGateway } from '@deepseek-ai/dsh-api-gateway'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { HostTaskLedger } from '../src/host-ledger.ts'
 import { TaskBoardHostService } from '../src/host-service.ts'
 import { buildTaskBoardTools } from '../src/host/agent-tools.ts'
 import { PowerInhibitor } from '../src/power-inhibitor.ts'
+import type { TaskBoardExtensionLogger } from '../src/host/extension-registry.ts'
 import { startExecution, type TaskPermission, type TaskRecord, type TaskTag } from '../src/core/tasks.ts'
 import {
   TASK_BOARD_API_VERSION,
@@ -96,7 +97,7 @@ async function flushLaunchChain(): Promise<void> {
 
 function makeBoard(
   gateway: TypertGateway,
-  options: { sessionDefaultPermission?: TaskPermission } = {},
+  options: { sessionDefaultPermission?: TaskPermission; extensionLogger?: TaskBoardExtensionLogger } = {},
 ): TaskBoardHostService {
   const ledger = new HostTaskLedger(tempDir(), () => NOW, options.sessionDefaultPermission === undefined
     ? {}
@@ -106,7 +107,26 @@ function makeBoard(
     power: new PowerInhibitor({ platform: 'linux' }),
     now: () => NOW,
     workspaceRegistry: fixtureWorkspaces(),
+    ...(options.extensionLogger === undefined ? {} : { extensionLogger: options.extensionLogger }),
   })
+}
+
+/**
+ * The board's own logging seat. Injecting it instead of watching the process
+ * console is how a test reads what the registry reported, in the registry's own
+ * words.
+ */
+function recordingLogger(): { logger: TaskBoardExtensionLogger; warnings: string[]; errors: string[] } {
+  const warnings: string[] = []
+  const errors: string[] = []
+  return {
+    warnings,
+    errors,
+    logger: {
+      warn: (message: string) => { warnings.push(message) },
+      error: (message: string) => { errors.push(message) },
+    },
+  }
 }
 
 /** Admit one provider and capture the capability face it receives. */
@@ -187,9 +207,12 @@ function recordOf(host: TaskBoardHostService, taskId: string): Record<string, un
 }
 
 /** A board with one provider whose handler records every launch it is asked about. */
-function boardWithHandler(decide: (task: TaskRecord, context: TaskBoardLaunchContext) => TaskBoardLaunchDecision | undefined = () => undefined) {
+function boardWithHandler(
+  decide: (task: TaskRecord, context: TaskBoardLaunchContext) => TaskBoardLaunchDecision | undefined = () => undefined,
+  boardOptions: { extensionLogger?: TaskBoardExtensionLogger } = {},
+) {
   const { gateway, prompts, creates } = scriptedGateway()
-  const host = makeBoard(gateway)
+  const host = makeBoard(gateway, boardOptions)
   const { face, release } = admit(host, { id: 'worker', apiVersion: TASK_BOARD_API_VERSION })
   const recorded = recordingHandler(decide)
   face().launch?.intercept(recorded.handler)
@@ -335,7 +358,7 @@ describe('the trigger a launch handler receives', () => {
     host.dispose()
   })
 
-  it('a due schedule reports a scheduled launch', async () => {
+  it('operator sees a due schedule reach the handler as a scheduled launch', async () => {
     // Given a card armed with a one-shot plan
     const { host, recorded } = boardWithHandler()
     host.apply('create-scheduled', {
@@ -359,7 +382,7 @@ describe('the trigger a launch handler receives', () => {
     host.dispose()
   })
 
-  it('task_board_run reports a tool launch', async () => {
+  it('operator sees the run tool reach the handler as a tool launch', async () => {
     // Given a board whose provider records the trigger of every launch
     const { host, recorded } = boardWithHandler()
     seedCard(host)
@@ -381,53 +404,47 @@ describe('the trigger a launch handler receives', () => {
 describe('a provider whose handler fails', () => {
   it('operator sees a throwing handler treated as no interception, with the failure recorded', async () => {
     // Given a provider whose handler throws
-    const logged: unknown[][] = []
-    const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => { logged.push(args) })
-    try {
-      const { host, prompts, creates } = boardWithHandler(() => {
-        throw new Error('the provider is not ready')
-      })
-      seedCard(host)
+    const log = recordingLogger()
+    const { host, prompts, creates } = boardWithHandler(() => {
+      throw new Error('the provider is not ready')
+    }, { extensionLogger: log.logger })
+    seedCard(host)
 
-      // When the operator runs the card
-      host.apply('run-card', { kind: 'run', taskId: 'card' })
-      await flushLaunchChain()
+    // When the operator runs the card
+    host.apply('run-card', { kind: 'run', taskId: 'card' })
+    await flushLaunchChain()
 
-      // Then the launch proceeded exactly as an unintercepted one, and the
-      // provider's failure was recorded instead of swallowed
-      expect(creates).toHaveLength(1)
-      expect(prompts).toEqual([{ sessionId: 'session-1', text: UNTOUCHED_PROMPT, mode: 'queue' }])
-      expect(logged.some(args => String(args[0]).includes('launch handler failed'))).toBe(true)
-      host.dispose()
-    } finally {
-      spy.mockRestore()
-    }
+    // Then the launch proceeded exactly as an unintercepted one, and the
+    // provider's failure was recorded instead of swallowed
+    expect(creates).toHaveLength(1)
+    expect(prompts).toEqual([{ sessionId: 'session-1', text: UNTOUCHED_PROMPT, mode: 'queue' }])
+    expect(log.errors).toEqual([
+      '[dsh-task-board] extension "worker" launch handler failed; the launch proceeds unhandled',
+    ])
+    host.dispose()
   })
 
   it('operator sees a throwing handler leave the next provider free to decide the launch', async () => {
     // Given a provider whose handler throws, registered ahead of one that keeps
     // the run local with its own preamble
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    try {
-      const { gateway } = scriptedGateway()
-      const host = makeBoard(gateway)
-      const { face } = admit(host, { id: 'broken', apiVersion: TASK_BOARD_API_VERSION })
-      face().launch?.intercept(() => { throw new Error('the provider is not ready') })
-      const keeper = recordingHandler(() => ({ kind: 'local', promptPreamble: 'Handled by the next provider.' }))
-      face().launch?.intercept(keeper.handler)
-      seedCard(host)
+    const log = recordingLogger()
+    const { gateway } = scriptedGateway()
+    const host = makeBoard(gateway, { extensionLogger: log.logger })
+    const { face } = admit(host, { id: 'broken', apiVersion: TASK_BOARD_API_VERSION })
+    face().launch?.intercept(() => { throw new Error('the provider is not ready') })
+    const keeper = recordingHandler(() => ({ kind: 'local', promptPreamble: 'Handled by the next provider.' }))
+    face().launch?.intercept(keeper.handler)
+    seedCard(host)
 
-      // When the operator runs the card
-      host.apply('run-card', { kind: 'run', taskId: 'card' })
-      await flushLaunchChain()
+    // When the operator runs the card
+    host.apply('run-card', { kind: 'run', taskId: 'card' })
+    await flushLaunchChain()
 
-      // Then the broken handler cost only its own interception
-      expect(keeper.seen).toEqual([{ taskId: 'card', trigger: 'manual' }])
-      expect(host.ledger.getTask('card')?.executions).toHaveLength(1)
-      host.dispose()
-    } finally {
-      spy.mockRestore()
-    }
+    // Then the broken handler cost only its own interception
+    expect(keeper.seen).toEqual([{ taskId: 'card', trigger: 'manual' }])
+    expect(host.ledger.getTask('card')?.executions).toHaveLength(1)
+    expect(log.errors).toHaveLength(1)
+    host.dispose()
   })
 })
 

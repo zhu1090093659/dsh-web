@@ -13,7 +13,7 @@ import { PowerInhibitor } from './power-inhibitor.ts'
 import { TASK_BOARD_SCHEMA_VERSION, type TaskBoardAction, type TaskBoardEventPayload, type TaskBoardSnapshot } from './protocol.ts'
 import { projectSnapshotForWire } from './core/wire-projection.ts'
 import type { CardDefaults } from './core/card-defaults.ts'
-import { TaskBoardExtensionRegistry } from './host/extension-registry.ts'
+import { TaskBoardExtensionRegistry, type TaskBoardExtensionLogger } from './host/extension-registry.ts'
 import type { TaskBoardExtension, TaskBoardLaunchTrigger } from './core/extension.ts'
 import { isTaskPermission, normalizeTargetId, type ExecutionOutcome, type ExecutionSummary, type ScheduleMode, type TaskRecord, type TaskStatus } from './core/tasks.ts'
 import type { ModelCatalogView } from './core/model-catalog.ts'
@@ -338,6 +338,13 @@ export class TaskBoardHostService {
      * Absent means "not proven legacy", which keeps the force exactly as it is.
      */
     legacyAgentTeams?: () => boolean
+    /**
+     * Logging seat the extension registry writes to. Absent keeps the process
+     * console, which is what a deployment without an opinion wants; a
+     * deployment (or a test) that collects the board's own warnings and errors
+     * injects its own.
+     */
+    extensionLogger?: TaskBoardExtensionLogger
   } = {}) {
     this.ledger = options.ledger ?? new HostTaskLedger(undefined, undefined, {
       sessionDefaultPermission: options.sessionDefaultPermission,
@@ -377,6 +384,7 @@ export class TaskBoardHostService {
         this.applyBoardAction(crypto.randomUUID(), { kind: 'rework', taskId, instructions }, initiator)
       },
       now: this.now,
+      ...(options.extensionLogger === undefined ? {} : { logger: options.extensionLogger }),
     })
     // The board's single launch gate. Every run — manual, rerun, rework, a due
     // schedule, the run tool — is opened by the ledger, so attaching the gate

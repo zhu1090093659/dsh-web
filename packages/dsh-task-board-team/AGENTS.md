@@ -8,10 +8,11 @@
   跨包协作只走提供方契约（cordis 服务 `taskBoard`）。契约的唯一事实源是看板的
   `src/core/extension.ts`，本包在 `src/core/contract.ts` 同形重述它，两侧半区都经
   `ctx.inject(['taskBoard'], ...)` 的依赖作用域取得能力面。
-- 三个子席位（`task-board.detail.section`、`task-board.settings.section`、
-  `task-board.card.decoration`）在 `src/client/index.ts` 以同形 `declare module` 声明，
-  不 value import 看板包。设置区块**不随本扩展开关撤下**（它是重新打开开关的地方），
-  只依赖看板服务。
+- 看板声明四个子席位：`task-board.detail.section`、`task-board.settings.section`、
+  `task-board.card.decoration` 与 `task-board.compose.section`。前三个在 `src/client/index.ts`
+  以同形 `declare module` 声明，不 value import 看板包。设置区块**不随本扩展开关撤下**
+  （它是重新打开开关的地方），只依赖看板服务。第四席是新建任务弹窗里的提供方新建配置
+  （props `{ contribute }`），本包不登记。
 - 设置区块是看板专题列表（`<ul>`）里的一张卡，因此必须渲染成共享
   `PluginSettingsCard`（`density="nested"`）：卡片外壳与行布局一律来自
   `settings-card.module.css` 的切片，本包自己的 CSS 模块只管切片没有的部件（状态词、

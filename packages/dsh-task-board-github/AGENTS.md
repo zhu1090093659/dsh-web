@@ -9,12 +9,13 @@
   侧拥有登记面。契约的唯一事实源是看板的 `src/core/extension.ts`；本包在
   `src/core/contract.ts` 同形重述它，两侧半区都经 `ctx.inject(['taskBoard'], ...)`
   的依赖作用域取得能力面（host 半区 `registerExtension`，浏览器半区客户端面）。
-- 看板声明的三个子席位（`task-board.detail.section`、`task-board.settings.section`、
-  `task-board.card.decoration`）在 `src/client/index.ts` 以同形
-  `declare module` 声明，不 value import 看板包；本包向三个席位都登记：
-  详情区与卡片徽章随开关收放，配置区块（开关 + 仓库/凭据 + 连接测试）渲染在
-  看板自己的设置卡内部——它是这块看板的提供方，配置就该与它所配置的看板同在
-  一处，不再占家族设置列表的独立卡片席位。
+- 看板声明四个子席位：`task-board.detail.section`、`task-board.settings.section`、
+  `task-board.card.decoration` 与 `task-board.compose.section`。前三个在
+  `src/client/index.ts` 以同形 `declare module` 声明，不 value import 看板包；本包向
+  三个席位都登记：详情区与卡片徽章随开关收放，配置区块（开关 + 仓库/凭据 + 连接测试）
+  渲染在看板自己的设置卡内部——它是这块看板的提供方，配置就该与它所配置的看板同在一处，
+  不再占家族设置列表的独立卡片席位。第四席是新建任务弹窗里的提供方新建配置
+  （props `{ contribute }`），本包不登记。
 - 远端关闭周期只在扩展内部记录 `remoteClose` 来源并经 `tasks.setStatus` 迁移：非 running 自动完成、running 延迟到结算后的同步、重开只回移自动完成卡片；同一关闭周期内本地移出已完成即覆盖，禁止打断执行、伪造执行记录或直接关闭/重开远端 issue。
 - 看板的账本、列门禁、内容冻结与事件隔离都由看板执行：本包只读写
   `tasks.*` / `integration.*` 能力面。远端不可变身份索引是扩展自己的结构，

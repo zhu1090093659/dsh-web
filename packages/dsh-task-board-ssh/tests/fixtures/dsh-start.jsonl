@@ -1,0 +1,7 @@
+{"type":"session","sessionId":"session-4c3bb987-8042-4d3f-9085-795188303693","cwd":"/tmp/dsh-verify-task-board-ssh/record"}
+{"type":"status","phase":"turn_start","turn":1}
+{"type":"status","phase":"step_start","turn":1,"step":1}
+{"type":"text","text":"pong"}
+{"type":"status","phase":"step_end","turn":1,"step":1,"usage":{"inputTokens":4,"outputTokens":4,"totalTokens":23749,"cacheReadTokens":9210,"cacheWriteTokens":14531}}
+{"type":"status","phase":"turn_end","turn":1,"reason":{"kind":"completed"}}
+{"type":"final","sessionId":"session-4c3bb987-8042-4d3f-9085-795188303693","reason":{"kind":"completed"},"text":"pong"}

@@ -48,7 +48,8 @@ dsh Web GUI 的远程 SSH 运维插件：Host 进程内的持久 ssh2 连接池 
   终端、隧道或集群成员。需要新的引擎能力先加进引擎，再由服务面转发。
 - 服务面不交出机密：`hosts.*` 只给 `SshHostSummary` 已公开的字段，`proxyCommand` 原文
   投影掉（与 `ssh_list` 同一规则），密码 / 口令 / 私钥路径 / agent 路径永不出现；
-  `tests/service.test.ts` 逐字段钉住这条。
+  `tests/service.test.ts` 逐字段钉住这条。给 `SshHostSummary` 加字段就等于改服务面：
+  同批更新该断言，并先确认新字段不是机密。
 - 发布时机跟随总开关：在 `sync()` 里与其它面同批 `ctx.provide`、同批撤走，停用或卸载即
   释放依赖方的 inject 作用域。不得改成无条件提供，也不得绕过 `sync()` 常驻。
 

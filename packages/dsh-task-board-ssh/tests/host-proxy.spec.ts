@@ -8,7 +8,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { proxyPreamble } from '../src/host/prompt.ts'
-import { NOW, createBoard } from './support/board.mjs'
+import { NOW, createBoard } from './support/board.ts'
 import { mountEngine } from './support/engine.ts'
 import { createScriptedSsh } from './support/fake-ssh.ts'
 import { fakeWorkspaces } from './support/workspaces.ts'

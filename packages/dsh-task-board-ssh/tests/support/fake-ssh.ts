@@ -14,7 +14,7 @@ import { spawn } from 'node:child_process'
 import { copyFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { DshSshExecResult, DshSshHost, DshSshService } from '../../src/core/contract.ts'
-import { NOW } from './board.mjs'
+import { NOW } from './board.ts'
 
 /** One command a fake received, and the launcher verb it addressed. */
 export interface RemoteCall {
@@ -206,6 +206,11 @@ export function createScriptedSsh(options: ScriptedSshOptions = {}): ScriptedSsh
       const call = launcherCall(command)
       calls.push({ alias, command, ...(call === undefined ? {} : { verb: call.verb, runId: call.runId }) })
       if (command === 'printf %s "$HOME"') return ok(home)
+      // A directory probe answers "no": nothing exists on a host the run has
+      // never touched, which is how a strategy recognises a first run.
+      if (command.startsWith('test ')) {
+        return { success: false, exitCode: 1, timedOut: false, stdout: '', stderr: '', durationMs: 1 }
+      }
       if (command.startsWith('rm -rf ')) {
         const runId = /\/runs\/([A-Za-z0-9._-]+)'$/.exec(command)?.[1]
         if (runId !== undefined) runOf(runId).removed = true

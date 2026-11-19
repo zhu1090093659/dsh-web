@@ -4,10 +4,12 @@
  * The engine only ever holds the frozen `SshWorkspaceStrategy` from
  * `src/core/workspace.ts`, so a spec can answer with a strategy of its own: one
  * that hands back a real local directory (so a locally executed run really
- * `cd`s into it) and records what was prepared and collected.
+ * `cd`s into it), reports whatever note the case needs, and records what it was
+ * asked to do — including the run it received, which is how a case proves the
+ * repository a deployment resolved reached the strategy.
  */
 import type { SshWorkspaceStrategyResolver } from '../../src/host/workspace-seam.ts'
-import type { SshWorkspaceStrategy } from '../../src/core/workspace.ts'
+import type { SshWorkspaceRun } from '../../src/core/workspace.ts'
 
 /** What the fake strategies were asked to do. */
 export interface WorkspaceRecorder {
@@ -15,6 +17,8 @@ export interface WorkspaceRecorder {
   prepared: string[]
   /** Run ids whose result was collected, in order. */
   collected: string[]
+  /** Every run handed to `prepare`, in order. */
+  runs: SshWorkspaceRun[]
 }
 
 /** The resolver a spec mounts, plus its record. */
@@ -31,21 +35,33 @@ export interface FakeWorkspaceOptions {
   branch?: string
   /** Failure the next `prepare` throws, to prove a run fails before any agent starts. */
   prepareError?: Error
+  /** Untracked local files the run did not receive, as a real strategy reports them. */
+  untrackedFiles?: number
+}
+
+/** The frozen strategy, with the untracked-file note a real one may add. */
+interface FakeStrategy {
+  readonly kind: 'in-place'
+  prepare(run: SshWorkspaceRun): Promise<{ cwd: string; untrackedFiles?: number }>
+  collect(run: SshWorkspaceRun): Promise<{ branch?: string }>
 }
 
 /**
  * Build the fake resolver.
- * @param options - the working directory and the failure to inject.
+ * @param options - the working directory, the note and the failure to inject.
  * @returns the resolver and its record.
  */
 export function fakeWorkspaces(options: FakeWorkspaceOptions): FakeWorkspaces {
-  const recorder: WorkspaceRecorder = { prepared: [], collected: [] }
-  const strategy: SshWorkspaceStrategy = {
+  const recorder: WorkspaceRecorder = { prepared: [], collected: [], runs: [] }
+  const strategy: FakeStrategy = {
     kind: 'in-place',
     async prepare(run) {
       recorder.prepared.push(run.runId)
+      recorder.runs.push(run)
       if (options.prepareError !== undefined) throw options.prepareError
-      return { cwd: options.cwd }
+      return options.untrackedFiles === undefined
+        ? { cwd: options.cwd }
+        : { cwd: options.cwd, untrackedFiles: options.untrackedFiles }
     },
     async collect(run) {
       recorder.collected.push(run.runId)

@@ -8,7 +8,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseSshLedgerPayload } from '../src/core/ledger.ts'
-import { NOW, createBoard, type BoardHarness } from './support/board.mjs'
+import { NOW, createBoard, type BoardHarness } from './support/board.ts'
 import { mountEngine } from './support/engine.ts'
 import { createScriptedSsh } from './support/fake-ssh.ts'
 import { dshOutput } from './support/output.ts'

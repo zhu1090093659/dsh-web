@@ -29,7 +29,11 @@ import {
 } from './host/settings.ts'
 import { processTimers } from './host/timers.ts'
 import { createSshWorkspaceStrategy } from './host/workspace/index.ts'
-import type { SshWorkspaceStrategyResolver } from './host/workspace-seam.ts'
+import {
+  readWorkspaceDirectory,
+  resolveWorkspaceRegistry,
+  type SshWorkspaceStrategyResolver,
+} from './host/workspace-seam.ts'
 
 export { SSH_EXTENSION_ID }
 
@@ -136,6 +140,13 @@ export function apply(ctx: Context, config?: Config): void {
       // about them: the engine holds the frozen `SshWorkspaceStrategy` from
       // `src/core/workspace.ts` and never a strategy implementation.
       const workspaces: SshWorkspaceStrategyResolver = target => createSshWorkspaceStrategy(target)
+      // A git run whose repository is the local workspace needs that repository's
+      // directory, and the deployment's workspace registry is the only thing that
+      // knows it. The same service the board resolves for its own runs, read
+      // optionally: a deployment without it keeps mounting, and a run pinned to a
+      // local workspace then fails with the strategy's own "was not resolved".
+      const localRepository = (workspaceId: string): string | undefined =>
+        readWorkspaceDirectory(resolveWorkspaceRegistry(scope), workspaceId)
       const dispose = board.registerExtension(createSshExtension({
         ssh,
         settings,
@@ -143,6 +154,7 @@ export function apply(ctx: Context, config?: Config): void {
         timers: processTimers,
         seat: () => readBoardActionSeat(board),
         workspaces,
+        localRepository,
       }))
       return () => { dispose() }
     }, 'task-board-ssh: provider registration')

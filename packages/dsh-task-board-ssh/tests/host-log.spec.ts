@@ -10,7 +10,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseSshLedgerPayload } from '../src/core/ledger.ts'
 import { LOG_WINDOW_BUDGET_BYTES, PUBLISH_BODY_LIMIT_BYTES, PUBLISH_LOG_BUDGET_BYTES, byteLength } from '../src/host/logs.ts'
-import { NOW, createBoard, type BoardHarness } from './support/board.mjs'
+import { NOW, createBoard, type BoardHarness } from './support/board.ts'
 import { mountEngine, type Mounted } from './support/engine.ts'
 import { createScriptedSsh, type ScriptedSsh } from './support/fake-ssh.ts'
 import { fakeWorkspaces } from './support/workspaces.ts'

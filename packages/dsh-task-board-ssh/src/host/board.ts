@@ -12,6 +12,7 @@
  *
  * @module dsh-task-board-ssh/host/board
  */
+import { TASK_BOARD_SERVICE_NAME, type ServiceLookupSeat } from '../core/contract.ts'
 import type { TaskRecord } from '../core/task-record.ts'
 
 /** One action this package submits to the board. Field names are the board's own. */
@@ -52,6 +53,24 @@ export function readBoardActionSeat(face: unknown): BoardActionSeat | undefined 
   return {
     apply: (requestId: string, action: BoardAction, initiator?: string): unknown =>
       (apply as (this: unknown, a: string, b: BoardAction, c?: string) => unknown).call(face, requestId, action, initiator),
+  }
+}
+
+/**
+ * Resolve the board's action seat off the injected service.
+ *
+ * The registration contract this package restates carries the read face only, so
+ * the applier is read off the same service structurally: the board publishes one
+ * object with both, and a revision that serves no applier answers undefined here
+ * instead of failing the provider.
+ * @param ctx - the injected scope the board service was resolved from.
+ * @returns the seat, or undefined when this board revision serves no applier.
+ */
+export function resolveBoardActionSeat(ctx: ServiceLookupSeat): BoardActionSeat | undefined {
+  try {
+    return readBoardActionSeat(ctx.get(TASK_BOARD_SERVICE_NAME))
+  } catch {
+    return undefined
   }
 }
 

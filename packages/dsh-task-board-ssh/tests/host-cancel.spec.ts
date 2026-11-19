@@ -9,7 +9,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseSshLedgerPayload } from '../src/core/ledger.ts'
-import { NOW, createBoard, executionsOf } from './support/board.mjs'
+import { NOW, createBoard, executionsOf } from './support/board.ts'
 import { mountEngine } from './support/engine.ts'
 import { createScriptedSsh } from './support/fake-ssh.ts'
 import { fakeWorkspaces } from './support/workspaces.ts'

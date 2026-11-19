@@ -13,7 +13,7 @@ import type { TaskBoardExtension, TaskBoardExtensionHost } from '../src/core/con
 import { Config, apply } from '../src/index.ts'
 import { SshSettingsWriter } from '../src/host/settings.ts'
 import { SSH_TOOL_NAMES } from '../src/host/tools.ts'
-import { NOW, createBoard } from './support/board.mjs'
+import { NOW, createBoard } from './support/board.ts'
 import { mountEngine, runTool } from './support/engine.ts'
 import { createScriptedSsh, hostWithSecrets } from './support/fake-ssh.ts'
 import { fakeWorkspaces } from './support/workspaces.ts'

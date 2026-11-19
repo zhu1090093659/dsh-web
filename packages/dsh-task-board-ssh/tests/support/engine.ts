@@ -17,7 +17,7 @@ import {
   type SshProviderSettings,
 } from '../../src/host/settings.ts'
 import type { SshWorkspaceStrategyResolver } from '../../src/host/workspace-seam.ts'
-import type { BoardHarness } from './board.mjs'
+import type { BoardHarness } from './board.ts'
 import { createManualTimers, flush, type ManualTimers } from './timers.ts'
 
 /** How one spec mounts the provider. */
@@ -30,6 +30,8 @@ export interface MountOptions {
   settings?: Partial<SshProviderSettings>
   /** Placement strategies; a spec always supplies one. */
   workspaces?: SshWorkspaceStrategyResolver
+  /** Resolve a local workspace id to the repository root a git run bundles. */
+  localRepository?: (workspaceId: string) => string | undefined
   /** Timer seat; a fresh manual one when absent. */
   timers?: ManualTimers
   /** The settings surface this deployment serves, when it serves one. */
@@ -102,6 +104,7 @@ export function mountEngine(options: MountOptions): Mounted {
     timers: timers.face,
     seat: () => readBoardActionSeat(options.board.board),
     ...(options.workspaces === undefined ? {} : { workspaces: options.workspaces }),
+    ...(options.localRepository === undefined ? {} : { localRepository: options.localRepository }),
     ...(options.now === undefined ? {} : { now: options.now }),
     uuid: options.uuid ?? (() => { sequence += 1; return 'id-' + String(sequence) }),
     pollIntervalMs: options.pollIntervalMs ?? TICK_MS,

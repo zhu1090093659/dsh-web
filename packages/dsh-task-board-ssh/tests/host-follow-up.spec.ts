@@ -10,7 +10,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseSshLedgerPayload } from '../src/core/ledger.ts'
 import { SSH_DEGRADED_SUMMARY_MARKER } from '../src/host/prompt.ts'
-import { NOW, createBoard, executionsOf, type BoardHarness } from './support/board.mjs'
+import { NOW, createBoard, executionsOf, type BoardHarness } from './support/board.ts'
 import { mountEngine, runTool, type Mounted } from './support/engine.ts'
 import { createScriptedSsh, type ScriptedSsh } from './support/fake-ssh.ts'
 import { dshOutput } from './support/output.ts'

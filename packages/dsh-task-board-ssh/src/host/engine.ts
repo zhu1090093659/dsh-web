@@ -51,7 +51,7 @@ import { admitRuns, type SshQueueEntry } from './queue.ts'
 import { SshRemote } from './remote.ts'
 import type { SshProviderSettings } from './settings.ts'
 import type { HostTimerFace } from './timers.ts'
-import type { SshWorkspaceStrategyResolver } from './workspace-seam.ts'
+import { readUntrackedFiles, untrackedNote, type SshWorkspaceStrategyResolver } from './workspace-seam.ts'
 
 /** Poll cadence when a deployment configures none, in milliseconds. */
 export const DEFAULT_POLL_INTERVAL_MS = 2_000
@@ -230,6 +230,16 @@ export class SshRunEngine {
   private readonly cancelRequests = new Set<string>()
   /** The log windows this extension publishes; in memory, never in a payload. */
   private readonly logs = new SshLogWindows()
+  /**
+   * Local files one live run did not receive, keyed by card id.
+   *
+   * A workspace detail, not a run fact: the frozen run record has no member for
+   * it and the ledger keeps the account of runs, so it is carried here from the
+   * moment the workspace is prepared until the verdict is written. A Host that
+   * restarts mid-run no longer knows it, and that run's verdict then says only
+   * what the agent itself reported.
+   */
+  private readonly untracked = new Map<string, { runId: string; files: number }>()
   private readonly disposers: Array<() => void> = []
   private pollCanceller: (() => void) | undefined
   private polling = false
@@ -295,6 +305,7 @@ export class SshRunEngine {
     this.pumping.clear()
     this.pumpAgain.clear()
     this.settling.clear()
+    this.untracked.clear()
     this.logs.clear()
     this.remote.forget()
   }
@@ -586,12 +597,15 @@ export class SshRunEngine {
       if (run?.phase === 'running') running += 1
       if (run?.phase === 'queued') queued += 1
       if (run !== undefined && runs.length < 20) {
+        const untracked = this.untracked.get(entry.task.id)
+        const files = untracked !== undefined && untracked.runId === run.runId ? untracked.files : undefined
         runs.push({
           taskId: entry.task.id,
           runId: run.runId,
           phase: run.phase,
           host: payload.target.host,
           ...(run.bytes === undefined ? {} : { bytes: run.bytes }),
+          ...(files === undefined ? {} : { untrackedFiles: files }),
         })
       }
     }
@@ -757,11 +771,14 @@ export class SshRunEngine {
       const stateDir = await this.remote.stateDir(alias)
       await this.remote.installLauncher({ alias, stateDir })
       const prepared = await this.prepareWorkspace(target, runId)
+      if (prepared.untrackedFiles !== undefined) {
+        this.untracked.set(taskId, { runId, files: prepared.untrackedFiles })
+      }
       const promptFile = runFilePath(stateDir, runId, 'prompt.txt')
       const input: SshAgentRunInput = {
         agent: target.agent.kind,
         promptFile,
-        cwd: prepared,
+        cwd: prepared.cwd,
         ...(resumed && resumeSession !== undefined ? { resumeSessionId: resumeSession } : {}),
       }
       const command = agentCommandLine(input, templates)
@@ -769,7 +786,7 @@ export class SshRunEngine {
       await this.remote.writeRunFiles({ alias, stateDir, runId }, {
         prompt,
         command,
-        cwd: prepared,
+        cwd: prepared.cwd,
         spec: {
           runId,
           taskId,
@@ -813,14 +830,25 @@ export class SshRunEngine {
     this.publishSummary()
   }
 
-  /** Resolve the run's working directory through its placement strategy. */
-  private async prepareWorkspace(target: SshTarget, runId: string): Promise<string> {
+  /**
+   * Resolve the run's working directory through its placement strategy.
+   *
+   * The strategy may also report how much of the local work it could not send —
+   * a bundle carries commits, not the untracked working tree — and that note is
+   * kept rather than dropped: the card publishes it while the run is going and
+   * the verdict says it out loud.
+   * @param target - the target the card pins.
+   * @param runId - run being prepared.
+   * @returns the absolute remote directory and the untracked-file note, when any.
+   */
+  private async prepareWorkspace(target: SshTarget, runId: string): Promise<{ cwd: string; untrackedFiles?: number }> {
     const strategy = this.strategyFor(target)
     const prepared = await strategy.prepare(await this.workspaceRun(target, runId))
     if (typeof prepared.cwd !== 'string' || !prepared.cwd.startsWith('/')) {
       throw new Error(`the ${target.workspace.kind} workspace strategy returned no absolute working directory`)
     }
-    return prepared.cwd
+    const untrackedFiles = readUntrackedFiles(prepared)
+    return untrackedFiles === undefined ? { cwd: prepared.cwd } : { cwd: prepared.cwd, untrackedFiles }
   }
 
   /** The strategy one target's workspace runs through, or a diagnosable refusal. */
@@ -968,13 +996,17 @@ export class SshRunEngine {
       const summary = parsed.outcome?.ok === true ? bound(parsed.outcome.text, SSH_SUMMARY_MAX_LENGTH) : undefined
       const error = cancelled
         ? undefined
-        : parsed.outcome !== undefined && !parsed.outcome.ok
-          ? bound(parsed.outcome.error, SSH_ERROR_MAX_LENGTH)
-          : status.state === 'lost' || status.state === 'missing'
-            ? `the remote run disappeared: ${failure === undefined ? 'its process and its exit record were both gone' : bound(failure instanceof Error ? failure.message : String(failure), SSH_ERROR_MAX_LENGTH)}`
-            : phase === 'failed'
-              ? bound(`the remote agent exited with code ${String(status.exitCode ?? 'none')}`, SSH_ERROR_MAX_LENGTH)
-              : undefined
+        : failure !== undefined
+          // A run that never started reports why it could not start, which is
+          // more use on the card than anything the launcher would have said.
+          ? bound(failure instanceof Error ? failure.message : String(failure), SSH_ERROR_MAX_LENGTH)
+          : parsed.outcome !== undefined && !parsed.outcome.ok
+            ? bound(parsed.outcome.error, SSH_ERROR_MAX_LENGTH)
+            : status.state === 'lost' || status.state === 'missing'
+              ? `the remote run disappeared: its process and its exit record were both gone`
+              : phase === 'failed'
+                ? bound(`the remote agent exited with code ${String(status.exitCode ?? 'none')}`, SSH_ERROR_MAX_LENGTH)
+                : undefined
       const settled: SshRunRecord = {
         runId: run.runId,
         phase,
@@ -988,7 +1020,10 @@ export class SshRunEngine {
         ...(summary === undefined ? {} : { summary }),
         ...(error === undefined ? {} : { error }),
       }
-      this.recordOutcome(task, settled, job.degraded)
+      const untracked = this.untracked.get(taskId)
+      const note = untrackedNote(untracked !== undefined && untracked.runId === run.runId ? untracked.files : undefined)
+      this.recordOutcome(task, settled, job.degraded, note)
+      this.untracked.delete(taskId)
       const current = this.payloadOf(taskId)
       if (current !== undefined) this.writePayload(taskId, withSettledRun(current, settled))
       if (!cancelled && current?.pending !== undefined) this.reenter(taskId, 'ssh-follow-up')
@@ -1008,8 +1043,16 @@ export class SshRunEngine {
     return 'failed'
   }
 
-  /** Put one settled run's verdict on the card, exactly once. */
-  private recordOutcome(task: TaskRecord, run: SshRunRecord, degraded: boolean): void {
+  /**
+   * Put one settled run's verdict on the card, exactly once.
+   *
+   * The verdict travels in the one free-text field an external record has, so
+   * everything that belongs with it is composed here: the degradation marker when
+   * the run was a fresh one, what the agent reported, and the workspace note when
+   * local files stayed behind. The note is reserved room before the agent's own
+   * text is cut, so a long summary can never push it out of the record.
+   */
+  private recordOutcome(task: TaskRecord, run: SshRunRecord, degraded: boolean, note = ''): void {
     if (run.phase === 'cancelled') return
     if (alreadyRecorded(task, run.runId)) return
     const seat = this.seat?.()
@@ -1017,8 +1060,12 @@ export class SshRunEngine {
       this.log(`the verdict of run ${run.runId} has nowhere to go: this board revision serves no action applier`)
       return
     }
+    const marker = degraded ? SSH_DEGRADED_SUMMARY_MARKER + ' ' : ''
+    const room = Math.max(0, SSH_SUMMARY_MAX_LENGTH - marker.length - (note === '' ? 0 : note.length + 1))
     const text = run.summary ?? run.error
-    const summary = text === undefined ? undefined : bound(degraded ? SSH_DEGRADED_SUMMARY_MARKER + ' ' + text : text, SSH_SUMMARY_MAX_LENGTH)
+    const body = text === undefined ? '' : bound(text, room)
+    const composed = [marker + body, note].filter(part => part !== '').join(' ')
+    const summary = composed === '' ? undefined : bound(composed, SSH_SUMMARY_MAX_LENGTH)
     try {
       seat.apply(this.uuid(), {
         kind: 'record-external-outcome',

@@ -1288,6 +1288,13 @@
  * The view's whole type scale is three steps: 15 title, 13 body, 12 meta.
  * Hierarchy inside that scale comes from weight and the label colour role,
  * never from a fourth size.
+ *
+ * Scrolling contract: the body is the one scrollport and the action bar is its
+ * following sibling in the same column, so the scroll ends at the bar's top
+ * edge and no content can ever sit behind it — the bar is neither sticky nor
+ * absolute. The drawer itself scrolls only when its own chrome no longer fits
+ * (a viewport shorter than header + bar): clipping there would take the action
+ * bar out of reach, which is the one thing a short viewport must not lose.
  * --------------------------------------------------------------------------- */
 
 .detail {
@@ -1300,7 +1307,9 @@
   border-radius: 14px;
   box-shadow: var(--dsw-shadow-lv3);
   color: var(--dsw-alias-label-primary);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .detailHeader {
@@ -2167,6 +2176,43 @@
 
   .schedulePreset {
     width: 100%;
+  }
+}
+
+/* Short viewports: at the panel's normal padding the header and the action bar
+ * together take more than half of a 320px-tall surface, leaving the body a strip
+ * a single row fits in — and under 240px they push the bar past the drawer's own
+ * edge, where the drawer used to clip it. The chrome keeps its one 8px rhythm at
+ * half the block padding, so a short viewport keeps a scrollport a block of
+ * content fits in; below that the drawer's own scroll (.detail) takes over and
+ * the bar still travels into reach. The safe-area insets survive because the
+ * compact values are max()ed with them, exactly like the narrow-screen block
+ * above.
+ * --------------------------------------------------------------------------- */
+
+@media (max-height: 320px) {
+  .detailHeader {
+    padding-block: max(8px, env(safe-area-inset-top)) 8px;
+  }
+
+  .detailBody {
+    padding-block: 8px 12px;
+  }
+
+  .detailFooter {
+    padding-block: 8px max(8px, env(safe-area-inset-bottom));
+  }
+}
+
+/* On the same short surface the drawer keeps a mask margin instead of the 80px
+ * one it reserves for a roomy window: at 320px that reservation alone spent a
+ * quarter of the height the content needs, and below 212px it left less room
+ * than the header and the bar take together. The narrow-screen block above
+ * already gives the drawer the full height, so this ceiling is for the desktop
+ * layout only. */
+@media (min-width: 769px) and (max-height: 320px) {
+  .detail {
+    max-height: calc(100vh - 16px);
   }
 }
 

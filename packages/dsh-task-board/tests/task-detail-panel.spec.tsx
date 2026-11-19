@@ -276,6 +276,30 @@ describe('detail footer actions', () => {
     act(() => { buttonOf(container.querySelector('[role="menu"]') as HTMLElement, '归档').click() })
     expect(board.archiveTask).toHaveBeenCalledWith(task.id)
   })
+
+  it('user scrolling a long card to its end reads the last block clear of the action bar', () => {
+    // Given a card with a settled run, opened in the panel
+    const { container } = renderDetail(card({ executions: [run('e1', 1_000)] }))
+
+    // When the drawer renders its three rows
+    const drawer = container.querySelector('[role="dialog"]') as HTMLElement
+    const body = drawer.querySelector<HTMLElement>('.' + css.detailBody) as HTMLElement
+    const bar = drawer.querySelector<HTMLElement>('.' + css.detailFooter) as HTMLElement
+
+    // Then the bar is no part of the scrollport: it is the row after it, so the
+    // scroll ends at the bar's top edge and no content can sit behind the bar
+    expect(drawer.className).toBe(css.detail)
+    expect([...drawer.children].map(node => (node as HTMLElement).className))
+      .toEqual([css.detailHeader, css.detailBody, css.detailFooter])
+    expect(body.contains(bar)).toBe(false)
+    expect(body.nextElementSibling).toBe(bar)
+
+    // And the block that closes the reading column lives inside that scrollport,
+    // so the last thing a reader reaches there scrolls above the bar, not under it
+    const content = drawer.querySelector('[data-detail-column="content"]') as HTMLElement
+    expect(body.contains(content)).toBe(true)
+    expect(body.contains(content.lastElementChild as HTMLElement)).toBe(true)
+  })
 })
 
 describe('folded execution column', () => {

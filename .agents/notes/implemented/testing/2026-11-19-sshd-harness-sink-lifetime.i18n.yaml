@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+.agents/notes/implemented/testing/2026-11-19-sshd-harness-sink-lifetime.md: 8c71421dc9f25147e2742ed26b536b3337ac556b
+.agents/notes/implemented/testing/2026-11-19-sshd-harness-sink-lifetime.zh.md: f0ac5a0edc8849e144f2d8de70e1d2569e95ae23

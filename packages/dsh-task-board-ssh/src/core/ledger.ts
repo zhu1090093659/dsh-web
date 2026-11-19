@@ -6,12 +6,13 @@
  * 64 KiB. Log bytes never enter it: the payload names the run and the account
  * of what happened, and the log itself stays a remote file read by byte offset.
  * Everything else here exists to keep that promise — the bounding constants,
- * the bounded history, and {@link trimSshLedgerPayload}, which is the one
- * function a writer calls before storing.
+ * the bounded history, the one instruction a card owes its next run, and
+ * {@link trimSshLedgerPayload}, which is the one function a writer calls before
+ * storing.
  *
  * @module dsh-task-board-ssh/core/ledger
  */
-import { TASK_BOARD_PAYLOAD_LIMIT_BYTES } from './contract.ts'
+import { TASK_BOARD_MESSAGE_MAX_LENGTH, TASK_BOARD_PAYLOAD_LIMIT_BYTES } from './contract.ts'
 import {
   parseSshRunRecord,
   parseSshTarget,
@@ -49,11 +50,39 @@ export const SSH_BRANCH_MAX_LENGTH = 200
 /** Longest stored session id, in characters. */
 export const SSH_SESSION_ID_MAX_LENGTH = 200
 
+/** Longest stored instruction text, in characters; the board's own message ceiling. */
+export const SSH_PENDING_TEXT_MAX_LENGTH = TASK_BOARD_MESSAGE_MAX_LENGTH
+
+/** Which entry queued an instruction for the card's next run. */
+export type SshPendingKind = 'follow-up' | 'rework'
+
+/**
+ * One instruction the card owes a run: the follow-up or rework message that
+ * arrived while a run was already in flight.
+ *
+ * It is stored beside the frozen run account rather than in it, because it is
+ * not a record of what happened — it is work still to do. A card carries at most
+ * one, and {@link trimSshLedgerPayload} treats it as the last thing it may drop:
+ * the account of finished runs can shrink, but a message a person sent is
+ * carried until nothing else is left.
+ */
+export interface SshPendingInstruction {
+  /** Which entry asked for it. */
+  kind: SshPendingKind
+  /** Text the next run's prompt carries, bounded like every board message. */
+  text: string
+  /** Instant it was queued (ms epoch). */
+  queuedAt: number
+  /** Session known when it was queued, when the card had one. */
+  resumeSessionId?: string
+}
+
 /**
  * What one card remembers about its remote runs.
  *
  * `activeRun` is the run the card is waiting on; `history` keeps the bounded
- * past, oldest first. Neither carries log bytes.
+ * past, oldest first; `pending` is the one instruction still owed to a future
+ * run. None of them carries log bytes.
  */
 export interface SshLedgerPayload {
   /** Schema version; a reader that does not know it refuses the payload. */
@@ -66,6 +95,8 @@ export interface SshLedgerPayload {
   activeRun?: SshRunRecord
   /** Bounded run history, oldest first. */
   history: SshRunRecord[]
+  /** The one instruction a future run still owes, absent when none is queued. */
+  pending?: SshPendingInstruction
 }
 
 /** What one trimming pass may change. */
@@ -111,23 +142,45 @@ function stripRunText(record: SshRunRecord): SshRunRecord {
   return stripped
 }
 
+/** Copy one instruction with both free-text fields cut to their stored budget. */
+function boundPending(pending: SshPendingInstruction): SshPendingInstruction {
+  const bounded: SshPendingInstruction = {
+    kind: pending.kind,
+    text: boundText(pending.text, SSH_PENDING_TEXT_MAX_LENGTH),
+    queuedAt: pending.queuedAt,
+  }
+  if (pending.resumeSessionId !== undefined) bounded.resumeSessionId = boundText(pending.resumeSessionId, SSH_SESSION_ID_MAX_LENGTH)
+  return bounded
+}
+
+/** UTF-8 byte length of one JSON value. */
+function jsonBytes(value: unknown): number {
+  return new TextEncoder().encode(JSON.stringify(value)).length
+}
+
 /**
  * Byte length of a payload as the board measures it.
  * @param payload - payload to measure.
  * @returns UTF-8 byte length of its JSON serialization.
  */
 export function sshLedgerPayloadBytes(payload: SshLedgerPayload): number {
-  return new TextEncoder().encode(JSON.stringify(payload)).length
+  return jsonBytes(payload)
 }
+
+/** Smallest working budget a trimming pass keeps for the frozen run account. */
+const MIN_TRIM_BUDGET = 256
 
 /**
  * Cut a payload down to the stored budget.
  *
- * The order is fixed and lossy on purpose: free text is bounded first, then the
- * oldest run records go, then the active run's optional text, then the active
- * run itself, and only then the pinned target. A payload therefore always comes
- * back strictly under `maxBytes`, and the newest history — the part a card
- * shows — is the last to be dropped.
+ * The order is fixed and lossy on purpose. Free text is bounded first, and the
+ * queued instruction's own bytes are reserved before anything else is measured,
+ * so a pass that trims history can never be the reason a person's message is
+ * lost. What then goes, in this order: the oldest run records, the active run's
+ * optional text, the active run itself, the pinned target — and only with
+ * nothing else left, the queued instruction. A payload therefore always comes
+ * back strictly under `maxBytes`, and the newest history is the last account of
+ * the run to be dropped.
  * @param payload - payload to trim; not mutated.
  * @param options - byte budget and history cap.
  * @returns a payload whose serialization is under the budget.
@@ -139,48 +192,98 @@ export function trimSshLedgerPayload(payload: SshLedgerPayload, options: SshLedg
   if (history.length > maxHistory) history = history.slice(history.length - maxHistory)
   let activeRun = payload.activeRun === undefined ? undefined : boundRun(payload.activeRun)
   let target = payload.target
+  let pending = payload.pending === undefined ? undefined : boundPending(payload.pending)
 
   const build = (): SshLedgerPayload => {
     const next: SshLedgerPayload = { version: SSH_LEDGER_VERSION, updatedAt: payload.updatedAt, history }
     if (target !== undefined) next.target = target
     if (activeRun !== undefined) next.activeRun = activeRun
+    if (pending !== undefined) next.pending = pending
     return next
   }
 
-  let candidate = build()
-  while (sshLedgerPayloadBytes(candidate) >= maxBytes) {
-    if (history.length > 0) {
-      history = history.slice(1)
-      candidate = build()
-      continue
+  /** Reduce the run account until it fits `budget`, leaving `pending` in place. */
+  const shrink = (budget: number): SshLedgerPayload => {
+    let candidate = build()
+    while (jsonBytes(candidate) >= budget) {
+      if (history.length > 0) {
+        history = history.slice(1)
+        candidate = build()
+        continue
+      }
+      if (activeRun !== undefined && (activeRun.branch !== undefined || activeRun.summary !== undefined || activeRun.error !== undefined)) {
+        activeRun = stripRunText(activeRun)
+        candidate = build()
+        continue
+      }
+      if (activeRun !== undefined) {
+        activeRun = undefined
+        candidate = build()
+        continue
+      }
+      if (target !== undefined) {
+        target = undefined
+        candidate = build()
+        continue
+      }
+      break
     }
-    if (activeRun !== undefined && (activeRun.branch !== undefined || activeRun.summary !== undefined || activeRun.error !== undefined)) {
-      activeRun = stripRunText(activeRun)
-      candidate = build()
-      continue
-    }
-    if (activeRun !== undefined) {
-      activeRun = undefined
-      candidate = build()
-      continue
-    }
-    if (target !== undefined) {
-      target = undefined
-      candidate = build()
-      continue
-    }
-    break
+    return candidate
   }
-  return candidate
+
+  // The instruction is paid for up front: whatever it needs is subtracted from
+  // the budget the run account is allowed to use, and a floor keeps a pass from
+  // shaving the account away to nothing over a message that could be shortened.
+  const reserved = pending === undefined ? 0 : jsonBytes({ pending })
+  const candidate = shrink(Math.min(maxBytes, Math.max(MIN_TRIM_BUDGET, maxBytes - reserved)))
+  if (jsonBytes(candidate) < maxBytes || pending === undefined) return candidate
+  // Nothing else is left to give: the message yields, and the account it was
+  // reserving room from gets the whole budget back.
+  pending = undefined
+  return shrink(maxBytes)
+}
+
+/**
+ * Read one queued instruction.
+ *
+ * Host-owned bookkeeping that a card may also have carried across builds, so
+ * every field is re-validated and an unknown member makes the instruction
+ * unusable: a message this build cannot interpret is not one it may hand an
+ * agent. Nothing is trimmed here — the parsers report, the trimmer bounds.
+ * @param value - the stored member.
+ * @returns the instruction, or undefined when it is absent or unusable.
+ */
+function parsePendingInstruction(value: unknown): SshPendingInstruction | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined
+  const record = value as Record<string, unknown>
+  const known = new Set(['kind', 'text', 'queuedAt', 'resumeSessionId'])
+  if (Object.keys(record).some(key => !known.has(key))) return undefined
+  const kind = record.kind === 'follow-up' || record.kind === 'rework' ? record.kind : undefined
+  const text = typeof record.text === 'string' && record.text.trim() !== '' && record.text.length <= SSH_PENDING_TEXT_MAX_LENGTH
+    ? record.text
+    : undefined
+  const queuedAt = typeof record.queuedAt === 'number' && Number.isFinite(record.queuedAt) ? record.queuedAt : undefined
+  if (kind === undefined || text === undefined || queuedAt === undefined) return undefined
+  const pending: SshPendingInstruction = { kind, text, queuedAt }
+  if (record.resumeSessionId !== undefined) {
+    const sessionId = typeof record.resumeSessionId === 'string' && record.resumeSessionId !== ''
+      && record.resumeSessionId.length <= SSH_SESSION_ID_MAX_LENGTH
+      ? record.resumeSessionId
+      : undefined
+    if (sessionId === undefined) return undefined
+    pending.resumeSessionId = sessionId
+  }
+  return pending
 }
 
 /**
  * Parse one stored payload.
  *
  * The container is read strictly (version, timestamp, history array) while a
- * single malformed history entry is dropped alone, the same rule the board
- * applies to integrations: one bad record never takes the card's account with
- * it. Nothing here throws, so a corrupted payload degrades to a readable one.
+ * single malformed history entry — or an unusable queued instruction — is
+ * dropped alone, the same rule the board applies to integrations: one bad member
+ * never takes the card's account with it. Nothing here throws, so a corrupted
+ * payload degrades to a readable one.
  * @param value - candidate payload from the ledger or an action.
  * @returns the payload, or every reason it was refused.
  */
@@ -225,5 +328,7 @@ export function parseSshLedgerPayload(value: unknown): SshValidationResult<SshLe
   const payload: SshLedgerPayload = { version: SSH_LEDGER_VERSION, updatedAt: record.updatedAt as number, history }
   if (target !== undefined) payload.target = target
   if (activeRun !== undefined) payload.activeRun = activeRun
+  const pending = parsePendingInstruction(record.pending)
+  if (pending !== undefined) payload.pending = pending
   return { ok: true, value: payload }
 }

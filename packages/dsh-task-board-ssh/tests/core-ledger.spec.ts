@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { SSH_LEDGER_LIMIT_BYTES, parseSshLedgerPayload, sshLedgerPayloadBytes, trimSshLedgerPayload } from '../src/core/ledger.ts'
-import type { SshLedgerPayload } from '../src/core/ledger.ts'
+import type { SshLedgerPayload, SshPendingInstruction } from '../src/core/ledger.ts'
 import type { SshRunRecord } from '../src/core/target.ts'
 
 /** One settled run record with a summary of the given size. */
@@ -21,6 +21,16 @@ function runRecord(index: number, summaryLength = 2_048): SshRunRecord {
     branch: 'dsh-task/run-' + String(index),
     summary: 's'.repeat(summaryLength),
     error: index % 3 === 0 ? 'e'.repeat(summaryLength) : undefined,
+  }
+}
+
+/** One queued instruction of the given size. */
+function pendingInstruction(textLength = 200, kind: SshPendingInstruction['kind'] = 'follow-up'): SshPendingInstruction {
+  return {
+    kind,
+    text: 't'.repeat(textLength),
+    queuedAt: 1_700_000_000_250,
+    resumeSessionId: 'session-queued',
   }
 }
 
@@ -168,3 +178,116 @@ describe('ledger payload parsing', () => {
     expect(parsed).toEqual(malformed.map(() => ({ ok: false, errors: [{ path: '', message: 'must be an object' }] })))
   })
 })
+
+describe('queued instruction', () => {
+  it('operator reading a payload whose card still owes a run gets the instruction back', () => {
+    // Given a payload carrying an instruction queued behind the active run
+    const pending = pendingInstruction(40, 'rework')
+    const payload: SshLedgerPayload = { version: 1, updatedAt: 5, target, activeRun: runRecord(2), history: [], pending }
+
+    // When it is parsed
+    const parsed = parseSshLedgerPayload(payload)
+
+    // Then the instruction survives beside the run account
+    expect(parsed).toEqual({ ok: true, value: payload })
+  })
+
+  it('operator reading an unusable instruction loses the instruction and nothing else', () => {
+    // Given a stored instruction with one field this build cannot accept
+    const broken: unknown[] = [
+      { kind: 'deploy', text: 'x', queuedAt: 1 },
+      { kind: 'follow-up', text: '   ', queuedAt: 1 },
+      { kind: 'follow-up', text: 'x'.repeat(4_001), queuedAt: 1 },
+      { kind: 'follow-up', text: 'x', queuedAt: 'yesterday' },
+      { kind: 'follow-up', text: 'x', queuedAt: 1, resumeSessionId: '' },
+      { kind: 'follow-up', text: 'x', queuedAt: 1, urgent: true },
+      'follow-up',
+      null,
+    ]
+
+    // When each is parsed inside the same card payload
+    const parsed = broken.map(member =>
+      parseSshLedgerPayload({ version: 1, updatedAt: 5, target, history: [runRecord(1)], pending: member }))
+
+    // Then every one of them keeps the target and the history, and drops only the instruction
+    expect(parsed).toEqual(broken.map(() => ({
+      ok: true,
+      value: { version: 1, updatedAt: 5, target, history: [runRecord(1)] },
+    })))
+  })
+
+  it('operator leaving 200 runs behind still stores the queued instruction under the ceiling', () => {
+    // Given a full history and a substantial instruction waiting for the next run
+    const pending = pendingInstruction(3_000)
+    const payload: SshLedgerPayload = {
+      version: 1,
+      updatedAt: 1_700_000_000_000,
+      target,
+      activeRun: runRecord(200),
+      history: Array.from({ length: 200 }, (_unused, index) => runRecord(index)),
+      pending,
+    }
+
+    // When it is trimmed
+    const trimmed = trimSshLedgerPayload(payload)
+
+    // Then the stored bytes stay under 64 KiB, the instruction is verbatim, and the account kept room for it
+    expect(sshLedgerPayloadBytes(trimmed)).toBeLessThan(SSH_LEDGER_LIMIT_BYTES)
+    expect(trimmed.pending).toEqual(pending)
+    expect(trimmed.history.length).toBeGreaterThan(0)
+    expect(trimmed.history.at(-1)?.runId).toBe('run-20261119-0199')
+  })
+
+  it('operator queueing an instruction costs the account the bytes it needs', () => {
+    // Given one payload, read twice: with and without an instruction
+    const history = Array.from({ length: 40 }, (_unused, index) => runRecord(index, 1_400))
+    const withoutPending: SshLedgerPayload = { version: 1, updatedAt: 1, target, history }
+    const withPending: SshLedgerPayload = { ...withoutPending, pending: pendingInstruction(4_000) }
+
+    // When both are trimmed to a budget only one of them can fill
+    const trimmedWithout = trimSshLedgerPayload(withoutPending, { maxBytes: 30_000 })
+    const trimmedWith = trimSshLedgerPayload(withPending, { maxBytes: 30_000 })
+
+    // Then the instruction is carried in full and the history paid for it
+    expect(sshLedgerPayloadBytes(trimmedWith)).toBeLessThan(30_000)
+    expect(trimmedWith.pending?.text).toHaveLength(4_000)
+    expect(trimmedWith.history.length).toBeLessThan(trimmedWithout.history.length)
+  })
+
+  it('operator shrinking a payload to a budget only the message can meet loses the message last', () => {
+    // Given an instruction and a budget smaller than the instruction itself
+    const payload: SshLedgerPayload = {
+      version: 1,
+      updatedAt: 1,
+      target,
+      activeRun: runRecord(9),
+      history: [runRecord(1)],
+      pending: pendingInstruction(600),
+    }
+
+    // When it is trimmed to a budget no payload carrying that message can meet
+    const trimmed = trimSshLedgerPayload(payload, { maxBytes: 200 })
+
+    // Then the hard ceiling still holds and only then does the message go
+    expect(sshLedgerPayloadBytes(trimmed)).toBeLessThan(200)
+    expect(trimmed.pending).toBeUndefined()
+  })
+
+  it('operator queueing a message longer than the board allows gets it cut to the stored budget', () => {
+    // Given an instruction far beyond the stored text budget
+    const payload: SshLedgerPayload = {
+      version: 1,
+      updatedAt: 1,
+      history: [],
+      pending: { kind: 'follow-up', text: 'x'.repeat(9_000), queuedAt: 1 },
+    }
+
+    // When it is trimmed
+    const trimmed = trimSshLedgerPayload(payload)
+
+    // Then the instruction stays and its text is cut to the message ceiling
+    expect(trimmed.pending?.text).toHaveLength(4_000)
+    expect(sshLedgerPayloadBytes(trimmed)).toBeLessThan(SSH_LEDGER_LIMIT_BYTES)
+  })
+})
+

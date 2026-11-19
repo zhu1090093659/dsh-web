@@ -2,13 +2,29 @@
 
 [English](README.md) | 中文
 
-任务看板的外部提供方扩展：把钉住目标卡片作为无头 agent 会话，跑在经 dsh-ssh 触达的远端主机上，让卡片的工作发生在持有代码的机器上，并且不随本机离线而中断。
+任务看板的外部提供方扩展：把钉住目标卡片作为无头 agent 会话，跑在经 dsh-ssh 触达的远端主机上，让卡片的工作发生在持有代码的机器上，并且在本机离开时继续运行。
 
 ## 是什么
 
-- 向任务看板登记 `ssh` 提供方扩展，并在看板唯一的启动闸口接管钉住了远端目标的卡片。
-- 通过一个 POSIX `sh` 启动器在主机上运行 dsh、Claude Code、Codex 或自定义命令，并用 `setsid nohup` 脱离连接。
-- 运行的账目留在卡片自己的载荷里，日志留在远端主机上，按字节偏移读回。
+- 向任务看板登记 `ssh` 提供方扩展，并在看板唯一的启动闸口接管钉住了远端目标的卡片，因此原生运行按钮、定时调度与 `task_board_run` 走同一条路径。
+- 通过一个 POSIX `sh` 启动器在主机上运行 dsh、Claude Code、Codex 或自定义命令，用 `setsid nohup` 脱离，使一次运行活过 SSH 连接与本机。
+- 运行的账目留在卡片自己的载荷里，输出留在远端文件里按字节偏移读回，因此日志随时可以从头回放。
+- 新增三个模型可见工具（`task_board_ssh_target`、`task_board_ssh_status`、`task_board_ssh_follow_up`）与一个任务详情席位，席位上放目标表单、运行状态、日志视图、追问框与取消。
+
+## 执行模式
+
+- `direct`（默认）经 dsh-ssh 在主机上直接起一个无头 agent。看板不建本地会话、不写本地执行记录，只把卡片放进运行中列，随后由本提供方经看板的外部结果动作结案。
+- `proxy` 把卡片作为普通本地会话运行，其 Prompt 以钉住的远端目标开头，由该会话用 dsh-ssh 的 `ssh_*` 工具驱动主机。
+
+proxy 模式撑不过本机离线：会话、它的工具调用与它的令牌开销都在本机，停掉本机就停掉工作。会继续跑的是 direct 模式，本机下次启动时，本提供方会把本机离线期间结束的运行逐一对账。
+
+## 工作区
+
+- `in-place` 在主机上一个已经存在的绝对路径里运行，不回传任何东西。
+- `git` 用仓库地址时，在主机 `~/.dsh/task-board-ssh/repos/` 下按来源各留一份裸缓存，在 `workspaces/<runId>` 下为每次运行加一个工作树，在 `dsh-task/<runId>` 分支上提交，并把该分支推回这个地址。
+- `git` 用本机仓库时，把 `HEAD` 与已跟踪的未提交改动打成 git bundle 送出，在主机上加同样的按次工作树，最后把 `dsh-task/<runId>` 取回本机仓库，且不动它的工作树、索引与 `HEAD`。
+
+未跟踪文件不同步：bundle 只带提交，未跟踪与被忽略的文件留在本机。本机仓库来源的运行会数出自己没有收到多少个未跟踪文件，并把该数字写进卡片渲染的运行摘要。
 
 ## 安装
 
@@ -30,22 +46,34 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board-ssh
 
 ## 配置
 
-- `mode`：`direct` 在主机上直接起无头 agent；`proxy` 起一个本地会话去驱动主机。
-- `host`：dsh-ssh 的主机别名。
-- `agent`：`dsh`、`claude`、`codex` 或 `custom`，自定义 agent 另需命令模板。
-- `workspace`：`in-place` 用已有的远端目录，`git` 用每次运行的工作树，仓库来源可以是仓库 URL 或本地工作区。
+### 按卡片
+
+- `mode`：`direct` 或 `proxy`，差别见执行模式一节。
+- `host`：这次运行要用的 dsh-ssh 主机别名。
+- `agent`：`dsh`、`claude`、`codex` 或 `custom`；自定义 agent 需要一条带 `{prompt_file}` 的启动命令模板，可选一条续跑模板。
+- `workspace`：`in-place` 配一个远端路径，或 `git` 配仓库地址与可选起始分支，或 `git` 配一个本机工作区标识。
+
+### 扩展设置
+
+- `enabled`：总开关；关闭即撤下详情席位、卡片徽标、三个工具与全部派发。
+- `defaultMode`、`defaultAgent` 与 `defaultHost`：卡片在还没钉目标时打开的默认值。
+- `perHostCap`：一台主机同时跑几张卡，1 到 16，默认 2；超出的按提交顺序排队。
+- `agentCommands`：按 agent 覆写的命令模板，替换内置命令行。
 
 ## 安全模型
 
-- 每次远端运行都是无人值守的：启动器使用各 CLI 自己的绕过开关，dsh 用 `danger-full-access` 预设。
-- 本包发往主机的每个值都由同一个 POSIX shell 转义函数处理，命令行不由裸文本拼接。
+- 每次远端运行都是无人值守的。dsh 用 `--permission-mode danger-full-access`，Claude Code 用 `--dangerously-skip-permissions`，Codex 用 `--sandbox danger-full-access`：一张卡就是对 agent 的指令，而这个 agent 从不向本机请示，因此 Prompt 里带敌意的卡片能对该远端账号做任何事。
+- 本包发往主机的每个值都过同一个 POSIX shell 转义函数；远端命令行不由裸文本拼接。
 - dsh-ssh 不向本包交出凭据、私钥路径或 proxy 命令文本，卡片载荷也不含日志字节。
+- 远端日志原样回到卡片，与 `ssh_exec` 同一套信任模型。
 
 ## 已知限制
 
-- 本包当前只交付冻结的纯逻辑核心：宿主运行引擎、工作区策略与浏览器半区随后落地，因此今天挂载它不改变任何行为。
-- Codex 支持按官方文档书写，尚未在装有真实二进制的机器上运行过。
-- 启动器需要远端主机上有 POSIX `sh` 与 `setsid`，两者都缺的主机跑不了 direct 模式卡片。
+- Codex 未核实。它的开关与事件名来自 OpenAI 的非交互模式文档，适配器只对那份文档描述的流做夹具测试；第一次在装有 Codex 的主机上运行时必须确认或修正。
+- 启动器需要主机上有 POSIX `sh` 与 `setsid`；两者都没有的主机跑不了 direct 模式卡片。
+- 运行中的卡片被移出运行中列即视为取消请求，因此误拖一次会停掉远端运行。
+- git 工作区需要某一侧有仓库：本机上一个不是 git 仓库的目录无法送到主机。
+- 主机上 `~/.dsh/task-board-ssh/runs/<runId>/` 的运行目录是该次运行输出的唯一副本，卡片里不保留任何一份。
 
 ## 许可证
 

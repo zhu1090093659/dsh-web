@@ -2,13 +2,29 @@
 
 English | [中文](README.zh.md)
 
-A task-board provider extension that runs a pinned card as a headless agent session on a remote host reached through dsh-ssh, so the card's work happens on the machine that holds the code and survives the local host going offline.
+A task-board provider extension that runs a pinned card as a headless agent session on a remote host reached through dsh-ssh, so the work happens on the machine that holds the code and keeps running while this host is away.
 
 ## What it does
 
-- Registers the `ssh` provider extension with the task board and intercepts the cards pinned to a remote target at the board's single launch gate.
-- Starts dsh, Claude Code, Codex or a custom command on the host through one POSIX `sh` launcher, detached with `setsid nohup` so it outlives the connection.
-- Keeps the run account in the card's own payload and the log on the remote host, read back by byte offset.
+- Registers the `ssh` provider extension with the task board and takes over the cards pinned to a remote target at the board's single launch gate, so the native run button, a schedule and `task_board_run` all take the same path.
+- Starts dsh, Claude Code, Codex or a custom command on the host through one POSIX `sh` launcher, detached with `setsid nohup`, so a run outlives the SSH connection and the local host.
+- Keeps the run account in the card's own payload and the output in a remote file read back by byte offset, so a log replays from its start at any time.
+- Adds three model-visible tools (`task_board_ssh_target`, `task_board_ssh_status`, `task_board_ssh_follow_up`) and one task-detail seat holding the target form, the run state, the log viewer, the follow-up box and cancel.
+
+## Execution modes
+
+- `direct` (default) starts a headless agent on the host over dsh-ssh. The board creates no local session and no local execution record, only the card in the running column, which the provider closes through the board's external-outcome action.
+- `proxy` runs the card as an ordinary local session whose prompt opens with the pinned remote target, and that session drives the host through the `ssh_*` tools of dsh-ssh.
+
+Proxy mode cannot survive this host going offline: the session, its tool calls and its token spend all live here, so stopping this host stops the work. Direct mode is the one that keeps going, and on the next start the provider reconciles every run that finished while this host was down.
+
+## Workspaces
+
+- `in-place` runs in an absolute directory that already exists on the host and collects nothing.
+- `git` from a repository URL keeps a bare cache per source under `~/.dsh/task-board-ssh/repos/` on the host, adds one worktree per run under `workspaces/<runId>`, commits on the branch `dsh-task/<runId>` and pushes that branch back to the URL.
+- `git` from the local workspace sends `HEAD` plus the tracked uncommitted changes as a git bundle, adds the same per-run worktree on the host, and fetches `dsh-task/<runId>` into the local repository without touching its working tree, index or `HEAD`.
+
+Untracked files are not synced: a bundle carries commits, so untracked and ignored files stay on this machine. A local-workspace run counts the untracked non-ignored files it did not receive and reports that count in the run summary the card renders.
 
 ## Install
 
@@ -30,22 +46,34 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board-ssh
 
 ## Config
 
-- `mode`: `direct` starts a headless agent on the host; `proxy` runs a local session told to drive the host.
-- `host`: a dsh-ssh host alias.
-- `agent`: `dsh`, `claude`, `codex` or `custom`, with the command templates a custom agent needs.
-- `workspace`: `in-place` for an existing remote directory, or `git` for a per-run worktree whose source is a repository URL or the local workspace.
+### Per card
+
+- `mode`: `direct` or `proxy`, as described under execution modes.
+- `host`: the dsh-ssh host alias the run addresses.
+- `agent`: `dsh`, `claude`, `codex` or `custom`; a custom agent needs a start command template carrying `{prompt_file}` and optionally a resume template.
+- `workspace`: `in-place` with a remote path, or `git` with a repository URL and an optional base branch, or `git` with the id of a local workspace.
+
+### Extension settings
+
+- `enabled`: the master switch; off withdraws the detail seat, the card badge, the three tools and every dispatch.
+- `defaultMode`, `defaultAgent` and `defaultHost`: what a card opens with before anyone pins a target.
+- `perHostCap`: how many runs one host executes at once, from 1 to 16, default 2; the rest wait in submission order.
+- `agentCommands`: per-agent command templates that replace the built-in command line.
 
 ## Security model
 
-- Every remote run is unattended: the launcher uses each CLI's own bypass flag and the dsh preset `danger-full-access`.
-- Every value the provider sends to the host is quoted by one POSIX shell quoting function; no command line is assembled from raw text.
-- dsh-ssh never hands this package a credential, a key path or a proxy command, and the card payload holds no log bytes.
+- Every remote run is unattended. dsh runs with `--permission-mode danger-full-access`, Claude Code with `--dangerously-skip-permissions` and Codex with `--sandbox danger-full-access`, so a card is an instruction to an agent that never asks this host for approval: a card whose prompt is hostile can do anything the remote account can.
+- Every value the provider sends to a host passes through one POSIX shell quoting function; no remote command line is assembled from raw text.
+- dsh-ssh hands this package no credential, key path or proxy command, and the card payload holds no log bytes.
+- A remote log returns into the card unredacted, the same trust model as `ssh_exec`.
 
 ## Known limitations
 
-- This package currently ships the frozen core only: the host run engine, the workspace strategies and the browser surface land next, so mounting it today changes nothing.
-- Codex support is written from the official documentation and has not been run against a real binary.
-- The launcher needs a POSIX `sh` and `setsid` on the remote host; a host without them cannot run a direct card.
+- Codex is unverified. Its flags and event names come from OpenAI's non-interactive-mode documentation, and the adapter is fixture-tested against that documented stream only; the first run on a host that has Codex must confirm or correct it.
+- The launcher needs a POSIX `sh` and `setsid` on the host; a host carrying neither cannot run a direct card.
+- A card moved out of the running column while its run is active is read as a cancel request, so a mistaken drag stops the remote run.
+- A git workspace needs a repository on one side or the other: a local directory that is not a git repository cannot be sent to a host.
+- The run directory under `~/.dsh/task-board-ssh/runs/<runId>/` on the host is the only copy of that run's output; nothing about it is copied into the card.
 
 ## License
 

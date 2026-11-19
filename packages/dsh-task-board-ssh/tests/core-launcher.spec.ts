@@ -4,9 +4,9 @@
  * one status line each verb prints is read back without throwing.
  */
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import {
   agentScript,
@@ -68,6 +68,41 @@ describe('launcher script text', () => {
     expect(launcherScriptHash(LAUNCHER_SCRIPT)).toBe(first)
     expect(firstPath).toBe(join(scratch, 'runner-' + first + '.sh'))
     expect(secondPath).not.toBe(firstPath)
+  })
+
+  it('operator re-installing the launcher leaves one runnable file and no staging leftover', () => {
+    // Given a state directory that already holds the installed launcher
+    const stateDir = join(scratch, 'reinstall')
+    const scriptPath = launcherScriptPath(stateDir)
+    execFileSync('sh', ['-c', buildLauncherInstallCommand(stateDir)], { encoding: 'utf8' })
+
+    // When the same script is installed again, as every run does
+    execFileSync('sh', ['-c', buildLauncherInstallCommand(stateDir)], { encoding: 'utf8' })
+
+    // Then the one file a run invokes is there, runnable, and nothing else is
+    expect(readFileSync(scriptPath, 'utf8')).toBe(LAUNCHER_SCRIPT)
+    expect(statSync(scriptPath).mode & 0o777).toBe(0o700)
+    expect(readdirSync(stateDir)).toEqual([basename(scriptPath)])
+  })
+
+  it('operator installing over whatever sits at the launcher path replaces it instead of writing through it', () => {
+    // Given a marker file with the launcher path pointing at it
+    const stateDir = join(scratch, 'replace')
+    mkdirSync(stateDir, { recursive: true })
+    const scriptPath = launcherScriptPath(stateDir)
+    const marker = join(stateDir, 'marker.txt')
+    writeFileSync(marker, 'not the launcher')
+    symlinkSync(marker, scriptPath)
+
+    // When the install command runs, as a run whose wrapper is reading the old file does
+    execFileSync('sh', ['-c', buildLauncherInstallCommand(stateDir)], { encoding: 'utf8' })
+
+    // Then the launcher path is a real file holding the script, and the old
+    // target is untouched: a wrapper that opened the previous file keeps its
+    // bytes instead of reading a truncated script
+    expect(lstatSync(scriptPath).isSymbolicLink()).toBe(false)
+    expect(readFileSync(scriptPath, 'utf8')).toBe(LAUNCHER_SCRIPT)
+    expect(readFileSync(marker, 'utf8')).toBe('not the launcher')
   })
 
   it('operator installing into a directory with a space ends up with a runnable file there', () => {

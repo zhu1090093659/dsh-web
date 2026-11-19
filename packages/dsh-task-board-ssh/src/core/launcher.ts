@@ -114,15 +114,32 @@ export function runFilePath(stateDir: string, runId: string, name: RunFileName):
   return `${runDirectory(stateDir, runId)}/${name}`
 }
 
+/** Suffix of the staging file one install writes before it replaces the launcher. */
+const LAUNCHER_STAGING_SUFFIX = '.install'
+
 /**
  * Build the command that installs (or refreshes) the launcher on a host.
+ *
+ * The write lands on a staging file that is then renamed over the launcher, so
+ * the command is safe to replay while the host is using the script: `mv` within
+ * one directory is a rename(2), so a wrapper already executing the previous
+ * file keeps reading the bytes it opened. Writing the launcher path directly
+ * would truncate the script a live `__exec` wrapper is still reading, and a
+ * POSIX sh that reaches that truncation ends the run without writing its exit
+ * code.
  * @param stateDir - absolute state directory.
  * @param script - launcher source; defaults to the shipped script.
  * @returns one shell command that is safe to replay.
  */
 export function buildLauncherInstallCommand(stateDir: string, script: string = LAUNCHER_SCRIPT): string {
   const path = launcherScriptPath(stateDir, launcherScriptHash(script))
-  return [shellEnsureDir(stateDir), shellWriteFile(path, script), `chmod 700 ${shellQuote(path)}`].join(' && ')
+  const staging = path + LAUNCHER_STAGING_SUFFIX
+  return [
+    shellEnsureDir(stateDir),
+    shellWriteFile(staging, script),
+    `chmod 700 ${shellQuote(staging)}`,
+    `mv -f ${shellQuote(staging)} ${shellQuote(path)}`,
+  ].join(' && ')
 }
 
 /**

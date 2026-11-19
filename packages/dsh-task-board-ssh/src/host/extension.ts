@@ -222,7 +222,9 @@ async function routeAction(
       reply = engine.setTarget(action.taskId, action.target)
       break
     default:
-      reply = await engine.refresh(action.taskId)
+      // The detail view names the run whose log it wants, so a settled run can
+      // still be replayed from its first byte.
+      reply = await engine.refresh(action.taskId, action.runId)
       break
   }
   const answer: SshActionReply = reply.ok

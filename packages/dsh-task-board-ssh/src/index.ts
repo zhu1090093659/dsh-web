@@ -79,6 +79,18 @@ export interface ConfigInput {
   agentCommands?: SshAgentCommandInput[]
 }
 
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Volatile config values were committed into the running fiber without a
+     * remount; dispatched to the owning fiber only.
+     * @param paths - the changed config paths, as key arrays.
+     * @mode emit
+     */
+    'loader/volatile-update'(paths: readonly (readonly string[])[]): void
+  }
+}
+
 /** Schema of one configured agent command override. */
 const AgentCommandSchema = z.object({
   kind: z.union(SSH_AGENT_KINDS).default('dsh'),
@@ -108,6 +120,14 @@ export const Config: z<ConfigInput, Config> = z.object({
  * does not own: either service may genuinely not exist yet when this row
  * activates, and the scope mounts when both appear and unloads when either is
  * withdrawn. Nothing is registered while it is down.
+ *
+ * The switch in that scope is this row's own volatile field, so it is re-derived
+ * here rather than by the board: the Loader commits a settings write into the
+ * running fiber and announces `loader/volatile-update` on this fiber, and this
+ * row tears its provider down (engine stopped, tools and launch handler
+ * withdrawn, published summary gone) or builds it again from that announcement.
+ * No card data is touched on the way out, exactly as the board's own switch
+ * semantics promise.
  * @param ctx - the plugin context.
  * @param config - resolved plugin config.
  */
@@ -130,35 +150,83 @@ export function apply(ctx: Context, config?: Config): void {
   // here, and here is the only place that reaches `ctx.settings.mutate`.
   const settingsWriter = new SshSettingsWriter(() => settingsFace)
 
-  ctx.inject(['taskBoard', 'dshSsh'], (scope: Context) => {
-    scope.effect(() => {
-      const board = resolveTaskBoardHostFace(scope)
-      const ssh = resolveDshSshService(scope)
-      if (board === undefined || ssh === undefined) return () => {}
-      // The placement strategies are assembled behind one entry
-      // (`src/host/workspace/index.ts`), which is the only thing this file knows
-      // about them: the engine holds the frozen `SshWorkspaceStrategy` from
-      // `src/core/workspace.ts` and never a strategy implementation.
-      const workspaces: SshWorkspaceStrategyResolver = target => createSshWorkspaceStrategy(target)
-      // A git run whose repository is the local workspace needs that repository's
-      // directory, and the deployment's workspace registry is the only thing that
-      // knows it. The same service the board resolves for its own runs, read
-      // optionally: a deployment without it keeps mounting, and a run pinned to a
-      // local workspace then fails with the strategy's own "was not resolved".
-      const localRepository = (workspaceId: string): string | undefined =>
-        readWorkspaceDirectory(resolveWorkspaceRegistry(scope), workspaceId)
-      const dispose = board.registerExtension(createSshExtension({
-        ssh,
-        settings,
-        settingsWriter,
-        timers: processTimers,
-        // The applier belongs to the board service, not to the read face this
-        // package restates, so it is resolved off the same service by name.
-        seat: () => resolveBoardActionSeat(scope),
-        workspaces,
-        localRepository,
-      }))
-      return () => { dispose() }
-    }, 'task-board-ssh: provider registration')
-  })
+  let injection: ReturnType<Context['inject']> | undefined
+  let disposed = false
+
+  /**
+   * Release the provider: its engine stops, its tools and launch handler are
+   * withdrawn with the registration, and the summary it published leaves the
+   * board snapshot with the entry. Every card keeps its data.
+   */
+  const teardownProvider = async (): Promise<void> => {
+    const current = injection
+    injection = undefined
+    if (current !== undefined) await current.dispose()
+  }
+
+  /** Admit the provider again, once, against the services as they stand now. */
+  const mountProvider = (): void => {
+    if (disposed || injection !== undefined) return
+    injection = ctx.inject(['taskBoard', 'dshSsh'], (scope: Context) => {
+      scope.effect(() => {
+        const board = resolveTaskBoardHostFace(scope)
+        const ssh = resolveDshSshService(scope)
+        if (board === undefined || ssh === undefined) return () => {}
+        // The placement strategies are assembled behind one entry
+        // (`src/host/workspace/index.ts`), which is the only thing this file knows
+        // about them: the engine holds the frozen `SshWorkspaceStrategy` from
+        // `src/core/workspace.ts` and never a strategy implementation.
+        const workspaces: SshWorkspaceStrategyResolver = target => createSshWorkspaceStrategy(target)
+        // A git run whose repository is the local workspace needs that
+        // repository's directory, and the deployment's workspace registry is the
+        // only thing that knows it. The same service the board resolves for its
+        // own runs, read optionally: a deployment without it keeps mounting, and
+        // a run pinned to a local workspace then fails with the strategy's own
+        // "was not resolved".
+        const localRepository = (workspaceId: string): string | undefined =>
+          readWorkspaceDirectory(resolveWorkspaceRegistry(scope), workspaceId)
+        const dispose = board.registerExtension(createSshExtension({
+          ssh,
+          settings,
+          settingsWriter,
+          timers: processTimers,
+          // The applier belongs to the board service, not to the read face this
+          // package restates, so it is resolved off the same service by name.
+          seat: () => resolveBoardActionSeat(scope),
+          workspaces,
+          localRepository,
+        }))
+        return () => { dispose() }
+      }, 'task-board-ssh: provider registration')
+    })
+  }
+
+  /** Bring the provider in line with the switch, waiting out any release first. */
+  const sync = async (): Promise<void> => {
+    if (disposed) return
+    if (!settings().enabled) {
+      await teardownProvider()
+      return
+    }
+    if (injection === undefined) mountProvider()
+  }
+
+  // A settings write and a lifecycle step can arrive together, and a re-mount
+  // must not race the unload of the scope it replaces: one step at a time.
+  let chain: Promise<void> = Promise.resolve()
+  const requestSync = (): void => {
+    chain = chain.then(() => sync()).catch(error => {
+      console.error('[dsh-task-board-ssh] the provider could not be re-derived from its settings', error)
+    })
+  }
+
+  ctx.on('loader/volatile-update', () => { requestSync() })
+
+  ctx.effect(() => {
+    requestSync()
+    return () => {
+      disposed = true
+      void teardownProvider()
+    }
+  }, 'task-board-ssh: provider lifecycle')
 }

@@ -13,6 +13,7 @@ import { LOG_WINDOW_BUDGET_BYTES, PUBLISH_BODY_LIMIT_BYTES, PUBLISH_LOG_BUDGET_B
 import { NOW, createBoard, type BoardHarness } from './support/board.ts'
 import { mountEngine, type Mounted } from './support/engine.ts'
 import { createScriptedSsh, type ScriptedSsh } from './support/fake-ssh.ts'
+import { dshOutput } from './support/output.ts'
 import { fakeWorkspaces } from './support/workspaces.ts'
 
 const cleanups: Array<() => void> = []
@@ -208,6 +209,68 @@ describe('the log window a card publishes', () => {
     // Then every card was served in the end, and each publish stayed inside its budget
     expect(served.size).toBe(cards.length)
     expect(byteLength(JSON.stringify(mounted.published()))).toBeLessThanOrEqual(PUBLISH_BODY_LIMIT_BYTES)
+  })
+})
+
+describe('the run a viewer names', () => {
+  it('operator naming a settled run gets that run replayed, and a run the card never had is refused', async () => {
+    // Given a card whose run wrote one line and then settled
+    const { ssh, board, mounted, cards } = await runningCards()
+    const card = cards[0] as { taskId: string; runId: string }
+    const output = 'first line\n' + dshOutput({ sessionId: 'sess-named', text: 'named run' })
+    appendLog(ssh, card.runId, output)
+    await mounted.tick()
+    ssh.finish(card.runId, { output })
+    await vi.waitFor(async () => {
+      await mounted.tick()
+      expect(board.task(card.taskId)?.status).toBe('done')
+    })
+
+    // When the detail view asks for that run by name
+    const reply = await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'refresh',
+      taskId: card.taskId,
+      payload: { runId: card.runId },
+    }) as { ok: boolean }
+
+    // Then exactly that run's log was replayed from its first byte
+    expect(reply.ok).toBe(true)
+    const replay = logsOf(mounted)[card.taskId]
+    expect(replay?.runId).toBe(card.runId)
+    expect(replay?.baseOffset).toBe(0)
+    expect(replay?.text).toBe(output)
+
+    // When it names a run the card never had
+    const refused = await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'refresh',
+      taskId: card.taskId,
+      payload: { runId: 'run-never-happened' },
+    }) as { ok: boolean; error?: string }
+
+    // Then the refusal names the run instead of replaying somebody else's log
+    expect(refused.ok).toBe(false)
+    expect(refused.error).toContain('run-never-happened')
+
+    // And the pager refuses the same run for the same reason
+    const paged = await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'read-log',
+      taskId: card.taskId,
+      payload: { runId: 'run-never-happened' },
+    }) as { ok: boolean; error?: string }
+    expect(paged.ok).toBe(false)
+    expect(paged.error).toContain('run-never-happened')
+
+    // And a run named without its card is refused as ambiguous
+    const orphan = await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'refresh',
+      payload: { runId: card.runId },
+    }) as { ok: boolean; error?: string }
+    expect(orphan.ok).toBe(false)
+    expect(orphan.error).toContain('taskId')
   })
 })
 

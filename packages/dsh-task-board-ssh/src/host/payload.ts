@@ -92,6 +92,22 @@ export function withSettledRun(payload: HostSshPayload, run: SshRunRecord): Host
 }
 
 /**
+ * One run of a card's payload by id.
+ *
+ * A run stays addressable after it settles — the detail view names a historical
+ * run to replay its log — so the search covers the run in flight and the whole
+ * bounded history.
+ * @param payload - the payload to read.
+ * @param runId - run to find.
+ * @returns the run, or undefined when this card never had it.
+ */
+export function findRun(payload: HostSshPayload | undefined, runId: string): SshRunRecord | undefined {
+  if (payload === undefined) return undefined
+  if (payload.activeRun?.runId === runId) return payload.activeRun
+  return payload.history.find(record => record.runId === runId)
+}
+
+/**
  * The most recent session this card's runs recorded, which is the one a
  * follow-up would continue.
  * @param payload - the payload to read.

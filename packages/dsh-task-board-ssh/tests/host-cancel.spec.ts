@@ -86,7 +86,7 @@ describe('a run a person takes away', () => {
     expect(board.task(taskId)).toBeUndefined()
   })
 
-  it('operator cancelling from the card surface stops the run and keeps no verdict', async () => {
+  it('operator cancelling from the card surface stops the run, keeps no verdict and leaves the card in the todo column', async () => {
     // Given a card whose run is under way on the host
     const { ssh, board, mounted, taskId, runId } = await runningCard()
 
@@ -97,6 +97,24 @@ describe('a run a person takes away', () => {
     // Then the answer names the run and the host stopped it
     expect(reply.ok).toBe(true)
     expect(reply.runId).toBe(runId)
+    expect(executionsOf(board.task(taskId))).toEqual([])
+
+    // Then the card left the running column for the one it can be started from
+    await vi.waitFor(() => { expect(board.task(taskId)?.status).toBe('todo') })
+    const parsed = parseSshLedgerPayload(board.task(taskId)?.integrations?.['ssh'])
+    expect(parsed.ok ? parsed.value.history.map(run => run.phase) : []).toEqual(['cancelled'])
+  })
+
+  it('operator moving a running card to the done column keeps the column the person chose', async () => {
+    // Given a card whose run is under way on the host
+    const { ssh, board, taskId } = await runningCard()
+
+    // When the operator moves it to done rather than leaving it in the running column
+    board.apply({ kind: 'move', taskId, status: 'done' })
+    await vi.waitFor(() => { expect(ssh.commands('cancel')).toHaveLength(1) })
+
+    // Then the run was stopped and the column stays the one the operator picked
+    expect(board.task(taskId)?.status).toBe('done')
     expect(executionsOf(board.task(taskId))).toEqual([])
   })
 })

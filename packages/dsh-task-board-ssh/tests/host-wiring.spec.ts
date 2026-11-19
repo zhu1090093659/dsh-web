@@ -9,8 +9,8 @@
  */
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { TaskBoardExtension, TaskBoardExtensionHost } from '../src/core/contract.ts'
 import { Config, apply } from '../src/index.ts'
+import type { TaskBoardExtension, TaskBoardExtensionHost } from '../src/core/contract.ts'
 import { SshSettingsWriter } from '../src/host/settings.ts'
 import { SSH_TOOL_NAMES } from '../src/host/tools.ts'
 import { NOW, createBoard } from './support/board.ts'
@@ -183,61 +183,73 @@ describe('the extension row', () => {
 })
 
 describe('the three tools', () => {
-  it('operator switching the extension off loses the tools and the interception, and switching it back restores both', async () => {
-    // Given a board that really starts sessions and a provider mounted on it
+  it('operator switching the extension off loses its tools, its interception and its polling, and switching it back rebuilds them', async () => {
+    // Given a host serving both services, mounted as its own fiber, and a switch
+    // that is on
+    const root = new Context()
+    const board = fakeBoardFace()
     const ssh = createScriptedSsh()
-    const board = createBoard({ sessions: true })
+    const config = Config({}) as { enabled?: boolean }
+    const fiber = root.plugin(apply, config as never)
+    cleanups.push(() => { void fiber.dispose() })
+    root.provide('taskBoard', board.face as never)
+    const provision = root.plugin((scoped: Context) => { scoped.provide('dshSsh', ssh.service as never) })
+    cleanups.push(() => { void provision.dispose() })
+    await settle()
+    expect(board.record.admitted).toHaveLength(1)
+    expect([...board.record.tools].sort()).toEqual([...SSH_TOOL_NAMES].sort())
+
+    // When the operator switches this extension off — one volatile settings
+    // write, and nothing else
+    config.enabled = false
+    fiber.ctx.emit('loader/volatile-update', [[]])
+    await settle()
+
+    // Then the provider was released with everything it registered: its three
+    // tools, its launch handler and its engine (which takes the poll timer with
+    // it, so no host is asked about any run again)
+    expect(board.record.released).toBe(1)
+    expect(board.record.tools).toEqual([])
+    expect(ssh.calls).toEqual([])
+
+    // When it is switched back on
+    config.enabled = true
+    fiber.ctx.emit('loader/volatile-update', [[]])
+    await settle()
+
+    // Then the provider is admitted again and its three tools are back
+    expect(board.record.admitted).toHaveLength(2)
+    expect([...board.record.tools].sort()).toEqual([...SSH_TOOL_NAMES].sort())
+  })
+
+  it('operator switching the extension off stops the polling its timer would otherwise keep doing', async () => {
+    // Given a card whose run is being followed and polled
+    const ssh = createScriptedSsh()
+    const board = createBoard({ sessions: false })
     cleanups.push(() => { board.dispose() })
-    const registry = { names: new Set<string>() }
-    const mounted = mountEngine({
-      board,
-      ssh: ssh.service,
-      workspaces: fakeWorkspaces({ cwd: '/srv/work' }).resolver,
-      now: () => NOW,
-      toolRegistry: registry,
-    })
+    const mounted = mountEngine({ board, ssh: ssh.service, workspaces: fakeWorkspaces({ cwd: '/srv/work' }).resolver, now: () => NOW })
     cleanups.push(() => { mounted.release() })
-    const remote = board.createCard('task-remote', { title: 'remote card' }).id
+    const taskId = board.createCard('task-1', { title: 'card' }).id
     await mounted.extension.handleAction?.({
       extensionId: 'ssh',
       action: 'set-target',
-      taskId: remote,
+      taskId,
       payload: { target: { mode: 'direct', host: 'build-box', agent: { kind: 'dsh' }, workspace: { kind: 'in-place', path: '/srv/work' } } },
     })
-    expect([...registry.names].sort()).toEqual([...SSH_TOOL_NAMES].sort())
-
-    // When the extension switch goes off
-    mounted.settings.enabled = false
-    board.board.extensions.setEnabled(true)
-
-    // Then its tools are gone and the board no longer runs the extension
-    expect([...registry.names]).toEqual([])
-    expect(board.board.extensions.isActive('ssh')).toBe(false)
-
-    // When a pinned card is started while the extension is off
-    board.apply({ kind: 'run', taskId: remote })
-
-    // Then the board runs it locally, exactly as if the provider were not there
-    await vi.waitFor(() => { expect(board.prompts).toHaveLength(1) })
-    expect(ssh.commands('start')).toEqual([])
-
-    // When the extension is switched back on
-    mounted.settings.enabled = true
-    board.board.extensions.setEnabled(true)
-
-    // Then the tools are back and a start is taken over again
-    expect([...registry.names].sort()).toEqual([...SSH_TOOL_NAMES].sort())
-    const second = board.createCard('task-remote-2', { title: 'second remote card' }).id
-    await mounted.extension.handleAction?.({
-      extensionId: 'ssh',
-      action: 'set-target',
-      taskId: second,
-      payload: { target: { mode: 'direct', host: 'build-box', agent: { kind: 'dsh' }, workspace: { kind: 'in-place', path: '/srv/work' } } },
-    })
-    board.apply({ kind: 'run', taskId: second })
+    board.apply({ kind: 'run', taskId })
     await mounted.tick(0)
     await vi.waitFor(() => { expect(ssh.commands('start')).toHaveLength(1) })
-    expect(board.prompts).toHaveLength(1)
+    await mounted.tick()
+    const pollsWhileOn = ssh.commands('status').length
+    expect(pollsWhileOn).toBeGreaterThan(0)
+
+    // When the switch goes off and the timer keeps firing for two seconds
+    mounted.settings.enabled = false
+    await mounted.tick(1_000)
+    await mounted.tick(1_000)
+
+    // Then not one further status command was sent
+    expect(ssh.commands('status')).toHaveLength(pollsWhileOn)
   })
 
   it('operator switching the board off loses the tools, and switching it on brings them back', async () => {

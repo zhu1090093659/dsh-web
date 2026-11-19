@@ -36,6 +36,7 @@ import type { SshWorkspaceCollection, SshWorkspaceRun, SshWorkspaceStrategy } fr
 import { SSH_INITIATOR_PREFIX, alreadyRecorded, type BoardActionSeat } from './board.ts'
 import {
   SSH_INTEGRATION_KEY,
+  findRun,
   latestSessionId,
   liveRunOf,
   readHostPayload,
@@ -480,7 +481,10 @@ export class SshRunEngine {
       return { ok: false, code: 'no-run', error: `task ${taskId} has no remote run` }
     }
     if (isTerminalRunPhase(run.phase)) return { ok: false, code: 'no-run', error: `the run of task ${taskId} already settled` }
-    void this.stopRun(taskId, payload, target, run).catch(error => { this.log('the cancel request failed', error) })
+    // A run stopped from the card surface leaves the card where it can be
+    // picked up again, which is the same place a card dragged out of the running
+    // column lands: the todo column, with no verdict written.
+    void this.stopRun(taskId, payload, target, run, { restore: true }).catch(error => { this.log('the cancel request failed', error) })
     return { ok: true, taskId, runId: run.runId, phase: 'cancelled', message: 'cancel requested' }
   }
 
@@ -489,12 +493,19 @@ export class SshRunEngine {
    * @param taskId - one card, or undefined for every card this mount follows.
    * @returns the reply the caller renders.
    */
-  async refresh(taskId?: string): Promise<SshEngineReply> {
+  async refresh(taskId?: string, runId?: string): Promise<SshEngineReply> {
+    if (runId !== undefined && taskId === undefined) {
+      return { ok: false, code: 'task-required', error: 'a run is named inside its card: pass the taskId with the runId' }
+    }
     if (taskId !== undefined) {
+      if (runId !== undefined && findRun(this.payloadOf(taskId), runId) === undefined) {
+        return { ok: false, code: 'unknown-run', error: `task ${taskId} has no run ${runId}` }
+      }
       // A viewer that just opened (or reopened) asks for this card, and the one
       // thing it cannot reconstruct is the beginning: the log is replayed from
-      // byte zero into the next publish.
-      await this.replayLog(taskId)
+      // byte zero into the next publish. Naming a run replays that run, which is
+      // how the detail view reads the log of a run that already settled.
+      await this.replayLog(taskId, runId)
       const job = this.jobs.get(taskId)
       if (job !== undefined) await this.pollJob(job)
       this.publishSummary()
@@ -513,12 +524,15 @@ export class SshRunEngine {
    * decodes the log from its first byte, without the provider having kept a copy
    * of it anywhere.
    * @param taskId - card whose run log to replay.
+   * @param runId - a specific run, when the viewer named one.
    */
-  private async replayLog(taskId: string): Promise<void> {
+  private async replayLog(taskId: string, runId?: string): Promise<void> {
     const payload = this.payloadOf(taskId)
     const target = payload?.target
     if (payload === undefined || target === undefined) return
-    const run = payload.activeRun ?? payload.history[payload.history.length - 1]
+    const run = (runId === undefined ? undefined : findRun(payload, runId))
+      ?? payload.activeRun
+      ?? payload.history[payload.history.length - 1]
     if (run === undefined) return
     try {
       const stateDir = await this.remote.stateDir(target.host)
@@ -544,7 +558,12 @@ export class SshRunEngine {
     if (payload === undefined || target === undefined) {
       return { ok: false, code: 'no-target', error: `task ${taskId} pins no SSH target` }
     }
-    const runId = options.runId ?? payload.activeRun?.runId ?? payload.history[payload.history.length - 1]?.runId
+    if (options.runId !== undefined && findRun(payload, options.runId) === undefined) {
+      return { ok: false, code: 'unknown-run', error: `task ${taskId} has no run ${options.runId}` }
+    }
+    const runId = options.runId
+      ?? payload.activeRun?.runId
+      ?? payload.history[payload.history.length - 1]?.runId
     if (runId === undefined) return { ok: false, code: 'no-run', error: `task ${taskId} has never run remotely` }
     const offset = options.offset !== undefined && Number.isFinite(options.offset) && options.offset >= 0
       ? Math.trunc(options.offset)
@@ -712,7 +731,7 @@ export class SshRunEngine {
 
   /** Admit queued runs on one host until its ceiling is reached. */
   private async pump(alias: string): Promise<void> {
-    if (this.disposed) return
+    if (this.disposed || !this.enabled()) return
     if (this.pumping.has(alias)) {
       this.pumpAgain.add(alias)
       return
@@ -758,7 +777,7 @@ export class SshRunEngine {
 
   /** Prepare and start one admitted run. */
   private async startRun(alias: string, taskId: string, runId: string): Promise<void> {
-    if (this.disposed) return
+    if (this.disposed || !this.enabled()) return
     const task = this.host.tasks.get(taskId)
     const payload = this.payloadOf(taskId)
     const run = payload?.activeRun
@@ -896,7 +915,10 @@ export class SshRunEngine {
 
   /** One poll pass over every run this process follows. */
   private async poll(): Promise<void> {
-    if (this.disposed || this.polling) return
+    // The switch is read here as well as in the registration: a deployment whose
+    // settings reach this instance without unloading it must still stop talking
+    // to its hosts the moment the provider is switched off.
+    if (this.disposed || this.polling || !this.enabled()) return
     this.polling = true
     try {
       for (const job of [...this.jobs.values()]) {
@@ -1139,11 +1161,25 @@ export class SshRunEngine {
     if (payload === undefined || run === undefined || target === undefined) return
     if (isTerminalRunPhase(run.phase)) return
     if (alreadyRecorded(task, run.runId)) return
-    await this.stopRun(event.taskId, payload, target, run)
+    // The person already chose the column, so this path never moves the card.
+    await this.stopRun(event.taskId, payload, target, run, { restore: false })
   }
 
-  /** Cancel one live run, drop any instruction it owed, and write no verdict. */
-  private async stopRun(taskId: string, payload: HostSshPayload, target: SshTarget, run: SshRunRecord): Promise<void> {
+  /**
+   * Cancel one live run, drop any instruction it owed, and write no verdict.
+   *
+   * A card the provider itself stopped would otherwise sit in the running column
+   * with nothing left to observe it, and the detail view offers no cancel button
+   * for a settled run: the restore flag is what puts it back where a person can
+   * run it again.
+   */
+  private async stopRun(
+    taskId: string,
+    payload: HostSshPayload,
+    target: SshTarget,
+    run: SshRunRecord,
+    options: { restore: boolean },
+  ): Promise<void> {
     this.jobs.delete(taskId)
     this.cancelRequests.add(target.host + '/' + run.runId)
     const cancelled: SshRunRecord = {
@@ -1166,10 +1202,31 @@ export class SshRunEngine {
         this.log(`the remote run ${run.runId} could not be cancelled`, error)
       }
     }
+    if (options.restore) this.restoreToTodo(taskId, run.runId)
     // The slot this run held is free again: whoever waited for it is served now
     // rather than on the next tick.
     await this.pump(target.host)
     this.publishSummary()
+  }
+
+  /**
+   * Put a card the provider stopped back in the todo column.
+   *
+   * The board's own move gate judges it — a card that is already there, an
+   * archived card and one the Host owns through an open execution are all
+   * refused by the same code the board UI goes through, so a refusal here is
+   * logged and never forced.
+   * @param taskId - card to move.
+   * @param runId - run that was stopped, recorded as the initiating party.
+   */
+  private restoreToTodo(taskId: string, runId: string): void {
+    const task = this.host.tasks.get(taskId)
+    if (task === undefined || task.archivedAt !== undefined || task.status === 'todo') return
+    try {
+      this.host.tasks.setStatus(taskId, 'todo', SSH_INITIATOR_PREFIX + runId)
+    } catch (error) {
+      this.log(`task ${taskId} could not be put back in the todo column after its run was cancelled`, error)
+    }
   }
 
   /** A deleted card takes its remote run directory with it. */

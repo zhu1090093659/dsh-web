@@ -13,6 +13,7 @@
  */
 import { execFileSync, spawnSync } from 'node:child_process'
 import {
+  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -100,7 +101,12 @@ function localSsh(): DshSshService & { readonly log: RecordedCommand[] } {
 
 /** Run one git command against a fixture repository and return its raw output. */
 function fixtureGit(repository: string, ...args: string[]): string {
-  return execFileSync('git', ['-C', repository, ...args], { encoding: 'utf8' })
+  // stderr is captured rather than forwarded: a fixture fetch narrates the refs
+  // it wrote, and that narration belongs in a failure message, not in the log.
+  return execFileSync('git', ['-C', repository, ...args], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
 }
 
 /** Run one git command and keep its exit code, for "this must be absent" checks. */
@@ -549,5 +555,110 @@ describe('git workspace from the local workspace', () => {
     expect((failure as Error).message).toContain('workspace-absent')
     expect((failure as Error).message).toContain('was not resolved')
     expect(ssh.log).toEqual([])
+  })
+})
+
+describe('dash-leading card values', () => {
+  it('operator whose repository address looks like an option gets it read as a path', async () => {
+    // Given a script that records being run as git's upload-pack
+    const marker = join(scratch, 'upload-pack-ran')
+    const script = join(scratch, 'upload-pack.sh')
+    writeFileSync(script, `#!/bin/sh\ntouch '${marker}'\n`)
+    chmodSync(script, 0o755)
+    const address = `--upload-pack=${script}`
+    const seed = seedRepository(join(scratch, 'injection-origin'))
+    const origin = createBareRemote(seed, join(scratch, 'injection-origin.git'))
+    const probeCache = join(scratch, 'injection-probe-cache')
+    execFileSync('git', ['init', '-q', '--bare', probeCache], { encoding: 'utf8' })
+
+    // When git is handed that address in the repository slot of a fetch
+    spawnSync('git', ['-C', probeCache, 'fetch', '--no-tags', address, origin], { encoding: 'utf8' })
+
+    // Then it ran as an option, which is the vector the terminator closes
+    expect(existsSync(marker)).toBe(true)
+    rmSync(marker)
+
+    // When a card pins that address and its run is prepared
+    const source = { kind: 'url', url: address } as const
+    const strategy = createSshWorkspaceStrategy({ kind: 'git', source })
+    const stateDir = join(scratch, 'injection-state')
+    const failure = await rejection(strategy.prepare(makeRun({ runId: 'run-injection', stateDir, source })))
+
+    // Then git read it as a repository word, refused it as one, and ran nothing
+    expect(failure).toBeInstanceOf(SshWorkspaceError)
+    expect((failure as Error).message).toContain(address)
+    expect(existsSync(marker)).toBe(false)
+  })
+
+  it('operator whose repository address looks like an option gets it read as a path on publish', async () => {
+    // Given a card address that git reads as --receive-pack outside a terminator
+    const marker = join(scratch, 'receive-pack-ran')
+    const script = join(scratch, 'receive-pack.sh')
+    writeFileSync(script, `#!/bin/sh\ntouch '${marker}'\n`)
+    chmodSync(script, 0o755)
+    const address = `--receive-pack=${script}`
+    const source = { kind: 'url', url: address } as const
+    const strategy = createSshWorkspaceStrategy({ kind: 'git', source })
+    const stateDir = join(scratch, 'publish-injection-state')
+    const runId = 'run-publish-injection'
+    const run = makeRun({ runId, stateDir, source })
+
+    // Given the cache an earlier prepare created, holding the run's branch one
+    // commit past its base: the run's work is in the cache, its fetch never ran
+    await rejection(strategy.prepare(run))
+    const cache = onlyCacheDir(stateDir)
+    const seed = seedRepository(join(scratch, 'publish-injection-seed'))
+    writeFileSync(join(seed, 'second.txt'), 'second\n')
+    fixtureGit(seed, 'add', 'second.txt')
+    const tip = fixtureCommit(seed, 'second commit')
+    const base = fixtureGit(seed, 'rev-parse', 'HEAD~1').trim()
+    fixtureGit(cache, 'fetch', '--no-tags', seed, `+HEAD:refs/heads/dsh-task/${runId}`)
+    fixtureGit(cache, 'update-ref', `refs/dsh-base/${runId}`, base)
+
+    // When git is handed that address in the repository slot without a terminator
+    const branchRef = `refs/heads/dsh-task/${runId}`
+    const unguarded = spawnSync('git', ['-C', cache, 'push', address, `${branchRef}:${branchRef}`], { encoding: 'utf8' })
+
+    // Then git swallowed it as an option: the refspec became the repository instead
+    expect(unguarded.stderr).not.toContain(address)
+
+    // When the run is collected
+    const failure = await rejection(strategy.collect(run))
+
+    // Then it was the repository word: git refused it as a path, ran nothing,
+    // and the refspec stayed a value rather than becoming a repository
+    const message = (failure as Error).message
+    expect(failure).toBeInstanceOf(SshWorkspaceError)
+    expect(message).toContain(`'${address}'`)
+    expect(message).not.toContain(`${branchRef}:${branchRef}`)
+    expect(existsSync(marker)).toBe(false)
+    expect(fixtureGit(cache, 'rev-parse', branchRef).trim()).toBe(tip)
+  })
+
+  it('operator whose run id begins with a dash gets its branch, worktree and base ref as values', async () => {
+    // Given a run id whose first character is a dash
+    const source = seedRepository(join(scratch, 'dash-run-source'))
+    const origin = createBareRemote(source, join(scratch, 'dash-run-origin.git'))
+    const stateDir = join(scratch, 'dash-run-state')
+    const target = { kind: 'git', source: { kind: 'url', url: origin } } as const
+    const strategy = createSshWorkspaceStrategy(target)
+    const runId = '-dash-run'
+    const run = makeRun({ runId, stateDir, source: target.source })
+
+    // When the run is prepared
+    const prepared = await strategy.prepare(run)
+
+    // Then the worktree and the branch carry it as a value, not as an option
+    expect(prepared).toEqual({ cwd: join(stateDir, 'workspaces', runId) })
+    expect(fixtureGit(prepared.cwd, 'rev-parse', '--abbrev-ref', 'HEAD').trim()).toBe(`dsh-task/${runId}`)
+
+    // When the run commits and is collected
+    writeFileSync(join(prepared.cwd, 'result.txt'), 'dash\n')
+    fixtureGit(prepared.cwd, 'add', 'result.txt')
+    const committed = fixtureCommit(prepared.cwd, 'run result')
+    await strategy.collect(run)
+
+    // Then the branch reached the repository under that same name
+    expect(fixtureGit(origin, 'rev-parse', `refs/heads/dsh-task/${runId}`).trim()).toBe(committed)
   })
 })

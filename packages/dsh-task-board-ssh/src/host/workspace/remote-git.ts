@@ -8,6 +8,17 @@
  * remote run has nobody at a terminal to answer a credential prompt, and
  * `env` carries it instead of relying on a shell assignment.
  *
+ * Quoting is not enough on its own. A quoted word still reaches git as that
+ * word, and git reads a leading dash as an option — `--upload-pack` and
+ * `--receive-pack` are options that run a program, so a card's repository
+ * address is a command-execution vector in the repository slot. The parser
+ * refuses a leading dash first; the commands below put {@link END_OF_OPTIONS}
+ * in front of the repository as the command layer's own guard, which also
+ * makes every refspec after it a value. Every other positional word this
+ * module passes is prefixed by a constant (`refs/heads/`, `refs/dsh-remote/`,
+ * `refs/dsh-base/`), an absolute remote path, or a validated object name, so no
+ * other slot can start with a dash.
+ *
  * @module dsh-task-board-ssh/host/workspace/remote-git
  */
 import { shellEnsureDir, shellJoin } from '../../core/shell.ts'
@@ -22,6 +33,9 @@ const REMOTE_REF_NAMESPACE = 'refs/dsh-remote/'
 
 /** Ref a url source's remote HEAD lands in. */
 const REMOTE_HEAD_REF = 'refs/dsh-remote-head'
+
+/** The word that ends git's option parsing, so every word after it is a value. */
+const END_OF_OPTIONS = '--'
 
 /**
  * Compose one git command line.
@@ -99,6 +113,7 @@ export function fetchUrlCommand(layout: GitWorkspaceLayout, url: string): string
     layout.cacheDir,
     'fetch',
     '--no-tags',
+    END_OF_OPTIONS,
     url,
     `+refs/heads/*:${REMOTE_REF_NAMESPACE}*`,
     `+HEAD:${REMOTE_HEAD_REF}`,
@@ -116,7 +131,15 @@ export function fetchUrlCommand(layout: GitWorkspaceLayout, url: string): string
  * @returns one shell command.
  */
 export function fetchBundleCommand(layout: GitWorkspaceLayout, bundlePath: string): string {
-  return gitCommand('-C', layout.cacheDir, 'fetch', '--no-tags', bundlePath, `+HEAD:${layout.baseRef}`)
+  return gitCommand(
+    '-C',
+    layout.cacheDir,
+    'fetch',
+    '--no-tags',
+    END_OF_OPTIONS,
+    bundlePath,
+    `+HEAD:${layout.baseRef}`,
+  )
 }
 
 /**
@@ -176,7 +199,7 @@ export function countRunCommitsCommand(layout: GitWorkspaceLayout): string {
  * @returns one shell command.
  */
 export function pushBranchCommand(layout: GitWorkspaceLayout, url: string): string {
-  return gitCommand('-C', layout.cacheDir, 'push', url, `${layout.branchRef}:${layout.branchRef}`)
+  return gitCommand('-C', layout.cacheDir, 'push', END_OF_OPTIONS, url, `${layout.branchRef}:${layout.branchRef}`)
 }
 
 /**

@@ -77,7 +77,7 @@ export function TaskBoardPanelIcon({ size }: { size: number; active: boolean }):
  */
 export function TaskBoardPanel({ controller, renderSlot }: {
   controller: BoardController
-  /** Child-slot renderer the registration declares (detail + card decoration). */
+  /** Child-slot renderer the registration declares (detail, card decoration, new-card section). */
   renderSlot?: SlotRenderBinding
 }): ReactNode {
   const seats = useMemo(() => seatsFromRenderSlot(renderSlot), [renderSlot])
@@ -130,6 +130,7 @@ export function registerTaskBoardPanel(ctx: ClientContext, controller: BoardCont
     children: {
       'task-board.detail.section': { kind: 'list', scope: 'root' },
       'task-board.card.decoration': { kind: 'list', scope: 'root' },
+      'task-board.compose.section': { kind: 'list', scope: 'root' },
     },
     inject: (): PanelFace => ({ controller }),
   }, TaskBoardPanel as never)))

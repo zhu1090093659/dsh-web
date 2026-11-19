@@ -31,12 +31,19 @@ export const TASK_BOARD_DETAIL_SECTION = 'task-board.detail.section'
 export const TASK_BOARD_SETTINGS_SECTION = 'task-board.settings.section'
 /** Child seat a provider registers its card decoration into. */
 export const TASK_BOARD_CARD_DECORATION = 'task-board.card.decoration'
+/**
+ * Child seat a provider registers its new-card section into: its own
+ * create-time configuration, rendered inside the create dialog's execution
+ * settings, whose draft the board stores on the card it creates.
+ */
+export const TASK_BOARD_COMPOSE_SECTION = 'task-board.compose.section'
 
 /** Every child seat the board declares for extensions, in render order. */
 export const TASK_BOARD_EXTENSION_SEATS: readonly string[] = [
   TASK_BOARD_DETAIL_SECTION,
   TASK_BOARD_SETTINGS_SECTION,
   TASK_BOARD_CARD_DECORATION,
+  TASK_BOARD_COMPOSE_SECTION,
 ]
 
 /**
@@ -491,6 +498,25 @@ export interface TaskBoardSettingsSectionProps {
 /** Owner props of the card-decoration seat. */
 export interface TaskBoardCardDecorationProps {
   task: TaskRecord
+}
+
+/** Owner props of the new-card compose seat. */
+export interface TaskBoardComposeSectionProps {
+  /**
+   * Report the draft this provider wants written into the new card's
+   * `integrations` under `extensionId` — that is, what the board stores when
+   * the create dialog is submitted. The id is the provider's own extension id,
+   * the same key its payload lives under on every other card; a later call for
+   * the same id replaces the earlier draft instead of merging with it, and
+   * `undefined` withdraws it, so a provider that clears its picker leaves no
+   * entry behind. The draft stands until the dialog submits or its provider
+   * replaces or withdraws it, because collapsing the region that holds the seat
+   * must never discard a choice already made. The board never interprets the
+   * payload: a draft that is not a plain JSON object or that exceeds
+   * {@link TASK_BOARD_PAYLOAD_LIMIT_BYTES} is dropped from the card being
+   * created and named in one warning, and the create itself still happens.
+   */
+  contribute(extensionId: string, payload: TaskBoardExtensionPayload | undefined): void
 }
 
 /**

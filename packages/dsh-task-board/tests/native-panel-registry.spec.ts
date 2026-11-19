@@ -111,6 +111,27 @@ describe('task-board registrations against the real slot core', () => {
     dispose()
   })
 
+  it('operator sees a provider row admitted into the new-card seat the board declares', () => {
+    // Given the genuine slot registry with the board's panel registration in it
+    const { ctx, core, declare } = realCoreContext()
+    declare()
+    registerTaskBoardPanel(ctx, fakeController())
+
+    // When a provider registers its own new-card section, which the core only
+    // admits while the board's entry declares that child seat
+    const dispose = core.register(
+      { name: 'task-board.compose.section', id: 'alpha' } as never,
+      (() => null) as never,
+    )
+
+    // Then the registry holds it, so the seat is real for a provider instead of
+    // failing at its own install time
+    expect(core.entries('task-board.compose.section').map(entry => entry.options.id)).toEqual(['alpha'])
+
+    dispose()
+    expect(core.entries('task-board.compose.section')).toHaveLength(0)
+  })
+
   it('operator sees a duplicate panel registration refused, never silently duplicated', () => {
     // Given a registered board
     const { ctx, declare } = realCoreContext()

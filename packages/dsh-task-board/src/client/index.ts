@@ -43,6 +43,7 @@ import { TaskBoardClientService } from './service.ts'
 import {
   TASK_BOARD_SERVICE_NAME,
   type TaskBoardCardDecorationProps,
+  type TaskBoardComposeSectionProps,
   type TaskBoardDetailSectionProps,
   type TaskBoardHostFace,
   type TaskBoardSettingsSectionProps,
@@ -114,6 +115,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'task-board.settings.section': { kind: 'list'; scope: 'root'; owner: TaskBoardSettingsSectionProps }
     /** Provider card decoration; the board declares and renders it. */
     'task-board.card.decoration': { kind: 'list'; scope: 'root'; owner: TaskBoardCardDecorationProps }
+    /** Provider new-card section; the board declares and renders it in the create dialog. */
+    'task-board.compose.section': { kind: 'list'; scope: 'root'; owner: TaskBoardComposeSectionProps }
   }
 }
 

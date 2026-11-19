@@ -2,8 +2,9 @@
  * New-task modal: title + description + the prompt that execution will send.
  * Creates through the Host and closes only after the Host confirms it.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { BoardController } from '../../core/controller.ts'
+import { isTaskBoardExtensionPayload, type TaskBoardExtensionPayload } from '../../core/extension.ts'
 import { resolveCardTargets, type CardTargetSource } from '../../core/card-defaults.ts'
 import { isValidCron, nextRunAtMs } from '../../core/schedule.ts'
 import { parseFreezeRequest } from '../../core/freeze-snapshot.ts'
@@ -21,6 +22,7 @@ import { readParseModelPreference, writeParseModelPreference } from './parse-mod
 import { inheritPresetLabel, presetChoiceRows, presetLabel } from './preset-label.ts'
 import { ReasoningEffortField } from './ReasoningEffortField.tsx'
 import { modelDisplayLabel, reconcileReasoningEffort } from './model-options.ts'
+import { TaskBoardSeatBoundary, useTaskBoardSeats } from '../seats.tsx'
 import css from '../board.module.css'
 
 export interface NewTaskModalProps {
@@ -93,6 +95,18 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
   const [reasoningEffort, setReasoningEffort] = useState(seed.reasoningEffort)
   const inheritedPermission = parentTask === undefined ? undefined : effectiveTaskPermission(parentTask)
   const [reuseSession, setReuseSession] = useState(initialTask?.reuseSession ?? false)
+  // The providers' own create-time configuration. What each of them wants
+  // written into the new card's `integrations` is held in a ref, not in state:
+  // it is read once, when the card is created, so reporting a draft never
+  // re-renders this dialog and the provider's own state stays the one place
+  // that says what it currently shows.
+  const seats = useTaskBoardSeats()
+  const composeDrafts = useRef(new Map<string, TaskBoardExtensionPayload | undefined>())
+  // Stable for the life of the dialog: a provider keys its reporting effect on
+  // it, so it must not change identity on every render.
+  const contribute = useCallback((extensionId: string, payload: TaskBoardExtensionPayload | undefined): void => {
+    composeDrafts.current.set(extensionId, payload)
+  }, [])
   const [scheduleEnabled, setScheduleEnabled] = useState(initialTask?.schedule?.enabled ?? false)
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>(initialTask?.schedule?.mode ?? 'cron')
   const [scheduleCron, setScheduleCron] = useState(initialTask?.schedule?.cron ?? '')
@@ -241,6 +255,19 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
     // Blank rows never reach the wire: the protocol rejects a tag with an
     // empty name, and an empty list is expressed by omitting the field.
     const tagList = cleanTags(tags)
+    // What the providers reported for THIS card, through the board's own payload
+    // gate: one unusable entry is dropped and named, never allowed to stop the
+    // create, and a dialog no provider feeds sends no `integrations` key at all
+    // so its create input is the one it always sent.
+    const integrations: Record<string, TaskBoardExtensionPayload> = {}
+    for (const [extensionId, draft] of composeDrafts.current) {
+      if (draft === undefined) continue
+      if (!isTaskBoardExtensionPayload(draft)) {
+        console.warn(`[dsh-task-board] dropped the ${extensionId} new-card draft: not an extension payload, or over the size limit`)
+        continue
+      }
+      integrations[extensionId] = draft
+    }
     setPending(true)
     // The staged files are uploaded NOW, because the card is being saved: the
     // upload is what turns a local file into a stored object the card can
@@ -277,6 +304,7 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
       ...(model === '' ? {} : { model }),
       ...(reasoningEffort === '' ? {} : { reasoningEffort }),
       ...(reuseSession ? { reuseSession: true } : {}),
+      ...(Object.keys(integrations).length === 0 ? {} : { integrations }),
       ...(tagList.length > 0 ? { tags: tagList } : {}),
       ...(attachments.persisted.length + uploaded.length > 0
         // The storage is content-addressed: the same content uploaded twice
@@ -388,6 +416,10 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
   const tagCount = cleanTags(tags).length
   const labelsSummary = tagCount === 0 ? t('new.summary.none') : t('new.summary.labelCount', { count: String(tagCount) })
   const runSummary = reuseSession ? t('exec.reuseSession') : t('new.summary.none')
+  // What the registered providers contribute to this dialog, read once so the
+  // run region can tell a deployment without a provider (nothing to wrap) from
+  // one that registered rows here.
+  const composeSeat = seats.composeSection({ contribute })
   const handoverSummary = freezeText.trim() !== '' || handoverText.trim() !== ''
     ? t('new.summary.filled')
     : t('new.summary.none')
@@ -619,6 +651,15 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
           <span>{t('exec.reuseSession')}</span>
         </label>
         <p className={css.detailText}>{t('exec.reuseSessionHint')}</p>
+        {/* A provider's own create-time configuration belongs in the region
+            that decides how this card runs, so its rows read after the run
+            switches instead of opening a region of the board's own. A page
+            whose providers register nothing renders nothing extra, and one
+            provider that throws while rendering is isolated here rather than
+            taking the dialog's other fields with it. */}
+        {composeSeat !== null && composeSeat !== undefined && (
+          <TaskBoardSeatBoundary>{composeSeat}</TaskBoardSeatBoundary>
+        )}
       </CollapsibleSection>
 
       <CollapsibleSection

@@ -1,14 +1,14 @@
 /** @vitest-environment jsdom */
 
 /**
- * The extension's switch, against the board's own switch, and the copy the
- * surfaces read.
+ * The extension's switch against the board's own switch, the settings section it
+ * contributes, and the copy both read.
  *
  * The board gates a provider on its own master switch AND the provider's
  * volatile one. This half owns the second gate: with the extension off the
  * detail section and the card chip are gone, while the settings section — the
- * place the switch lives — stays registered so it can be turned back on, and
- * the board's next remote session rebuilds the seats from the mirror.
+ * place the switch lives — stays registered so it can be turned back on, and the
+ * board's next mirror frame rebuilds the seats.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
@@ -40,6 +40,7 @@ interface Registration {
 function context(options: { enabled?: boolean } = {}) {
   const registrations: Registration[] = []
   const dictionaries: string[] = []
+  const catalogs: Array<Record<string, unknown>> = []
   const followedSeats: string[] = []
   const value: Record<string, unknown> = { enabled: options.enabled !== false }
   const listeners = new Set<() => void>()
@@ -118,7 +119,8 @@ function context(options: { enabled?: boolean } = {}) {
     slots,
     locale: {
       register: (namespace: string, catalog: Record<string, unknown>) => {
-        dictionaries.push(namespace + ':' + Object.keys(catalog).sort().join(','))
+        dictionaries.push(namespace)
+        catalogs.push(catalog)
         return () => {}
       },
       // A bound translate of its own, reading the dictionary directly: routing
@@ -144,6 +146,7 @@ function context(options: { enabled?: boolean } = {}) {
     binder,
     registrations,
     dictionaries,
+    catalogs,
     followedSeats,
     scope,
     /** Drive the extension's own switch the way the settings card does. */
@@ -175,80 +178,74 @@ afterEach(() => {
 })
 
 describe('the extension switch', () => {
-  it('turning the extension off withdraws both rendering seats and keeps the settings section', async () => {
+  it('operator turning the extension off sees both rendering seats withdrawn and the settings section kept', async () => {
     // Given a running extension whose board is on
     const harness = mount()
     const names = () => harness.registrations.map(entry => entry.name)
-    expect(names()).toContain(DETAIL_SECTION)
-    expect(names()).toContain(CARD_DECORATION)
-    expect(names()).toContain(SETTINGS_SECTION)
+    expect(names()).toEqual(expect.arrayContaining([DETAIL_SECTION, CARD_DECORATION, SETTINGS_SECTION]))
 
     // When the operator turns the extension off
     await act(async () => { await harness.setEnabled(false) })
 
     // Then the two rendering seats are gone and the section that turns it back
     // on is still registered
-    expect(names()).not.toContain(DETAIL_SECTION)
-    expect(names()).not.toContain(CARD_DECORATION)
-    expect(names()).toContain(SETTINGS_SECTION)
+    expect(names()).toEqual([SETTINGS_SECTION])
   })
 
-  it('turning it back on rebuilds the seats', async () => {
+  it('operator turning it back on sees both rendering seats rebuilt', async () => {
     // Given an extension that was switched off
     const harness = mount({ enabled: false })
     const names = () => harness.registrations.map(entry => entry.name)
-    expect(names()).not.toContain(DETAIL_SECTION)
     expect(names()).toEqual([SETTINGS_SECTION])
 
     // When the switch is turned on again
     await act(async () => { await harness.setEnabled(true) })
 
-    // Then both rendering seats are registered again
-    expect(names()).toContain(DETAIL_SECTION)
-    expect(names()).toContain(CARD_DECORATION)
+    // Then both rendering seats come back next to the section
+    expect(names()).toEqual(expect.arrayContaining([DETAIL_SECTION, CARD_DECORATION, SETTINGS_SECTION]))
   })
 
-  it('the board turning on rebuilds the seats from the mirror, and its switch off releases them', () => {
+  it('operator whose board master switch is off loses the seats and gets them back on the next mirror frame', () => {
     // Given a running extension
     const harness = mount()
+    const names = () => harness.registrations.map(entry => entry.name)
 
     // When the board's own master switch goes off
     act(() => { harness.boardMirror(false) })
 
     // Then the board's seats are released
-    const names = () => harness.registrations.map(entry => entry.name)
     expect(names()).not.toContain(DETAIL_SECTION)
 
     // When the board comes back
     act(() => { harness.boardMirror(true) })
 
     // Then the seats are rebuilt without re-registering the provider
-    expect(names()).toContain(DETAIL_SECTION)
-    expect(names()).toContain(CARD_DECORATION)
+    expect(names()).toEqual(expect.arrayContaining([DETAIL_SECTION, CARD_DECORATION]))
   })
 
-  it('every seat carries the ssh identity and the detail seat binds the catalog', () => {
+  it('user reading the seat registrations sees the ssh identity and the catalog namespace', () => {
     // Given a running extension
     const harness = mount()
 
     // When the registrations are read
-    // Then every seat is owned by "ssh" and the detail seat binds the catalog
-    for (const entry of harness.registrations) {
-      expect(entry.id).toBe('ssh')
-      expect(entry.name.startsWith('task-board.')).toBe(true)
-    }
+    // Then every seat is owned by "ssh", every name is a board seat, and the
+    // detail seat binds this extension's catalog
+    expect(harness.registrations.map(entry => entry.id)).toEqual(['ssh', 'ssh', 'ssh'])
+    expect(harness.registrations.every(entry => entry.name.startsWith('task-board.'))).toBe(true)
     expect(harness.registrations.find(entry => entry.name === DETAIL_SECTION)?.locale).toBe(NS)
-    expect(harness.followedSeats).toContain(SETTINGS_SECTION)
+    expect(harness.followedSeats).toEqual([SETTINGS_SECTION])
   })
 
-  it('the dictionaries are registered under the namespace the seats bind', () => {
+  it('user reading the registered dictionaries sees one namespace carrying both languages', () => {
     // Given a running extension
     const harness = mount()
 
     // When the locale registration is read
-    // Then both dictionaries went out under one namespace
-    expect(harness.dictionaries).toHaveLength(1)
-    expect(harness.dictionaries[0]?.startsWith(SETTINGS_NAMESPACE + ':')).toBe(true)
+    // Then one namespace went out, with both languages and the same keys in each
+    expect(harness.dictionaries).toEqual([SETTINGS_NAMESPACE])
+    const catalog = harness.catalogs[0] as { zh: Record<string, string>, en: Record<string, string> }
+    expect(Object.keys(catalog.zh).sort()).toEqual(Object.keys(zh).sort())
+    expect(Object.keys(catalog.en).sort()).toEqual(Object.keys(zh).sort())
   })
 })
 
@@ -297,47 +294,51 @@ function renderSection(state: SshSettingsCardState) {
 }
 
 describe('the settings section', () => {
-  it('an enabled extension shows the switch, the defaults and the cap', () => {
-    // Given the extension is on
-    renderSection(settingsState())
+  it('operator opening an enabled section sees the switch, the defaults and the cap as its own values', () => {
+    // Given an enabled extension with a stored host, mode and cap
+    renderSection(settingsState({
+      enabled: field('true'),
+      defaultHost: field('devbox'),
+      defaultMode: field('proxy'),
+      perHostCap: field('3'),
+    }))
 
     // When the section is open
-    // Then the master switch and the provider's defaults are its rows
-    expect(screen.getByText('SSH 远程执行')).toBeDefined()
-    expect(screen.getByText('启用远程执行')).toBeDefined()
-    expect(screen.getByText('默认模式')).toBeDefined()
-    expect(screen.getByText('默认 Agent')).toBeDefined()
-    expect(screen.getByText('默认主机')).toBeDefined()
-    expect(screen.getByText('每主机并发上限')).toBeDefined()
+    // Then the switch answers what is stored, and each control carries its value
+    expect(screen.getByRole('button', { name: '开' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: '关' }).getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByRole('button', { name: '本地代理' }).getAttribute('aria-pressed')).toBe('true')
+    expect((screen.getByLabelText('默认主机') as HTMLInputElement).value).toBe('devbox')
+    expect((screen.getByLabelText('每主机并发上限') as HTMLInputElement).value).toBe('3')
   })
 
-  it('every overridable agent keeps its own command row, and a stored one reads as an override', () => {
-    // Given one stored override for the Claude Code CLI
+  it('operator reading the agent rows sees one per built-in CLI, and a stored override in its own row', () => {
+    // Given one stored start template for the Claude Code CLI
     renderSection(settingsState({ agentCommands: field('[{"kind":"claude","command":"claude -p {prompt_file}"}]') }))
 
     // When the section is open
-    // Then the three rows are there, each named by its agent and carrying its
-    // own built-in command line behind the hint
-    expect(screen.getByText('留空即用 dsh headless 命令行；模板必须引用 {prompt_file}。')).toBeDefined()
-    expect(screen.getByText('留空即用 claude -p 命令行；模板必须引用 {prompt_file}。')).toBeDefined()
-    expect(screen.getByText('留空即用 codex exec 命令行；模板必须引用 {prompt_file}。')).toBeDefined()
-    expect(screen.getByText('已覆盖')).toBeDefined()
+    // Then each row is that agent's own input, the stored one carries the
+    // template, the others stay empty, and exactly one row reads as overridden
+    expect((screen.getByLabelText('Claude Code') as HTMLInputElement).value).toBe('claude -p {prompt_file}')
+    expect((screen.getByLabelText('dsh') as HTMLInputElement).value).toBe('')
+    expect((screen.getByLabelText('Codex') as HTMLInputElement).value).toBe('')
+    expect(screen.getAllByText('已覆盖')).toHaveLength(1)
   })
 
-  it('a disabled extension keeps the switch and explains why the rest is inactive', () => {
+  it('operator turning the extension off still sees the switch, and why the rest is inactive', () => {
     // Given the extension is off
     renderSection(settingsState({ enabled: field('false') }))
 
     // When the section is open
-    // Then the switch is still there, the defaults are not, and the notice says why
-    expect(screen.getByText('启用远程执行')).toBeDefined()
-    expect(screen.queryByText('每主机并发上限')).toBeNull()
-    expect(screen.getByText(/以下默认值与命令覆写暂不生效/)).toBeDefined()
+    // Then the switch still answers and the body explains what is inactive
+    expect(screen.getByRole('button', { name: '关' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByLabelText('默认主机')).toBeNull()
+    expect(screen.getByText(/以下默认值与命令覆写暂不生效/).textContent).toContain('以下默认值与命令覆写暂不生效')
   })
 })
 
 describe('the copy', () => {
-  it('zh and en carry the same keys and the same placeholders', () => {
+  it('user reading the catalog gets the same keys and placeholders in zh and en', () => {
     // Given the two dictionaries
     const zhKeys = Object.keys(zh).sort()
     const enKeys = Object.keys(en).sort()
@@ -353,7 +354,7 @@ describe('the copy', () => {
     }
   })
 
-  it('every run phase has its own words', () => {
+  it('user reading a run phase gets its own words, none of them missing', () => {
     // Given the phase vocabulary
     const phases = ['idle', 'queued', 'running', 'succeeded', 'failed', 'cancelled', 'lost'] as const
 

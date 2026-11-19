@@ -42,7 +42,7 @@ export interface SshCardView {
 }
 
 /** Versions of the stored payload this reader understands. */
-const READABLE_PAYLOAD_VERSIONS: readonly number[] = [1]
+const READABLE_PAYLOAD_VERSIONS = new Set([1])
 
 /** Whether a value is a plain object (not an array, not null). */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -66,7 +66,7 @@ const NO_VIEW: SshCardView = { phase: 'idle' }
 export function readSshLedger(task: TaskRecord): { target?: SshTarget, activeRun?: SshRunRecord, history: SshRunRecord[] } | undefined {
   const raw = task.integrations?.[SSH_INTEGRATION_KEY]
   if (!isPlainObject(raw)) return undefined
-  if (typeof raw.version === 'number' && !READABLE_PAYLOAD_VERSIONS.includes(raw.version)) return undefined
+  if (typeof raw.version === 'number' && !READABLE_PAYLOAD_VERSIONS.has(raw.version)) return undefined
   const target = parseSshTarget(raw.target)
   const activeRun = parseSshRunRecord(raw.activeRun)
   const history: SshRunRecord[] = []

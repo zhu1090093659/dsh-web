@@ -166,6 +166,9 @@ export function SshDetailSection({ task, dispatch }: SshDetailSectionProps) {
   const target = view.target as SshTarget
   const parts = targetSummaryParts(target)
   const lastRun = view.lastRun
+  // What the run left behind in the workspace it came back from; the provider
+  // publishes a count only when there was something to report.
+  const untracked = summary?.runs?.find(run => run.taskId === task.id)?.untrackedFiles ?? 0
   return (
     <section className={css.section} data-dsh-plugin={PLUGIN_ATTR} data-dsh-part="run">
       <div className={css.head}>
@@ -195,6 +198,7 @@ export function SshDetailSection({ task, dispatch }: SshDetailSectionProps) {
 
       {lastRun?.error !== undefined && <p className={css.formError}>{lastRun.error}</p>}
       {lastRun?.branch !== undefined && <p className={css.meta}>{t('detail.branch', { branch: lastRun.branch })}</p>}
+      {untracked > 0 && <p className={css.meta}>{t('detail.untrackedFiles', { count: String(untracked) })}</p>}
       {lastRun?.summary !== undefined && lastRun.summary !== '' && (
         <p className={css.summary} title={lastRun.summary}>{lastRun.summary}</p>
       )}

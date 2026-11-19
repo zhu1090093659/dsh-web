@@ -486,6 +486,17 @@
 
 /* --- the settings topic ---------------------------------------------------- */
 
+/* A field whose label and control already carry the meaning: the card's field
+   row still renders its (now empty) hint paragraph, and this keeps it out of
+   the layout instead of leaving a gap under the control. */
+.quietField {
+  display: contents;
+}
+
+.quietField p:empty {
+  display: none;
+}
+
 .sectionHint {
   margin: 0;
   font-size: 12px;

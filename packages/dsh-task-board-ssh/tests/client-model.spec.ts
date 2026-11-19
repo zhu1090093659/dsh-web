@@ -55,7 +55,7 @@ function run(runId: string, phase: string, extra: Record<string, unknown> = {}):
 }
 
 describe('reading a card payload', () => {
-  it('a card with no payload of ours has no view, no target and no chip', () => {
+  it('user viewing a card whose payload belongs to another provider gets no target and no chip', () => {
     // Given a card whose integrations carry another provider only
     const task = card({ github: { issueNumber: 7 } })
 
@@ -69,7 +69,7 @@ describe('reading a card payload', () => {
     expect(readSshLedger(task)).toBeUndefined()
   })
 
-  it('one unreadable field costs that field, never the rest of the card', () => {
+  it('user viewing a card with one unreadable run still gets the target and the readable history', () => {
     // Given a payload whose active run is malformed but whose target is fine
     const task = card({ ssh: payload({ target: TARGET, activeRun: { runId: 'bad id!', phase: 'running' } }) })
 
@@ -82,7 +82,7 @@ describe('reading a card payload', () => {
     expect(view.phase).toBe('idle')
   })
 
-  it('a payload stamped with a version this reader does not know is refused whole', () => {
+  it('operator reading a payload from a newer version sees an untargeted card instead of a guess', () => {
     // Given a payload from a future version
     const task = card({ ssh: payload({ version: 2, target: TARGET }) })
 
@@ -96,7 +96,7 @@ describe('reading a card payload', () => {
 })
 
 describe('run phase on the card and in the section', () => {
-  it('each phase derives its own view, and only queued and running are active', () => {
+  it('user reading a card in each phase sees that phase, and only two of them count as active', () => {
     // Given one card per phase
     const cases: Array<{ phase: string, parts: Record<string, unknown> }> = [
       { phase: 'queued', parts: { activeRun: run('r1', 'queued') } },
@@ -117,7 +117,7 @@ describe('run phase on the card and in the section', () => {
     expect(views.map(view => isSshRunActive(view.phase))).toEqual([true, true, false, false, false, false])
   })
 
-  it('a running run is preferred over older finished ones', () => {
+  it('user watching a card that is running and has older history sees the run in flight', () => {
     // Given a card with history and a run in flight
     const task = card({
       ssh: payload({
@@ -138,7 +138,7 @@ describe('run phase on the card and in the section', () => {
 })
 
 describe('the target form draft', () => {
-  it('an empty card opens on the published defaults, with no host pre-pinned', () => {
+  it('operator opening an untargeted card gets the published defaults with no host pinned', () => {
     // Given a provider that publishes a default mode and agent
     const draft = draftOf(undefined, { mode: 'proxy', agent: 'claude', workspace: 'git' })
 
@@ -150,7 +150,7 @@ describe('the target form draft', () => {
     expect(draft.host).toBe('')
   })
 
-  it('a pinned target round-trips through the draft unchanged', () => {
+  it('operator reopening a pinned card gets the same target back after the draft round-trip', () => {
     // Given a git target whose repository is the local workspace
     const target: SshTarget = {
       mode: 'direct',
@@ -168,7 +168,7 @@ describe('the target form draft', () => {
     expect(result.issues).toEqual([])
   })
 
-  it('a hidden field cannot pass or fail: an in-place draft sends no repository at all', () => {
+  it('operator saving an in-place target sends no repository field at all', () => {
     // Given a draft whose repository fields still hold text from an earlier edit
     const draft: SshTargetDraft = {
       ...draftOf(TARGET),
@@ -185,7 +185,7 @@ describe('the target form draft', () => {
     expect(wire).toEqual({ mode: 'direct', host: 'devbox', agent: { kind: 'dsh' }, workspace: { kind: 'in-place', path: '/srv/app' } })
   })
 
-  it('refusals land on the field that carries them', () => {
+  it('operator submitting an incomplete target is told which fields carry the problem', () => {
     // Given an in-place draft with a relative path and no host
     const draft: SshTargetDraft = { ...draftOf(undefined), host: '', workspacePath: 'srv/app' }
 
@@ -197,7 +197,7 @@ describe('the target form draft', () => {
     expect(Object.keys(result.errors).sort()).toEqual(['host', 'workspacePath'])
   })
 
-  it('a custom agent without a prompt-file reference is refused on its command field', () => {
+  it('operator writing a custom agent without the prompt file is refused on that command field', () => {
     // Given a custom agent whose template never reads the prompt
     const draft: SshTargetDraft = { ...draftOf(undefined), host: 'devbox', agent: 'custom', agentCommand: 'claude -p' }
 
@@ -211,7 +211,7 @@ describe('the target form draft', () => {
 })
 
 describe('the target summary line', () => {
-  it('names the host, the agent and the workspace of each mechanism', () => {
+  it('user reading the target line sees the host, the agent and the workspace of its mechanism', () => {
     // Given an in-place target and a git target
     const inPlace = targetSummaryParts(TARGET)
     const fromUrl = targetSummaryParts({

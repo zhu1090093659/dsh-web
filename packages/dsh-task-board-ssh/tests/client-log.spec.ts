@@ -14,7 +14,7 @@ import { SshLogBuffer, visibleLogWindow, type LogViewport } from '../src/client/
 const VIEWPORT: LogViewport = { scrollTop: 0, height: 216, rowHeight: 18, overscan: 8 }
 
 describe('log increments', () => {
-  it('a growing run appends only what it has not seen', () => {
+  it('user watching a growing run sees only the bytes that have not been read yet', () => {
     // Given a buffer that has read the first increment of a run
     const buffer = new SshLogBuffer()
     expect(buffer.append({ runId: 'r1', baseOffset: 0, endOffset: 11, text: 'line one\nli' })).toBe(true)
@@ -27,7 +27,7 @@ describe('log increments', () => {
     expect(buffer.snapshot()).toMatchObject({ runId: 'r1', start: 0, end: 21, truncated: false })
   })
 
-  it('a replayed increment changes nothing', () => {
+  it('user whose frame repeats an increment sees no duplicated line', () => {
     // Given a buffer holding one increment
     const buffer = new SshLogBuffer()
     buffer.append({ runId: 'r1', baseOffset: 0, endOffset: 9, text: 'only line' })
@@ -40,7 +40,7 @@ describe('log increments', () => {
     expect(buffer.toLines()).toEqual(['only line'])
   })
 
-  it('a jump past the consumed offset keeps what it has and flags the gap', () => {
+  it('user who missed a frame keeps what was shown and is told earlier output is missing', () => {
     // Given a buffer that has read a prefix
     const buffer = new SshLogBuffer()
     buffer.append({ runId: 'r1', baseOffset: 0, endOffset: 6, text: 'start\n' })
@@ -53,7 +53,7 @@ describe('log increments', () => {
     expect(buffer.snapshot().truncated).toBe(true)
   })
 
-  it('a different run starts a different log', () => {
+  it('user starting a new run sees the lines of the previous run cleared', () => {
     // Given a buffer holding a finished run
     const buffer = new SshLogBuffer()
     buffer.append({ runId: 'r1', baseOffset: 0, endOffset: 5, text: 'first' })
@@ -66,7 +66,7 @@ describe('log increments', () => {
     expect(buffer.snapshot()).toMatchObject({ runId: 'r2', start: 0, end: 6 })
   })
 
-  it('a reset drops everything, which is what reopening the panel does', () => {
+  it('user reopening the panel sees the log from its first byte again', () => {
     // Given a buffer with content
     const buffer = new SshLogBuffer()
     buffer.append({ runId: 'r1', baseOffset: 0, endOffset: 3, text: 'abc' })
@@ -82,7 +82,7 @@ describe('log increments', () => {
 })
 
 describe('the mounted window', () => {
-  it('mounts a bounded band around the scroll offset', () => {
+  it('user scrolling a hundred thousand lines mounts a bounded band of rows', () => {
     // Given a hundred thousand rows
     const total = 100_000
 
@@ -97,7 +97,7 @@ describe('the mounted window', () => {
     expect(deep.totalHeight).toBe(total * 18)
   })
 
-  it('an empty log mounts nothing and a scroll past the end clamps', () => {
+  it('user scrolling an empty or short log never runs off its own ends', () => {
     // Given no rows, then a huge scroll offset
     const empty = visibleLogWindow(0, VIEWPORT)
     const clamped = visibleLogWindow(10, { ...VIEWPORT, scrollTop: 10_000 })
@@ -112,7 +112,7 @@ describe('the mounted window', () => {
 })
 
 describe('a hundred thousand lines', () => {
-  it('stays a bounded mount and a bounded scroll cost', () => {
+  it('user reading a hundred thousand lines keeps the append and the scroll cost bounded', () => {
     // Given a run whose log is a hundred thousand lines delivered in increments
     const lines = Array.from({ length: 100_000 }, (_unused, index) => `${String(index).padStart(6, '0')} step finished in 12ms`)
     const buffer = new SshLogBuffer()

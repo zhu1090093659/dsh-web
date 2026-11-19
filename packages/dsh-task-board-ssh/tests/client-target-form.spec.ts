@@ -39,25 +39,24 @@ function mount(options: { initial?: ReturnType<typeof draftOf>, onCancel?: () =>
 }
 
 describe('the fields a target asks for', () => {
-  it('an untargeted card offers mode, host, agent and workspace, and no repository field', () => {
+  it('operator opening an untargeted form gets mode, host, agent and workspace, and no repository field', () => {
     // Given an empty card on a provider that publishes two hosts
     mount()
 
     // When the form renders
     // Then the picker carries the published aliases and the in-place defaults
     // ask for a remote path only
-    expect(screen.getByLabelText('直接执行')).toBeDefined()
-    expect(screen.getByLabelText('本地代理')).toBeDefined()
+    expect((screen.getByLabelText('直接执行') as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText('本地代理') as HTMLInputElement).checked).toBe(false)
     const host = screen.getByLabelText('主机') as HTMLSelectElement
-    expect(Array.from(host.options).map(option => option.value)).toContain('devbox')
-    expect(Array.from(host.options).map(option => option.value)).toContain('build')
-    expect(screen.getByLabelText('远端目录')).toBeDefined()
-    expect(screen.getByLabelText('远端路径')).toBeDefined()
+    expect(Array.from(host.options).map(option => option.value)).toEqual(['', 'devbox', 'build'])
+    expect((screen.getByLabelText('远端目录') as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText('远端路径') as HTMLInputElement).value).toBe('')
     expect(screen.queryByLabelText('仓库地址')).toBeNull()
     expect(screen.queryByLabelText('本机工作区')).toBeNull()
   })
 
-  it('the git workspace asks for a repository source, and only the chosen one', () => {
+  it('operator choosing the git workspace is asked for one repository source, and only the chosen one', () => {
     // Given the form with the git mechanism chosen
     mount()
     fireEvent.click(screen.getByLabelText('Git 分支'))
@@ -65,8 +64,8 @@ describe('the fields a target asks for', () => {
     // When the source is a repository URL
     // Then the path input is gone and the URL and branch inputs are asked for
     expect(screen.queryByLabelText('远端路径')).toBeNull()
-    expect(screen.getByLabelText('仓库地址')).toBeDefined()
-    expect(screen.getByLabelText('起始分支')).toBeDefined()
+    expect((screen.getByLabelText('仓库地址') as HTMLInputElement).value).toBe('')
+    expect((screen.getByLabelText('起始分支') as HTMLInputElement).value).toBe('')
     expect(screen.queryByLabelText('本机工作区')).toBeNull()
 
     // When the source is this machine's workspace instead
@@ -75,10 +74,10 @@ describe('the fields a target asks for', () => {
     // Then the address fields are gone and the workspace id is asked for
     expect(screen.queryByLabelText('仓库地址')).toBeNull()
     expect(screen.queryByLabelText('起始分支')).toBeNull()
-    expect(screen.getByLabelText('本机工作区')).toBeDefined()
+    expect((screen.getByLabelText('本机工作区') as HTMLInputElement).value).toBe('')
   })
 
-  it('a custom agent adds its two command templates', () => {
+  it('operator choosing a custom agent is asked for its two command templates', () => {
     // Given the form on the default agent
     mount()
     expect(screen.queryByLabelText('启动命令')).toBeNull()
@@ -86,12 +85,12 @@ describe('the fields a target asks for', () => {
     // When the reader picks the custom agent
     fireEvent.change(screen.getByLabelText('Agent'), { target: { value: 'custom' } })
 
-    // Then both templates are offered
-    expect(screen.getByLabelText('启动命令')).toBeDefined()
-    expect(screen.getByLabelText('续跑命令')).toBeDefined()
+    // Then both templates are offered, empty, waiting for a command line
+    expect((screen.getByLabelText('启动命令') as HTMLInputElement).value).toBe('')
+    expect((screen.getByLabelText('续跑命令') as HTMLInputElement).value).toBe('')
   })
 
-  it('a pinned alias that left the host list stays selectable and labelled', () => {
+  it('operator reopening a card pinned to a host that left the list still sees that alias selected', () => {
     // Given a card pinned to a host the provider no longer publishes
     render(createElement(SshTargetForm, {
       initial: { ...draftOf(undefined), host: 'gonebox', workspacePath: '/srv/app' },
@@ -106,10 +105,10 @@ describe('the fields a target asks for', () => {
     // Then the alias is still the selected option and says why it is odd
     const select = screen.getByLabelText('主机') as HTMLSelectElement
     expect(select.value).toBe('gonebox')
-    expect(screen.getByText('已不在 dsh-ssh 的主机列表中：gonebox')).toBeDefined()
+    expect(select.selectedOptions[0]?.textContent).toBe('已不在 dsh-ssh 的主机列表中：gonebox')
   })
 
-  it('a provider with no hosts explains the empty picker instead of failing', () => {
+  it('operator on a deployment with no hosts is told where to add one', () => {
     // Given no published host at all
     render(createElement(SshTargetForm, {
       initial: draftOf(undefined),
@@ -123,39 +122,46 @@ describe('the fields a target asks for', () => {
     // Then the picker is disabled and named, and the reason is on screen
     const select = screen.getByLabelText('主机') as HTMLSelectElement
     expect(select.disabled).toBe(true)
-    expect(screen.getByText('在 dsh-ssh 设置里添加主机后，这里才能选择。')).toBeDefined()
+    const hintId = (select.getAttribute('aria-describedby') ?? '').split(' ')[0]
+    expect(document.getElementById(hintId)?.textContent).toBe('在 dsh-ssh 设置里添加主机后，这里才能选择。')
   })
 })
 
 describe('refusals before submit', () => {
-  it('an empty host and a relative path are reported under their own fields', () => {
+  it('operator submitting an empty host and a relative path is told on both fields and nothing is sent', () => {
     // Given a draft with no host and a path that is not absolute
     const { onSubmit } = mount({ initial: { ...draftOf(undefined), workspacePath: 'srv/app' } })
 
     // When the reader submits
     fireEvent.click(screen.getByRole('button', { name: '保存目标' }))
 
-    // Then both refusals are on screen and nothing was sent
-    expect(screen.getByText('选择一台主机。')).toBeDefined()
-    expect(screen.getByText('填写主机上的绝对路径，需以 / 开头。')).toBeDefined()
+    // Then each control is wired to its own refusal and nothing was sent
+    const host = screen.getByLabelText('主机') as HTMLSelectElement
+    const path = screen.getByLabelText('远端路径') as HTMLInputElement
+    expect(host.getAttribute('aria-invalid')).toBe('true')
+    expect(path.getAttribute('aria-invalid')).toBe('true')
+    expect(document.getElementById((host.getAttribute('aria-describedby') ?? '').split(' ').pop() ?? '')?.textContent)
+      .toBe('选择一台主机。')
+    expect(document.getElementById((path.getAttribute('aria-describedby') ?? '').split(' ').pop() ?? '')?.textContent)
+      .toBe('填写主机上的绝对路径，需以 / 开头。')
     expect(onSubmit).not.toHaveBeenCalled()
-    expect((screen.getByLabelText('主机') as HTMLSelectElement).getAttribute('aria-invalid')).toBe('true')
   })
 
-  it('a corrected field drops its refusal', () => {
+  it('operator correcting a refused field sees its message go before the next submit', () => {
     // Given a submit that was refused on the path
     mount({ initial: { ...draftOf(undefined), host: 'devbox', workspacePath: 'srv/app' } })
     fireEvent.click(screen.getByRole('button', { name: '保存目标' }))
-    expect(screen.getByText('填写主机上的绝对路径，需以 / 开头。')).toBeDefined()
+    expect((screen.getByLabelText('远端路径') as HTMLInputElement).getAttribute('aria-invalid')).toBe('true')
 
     // When the path is corrected
     fireEvent.change(screen.getByLabelText('远端路径'), { target: { value: '/srv/app' } })
 
-    // Then the refusal is gone before the next submit
+    // Then the refusal is gone and the field is no longer marked invalid
     expect(screen.queryByText('填写主机上的绝对路径，需以 / 开头。')).toBeNull()
+    expect((screen.getByLabelText('远端路径') as HTMLInputElement).getAttribute('aria-invalid')).toBe('false')
   })
 
-  it('a valid draft submits the parsed target and only the fields on screen', () => {
+  it('operator submitting a complete in-place target sends exactly the fields on screen', () => {
     // Given a complete in-place draft
     const { onSubmit } = mount()
 
@@ -174,7 +180,7 @@ describe('refusals before submit', () => {
     })
   })
 
-  it('a git draft from this workspace sends the workspace id', () => {
+  it('operator submitting a git target from this workspace sends the workspace id', () => {
     // Given the git mechanism on this machine's workspace
     const { onSubmit } = mount()
     fireEvent.change(screen.getByLabelText('主机'), { target: { value: 'devbox' } })
@@ -196,7 +202,7 @@ describe('refusals before submit', () => {
 })
 
 describe('keyboard and accessible names', () => {
-  it('every control is reachable by its own name, and the radios walk as one group', () => {
+  it('operator walking the form reaches every control by its own name, with one radio group per choice', () => {
     // Given the form with a custom agent chosen
     mount()
     fireEvent.click(screen.getByLabelText('Git 分支'))
@@ -204,8 +210,8 @@ describe('keyboard and accessible names', () => {
 
     // When each control is looked up by its accessible name
     const names = ['主机', 'Agent', '启动命令', '续跑命令', '仓库地址', '起始分支']
-    // Then none of them is anonymous
-    for (const name of names) expect(screen.getByLabelText(name)).toBeDefined()
+    // Then each of them is a real control carrying its own name
+    for (const name of names) expect((screen.getByLabelText(name) as HTMLElement).tagName).toMatch(/^(INPUT|SELECT)$/)
 
     // And the two mode options share one radio group, so arrows move between them
     const direct = screen.getByLabelText('直接执行') as HTMLInputElement

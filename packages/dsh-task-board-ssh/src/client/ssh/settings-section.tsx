@@ -282,7 +282,7 @@ export function SshSettingsSection(props: SshSettingsSectionProps) {
       <BooleanField
         id="settings-task-board-ssh-enabled"
         label={label('settings.enabled')}
-        hint={label('settings.enabledHintBrief')}
+        hint={label('settings.enabledConsequence')}
         hintTitle={label('settings.enabledHint')}
         onLabel={label('settings.on')}
         offLabel={label('settings.offLabel')}
@@ -295,10 +295,11 @@ export function SshSettingsSection(props: SshSettingsSectionProps) {
       {enabled
         ? (
             <>
+              <div className={css.quietField}>
               <ChoiceField
                 id="settings-task-board-ssh-mode"
                 label={label('settings.defaultMode')}
-                hint={label('settings.defaultModeHint')}
+                hint=""
                 presentation="segment"
                 inheritLabel={label('settings.inherit')}
                 choices={[
@@ -310,10 +311,12 @@ export function SshSettingsSection(props: SshSettingsSectionProps) {
                 onEdit={text => props.edit('defaultMode', text)}
                 onReset={() => props.resetField('defaultMode')}
               />
+              </div>
+              <div className={css.quietField}>
               <ChoiceField
                 id="settings-task-board-ssh-agent"
                 label={label('settings.defaultAgent')}
-                hint={label('settings.defaultAgentHint')}
+                hint=""
                 inheritLabel={label('settings.inherit')}
                 choices={SSH_AGENT_KINDS.map(kind => ({ value: kind, label: agentName(kind) }))}
                 {...fieldCopy}
@@ -321,16 +324,19 @@ export function SshSettingsSection(props: SshSettingsSectionProps) {
                 onEdit={text => props.edit('defaultAgent', text)}
                 onReset={() => props.resetField('defaultAgent')}
               />
+              </div>
+              <div className={css.quietField}>
               <ValueField
                 id="settings-task-board-ssh-host"
                 label={label('settings.defaultHost')}
-                hint={label('settings.defaultHostHint')}
+                hint=""
                 placeholder={label('settings.defaultHostPlaceholder')}
                 {...fieldCopy}
                 {...state.defaultHost}
                 onEdit={text => props.edit('defaultHost', text)}
                 onReset={() => props.resetField('defaultHost')}
               />
+              </div>
               <ValueField
                 id="settings-task-board-ssh-cap"
                 label={label('settings.perHostCap')}

@@ -70,6 +70,27 @@ export interface SshSummaryDefaults {
   workspace?: SshWorkspaceKind
 }
 
+/** One card's run, as the provider publishes its progress. */
+export interface SshSummaryRun {
+  /** Card the run belongs to. */
+  taskId: string
+  /** Run identifier. */
+  runId: string
+  /** Phase the provider last recorded. */
+  phase: SshRunPhase
+  /** Host the run addresses. */
+  host: string
+  /** Bytes of the remote log the provider has read. */
+  bytes?: number
+  /**
+   * Files the run left untracked in the workspace it came back from.
+   *
+   * Present only when the placement strategy reported any: an absent count
+   * means nothing was left behind, which reads the same as no notice at all.
+   */
+  untrackedFiles?: number
+}
+
 /** The provider's read-only summary; every field is optional on the wire. */
 export interface SshSummary {
   /** Whether the host half currently runs its extension. */
@@ -82,8 +103,8 @@ export interface SshSummary {
   caps?: Record<string, number>
   /** Log increments, keyed by task id. */
   logs?: Record<string, SshSummaryLogWindow>
-  /** Phase of the run each log window belongs to, keyed by task id. */
-  phases?: Record<string, SshRunPhase>
+  /** Runs in flight, one entry per card the provider follows. */
+  runs?: SshSummaryRun[]
 }
 
 /** Whether a value is a plain object (not an array, not null). */
@@ -158,16 +179,26 @@ function decodeLogs(value: unknown): Record<string, SshSummaryLogWindow> | undef
   return Object.keys(logs).length === 0 ? undefined : logs
 }
 
-/** Read the published phases, keeping only known phases. */
-function decodePhases(value: unknown): Record<string, SshRunPhase> | undefined {
-  if (!isPlainObject(value)) return undefined
-  const phases: Record<string, SshRunPhase> = {}
-  for (const [taskId, phase] of Object.entries(value)) {
-    if (phase === 'queued' || phase === 'running' || phase === 'succeeded' || phase === 'failed' || phase === 'cancelled' || phase === 'lost') {
-      phases[taskId] = phase
+/** Read the published runs, dropping entries a card cannot address. */
+function decodeRuns(value: unknown): SshSummaryRun[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const runs: SshSummaryRun[] = []
+  for (const entry of value) {
+    if (!isPlainObject(entry)) continue
+    const taskId = readText(entry.taskId)
+    const runId = readText(entry.runId)
+    const host = readText(entry.host)
+    const phase = entry.phase
+    if (taskId === undefined || runId === undefined || host === undefined) continue
+    if (phase !== 'queued' && phase !== 'running' && phase !== 'succeeded' && phase !== 'failed' && phase !== 'cancelled' && phase !== 'lost') continue
+    const run: SshSummaryRun = { taskId, runId, phase, host }
+    if (typeof entry.bytes === 'number' && Number.isFinite(entry.bytes)) run.bytes = entry.bytes
+    if (typeof entry.untrackedFiles === 'number' && Number.isFinite(entry.untrackedFiles) && entry.untrackedFiles > 0) {
+      run.untrackedFiles = entry.untrackedFiles
     }
+    runs.push(run)
   }
-  return Object.keys(phases).length === 0 ? undefined : phases
+  return runs.length === 0 ? undefined : runs
 }
 
 /**
@@ -187,8 +218,8 @@ export function decodeSummary(value: unknown): SshSummary | undefined {
   if (caps !== undefined) summary.caps = caps
   const logs = decodeLogs(value.logs)
   if (logs !== undefined) summary.logs = logs
-  const phases = decodePhases(value.phases)
-  if (phases !== undefined) summary.phases = phases
+  const runs = decodeRuns(value.runs)
+  if (runs !== undefined) summary.runs = runs
   return summary
 }
 

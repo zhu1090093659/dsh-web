@@ -1,0 +1,487 @@
+/*
+ * The SSH provider's browser surfaces: the task-detail section, the card chip
+ * and the board-settings topic card.
+ *
+ * Everything here is themed by the family's `--dsw-alias-*` tokens, so a skin,
+ * the light theme and the dark theme all resolve without a page-local colour.
+ * The chrome deliberately mirrors the board's own panel scale (12px meta, 13px
+ * body, one 30px control height, 8px radius, one 120ms easing): a provider's
+ * section sits inside that panel and must not read as a second design system.
+ *
+ * Tokens fall back locally where the board declares its scale on its own root,
+ * because a seat may be rendered outside that subtree.
+ */
+
+.section {
+  --ssh-control-h: var(--dsh-tb-control-h, 30px);
+  --ssh-radius: var(--dsh-tb-control-radius, 8px);
+  --ssh-ease: var(--dsh-tb-ease, cubic-bezier(0.2, 0, 0, 1));
+  --ssh-row: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* The section's primary fact: where this card runs and on which agent. */
+.targetLine {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-tertiary);
+  overflow-wrap: anywhere;
+}
+
+/* The previous run's own conclusion, on its own recessed surface: the box says
+   what the text is, so it needs no label. */
+.summary {
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-bg-layer-2);
+  border-left: 2px solid var(--dsw-alias-border-l2);
+  border-radius: 0 var(--ssh-radius) var(--ssh-radius) 0;
+  overflow-wrap: anywhere;
+}
+
+.formError {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-state-error-primary);
+  overflow-wrap: anywhere;
+}
+
+/* --- run-phase chips ------------------------------------------------------- */
+
+.statePill,
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  box-sizing: border-box;
+  height: var(--ssh-row);
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.badge {
+  border: 1px solid transparent;
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.badgeDot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  box-sizing: border-box;
+}
+
+/* One slot per phase: the text carries the state and the dot repeats it, so the
+   chip never depends on colour alone. Hollow = waiting, filled = settled or
+   live. */
+[data-run='idle'] { color: var(--dsw-alias-label-tertiary); }
+[data-run='queued'] { color: var(--dsw-alias-state-business-primary); }
+[data-run='running'] { color: var(--dsw-alias-state-business-primary); }
+[data-run='succeeded'] { color: var(--dsw-alias-state-success-primary); }
+[data-run='failed'] { color: var(--dsw-alias-state-error-primary); }
+[data-run='cancelled'] { color: var(--dsw-alias-state-idle-primary); }
+[data-run='lost'] { color: var(--dsw-alias-state-warn-primary); }
+
+[data-run='running'] .badgeDot,
+[data-run='succeeded'] .badgeDot,
+[data-run='failed'] .badgeDot,
+[data-run='cancelled'] .badgeDot,
+[data-run='lost'] .badgeDot {
+  background: currentColor;
+}
+
+/* A live run breathes once a second; the outline stands in for travel when the
+   reader asked for less motion. */
+[data-run='running'] .badgeDot {
+  animation: ssh-live 2s var(--ssh-ease, ease-in-out) infinite;
+}
+
+@keyframes ssh-live {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-run='running'] .badgeDot {
+    animation: none;
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+}
+
+/* --- the log surface ------------------------------------------------------- */
+
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.logScroller {
+  box-sizing: border-box;
+  overflow: auto;
+  padding: 6px 0;
+  background: var(--dsw-alias-bg-layer-2);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--ssh-radius);
+  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.logScroller:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+.logSurface {
+  position: relative;
+  min-width: 100%;
+}
+
+.logBlock {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  will-change: transform;
+}
+
+.logRow {
+  padding: 0 10px;
+  white-space: pre;
+  overflow: visible;
+}
+
+.logEmpty {
+  margin: 0;
+  padding: 0 10px;
+  font-family: inherit;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.logNotices {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.logNotice {
+  margin: 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* --- controls -------------------------------------------------------------- */
+
+.primaryButton,
+.ghostButton,
+.linkButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primaryButton,
+.ghostButton {
+  height: var(--ssh-control-h);
+  padding: 0 12px;
+  font-size: 13px;
+  border-radius: var(--ssh-radius);
+  transition: background-color 120ms var(--ssh-ease), border-color 120ms var(--ssh-ease);
+}
+
+.primaryButton {
+  color: var(--dsw-alias-label-primary-foreground);
+  background: var(--dsw-alias-button-primary-fill);
+  border: 1px solid transparent;
+}
+
+.ghostButton {
+  color: var(--dsw-alias-label-primary);
+  background: transparent;
+  border: 1px solid var(--dsw-alias-border-l2);
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--dsw-alias-button-primary-hover);
+}
+
+.ghostButton:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+/* A text action inside a heading row or a notice line: it keeps its words and
+   takes a hit area around them rather than a box. */
+.linkButton {
+  margin-left: auto;
+  padding: 4px 6px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  transition: background-color 120ms var(--ssh-ease);
+}
+
+.logNotices .linkButton {
+  margin-left: 0;
+}
+
+.linkButton:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.primaryButton:disabled,
+.ghostButton:disabled,
+.linkButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.primaryButton:focus-visible,
+.ghostButton:focus-visible,
+.linkButton:focus-visible,
+.queuedChip:focus-visible,
+.input:focus-visible,
+.select:focus-visible,
+.followUp:focus-visible,
+.segment input:focus-visible + span {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+/* --- the target form ------------------------------------------------------- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.fieldLabel {
+  padding: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.fieldHint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.fieldError {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.input,
+.select,
+.followUp {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-specific-input-major);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--ssh-radius);
+  outline: none;
+  transition: border-color 120ms var(--ssh-ease);
+}
+
+.select {
+  height: var(--ssh-control-h);
+  padding: 0 10px;
+}
+
+.followUp {
+  min-height: calc(var(--ssh-control-h) + 8px);
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.input[aria-invalid='true'],
+.select[aria-invalid='true'],
+.followUp[aria-invalid='true'] {
+  border-color: var(--dsw-alias-state-error-primary);
+}
+
+.input:disabled,
+.select:disabled,
+.followUp:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.input::placeholder,
+.followUp::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Two or three exclusive options, one radio each: the native control keeps the
+   arrow-key walk and the form semantics, and the label box is the target. */
+.segments {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+}
+
+.segment input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.segment span {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: var(--ssh-control-h);
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--dsw-alias-label-primary);
+  background: transparent;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--ssh-radius);
+  cursor: pointer;
+  transition: background-color 120ms var(--ssh-ease), border-color 120ms var(--ssh-ease);
+}
+
+.segment:hover span {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.segment input:checked + span {
+  color: var(--dsw-alias-label-primary-foreground);
+  background: var(--dsw-alias-button-primary-fill);
+  border-color: transparent;
+}
+
+.segment input:disabled + span {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.field[data-invalid] .fieldLabel {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* A follow-up accepted while the turn is still running: the chip says when it
+   will be delivered, which the send button alone cannot. */
+.queuedChip {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: var(--ssh-row);
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--dsw-alias-state-business-primary);
+  border: 1px dashed var(--dsw-alias-state-business-primary);
+  border-radius: 999px;
+}
+
+.actionRow .primaryButton {
+  margin-left: auto;
+}
+
+/* --- the settings topic ---------------------------------------------------- */
+
+.sectionHint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-tertiary);
+}

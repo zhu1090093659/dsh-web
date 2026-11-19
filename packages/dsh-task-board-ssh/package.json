@@ -31,7 +31,12 @@
       "patch": "./cordis.patch.yml"
     },
     "client": {
-      "inject": [],
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ],
       "platform": "web"
     }
   },
@@ -44,11 +49,23 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh": ">=0.2.2-rc.3"
+    "@deepseek-ai/dsh": ">=0.2.2-rc.3",
+    "react": "^18.2.0"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.1.0",
+    "@deepseek-ai/dsh-client-locale": "^0.2.2-rc.3",
+    "@deepseek-ai/dsh-client-store": "^0.2.2-rc.3",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.2.2-rc.3",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.2.2-rc.3",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.2.2-rc.3",
+    "@testing-library/react": "^16.1.0",
     "@types/node": "^22.20.0",
+    "@types/react": "~18.3.1",
+    "@types/react-dom": "^18.3.5",
+    "jsdom": "^26.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tsdown": "0.22.2",
     "typescript": "~5.7.2",
     "vitest": "^4.1.11"

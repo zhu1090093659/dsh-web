@@ -1100,6 +1100,9 @@ export class SshRunEngine {
         this.log(`the remote run ${run.runId} could not be cancelled`, error)
       }
     }
+    // The slot this run held is free again: whoever waited for it is served now
+    // rather than on the next tick.
+    await this.pump(target.host)
     this.publishSummary()
   }
 
@@ -1120,6 +1123,8 @@ export class SshRunEngine {
         this.log(`the run ${known.runId} of the deleted task ${event.taskId} could not be cancelled`, error)
       }
       await this.remote.removeRun({ alias: known.alias, stateDir, runId: known.runId })
+      // A deleted card frees its slot like any other settlement.
+      await this.pump(known.alias)
     } catch (error) {
       this.log(`the remote run directory of the deleted task ${event.taskId} could not be removed`, error)
     }

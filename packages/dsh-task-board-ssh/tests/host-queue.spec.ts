@@ -75,6 +75,36 @@ describe('per-host admission', () => {
     expect(ssh.commands('start')[2]).toContain(runOf(board, cards[2] as string))
   })
 
+  it('operator taking a running card away frees its slot for the card that waited', async () => {
+    // Given a host capped at one with two cards, the second waiting
+    const ssh = createScriptedSsh()
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    const mounted = mountEngine({ board, ssh: ssh.service, workspaces: fakeWorkspaces({ cwd: '/srv/work' }).resolver, now: () => NOW, settings: { perHostCap: 1 } })
+    cleanups.push(() => { mounted.release() })
+    const cards = ['task-1', 'task-2'].map(id => board.createCard(id, { title: id }).id)
+    for (const taskId of cards) {
+      await mounted.extension.handleAction?.({
+        extensionId: 'ssh',
+        action: 'set-target',
+        taskId,
+        payload: { target: { mode: 'direct', host: 'build-box', agent: { kind: 'dsh' }, workspace: { kind: 'in-place', path: '/srv/work' } } },
+      })
+    }
+    for (const taskId of cards) board.apply({ kind: 'run', taskId })
+    await mounted.tick(0)
+    await vi.waitFor(() => { expect(ssh.commands('start')).toHaveLength(1) })
+    expect(phaseOf(board, cards[1] as string)).toBe('queued')
+
+    // When the running card is moved back to the todo column
+    board.apply({ kind: 'move', taskId: cards[0] as string, status: 'todo' })
+    await vi.waitFor(() => { expect(ssh.commands('start')).toHaveLength(2) })
+
+    // Then the waiting card took the freed slot without waiting for a poll
+    expect(phaseOf(board, cards[1] as string)).toBe('running')
+    expect(ssh.commands('start')[1]).toContain(runOf(board, cards[1] as string))
+  })
+
   it('operator restarting the host keeps the queue order it had', async () => {
     // Given a host capped at one with three cards, one running and two waiting
     const ssh = createScriptedSsh()

@@ -96,7 +96,7 @@ direct 模式不消耗本机模型 token。提供方新增三个工具与一小�
 - 超出主机上限的执行在队列里等待，并按先进先出启动。
 - 三种工作区用法各自产出结果：原地的文件、推上去的分支、取回本机仓库且工作树未被触碰的分支。
 - proxy 模式开出本机会话，其 Prompt 带有目标前言。
-- 提供方关闭或缺席时，看板与 `dsh-ssh` 行为不变，且 `grep -rn "ssh" packages/dsh-task-board/src` 找不到提供方词汇。
+- 提供方关闭或缺席时，看板与 `dsh-ssh` 行为不变，且看板源码里没有提供方词汇：`grep -rn "ssh" packages/dsh-task-board/src` 只命中一行，即 `src/tool-surface.ts` 里共享提示词段落排序表的 `ssh` 键（该文件是 `shared/host/tool-surface.ts` 的生成副本，早于本特性），它只是那个插件的排序条目，与这个提供方无关。
 - 覆盖它的仓库门禁通过：`pnpm typecheck && pnpm test && pnpm test:standards && pnpm docs:check && pnpm i18n:check`，以及 `aggregate:check` 与 `libs:check`。
 - **远端无人值守全权限**是维护者的决定，也是接受下来的最大风险：被提示词注入的卡片能做远端账号能做的任何事。
 - **运行列里的卡片没有运行中锁**，所以手动移动被读作取消。误拖会停掉远端执行。

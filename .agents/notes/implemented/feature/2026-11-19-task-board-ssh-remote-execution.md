@@ -96,7 +96,7 @@ Direct mode spends no local model tokens. The provider adds three tools and one 
 - Runs beyond a host's cap wait in the queue and start in FIFO order.
 - The three workspace modes each produce their result: files in place, a pushed branch, or a branch fetched into the local repository with its working tree untouched.
 - Proxy mode runs a local session whose prompt carries the target preamble.
-- With the provider disabled or absent, board and `dsh-ssh` behavior is unchanged, and `grep -rn "ssh" packages/dsh-task-board/src` finds no provider vocabulary.
+- With the provider disabled or absent, board and `dsh-ssh` behavior is unchanged, and the board's source carries no provider vocabulary: `grep -rn "ssh" packages/dsh-task-board/src` matches one line only, the `ssh` key of the shared prompt-section order table in `src/tool-surface.ts` (a generated copy of `shared/host/tool-surface.ts` that predates this feature), which is that plugin's ordering entry and says nothing about this provider.
 - The repository gates that cover it pass: `pnpm typecheck && pnpm test && pnpm test:standards && pnpm docs:check && pnpm i18n:check`, plus `aggregate:check` and `libs:check`.
 - **Unattended full permission on remote hosts** is the maintainer's decision, and it is the largest accepted risk: a prompt-injected card can do anything the remote account can.
 - **Running-column cards have no running lock**, so a manual move is read as a cancel. A user who drags by mistake stops a remote run.

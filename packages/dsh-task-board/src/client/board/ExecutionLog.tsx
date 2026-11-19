@@ -56,6 +56,13 @@ function ExecutionRow({ execution, timeZone, onOpen }: {
   // spinner, and a named outside agent instead of the initiating session. The
   // data attribute keeps the distinction machine-readable too.
   const external = execution.external === true
+  // An external run is closed by the outside agent itself through
+  // record-external-outcome, which stores that agent's text on the record's
+  // error field. A SUCCEEDED one therefore carries a conclusion, not a failure:
+  // it prints verbatim, in the neutral secondary style the row's other metadata
+  // uses. A failed or cancelled one still reads as the error it is, and so does
+  // every text a Host-run execution recorded.
+  const recordedConclusion = external && result === 'succeeded'
   return (
     <li
       className={css.executionRow}
@@ -95,8 +102,8 @@ function ExecutionRow({ execution, timeZone, onOpen }: {
           </span>
         )}
         {execution.error !== undefined && execution.error !== '' && (
-          <span className={css.executionError}>
-            {failureText(execution.error)}
+          <span className={recordedConclusion ? css.executionTimes : css.executionError}>
+            {recordedConclusion ? execution.error : failureText(execution.error)}
           </span>
         )}
       </div>

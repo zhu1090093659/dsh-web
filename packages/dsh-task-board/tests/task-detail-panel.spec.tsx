@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TaskDetail } from '../src/client/board/TaskDetail.tsx'
 import { t, zh } from '../src/client/locales.ts'
 import { openFormSection } from './form-sections.ts'
+import css from '../src/client/board.module.css'
 import { VISIBLE_EXECUTIONS } from '../src/client/board/ExecutionLog.tsx'
 import { OVERLAY_EXIT_MS } from '../src/client/board/overlay.tsx'
 import { MISSING_WORKSPACE_REASON } from '../src/core/workspace-target.ts'
@@ -452,6 +453,75 @@ describe('folded execution column', () => {
     const row = container.querySelector('[data-execution-id="e1"]')
     expect(row?.textContent).toContain(t('exec.error.noWorkspace'))
     expect(row?.textContent).not.toContain(MISSING_WORKSPACE_REASON)
+  })
+
+  it('user reading a run an outside agent completed sees its conclusion, not an error', () => {
+    // Given an external execution that succeeded, carrying the conclusion its
+    // outside agent recorded when it closed the card
+    const external: ExecutionRecord = {
+      ...run('e1', 1_000),
+      sessionId: undefined,
+      result: 'succeeded',
+      external: true,
+      initiatedBy: 'remote-agent',
+      error: 'pong',
+    }
+    const { container } = renderDetail(card({ executions: [external] }))
+
+    // When the reader opens the history region
+    openFormSection(container, t('detail.execution'))
+
+    // Then the conclusion reads on the row's neutral track instead of in the
+    // error style a failure would use
+    const row = container.querySelector('[data-execution-id="e1"]')
+    const conclusion = [...(row?.querySelectorAll('span') ?? [])].find(node => node.textContent === 'pong')
+    expect(conclusion?.className).toBe(css.executionTimes)
+    expect(conclusion?.className).not.toBe(css.executionError)
+  })
+
+  it('user reading a succeeded conclusion that matches a Host refusal sees it verbatim', () => {
+    // Given an external run that succeeded with text equal to a refusal the
+    // board translates when it is a FAILURE
+    const external: ExecutionRecord = {
+      ...run('e1', 1_000),
+      sessionId: undefined,
+      result: 'succeeded',
+      external: true,
+      initiatedBy: 'remote-agent',
+      error: MISSING_WORKSPACE_REASON,
+    }
+    const { container } = renderDetail(card({ executions: [external] }))
+
+    // When the reader opens the history region
+    openFormSection(container, t('detail.execution'))
+
+    // Then a success is never rewritten into the failure sentence, because only
+    // a failure text is translated
+    const row = container.querySelector('[data-execution-id="e1"]')
+    expect(row?.textContent).toContain(MISSING_WORKSPACE_REASON)
+    expect(row?.textContent).not.toContain(t('exec.error.noWorkspace'))
+  })
+
+  it('user reading a run an outside agent reported failed still sees it as an error', () => {
+    // Given an external execution the outside agent reported as failed
+    const external: ExecutionRecord = {
+      ...run('e1', 1_000),
+      sessionId: undefined,
+      result: 'failed',
+      external: true,
+      initiatedBy: 'remote-agent',
+      error: MISSING_WORKSPACE_REASON,
+    }
+    const { container } = renderDetail(card({ executions: [external] }))
+
+    // When the reader opens the history region
+    openFormSection(container, t('detail.execution'))
+
+    // Then it keeps the error style and the board's own translated refusal
+    const row = container.querySelector('[data-execution-id="e1"]')
+    const failure = [...(row?.querySelectorAll('span') ?? [])].find(node => node.textContent === t('exec.error.noWorkspace'))
+    expect(failure?.className).toBe(css.executionError)
+    expect(failure?.textContent).not.toContain(MISSING_WORKSPACE_REASON)
   })
 
   it('user reaching a fold from the keyboard toggles it from the region row itself', () => {

@@ -10,7 +10,7 @@
 
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Config, apply } from '../src/index.ts'
@@ -420,6 +420,22 @@ describe.skipIf(process.platform === 'win32' || !existsSync('/usr/sbin/sshd'))('
     expect(remote.stdout).toBe(content)
     expect(downloaded.bytes).toBe(content.length)
     expect(readFileSync(localTarget, 'utf8')).toBe(content)
+  })
+
+  it('operator stopping the real sshd harness gets its stderr sink closed and sandbox removed before stop() settles', async () => {
+    // Given a started sshd whose stderr is still piped into its diagnostics log
+    const sshd = await TestSshd.start()
+    track(() => sshd.stop())
+    const sandbox = dirname(sshd.root)
+
+    // When the harness is stopped and the teardown is awaited
+    await sshd.stop()
+
+    // Then the sandbox is already gone, which only holds when stop() closes the
+    // sink and removes the directory itself: a fire-and-forget teardown leaves
+    // both behind, and a sink closed before the child is gone turns the next
+    // stderr line into an uncaught write-after-end.
+    expect(existsSync(sandbox)).toBe(false)
   })
 })
 

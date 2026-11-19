@@ -445,7 +445,7 @@ describe.skipIf(process.platform === 'win32' || !existsSync('/usr/sbin/sshd'))('
       expect(downloaded.bytes).toBe(content.length)
       expect(readFileSync(join(sshd.root, 'out.txt'), 'utf8')).toBe(content)
     } finally {
-      sshd.stop()
+      await sshd.stop()
     }
   })
 })

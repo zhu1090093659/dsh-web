@@ -2,16 +2,64 @@
  * Standalone real-sshd harness: spawns /usr/sbin/sshd as the current user
  * with a sandboxed config, host key, and a generated client keypair (key
  * auth only). Gives the SFTP tests a production-grade server.
+ *
+ * The child's stderr is piped into a file so a failure is diagnosable, and that
+ * pipe is why teardown owns two things: the sink stays open for the child's
+ * whole lifetime, and stop() is awaited. sshd prints its config warning twice —
+ * once while reading the config and once right after it starts serving — so a
+ * sink closed as soon as the port answered received the second line as
+ * ERR_STREAM_WRITE_AFTER_END, which vitest reports as an unhandled error and
+ * that fails the whole run.
  */
 
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
-import { chmodSync, createWriteStream, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { once } from 'node:events'
+import { chmodSync, createWriteStream, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, type WriteStream } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { connect } from 'node:net'
 
 /** Every spawned sshd (orphan cleanup if the test process dies early). */
 const spawned: ChildProcess[] = []
+
+/** Bound for one teardown step: a wedged sshd must not hang the suite. */
+const SHUTDOWN_TIMEOUT_MS = 2_000
+
+/**
+ * Signal one child and wait for it to be gone.
+ *
+ * The exit listener is registered before the signal, so a fast exit cannot be
+ * missed; a child that ignores SIGTERM past the bound is killed outright
+ * instead of holding the suite open.
+ * @param child - the spawned process.
+ */
+async function killAndWait(child: ChildProcess): Promise<void> {
+  const alreadyGone = child.exitCode !== null || child.signalCode !== null
+  const exited = alreadyGone
+    ? Promise.resolve()
+    : once(child, 'exit', { signal: AbortSignal.timeout(SHUTDOWN_TIMEOUT_MS) }).then(() => undefined, () => undefined)
+  if (!alreadyGone) {
+    try { child.kill() } catch { /* already gone */ }
+  }
+  await exited
+  if (child.exitCode === null && child.signalCode === null) {
+    try { child.kill('SIGKILL') } catch { /* already gone */ }
+  }
+}
+
+/**
+ * Detach the child's stderr and close the sink it fed.
+ *
+ * Detaching first is the whole point: a pipe still holding the sink writes into
+ * it, and a write that arrives once the sink is ending escapes as an uncaught
+ * ERR_STREAM_WRITE_AFTER_END.
+ * @param child - the spawned process.
+ * @param logStream - the sink created for that child.
+ */
+async function closeSink(child: ChildProcess, logStream: WriteStream): Promise<void> {
+  child.stderr?.unpipe(logStream)
+  await new Promise<void>((resolve) => { logStream.end(() => resolve()) })
+}
 
 /** Wait until the port accepts TCP connections (aborts on a spawn error). */
 async function waitPort(port: number, timeoutMs: number, spawnError?: () => Error | undefined): Promise<void> {
@@ -39,13 +87,25 @@ export class TestSshd {
   readonly root: string
   private readonly process: ChildProcess
   private readonly dir: string
+  /** The child's stderr sink, open until stop() has the child gone. */
+  private readonly logStream: WriteStream
+  /** The one teardown every caller shares, so a second stop() cannot race it. */
+  private stopping: Promise<void> | undefined
 
-  private constructor(port: number, clientKey: string, root: string, process: ChildProcess, dir: string) {
+  private constructor(
+    port: number,
+    clientKey: string,
+    root: string,
+    process: ChildProcess,
+    dir: string,
+    logStream: WriteStream,
+  ) {
     this.port = port
     this.clientKey = clientKey
     this.root = root
     this.process = process
     this.dir = dir
+    this.logStream = logStream
   }
 
   /** Start sshd on a random high port. */
@@ -93,8 +153,8 @@ export class TestSshd {
         ? new Error(`failed to spawn /usr/sbin/sshd: ${spawnError.message}`)
         : undefined)
     } catch (error) {
-      child.kill()
-      logStream.end()
+      await killAndWait(child)
+      await closeSink(child, logStream)
       let detail = ''
       try {
         detail = readFileSync(log, 'utf8').slice(0, 2000)
@@ -102,22 +162,28 @@ export class TestSshd {
       rmSync(dir, { recursive: true, force: true })
       throw new Error(`sshd failed to start: ${String(error)} ${detail}`, { cause: error })
     }
-    logStream.end()
-    return new TestSshd(port, join(dir, 'client'), root, child, dir)
+    // The sink is not closed here: the child still writes to it (see the module
+    // comment), so it is closed by stop() once the child is gone.
+    return new TestSshd(port, join(dir, 'client'), root, child, dir, logStream)
   }
 
-  /** Stop sshd and clean up (kill is synchronous; dir removal follows exit). */
-  stop(): void {
-    try { this.process.kill() } catch { /* gone */ }
-    void (async () => {
-      if (this.process.exitCode === null) {
-        await new Promise<void>((resolve) => {
-          this.process.once('exit', () => resolve())
-          setTimeout(resolve, 2_000)
-        })
-      }
-      rmSync(this.dir, { recursive: true, force: true })
-    })()
+  /**
+   * Stop sshd and clean up: signal the child, wait for it, detach and close the
+   * log sink, then remove the sandbox. The kill itself is synchronous, so a
+   * caller that does not await still stops the server; awaiting is what orders
+   * the sink and the directory behind it.
+   * @returns a promise that settles once sshd is gone and its sandbox removed.
+   */
+  stop(): Promise<void> {
+    this.stopping ??= this.shutdown()
+    return this.stopping
+  }
+
+  /** The one teardown sequence. */
+  private async shutdown(): Promise<void> {
+    await killAndWait(this.process)
+    await closeSink(this.process, this.logStream)
+    rmSync(this.dir, { recursive: true, force: true })
   }
 }
 

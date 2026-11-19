@@ -36,6 +36,11 @@
 - 远端只装一个 POSIX `sh` 脚本（`runner-<hash>.sh`）：不依赖 bash、tmux 或 systemd，
   四个动词 `start`/`status`/`tail`/`cancel`，`start` 对 `runId` 幂等。
 - 拼进远端命令的每个值都过 `src/core/shell.ts`；新增命令构造不得自行拼接字符串。
+- 远端 git 的 `fetch` 与 `push` 在仓库位置前放 `--`（`src/host/workspace/remote-git.ts` 的
+  `END_OF_OPTIONS`），卡片给出的仓库地址因此永远落在值位；新增的 git 命令同样不得让卡片
+  取值直接进选项位。
+- `src/core/target.ts` 的 `parseSshTarget` 拒绝以 `-` 开头的仓库地址与起始分支，且这道闸
+  在空白校验之前：git 不会把一张卡片的取值读成选项。
 - 态目录是 `<home>/.dsh/task-board-ssh`：`runs/<runId>/` 存一次运行的 spec、prompt、
   stdout/stderr、pid、exit 与 session，`repos/<digest>/` 是每个仓库来源的裸缓存，
   `workspaces/<runId>/` 是按次工作树，`bundles/` 是 bundle 的中转目录。

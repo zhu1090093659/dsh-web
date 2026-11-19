@@ -10,6 +10,7 @@ A task-board provider extension that runs a pinned card as a headless agent sess
 - Starts dsh, Claude Code, Codex or a custom command on the host through one POSIX `sh` launcher, detached with `setsid nohup`, so a run outlives the SSH connection and the local host.
 - Keeps the run account in the card's own payload and the output in a remote file read back by byte offset, so a log replays from its start at any time.
 - Adds three model-visible tools (`task_board_ssh_target`, `task_board_ssh_status`, `task_board_ssh_follow_up`) and one task-detail seat holding the target form, the run state, the log viewer, the follow-up box and cancel.
+- Cancelling a run from the task-detail seat stops the remote process and puts the card back in the to-do column, with no verdict written.
 
 ## Execution modes
 
@@ -27,6 +28,8 @@ Proxy mode cannot survive this host going offline: the session, its tool calls a
 Untracked files are not synced: a bundle carries commits, so untracked and ignored files stay on this machine. A local-workspace run counts the untracked non-ignored files it did not receive and reports that count in the run summary the card renders.
 
 ## Install
+
+The host half takes the board and dsh-ssh through one cordis dependency scope: while either service is missing it registers nothing, and it unloads the moment either is withdrawn. In the aggregate bundle the `dsh-ssh` row (`web-ui-ssh`) ships disabled by default, so turn it on in the plugin manager first; until then a card's detail seat only says "Enable the SSH plugin in the plugin manager first".
 
 ### From npm
 
@@ -55,7 +58,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board-ssh
 
 ### Extension settings
 
-- `enabled`: the master switch; off withdraws the detail seat, the card badge, the three tools and every dispatch.
+- `enabled`: the master switch; off withdraws the detail seat, the card badge, the three tools and the launch interceptor, and stops polling every run it follows.
 - `defaultMode`, `defaultAgent` and `defaultHost`: what a card opens with before anyone pins a target.
 - `perHostCap`: how many runs one host executes at once, from 1 to 16, default 2; the rest wait in submission order.
 - `agentCommands`: per-agent command templates that replace the built-in command line.

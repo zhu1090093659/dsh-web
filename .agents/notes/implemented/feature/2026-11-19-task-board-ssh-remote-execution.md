@@ -104,3 +104,4 @@ Direct mode spends no local model tokens. The provider adds three tools and one 
 - **Remote output returns unredacted** into the card log, the same trust model as `ssh_exec`.
 - **The board seam changes the launch path of every card**; the no-handler path must stay byte-for-byte identical and is pinned by a contract test.
 - **Untracked files stay behind** in a local-workspace run, because a bundle carries commits; the count is published in the run summary rather than guessed silently.
+- **A card whose mount is incomplete shows no provider surface at all**: the host half registers nothing until both the board and `dsh-ssh` are there, and `dsh-ssh` ships as a disabled row in the aggregate, so a freshly installed bundle says only "Enable the SSH plugin in the plugin manager first" on a card's detail seat until that row is turned on.

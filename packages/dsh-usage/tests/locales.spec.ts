@@ -32,7 +32,7 @@ describe('usage locale fallback', () => {
     expect(t('usage.title')).toBe('使用统计')
   })
 
-  it('provider without a dictionary key keeps its host display name', () => {
+  it('user sees the host display name for a provider without a dictionary key', () => {
     // Given a provider with no localized override
     document.documentElement.lang = 'ru'
     // When its display name is resolved

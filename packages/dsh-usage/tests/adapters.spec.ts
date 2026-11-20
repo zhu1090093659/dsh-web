@@ -389,7 +389,7 @@ describe('minimax plan parse', () => {
 describe('openai-codex plan parse', () => {
   const adapter = adapterFor('openai-codex')!
 
-  it('uses an English host fallback that the client dictionary can replace', () => {
+  it('user receives an English host fallback that the client dictionary can replace', () => {
     // Given the host-produced provider payload
     // When a client without the usage locale service reads it
     // Then the fallback contains no hardcoded Chinese subscription suffix

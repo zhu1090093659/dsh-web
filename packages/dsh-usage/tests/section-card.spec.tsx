@@ -172,7 +172,7 @@ describe('UsageSectionCard configured-provider filter', () => {
     // When the user opens the plans tab
     fireEvent.click(screen.getByRole('tab', { name: 'Plans' }))
     // Then the client replaces the host label with its dictionary entry
-    expect(screen.getByText('Codex (ChatGPT)')).not.toBeNull()
+    expect(screen.getAllByText('Codex (ChatGPT)')).toHaveLength(1)
     expect(screen.queryByText('代码助手 (ChatGPT)')).toBeNull()
   })
 

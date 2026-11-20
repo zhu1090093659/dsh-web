@@ -52,13 +52,19 @@
     "@deepseek-ai/dsh": ">=0.2.2-rc.3",
     "react": "^18.2.0"
   },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.19.0"
+  },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.1.0",
+    "@deepseek-ai/dsh-api-gateway": "^0.2.2-rc.3",
     "@deepseek-ai/dsh-client-locale": "^0.2.2-rc.3",
     "@deepseek-ai/dsh-client-store": "^0.2.2-rc.3",
     "@deepseek-ai/dsh-client-ui-renderer": "^0.2.2-rc.3",
     "@deepseek-ai/dsh-client-ui-settings": "^0.2.2-rc.3",
     "@deepseek-ai/dsh-client-ui-slots": "^0.2.2-rc.3",
+    "@deepseek-ai/dsh-llm": "^0.2.2-rc.3",
+    "@deepseek-ai/dsh-tools": "^0.2.2-rc.3",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",

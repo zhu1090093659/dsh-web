@@ -22,10 +22,21 @@ import { executionSummaryOf } from './core/execution-summary.ts'
 
 /**
  * Host services needed to validate a task's workspace before creating a
- * session, and to resolve the workspace an unpinned card runs in.
+ * session, resolve the workspace an unpinned card runs in, and tell a reusable
+ * conversation apart from an archived one.
  */
 export interface TaskBoardWorkspaceRegistry {
   list(): readonly Workspace[]
+  /**
+   * The registry-global archive set, in archive order (issue #2068). A Session
+   * in it cannot run a turn, so the reuse rule refuses it and the launch starts
+   * a fresh conversation instead of settling as `blocked`.
+   *
+   * Optional: a deployment whose registry face does not report an archive set
+   * offers no archive action to defend against, and reuse keeps its
+   * pre-archive-set behavior.
+   */
+  archivedSessionIds?: readonly string[]
 }
 
 /**

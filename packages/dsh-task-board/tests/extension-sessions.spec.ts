@@ -51,6 +51,8 @@ interface DeliveredPrompt {
 interface Script {
   /** Sessions the host roster shows, and whether each is running. */
   roster?: Array<{ sessionId: string; running: boolean }>
+  /** The roster read itself fails, which is neither "idle" nor "gone". */
+  rosterUnreadable?: boolean
   /** A session this host cannot reach: a prompt into it rejects. */
   unreachable?: string
 }
@@ -69,7 +71,10 @@ function scriptedGateway(script: Script = {}) {
     if (request.namespace === 'agentPresets' && request.method === 'list') return { presets: [] }
     if (request.namespace !== 'session') throw new Error('unexpected namespace: ' + request.namespace)
     if (request.method === 'modelCatalog') return {}
-    if (request.method === 'list') return { items: script.roster ?? [] }
+    if (request.method === 'list') {
+      if (script.rosterUnreadable === true) throw new Error('session roster is unavailable')
+      return { items: script.roster ?? [] }
+    }
     if (request.method === 'create') {
       created += 1
       creates.push(body as { workspaceId?: string; agentPreset?: string })
@@ -100,7 +105,7 @@ async function flushLaunchChain(): Promise<void> {
 
 function makeBoard(
   gateway: TypertGateway,
-  options: { sessionDefaultPermission?: TaskPermission } = {},
+  options: { sessionDefaultPermission?: TaskPermission; archive?: readonly string[] } = {},
 ): TaskBoardHostService {
   const ledger = new HostTaskLedger(tempDir(), () => NOW, options.sessionDefaultPermission === undefined
     ? {}
@@ -109,7 +114,7 @@ function makeBoard(
     ledger,
     power: new PowerInhibitor({ platform: 'linux' }),
     now: () => NOW,
-    workspaceRegistry: fixtureWorkspaces(),
+    workspaceRegistry: fixtureWorkspaces(['workspace-fixture'], options.archive === undefined ? {} : { archive: options.archive }),
   })
 }
 
@@ -392,6 +397,51 @@ describe('rework of an executed card', () => {
     const reworked = host.ledger.getTask('card') as TaskRecord
     expect(reworked.status).toBe('running')
     expect(reworked.executions.at(-1)?.rework).toEqual({ instructions: 'cover the failure path too' })
+    host.dispose()
+  })
+
+  it('operator sees a rework of an archived conversation refuse with that reason', async () => {
+    // Given a card that ran once in session-1 and settled, and a registry that
+    // reports that conversation archived
+    const { gateway, prompts } = scriptedGateway({ roster: [{ sessionId: 'session-1', running: false }] })
+    const host = makeBoard(gateway, { archive: ['session-1'] })
+    const { face } = admit(host, { id: 'review', apiVersion: TASK_BOARD_API_VERSION })
+    seedCard(host)
+    await runAndSettle(host)
+    prompts.length = 0
+
+    // When the provider sends the work back into that conversation
+    face().tasks.rework?.('card', 'cover the failure path too')
+    await flushLaunchChain()
+
+    // Then nothing was prompted into the archived session, and the failure
+    // names both the archive and the conversation the operator has to unarchive
+    expect(prompts).toHaveLength(0)
+    const settled = host.ledger.getTask('card') as TaskRecord
+    expect(settled.status).toBe('failed')
+    expect(settled.executions.at(-1)?.error).toContain('is archived')
+    expect(settled.executions.at(-1)?.error).toContain('session-1')
+    host.dispose()
+  })
+
+  it('operator sees a rework whose roster read failed refuse for that reason', async () => {
+    // Given a card that ran once and settled, and a host whose roster read now
+    // fails, so neither "idle" nor "gone" can be established
+    const { gateway, prompts } = scriptedGateway({ rosterUnreadable: true })
+    const host = makeBoard(gateway)
+    const { face } = admit(host, { id: 'review', apiVersion: TASK_BOARD_API_VERSION })
+    seedExecuted(host, { sessionId: 'session-1' })
+
+    // When the provider sends the work back
+    face().tasks.rework?.('card', 'cover the failure path too')
+    await flushLaunchChain()
+
+    // Then the refusal blames evidence it could not confirm, not a conversation
+    // it knows is missing
+    expect(prompts).toHaveLength(0)
+    const settled = host.ledger.getTask('card') as TaskRecord
+    expect(settled.status).toBe('failed')
+    expect(settled.executions.at(-1)?.error).toContain('could not be confirmed as present and idle')
     host.dispose()
   })
 

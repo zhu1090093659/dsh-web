@@ -3,7 +3,7 @@ import { DEFAULT_RUN_LAUNCH_WIDTH, normalizeRunLaunchWidth } from './core/launch
 import { DEFAULT_SPEND_BUDGET_TOKENS, spendCapMessage, spendCapReached } from './core/spend-budget.ts'
 import { usedTokensToday } from './host-spend.ts'
 import { DEFAULT_SESSION_POLL_SECONDS, normalizeSessionPollSeconds, sessionPollMs } from './core/poll-cadence.ts'
-import { reusableSessionId } from './core/session-reuse.ts'
+import { newestSettledSessionId, reusableSessionId } from './core/session-reuse.ts'
 import { LaunchAdmissionQueue, type QueuedLaunch } from './host/launch-admission.ts'
 import { HostTaskLedger, type OpenedRun, type OpenExecutionReference } from './host-ledger.ts'
 import { HostExecutionRunner, SessionLaunchError, type GatewayPeer, type SessionCommandDispatcher, type SessionSummary, type TaskBoardWorkspaceRegistry } from './host-runner.ts'
@@ -58,11 +58,32 @@ const ABANDONED_LAUNCH_REASON = 'host stopped before this execution started'
 
 /**
  * Why a rework could not launch: it redoes work in the card's own
- * conversation, so a session the Host cannot continue means there is nothing to
- * send the reviewer's instructions into. Starting a fresh conversation instead
- * would hand those instructions to an agent that never saw the work.
+ * conversation, so a session the Host cannot confirm as reachable means there is
+ * nothing to send the reviewer's instructions into. Starting a fresh
+ * conversation instead would hand those instructions to an agent that never saw
+ * the work. "Could not be confirmed" also covers an unreadable roster, which is
+ * neither "idle" nor "gone".
  */
-const REWORK_SESSION_REASON = 'rework: the card\'s previous execution session is not present and idle in the host session roster, so there is no conversation to send the rework instructions into'
+const REWORK_SESSION_REASON = 'rework: the card\'s previous execution session could not be confirmed as present and idle in the host session roster, so there is no conversation to send the rework instructions into'
+
+/**
+ * Why a rework could not launch into an archived conversation (issue #2068).
+ * The session still exists, so the generic reason would misdirect: the operator
+ * has to unarchive that conversation before the rework can be sent into it.
+ * @param sessionId - the archived conversation the rework addressed.
+ * @returns the refusal the operator reads on the card.
+ */
+const reworkArchivedReason = (sessionId: string): string =>
+  'rework: the card\'s previous execution session ' + sessionId
+  + ' is archived, so the Host will not run a turn in it; unarchive that session and start the rework again'
+
+/** What a launch may do with the card's previous conversation. */
+interface ReuseDecision {
+  /** The session this launch continues in; absent when it starts fresh. */
+  sessionId?: string
+  /** The newest settled session is in the archive set, so reuse refused it. */
+  archivedSessionId?: string
+}
 
 /**
  * The host model catalog one run group freezes, read once for the whole group.
@@ -908,36 +929,106 @@ export class TaskBoardHostService {
   /**
    * The session a run may continue in, for a card that opted into reuse
    * (issue #1419). Reuse requires positive evidence that the previous session
-   * is present and idle, and that evidence must be read for THIS launch: an
-   * idle board no longer polls, so a roster cached from an earlier pass could
-   * be hours old — either refusing a session that has been idle all along, or
-   * prompting into one that started running since. A card that did not opt in
-   * reads no roster at all, and a read that fails mints a fresh conversation
-   * exactly as an unknown roster always did.
+   * is present, idle, and not archived, and that evidence must be read for THIS
+   * launch: an idle board no longer polls, so a roster cached from an earlier
+   * pass could be hours old — either refusing a session that has been idle all
+   * along, or prompting into one that started running since. A card that did not
+   * opt in reads no roster at all, and a read that fails mints a fresh
+   * conversation exactly as an unknown roster always did.
    * @param task - the task about to run.
-   * @param force - continue the settled session regardless of the card's own
-   *   opt-in (a rework), which the reuse rule accepts without waiving any of its
-   *   evidence conditions.
    * @returns the session id to continue in, or undefined for a fresh session.
    */
-  private async reuseSessionFor(task: TaskRecord, force?: boolean): Promise<string | undefined> {
-    if (task.reuseSession !== true && force !== true) return undefined
+  private async reuseSessionFor(task: TaskRecord): Promise<string | undefined> {
+    if (task.reuseSession !== true) return undefined
+    const decision = await this.reuseDecision(task, false)
+    if (decision.sessionId !== undefined) return decision.sessionId
+    if (decision.archivedSessionId !== undefined) {
+      safeConsoleWarn(`[dsh-task-board] session reuse skipped for task ${task.id}: session ${decision.archivedSessionId} is archived, starting a fresh conversation`)
+    }
+    return undefined
+  }
+
+  /**
+   * One reuse decision for this launch: the session to continue in, or nothing
+   * plus the reason nothing was chosen, so each caller can report it.
+   *
+   * Reuse never targets a session in the Workspace registry's archive set
+   * (issue #2068). The Host's archived-session gate rejects the first step of a
+   * turn in an archived session before any model request is issued, so the
+   * run would settle as the opaque failure `agent turn ended without
+   * completing: blocked` — the fate of every scheduled run of a card whose
+   * conversation the user archived while cleaning the sidebar. Starting a fresh
+   * conversation is the only safe answer: archiving is a live user decision,
+   * and the board must not unarchive a conversation behind the user's back to
+   * keep reusing it.
+   * @param task - the task about to run.
+   * @param force - reuse without the card's own opt-in (a rework).
+   * @returns the reuse decision for this launch.
+   */
+  private async reuseDecision(task: TaskRecord, force: boolean): Promise<ReuseDecision> {
     let running: Awaited<ReturnType<HostExecutionRunner['listRunning']>>
     try {
       running = await this.runner.listRunning()
     } catch (error) {
-      // A read that failed is an unknown roster, and an unknown roster never
-      // reuses; the launch itself must not fail over the reuse probe.
+      // The runner already reports a roster it could not read as an unknown
+      // roster, so a throw here is a probe failure rather than an outcome. The
+      // launch must never fail over its own reuse probe: log it neutrally (the
+      // caller decides between a fresh session and a refusal) and reuse nothing.
       this.notePollFailure()
-      safeConsoleError('[dsh-task-board] session roster read for session reuse failed; starting a fresh session', error)
-      return undefined
+      safeConsoleError('[dsh-task-board] the session reuse probe failed; reuse is skipped for this launch', error)
+      return {}
     }
-    if (!running.known) return undefined
-    return reusableSessionId(
+    if (!running.known) return {}
+    const archived = this.archivedSessionIds()
+    const sessionId = reusableSessionId(
       task,
       new Set(running.items.filter(item => !item.running).map(item => item.sessionId)),
-      force === true ? { force: true } : {},
+      {
+        ...(force ? { force: true } : {}),
+        ...(archived === undefined ? {} : { archivedSessionIds: archived }),
+      },
     )
+    if (sessionId !== undefined) return { sessionId }
+    const archivedSessionId = this.archivedReuseTarget(task, archived)
+    return archivedSessionId === undefined ? {} : { archivedSessionId }
+  }
+
+  /**
+   * The archived conversation the reuse rule refused, when it refused one.
+   *
+   * Reuse skipping an archived conversation is otherwise invisible: the board
+   * simply opens a new one, and only the caller knows which outcome it produced.
+   * @param task - the task about to run.
+   * @param archived - the archive set read for this launch, when reported.
+   * @returns the newest settled session id when it is archived, else undefined.
+   */
+  private archivedReuseTarget(task: TaskRecord, archived: ReadonlySet<string> | undefined): string | undefined {
+    if (archived === undefined) return undefined
+    const newest = newestSettledSessionId(task)
+    return newest !== undefined && archived.has(newest) ? newest : undefined
+  }
+
+  /**
+   * The Workspace registry's archive set, or undefined when this deployment's
+   * registry face cannot report one. An unreportable set is unknown evidence,
+   * never proof that nothing is archived: the rule then keeps its pre-archive
+   * behavior instead of inventing a refusal, because a registry face without
+   * the getter serves no archive action for the board to defend against.
+   *
+   * Read per launch rather than cached: archiving is a live user action, and an
+   * idle board no longer polls, so a set kept from an earlier pass could already
+   * claim a session that the user archived a moment ago.
+   * @returns the archived session ids, or undefined when unreportable.
+   */
+  private archivedSessionIds(): ReadonlySet<string> | undefined {
+    try {
+      const archived = this.workspaceRegistry?.archivedSessionIds
+      return archived === undefined ? undefined : new Set(archived)
+    } catch {
+      // A face that throws while reporting its archive set is unreportable, and
+      // a reuse probe never fails the launch it was only advising.
+      return undefined
+    }
   }
 
   /**
@@ -953,9 +1044,11 @@ export class TaskBoardHostService {
    * @returns the session id this rework continues in.
    */
   private async reworkSessionFor(task: TaskRecord): Promise<string> {
-    const sessionId = await this.reuseSessionFor(task, true)
-    if (sessionId === undefined) throw new Error(REWORK_SESSION_REASON)
-    return sessionId
+    const decision = await this.reuseDecision(task, true)
+    if (decision.sessionId !== undefined) return decision.sessionId
+    throw new Error(decision.archivedSessionId === undefined
+      ? REWORK_SESSION_REASON
+      : reworkArchivedReason(decision.archivedSessionId))
   }
 
   /** Reuse the session list this poll already fetched: one list RPC per tick, not 1 + E. */
@@ -1289,6 +1382,18 @@ export function installStreamErrorGuards(): void {
 export function safeConsoleError(message: string, ...args: unknown[]): void {
   try {
     console.error(message, ...args)
+  } catch {
+    // Best-effort stderr write; ignore write errors when stderr stream fails
+  }
+}
+
+/**
+ * Defensively log to console.warn, for a diagnostic that must never turn a
+ * launch decision into a failed run when the stderr write itself fails.
+ */
+function safeConsoleWarn(message: string, ...args: unknown[]): void {
+  try {
+    console.warn(message, ...args)
   } catch {
     // Best-effort stderr write; ignore write errors when stderr stream fails
   }

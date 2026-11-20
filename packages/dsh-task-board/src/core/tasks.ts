@@ -472,8 +472,8 @@ export interface TaskRecord {
    * Whether later executions continue in the previous execution's session
    * (issue #1419) instead of minting a fresh conversation per run. Absent or
    * false keeps the historical one-session-per-execution behavior; the reuse
-   * itself only happens when that session is idle and still present (see
-   * {@link reusableSessionId}).
+   * itself only happens when that session is idle, still present, and not
+   * archived (issue #2068; see {@link reusableSessionId}).
    */
   reuseSession?: boolean
   /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createTask, type ExecutionRecord, type TaskRecord } from '../src/core/tasks.ts'
-import { reusableSessionId } from '../src/core/session-reuse.ts'
+import { newestSettledSessionId, reusableSessionId } from '../src/core/session-reuse.ts'
 
 function task(overrides: Partial<TaskRecord> = {}): TaskRecord {
   return {
@@ -82,5 +82,58 @@ describe('reusableSessionId (#1419)', () => {
     })
     expect(reusableSessionId(chained, new Set(['session-a']))).toBe('session-a')
     expect(reusableSessionId(chained, new Set(['session-old']))).toBeUndefined()
+  })
+})
+
+describe('an archived conversation (#2068)', () => {
+  it('operator running a card whose archived conversation is idle gets a fresh session', () => {
+    // Given a card that keeps one conversation, with a settled run in session-a
+    const card = task({ reuseSession: true, executions: [execution({ sessionId: 'session-a' })] })
+    // When the deployment reports session-a as archived, even though it is idle
+    const decision = reusableSessionId(card, new Set(['session-a']), { archivedSessionIds: new Set(['session-a']) })
+    // Then reuse is refused, because the Host rejects the first step of that turn
+    expect(decision).toBeUndefined()
+  })
+
+  it('operator whose archive set names another session keeps continuing its own', () => {
+    // Given an idle settled conversation that the archive set does not mention
+    const card = task({ reuseSession: true, executions: [execution({ sessionId: 'session-a' })] })
+    // When the deployment reports some other conversation archived
+    const decision = reusableSessionId(card, new Set(['session-a']), { archivedSessionIds: new Set(['session-b']) })
+    // Then the card still continues its own conversation
+    expect(decision).toBe('session-a')
+  })
+
+  it('operator on a deployment that reports no archive set keeps the historical reuse', () => {
+    // Given a card that opted in, with an idle settled conversation
+    const card = task({ reuseSession: true, executions: [execution({ sessionId: 'session-a' })] })
+    // When the registry face cannot report an archive set at all
+    const decision = reusableSessionId(card, new Set(['session-a']), {})
+    // Then reuse behaves exactly as it did before the archive set was consulted
+    expect(decision).toBe('session-a')
+  })
+
+  it('operator reworking an archived conversation cannot force it open', () => {
+    // Given a rework whose only conversation is archived
+    const card = task({ executions: [execution({ sessionId: 'session-a' })] })
+    // When the rework forces reuse regardless of the card's own opt-in
+    const forced = reusableSessionId(card, new Set(['session-a']), { force: true, archivedSessionIds: new Set(['session-a']) })
+    // Then the force waives the opt-in, never the archive refusal
+    expect(forced).toBeUndefined()
+  })
+
+  it('operator reads the newest settled session while this launch has an open row', () => {
+    // Given a history whose newest row is this launch's own open record
+    const chained = task({
+      reuseSession: true,
+      executions: [
+        execution({ id: 'exec-1', sessionId: 'session-done', startedAt: 10, endedAt: 20 }),
+        execution({ id: 'exec-2', sessionId: 'session-newer', startedAt: 30, endedAt: 40 }),
+        execution({ id: 'exec-3', sessionId: undefined, startedAt: 50, endedAt: undefined, result: undefined }),
+      ],
+    })
+    // When the archive check asks for the newest settled session
+    // Then it names the newest settled row rather than the open one
+    expect(newestSettledSessionId(chained)).toBe('session-newer')
   })
 })

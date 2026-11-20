@@ -21,48 +21,86 @@
  */
 import { useEffect, useId, useMemo, useState } from 'react'
 import { SSH_EXTENSION_ID } from '../../core/action.ts'
-import { composeDraftPayload } from '../../core/ledger.ts'
+import { composeDraftPayload, parseSshLedgerPayload } from '../../core/ledger.ts'
+import type { SshTarget } from '../../core/target.ts'
 import { t } from '../locales.ts'
 import type { SshComposeSectionProps } from '../seat-props.ts'
-import { draftOf, validateDraft, type SshTargetDraft } from './model.ts'
+import { draftOf, targetSummaryParts, validateDraft, type SshDraftField, type SshTargetDraft } from './model.ts'
 import { useHostHalfStatus, usePublishedSummary } from './summary.ts'
-import { SshTargetFields } from './target-form.tsx'
+import { refusalText, SshTargetFields } from './target-form.tsx'
 import css from '../ssh.module.css'
 
 /** Short plugin name the semantic attributes carry. */
 const PLUGIN_ATTR = 'task-board-ssh'
 
+/** Extract a pinned SSH target from a duplicated card's integrations container. */
+function initialTargetFrom(integrations: Readonly<Record<string, unknown>> | undefined): SshTarget | undefined {
+  const raw = integrations?.[SSH_EXTENSION_ID]
+  if (raw === undefined) return undefined
+  const parsed = parseSshLedgerPayload(raw)
+  return parsed.ok ? parsed.value.target : undefined
+}
+
 /**
  * Render the SSH provider's new-card seat.
- * @param props - the board's draft channel.
+ * @param props - the board's draft channel, optional duplicate source and submit counter.
  * @returns the picker while the host half is mounted, nothing otherwise.
  */
-export function SshComposeSection({ contribute }: SshComposeSectionProps) {
+export function SshComposeSection({ contribute, initialIntegrations, submitAttempt = 0 }: SshComposeSectionProps) {
   const summary = usePublishedSummary()
   const hostHalf = useHostHalfStatus()
-  const [chosen, setChosen] = useState(false)
+  const [initialTarget] = useState<SshTarget | undefined>(() => initialTargetFrom(initialIntegrations))
+  const [chosen, setChosen] = useState(() => initialTarget !== undefined)
   // Only the reader's own edits live here: until the first one the draft is
-  // derived from whatever the provider publishes, so a summary that arrives
-  // with defaults after the first render still prefills the fields.
-  const [edited, setEdited] = useState<SshTargetDraft | undefined>(undefined)
+  // derived from the duplicated target or whatever the provider publishes, so
+  // a summary that arrives with defaults after the first render still prefills.
+  const [edited, setEdited] = useState<SshTargetDraft | undefined>(() => (
+    initialTarget === undefined ? undefined : draftOf(initialTarget)
+  ))
+  const [touched, setTouched] = useState<ReadonlySet<SshDraftField>>(() => new Set())
   const defaults = summary?.defaults
-  const draft = useMemo(() => edited ?? draftOf(undefined, defaults), [edited, defaults])
+  const draft = useMemo(() => edited ?? draftOf(initialTarget, defaults), [edited, initialTarget, defaults])
   const validation = useMemo(() => validateDraft(draft), [draft])
   const fieldsId = `${useId()}-fields`
-  const mounted = hostHalf === 'mounted'
+  const mounted = hostHalf === 'mounted' && summary !== undefined
   const live = chosen && mounted
 
-  // Every change is the draft this card carries: a complete target is reported
-  // as the payload its host half reads, and anything else withdraws the draft so
-  // the board never stores a target the seat is not showing. The instant is the
-  // report's own, because that is what the payload stamps.
+  const visibleErrors = useMemo(() => {
+    if (submitAttempt > 0) return validation.errors
+    const filtered: typeof validation.errors = {}
+    for (const [field, issue] of Object.entries(validation.errors) as Array<[SshDraftField, (typeof validation.errors)[SshDraftField]]>) {
+      if (issue !== undefined && touched.has(field)) filtered[field] = issue
+    }
+    return filtered
+  }, [validation.errors, touched, submitAttempt])
+
+  // Report both the payload (when complete) and the summary/blocking error so
+  // collapsing "Run Mode" keeps a clear preview and an incomplete target stops
+  // "Create and Run" from silently falling back to local execution.
   useEffect(() => {
-    if (!live || validation.target === undefined) {
+    if (!live) {
       contribute(SSH_EXTENSION_ID, undefined)
       return
     }
+    if (validation.target === undefined) {
+      const firstEntry = (Object.entries(validation.errors) as Array<[SshDraftField, (typeof validation.errors)[SshDraftField]]>)
+        .find(([, issue]) => issue !== undefined)
+      const blocker = firstEntry !== undefined && firstEntry[1] !== undefined
+        ? refusalText(firstEntry[0], firstEntry[1])
+        : t('detail.error.host')
+      contribute(SSH_EXTENSION_ID, undefined, { summary: t('compose.remote'), error: blocker })
+      return
+    }
     const payload = composeDraftPayload(validation.target, Date.now())
-    contribute(SSH_EXTENSION_ID, payload === undefined ? undefined : { ...payload })
+    if (payload === undefined) {
+      contribute(SSH_EXTENSION_ID, undefined, { summary: t('compose.remote'), error: t('detail.rejected') })
+      return
+    }
+    const parts = targetSummaryParts(validation.target)
+    const label = validation.target.mode === 'proxy'
+      ? `${parts.host} · ${t('detail.mode.proxy')}`
+      : `${parts.host} · ${t(`detail.agent.${parts.agent}`)}`
+    contribute(SSH_EXTENSION_ID, { ...payload }, { summary: label })
   }, [live, validation, contribute])
 
   if (!mounted) return null
@@ -82,9 +120,25 @@ export function SshComposeSection({ contribute }: SshComposeSectionProps) {
         <div className={css.composeFields} id={fieldsId}>
           <SshTargetFields
             draft={draft}
-            errors={validation.errors}
+            errors={visibleErrors}
             hosts={summary?.hosts ?? []}
-            onChange={patch => { setEdited({ ...draft, ...patch }) }}
+            modeHint={t(draft.mode === 'direct' ? 'detail.modeHintDirect' : 'detail.modeHintProxy')}
+            onTouch={field => {
+              setTouched(current => {
+                if (current.has(field)) return current
+                const next = new Set(current)
+                next.add(field)
+                return next
+              })
+            }}
+            onChange={patch => {
+              setEdited({ ...draft, ...patch })
+              setTouched(current => {
+                const next = new Set(current)
+                for (const key of Object.keys(patch)) next.add(key as SshDraftField)
+                return next
+              })
+            }}
           />
         </div>
       )}

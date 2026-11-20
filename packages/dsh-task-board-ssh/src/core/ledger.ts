@@ -115,16 +115,32 @@ function boundText(text: string, max: number): string {
   return characters.slice(0, max).join('')
 }
 
+/** Bound an optional string field, turning empty strings into undefined so `parseSshRunRecord` keeps the record. */
+function boundOptionalText(text: string | undefined, max: number): string | undefined {
+  if (text === undefined || text.length === 0) return undefined
+  return boundText(text, max)
+}
+
 /** Copy one run record with every free-text field cut to its stored budget. */
 function boundRun(record: SshRunRecord): SshRunRecord {
-  return {
-    ...record,
+  const sessionId = boundOptionalText(record.sessionId, SSH_SESSION_ID_MAX_LENGTH)
+  const branch = boundOptionalText(record.branch, SSH_BRANCH_MAX_LENGTH)
+  const summary = boundOptionalText(record.summary, SSH_SUMMARY_MAX_LENGTH)
+  const error = boundOptionalText(record.error, SSH_ERROR_MAX_LENGTH)
+  const next: SshRunRecord = {
     runId: boundText(record.runId, 128),
-    sessionId: record.sessionId === undefined ? undefined : boundText(record.sessionId, SSH_SESSION_ID_MAX_LENGTH),
-    branch: record.branch === undefined ? undefined : boundText(record.branch, SSH_BRANCH_MAX_LENGTH),
-    summary: record.summary === undefined ? undefined : boundText(record.summary, SSH_SUMMARY_MAX_LENGTH),
-    error: record.error === undefined ? undefined : boundText(record.error, SSH_ERROR_MAX_LENGTH),
+    phase: record.phase,
+    startedAt: record.startedAt,
   }
+  if (record.finishedAt !== undefined) next.finishedAt = record.finishedAt
+  if (record.exitCode !== undefined) next.exitCode = record.exitCode
+  if (sessionId !== undefined) next.sessionId = sessionId
+  if (record.bytes !== undefined) next.bytes = record.bytes
+  if (branch !== undefined) next.branch = branch
+  if (summary !== undefined) next.summary = summary
+  if (error !== undefined) next.error = error
+  if (record.followUps !== undefined) next.followUps = record.followUps
+  return next
 }
 
 /** Copy one run record with the optional free text removed. */
@@ -167,9 +183,6 @@ export function sshLedgerPayloadBytes(payload: SshLedgerPayload): number {
   return jsonBytes(payload)
 }
 
-/** Smallest working budget a trimming pass keeps for the frozen run account. */
-const MIN_TRIM_BUDGET = 256
-
 /**
  * Cut a payload down to the stored budget.
  *
@@ -188,10 +201,13 @@ const MIN_TRIM_BUDGET = 256
 export function trimSshLedgerPayload(payload: SshLedgerPayload, options: SshLedgerTrimOptions = {}): SshLedgerPayload {
   const maxBytes = options.maxBytes ?? SSH_LEDGER_LIMIT_BYTES
   const maxHistory = Math.max(0, options.maxHistory ?? SSH_HISTORY_LIMIT)
-  let history = payload.history.map(boundRun)
-  if (history.length > maxHistory) history = history.slice(history.length - maxHistory)
-  let activeRun = payload.activeRun === undefined ? undefined : boundRun(payload.activeRun)
-  let target = payload.target
+  const initialHistory = payload.history.map(boundRun)
+  const cappedHistory = initialHistory.length > maxHistory ? initialHistory.slice(initialHistory.length - maxHistory) : initialHistory
+  const initialActiveRun = payload.activeRun === undefined ? undefined : boundRun(payload.activeRun)
+  const initialTarget = payload.target
+  let history = [...cappedHistory]
+  let activeRun = initialActiveRun
+  let target = initialTarget
   let pending = payload.pending === undefined ? undefined : boundPending(payload.pending)
 
   const build = (): SshLedgerPayload => {
@@ -202,7 +218,7 @@ export function trimSshLedgerPayload(payload: SshLedgerPayload, options: SshLedg
     return next
   }
 
-  /** Reduce the run account until it fits `budget`, leaving `pending` in place. */
+  /** Reduce the run account until the full payload (including `pending`) fits `budget`. */
   const shrink = (budget: number): SshLedgerPayload => {
     let candidate = build()
     while (jsonBytes(candidate) >= budget) {
@@ -231,15 +247,17 @@ export function trimSshLedgerPayload(payload: SshLedgerPayload, options: SshLedg
     return candidate
   }
 
-  // The instruction is paid for up front: whatever it needs is subtracted from
-  // the budget the run account is allowed to use, and a floor keeps a pass from
-  // shaving the account away to nothing over a message that could be shortened.
-  const reserved = pending === undefined ? 0 : jsonBytes({ pending })
-  const candidate = shrink(Math.min(maxBytes, Math.max(MIN_TRIM_BUDGET, maxBytes - reserved)))
+  // `build()` already includes `pending`, so shrinking directly against
+  // `maxBytes` preserves `pending` without double-counting its byte size.
+  const candidate = shrink(maxBytes)
   if (jsonBytes(candidate) < maxBytes || pending === undefined) return candidate
-  // Nothing else is left to give: the message yields, and the account it was
-  // reserving room from gets the whole budget back.
+  // Even with the entire run account stripped, `pending` alone exceeds the
+  // budget: drop `pending`, restore the full run account, and trim it cleanly
+  // against the full `maxBytes` budget.
   pending = undefined
+  history = [...cappedHistory]
+  activeRun = initialActiveRun
+  target = initialTarget
   return shrink(maxBytes)
 }
 

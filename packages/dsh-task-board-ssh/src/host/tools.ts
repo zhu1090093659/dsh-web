@@ -15,8 +15,8 @@
  */
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
-import type { DshSshHost } from '../core/contract.ts'
-import { SSH_AGENT_KINDS, parseSshTarget, type SshAgentKind, type SshExecutionMode } from '../core/target.ts'
+import { TASK_BOARD_MESSAGE_MAX_LENGTH, type DshSshHost } from '../core/contract.ts'
+import { SSH_AGENT_KINDS, parseSshTarget, type SshExecutionMode } from '../core/target.ts'
 import type { SshRunEngine } from './engine.ts'
 
 /** Tool names, in registration order. */
@@ -96,12 +96,14 @@ function count(value: unknown): number | undefined {
  */
 function targetFromArgs(args: Record<string, unknown>): unknown {
   const host = text(args.host) ?? ''
-  const mode = text(args.mode) ?? 'direct'
-  const agentKind = (SSH_AGENT_KINDS as readonly string[]).includes(String(args.agent)) ? String(args.agent) as SshAgentKind : 'dsh'
+  const mode = args.mode === undefined ? 'direct' : args.mode
+  const agentKind = args.agent === undefined ? 'dsh' : args.agent
   const agentCommand = text(args.agentCommand)
   const agentResumeCommand = text(args.agentResumeCommand)
-  const workspace = text(args.workspaceKind) === 'git'
-    ? text(args.repositoryUrl) !== undefined
+  const workspaceKind = args.workspaceKind === undefined ? 'in-place' : args.workspaceKind
+  let workspace: unknown
+  if (workspaceKind === 'git') {
+    workspace = text(args.repositoryUrl) !== undefined
       ? {
           kind: 'git',
           source: {
@@ -111,15 +113,18 @@ function targetFromArgs(args: Record<string, unknown>): unknown {
           },
         }
       : { kind: 'git', source: { kind: 'workspace', workspaceId: text(args.workspaceId) ?? '' } }
-    : { kind: 'in-place', path: text(args.workspacePath) ?? '' }
+  } else if (workspaceKind === 'in-place') {
+    workspace = { kind: 'in-place', path: text(args.workspacePath) ?? '' }
+  } else {
+    workspace = { kind: workspaceKind }
+  }
+  const agent: Record<string, unknown> = { kind: agentKind }
+  if (agentCommand !== undefined) agent.command = agentCommand
+  if (agentResumeCommand !== undefined) agent.resumeCommand = agentResumeCommand
   return {
     mode,
     host,
-    agent: {
-      kind: agentKind,
-      ...(agentKind === 'custom' && agentCommand !== undefined ? { command: agentCommand } : {}),
-      ...(agentKind === 'custom' && agentResumeCommand !== undefined ? { resumeCommand: agentResumeCommand } : {}),
-    },
+    agent,
     workspace,
   }
 }
@@ -212,10 +217,18 @@ function buildFollowUpTool(engine: SshRunEngine): ToolDefinition {
     output: { schema: { type: 'json' }, render: renderJson },
     async execute(args) {
       const taskId = text(args.taskId)
-      const instruction = typeof args.text === 'string' ? args.text.trim() : ''
+      const rawText = typeof args.text === 'string' ? args.text : ''
+      const instruction = rawText.trim()
       if (taskId === undefined) return refused('task-required', 'taskId is required')
       if (instruction === '') return refused('text-required', 'text must be a non-blank instruction')
-      const kind = text(args.kind) === 'rework' ? 'rework' : 'follow-up'
+      if (rawText.length > TASK_BOARD_MESSAGE_MAX_LENGTH) {
+        return refused('text-too-long', `text must be at most ${TASK_BOARD_MESSAGE_MAX_LENGTH} characters`)
+      }
+      const rawKind = args.kind
+      if (rawKind !== undefined && rawKind !== 'follow-up' && rawKind !== 'rework') {
+        return refused('invalid-kind', 'kind must be "follow-up" or "rework"')
+      }
+      const kind = rawKind ?? 'follow-up'
       try {
         const reply = await engine.instruct(taskId, instruction, kind)
         if (!reply.ok) return refused(reply.code, reply.error)

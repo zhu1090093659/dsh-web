@@ -33,7 +33,7 @@ import { SSH_EXTENSION_ID } from '../../core/action.ts'
 import { SshCardDecoration } from './card-decoration.tsx'
 import { SshComposeSection } from './compose-section.tsx'
 import { SshDetailSection } from './detail-section.tsx'
-import { acceptPublishedSummary, clearSummary } from './summary.ts'
+import { acceptBoardContext, acceptPublishedSummary, clearSummary } from './summary.ts'
 
 /** Locale namespace the seats bind to. */
 const LOCALE_NS = 'task-board-ssh'
@@ -193,18 +193,47 @@ function installSeats(ctx: ClientContext): () => void {
   }
   const slots = ctx.slots as {
     register(options: Record<string, unknown>, component: unknown): () => void
+    inject?(key: string, callback: () => () => void): () => void
   }
   const seats: Array<() => void> = []
   let registered = false
 
+  /** Follow a slot declaration via `slots.inject` when available, falling back to one-shot `register`. */
+  const followSeat = (options: Record<string, unknown>, component: unknown): (() => void) => {
+    const seatName = String(options.name)
+    const doRegister = (): (() => void) => {
+      try {
+        const dispose = slots.register(options, component)
+        return () => {
+          try { dispose() } catch { /* best-effort */ }
+        }
+      } catch (error) {
+        console.error(`[dsh-task-board-ssh] seat registration failed for ${seatName}`, error)
+        return () => {}
+      }
+    }
+    if (typeof slots.inject !== 'function') return doRegister()
+    try {
+      return slots.inject(seatName, doRegister)
+    } catch (error) {
+      console.error(`[dsh-task-board-ssh] seat ${seatName} could not follow its declaration`, error)
+      return doRegister()
+    }
+  }
+
   const ensure = (): void => {
     if (registered) return
-    registered = true
+    const next: Array<() => void> = []
     try {
-      seats.push(slots.register({ name: TASK_BOARD_DETAIL_SECTION, id: SSH_EXTENSION_ID, locale: LOCALE_NS }, SshDetailSection as never))
-      seats.push(slots.register({ name: TASK_BOARD_CARD_DECORATION, id: SSH_EXTENSION_ID }, SshCardDecoration as never))
-      seats.push(slots.register({ name: TASK_BOARD_COMPOSE_SECTION, id: SSH_EXTENSION_ID, locale: LOCALE_NS }, SshComposeSection as never))
+      next.push(followSeat({ name: TASK_BOARD_DETAIL_SECTION, id: SSH_EXTENSION_ID, locale: LOCALE_NS }, SshDetailSection as never))
+      next.push(followSeat({ name: TASK_BOARD_CARD_DECORATION, id: SSH_EXTENSION_ID }, SshCardDecoration as never))
+      next.push(followSeat({ name: TASK_BOARD_COMPOSE_SECTION, id: SSH_EXTENSION_ID, locale: LOCALE_NS }, SshComposeSection as never))
+      seats.push(...next)
+      registered = true
     } catch (error) {
+      for (const dispose of next) {
+        try { dispose() } catch { /* best-effort */ }
+      }
       console.error('[dsh-task-board-ssh] seat registration failed', error)
     }
   }
@@ -215,16 +244,25 @@ function installSeats(ctx: ClientContext): () => void {
     }
   }
 
-  const unsubscribe = face.subscribe(mirror => {
+  const applyMirror = (mirror: ReturnType<typeof face.snapshot>): void => {
     if (mirror.enabled) ensure()
     else release()
-    acceptPublishedSummary(mirror.extensions)
-  })
+    acceptBoardContext({
+      ...(mirror.workspaces === undefined ? {} : { workspaces: mirror.workspaces }),
+      lastError: mirror.lastError,
+    })
+    // Before the first authoritative Host snapshot arrives (`hydrated === false`),
+    // `mirror.extensions` is an empty initial placeholder; wait for hydration
+    // instead of flashing a false "host half unmounted" state on cold start.
+    if (mirror.hydrated !== false) {
+      acceptPublishedSummary(mirror.extensions)
+    }
+  }
+
+  const unsubscribe = face.subscribe(applyMirror)
   // Establish immediately when the board is already running; the mirror
   // subscription covers the enable transition that rebuilds the seats.
-  const current = face.snapshot()
-  if (current.enabled) ensure()
-  acceptPublishedSummary(current.extensions)
+  applyMirror(face.snapshot())
 
   return () => {
     unsubscribe()

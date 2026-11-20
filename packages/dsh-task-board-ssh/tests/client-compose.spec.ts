@@ -40,15 +40,20 @@ function publish(options: { hosts?: typeof HOSTS, defaults?: Record<string, stri
 }
 
 /** Render the seat with the board's own draft channel. */
-function mountCompose() {
-  const contribute = vi.fn<(extensionId: string, payload: TaskBoardExtensionPayload | undefined) => void>()
-  const view = render(createElement(SshComposeSection, { contribute }))
+function mountCompose(props: { initialIntegrations?: Readonly<Record<string, unknown>>, submitAttempt?: number } = {}) {
+  const contribute = vi.fn<(extensionId: string, payload: TaskBoardExtensionPayload | undefined, options?: { summary?: string, error?: string }) => void>()
+  const view = render(createElement(SshComposeSection, { contribute, ...props }))
   /** The last draft the seat reported; undefined means it withdrew it. */
   const lastDraft = (): TaskBoardExtensionPayload | undefined => {
     const calls = contribute.mock.calls.filter(call => call[0] === 'ssh')
     return calls.length === 0 ? undefined : calls[calls.length - 1]?.[1]
   }
-  return { ...view, contribute, lastDraft }
+  /** The last draft metadata (summary / blocking error) the seat reported. */
+  const lastOptions = (): { summary?: string, error?: string } | undefined => {
+    const calls = contribute.mock.calls.filter(call => call[0] === 'ssh')
+    return calls.length === 0 ? undefined : calls[calls.length - 1]?.[2]
+  }
+  return { ...view, contribute, lastDraft, lastOptions }
 }
 
 beforeEach(() => {
@@ -127,37 +132,49 @@ describe('the row itself', () => {
 
 describe('the draft it reports', () => {
   it('operator expanding the row sees the provider defaults already chosen', () => {
-    // Given defaults that name a published host
+    // Given defaults that name a published host and proxy mode
     publish({ defaults: { mode: 'proxy', agent: 'claude', workspace: 'git', host: 'build' } })
 
     // When the row expands
     mountCompose()
     fireEvent.click(screen.getByLabelText('在远程主机上执行'))
 
-    // Then each control opens on the provider's own default
+    // Then proxy mode hides the unused remote agent picker while keeping host and workspace defaults
     expect((screen.getByLabelText('本地代理') as HTMLInputElement).checked).toBe(true)
     expect((screen.getByLabelText('主机') as HTMLSelectElement).value).toBe('build')
-    expect((screen.getByLabelText('Agent') as HTMLSelectElement).value).toBe('claude')
+    expect(screen.queryByLabelText('Agent')).toBeNull()
     expect((screen.getByLabelText('Git 分支') as HTMLInputElement).checked).toBe(true)
+
+    // When switching back to direct mode
+    fireEvent.click(screen.getByLabelText('直接执行'))
+
+    // Then the remote agent default is already chosen
+    expect((screen.getByLabelText('Agent') as HTMLSelectElement).value).toBe('claude')
   })
 
   it('operator filling in a complete target hands the board one payload it can read back', () => {
     // Given a mounted provider whose default host is a published one
     publish({ defaults: { mode: 'direct', agent: 'dsh', workspace: 'in-place', host: 'devbox' } })
-    const { lastDraft } = mountCompose()
+    const { lastDraft, lastOptions, rerender, contribute } = mountCompose()
 
-    // When the reader asks for a remote target
+    // When the reader asks for a remote target without touching the path field yet
     fireEvent.click(screen.getByLabelText('在远程主机上执行'))
 
-    // Then the missing remote path is named in place, and no draft travels yet
-    expect(screen.getByText('填写主机上的绝对路径，需以 / 开头。').textContent).toBe('填写主机上的绝对路径，需以 / 开头。')
+    // Then no inline error shouts before interaction, yet the board is told the draft is blocked
+    expect(screen.queryByText('填写主机上的绝对路径，需以 / 开头。')).toBeNull()
     expect(lastDraft()).toBeUndefined()
+    expect(lastOptions()?.error).toBe('填写主机上的绝对路径，需以 / 开头。')
+
+    // When the operator submits anyway
+    rerender(createElement(SshComposeSection, { contribute, submitAttempt: 1 }))
+
+    // Then the missing remote path is named in place
+    expect(screen.getByText('填写主机上的绝对路径，需以 / 开头。').textContent).toBe('填写主机上的绝对路径，需以 / 开头。')
 
     // When the path is filled in
     fireEvent.change(screen.getByLabelText('远端路径'), { target: { value: '/srv/app' } })
 
-    // Then the row reports the stored document: the frozen version, the instant
-    // of the report, no run account, and exactly the target on screen
+    // Then the row reports the stored document with summary and no blocking error
     const draft = lastDraft()
     expect(draft).toEqual({
       version: 1,
@@ -165,6 +182,7 @@ describe('the draft it reports', () => {
       history: [],
       target: { mode: 'direct', host: 'devbox', agent: { kind: 'dsh' }, workspace: { kind: 'in-place', path: '/srv/app' } },
     })
+    expect(lastOptions()).toEqual({ summary: 'devbox · dsh' })
     const parsed = parseSshLedgerPayload(draft)
     expect(parsed.ok).toBe(true)
   })
@@ -195,7 +213,7 @@ describe('the draft it reports', () => {
   it('operator whose custom command the parser refuses sees the refusal and loses the draft it had', () => {
     // Given a complete target already reported
     publish({ defaults: { mode: 'direct', agent: 'dsh', workspace: 'in-place', host: 'devbox' } })
-    const { lastDraft } = mountCompose()
+    const { lastDraft, lastOptions } = mountCompose()
     fireEvent.click(screen.getByLabelText('在远程主机上执行'))
     fireEvent.change(screen.getByLabelText('远端路径'), { target: { value: '/srv/app' } })
     const before = parseSshLedgerPayload(lastDraft())
@@ -203,11 +221,42 @@ describe('the draft it reports', () => {
 
     // When the agent becomes a custom command that carries no prompt file
     fireEvent.change(screen.getByLabelText('Agent'), { target: { value: 'custom' } })
+    fireEvent.change(screen.getByLabelText('启动命令'), { target: { value: 'echo hi' } })
 
     // Then the refusal sits under the command field and the draft is withdrawn,
     // because the board must never store a target this seat is not showing
     expect(screen.getByText('启动命令必须引用 {prompt_file}。').textContent).toBe('启动命令必须引用 {prompt_file}。')
     expect(lastDraft()).toBeUndefined()
+    expect(lastOptions()?.error).toBe('启动命令必须引用 {prompt_file}。')
+  })
+
+  it('operator duplicating a remote card sees its target prefilled without re-entering it', () => {
+    // Given a mounted provider and a duplicated card carrying an SSH target
+    publish()
+
+    // When the create dialog renders the compose seat for the duplicate
+    const { lastDraft } = mountCompose({
+      initialIntegrations: {
+        ssh: {
+          version: 1,
+          updatedAt: NOW - 10_000,
+          history: [],
+          target: { mode: 'direct', host: 'build', agent: { kind: 'codex' }, workspace: { kind: 'in-place', path: '/opt/work' } },
+        },
+      },
+    })
+
+    // Then the switch opens checked with every duplicated field populated
+    expect((screen.getByLabelText('在远程主机上执行') as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText('主机') as HTMLSelectElement).value).toBe('build')
+    expect((screen.getByLabelText('Agent') as HTMLSelectElement).value).toBe('codex')
+    expect((screen.getByLabelText('远端路径') as HTMLInputElement).value).toBe('/opt/work')
+    expect(lastDraft()).toEqual({
+      version: 1,
+      updatedAt: NOW,
+      history: [],
+      target: { mode: 'direct', host: 'build', agent: { kind: 'codex' }, workspace: { kind: 'in-place', path: '/opt/work' } },
+    })
   })
 
   it('operator clearing the row back to no target withdraws the draft', () => {

@@ -34,8 +34,8 @@ import {
   type FieldState,
 } from '../settings-form.ts'
 import { validateCustomTemplate } from '../../core/adapters/index.ts'
-import { SSH_AGENT_KINDS, type SshAgentKind, type SshExecutionMode } from '../../core/target.ts'
-import { t, type TaskBoardSshKey } from '../locales.ts'
+import { HOST_ALIAS_RE, SSH_AGENT_KINDS, type SshAgentKind, type SshExecutionMode } from '../../core/target.ts'
+import type { TaskBoardSshKey } from '../locales.ts'
 import css from '../ssh.module.css'
 
 /** One agent whose built-in command line an operator may replace. */
@@ -150,12 +150,36 @@ export function parseAgentRowsText(text: string): SshAgentCommandRow[] {
  * @returns the new draft text.
  */
 export function withAgentCommand(text: string, kind: SshAgentKind, command: string): string {
-  const rows = parseAgentRowsText(text).filter(row => row.kind !== kind)
-  if (command.trim() !== '') rows.push({ kind, command })
-  const ordered = OVERRIDE_AGENTS
-    .map(candidate => rows.find(row => row.kind === candidate))
+  const existing = parseAgentRowsText(text)
+  const previous = existing.find(row => row.kind === kind)
+  const rest = existing.filter(row => row.kind !== kind)
+  if (command.trim() !== '') {
+    rest.push({
+      kind,
+      command,
+      ...(previous?.resumeCommand === undefined ? {} : { resumeCommand: previous.resumeCommand }),
+    })
+  }
+  const knownOrder = OVERRIDE_AGENTS
+    .map(candidate => rest.find(row => row.kind === candidate))
     .filter((row): row is SshAgentCommandRow => row !== undefined)
-  return JSON.stringify(ordered)
+  // Preserve any extra non-form rows (e.g. `custom`) stored in settings.yaml.
+  const extra = rest.filter(row => !OVERRIDE_AGENTS.includes(row.kind))
+  const ordered = [...knownOrder, ...extra]
+  return ordered.length === 0 ? '' : JSON.stringify(ordered)
+}
+
+/** Validate `defaultHost`: empty clears to inherited default, non-empty must be a valid dsh-ssh alias. */
+function defaultHostField(): FieldSpec {
+  const base = textField('defaultHost')
+  return {
+    ...base,
+    parse: text => {
+      const trimmed = text.trim()
+      if (trimmed === '') return { kind: 'clear' }
+      return HOST_ALIAS_RE.test(trimmed) ? { kind: 'set', value: trimmed } : undefined
+    },
+  }
 }
 
 /**
@@ -176,6 +200,7 @@ function agentCommandsField(): FieldSpec {
     parse: text => {
       if (text.trim() === '') return { kind: 'clear' }
       const rows = parseAgentRowsText(text)
+      if (rows.length === 0) return { kind: 'clear' }
       for (const row of rows) {
         if (validateCustomTemplate(row.command) !== undefined) return undefined
         if (row.resumeCommand !== undefined && validateCustomTemplate(row.resumeCommand) !== undefined) return undefined
@@ -196,10 +221,10 @@ export class SshSettingsCardController {
   constructor(scope: ConfigForm<SshSettings>) {
     this.form = new CardForm(scope, [
       booleanField('enabled'),
-      textField('defaultHost'),
+      defaultHostField(),
       choiceField('defaultMode', ['direct', 'proxy']),
       choiceField('defaultAgent', [...SSH_AGENT_KINDS]),
-      numberField('perHostCap', { integer: true, min: HOST_CAP.min }),
+      numberField('perHostCap', { integer: true, min: HOST_CAP.min, max: HOST_CAP.max }),
       agentCommandsField(),
     ])
     this.store = this.form.bind(() => this.projection())
@@ -237,21 +262,11 @@ export type SshSettingsSectionProps =
   & PropsLocale<'task-board-ssh'>
   & InjectFace<SshSettingsCardFace>
 
-/** Display name of one agent CLI. */
-function agentName(kind: SshAgentKind): string {
-  return t(`detail.agent.${kind}`)
-}
-
 /** Hint of one agent's command row: what its built-in command line is. */
 function agentCommandHint(kind: SshAgentKind): TaskBoardSshKey {
   if (kind === 'claude') return 'settings.agentCommandHint.claude'
   if (kind === 'codex') return 'settings.agentCommandHint.codex'
   return 'settings.agentCommandHint.dsh'
-}
-
-/** Display name of one execution mode. */
-function modeName(mode: SshExecutionMode): string {
-  return t(mode === 'direct' ? 'detail.mode.direct' : 'detail.mode.proxy')
 }
 
 /**
@@ -262,6 +277,8 @@ function modeName(mode: SshExecutionMode): string {
 export function SshSettingsSection(props: SshSettingsSectionProps) {
   const { t: translate } = props
   const label = (key: TaskBoardSshKey): string => translate(key)
+  const agentName = (kind: SshAgentKind): string => label(`detail.agent.${kind}`)
+  const modeName = (mode: SshExecutionMode): string => label(mode === 'direct' ? 'detail.mode.direct' : 'detail.mode.proxy')
   const state = props.useSshSettingsCard((snapshot: SshSettingsCardState) => snapshot)
   const enabled = state.enabled.text !== 'false'
   const fieldCopy = {
@@ -356,6 +373,10 @@ export function SshSettingsSection(props: SshSettingsSectionProps) {
               />
               {OVERRIDE_AGENTS.map(kind => {
                 const row = rows.find(entry => entry.kind === kind)
+                const rowInvalid = row !== undefined && (
+                  validateCustomTemplate(row.command) !== undefined
+                  || (row.resumeCommand !== undefined && validateCustomTemplate(row.resumeCommand) !== undefined)
+                )
                 return (
                   <ValueField
                     key={kind}
@@ -366,7 +387,7 @@ export function SshSettingsSection(props: SshSettingsSectionProps) {
                     {...state.agentCommands}
                     text={row?.command ?? ''}
                     overridden={row !== undefined}
-                    invalid={state.agentCommands.invalid && row !== undefined}
+                    invalid={rowInvalid}
                     onEdit={text => props.edit('agentCommands', withAgentCommand(state.agentCommands.text, kind, text))}
                     onReset={() => props.edit('agentCommands', withAgentCommand(state.agentCommands.text, kind, ''))}
                   />

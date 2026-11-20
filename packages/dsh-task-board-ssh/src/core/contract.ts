@@ -266,6 +266,12 @@ export interface TaskBoardClientMirror {
   tasks: readonly TaskRecord[]
   /** Published extension summaries, keyed by extension id. */
   extensions: Readonly<Record<string, unknown>>
+  /** Whether at least one authoritative Host snapshot has arrived. */
+  hydrated?: boolean
+  /** Registered local workspaces, for workspace pickers. */
+  workspaces?: readonly { workspaceId: string; title: string }[]
+  /** Last Host refusal message (e.g. a refused extension action), when any. */
+  lastError?: string
 }
 
 /** Whether a task should be shown on the board; false hides it. */

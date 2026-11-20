@@ -54,8 +54,16 @@ export interface SshSummaryLogWindow {
   endOffset: number
   /** The bytes themselves, verbatim. */
   text: string
-  /** Whether the provider skipped bytes before `baseOffset`. */
+  /** Legacy flag: whether bytes were skipped before `baseOffset` (or trailing bytes remain when `hasMore` is also set). */
   truncated?: boolean
+  /** Explicit flag: whether more trailing bytes exist after `endOffset` on the remote host. */
+  hasMore?: boolean
+}
+
+/** One registered local workspace exposed by the board mirror. */
+export interface SshBoardWorkspaceOption {
+  workspaceId: string
+  title: string
 }
 
 /** Defaults the provider prefills a new target from. */
@@ -174,6 +182,7 @@ function decodeLogs(value: unknown): Record<string, SshSummaryLogWindow> | undef
       text: entry.text,
     }
     if (entry.truncated === true) window.truncated = true
+    if (entry.hasMore === true) window.hasMore = true
     logs[taskId] = window
   }
   return Object.keys(logs).length === 0 ? undefined : logs
@@ -248,6 +257,10 @@ let current: SshSummary | undefined
 let framesSeen = 0
 /** Whether any observed frame carried this extension's summary. */
 let publishedEver = false
+/** Registered local workspaces published by the board client mirror. */
+let boardWorkspaces: readonly SshBoardWorkspaceOption[] = []
+/** Most recent board transport error (e.g. Host refusal on an extension action). */
+let lastBoardError: string | undefined
 const listeners = new Set<() => void>()
 
 /** Notify every subscriber, isolating each one. */
@@ -308,7 +321,44 @@ export function resetSummaryStore(): void {
   current = undefined
   framesSeen = 0
   publishedEver = false
+  boardWorkspaces = []
+  lastBoardError = undefined
   notify()
+}
+
+/** Update supplemental board mirror context (local workspaces + last Host refusal). */
+export function acceptBoardContext(context: {
+  workspaces?: readonly SshBoardWorkspaceOption[]
+  lastError?: string
+}): void {
+  let changed = false
+  if (context.workspaces !== undefined) {
+    const prev = boardWorkspaces
+    const next = context.workspaces
+    if (prev.length !== next.length || prev.some((item, index) => item.workspaceId !== next[index]?.workspaceId || item.title !== next[index]?.title)) {
+      boardWorkspaces = next
+      changed = true
+    }
+  }
+  if (lastBoardError !== context.lastError) {
+    lastBoardError = context.lastError
+  }
+  if (changed) notify()
+}
+
+/** Most recent Host transport/action refusal reported by the board mirror. */
+export function getLastBoardError(): string | undefined {
+  return lastBoardError
+}
+
+/** Registered local workspaces observed from the board mirror. */
+export function getBoardWorkspaces(): readonly SshBoardWorkspaceOption[] {
+  return boardWorkspaces
+}
+
+/** Observe the registered local workspaces from a React component. */
+export function useBoardWorkspaces(): readonly SshBoardWorkspaceOption[] {
+  return useSyncExternalStore(subscribe, getBoardWorkspaces, getBoardWorkspaces)
 }
 
 /** The current summary, or undefined while none is published. */

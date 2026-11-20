@@ -421,4 +421,29 @@ describe('createCompatScope batch mutate', () => {
       { op: 'set', path: ['skin-wallpaper', 'enabled'], value: true },
     ])
   })
+
+  it('judges structurally equal array and object settings values as landed on read-back', async () => {
+    // Given a bridge returning a fresh JSON-parsed array equal to the written agentCommands
+    const written = [{ kind: 'claude', command: 'claude -p {prompt_file}' }]
+    const { fetchFn } = fakeFetch(async (url) => {
+      if (url === WEB_UI_SETTINGS_BRIDGE_PREFIX + '/describe') {
+        return describeResult([batchView('task-board-ssh', {}, 1, { user: {} })])
+      }
+      return {
+        ok: true,
+        value: batchView('task-board-ssh', { agentCommands: structuredClone(written) }, 2, {
+          user: { agentCommands: structuredClone(written) },
+        }),
+      }
+    })
+    const scope = createCompatScope<{ agentCommands?: unknown[] }>({ namespace: 'task-board-ssh', fetchFn })
+    await vi.waitFor(() => { expect(scope.getSnapshot().status).toBe('ready') })
+
+    // When an array field is written in one atomic batch
+    const result = await batchOf(scope)!([{ field: 'agentCommands', op: 'set', value: written }])
+
+    // Then read-back succeeds by structural equality rather than Object.is reference identity
+    expect(result.ok).toBe(true)
+    expect(result.fields).toEqual([{ field: 'agentCommands', landed: true }])
+  })
 })

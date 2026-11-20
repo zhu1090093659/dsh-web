@@ -19,21 +19,33 @@
  *
  * @module dsh-task-board-ssh/host/remote
  */
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { DshSshService } from '../core/contract.ts'
 import type { SshAgentCommand } from '../core/adapters/types.ts'
 import {
+  agentScript,
   buildLauncherCommand,
   buildLauncherInstallCommand,
   buildRunFileCommands,
   parseLauncherStatus,
   runDirectory,
+  runFilePath,
   stateDirForHome,
   type LauncherStatus,
 } from '../core/launcher.ts'
-import { shellRemoveDir } from '../core/shell.ts'
+import { shellEnsureDir, shellRemoveDir, shellWriteFile } from '../core/shell.ts'
 
 /** Ceiling for one remote command, in milliseconds. */
 export const DEFAULT_COMMAND_TIMEOUT_MS = 30_000
+
+/**
+ * Prompts whose shell-quoted command exceeds this threshold are uploaded via
+ * SFTP instead of inlined into `sh -c`, staying well below Linux's 128 KiB
+ * `MAX_ARG_STRLEN` limit (E2BIG).
+ */
+const INLINE_PROMPT_COMMAND_LIMIT_BYTES = 32 * 1024
 
 /** Longest remote error text this module carries into a message, in characters. */
 const ERROR_TEXT_MAX = 400
@@ -100,6 +112,7 @@ export class SshRemote {
   private readonly timeoutMs: number
   private readonly stateDirs = new Map<string, string>()
   private readonly starting = new Map<string, Promise<LauncherStatus>>()
+  private readonly installing = new Map<string, Promise<void>>()
 
   constructor(ssh: DshSshService, options: SshRemoteOptions = {}) {
     this.ssh = ssh
@@ -108,8 +121,15 @@ export class SshRemote {
 
   /** Forget every cached path of one host, or of all hosts when none is named. */
   forget(alias?: string): void {
-    if (alias === undefined) this.stateDirs.clear()
-    else this.stateDirs.delete(alias)
+    if (alias === undefined) {
+      this.stateDirs.clear()
+      this.installing.clear()
+    } else {
+      this.stateDirs.delete(alias)
+      for (const key of this.installing.keys()) {
+        if (key.startsWith(alias + '/')) this.installing.delete(key)
+      }
+    }
   }
 
   /**
@@ -131,15 +151,30 @@ export class SshRemote {
   }
 
   /**
-   * Install (or refresh) the launcher script on one host.
+   * Install (or refresh) the launcher script on one host, deduplicating
+   * concurrent installs on the same host and state directory.
    * @param ref - host and state directory.
    */
   async installLauncher(ref: { alias: string; stateDir: string }): Promise<void> {
-    await this.run(ref.alias, buildLauncherInstallCommand(ref.stateDir), 'launcher install')
+    const key = ref.alias + '/' + ref.stateDir
+    const inflight = this.installing.get(key)
+    if (inflight !== undefined) return await inflight
+    const task = (async (): Promise<void> => {
+      try {
+        await this.run(ref.alias, buildLauncherInstallCommand(ref.stateDir), 'launcher install')
+      } finally {
+        this.installing.delete(key)
+      }
+    })()
+    this.installing.set(key, task)
+    return await task
   }
 
   /**
    * Write every file one run needs before `start`.
+   *
+   * Large prompts are uploaded through SFTP instead of inlined into a single
+   * shell command line so multi-megabyte prompts never trip Linux `E2BIG`.
    * @param ref - host, state directory and run.
    * @param files - prompt, command line, working directory and spec.
    */
@@ -152,7 +187,29 @@ export class SshRemote {
       cwd: files.cwd,
       spec: files.spec,
     })
-    await this.run(ref.alias, commands.join(' && '), 'run file write')
+    const combined = commands.join(' && ')
+    if (new TextEncoder().encode(combined).length <= INLINE_PROMPT_COMMAND_LIMIT_BYTES) {
+      await this.run(ref.alias, combined, 'run file write')
+      return
+    }
+    const directory = runDirectory(ref.stateDir, ref.runId)
+    const metadataCommands = [
+      shellEnsureDir(directory),
+      shellWriteFile(runFilePath(ref.stateDir, ref.runId, 'cmd.sh'), agentScript(files.command)),
+      shellWriteFile(runFilePath(ref.stateDir, ref.runId, 'cwd'), files.cwd),
+      shellWriteFile(runFilePath(ref.stateDir, ref.runId, 'spec.json'), JSON.stringify(files.spec)),
+    ]
+    await this.run(ref.alias, metadataCommands.join(' && '), 'run file write')
+    const scratch = await mkdtemp(join(tmpdir(), 'dsh-task-board-ssh-prompt-'))
+    try {
+      const localPrompt = join(scratch, 'prompt.txt')
+      await writeFile(localPrompt, files.prompt, 'utf8')
+      await this.ssh.upload(ref.alias, localPrompt, runFilePath(ref.stateDir, ref.runId, 'prompt.txt'))
+    } catch (error) {
+      throw new SshRemoteError(ref.alias, 'prompt upload', error instanceof Error ? error.message : String(error))
+    } finally {
+      await rm(scratch, { recursive: true, force: true })
+    }
   }
 
   /**
@@ -195,20 +252,43 @@ export class SshRemote {
   }
 
   /**
-   * Read a run's log from a byte offset to its end.
+   * Read a run's log from a byte offset, optionally capped to `limit` bytes.
    * @param ref - host, state directory and run.
    * @param offset - first byte to return.
+   * @param limit - optional maximum byte count to return (prevents hitting dsh-ssh's 2 MiB output cap).
    * @returns the text and the offset the next read starts at.
    */
-  async tail(ref: SshRemoteRef, offset: number): Promise<SshTailPage> {
+  async tail(ref: SshRemoteRef, offset: number, limit?: number): Promise<SshTailPage> {
     const result = await this.run(ref.alias, buildLauncherCommand({
       stateDir: ref.stateDir,
       verb: 'tail',
       runId: ref.runId,
       offset,
+      ...(limit === undefined ? {} : { limit }),
     }), 'tail')
     const text = result.stdout
     return { text, bytes: offset + new TextEncoder().encode(text).length }
+  }
+
+  /**
+   * Read the bounded tail of a run's `stderr.log`, for diagnosing failures when
+   * `stdout.log` carries no structured agent event.
+   * @param ref - host, state directory and run.
+   * @param limit - maximum bytes from the end of `stderr.log`.
+   * @returns trimmed stderr text, or empty string when unavailable.
+   */
+  async stderr(ref: SshRemoteRef, limit = 4096): Promise<string> {
+    try {
+      const result = await this.run(ref.alias, buildLauncherCommand({
+        stateDir: ref.stateDir,
+        verb: 'stderr',
+        runId: ref.runId,
+        limit,
+      }), 'stderr')
+      return result.stdout.trim()
+    } catch {
+      return ''
+    }
   }
 
   /**

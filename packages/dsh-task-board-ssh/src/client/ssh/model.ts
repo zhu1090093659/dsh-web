@@ -39,6 +39,8 @@ export interface SshCardView {
   phase: SshCardPhase
   /** Run the phase belongs to, absent while the card has never run. */
   runId?: string
+  /** Queued follow-up / rework instruction waiting on the ledger, when any. */
+  pending?: 'follow-up' | 'rework'
 }
 
 /** Versions of the stored payload this reader understands. */
@@ -63,7 +65,7 @@ const NO_VIEW: SshCardView = { phase: 'idle' }
  * @param task - card to read.
  * @returns the parsed pieces, or undefined when the card carries no readable payload.
  */
-export function readSshLedger(task: TaskRecord): { target?: SshTarget, activeRun?: SshRunRecord, history: SshRunRecord[] } | undefined {
+export function readSshLedger(task: TaskRecord): { target?: SshTarget, activeRun?: SshRunRecord, history: SshRunRecord[], pending?: 'follow-up' | 'rework' } | undefined {
   const raw = task.integrations?.[SSH_INTEGRATION_KEY]
   if (!isPlainObject(raw)) return undefined
   if (typeof raw.version === 'number' && !READABLE_PAYLOAD_VERSIONS.has(raw.version)) return undefined
@@ -76,9 +78,13 @@ export function readSshLedger(task: TaskRecord): { target?: SshTarget, activeRun
       if (parsed.ok) history.push(parsed.value)
     }
   }
+  const pendingKind = isPlainObject(raw.pending) && (raw.pending.kind === 'follow-up' || raw.pending.kind === 'rework')
+    ? raw.pending.kind
+    : undefined
   return {
     ...(target.ok ? { target: target.value } : {}),
     ...(activeRun.ok ? { activeRun: activeRun.value } : {}),
+    ...(pendingKind === undefined ? {} : { pending: pendingKind }),
     history,
   }
 }
@@ -101,6 +107,7 @@ export function sshCardView(task: TaskRecord): SshCardView {
   if (ledger.activeRun !== undefined) view.activeRun = ledger.activeRun
   if (lastRun !== undefined) view.lastRun = lastRun
   if (from !== undefined) view.runId = from.runId
+  if (ledger.pending !== undefined) view.pending = ledger.pending
   return view
 }
 
@@ -191,15 +198,18 @@ function fieldOfIssue(path: string): SshDraftField | undefined {
  * @returns a candidate target for {@link parseSshTarget}.
  */
 export function draftToTarget(draft: SshTargetDraft): Record<string, unknown> {
-  const agent: Record<string, unknown> = { kind: draft.agent }
-  if (draft.agent === 'custom') {
+  // Proxy mode runs in a local DSH session and does not execute a remote agent
+  // CLI or upload local workspace bundles; normalize hidden fields so they can
+  // never block validation or store misleading config.
+  const agent: Record<string, unknown> = draft.mode === 'proxy' ? { kind: 'dsh' } : { kind: draft.agent }
+  if (draft.mode !== 'proxy' && draft.agent === 'custom') {
     agent.command = draft.agentCommand
     if (draft.agentResumeCommand.trim() !== '') agent.resumeCommand = draft.agentResumeCommand
   }
   let workspace: Record<string, unknown>
   if (draft.workspaceKind === 'in-place') {
     workspace = { kind: 'in-place', path: draft.workspacePath }
-  } else if (draft.gitSource === 'url') {
+  } else if (draft.mode === 'proxy' || draft.gitSource === 'url') {
     const source: Record<string, unknown> = { kind: 'url', url: draft.repositoryUrl }
     if (draft.baseBranch.trim() !== '') source.base = draft.baseBranch
     workspace = { kind: 'git', source }

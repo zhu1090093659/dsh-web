@@ -38,11 +38,12 @@ A throwing handler is isolated and treated as `undefined`. With no handler regis
 
 ### Remote run protocol (direct mode)
 
-- State lives on the remote host under `~/.dsh/task-board-ssh/`: `runner-<hash>.sh` (a POSIX `sh` launcher installed through `exec`), and `runs/<runId>/{spec.json, prompt.txt, stdout.log, stderr.log, pid, exit, session}`.
-- Launcher verbs: `start <runId>`, `status <runId>`, `tail <runId> <offset>`, `cancel <runId>`. `start` is idempotent on `runId`, because the `dsh-ssh` pool may replay a command on reconnect. The agent is detached with `setsid nohup`, so it survives the SSH connection and the local host.
-- The provider polls `status` and `tail` on a timer seat (deterministic in tests). On start it reconciles every card that carries an active run: a run that finished while the local host was down is recorded then.
-- The ledger payload (`integrations.ssh`) holds the target, the active run and a bounded run history; it never holds log bytes (64 KiB cap). The log is read from the remote file on demand.
-- A card moved out of the running column while its run is active is a cancel request; the remote run is cancelled and no outcome is written.
+- State lives on the remote host under `~/.dsh/task-board-ssh/`: `runner-<hash>.sh` (a POSIX `sh` launcher installed atomically via a per-PID staging file through `exec`, with in-flight installation deduplicated per host), and `runs/<runId>/{spec.json, prompt.txt, stdout.log, stderr.log, pid, exit, session}`. Every launcher invocation pins `TASK_BOARD_SSH_STATE=<stateDir>`. Prompts that would push the setup shell command past 32 KiB are uploaded via `dshSsh.upload` instead of inline base64 to stay clear of `ARG_MAX` / `E2BIG`.
+- Launcher verbs: `start <runId>`, `status <runId>`, `tail <runId> <offset> [limit]`, `stderr <runId> [limit]`, `cancel <runId>`. `start` re-checks `exit`/`cancelled`/`pid` inside its atomic lock directory so replayed or concurrent starts never spawn a second agent, and `run_exec` installs its `EXIT` trap before writing `pid` so instant exits settle as `exited` rather than `lost`. The agent detaches via `setsid nohup` when `setsid` exists (falling back to `nohup` on macOS and similar hosts). Custom agent templates run verbatim without appending `< /dev/null`, preserving piped or redirected templates.
+- The provider polls `status` and bounded `tail` pages on a timer seat (deterministic in tests). Every `publish()` call advances the board's `extensionsRevision` and emits an SSE update so live log windows reach open browsers immediately. On settlement, the engine reads only the trailing `PARSE_WINDOW` bytes (preventing 2 MiB `maxOutputBytes` truncation from losing the closing verdict event), fetches bounded `stderr.log` on non-zero failures, turns workspace collection failures into an explicit `failed` verdict naming the preserved remote branch, and guards against reentrancy or concurrent cancel / manual column moves during `collectWorkspace`.
+- The ledger payload (`integrations.ssh`) holds the target, the active run, optional queued `pending` instruction, and a bounded run history; it never holds log bytes (64 KiB cap). The log is read from the remote file on demand and auto-pages past 8 KiB in the detail view.
+- A card moved out of the running column while its run is active is a cancel request; the remote run is cancelled (aborting in-flight `prepareWorkspace` / `ssh.exec` calls via `AbortSignal`) and no outcome is written. Deleting a card cancels its run and removes every recorded run directory and git worktree.
+- The board's scheduler treats `task.status === 'running'` as `'busy'` even without a local open execution slot, preventing double-running a scheduled remote card. Provider actions returning `{ ok: false, error }` reject the board `/action` endpoint so browser callers surface the Host refusal reason. The plugin wraps `apply()` with `mountOnce`, registers `'task-board-ssh'` in `dsh-web-settings`'s allowlist, and compares settings read-backs structurally so array fields (`agentCommands`) land cleanly.
 
 ### Agent adapters
 
@@ -59,15 +60,15 @@ The recorded streams and the exact recording commands live in `packages/dsh-task
 
 ### Workspace strategies
 
-One interface, `prepare(run) -> { cwd }` and `collect(run) -> { branch? }`.
+One interface, `prepare(run) -> { cwd }`, `collect(run) -> { branch? }`, and optional `cleanup(run) -> void`. Concurrent operations on the same `(host, cacheDir)` serialize through a per-cache async lock, every git command runs with a 300 s timeout, and error messages redact embedded URL credentials. Follow-ups and reworks on a git-workspace card reuse the prior run's worktree and branch via `reuseWorktreeRunId`.
 
 - `in-place`: `cwd` is the pinned remote directory; `collect` is a no-op.
-- `git` from a URL: a bare cache under `~/.dsh/task-board-ssh/repos/`, a worktree per run on branch `dsh-task/<runId>`; `collect` pushes the branch to that remote when it has commits.
-- `git` from the local workspace: `git bundle` of `HEAD` (plus tracked uncommitted changes through `git stash create`), uploaded over `dshSsh.upload`; `collect` bundles the result branch, downloads it and fetches it into the local repository as `dsh-task/<runId>`. Nothing in the local working tree is overwritten. Untracked files are not sent, and the card says how many were left behind: `prepare` counts them and the count reaches the run summary.
+- `git` from a URL: a bare cache under `~/.dsh/task-board-ssh/repos/`, a worktree per run on branch `dsh-task/<runId>` seeded from the immutable per-run base ref; `collect` pushes the branch to that remote when it has commits.
+- `git` from the local workspace: `git bundle` of `HEAD` (plus tracked uncommitted changes through `git stash create`), uploaded over `dshSsh.upload` and unpacked into the bare cache via `git bundle unbundle` (so repeated dirty runs on an unchanged `HEAD` never fail non-fast-forward fetch checks); `collect` bundles the result branch, downloads it and fetches it into the local repository as `dsh-task/<runId>`. Nothing in the local working tree is overwritten. Untracked files are not sent, and the card says how many were left behind: `prepare` counts them and the count reaches the run summary.
 
 ### Card surface
 
-Detail section: target form (mode, host, agent, workspace), run state, log viewer, follow-up box, cancel. Card decoration: host and run state (queued, running, lost contact). Settings section inside the board settings card: enable switch, defaults, per-host cap, agent command overrides. Three model-visible tools: `task_board_ssh_target`, `task_board_ssh_status`, `task_board_ssh_follow_up`.
+Detail section: target form (mode, host, agent, workspace; proxy mode hides remote-only agent/log/follow-up controls; live/archived cards disable target editing), run state, virtualized log viewer with auto-paging, follow-up box, cancel. Create dialog Run Mode seat: reports both draft payload and summary/blocking errors (preventing silent local fallback on incomplete SSH drafts), preserves state across collapse/expand, and prefills duplicated card targets. Card decoration: host and run state (queued, running, lost contact). Settings section inside the board settings card: enable switch, defaults, per-host cap, agent command overrides (preserving `resumeCommand` and `custom` entries). All four seats follow board slot declarations via `slots.inject`. Three model-visible tools: `task_board_ssh_target`, `task_board_ssh_status`, `task_board_ssh_follow_up`.
 
 ## Context & Efficiency Impact
 

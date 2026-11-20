@@ -447,6 +447,16 @@ export interface TaskBoardClientMirror {
   tasks: readonly TaskRecord[]
   /** Published extension summaries, keyed by extension id (opaque to the board). */
   extensions: Readonly<Record<string, unknown>>
+  /**
+   * Whether at least one authoritative Host snapshot has arrived in this page.
+   * Absent on older boards or test mirrors; false while `/bootstrap` is still
+   * in flight, so providers do not misread an initial empty `{}` as unmounted.
+   */
+  hydrated?: boolean
+  /** Local workspaces registered in the runtime, for provider workspace pickers. */
+  workspaces?: readonly { workspaceId: string; title: string }[]
+  /** Last Host transport refusal message (e.g. a refused extension action), when any. */
+  lastError?: string
 }
 
 /** Whether a task should be shown on the board; false hides it. */
@@ -500,6 +510,17 @@ export interface TaskBoardCardDecorationProps {
   task: TaskRecord
 }
 
+/** Optional metadata a provider reports alongside its new-card draft. */
+export interface TaskBoardComposeDraftOptions {
+  /** One-line label included in the collapsed Run Mode summary. */
+  summary?: string
+  /**
+   * Validation blocker message: while non-empty, the create dialog refuses to
+   * submit or run locally and forces the Run Mode section open.
+   */
+  error?: string
+}
+
 /** Owner props of the new-card compose seat. */
 export interface TaskBoardComposeSectionProps {
   /**
@@ -516,7 +537,11 @@ export interface TaskBoardComposeSectionProps {
    * {@link TASK_BOARD_PAYLOAD_LIMIT_BYTES} is dropped from the card being
    * created and named in one warning, and the create itself still happens.
    */
-  contribute(extensionId: string, payload: TaskBoardExtensionPayload | undefined): void
+  contribute(extensionId: string, payload: TaskBoardExtensionPayload | undefined, options?: TaskBoardComposeDraftOptions): void
+  /** Initial integrations of the source card when duplicating an existing card. */
+  initialIntegrations?: Readonly<Record<string, unknown>>
+  /** Incremented each time the user submits the dialog, so providers can reveal untouched field errors. */
+  submitAttempt?: number
 }
 
 /**

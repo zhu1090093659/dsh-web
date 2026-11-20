@@ -86,6 +86,8 @@ export interface TaskBoardExtensionRegistryOptions {
   rework?: TaskBoardReworkApplier
   /** Resolve the deployment's tool registry; absent loses the tool surface only. */
   toolRegistry?: () => TaskBoardExtensionToolRegistry | undefined
+  /** Notified whenever a provider publishes, changes, or withdraws its summary. */
+  onPublished?: () => void
   now?: () => number
   uuid?: () => string
   logger?: TaskBoardExtensionLogger
@@ -251,6 +253,8 @@ export class TaskBoardExtensionRegistry {
   private readonly uuid: () => string
   private readonly logger: TaskBoardExtensionLogger
   private toolResolver: (() => TaskBoardExtensionToolRegistry | undefined) | undefined
+  private readonly onPublished: (() => void) | undefined
+  private publishedVersionCounter = 0
   /** Board master switch (enabled config); providers start only while it is on. */
   private boardEnabled = true
   private disposed = false
@@ -264,6 +268,12 @@ export class TaskBoardExtensionRegistry {
     this.uuid = options.uuid ?? (() => crypto.randomUUID())
     this.logger = options.logger ?? DEFAULT_LOGGER
     this.toolResolver = options.toolRegistry
+    this.onPublished = options.onPublished
+  }
+
+  /** Monotonic revision of the published extension summaries map. */
+  get publishedRevision(): number {
+    return this.publishedVersionCounter
   }
 
   /**
@@ -455,6 +465,7 @@ export class TaskBoardExtensionRegistry {
   }
 
   private stopEntry(entry: RegistryEntry): void {
+    const hadPublished = entry.published !== undefined
     if (entry.active) {
       entry.active = false
       for (const kind of Object.keys(entry.subscriptions) as Array<keyof TaskBoardEventFace>) {
@@ -466,12 +477,17 @@ export class TaskBoardExtensionRegistry {
         this.logger.error(`[dsh-task-board] extension "${entry.extension.id}" stop() failed`, error)
       }
     }
+    entry.published = undefined
     this.disposeTools(entry)
     // A stopped provider re-registers its tools from start(); keeping the old
     // definitions would double-register them on the next enable. Launch
     // handlers go with them: a switched-off provider is never consulted.
     entry.tools.length = 0
     entry.launchHandlers.clear()
+    if (hadPublished) {
+      this.publishedVersionCounter += 1
+      if (!this.disposed) this.onPublished?.()
+    }
   }
 
   /** (Re)register every buffered tool against the current tool registry. */
@@ -722,6 +738,8 @@ export class TaskBoardExtensionRegistry {
       throw new TaskBoardExtensionError('invalid-payload', 'published summary must be a pure JSON object within the size limit')
     }
     entry.published = summary
+    this.publishedVersionCounter += 1
+    this.onPublished?.()
   }
 
   /**

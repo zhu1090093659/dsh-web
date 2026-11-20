@@ -46,8 +46,10 @@ export interface SshLogWindow {
   endOffset: number
   /** The delivered bytes, as text. */
   text: string
-  /** Whether more bytes are waiting, which the next publish carries. */
+  /** Whether more bytes are waiting after `endOffset` (carried in a later publish/page). */
   truncated?: boolean
+  /** Explicit continuation signal distinguishing trailing unread bytes from skipped leading bytes. */
+  hasMore?: boolean
 }
 
 /** What one card's window currently holds. */
@@ -138,6 +140,11 @@ export class SshLogWindows {
     this.states.clear()
   }
 
+  /** Drop one card's window (called when the card is deleted). */
+  remove(taskId: string): void {
+    this.states.delete(taskId)
+  }
+
   /**
    * Start following one run's log from an offset.
    *
@@ -173,32 +180,43 @@ export class SshLogWindows {
    * @param taskId - card the run belongs to.
    * @param runId - run whose log was read.
    * @param from - byte offset the read started at.
-   * @param text - the bytes read, from the offset to the log's end.
+   * @param text - the bytes read from `from`.
+   * @param remoteBytes - optional total remote log size when known (detects trailing unread bytes on bounded reads).
    */
-  push(taskId: string, runId: string, from: number, text: string): void {
+  push(taskId: string, runId: string, from: number, text: string, remoteBytes?: number): void {
     const current = this.states.get(taskId)
     if (current === undefined || current.runId !== runId) {
       this.states.set(taskId, { runId, base: from, end: from, text: '', truncated: false, cursor: from })
     }
     const state = this.states.get(taskId)
     if (state === undefined) return
+    // Guard against concurrent `poll` + `refresh` reads overlapping the same
+    // byte range: slice off bytes already buffered instead of duplicating them.
+    let effectiveFrom = from
+    let effectiveText = text
+    if (effectiveFrom < state.end) {
+      const overlap = state.end - effectiveFrom
+      effectiveText = sliceFromByte(effectiveText, overlap)
+      effectiveFrom = state.end
+    }
+    const incomingBytes = byteLength(effectiveText)
     const remaining = this.perCardBudget - byteLength(state.text)
     if (remaining <= 0) {
       // The window is full and still waiting to be published: nothing is taken,
       // so the next read asks for exactly the same bytes again.
-      state.cursor = from
-      state.truncated = text !== ''
+      state.cursor = state.end
+      state.truncated = incomingBytes > 0 || (remoteBytes !== undefined && remoteBytes > state.end)
       return
     }
-    const taken = takeWithinBudget(text, remaining)
+    const taken = takeWithinBudget(effectiveText, remaining)
     if (taken.text !== '') {
       state.text += taken.text
       state.end = state.base + byteLength(state.text)
     }
-    state.cursor = from + taken.bytes
+    state.cursor = Math.max(state.cursor, effectiveFrom + taken.bytes)
     // Anything the budget could not take is still on the host: the next read
     // starts exactly where this window stopped, so nothing is ever skipped.
-    state.truncated = taken.bytes < byteLength(text)
+    state.truncated = taken.bytes < incomingBytes || (remoteBytes !== undefined && remoteBytes > state.end)
   }
 
   /**
@@ -206,16 +224,18 @@ export class SshLogWindows {
    * @param taskId - card the run belongs to.
    * @param runId - run whose log was read.
    * @param from - byte offset the replay starts at (zero for a full replay).
-   * @param text - the bytes read, from the offset to the log's end.
+   * @param text - the bytes read from `from`.
+   * @param hasMore - optional explicit flag when caller read a bounded window and more bytes exist past it.
    */
-  replay(taskId: string, runId: string, from: number, text: string): void {
+  replay(taskId: string, runId: string, from: number, text: string, hasMore = false): void {
     const taken = takeWithinBudget(text, this.perCardBudget)
+    const truncated = hasMore || taken.bytes < byteLength(text)
     this.states.set(taskId, {
       runId,
       base: from,
       end: from + taken.bytes,
       text: taken.text,
-      truncated: taken.bytes < byteLength(text),
+      truncated,
       cursor: from + taken.bytes,
     })
   }
@@ -248,7 +268,7 @@ export class SshLogWindows {
         baseOffset: state.base,
         endOffset: state.end,
         text: state.text,
-        ...(state.truncated ? { truncated: true } : {}),
+        ...(state.truncated ? { truncated: true, hasMore: true } : {}),
       }
       const size = byteLength(JSON.stringify({ [taskId]: window }))
       if (used + size > this.perPublishBudget && delivered.length > 0) continue

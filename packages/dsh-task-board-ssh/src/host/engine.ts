@@ -46,7 +46,7 @@ import {
   type HostSshPayload,
   type SshPendingInstruction,
 } from './payload.ts'
-import { PUBLISH_BODY_LIMIT_BYTES, SshLogWindows, byteLength, sliceFromByte } from './logs.ts'
+import { LOG_WINDOW_BUDGET_BYTES, PUBLISH_BODY_LIMIT_BYTES, SshLogWindows, byteLength, sliceFromByte, takeWithinBudget } from './logs.ts'
 import { SSH_DEGRADED_SUMMARY_MARKER, proxyPreamble, runPrompt } from './prompt.ts'
 import { admitRuns, type SshQueueEntry } from './queue.ts'
 import { SshRemote } from './remote.ts'
@@ -107,6 +107,12 @@ interface SshJob {
   runId: string
   /** Host the run addresses. */
   alias: string
+  /** Target pinned when the run started (immutable for the life of this run). */
+  target: SshTarget
+  /** Worktree run id this run owns (reused from an earlier run on git follow-up/rework). */
+  workspaceRunId: string
+  /** Cancellation signal wired into workspace preparation and checked around remote start. */
+  abort: AbortController
   /** Consecutive polls that produced no usable answer. */
   failures: number
   /** Whether this run carries a follow-up the agent could not be resumed for. */
@@ -121,6 +127,13 @@ interface SshJob {
    * start owns the verdict until it has an answer of its own.
    */
   starting: boolean
+}
+
+/** Remote runs and git target remembered per card so card deletion cleans up everything. */
+interface KnownTaskRuns {
+  alias: string
+  target?: SshTarget
+  runIds: Set<string>
 }
 
 /** A reply to a card action or a tool call: a value the caller can act on, never a throw. */
@@ -229,8 +242,8 @@ export class SshRunEngine {
   private readonly remote: SshRemote
   /** Runs this process follows, keyed by card id: a card has at most one. */
   private readonly jobs = new Map<string, SshJob>()
-  /** The last run known for a card, so a deleted card can still be cleaned up. */
-  private readonly known = new Map<string, { alias: string; runId: string }>()
+  /** Known runs per card (including pre-restart history), so card deletion cleans up all remote dirs/worktrees. */
+  private readonly known = new Map<string, KnownTaskRuns>()
   /** Hosts whose admission pass is already running. */
   private readonly pumping = new Set<string>()
   /** Hosts that asked for another admission pass while one was running. */
@@ -311,6 +324,7 @@ export class SshRunEngine {
     for (const dispose of this.disposers.splice(0)) {
       try { dispose() } catch { /* best-effort */ }
     }
+    for (const job of this.jobs.values()) job.abort.abort()
     this.jobs.clear()
     this.known.clear()
     this.pumping.clear()
@@ -319,6 +333,18 @@ export class SshRunEngine {
     this.untracked.clear()
     this.logs.clear()
     this.remote.forget()
+  }
+
+  /**
+   * React to a volatile settings update (for example raising `perHostCap` or
+   * changing defaults): pump every host with waiting runs and publish the new summary.
+   */
+  onSettingsUpdated(): void {
+    if (this.disposed || !this.enabled()) return
+    for (const alias of this.aliasesInFlight()) {
+      void this.pump(alias).catch(error => { this.log(`admission pump after settings update failed for ${alias}`, error) })
+    }
+    this.publishSummary()
   }
 
   /** The hosts this deployment can pin a card to; every field of one is secret-free. */
@@ -386,10 +412,14 @@ export class SshRunEngine {
   setTarget(taskId: string, target: SshTarget): SshEngineReply {
     const task = this.host.tasks.get(taskId)
     if (task === undefined) return { ok: false, code: 'task-not-found', error: `no task with id ${taskId}` }
+    if (task.archivedAt !== undefined) return { ok: false, code: 'task-archived', error: `task ${taskId} is archived` }
     if (this.hostByAlias(target.host) === undefined) {
       return { ok: false, code: 'host-not-configured', error: `dsh-ssh has no host with alias "${target.host}"` }
     }
     const payload = this.payloadOf(taskId)
+    if (payload !== undefined && liveRunOf(payload) !== undefined) {
+      return { ok: false, code: 'run-active', error: `cannot change the SSH target of task ${taskId} while a run is queued or running` }
+    }
     const next: HostSshPayload = payload === undefined
       ? { updatedAt: this.now(), history: [], target }
       : { ...payload, target }
@@ -443,10 +473,19 @@ export class SshRunEngine {
     if (payload === undefined || payload.target === undefined) {
       return { ok: false, code: 'no-target', error: `task ${taskId} pins no SSH target` }
     }
+    if (payload.target.mode !== 'direct') {
+      return { ok: false, code: 'proxy-mode', error: 'a proxy card runs in a local session: send follow-ups to that session instead' }
+    }
     const trimmed = text.trim()
     if (trimmed === '') return { ok: false, code: 'empty-instruction', error: 'an instruction must not be blank' }
+    if (payload.pending !== undefined) {
+      return { ok: false, code: 'instruction-already-queued', error: 'an instruction is already queued for this card' }
+    }
     const live = liveRunOf(payload)
-    const previous = latestSessionId(payload)
+    // Only snapshot `resumeSessionId` when starting immediately on a settled
+    // card; while a run is in flight, leave it unset so `startRun` resolves
+    // the fresh session id the in-flight run emits upon settling.
+    const previous = live === undefined ? latestSessionId(payload) : undefined
     const pending: SshPendingInstruction = {
       kind,
       text: trimmed,
@@ -455,7 +494,7 @@ export class SshRunEngine {
     }
     const next: HostSshPayload = live === undefined
       ? { ...payload, pending }
-      : { ...payload, pending, activeRun: live === undefined ? payload.activeRun : { ...live, followUps: (live.followUps ?? 0) + 1 } }
+      : { ...payload, pending, activeRun: { ...live, followUps: (live.followUps ?? 0) + 1 } }
     if (!this.writePayload(taskId, next)) {
       return { ok: false, code: 'payload-refused', error: 'the board refused the queued instruction' }
     }
@@ -464,7 +503,17 @@ export class SshRunEngine {
       return { ok: true, taskId, runId: live.runId, phase: live.phase, message: 'queued behind the run in flight' }
     }
     const reentered = this.reenter(taskId, 'ssh-' + kind)
-    if (!reentered.ok) return reentered
+    if (!reentered.ok) {
+      // Roll back the queued instruction so a refused rerun never silently
+      // hijacks a future regular run of this card.
+      const latest = this.payloadOf(taskId)
+      if (latest !== undefined && latest.pending?.queuedAt === pending.queuedAt) {
+        const rolledBack: HostSshPayload = { ...latest }
+        delete rolledBack.pending
+        this.writePayload(taskId, rolledBack)
+      }
+      return reentered
+    }
     return { ok: true, taskId, message: kind === 'rework' ? 'rework requested' : 'follow-up requested' }
   }
 
@@ -493,7 +542,7 @@ export class SshRunEngine {
    * @param taskId - one card, or undefined for every card this mount follows.
    * @returns the reply the caller renders.
    */
-  async refresh(taskId?: string, runId?: string): Promise<SshEngineReply> {
+  async refresh(taskId?: string, runId?: string, offset?: number): Promise<SshEngineReply> {
     if (runId !== undefined && taskId === undefined) {
       return { ok: false, code: 'task-required', error: 'a run is named inside its card: pass the taskId with the runId' }
     }
@@ -501,13 +550,14 @@ export class SshRunEngine {
       if (runId !== undefined && findRun(this.payloadOf(taskId), runId) === undefined) {
         return { ok: false, code: 'unknown-run', error: `task ${taskId} has no run ${runId}` }
       }
-      // A viewer that just opened (or reopened) asks for this card, and the one
-      // thing it cannot reconstruct is the beginning: the log is replayed from
-      // byte zero into the next publish. Naming a run replays that run, which is
-      // how the detail view reads the log of a run that already settled.
-      await this.replayLog(taskId, runId)
+      // A viewer that just opened (or reopened) asks for this card, and can
+      // also page forward through settled logs past the 8 KiB window budget by
+      // passing `offset`.
+      await this.replayLog(taskId, runId, offset ?? 0)
       const job = this.jobs.get(taskId)
-      if (job !== undefined) await this.pollJob(job)
+      if (offset === undefined && job !== undefined && !this.polling && !this.settling.has(taskId)) {
+        await this.pollJob(job)
+      }
       this.publishSummary()
       return { ok: true, taskId, message: 'refreshed' }
     }
@@ -518,15 +568,12 @@ export class SshRunEngine {
   }
 
   /**
-   * Re-read one card's log from byte zero into the pending window.
-   *
-   * This is the viewer's replay: a card whose detail section is opened again
-   * decodes the log from its first byte, without the provider having kept a copy
-   * of it anywhere.
+   * Re-read one bounded page of one card's log from `offset` into the pending window.
    * @param taskId - card whose run log to replay.
    * @param runId - a specific run, when the viewer named one.
+   * @param offset - byte offset to replay from (defaults to 0).
    */
-  private async replayLog(taskId: string, runId?: string): Promise<void> {
+  private async replayLog(taskId: string, runId?: string, offset = 0): Promise<void> {
     const payload = this.payloadOf(taskId)
     const target = payload?.target
     if (payload === undefined || target === undefined) return
@@ -536,8 +583,9 @@ export class SshRunEngine {
     if (run === undefined) return
     try {
       const stateDir = await this.remote.stateDir(target.host)
-      const page = await this.remote.tail({ alias: target.host, stateDir, runId: run.runId }, 0)
-      this.logs.replay(taskId, run.runId, 0, page.text)
+      const page = await this.remote.tail({ alias: target.host, stateDir, runId: run.runId }, offset, LOG_WINDOW_BUDGET_BYTES + 1)
+      const hasMore = byteLength(page.text) > LOG_WINDOW_BUDGET_BYTES
+      this.logs.replay(taskId, run.runId, offset, page.text, hasMore)
     } catch (error) {
       this.log(`the log of run ${run.runId} could not be replayed`, error)
     }
@@ -573,9 +621,9 @@ export class SshRunEngine {
       : 64 * 1024
     try {
       const stateDir = await this.remote.stateDir(target.host)
-      const page = await this.remote.tail({ alias: target.host, stateDir, runId }, offset)
-      const text = page.text.length <= limit ? page.text : page.text.slice(0, limit)
-      const bytes = offset + new TextEncoder().encode(text).length
+      const page = await this.remote.tail({ alias: target.host, stateDir, runId }, offset, limit + 1)
+      const taken = takeWithinBudget(page.text, limit)
+      const bytes = offset + taken.bytes
       return {
         ok: true,
         taskId,
@@ -583,8 +631,8 @@ export class SshRunEngine {
         offset,
         nextOffset: bytes,
         bytes,
-        eof: text.length === page.text.length,
-        text,
+        eof: byteLength(page.text) <= limit,
+        text: taken.text,
       }
     } catch (error) {
       return { ok: false, code: 'log-unavailable', error: error instanceof Error ? error.message : String(error) }
@@ -677,8 +725,10 @@ export class SshRunEngine {
     const seat = this.seat?.()
     if (target.mode === 'proxy') return { kind: 'local', promptPreamble: proxyPreamble(task, target) }
     if (this.host.launch === undefined || seat === undefined) {
-      this.log(`task ${task.id} pins a remote host but this board revision serves no launch interception or action applier, so it runs nowhere`)
-      return undefined
+      // Fail closed: never return `undefined` (which would silently launch a
+      // remote-pinned direct card as a local session on this machine).
+      this.log(`task ${task.id} pins a remote host but this board revision serves no launch interception or action applier, so it cannot run remotely`)
+      return { kind: 'external' }
     }
     void this.openRun(task.id, target.host).catch(error => { this.log(`the remote run of task ${task.id} could not be opened`, error) })
     return { kind: 'external' }
@@ -691,16 +741,47 @@ export class SshRunEngine {
     await Promise.resolve()
     if (this.disposed) return
     const task = this.host.tasks.get(taskId)
-    if (task === undefined) return
+    if (task === undefined || task.archivedAt !== undefined || task.status !== 'running') return
     const payload = this.payloadOf(taskId)
     if (payload?.target === undefined) return
     const live = liveRunOf(payload)
     if (live !== undefined) return
     const run: SshRunRecord = { runId: this.newRunId(), phase: 'queued', startedAt: this.now() }
-    this.known.set(taskId, { alias, runId: run.runId })
+    this.rememberRun(taskId, alias, run.runId, payload.target)
     if (!this.writePayload(taskId, { ...payload, activeRun: run })) return
     await this.pump(alias)
     this.publishSummary()
+  }
+
+  /** Record a run id against a card so card deletion cleans up every remote artifact. */
+  private rememberRun(taskId: string, alias: string, runId: string, target?: SshTarget): void {
+    const existing = this.known.get(taskId)
+    if (existing !== undefined) {
+      existing.alias = alias
+      if (target !== undefined) existing.target = target
+      existing.runIds.add(runId)
+      return
+    }
+    this.known.set(taskId, {
+      alias,
+      ...(target === undefined ? {} : { target }),
+      runIds: new Set([runId]),
+    })
+  }
+
+  /** Previous git worktree run id to reuse for a follow-up / rework, when available. */
+  private priorWorktreeRunId(payload: HostSshPayload): string | undefined {
+    for (let index = payload.history.length - 1; index >= 0; index -= 1) {
+      const record = payload.history[index]
+      if (record === undefined) continue
+      if (record.branch !== undefined && record.branch.startsWith('dsh-task/')) {
+        return record.branch.slice('dsh-task/'.length)
+      }
+      if (record.phase === 'succeeded' || record.phase === 'failed') {
+        return record.runId
+      }
+    }
+    return undefined
   }
 
   // --- admission ---------------------------------------------------------------
@@ -756,12 +837,22 @@ export class SshRunEngine {
       const target = entry.payload?.target
       const run = entry.payload?.activeRun
       if (target === undefined || run === undefined || target.host !== alias) continue
-      this.known.set(entry.task.id, { alias, runId: run.runId })
+      this.rememberRun(entry.task.id, alias, run.runId, target)
       if (run.phase === 'running') {
         running += 1
         this.logs.adopt(entry.task.id, run.runId, run.bytes ?? 0)
         if (!this.jobs.has(entry.task.id)) {
-          this.jobs.set(entry.task.id, { taskId: entry.task.id, runId: run.runId, alias, failures: 0, degraded: false, starting: false })
+          this.jobs.set(entry.task.id, {
+            taskId: entry.task.id,
+            runId: run.runId,
+            alias,
+            target,
+            workspaceRunId: run.runId,
+            abort: new AbortController(),
+            failures: 0,
+            degraded: false,
+            starting: false,
+          })
         }
         continue
       }
@@ -782,24 +873,53 @@ export class SshRunEngine {
     const payload = this.payloadOf(taskId)
     const run = payload?.activeRun
     const target = payload?.target
-    if (task === undefined || payload === undefined || run === undefined || target === undefined) return
+    if (task === undefined || task.archivedAt !== undefined || task.status !== 'running') return
+    if (payload === undefined || run === undefined || target === undefined) return
     if (run.runId !== runId || run.phase !== 'queued') return
     const settings = this.settings()
-    const job: SshJob = { taskId, runId, alias, failures: 0, degraded: false, starting: true }
+    const pending = payload.pending
+    const reusedWorktree = pending !== undefined && target.workspace.kind === 'git'
+      ? this.priorWorktreeRunId(payload)
+      : undefined
+    const workspaceRunId = reusedWorktree ?? runId
+    const abort = new AbortController()
+    const job: SshJob = {
+      taskId,
+      runId,
+      alias,
+      target,
+      workspaceRunId,
+      abort,
+      failures: 0,
+      degraded: false,
+      starting: true,
+    }
     this.jobs.set(taskId, job)
+    this.rememberRun(taskId, alias, runId, target)
     this.logs.adopt(taskId, runId, run.bytes ?? 0)
     // The slot is taken before any remote work: a concurrent admission sees a
     // running run instead of starting the same card twice.
     this.writePayload(taskId, withActiveRun(payload, { ...run, phase: 'running' }))
     const templates = agentTemplates(target.agent, settings)
-    const pending = payload.pending
     const resumeSession = pending === undefined ? undefined : pending.resumeSessionId ?? latestSessionId(payload)
     const resumed = pending !== undefined && resumeSession !== undefined && agentResumeSupported(target.agent.kind, templates)
     job.degraded = pending !== undefined && !resumed
+    const isCancelledOrSuperseded = (): boolean => (
+      this.disposed
+      || abort.signal.aborted
+      || this.cancelRequested(alias, runId)
+      || this.payloadOf(taskId)?.activeRun?.runId !== runId
+    )
     try {
       const stateDir = await this.remote.stateDir(alias)
+      if (isCancelledOrSuperseded()) { this.jobs.delete(taskId); return }
       await this.remote.installLauncher({ alias, stateDir })
-      const prepared = await this.prepareWorkspace(target, runId)
+      if (isCancelledOrSuperseded()) { this.jobs.delete(taskId); return }
+      const prepared = await this.prepareWorkspace(target, runId, {
+        signal: abort.signal,
+        ...(reusedWorktree === undefined ? {} : { reuseWorktreeRunId: reusedWorktree }),
+      })
+      if (isCancelledOrSuperseded()) { this.jobs.delete(taskId); return }
       if (prepared.untrackedFiles !== undefined) {
         this.untracked.set(taskId, { runId, files: prepared.untrackedFiles })
       }
@@ -823,21 +943,32 @@ export class SshRunEngine {
           mode: target.mode,
           agent: target.agent.kind,
           workspace: target.workspace.kind,
+          workspaceRunId,
           resumed,
           degraded: job.degraded,
           startedAt: run.startedAt,
         },
       })
+      if (isCancelledOrSuperseded()) {
+        this.jobs.delete(taskId)
+        return
+      }
       let status = await this.remote.start({ alias, stateDir, runId })
       // From here the remote side owns the verdict: the run directory exists, so
       // a poll's "no such run" is a real disappearance.
       job.starting = false
+      if (isCancelledOrSuperseded()) {
+        // Cancel arrived right as `remote.start` launched the agent: terminate
+        // the newly spawned process immediately so no unattended orphan survives.
+        this.jobs.delete(taskId)
+        try {
+          await this.remote.cancel({ alias, stateDir, runId })
+        } catch (cancelError) {
+          this.log(`late cancel of run ${runId} on ${alias} failed`, cancelError)
+        }
+        return
+      }
       if (status.state !== 'running' && status.state !== 'exited') {
-        // A second starter that loses the race for the run's lock answers
-        // "lost" even though the run it was racing is alive, so an inconclusive
-        // answer is confirmed once before this card is told nothing started.
-        // A run that really died stays lost: its pid is gone and it recorded no
-        // exit, which the same read reports.
         try {
           status = await this.remote.status({ alias, stateDir, runId })
         } catch (error) {
@@ -845,7 +976,13 @@ export class SshRunEngine {
         }
       }
       const current = this.payloadOf(taskId)
-      if (current?.activeRun?.runId !== runId) return
+      if (isCancelledOrSuperseded() || current?.activeRun?.runId !== runId) {
+        this.jobs.delete(taskId)
+        try {
+          await this.remote.cancel({ alias, stateDir, runId })
+        } catch { /* best-effort */ }
+        return
+      }
       if (status.state === 'running' || status.state === 'exited') {
         this.writePayload(taskId, {
           ...current,
@@ -856,6 +993,10 @@ export class SshRunEngine {
         await this.settle(taskId, job, status)
       }
     } catch (error) {
+      if (isCancelledOrSuperseded()) {
+        this.jobs.delete(taskId)
+        return
+      }
       this.log(`the run ${runId} of task ${taskId} could not be prepared on ${alias}`, error)
       await this.settle(taskId, job, { state: 'lost' }, error)
     }
@@ -871,11 +1012,16 @@ export class SshRunEngine {
    * the verdict says it out loud.
    * @param target - the target the card pins.
    * @param runId - run being prepared.
+   * @param options - cancellation signal and optional worktree reuse id.
    * @returns the absolute remote directory and the untracked-file note, when any.
    */
-  private async prepareWorkspace(target: SshTarget, runId: string): Promise<{ cwd: string; untrackedFiles?: number }> {
+  private async prepareWorkspace(
+    target: SshTarget,
+    runId: string,
+    options: { signal?: AbortSignal; reuseWorktreeRunId?: string } = {},
+  ): Promise<{ cwd: string; untrackedFiles?: number }> {
     const strategy = this.strategyFor(target)
-    const prepared = await strategy.prepare(await this.workspaceRun(target, runId))
+    const prepared = await strategy.prepare(await this.workspaceRun(target, runId, options))
     if (typeof prepared.cwd !== 'string' || !prepared.cwd.startsWith('/')) {
       throw new Error(`the ${target.workspace.kind} workspace strategy returned no absolute working directory`)
     }
@@ -893,12 +1039,18 @@ export class SshRunEngine {
   }
 
   /** Everything a placement strategy needs about one run. */
-  private async workspaceRun(target: SshTarget, runId: string): Promise<SshWorkspaceRun> {
+  private async workspaceRun(
+    target: SshTarget,
+    runId: string,
+    options: { signal?: AbortSignal; reuseWorktreeRunId?: string } = {},
+  ): Promise<SshWorkspaceRun> {
     const run: SshWorkspaceRun = {
       runId,
       host: target.host,
       stateDir: await this.remote.stateDir(target.host),
       ssh: this.ssh,
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
+      ...(options.reuseWorktreeRunId === undefined ? {} : { reuseWorktreeRunId: options.reuseWorktreeRunId }),
     }
     if (target.workspace.kind === 'git') {
       const source = target.workspace.source
@@ -933,18 +1085,19 @@ export class SshRunEngine {
 
   /** Read one run's remote state and act on it. */
   private async pollJob(job: SshJob): Promise<void> {
+    if (this.settling.has(job.taskId)) return
     const task = this.host.tasks.get(job.taskId)
     const payload = task === undefined ? undefined : this.payloadOf(job.taskId)
     const run = payload?.activeRun
-    const target = payload?.target
-    if (task === undefined || payload === undefined || run === undefined || target === undefined || run.runId !== job.runId) {
+    const target = job.target
+    if (task === undefined || payload === undefined || run === undefined || run.runId !== job.runId) {
       this.jobs.delete(job.taskId)
       return
     }
     let status: LauncherStatus
     try {
-      const stateDir = await this.remote.stateDir(target.host)
-      status = await this.remote.status({ alias: target.host, stateDir, runId: run.runId })
+      const stateDir = await this.remote.stateDir(job.alias)
+      status = await this.remote.status({ alias: job.alias, stateDir, runId: run.runId })
     } catch (error) {
       job.failures += 1
       this.log(`the state of run ${run.runId} could not be read (${String(job.failures)} in a row)`, error)
@@ -980,8 +1133,8 @@ export class SshRunEngine {
    * Read whatever the run's log gained since the last read and hold it for the
    * next publish.
    *
-   * The bytes never touch the card: the window lives in memory until a publish
-   * hands it to the browser, which is the only channel that carries them.
+   * Bounded to one window budget per poll so a multi-megabyte burst never hits
+   * `dsh-ssh`'s 2 MiB stdout cap.
    * @param taskId - card the run belongs to.
    * @param target - the target the card pins.
    * @param run - the run in flight.
@@ -992,8 +1145,8 @@ export class SshRunEngine {
     if (remoteBytes <= cursor) return
     try {
       const stateDir = await this.remote.stateDir(target.host)
-      const page = await this.remote.tail({ alias: target.host, stateDir, runId: run.runId }, cursor)
-      if (page.text !== '') this.logs.push(taskId, run.runId, cursor, page.text)
+      const page = await this.remote.tail({ alias: target.host, stateDir, runId: run.runId }, cursor, LOG_WINDOW_BUDGET_BYTES)
+      if (page.text !== '') this.logs.push(taskId, run.runId, cursor, page.text, remoteBytes)
     } catch (error) {
       this.log(`the log of run ${run.runId} could not be read`, error)
     }
@@ -1006,48 +1159,107 @@ export class SshRunEngine {
    * once, and hand the card's next instruction (if any) back to the launch gate.
    */
   private async settle(taskId: string, job: SshJob, status: LauncherStatus, failure?: unknown): Promise<void> {
+    if (this.settling.has(taskId)) return
     this.jobs.delete(taskId)
     this.settling.add(taskId)
     try {
       const task = this.host.tasks.get(taskId)
       const payload = this.payloadOf(taskId)
       const run = payload?.activeRun
-      const target = payload?.target
-      if (task === undefined || payload === undefined || run === undefined || target === undefined || run.runId !== job.runId) return
-      const cancelled = this.cancelRequested(target.host, run.runId) || status.state === 'cancelled'
+      const target = job.target
+      const runAlias = job.alias
+      if (task === undefined || payload === undefined || run === undefined || run.runId !== job.runId) return
+      let cancelled = this.cancelRequested(runAlias, run.runId) || status.state === 'cancelled'
       let text = ''
-      let bytes = run.bytes ?? 0
+      let tailOffset = 0
+      let bytes = status.bytes ?? run.bytes ?? 0
       try {
-        const stateDir = await this.remote.stateDir(target.host)
-        const page = await this.remote.tail({ alias: target.host, stateDir, runId: run.runId }, 0)
+        const stateDir = await this.remote.stateDir(runAlias)
+        // Read only the trailing PARSE_WINDOW bytes so logs exceeding dsh-ssh's
+        // 2 MiB output cap never lose their closing final/result JSONL event.
+        tailOffset = Math.max(0, bytes - PARSE_WINDOW)
+        const page = await this.remote.tail({ alias: runAlias, stateDir, runId: run.runId }, tailOffset, PARSE_WINDOW)
         text = page.text
-        bytes = page.bytes
+        bytes = Math.max(bytes, page.bytes)
+        // Advance the pending browser log window contiguously past its cursor.
+        const cursor = this.logs.cursor(taskId, run.runId) ?? 0
+        if (bytes > cursor) {
+          if (cursor >= tailOffset && text !== '') {
+            this.logs.push(taskId, run.runId, cursor, sliceFromByte(text, cursor - tailOffset), bytes)
+          } else {
+            try {
+              const inc = await this.remote.tail({ alias: runAlias, stateDir, runId: run.runId }, cursor, LOG_WINDOW_BUDGET_BYTES)
+              if (inc.text !== '') this.logs.push(taskId, run.runId, cursor, inc.text, bytes)
+            } catch { /* best-effort window fill */ }
+          }
+        }
       } catch (error) {
         this.log(`the log of run ${run.runId} could not be read`, error)
       }
-      // The whole log was just read for parsing; whatever the browser has not
-      // been given yet continues the pending window, contiguously.
-      const cursor = this.logs.cursor(taskId, run.runId) ?? 0
-      if (text !== '' && byteLength(text) > cursor) {
-        this.logs.push(taskId, run.runId, cursor, sliceFromByte(text, cursor))
-      }
       const parsed = readAgentOutput({ agent: target.agent.kind, promptFile: '', cwd: '' }, parseWindow(text))
-      const branch = cancelled ? undefined : await this.collectWorkspace(target, run.runId)
-      const phase = this.phaseOf(cancelled, status, parsed.outcome)
-      const summary = parsed.outcome?.ok === true ? bound(parsed.outcome.text, SSH_SUMMARY_MAX_LENGTH) : undefined
-      const error = cancelled
-        ? undefined
-        : failure !== undefined
-          // A run that never started reports why it could not start, which is
-          // more use on the card than anything the launcher would have said.
-          ? bound(failure instanceof Error ? failure.message : String(failure), SSH_ERROR_MAX_LENGTH)
-          : parsed.outcome !== undefined && !parsed.outcome.ok
-            ? bound(parsed.outcome.error, SSH_ERROR_MAX_LENGTH)
-            : status.state === 'lost' || status.state === 'missing'
-              ? `the remote run disappeared: its process and its exit record were both gone`
-              : phase === 'failed'
-                ? bound(`the remote agent exited with code ${String(status.exitCode ?? 'none')}`, SSH_ERROR_MAX_LENGTH)
-                : undefined
+      // Re-check cancellation before collecting workspace (cancel may have arrived while reading logs).
+      cancelled = cancelled || this.cancelRequested(runAlias, run.runId) || this.disposed
+      const collection = cancelled
+        ? {}
+        : await this.collectWorkspace(target, run.runId, job.workspaceRunId)
+      // Re-check cancellation, task status and ownership AFTER all awaits so a
+      // cancel, manual column move, archive, or replacement run that arrived
+      // during slow git push/bundle download is never overwritten with a verdict.
+      cancelled = cancelled || this.cancelRequested(runAlias, run.runId)
+      if (this.disposed) return
+      const taskAfterAwait = this.host.tasks.get(taskId)
+      const currentAfterAwait = this.payloadOf(taskId)
+      if (taskAfterAwait === undefined || currentAfterAwait === undefined || currentAfterAwait.activeRun?.runId !== run.runId) return
+      if (cancelled || taskAfterAwait.archivedAt !== undefined || taskAfterAwait.status !== 'running') {
+        if (!cancelled) {
+          const stopped: SshRunRecord = {
+            runId: run.runId,
+            phase: 'cancelled',
+            startedAt: run.startedAt,
+            finishedAt: this.now(),
+            ...(bytes > 0 ? { bytes } : {}),
+            ...(status.exitCode === undefined ? {} : { exitCode: status.exitCode }),
+          }
+          const nextCancelled = withSettledRun(currentAfterAwait, stopped)
+          delete nextCancelled.pending
+          this.writePayload(taskId, nextCancelled)
+        }
+        return
+      }
+
+      const collectionError = collection.error
+      const basePhase = this.phaseOf(cancelled, status, parsed.outcome)
+      const phase: SshRunPhase = collectionError !== undefined && basePhase === 'succeeded' ? 'failed' : basePhase
+      const rawSummary = parsed.outcome?.ok === true ? bound(parsed.outcome.text, SSH_SUMMARY_MAX_LENGTH) : undefined
+      const summary = rawSummary !== undefined && rawSummary !== '' ? rawSummary : undefined
+      let rawError: string | undefined
+      if (failure !== undefined) {
+        rawError = bound(failure instanceof Error ? failure.message : String(failure), SSH_ERROR_MAX_LENGTH)
+      } else if (collectionError !== undefined) {
+        rawError = bound(collectionError, SSH_ERROR_MAX_LENGTH)
+      } else if ((parsed.outcome !== undefined && !parsed.outcome.ok) || phase === 'failed') {
+        // When a remote run exits non-zero, fetch bounded stderr.log so CLI
+        // startup errors (missing binary, bad flag, auth failure) surface on the card.
+        let stderrHint = ''
+        if (status.exitCode !== undefined && status.exitCode !== 0) {
+          try {
+            const stateDir = await this.remote.stateDir(runAlias)
+            stderrHint = await this.remote.stderr({ alias: runAlias, stateDir, runId: run.runId }, 512)
+          } catch { /* best-effort */ }
+        }
+        const baseMessage = parsed.outcome !== undefined && !parsed.outcome.ok
+          ? parsed.outcome.error
+          : `the remote agent exited with code ${String(status.exitCode ?? 'none')}`
+        const detail = stderrHint !== ''
+          ? `${baseMessage} (exit ${String(status.exitCode)}: ${stderrHint})`
+          : baseMessage
+        rawError = bound(detail, SSH_ERROR_MAX_LENGTH)
+      } else if (status.state === 'lost' || status.state === 'missing') {
+        rawError = 'the remote run disappeared: its process and its exit record were both gone'
+      }
+      const errorText = rawError !== undefined && rawError !== '' ? rawError : undefined
+      const sessionId = parsed.sessionId !== undefined && parsed.sessionId !== '' ? parsed.sessionId : undefined
+      const branch = collection.branch !== undefined && collection.branch !== '' ? collection.branch : undefined
       const settled: SshRunRecord = {
         runId: run.runId,
         phase,
@@ -1055,11 +1267,11 @@ export class SshRunEngine {
         finishedAt: this.now(),
         bytes,
         ...(status.exitCode === undefined ? {} : { exitCode: status.exitCode }),
-        ...(parsed.sessionId === undefined ? {} : { sessionId: parsed.sessionId }),
+        ...(sessionId === undefined ? {} : { sessionId }),
         ...(branch === undefined ? {} : { branch }),
         ...(run.followUps === undefined ? {} : { followUps: run.followUps }),
         ...(summary === undefined ? {} : { summary }),
-        ...(error === undefined ? {} : { error }),
+        ...(errorText === undefined ? {} : { error: errorText }),
       }
       const untracked = this.untracked.get(taskId)
       const note = untrackedNote(untracked !== undefined && untracked.runId === run.runId ? untracked.files : undefined)
@@ -1067,8 +1279,8 @@ export class SshRunEngine {
       this.untracked.delete(taskId)
       const current = this.payloadOf(taskId)
       if (current !== undefined) this.writePayload(taskId, withSettledRun(current, settled))
-      if (!cancelled && current?.pending !== undefined) this.reenter(taskId, 'ssh-follow-up')
-      if (!cancelled) await this.pump(target.host)
+      if (current?.pending !== undefined) this.reenter(taskId, 'ssh-follow-up')
+      await this.pump(runAlias)
     } finally {
       this.settling.delete(taskId)
       this.publishSummary()
@@ -1103,7 +1315,7 @@ export class SshRunEngine {
     }
     const marker = degraded ? SSH_DEGRADED_SUMMARY_MARKER + ' ' : ''
     const room = Math.max(0, SSH_SUMMARY_MAX_LENGTH - marker.length - (note === '' ? 0 : note.length + 1))
-    const text = run.summary ?? run.error
+    const text = run.phase === 'succeeded' ? (run.summary ?? run.error) : (run.error ?? run.summary)
     const body = text === undefined ? '' : bound(text, room)
     const composed = [marker + body, note].filter(part => part !== '').join(' ')
     const summary = composed === '' ? undefined : bound(composed, SSH_SUMMARY_MAX_LENGTH)
@@ -1120,16 +1332,26 @@ export class SshRunEngine {
     }
   }
 
-  /** Bring back whatever the run's workspace strategy produced. */
-  private async collectWorkspace(target: SshTarget, runId: string): Promise<string | undefined> {
+  /** Bring back whatever the run's workspace strategy produced, surfacing collection failures explicitly. */
+  private async collectWorkspace(
+    target: SshTarget,
+    runId: string,
+    workspaceRunId: string = runId,
+  ): Promise<{ branch?: string; error?: string }> {
     const strategy = this.workspaces?.(target.workspace)
-    if (strategy === undefined) return undefined
+    if (strategy === undefined) return {}
     try {
-      const collection: SshWorkspaceCollection = await strategy.collect(await this.workspaceRun(target, runId))
-      return collection.branch
+      const collection: SshWorkspaceCollection = await strategy.collect(
+        await this.workspaceRun(target, runId, {
+          ...(workspaceRunId === runId ? {} : { reuseWorktreeRunId: workspaceRunId }),
+        }),
+      )
+      return collection.branch === undefined ? {} : { branch: collection.branch }
     } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
       this.log(`the result of run ${runId} could not be collected`, error)
-      return undefined
+      const branchHint = target.workspace.kind === 'git' ? ` (remote branch dsh-task/${workspaceRunId} on ${target.host})` : ''
+      return { error: `workspace collection failed${branchHint}: ${reason}` }
     }
   }
 
@@ -1152,7 +1374,6 @@ export class SshRunEngine {
    */
   private async onStatusChanged(event: TaskBoardStatusChangedEvent): Promise<void> {
     if (this.disposed || event.previous !== 'running') return
-    if (this.settling.has(event.taskId)) return
     const task = this.host.tasks.get(event.taskId)
     if (task === undefined) return
     const payload = this.payloadOf(event.taskId)
@@ -1180,8 +1401,11 @@ export class SshRunEngine {
     run: SshRunRecord,
     options: { restore: boolean },
   ): Promise<void> {
+    const activeJob = this.jobs.get(taskId)
+    activeJob?.abort.abort()
     this.jobs.delete(taskId)
-    this.cancelRequests.add(target.host + '/' + run.runId)
+    const cancelAlias = activeJob?.alias ?? target.host
+    this.cancelRequests.add(cancelAlias + '/' + run.runId)
     const cancelled: SshRunRecord = {
       runId: run.runId,
       phase: 'cancelled',
@@ -1196,8 +1420,8 @@ export class SshRunEngine {
     this.writePayload(taskId, next)
     if (run.phase === 'running') {
       try {
-        const stateDir = await this.remote.stateDir(target.host)
-        await this.remote.cancel({ alias: target.host, stateDir, runId: run.runId })
+        const stateDir = await this.remote.stateDir(cancelAlias)
+        await this.remote.cancel({ alias: cancelAlias, stateDir, runId: run.runId })
       } catch (error) {
         this.log(`the remote run ${run.runId} could not be cancelled`, error)
       }
@@ -1205,23 +1429,25 @@ export class SshRunEngine {
     if (options.restore) this.restoreToTodo(taskId, run.runId)
     // The slot this run held is free again: whoever waited for it is served now
     // rather than on the next tick.
-    await this.pump(target.host)
+    await this.pump(cancelAlias)
     this.publishSummary()
   }
 
   /**
    * Put a card the provider stopped back in the todo column.
    *
-   * The board's own move gate judges it — a card that is already there, an
-   * archived card and one the Host owns through an open execution are all
-   * refused by the same code the board UI goes through, so a refusal here is
-   * logged and never forced.
+   * Only acts when the card is STILL in the running column with no newer live
+   * run: if the operator already moved the card or started a fresh run while
+   * `remote.cancel` waited out SIGTERM, leaving it alone prevents overwriting
+   * the manual move or cancelling the newer run.
    * @param taskId - card to move.
    * @param runId - run that was stopped, recorded as the initiating party.
    */
   private restoreToTodo(taskId: string, runId: string): void {
     const task = this.host.tasks.get(taskId)
-    if (task === undefined || task.archivedAt !== undefined || task.status === 'todo') return
+    if (task === undefined || task.archivedAt !== undefined || task.status !== 'running') return
+    const latest = this.payloadOf(taskId)
+    if (latest !== undefined && liveRunOf(latest) !== undefined) return
     try {
       this.host.tasks.setStatus(taskId, 'todo', SSH_INITIATOR_PREFIX + runId)
     } catch (error) {
@@ -1229,25 +1455,48 @@ export class SshRunEngine {
     }
   }
 
-  /** A deleted card takes its remote run directory with it. */
+  /** A deleted card takes all its remote run directories and git worktrees with it. */
   private async onTaskDeleted(event: TaskBoardTaskDeletedEvent): Promise<void> {
     if (this.disposed) return
-    const known = this.known.get(event.taskId) ?? this.jobs.get(event.taskId)
-    this.known.delete(event.taskId)
+    const job = this.jobs.get(event.taskId)
+    job?.abort.abort()
     this.jobs.delete(event.taskId)
-    if (known === undefined) return
+    this.logs.remove(event.taskId)
+    this.untracked.delete(event.taskId)
+    const known = this.known.get(event.taskId)
+    this.known.delete(event.taskId)
+    const alias = known?.alias ?? job?.alias
+    const target = known?.target ?? job?.target
+    const runIds = new Set<string>(known?.runIds ?? [])
+    if (job !== undefined) {
+      runIds.add(job.runId)
+      runIds.add(job.workspaceRunId)
+    }
+    if (alias === undefined || runIds.size === 0) return
     try {
-      const stateDir = await this.remote.stateDir(known.alias)
-      try {
-        await this.remote.cancel({ alias: known.alias, stateDir, runId: known.runId })
-      } catch (error) {
-        // A run that already settled has nothing to cancel; the directory below
-        // still has to go, so the refusal is logged and not acted on.
-        this.log(`the run ${known.runId} of the deleted task ${event.taskId} could not be cancelled`, error)
+      const stateDir = await this.remote.stateDir(alias)
+      const strategy = target !== undefined && target.workspace.kind === 'git' ? this.workspaces?.(target.workspace) : undefined
+      for (const runId of runIds) {
+        try {
+          await this.remote.cancel({ alias, stateDir, runId })
+        } catch (error) {
+          this.log(`the run ${runId} of the deleted task ${event.taskId} could not be cancelled`, error)
+        }
+        try {
+          await this.remote.removeRun({ alias, stateDir, runId })
+        } catch (error) {
+          this.log(`the remote run directory ${runId} of the deleted task ${event.taskId} could not be removed`, error)
+        }
+        if (strategy?.cleanup !== undefined && target !== undefined) {
+          try {
+            await strategy.cleanup(await this.workspaceRun(target, runId))
+          } catch (error) {
+            this.log(`the remote workspace ${runId} of the deleted task ${event.taskId} could not be removed`, error)
+          }
+        }
       }
-      await this.remote.removeRun({ alias: known.alias, stateDir, runId: known.runId })
       // A deleted card frees its slot like any other settlement.
-      await this.pump(known.alias)
+      await this.pump(alias)
     } catch (error) {
       this.log(`the remote run directory of the deleted task ${event.taskId} could not be removed`, error)
     }
@@ -1280,13 +1529,27 @@ export class SshRunEngine {
     const aliases = new Set<string>()
     for (const entry of this.linkedEntries()) {
       const target = entry.payload?.target
-      const run = entry.payload?.activeRun
-      if (entry.payload === undefined || target === undefined || run === undefined) continue
+      if (entry.payload === undefined || target === undefined) continue
+      for (const historic of entry.payload.history) {
+        this.rememberRun(entry.task.id, target.host, historic.runId, target)
+      }
+      const run = entry.payload.activeRun
+      if (run === undefined) continue
       aliases.add(target.host)
-      this.known.set(entry.task.id, { alias: target.host, runId: run.runId })
+      this.rememberRun(entry.task.id, target.host, run.runId, target)
       if (run.phase === 'queued') continue
       if (!isTerminalRunPhase(run.phase)) {
-        this.jobs.set(entry.task.id, { taskId: entry.task.id, runId: run.runId, alias: target.host, failures: 0, degraded: false, starting: false })
+        this.jobs.set(entry.task.id, {
+          taskId: entry.task.id,
+          runId: run.runId,
+          alias: target.host,
+          target,
+          workspaceRunId: run.runId,
+          abort: new AbortController(),
+          failures: 0,
+          degraded: false,
+          starting: false,
+        })
         this.logs.adopt(entry.task.id, run.runId, run.bytes ?? 0)
         continue
       }

@@ -40,16 +40,40 @@ function describeExecResult(result: DshSshExecResult): string {
   return result.exitCode === null ? 'the command exited without a code' : `the command exited with ${result.exitCode}`
 }
 
+/** Default command timeout for remote git/workspace commands (5 min for large clones/pushes). */
+export const WORKSPACE_COMMAND_TIMEOUT_MS = 300_000
+
+/** Redact embedded credentials (`user:pass@`) from a clone URL before surfacing it in errors. */
+export function redactGitUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    if (parsed.username === '' && parsed.password === '') return url
+    parsed.username = '***'
+    parsed.password = ''
+    return parsed.toString()
+  } catch {
+    return url.replace(/\/\/[^/\s@]+@/g, '//***@')
+  }
+}
+
 /**
  * Run one command on the run's host.
  * @param run - the run being served.
  * @param command - command line built from quoted words.
+ * @param timeoutMs - optional timeout ceiling; defaults to {@link WORKSPACE_COMMAND_TIMEOUT_MS}.
  * @returns what the command did.
  * @throws SshWorkspaceError when the host could not be reached at all.
  */
-export async function execRemote(run: SshWorkspaceRun, command: string): Promise<DshSshExecResult> {
+export async function execRemote(
+  run: SshWorkspaceRun,
+  command: string,
+  timeoutMs = WORKSPACE_COMMAND_TIMEOUT_MS,
+): Promise<DshSshExecResult> {
   try {
-    return await run.ssh.exec(run.host, command, run.signal === undefined ? undefined : { signal: run.signal })
+    return await run.ssh.exec(run.host, command, {
+      timeoutMs,
+      ...(run.signal === undefined ? {} : { signal: run.signal }),
+    })
   } catch (error) {
     if (isAbort(error)) throw error
     throw transportFailure(`running a command on ${run.host} failed`, error)

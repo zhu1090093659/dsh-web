@@ -76,6 +76,8 @@ export interface SshRefreshActionRequest {
   taskId?: string
   /** One run of that card to re-read, or omitted to re-read whatever is active. */
   runId?: string
+  /** Byte offset to replay the run's log from (defaults to 0). */
+  offset?: number
 }
 
 /** One request this provider's host half accepts. */
@@ -247,12 +249,21 @@ export function parseSshActionRequest(value: unknown): SshValidationResult<SshAc
       return { ok: true, value: { action, taskId: taskId as string, target: parsed.value } }
     }
     default: {
-      rejectUnknownPayloadKeys(payload, ['runId'], issues)
+      rejectUnknownPayloadKeys(payload, ['runId', 'offset'], issues)
       const runId = readId(payload.runId, 'payload.runId', issues, false)
+      let offset: number | undefined
+      if (payload.offset !== undefined) {
+        if (typeof payload.offset !== 'number' || !Number.isInteger(payload.offset) || payload.offset < 0) {
+          issues.add('payload.offset', 'must be a non-negative integer')
+        } else {
+          offset = payload.offset
+        }
+      }
       if (issues.errors.length > 0) return { ok: false, errors: issues.errors }
       const refresh: SshRefreshActionRequest = { action: 'refresh' }
       if (taskId !== undefined) refresh.taskId = taskId
       if (runId !== undefined) refresh.runId = runId
+      if (offset !== undefined) refresh.offset = offset
       return { ok: true, value: refresh }
     }
   }

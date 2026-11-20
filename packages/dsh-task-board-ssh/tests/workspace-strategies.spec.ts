@@ -151,6 +151,7 @@ function makeRun(options: {
   ssh?: DshSshService
   source?: SshGitSource
   localRepository?: string
+  reuseWorktreeRunId?: string
 }): SshWorkspaceRun {
   return {
     runId: options.runId,
@@ -159,6 +160,7 @@ function makeRun(options: {
     ssh: options.ssh ?? localSsh(),
     source: options.source,
     localRepository: options.localRepository,
+    ...(options.reuseWorktreeRunId === undefined ? {} : { reuseWorktreeRunId: options.reuseWorktreeRunId }),
   }
 }
 
@@ -492,6 +494,64 @@ describe('git workspace from the local workspace', () => {
     // Then no bundle survived on the host and no scratch directory on this machine
     expect(listFiles(stateDir).filter(file => file.endsWith('.bundle'))).toEqual([])
     expect(scratchDirs('run-local-idem')).toEqual([])
+  })
+
+  it('operator running a second dirty local run on an unchanged HEAD gets the updated tracked edit without non-fast-forward failure', async () => {
+    // Given a local repository with a tracked change already prepared once
+    const repository = seedRepository(join(scratch, 'local-dirty-twice'), 'app.txt', 'v0\n')
+    writeFileSync(join(repository, 'app.txt'), 'v1\n')
+    const stateDir = join(scratch, 'local-dirty-twice-state')
+    const target = { kind: 'git', source: { kind: 'workspace', workspaceId: 'workspace-dirty-twice' } } as const
+    const strategy = createSshWorkspaceStrategy(target)
+    const run1 = makeRun({ runId: 'run-dirty-1', stateDir, source: target.source, localRepository: repository })
+    const prepared1 = await strategy.prepare(run1)
+    expect(readFileSync(join(prepared1.cwd, 'app.txt'), 'utf8')).toBe('v1\n')
+
+    // When the user edits the tracked file again without creating a local commit and starts a second run
+    writeFileSync(join(repository, 'app.txt'), 'v2\n')
+    const run2 = makeRun({ runId: 'run-dirty-2', stateDir, source: target.source, localRepository: repository })
+    const prepared2 = await strategy.prepare(run2)
+
+    // Then the second worktree carries the new tracked edit (no non-fast-forward fetch failure)
+    expect(readFileSync(join(prepared2.cwd, 'app.txt'), 'utf8')).toBe('v2\n')
+    expect(fixtureGit(prepared2.cwd, 'rev-parse', '--abbrev-ref', 'HEAD').trim()).toBe('dsh-task/run-dirty-2')
+  })
+
+  it('operator running two concurrent URL runs against the same cache serializes them and cleans up worktrees on delete', async () => {
+    // Given one shared bare origin and two concurrent runs on the same state directory
+    const source = seedRepository(join(scratch, 'concurrent-source'), 'README.md', 'hello\n')
+    const origin = createBareRemote(source, join(scratch, 'concurrent-origin.git'))
+    const stateDir = join(scratch, 'concurrent-state')
+    const target = { kind: 'git', source: { kind: 'url', url: origin } } as const
+    const strategy = createSshWorkspaceStrategy(target)
+    const runA = makeRun({ runId: 'run-conc-a', stateDir, source: target.source })
+    const runB = makeRun({ runId: 'run-conc-b', stateDir, source: target.source })
+
+    // When both runs prepare concurrently
+    const [prepA, prepB] = await Promise.all([strategy.prepare(runA), strategy.prepare(runB)])
+
+    // Then both worktrees exist cleanly on their own branches
+    expect(existsSync(prepA.cwd)).toBe(true)
+    expect(existsSync(prepB.cwd)).toBe(true)
+    expect(fixtureGit(prepA.cwd, 'rev-parse', '--abbrev-ref', 'HEAD').trim()).toBe('dsh-task/run-conc-a')
+    expect(fixtureGit(prepB.cwd, 'rev-parse', '--abbrev-ref', 'HEAD').trim()).toBe('dsh-task/run-conc-b')
+
+    // When a follow-up run reuses runA's worktree after runA committed work
+    writeFileSync(join(prepA.cwd, 'step1.txt'), 'from run A\n')
+    fixtureGit(prepA.cwd, 'add', 'step1.txt')
+    fixtureCommit(prepA.cwd, 'step 1')
+    const followUp = makeRun({ runId: 'run-conc-a-2', stateDir, source: target.source, reuseWorktreeRunId: 'run-conc-a' })
+    const prepFollow = await strategy.prepare(followUp)
+
+    // Then it lands in runA's existing worktree with step1.txt preserved
+    expect(prepFollow.cwd).toBe(prepA.cwd)
+    expect(readFileSync(join(prepFollow.cwd, 'step1.txt'), 'utf8')).toBe('from run A\n')
+
+    // When cleanup runs for runA
+    await strategy.cleanup?.(runA)
+
+    // Then runA's worktree directory is removed
+    expect(existsSync(prepA.cwd)).toBe(false)
   })
 
   it('operator whose local repository is clean gets a worktree on HEAD and no untracked note', async () => {

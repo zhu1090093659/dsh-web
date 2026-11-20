@@ -12,11 +12,18 @@
  * because a seat may be rendered outside that subtree.
  */
 
-.section {
+/* Shared geometry/motion custom properties declared on every root surface
+   this package mounts independently (detail section, compose dialog, card badge). */
+.section,
+.compose,
+.badge {
   --ssh-control-h: var(--dsh-tb-control-h, 30px);
   --ssh-radius: var(--dsh-tb-control-radius, 8px);
   --ssh-ease: var(--dsh-tb-ease, cubic-bezier(0.2, 0, 0, 1));
   --ssh-row: 18px;
+}
+
+.section {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -168,8 +175,18 @@
 @media (prefers-reduced-motion: reduce) {
   [data-run='running'] .badgeDot {
     animation: none;
-    outline: 2px solid currentColor;
-    outline-offset: 2px;
+    outline: 1.5px solid var(--ssh-run-tone, currentColor);
+    outline-offset: 1px;
+  }
+
+  .primaryButton,
+  .ghostButton,
+  .linkButton,
+  .input,
+  .select,
+  .followUp,
+  .segment span {
+    transition: none;
   }
 }
 
@@ -182,10 +199,13 @@
   min-width: 0;
 }
 
+/* `box-sizing: content-box` with zero vertical padding ensures `clientHeight`
+   matches `LOG_VIEWPORT_HEIGHT` (216px) exactly so virtual scroll `maxScroll`
+   never clips the final row. */
 .logScroller {
-  box-sizing: border-box;
+  box-sizing: content-box;
   overflow: auto;
-  padding: 6px 0;
+  padding: 0;
   background: var(--dsw-alias-bg-layer-2);
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: var(--ssh-radius);
@@ -460,7 +480,7 @@
   transition: background-color 120ms var(--ssh-ease), border-color 120ms var(--ssh-ease);
 }
 
-.segment:hover span {
+.segment:not([data-disabled]):hover span {
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
@@ -482,9 +502,9 @@
 
 .actions {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
-  flex-wrap: wrap;
   min-width: 0;
 }
 
@@ -552,8 +572,20 @@
 }
 
 @media (max-width: 768px) {
-  .composeToggle {
+  .section,
+  .compose {
+    --ssh-control-h: 44px;
+  }
+
+  .composeToggle,
+  .linkButton {
     min-height: 44px;
+  }
+
+  .input,
+  .select,
+  .followUp {
+    font-size: 16px;
   }
 }
 

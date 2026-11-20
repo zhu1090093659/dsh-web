@@ -235,7 +235,12 @@ describe('the extension switch', () => {
     expect(harness.registrations.every(entry => entry.name.startsWith('task-board.'))).toBe(true)
     expect(harness.registrations.find(entry => entry.name === DETAIL_SECTION)?.locale).toBe(NS)
     expect(harness.registrations.find(entry => entry.name === COMPOSE_SECTION)?.locale).toBe(NS)
-    expect(harness.followedSeats).toEqual([SETTINGS_SECTION])
+    expect(harness.followedSeats).toEqual([
+      SETTINGS_SECTION,
+      DETAIL_SECTION,
+      CARD_DECORATION,
+      COMPOSE_SECTION,
+    ])
   })
 
   it('user reading the registered dictionaries sees one namespace carrying both languages', () => {
@@ -336,6 +341,25 @@ describe('the settings section', () => {
     expect(screen.getByRole('button', { name: '关' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.queryByLabelText('默认主机')).toBeNull()
     expect(screen.getByText(/以下默认值与命令覆写暂不生效/).textContent).toContain('以下默认值与命令覆写暂不生效')
+  })
+
+  it('operator editing one built-in agent row preserves resumeCommand and custom entries and clears cleanly when emptied', () => {
+    // Given stored agentCommands carrying both a resumeCommand and a custom entry
+    const initial = JSON.stringify([
+      { kind: 'claude', command: 'claude -p {prompt_file}', resumeCommand: 'claude -r {session_id}' },
+      { kind: 'custom', command: 'my-cli {prompt_file}' },
+    ])
+    const { edited } = renderSection(settingsState({ agentCommands: field(initial) }))
+
+    // When the operator edits the Claude start command
+    fireEvent.change(screen.getByLabelText('Claude Code'), { target: { value: 'claude --new {prompt_file}' } })
+
+    // Then resumeCommand and the custom entry are preserved untouched in the serialized JSON
+    const written = JSON.parse(String(edited.mock.calls.at(-1)?.[1])) as Array<Record<string, unknown>>
+    expect(written).toEqual([
+      { kind: 'claude', command: 'claude --new {prompt_file}', resumeCommand: 'claude -r {session_id}' },
+      { kind: 'custom', command: 'my-cli {prompt_file}' },
+    ])
   })
 })
 

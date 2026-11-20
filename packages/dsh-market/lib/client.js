@@ -722,7 +722,7 @@ window.__ModuleLoader__.load({
 			*/
 			landedSet(field, value) {
 				if (this.specOf(field).secret) return true;
-				return this.userLayer()?.[field] === value;
+				return jsonValuesEqual(this.userLayer()?.[field], value);
 			}
 			/**
 			* Read-back judgment for a planned unset: the field must be gone from the
@@ -781,6 +781,21 @@ window.__ModuleLoader__.load({
 				for (const listener of this.listeners) listener();
 			}
 		};
+		/** Structural equality for JSON settings values (primitives, arrays, plain objects). */
+		function jsonValuesEqual(left, right) {
+			if (Object.is(left, right)) return true;
+			if (typeof left !== "object" || left === null || typeof right !== "object" || right === null) return false;
+			if (Array.isArray(left) || Array.isArray(right)) {
+				if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+				return left.every((item, index) => jsonValuesEqual(item, right[index]));
+			}
+			const a = left;
+			const b = right;
+			const keysA = Object.keys(a).filter((key) => a[key] !== void 0);
+			const keysB = Object.keys(b).filter((key) => b[key] !== void 0);
+			if (keysA.length !== keysB.length) return false;
+			return keysA.every((key) => Object.hasOwn(b, key) && jsonValuesEqual(a[key], b[key]));
+		}
 		//#endregion
 		//#region src/client/plugin-manager-bridge.ts
 		let snapshot$1 = {

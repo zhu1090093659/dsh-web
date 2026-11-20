@@ -99,6 +99,13 @@ export interface TaskBoardSnapshot {
    */
   extensions?: Record<string, unknown>
   /**
+   * Monotonic counter bumped whenever any extension publishes, updates, or
+   * withdraws its summary. Carried on both full snapshots and SSE frames so
+   * browsers refetch `/state` when a provider publishes without touching the
+   * task ledger revision.
+   */
+  extensionsRevision?: number
+  /**
    * The attachment limits this deployment enforces, so the browser can refuse
    * an oversized selection before it uploads anything. The board's own caps
    * are the ceiling; a deployment whose attachment storage publishes stricter
@@ -130,9 +137,10 @@ export interface TaskBoardModelCatalog {
   catalog: ModelCatalogView
 }
 
-/** SSE event frame: revision/scheduler/power only, never the task list. */
+/** SSE event frame: revision/scheduler/power (plus extension summary revision), never the task list. */
 export interface TaskBoardEventPayload {
   revision: number
+  extensionsRevision?: number
   scheduler: TaskBoardSchedulerSnapshot
   power: TaskBoardPowerSnapshot
 }

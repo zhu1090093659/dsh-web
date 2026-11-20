@@ -20,6 +20,7 @@ import { resolveDshSshService, resolveTaskBoardHostFace } from './core/contract.
 import { SSH_AGENT_KINDS, type SshAgentKind, type SshExecutionMode } from './core/target.ts'
 import { resolveBoardActionSeat } from './host/board.ts'
 import { SSH_EXTENSION_ID, createSshExtension } from './host/extension.ts'
+import { mountOnce } from './mount-once.ts'
 import {
   parseSshSettings,
   readSettingsFace,
@@ -131,7 +132,7 @@ export const Config: z<ConfigInput, Config> = z.object({
  * @param ctx - the plugin context.
  * @param config - resolved plugin config.
  */
-export function apply(ctx: Context, config?: Config): void {
+function applyImpl(ctx: Context, config?: Config): void {
   const settings = (): SshProviderSettings => parseSshSettings(config)
 
   // The settings surface is optional: a deployment that serves none keeps the
@@ -151,6 +152,7 @@ export function apply(ctx: Context, config?: Config): void {
   const settingsWriter = new SshSettingsWriter(() => settingsFace)
 
   let injection: ReturnType<Context['inject']> | undefined
+  let notifySettings: (() => void) | undefined
   let disposed = false
 
   /**
@@ -195,6 +197,7 @@ export function apply(ctx: Context, config?: Config): void {
           seat: () => resolveBoardActionSeat(scope),
           workspaces,
           localRepository,
+          onSettingsHook: hook => { notifySettings = hook },
         }))
         return () => { dispose() }
       }, 'task-board-ssh: provider registration')
@@ -208,7 +211,13 @@ export function apply(ctx: Context, config?: Config): void {
       await teardownProvider()
       return
     }
-    if (injection === undefined) mountProvider()
+    if (injection === undefined) {
+      mountProvider()
+    } else {
+      // Volatile setting edits (e.g. raising perHostCap or changing defaults)
+      // wake queued runs and refresh the published summary immediately.
+      notifySettings?.()
+    }
   }
 
   // A settings write and a lifecycle step can arrive together, and a re-mount
@@ -230,3 +239,5 @@ export function apply(ctx: Context, config?: Config): void {
     }
   }, 'task-board-ssh: provider lifecycle')
 }
+
+export const apply = mountOnce(PACKAGE_NAME, applyImpl)

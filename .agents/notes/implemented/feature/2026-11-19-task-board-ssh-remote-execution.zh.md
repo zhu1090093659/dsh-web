@@ -38,11 +38,12 @@ handler 抛错被隔离，按 `undefined` 处理。没有 handler 注册时，�
 
 ### 远端执行协议（direct 模式）
 
-- 状态落在远端 `~/.dsh/task-board-ssh/` 下：`runner-<hash>.sh`（经 `exec` 安装的 POSIX `sh` 启动器），以及 `runs/<runId>/{spec.json, prompt.txt, stdout.log, stderr.log, pid, exit, session}`。
-- 启动器动词：`start <runId>`、`status <runId>`、`tail <runId> <offset>`、`cancel <runId>`。`start` 对 `runId` 幂等，因为 `dsh-ssh` 连接池重连时可能重放命令。Agent 用 `setsid nohup` 脱离，所以 SSH 连接断开或本机离线都不影响它。
-- 提供方在定时器席位上轮询 `status` 与 `tail`（测试里时间确定）。启动时对每张带活动执行的卡片对账：本机离线期间结束的执行在此时落账。
-- 账本载荷（`integrations.ssh`）保存目标、活动执行与有界的执行历史；永不保存日志字节（64 KiB 上限）。日志按需从远端文件读取。
-- 执行进行中把卡片移出运行列即视为取消请求：远端执行被取消，不写结论。
+- 状态落在远端 `~/.dsh/task-board-ssh/` 下：`runner-<hash>.sh`（经 `exec` 写入按 PID 隔离的临时文件再原子改名安装，同主机并发安装去重），以及 `runs/<runId>/{spec.json, prompt.txt, stdout.log, stderr.log, pid, exit, session}`。每次调用启动器均显式钉住 `TASK_BOARD_SSH_STATE=<stateDir>`；Prompt 过大导致单次命令行超过 32 KiB 时自动走 `dshSsh.upload` 上传 `prompt.txt`，避免触发 `ARG_MAX` / `E2BIG`。
+- 启动器动词：`start <runId>`、`status <runId>`、`tail <runId> <offset> [limit]`、`stderr <runId> [limit]`、`cancel <runId>`。`start` 在原子锁目录内复核 `exit`/`cancelled`/`pid`，避免重放或并发启动拉起第二个进程；`run_exec` 先挂 `EXIT` trap 再写 `pid`，确保瞬时退出的命令结算为 `exited` 而非 `lost`。Agent 优先用 `setsid nohup` 脱离（主机无 `setsid` 如 macOS 时回退到 `nohup`）。自定义命令模板原样执行，不追加 `< /dev/null`，保留管道与重定向语义。
+- 提供方在定时器席位上轮询 `status` 与有界 `tail` 分页（测试里时间确定）。每次 `publish()` 递增看板的 `extensionsRevision` 并推送 SSE 事件，使实时日志窗口立即送达浏览器。结案时只按尾部 `PARSE_WINDOW` 读取日志（避免超过 `dsh-ssh` 2 MiB 输出上限时丢失结尾最终事件），非零退出时补充读取有界 `stderr.log`，工作区回传失败时显式以 `failed` 结案并提示远端保留分支，且在 `collectWorkspace` 期间防重入并在 `await` 后复核取消/手动移列/删除状态。
+- 账本载荷（`integrations.ssh`）保存目标、活动执行、可选排队中的 `pending` 指令与有界执行历史；永不保存日志字节（64 KiB 上限）。日志按需从远端文件读取，详情页支持超过 8 KiB 自动续页。
+- 执行进行中把卡片移出运行列即视为取消请求：通过 `AbortSignal` 中止在途 `prepareWorkspace` / `ssh.exec` 并停止远端进程，不写结论。删除卡片时清理该卡所有已知运行目录与 Git worktree。
+- 看板定时调度把 `task.status === 'running'` 同样视为 `busy`，避免对外部远端运行中的定时卡重复触发；提供方动作返回 `{ ok: false, error }` 时看板 `/action` 显式报错传回浏览器。插件宿主入口经 `mountOnce` 防重复挂载，`dsh-web-settings` 白名单收录 `task-board-ssh` 且设置表单改用结构化相等比较（使 `agentCommands` 数组字段读回通过）。
 
 ### Agent 适配器
 
@@ -59,15 +60,15 @@ handler 抛错被隔离，按 `undefined` 处理。没有 handler 注册时，�
 
 ### 工作区策略
 
-一个接口：`prepare(run) -> { cwd }` 与 `collect(run) -> { branch? }`。
+一个接口：`prepare(run) -> { cwd }`、`collect(run) -> { branch? }` 与可选 `cleanup(run) -> void`。同一 `(host, cacheDir)` 上的并发操作通过每缓存异步锁串行化，所有远端 git 命令带 300 s 超时，报错文本对 URL 凭据脱敏。Git 工作区卡片的追问与返工通过 `reuseWorktreeRunId` 复用上一轮的 worktree 与分支。
 
 - `in-place`：`cwd` 即钉住的远端目录；`collect` 为空操作。
-- 来自地址的 `git`：`~/.dsh/task-board-ssh/repos/` 下的裸仓缓存，每次执行一个工作树、分支 `dsh-task/<runId>`；有提交时 `collect` 把分支推到该远端。
-- 来自本机工作区的 `git`：对 `HEAD` 做 `git bundle`（已跟踪的未提交改动经 `git stash create` 一并带上），经 `dshSsh.upload` 上传；`collect` 把结果分支打包、下载，并以 `dsh-task/<runId>` 取回本机仓库。本机工作树里的任何文件都不会被覆盖。未跟踪文件不会发送，卡片会说明留下了多少个：`prepare` 数出数量，该数字进入执行摘要。
+- 来自地址的 `git`：`~/.dsh/task-board-ssh/repos/` 下的裸仓缓存，每次执行基于不可变的按次基准 ref 创建独立工作树与分支 `dsh-task/<runId>`；有提交时 `collect` 把分支推到该远端。
+- 来自本机工作区的 `git`：对 `HEAD` 做 `git bundle`（已跟踪的未提交改动经 `git stash create` 一并带上），经 `dshSsh.upload` 上传后用 `git bundle unbundle` 解包进裸仓（避免 `HEAD` 未变时二次脏工作区运行触发非快进 fetch 拒绝）；`collect` 把结果分支打包、下载，并以 `dsh-task/<runId>` 取回本机仓库。本机工作树里的任何文件都不会被覆盖。未跟踪文件不会发送，卡片会说明留下了多少个：`prepare` 数出数量，该数字进入执行摘要。
 
 ### 卡片界面
 
-详情区：目标表单（模式、主机、Agent、工作区）、执行状态、日志查看、追问输入、取消。卡片徽标：主机与执行状态（排队、运行、失联）。看板设置卡内的配置区块：开关、默认值、每主机上限、Agent 命令覆盖。三个模型可见工具：`task_board_ssh_target`、`task_board_ssh_status`、`task_board_ssh_follow_up`。
+详情区：目标表单（模式、主机、Agent、工作区；`proxy` 模式隐藏仅远端生效的 Agent/日志/追问控件；运行中或归档卡片禁用目标编辑）、执行状态、支持超过 8 KiB 自动分页的虚拟化日志查看、追问输入、取消。新建弹窗「运行方式」席位：同步回报草稿载荷与摘要/阻断错误（防止未填完 SSH 目标时静默退回本机执行）、折叠展开保留状态，并预填复制卡片的目标。卡片徽标：主机与执行状态（排队、运行、失联）。看板设置卡内的配置区块：开关、默认值、每主机上限、Agent 命令覆盖（编辑时保留 `resumeCommand` 与 `custom` 条目）。全部四个席位均通过 `slots.inject` 跟随看板槽位声明生命周期。三个模型可见工具：`task_board_ssh_target`、`task_board_ssh_status`、`task_board_ssh_follow_up`。
 
 ## Context & Efficiency Impact
 

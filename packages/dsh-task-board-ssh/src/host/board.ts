@@ -98,6 +98,6 @@ export function alreadyRecorded(task: TaskRecord, runId: string): boolean {
   const marker = SSH_INITIATOR_PREFIX + runId
   return executions.some(record => {
     const initiator = executionInitiator(record)
-    return initiator !== undefined && initiator.startsWith(marker)
+    return initiator === marker
   })
 }

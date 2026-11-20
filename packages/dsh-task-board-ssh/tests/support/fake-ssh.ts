@@ -20,7 +20,7 @@ import { NOW } from './board.ts'
 export interface RemoteCall {
   alias: string
   command: string
-  verb?: 'start' | 'status' | 'tail' | 'cancel'
+  verb?: 'start' | 'status' | 'tail' | 'stderr' | 'cancel'
   runId?: string
 }
 
@@ -67,20 +67,26 @@ function byteLength(text: string): number {
 }
 
 /** The launcher verb one composed command addresses. */
-const VERB_RE = /runner-[0-9a-f]{8}\.sh' '(start|status|tail|cancel)' '([^']+)'(?: '(\d+)')?/
+const VERB_RE = /runner-[0-9a-f]{8}\.sh' '(start|status|tail|stderr|cancel)' '([^']+)'(?: '(\d+)')?(?: '(\d+)')?/
 
 /**
  * Read the verb out of a command the engine composed.
  * @param command - the shell command line.
- * @returns the verb, the run id and, for `tail`, the offset.
+ * @returns the verb, the run id and, for `tail`/`stderr`, the offset and limit.
  */
-export function launcherCall(command: string): { verb: 'start' | 'status' | 'tail' | 'cancel'; runId: string; offset?: number } | undefined {
+export function launcherCall(command: string): { verb: 'start' | 'status' | 'tail' | 'stderr' | 'cancel'; runId: string; offset?: number; limit?: number } | undefined {
   const match = VERB_RE.exec(command)
   if (match === null) return undefined
+  const verb = match[1] as 'start' | 'status' | 'tail' | 'stderr' | 'cancel'
   return {
-    verb: match[1] as 'start' | 'status' | 'tail' | 'cancel',
+    verb,
     runId: match[2] as string,
-    ...(match[3] === undefined ? {} : { offset: Number(match[3]) }),
+    ...(verb === 'stderr'
+      ? (match[3] === undefined ? {} : { limit: Number(match[3]) })
+      : {
+          ...(match[3] === undefined ? {} : { offset: Number(match[3]) }),
+          ...(match[4] === undefined ? {} : { limit: Number(match[4]) }),
+        }),
   }
 }
 
@@ -92,6 +98,8 @@ export interface ScriptedRunState {
   exitCode: number
   /** Contents of its `stdout.log`. */
   output: string
+  /** Contents of its `stderr.log`. */
+  stderr?: string
   /** Agent processes this run really spawned. */
   processes: number
   /** `start` verbs the caller sent for it. */
@@ -113,9 +121,9 @@ export interface ScriptedSsh {
   /** Run state, keyed by run id. */
   runs: Map<string, ScriptedRunState>
   /** Let one run report its verdict. */
-  finish(runId: string, options?: { exitCode?: number; output?: string }): void
+  finish(runId: string, options?: { exitCode?: number; output?: string; stderr?: string }): void
   /** Commands the engine sent that addressed one verb. */
-  commands(verb: 'start' | 'status' | 'tail' | 'cancel'): string[]
+  commands(verb: 'start' | 'status' | 'tail' | 'stderr' | 'cancel'): string[]
 }
 
 /** How the in-memory host behaves. */
@@ -130,6 +138,8 @@ export interface ScriptedSshOptions {
    * script does.
    */
   replay?: boolean
+  /** Optional stdout byte cap mimicking `dsh-ssh`'s 2 MiB `maxOutputBytes`. */
+  maxOutputBytes?: number
 }
 
 /**
@@ -167,7 +177,15 @@ export function createScriptedSsh(options: ScriptedSshOptions = {}): ScriptedSsh
     return 'state=running pid=4242 bytes=' + String(bytes) + '\n'
   }
 
-  const applyVerb = (call: { verb: 'start' | 'status' | 'tail' | 'cancel'; runId: string; offset?: number }): DshSshExecResult => {
+  const capOutput = (raw: string): string => {
+    const cap = options.maxOutputBytes
+    if (cap === undefined) return raw
+    const buf = Buffer.from(raw, 'utf8')
+    if (buf.length <= cap) return raw
+    return buf.subarray(0, cap).toString('utf8') + '…[output truncated]'
+  }
+
+  const applyVerb = (call: { verb: 'start' | 'status' | 'tail' | 'stderr' | 'cancel'; runId: string; offset?: number; limit?: number }): DshSshExecResult => {
     const run = runOf(call.runId)
     switch (call.verb) {
       case 'start': {
@@ -182,8 +200,18 @@ export function createScriptedSsh(options: ScriptedSshOptions = {}): ScriptedSsh
       }
       case 'status':
         return ok(statusLine(run))
-      case 'tail':
-        return ok(run.output.slice(call.offset ?? 0))
+      case 'tail': {
+        const buf = Buffer.from(run.output, 'utf8')
+        const start = call.offset ?? 0
+        const end = call.limit === undefined ? buf.length : Math.min(buf.length, start + call.limit)
+        return ok(capOutput(buf.subarray(start, end).toString('utf8')))
+      }
+      case 'stderr': {
+        const buf = Buffer.from(run.stderr ?? '', 'utf8')
+        const limit = call.limit ?? 4096
+        const start = Math.max(0, buf.length - limit)
+        return ok(capOutput(buf.subarray(start).toString('utf8')))
+      }
       default: {
         run.cancelCommands += 1
         if (run.phase === 'running') {
@@ -216,6 +244,7 @@ export function createScriptedSsh(options: ScriptedSshOptions = {}): ScriptedSsh
         if (runId !== undefined) runOf(runId).removed = true
         return ok('')
       }
+      if (command.includes("'rev-list' '--count'")) return ok('0\n')
       if (call === undefined) return ok('')
       const first = applyVerb(call)
       if (options.replay !== true) return first
@@ -244,6 +273,7 @@ export function createScriptedSsh(options: ScriptedSshOptions = {}): ScriptedSsh
       run.phase = 'exited'
       run.exitCode = finishOptions.exitCode ?? 0
       if (finishOptions.output !== undefined) run.output = finishOptions.output
+      if (finishOptions.stderr !== undefined) run.stderr = finishOptions.stderr
     },
     commands: verb => calls.filter(call => call.verb === verb).map(call => call.command),
   }

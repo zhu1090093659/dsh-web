@@ -101,6 +101,9 @@ export class TaskBoardClientService implements TaskBoardClientFace {
       enabled: this.enabled,
       tasks: (state?.tasks ?? []) as readonly TaskRecord[],
       extensions: state?.extensions ?? {},
+      hydrated: state?.host !== undefined,
+      ...(state?.executionOptions.workspaces === undefined ? {} : { workspaces: state.executionOptions.workspaces }),
+      ...(state?.transportError === undefined ? {} : { lastError: state.transportError }),
     }
   }
 

@@ -218,4 +218,112 @@ describe('an instruction for a settled remote card', () => {
     // The count belongs to the run the instruction was queued against.
     expect(payloadOf(board, taskId)?.history[0]?.followUps).toBe(1)
   })
+
+  it('operator queueing a second follow-up while one is already pending is refused without overwriting the first', async () => {
+    // Given a running card that already has one pending follow-up
+    const ssh = createScriptedSsh()
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    const mounted = mountEngine({ board, ssh: ssh.service, workspaces: fakeWorkspaces({ cwd: '/srv/work' }).resolver, now: () => NOW })
+    cleanups.push(() => { mounted.release() })
+    const taskId = board.createCard('task-dup-fu', { title: 'dup follow up' }).id
+    await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'set-target',
+      taskId,
+      payload: { target: { mode: 'direct', host: 'build-box', agent: { kind: 'dsh' }, workspace: { kind: 'in-place', path: '/srv/work' } } },
+    })
+    board.apply({ kind: 'run', taskId })
+    await mounted.tick(0)
+    await vi.waitFor(() => { expect(ssh.commands('start')).toHaveLength(1) })
+    const first = await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'follow-up',
+      taskId,
+      payload: { text: 'first instruction' },
+    }) as { ok: boolean }
+    expect(first.ok).toBe(true)
+
+    // When a second follow-up arrives before the first drains
+    const second = await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'follow-up',
+      taskId,
+      payload: { text: 'second instruction' },
+    }) as { ok: boolean; error?: string }
+
+    // Then the second is refused and the first stays intact
+    expect(second.ok).toBe(false)
+    expect(second.error).toContain('already queued')
+    expect(payloadOf(board, taskId)?.pending?.text).toBe('first instruction')
+  })
+
+  it('operator sending a follow-up to a proxy-mode card is refused instead of spawning a direct remote run', async () => {
+    // Given a proxy-mode card
+    const ssh = createScriptedSsh()
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    const mounted = mountEngine({ board, ssh: ssh.service, workspaces: fakeWorkspaces({ cwd: '/srv/work' }).resolver, now: () => NOW })
+    cleanups.push(() => { mounted.release() })
+    const taskId = board.createCard('task-proxy-fu', { title: 'proxy follow up' }).id
+    await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'set-target',
+      taskId,
+      payload: { target: { mode: 'proxy', host: 'build-box', agent: { kind: 'dsh' }, workspace: { kind: 'in-place', path: '/srv/work' } } },
+    })
+
+    // When a remote follow-up is sent to it
+    const reply = await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'follow-up',
+      taskId,
+      payload: { text: 'check logs' },
+    }) as { ok: boolean; error?: string }
+
+    // Then it is refused and no direct run starts
+    expect(reply.ok).toBe(false)
+    expect(reply.error).toContain('proxy')
+    expect(ssh.commands('start')).toEqual([])
+  })
+
+  it('operator following up a git-workspace card reuses the previous run worktree and branch', async () => {
+    // Given a git-workspace card whose first run succeeded on a branch
+    const ssh = createScriptedSsh()
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    const workspaces = fakeWorkspaces({ cwd: '/srv/work' })
+    const mounted = mountEngine({ board, ssh: ssh.service, workspaces: workspaces.resolver, now: () => NOW })
+    cleanups.push(() => { mounted.release() })
+    const taskId = board.createCard('task-git-fu', { title: 'git follow up' }).id
+    await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'set-target',
+      taskId,
+      payload: { target: { mode: 'direct', host: 'build-box', agent: { kind: 'dsh' }, workspace: { kind: 'git', source: { kind: 'url', url: 'git@example.com:team/repo.git' } } } },
+    })
+    board.apply({ kind: 'run', taskId })
+    await mounted.tick(0)
+    await vi.waitFor(() => { expect(ssh.commands('start')).toHaveLength(1) })
+    const firstRunId = payloadOf(board, taskId)?.activeRun?.runId ?? ''
+    ssh.finish(firstRunId, { output: dshOutput({ sessionId: 'sess-git', text: 'first commit' }) })
+    await vi.waitFor(async () => {
+      await mounted.tick()
+      expect(board.task(taskId)?.status).toBe('done')
+    })
+
+    // When the operator sends a follow-up
+    const reply = await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'follow-up',
+      taskId,
+      payload: { text: 'fix lint' },
+    }) as { ok: boolean }
+    expect(reply.ok).toBe(true)
+    await mounted.tick(0)
+    await vi.waitFor(() => { expect(ssh.commands('start')).toHaveLength(2) })
+
+    // Then the second prepare call received reuseWorktreeRunId pointing to the first run
+    expect(workspaces.recorder.runs[1]?.reuseWorktreeRunId).toBe(firstRunId)
+  })
 })

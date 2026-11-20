@@ -891,7 +891,7 @@ export class HostTaskLedger {
       this.skipOccurrence(taskId, 'permission', triggeredAt)
       return []
     }
-    if (hasOpenExecution(task)) {
+    if (hasOpenExecution(task) || task.status === 'running') {
       this.skipOccurrence(taskId, 'busy', triggeredAt)
       return []
     }

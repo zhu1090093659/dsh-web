@@ -403,3 +403,153 @@ describe('a host that restarts mid-run', () => {
     expect(executionsOf(board.task(finished))).toHaveLength(1)
   })
 })
+
+describe('settlement edge cases and guards', () => {
+  it('operator whose remote run writes more than 2 MiB of stdout still settles with its final sessionId and summary', async () => {
+    // Given an SSH service that enforces dsh-ssh's 2 MiB maxOutputBytes cap
+    const ssh = createScriptedSsh({ maxOutputBytes: 2 * 1024 * 1024 })
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    const { mounted, taskId } = await pinCard({ board, ssh: ssh.service, work: '/srv/work' })
+    board.apply({ kind: 'run', taskId })
+    await mounted.tick(0)
+    await vi.waitFor(() => { expect(ssh.commands('start')).toHaveLength(1) })
+    const runId = payloadOf(board, taskId)?.activeRun?.runId ?? ''
+
+    // When the run emits >2.2 MiB of noise followed by its final verdict JSON
+    const filler = JSON.stringify({ type: 'log', text: 'x'.repeat(2_000) }) + '\n'
+    const bigPrefix = filler.repeat(1_150)
+    const output = bigPrefix + dshOutput({ sessionId: 'sess-huge', text: 'finished after huge output' })
+    ssh.finish(runId, { output })
+    await vi.waitFor(async () => {
+      await mounted.tick()
+      expect(board.task(taskId)?.status).toBe('done')
+    })
+
+    // Then the run settled as succeeded with the final sessionId and summary intact
+    const history = payloadOf(board, taskId)?.history ?? []
+    expect(history[0]?.phase).toBe('succeeded')
+    expect(history[0]?.sessionId).toBe('sess-huge')
+    expect(history[0]?.summary).toBe('finished after huge output')
+  })
+
+  it('operator whose workspace collection fails gets a failed verdict naming the preserved branch instead of a false done', async () => {
+    // Given a workspace strategy whose collect() rejects after the agent succeeded
+    const ssh = createScriptedSsh()
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    const workspaces = fakeWorkspaces({
+      cwd: '/srv/work',
+      collectError: new Error('git push rejected: permission denied'),
+    })
+    const mounted = mountEngine({ board, ssh: ssh.service, workspaces: workspaces.resolver, now: () => NOW })
+    cleanups.push(() => { mounted.release() })
+    const taskId = board.createCard('task-collect-fail', { title: 'push fail' }).id
+    await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'set-target',
+      taskId,
+      payload: { target: { mode: 'direct', host: 'build-box', agent: { kind: 'dsh' }, workspace: { kind: 'git', source: { kind: 'url', url: 'git@example.com:team/repo.git' } } } },
+    })
+    board.apply({ kind: 'run', taskId })
+    await mounted.tick(0)
+    await vi.waitFor(() => { expect(ssh.commands('start')).toHaveLength(1) })
+    const runId = payloadOf(board, taskId)?.activeRun?.runId ?? ''
+
+    // When the agent exits 0 and collection fails
+    ssh.finish(runId, { output: dshOutput({ sessionId: 'sess-ok', text: 'all edits committed' }) })
+    await vi.waitFor(async () => {
+      await mounted.tick()
+      expect(board.task(taskId)?.status).toBe('failed')
+    })
+
+    // Then the card settled as failed with the collection failure and preserved branch hint
+    const history = payloadOf(board, taskId)?.history ?? []
+    expect(history[0]?.phase).toBe('failed')
+    expect(history[0]?.error).toContain('git push rejected')
+    expect(history[0]?.error).toContain('dsh-task/' + runId)
+    expect(executionsOf(board.task(taskId))[0]?.error).toContain('git push rejected')
+  })
+
+  it('operator whose remote run fails silently on stdout gets stderr diagnostics in the settled summary', async () => {
+    // Given a running card whose remote command crashes with stderr only
+    const ssh = createScriptedSsh()
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    const { mounted, taskId } = await pinCard({ board, ssh: ssh.service, work: '/srv/work' })
+    board.apply({ kind: 'run', taskId })
+    await mounted.tick(0)
+    await vi.waitFor(() => { expect(ssh.commands('start')).toHaveLength(1) })
+    const runId = payloadOf(board, taskId)?.activeRun?.runId ?? ''
+
+    // When the agent exits 127 with empty stdout and a stderr diagnostic
+    ssh.finish(runId, { exitCode: 127, output: '', stderr: 'sh: dsh: command not found\n' })
+    await vi.waitFor(async () => {
+      await mounted.tick()
+      expect(board.task(taskId)?.status).toBe('failed')
+    })
+
+    // Then the settled error record includes the stderr reason
+    const history = payloadOf(board, taskId)?.history ?? []
+    expect(history[0]?.phase).toBe('failed')
+    expect(history[0]?.error).toContain('dsh: command not found')
+    expect(executionsOf(board.task(taskId))[0]?.error).toContain('dsh: command not found')
+  })
+
+  it('operator attempting to edit target while a run is live or archived is refused', async () => {
+    // Given a running card
+    const ssh = createScriptedSsh()
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    const { mounted, taskId } = await pinCard({ board, ssh: ssh.service, work: '/srv/work' })
+    board.apply({ kind: 'run', taskId })
+    await mounted.tick(0)
+    await vi.waitFor(() => { expect(ssh.commands('start')).toHaveLength(1) })
+
+    // When trying to change the target mid-run
+    const whileRunning = await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'set-target',
+      taskId,
+      payload: { target: directTarget('/srv/other') },
+    }) as { ok: boolean; error?: string }
+
+    // Then the Host refuses the target mutation
+    expect(whileRunning.ok).toBe(false)
+    expect(whileRunning.error).toContain('cannot change the SSH target')
+    expect(payloadOf(board, taskId)?.target?.workspace).toEqual({ kind: 'in-place', path: '/srv/work' })
+  })
+
+  it('operator sending a prompt larger than 32 KiB uploads prompt.txt via SFTP instead of hitting ARG_MAX', async () => {
+    // Given a card with a 48 KiB prompt
+    const ssh = createScriptedSsh()
+    const uploads: Array<{ alias: string; remotePath: string; localPath: string }> = []
+    const wrappedSsh = {
+      ...ssh.service,
+      async upload(alias: string, localPath: string, remotePath: string) {
+        uploads.push({ alias, localPath, remotePath })
+        return { files: 1, bytes: 48 * 1024, durationMs: 1 }
+      },
+    }
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    const mounted = mountEngine({ board, ssh: wrappedSsh, workspaces: fakeWorkspaces({ cwd: '/srv/work' }).resolver, now: () => NOW })
+    cleanups.push(() => { mounted.release() })
+    const taskId = board.createCard('task-big-prompt', { title: 'big prompt', prompt: 'A'.repeat(48 * 1024) }).id
+    await mounted.extension.handleAction?.({
+      extensionId: 'ssh',
+      action: 'set-target',
+      taskId,
+      payload: { target: directTarget('/srv/work') },
+    })
+
+    // When the card starts
+    board.apply({ kind: 'run', taskId })
+    await mounted.tick(0)
+    await vi.waitFor(() => { expect(ssh.commands('start')).toHaveLength(1) })
+
+    // Then prompt.txt was uploaded via ssh.upload rather than inline base64 in exec()
+    expect(uploads).toHaveLength(1)
+    expect(uploads[0]?.remotePath).toMatch(/\/prompt\.txt$/)
+  })
+})

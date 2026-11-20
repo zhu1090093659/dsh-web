@@ -44,7 +44,7 @@ export const SETTINGS_NAMESPACE = 'task-board-ssh'
 const AGGREGATE_ENTRY_ID = 'web-ui-task-board-ssh'
 
 /** Profile entry ids this package's patch rows carry, most specific first. */
-const ENTRY_IDS: readonly string[] = [AGGREGATE_ENTRY_ID, 'ui-task-board-ssh', 'dsh-task-board-ssh']
+const ENTRY_IDS: readonly string[] = [AGGREGATE_ENTRY_ID, 'ui-task-board-ssh', 'dsh-task-board-ssh', SETTINGS_NAMESPACE]
 
 /**
  * The family settings binder published by dsh-web-settings; absent when that
@@ -170,13 +170,13 @@ export function apply(ctx: ClientContext): void {
     subscribe: listener => scope.subscribe(listener),
   }
 
-  let controller: SshSettingsCardController
+  let controller: SshSettingsCardController | undefined
   try {
     controller = new SshSettingsCardController(scope)
   } catch {
     // A form that cannot be staged over: the extension keeps its rendering
     // seats and loses only the configuration section.
-    return
+    controller = undefined
   }
 
   // Seats. The rendering seats (task-detail section, card decoration and the
@@ -184,9 +184,12 @@ export function apply(ctx: ClientContext): void {
   // configuration section sits behind the board service alone, because it is
   // where this extension's own switch lives — a section gated by that switch
   // could never turn it back on.
-  ctx.effect(() => installSshClientHalf(ctx, enabledSource, {
-    inject: () => controller.inject(),
-    component: SshSettingsSection,
-  }), 'task-board-ssh: provider seats')
-  ctx.effect(() => () => { controller.dispose() }, 'task-board-ssh: provider settings section')
+  const settingsSeat = controller === undefined
+    ? undefined
+    : { inject: () => controller.inject(), component: SshSettingsSection }
+  ctx.effect(() => installSshClientHalf(ctx, enabledSource, settingsSeat), 'task-board-ssh: provider seats')
+  if (controller !== undefined) {
+    const owned = controller
+    ctx.effect(() => () => { owned.dispose() }, 'task-board-ssh: provider settings section')
+  }
 }

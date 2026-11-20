@@ -405,6 +405,7 @@ export class TaskBoardHostService {
         this.applyBoardAction(crypto.randomUUID(), { kind: 'rework', taskId, instructions }, initiator)
       },
       now: this.now,
+      onPublished: () => { this.emit() },
       ...(options.extensionLogger === undefined ? {} : { logger: options.extensionLogger }),
     })
     // The board's single launch gate. Every run — manual, rerun, rework, a due
@@ -516,6 +517,7 @@ export class TaskBoardHostService {
       // refuse an oversized selection before it uploads anything.
       ...(this.attachmentStore() === undefined ? {} : { attachmentLimits: publishedAttachmentLimits(this.attachmentStore()) }),
       ...(Object.keys(published).length === 0 ? {} : { extensions: published }),
+      extensionsRevision: this.extensions.publishedRevision,
     })
   }
 
@@ -540,7 +542,12 @@ export class TaskBoardHostService {
   /** SSE frame payload; deliberately skips the tasks deep-clone of {@link snapshot}. */
   eventPayload(): TaskBoardEventPayload {
     const { revision, scheduler } = this.ledger.summary()
-    return { revision, scheduler, power: this.power.snapshot() }
+    return {
+      revision,
+      extensionsRevision: this.extensions.publishedRevision,
+      scheduler,
+      power: this.power.snapshot(),
+    }
   }
 
   subscribe(listener: () => void): () => void {
@@ -700,12 +707,20 @@ export class TaskBoardHostService {
 
   /** Route one provider action and answer the resulting board snapshot. */
   private async handleExtensionAction(action: Extract<TaskBoardAction, { kind: 'extension-action' }>): Promise<TaskBoardSnapshot> {
-    await this.extensions.handleAction({
+    const answer = await this.extensions.handleAction({
       extensionId: action.extensionId,
       action: action.action,
       ...(action.taskId === undefined ? {} : { taskId: action.taskId }),
       ...(action.payload === undefined ? {} : { payload: action.payload }),
     })
+    // Providers that return a structured `{ ok: false, error }` reply instead
+    // of throwing still communicate a refusal: turn it into an action error so
+    // the HTTP channel and browser `dispatch()` surface the rejection rather
+    // than reporting false success.
+    if (typeof answer === 'object' && answer !== null && (answer as { ok?: unknown }).ok === false) {
+      const reason = (answer as { error?: unknown }).error
+      throw new Error(typeof reason === 'string' && reason.trim() !== '' ? reason : `extension "${action.extensionId}" refused action "${action.action}"`)
+    }
     return this.snapshot()
   }
 

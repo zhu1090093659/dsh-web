@@ -21,7 +21,7 @@
  *
  * @module dsh-task-board-ssh/host/workspace/remote-git
  */
-import { shellEnsureDir, shellJoin } from '../../core/shell.ts'
+import { shellEnsureDir, shellJoin, shellQuote } from '../../core/shell.ts'
 import type { SshGitSource } from '../../core/target.ts'
 import type { GitWorkspaceLayout } from './layout.ts'
 
@@ -121,11 +121,15 @@ export function fetchUrlCommand(layout: GitWorkspaceLayout, url: string): string
 }
 
 /**
- * Build the command that fetches an uploaded bundle into the cache.
+ * Build the command that unpacks an uploaded bundle into the cache.
  *
- * A bundle of a working-tree snapshot can only name the commit HEAD points at,
- * so the snapshot's own commit arrives as an object and is pinned to its ref by
- * {@link pinBaseCommand} on the next step.
+ * Uses `git bundle unbundle` instead of `git fetch +HEAD:...`: when the local
+ * working tree is dirty (`git stash create`), `git bundle` only advertises
+ * `HEAD` as a ref header while carrying the snapshot commit in the packfile.
+ * On a second run where `HEAD` has not moved, `git fetch` sees `HEAD` already
+ * in the bare cache and skips unpacking the packfile, leaving the snapshot
+ * commit missing. `bundle unbundle` unconditionally unpacks every object so
+ * {@link pinBaseCommand} can pin the snapshot SHA directly.
  * @param layout - the run's paths.
  * @param bundlePath - absolute remote path of the uploaded bundle.
  * @returns one shell command.
@@ -134,11 +138,9 @@ export function fetchBundleCommand(layout: GitWorkspaceLayout, bundlePath: strin
   return gitCommand(
     '-C',
     layout.cacheDir,
-    'fetch',
-    '--no-tags',
-    END_OF_OPTIONS,
+    'bundle',
+    'unbundle',
     bundlePath,
-    `+HEAD:${layout.baseRef}`,
   )
 }
 
@@ -223,4 +225,20 @@ export function bundleResultCommand(layout: GitWorkspaceLayout, bundlePath: stri
     '--not',
     layout.baseRef,
   )
+}
+
+/**
+ * Build the best-effort command that removes one run's worktree, branch and
+ * base ref from the shared bare cache when its card is deleted.
+ * @param layout - the run's paths.
+ * @returns one shell command.
+ */
+export function removeWorktreeCommand(layout: GitWorkspaceLayout): string {
+  return [
+    `${gitCommand('-C', layout.cacheDir, 'worktree', 'remove', '--force', layout.worktreeDir)} 2>/dev/null || true`,
+    `rm -rf ${shellQuote(layout.worktreeDir)}`,
+    `${gitCommand('-C', layout.cacheDir, 'worktree', 'prune')} 2>/dev/null || true`,
+    `${gitCommand('-C', layout.cacheDir, 'branch', '-D', layout.branch)} 2>/dev/null || true`,
+    `${gitCommand('-C', layout.cacheDir, 'update-ref', '-d', layout.baseRef)} 2>/dev/null || true`,
+  ].join('; ')
 }

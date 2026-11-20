@@ -289,5 +289,44 @@ describe('queued instruction', () => {
     expect(trimmed.pending?.text).toHaveLength(4_000)
     expect(sshLedgerPayloadBytes(trimmed)).toBeLessThan(SSH_LEDGER_LIMIT_BYTES)
   })
+
+  it('operator whose pending instruction alone exceeds the ceiling still keeps the card target after pending yields', () => {
+    // Given a payload with target, history and a large pending instruction under a tight budget
+    const payload: SshLedgerPayload = {
+      version: 1,
+      updatedAt: 1,
+      target,
+      history: [runRecord(1, 20)],
+      pending: pendingInstruction(1_200),
+    }
+
+    // When trimmed to a budget large enough for target + history but smaller than pending alone
+    const trimmed = trimSshLedgerPayload(payload, { maxBytes: 700 })
+
+    // Then pending yields first and the pinned target is preserved rather than discarded
+    expect(sshLedgerPayloadBytes(trimmed)).toBeLessThan(700)
+    expect(trimmed.pending).toBeUndefined()
+    expect(trimmed.target).toEqual(target)
+  })
+
+  it('operator recording empty optional run fields still produces a payload that strict parsing accepts', () => {
+    // Given a run record carrying empty-string optional fields
+    const payload: SshLedgerPayload = {
+      version: 1,
+      updatedAt: 1,
+      target,
+      history: [{ ...runRecord(1), summary: '', branch: '', sessionId: '' }],
+    }
+
+    // When trimmed and parsed back strictly
+    const trimmed = trimSshLedgerPayload(payload)
+    const parsed = parseSshLedgerPayload(trimmed)
+
+    // Then empty optional fields were omitted rather than tripping strict read-back
+    expect(parsed.ok).toBe(true)
+    expect(trimmed.history[0]?.summary).toBeUndefined()
+    expect(trimmed.history[0]?.branch).toBeUndefined()
+    expect(trimmed.history[0]?.sessionId).toBeUndefined()
+  })
 })
 

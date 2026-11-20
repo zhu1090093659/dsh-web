@@ -430,4 +430,60 @@ describe('the run controls', () => {
     expect(saved?.payload).toEqual({ target: { ...TARGET, workspace: { kind: 'in-place', path: '/srv/other' } } })
     expect(screen.queryByLabelText('远端路径')).toBeNull()
   })
+
+  it('operator switching to another card does not carry the previous card edit form or follow-up text over', () => {
+    // Given card-1 open for editing with unsent follow-up state
+    const channel = board()
+    publish({ hosts: [{ alias: 'devbox', host: '10.0.0.5', user: 'zcl', port: 22 }] })
+    const task1 = card({ target: TARGET, history: [run('r1', 'succeeded')] })
+    const task2 = { ...card({ target: { ...TARGET, workspace: { kind: 'in-place', path: '/srv/second' } } }), id: 'task-2' }
+    const view = render(createElement(SshDetailSection, { task: task1, dispatch: channel.dispatch }))
+    fireEvent.click(screen.getByRole('button', { name: '编辑目标' }))
+    expect((screen.getByLabelText('远端路径') as HTMLInputElement).value).toBe('/srv/app')
+
+    // When the detail panel switches to task-2
+    view.rerender(createElement(SshDetailSection, { task: task2, dispatch: channel.dispatch }))
+
+    // Then the edit form closed and task-2's summary is shown cleanly
+    expect(screen.queryByLabelText('远端路径')).toBeNull()
+    expect(screen.getByText(/\/srv\/second/).textContent).toContain('/srv/second')
+  })
+
+  it('operator opening a proxy-mode card sees the proxy summary without remote log or follow-up controls', () => {
+    // Given a proxy-mode card
+    const channel = board()
+    publish({ hosts: [{ alias: 'devbox', host: '10.0.0.5', user: 'zcl', port: 22 }] })
+    const proxyTarget = { ...TARGET, mode: 'proxy' as const }
+
+    // When the detail panel renders
+    render(createElement(SshDetailSection, { task: card({ target: proxyTarget }), dispatch: channel.dispatch }))
+
+    // Then the mode summary explains local proxy and hides remote-only log / follow-up controls
+    expect(screen.getByText(/本地代理/).textContent).toContain('本地代理')
+    expect(screen.queryByRole('group', { name: '运行日志' })).toBeNull()
+    expect(screen.queryByLabelText('追问')).toBeNull()
+  })
+
+  it('operator viewing a live card sees editing locked and a queued chip backed by ledger pending', () => {
+    // Given a running card with a pending follow-up in its ledger payload
+    const channel = board()
+    publish({ hosts: [{ alias: 'devbox', host: '10.0.0.5', user: 'zcl', port: 22 }] })
+    const base = card({ target: TARGET, activeRun: run('r1', 'running') })
+    const withPending = {
+      ...base,
+      integrations: {
+        ssh: {
+          ...(base.integrations?.['ssh'] as Record<string, unknown>),
+          pending: { kind: 'follow-up', text: 'check tests', queuedAt: 10 },
+        },
+      },
+    }
+
+    // When the detail panel renders
+    render(createElement(SshDetailSection, { task: withPending, dispatch: channel.dispatch }))
+
+    // Then target editing is withheld while live and the queued chip reflects the ledger pending state
+    expect(screen.queryByRole('button', { name: '编辑目标' })).toBeNull()
+    expect(screen.getByText('本轮结束后发送').textContent).toBe('本轮结束后发送')
+  })
 })

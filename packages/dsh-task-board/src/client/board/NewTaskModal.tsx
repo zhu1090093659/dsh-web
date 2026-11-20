@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { BoardController } from '../../core/controller.ts'
-import { isTaskBoardExtensionPayload, type TaskBoardExtensionPayload } from '../../core/extension.ts'
+import { isTaskBoardExtensionPayload, type TaskBoardComposeDraftOptions, type TaskBoardExtensionPayload } from '../../core/extension.ts'
 import { resolveCardTargets, type CardTargetSource } from '../../core/card-defaults.ts'
 import { isValidCron, nextRunAtMs } from '../../core/schedule.ts'
 import { parseFreezeRequest } from '../../core/freeze-snapshot.ts'
@@ -102,10 +102,32 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
   // that says what it currently shows.
   const seats = useTaskBoardSeats()
   const composeDrafts = useRef(new Map<string, TaskBoardExtensionPayload | undefined>())
+  const composeErrors = useRef(new Map<string, string>())
+  const [composeSummaries, setComposeSummaries] = useState<Record<string, string>>({})
+  const [composeError, setComposeError] = useState<string | undefined>(undefined)
+  const [submitAttempt, setSubmitAttempt] = useState(0)
   // Stable for the life of the dialog: a provider keys its reporting effect on
   // it, so it must not change identity on every render.
-  const contribute = useCallback((extensionId: string, payload: TaskBoardExtensionPayload | undefined): void => {
+  const contribute = useCallback((extensionId: string, payload: TaskBoardExtensionPayload | undefined, options?: TaskBoardComposeDraftOptions): void => {
     composeDrafts.current.set(extensionId, payload)
+    const nextError = options?.error?.trim()
+    if (nextError !== undefined && nextError !== '') composeErrors.current.set(extensionId, nextError)
+    else composeErrors.current.delete(extensionId)
+    if (composeErrors.current.size === 0) {
+      setComposeError(prev => {
+        if (prev !== undefined) setError(current => (current === prev ? undefined : current))
+        return undefined
+      })
+    }
+    const nextSummary = options?.summary?.trim() ?? ''
+    setComposeSummaries(current => {
+      const prev = current[extensionId] ?? ''
+      if (prev === nextSummary) return current
+      const next = { ...current }
+      if (nextSummary === '') delete next[extensionId]
+      else next[extensionId] = nextSummary
+      return next
+    })
   }, [])
   const [scheduleEnabled, setScheduleEnabled] = useState(initialTask?.schedule?.enabled ?? false)
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>(initialTask?.schedule?.mode ?? 'cron')
@@ -255,6 +277,14 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
     // Blank rows never reach the wire: the protocol rejects a tag with an
     // empty name, and an empty list is expressed by omitting the field.
     const tagList = cleanTags(tags)
+    setSubmitAttempt(count => count + 1)
+    const blockingError = [...composeErrors.current.values()][0]
+    if (blockingError !== undefined) {
+      setComposeError(blockingError)
+      setError(blockingError)
+      return
+    }
+    setComposeError(undefined)
     // What the providers reported for THIS card, through the board's own payload
     // gate: one unusable entry is dropped and named, never allowed to stop the
     // create, and a dialog no provider feeds sends no `integrations` key at all
@@ -415,11 +445,19 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
     : t('new.summary.attachmentCount', { count: String(attachmentCount) })
   const tagCount = cleanTags(tags).length
   const labelsSummary = tagCount === 0 ? t('new.summary.none') : t('new.summary.labelCount', { count: String(tagCount) })
-  const runSummary = reuseSession ? t('exec.reuseSession') : t('new.summary.none')
+  const runSummaryParts = [
+    ...(reuseSession ? [t('exec.reuseSession')] : []),
+    ...Object.values(composeSummaries),
+  ]
+  const runSummary = runSummaryParts.length > 0 ? runSummaryParts.join(' · ') : t('new.summary.none')
   // What the registered providers contribute to this dialog, read once so the
   // run region can tell a deployment without a provider (nothing to wrap) from
   // one that registered rows here.
-  const composeSeat = seats.composeSection({ contribute })
+  const composeSeat = seats.composeSection({
+    contribute,
+    ...(initialTask?.integrations === undefined ? {} : { initialIntegrations: initialTask.integrations }),
+    submitAttempt,
+  })
   const handoverSummary = freezeText.trim() !== '' || handoverText.trim() !== ''
     ? t('new.summary.filled')
     : t('new.summary.none')
@@ -641,7 +679,13 @@ export function NewTaskModal({ controller, onClose, initialTask, defaultWorkspac
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title={t('new.section.run')} summary={runSummary}>
+      <CollapsibleSection
+        title={t('new.section.run')}
+        summary={runSummary}
+        defaultOpen={initialTask?.integrations !== undefined && Object.keys(initialTask.integrations).length > 0 && composeSeat !== null && composeSeat !== undefined}
+        forceOpen={composeError !== undefined}
+        keepMounted={composeSeat !== null && composeSeat !== undefined}
+      >
         <label className={css.scheduleToggle}>
           <input
             type="checkbox"

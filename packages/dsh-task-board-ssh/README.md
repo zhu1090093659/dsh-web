@@ -7,10 +7,10 @@ A task-board provider extension that runs a pinned card as a headless agent sess
 ## What it does
 
 - Registers the `ssh` provider extension with the task board and takes over the cards pinned to a remote target at the board's single launch gate, so the native run button, a schedule and `task_board_run` all take the same path.
-- Starts dsh, Claude Code, Codex or a custom command on the host through one POSIX `sh` launcher, detached with `setsid nohup`, so a run outlives the SSH connection and the local host.
-- Keeps the run account in the card's own payload and the output in a remote file read back by byte offset, so a log replays from its start at any time.
+- Starts dsh, Claude Code, Codex or a custom command on the host through one POSIX `sh` launcher, detached with `setsid nohup` (falling back to `nohup` on hosts without `setsid`, such as macOS), so a run outlives the SSH connection and the local host.
+- Keeps the run account in the card's own payload and the output in a remote file read back by bounded byte-offset pages, so a log replays from its start at any time.
 - Adds three model-visible tools (`task_board_ssh_target`, `task_board_ssh_status`, `task_board_ssh_follow_up`) and one task-detail seat holding the target form, the run state, the log viewer, the follow-up box and cancel.
-- Offers the same target choice in the create dialog's own execution settings, so a card can be created already pinned to a host. The choice starts as no target at all: such a card is created untargeted and its detail seat sets the target afterwards, exactly as before.
+- Offers the same target choice in the create dialog's Run Mode section, so a card can be created already pinned to a host. The choice starts as no target at all: such a card is created untargeted and its detail seat sets the target afterwards, exactly as before.
 - Cancelling a run from the task-detail seat stops the remote process and puts the card back in the to-do column, with no verdict written.
 
 ## Execution modes
@@ -52,7 +52,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board-ssh
 
 ### Per card
 
-A card's target is chosen in the create dialog's execution settings, or on its detail seat afterwards. Both surfaces edit these same four fields, and a card created without a target keeps none: nothing is pinned until one of them says where it runs.
+A card's target is chosen in the create dialog's Run Mode section, or on its detail seat afterwards. Both surfaces edit these same four fields, and a card created without a target keeps none: nothing is pinned until one of them says where it runs.
 
 - `mode`: `direct` or `proxy`, as described under execution modes.
 - `host`: the dsh-ssh host alias the run addresses.
@@ -76,7 +76,7 @@ A card's target is chosen in the create dialog's execution settings, or on its d
 ## Known limitations
 
 - Codex is unverified. Its flags and event names come from OpenAI's non-interactive-mode documentation, and the adapter is fixture-tested against that documented stream only; the first run on a host that has Codex must confirm or correct it.
-- The launcher needs a POSIX `sh` and `setsid` on the host; a host carrying neither cannot run a direct card.
+- The launcher needs a POSIX `sh` on the host (using `setsid` when present and falling back to `nohup` otherwise, e.g. on macOS); a host without POSIX `sh` cannot run a direct card.
 - A card moved out of the running column while its run is active is read as a cancel request, so a mistaken drag stops the remote run.
 - A git workspace needs a repository on one side or the other: a local directory that is not a git repository cannot be sent to a host.
 - The run directory under `~/.dsh/task-board-ssh/runs/<runId>/` on the host is the only copy of that run's output; nothing about it is copied into the card.

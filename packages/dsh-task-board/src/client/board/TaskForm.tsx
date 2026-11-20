@@ -98,6 +98,7 @@ export function CollapsibleSection({
   summary,
   defaultOpen = false,
   forceOpen = false,
+  keepMounted = false,
   children,
 }: {
   title: string
@@ -107,12 +108,17 @@ export function CollapsibleSection({
   defaultOpen?: boolean
   /** Open regardless of the stored state: an error inside must stay visible. */
   forceOpen?: boolean
+  /** Keep children mounted while collapsed so provider seats keep their local state. */
+  keepMounted?: boolean
   children: ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
+  const [openedOnce, setOpenedOnce] = useState(defaultOpen || forceOpen)
   const panelId = useId()
   const expanded = forceOpen || open
+  if (expanded && !openedOnce) setOpenedOnce(true)
   const presence = usePresence(expanded)
+  const rendered = presence.mounted || (keepMounted && openedOnce)
   // The one-line preview is also the row's title, so the line that ellipsizes
   // in the header stays readable in full (same rule as the panel's folds).
   const fullLine = summary ?? ''
@@ -132,8 +138,13 @@ export function CollapsibleSection({
           <span className={css.formSectionSummary}>{summary}</span>
         )}
       </button>
-      {presence.mounted && (
-        <div className={css.formSectionBody} id={panelId} data-state={presence.phase}>
+      {rendered && (
+        <div
+          className={css.formSectionBody}
+          id={panelId}
+          data-state={presence.mounted ? presence.phase : 'closed'}
+          hidden={!presence.mounted}
+        >
           {children}
         </div>
       )}

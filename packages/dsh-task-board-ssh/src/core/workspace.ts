@@ -32,6 +32,12 @@ export interface SshWorkspaceRun {
   source?: SshGitSource
   /** Local repository root, present when `source` is the workspace repository. */
   localRepository?: string
+  /**
+   * Earlier run id whose git worktree/branch this follow-up/rework run reuses
+   * so prior commits stay in place and cwd-scoped sessions (e.g. Claude Code)
+   * can resume cleanly.
+   */
+  reuseWorktreeRunId?: string
   /** Aborts a transfer or a remote command. */
   signal?: AbortSignal
 }
@@ -64,4 +70,9 @@ export interface SshWorkspaceStrategy {
    * @returns the branch that carries the result, when there is one.
    */
   collect(run: SshWorkspaceRun): Promise<SshWorkspaceCollection>
+  /**
+   * Optional cleanup invoked when a card is deleted (removes worktrees/refs).
+   * @param run - run whose workspace resources should be reclaimed.
+   */
+  cleanup?(run: SshWorkspaceRun): Promise<void>
 }

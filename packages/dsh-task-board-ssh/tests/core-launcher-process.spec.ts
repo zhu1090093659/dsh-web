@@ -222,6 +222,75 @@ describe('launcher input validation', () => {
 
     // Then the usage line names the supported verbs
     expect(refused.code).toBe(64)
-    expect(refused.stderr).toContain('start|status|tail|cancel')
+    expect(refused.stderr).toContain('start|status|tail|stderr|cancel')
+  })
+
+  it('operator passing dot or dot-dot as a run id is refused before touching the state directory', () => {
+    // Given an installed launcher
+    const stateDir = installedState('validate-dots')
+
+    // When `.` or `..` is passed as a run id
+    const dot = runVerb(stateDir, ['start', '.'])
+    const dotdot = runVerb(stateDir, ['start', '..'])
+
+    // Then both are rejected with usage error 65
+    expect(dot.code).toBe(65)
+    expect(dotdot.code).toBe(65)
+  })
+})
+
+describe('launcher hardening and diagnostics', () => {
+  it('operator starting a command that exits immediately observes state=exited rather than lost', async () => {
+    // Given a run whose agent prints and exits instantaneously
+    const stateDir = installedState('fast-exit')
+    prepareRun(stateDir, 'run-fast', 'echo instant\nexit 0\n')
+
+    // When start runs
+    const started = parseLauncherStatus(runVerb(stateDir, ['start', 'run-fast']).stdout)
+    const status = parseLauncherStatus(runVerb(stateDir, ['status', 'run-fast']).stdout)
+
+    // Then neither start nor status reports lost
+    expect(['running', 'exited']).toContain(started.state)
+    await vi.waitFor(() => {
+      expect(parseLauncherStatus(runVerb(stateDir, ['status', 'run-fast']).stdout).state).toBe('exited')
+    }, { timeout: 10_000, interval: 20 })
+    expect(status.state).not.toBe('lost')
+  })
+
+  it('operator running a piped custom template still delivers prompt_file content to the pipeline', async () => {
+    // Given a custom command with a shell pipe reading {prompt_file}
+    const stateDir = installedState('pipe-template')
+    const promptPath = runFilePath(stateDir, 'run-pipe', 'prompt.txt')
+    prepareRun(stateDir, 'run-pipe', `cat '${promptPath}' | tr a-z A-Z\n`)
+    writeFileSync(promptPath, 'hello remote\n')
+
+    // When the launcher runs it
+    runVerb(stateDir, ['start', 'run-pipe'])
+    await vi.waitFor(() => {
+      expect(parseLauncherStatus(runVerb(stateDir, ['status', 'run-pipe']).stdout).state).toBe('exited')
+    }, { timeout: 10_000, interval: 20 })
+
+    // Then stdout received the piped output intact
+    expect(tailBytes(stateDir, 'run-pipe', 0).toString('utf8')).toBe('HELLO REMOTE\n')
+  })
+
+  it('operator reading bounded tail and stderr gets exact slices and failure diagnostics', async () => {
+    // Given a run that writes both stdout and stderr
+    const stateDir = installedState('bounded-tail-stderr')
+    prepareRun(stateDir, 'run-diag', 'printf "0123456789"\nprintf "boom detail\\n" >&2\nexit 2\n')
+    runVerb(stateDir, ['start', 'run-diag'])
+    await vi.waitFor(() => {
+      expect(parseLauncherStatus(runVerb(stateDir, ['status', 'run-diag']).stdout).state).toBe('exited')
+    }, { timeout: 10_000, interval: 20 })
+
+    // When tail is called with a byte limit and stderr is requested
+    const limited = runVerb(stateDir, ['tail', 'run-diag', '2', '4'])
+    const errOut = runVerb(stateDir, ['stderr', 'run-diag', '64'])
+
+    // Then tail returns exactly 4 bytes starting at offset 2 and stderr returns the diagnostic
+    expect(limited.code).toBe(0)
+    expect(limited.stdout).toBe('2345')
+    expect(errOut.code).toBe(0)
+    expect(errOut.stdout).toContain('boom detail')
   })
 })

@@ -32,12 +32,16 @@ export interface SshCardDecorationProps {
   task: TaskRecord
 }
 
+/** Optional metadata reported alongside a new-card draft. */
+export interface SshComposeDraftOptions {
+  /** One-line summary displayed when the Run Mode section is collapsed. */
+  summary?: string
+  /** Non-empty validation blocker message; prevents the dialog from submitting or running locally. */
+  error?: string
+}
+
 /**
  * Owner props of the new-card seat inside the board's create dialog.
- *
- * The dialog is about to create a card, so there is nothing to read yet: the
- * seat has exactly one channel out, and it writes the draft the board stores on
- * the card it creates.
  */
 export interface SshComposeSectionProps {
   /**
@@ -46,5 +50,9 @@ export interface SshComposeSectionProps {
    * detail seat sets a target after the fact. A later call replaces the earlier
    * draft, and the board reads the last one when the dialog submits.
    */
-  contribute(extensionId: string, payload: TaskBoardExtensionPayload | undefined): void
+  contribute(extensionId: string, payload: TaskBoardExtensionPayload | undefined, options?: SshComposeDraftOptions): void
+  /** Initial integrations of the source card when duplicating a card. */
+  initialIntegrations?: Readonly<Record<string, unknown>>
+  /** Incremented on each submit attempt so untouched field errors can be revealed. */
+  submitAttempt?: number
 }

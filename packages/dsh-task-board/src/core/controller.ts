@@ -160,7 +160,7 @@ export interface ExecutionOptionsSnapshot {
  * (revision/scheduler/power); a full snapshot also carries the deployment
  * constants the UI reads (session default permission, subtask depth).
  */
-export type HostMirror = Pick<TaskBoardSnapshot, 'revision' | 'scheduler' | 'power' | 'sessionDefaultPermission' | 'maxSubtaskDepth' | 'cardDefaults' | 'extensions' | 'attachmentLimits'>
+export type HostMirror = Pick<TaskBoardSnapshot, 'revision' | 'extensionsRevision' | 'scheduler' | 'power' | 'sessionDefaultPermission' | 'maxSubtaskDepth' | 'cardDefaults' | 'extensions' | 'attachmentLimits'>
 
 /** Immutable controller snapshot for UI subscriptions. */
 export interface ControllerSnapshot {
@@ -853,7 +853,8 @@ export class BoardController {
    * re-serialize the whole ledger per tab even while nothing changes.
    */
   private onRemoteEvent(event: TaskBoardEventPayload | undefined): void {
-    if (event !== undefined && this.hostState !== undefined && event.revision === this.hostState.revision
+    const sameExtensions = event?.extensionsRevision === this.hostState?.extensionsRevision
+    if (event !== undefined && this.hostState !== undefined && event.revision === this.hostState.revision && sameExtensions
       && typeof event.scheduler === 'object' && event.scheduler !== null
       && typeof event.power === 'object' && event.power !== null) {
       this.hostState = { ...this.hostState, revision: event.revision, scheduler: event.scheduler, power: event.power }
@@ -890,7 +891,11 @@ export class BoardController {
     // value over would keep a CLEARED default alive in the create dialog, which
     // is the mirror image of the staleness this key is re-read for.
     const cardDefaults = snapshot.cardDefaults
-    const extensions = snapshot.extensions ?? this.hostState?.extensions
+    // Published extension summaries are NOT carried over across snapshots: the
+    // Host omits `extensions` when the last running extension unmounts, so
+    // carrying over an earlier value would keep a stale summary alive forever.
+    const extensions = snapshot.extensions
+    const extensionsRevision = snapshot.extensionsRevision
     // The attachment limits are carried over: a deployment that lowers them
     // must keep the browser's refusal in step until the next snapshot.
     const attachmentLimits = snapshot.attachmentLimits ?? this.hostState?.attachmentLimits
@@ -898,6 +903,7 @@ export class BoardController {
       revision: snapshot.revision,
       scheduler: snapshot.scheduler,
       power: snapshot.power,
+      ...(extensionsRevision === undefined ? {} : { extensionsRevision }),
       ...(sessionDefaultPermission === undefined ? {} : { sessionDefaultPermission }),
       ...(maxSubtaskDepth === undefined ? {} : { maxSubtaskDepth }),
       ...(cardDefaults === undefined ? {} : { cardDefaults }),

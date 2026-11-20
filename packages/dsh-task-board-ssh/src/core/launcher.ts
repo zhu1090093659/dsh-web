@@ -13,7 +13,7 @@ import { LAUNCHER_SCRIPT } from './launcher-script.ts'
 import { shellEnsureDir, shellJoin, shellQuote, shellWriteFile } from './shell.ts'
 
 /** Verbs the installed script accepts. */
-export const LAUNCHER_VERBS = ['start', 'status', 'tail', 'cancel'] as const
+export const LAUNCHER_VERBS = ['start', 'status', 'tail', 'stderr', 'cancel'] as const
 
 /** One launcher verb. */
 export type LauncherVerb = (typeof LAUNCHER_VERBS)[number]
@@ -89,7 +89,7 @@ export function launcherScriptPath(stateDir: string, hash: string = launcherScri
  * @returns whether it matches the script's grammar.
  */
 export function isRunId(runId: string): boolean {
-  return RUN_ID_RE.test(runId)
+  return runId !== '.' && runId !== '..' && RUN_ID_RE.test(runId)
 }
 
 /**
@@ -133,18 +133,20 @@ const LAUNCHER_STAGING_SUFFIX = '.install'
  */
 export function buildLauncherInstallCommand(stateDir: string, script: string = LAUNCHER_SCRIPT): string {
   const path = launcherScriptPath(stateDir, launcherScriptHash(script))
-  const staging = path + LAUNCHER_STAGING_SUFFIX
+  // Per-shell PID suffix prevents concurrent installs on the same host
+  // (default perHostCap = 2) from deleting or racing on one shared staging file.
+  const stagingExpr = `${shellQuote(path + LAUNCHER_STAGING_SUFFIX + '.')}$$`
   return [
     shellEnsureDir(stateDir),
-    shellWriteFile(staging, script),
-    `chmod 700 ${shellQuote(staging)}`,
-    `mv -f ${shellQuote(staging)} ${shellQuote(path)}`,
+    `printf '%s' ${shellQuote(script)} > ${stagingExpr}`,
+    `chmod 700 ${stagingExpr}`,
+    `mv -f ${stagingExpr} ${shellQuote(path)}`,
   ].join(' && ')
 }
 
 /**
  * Build the command that invokes one verb.
- * @param input - state directory, verb, run id and, for `tail`, the byte offset.
+ * @param input - state directory, verb, run id and optional byte bounds.
  * @returns one shell command.
  */
 export function buildLauncherCommand(input: {
@@ -156,6 +158,8 @@ export function buildLauncherCommand(input: {
   runId: string
   /** Byte offset for `tail`; ignored by every other verb. */
   offset?: number
+  /** Maximum byte count for `tail` or `stderr`; omitted reads to EOF / default. */
+  limit?: number
 }): string {
   if (!isRunId(input.runId)) throw new RangeError(`invalid run id: ${input.runId}`)
   const scriptPath = launcherScriptPath(input.stateDir)
@@ -164,16 +168,24 @@ export function buildLauncherCommand(input: {
     const offset = input.offset ?? 0
     if (!Number.isInteger(offset) || offset < 0) throw new RangeError(`invalid byte offset: ${String(offset)}`)
     words.push(String(offset))
+    if (input.limit !== undefined) {
+      if (!Number.isInteger(input.limit) || input.limit <= 0) throw new RangeError(`invalid byte limit: ${String(input.limit)}`)
+      words.push(String(input.limit))
+    }
+  } else if (input.verb === 'stderr' && input.limit !== undefined) {
+    if (!Number.isInteger(input.limit) || input.limit <= 0) throw new RangeError(`invalid byte limit: ${String(input.limit)}`)
+    words.push(String(input.limit))
   }
-  return shellJoin(words)
+  return `TASK_BOARD_SSH_STATE=${shellQuote(input.stateDir)} ${shellJoin(words)}`
 }
 
 /** The command body a run executes, as `cmd.sh` holds it. */
 export function agentScript(command: SshAgentCommand): string {
-  const redirect = command.stdinFile === undefined
-    ? '< /dev/null'
-    : `< ${shellQuote(command.stdinFile)}`
-  return `${command.command} ${redirect}`
+  // `run_exec` already runs `sh "$dir/cmd.sh" < /dev/null`, so templates
+  // without an adapter-managed `stdinFile` stay verbatim (preserving user
+  // redirections like `cmd < {prompt_file}` and pipelines like `cat ... | cmd`).
+  if (command.stdinFile === undefined) return command.command
+  return `${command.command} < ${shellQuote(command.stdinFile)}`
 }
 
 /**

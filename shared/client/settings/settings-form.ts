@@ -140,11 +140,13 @@ export interface NumberConstraints {
   integer?: boolean
   /** The accepted value must be at least this. */
   min?: number
+  /** The accepted value must be at most this. */
+  max?: number
 }
 
 /** A whole- or decimal-number field. An empty draft clears the field; any other draft that is not a finite number within the constraints stays unwritten. */
 export function numberField(field: string, constraints: NumberConstraints = {}): FieldSpec {
-  const { integer = false, min } = constraints
+  const { integer = false, min, max } = constraints
   return {
     field,
     entry: 'type',
@@ -156,6 +158,7 @@ export function numberField(field: string, constraints: NumberConstraints = {}):
       if (!Number.isFinite(parsed)) return undefined
       if (integer && !Number.isInteger(parsed)) return undefined
       if (min !== undefined && parsed < min) return undefined
+      if (max !== undefined && parsed > max) return undefined
       return { kind: 'set', value: parsed }
     },
   }
@@ -438,7 +441,7 @@ export class CardForm<T> {
     // against. Settling is the only signal the form has; the rest of the
     // batch, when one exists, still carries the atomic verdict by read-back.
     if (this.specOf(field).secret) return true
-    return this.userLayer()?.[field] === value
+    return jsonValuesEqual(this.userLayer()?.[field], value)
   }
 
   /**
@@ -506,4 +509,20 @@ export class CardForm<T> {
   private publish(): void {
     for (const listener of this.listeners) listener()
   }
+}
+
+/** Structural equality for JSON settings values (primitives, arrays, plain objects). */
+function jsonValuesEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true
+  if (typeof left !== 'object' || left === null || typeof right !== 'object' || right === null) return false
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false
+    return left.every((item, index) => jsonValuesEqual(item, right[index]))
+  }
+  const a = left as Record<string, unknown>
+  const b = right as Record<string, unknown>
+  const keysA = Object.keys(a).filter(key => a[key] !== undefined)
+  const keysB = Object.keys(b).filter(key => b[key] !== undefined)
+  if (keysA.length !== keysB.length) return false
+  return keysA.every(key => Object.hasOwn(b, key) && jsonValuesEqual(a[key], b[key]))
 }

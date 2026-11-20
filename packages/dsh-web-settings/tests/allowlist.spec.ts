@@ -105,6 +105,11 @@ describe('resolveNamespaceEntry', () => {
     // aggregate's subplugin (`@linxin666/dsh-web-all/x`).
     expect(resolveNamespaceEntry('@linxin666/dsh-client-ui-task-board')).toBe('task-board')
     expect(resolveNamespaceEntry('@linxin666/dsh-web-all/task-board')).toBe('task-board')
+    expect(resolveNamespaceEntry('@linxin666/dsh-client-ui-task-board-ssh')).toBe('task-board-ssh')
+    expect(resolveNamespaceEntry('dsh-task-board-ssh')).toBe('task-board-ssh')
+    expect(resolveNamespaceEntry('task-board-ssh')).toBe('task-board-ssh')
+    expect(resolveNamespaceEntry('web-ui-task-board-ssh')).toBe('task-board-ssh')
+    expect(resolveNamespaceEntry('ui-task-board-ssh')).toBe('task-board-ssh')
     expect(resolveNamespaceEntry('@linxin666/dsh-ssh')).toBe('dsh-ssh')
     expect(resolveNamespaceEntry('@linxin666/dsh-web-all/pet')).toBe('pet')
     expect(resolveNamespaceEntry('@linxin666/dsh-client-ui-skin-center')).toBe('skin-background')
@@ -191,5 +196,9 @@ describe('composeAllowlist', () => {
   it('drops namespaces not registered in the settings seam', () => {
     expect(composeAllowlist(['dsh-ssh'], ['web-search-deepseek'])).toEqual([])
     expect(composeAllowlist([], [])).toEqual([])
+  })
+
+  it('exposes task-board-ssh in the default family fallback when registered', () => {
+    expect(composeAllowlist([], ['task-board', 'task-board-ssh'])).toEqual(['task-board', 'task-board-ssh'])
   })
 })

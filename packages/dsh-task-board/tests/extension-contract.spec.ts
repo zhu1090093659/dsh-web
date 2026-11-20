@@ -421,4 +421,67 @@ describe('extension registry contract', () => {
     expect(task?.executions.at(-1)?.error).toContain('agent preset not found: not-a-preset')
     host.dispose()
   })
+
+  it('operator whose provider action returns ok: false sees the refusal propagated instead of silent success', async () => {
+    // Given a provider whose action handler refuses with a domain reason
+    const host = makeBoard()
+    admit(host, {
+      id: 'refuser',
+      apiVersion: TASK_BOARD_API_VERSION,
+      handleAction: () => ({ ok: false, error: 'host alias not configured' }),
+    })
+
+    // When the action is dispatched through the board
+    // Then the board rejects with the provider's refusal reason
+    await expect(host.apply('refuse-1', {
+      kind: 'extension-action',
+      extensionId: 'refuser',
+      action: 'set-target',
+    })).rejects.toThrow('host alias not configured')
+    host.dispose()
+  })
+
+  it('operator watching live SSE events receives a refresh when a provider publishes updated state', () => {
+    // Given a board subscribed to SSE payloads and one admitted provider
+    const host = makeBoard()
+    const { face } = admit(host, { id: 'streamer', apiVersion: TASK_BOARD_API_VERSION })
+    const events: Array<{ revision: number; extensionsRevision?: number }> = []
+    const unsub = host.subscribe(() => { events.push(host.eventPayload()) })
+    const beforeRev = host.snapshot().extensionsRevision ?? 0
+
+    // When the provider publishes a new summary (for example a live log window)
+    face().publish({ logs: { t1: { text: 'line 1\n' } } })
+
+    // Then extensionsRevision advances and an SSE event is emitted
+    const afterRev = host.snapshot().extensionsRevision ?? 0
+    expect(afterRev).toBeGreaterThan(beforeRev)
+    expect(events.length).toBeGreaterThanOrEqual(1)
+    expect(events.at(-1)?.extensionsRevision).toBe(afterRev)
+    unsub()
+    host.dispose()
+  })
+
+  it('operator with a scheduled card already in the running column sees the next trigger skipped as busy', () => {
+    // Given a scheduled card currently in the running column (e.g. an external SSH run)
+    const host = makeBoard()
+    const dueAt = Date.now() + 60_000
+    host.apply('c-sched', {
+      kind: 'create',
+      id: 't-sched',
+      input: {
+        ...makeTaskInput('Remote scheduled'),
+        schedule: { mode: 'once', at: dueAt, enabled: true, timeZone: 'UTC' },
+      },
+    })
+    const card = host.ledger.getTask('t-sched') as TaskRecord
+    host.ledger.saveTaskRecord({ ...card, status: 'running' })
+
+    // When the scheduler attempts to open a scheduled run for it
+    const opened = host.ledger.openScheduled('t-sched', dueAt)
+
+    // Then no run opens and the schedule records endedReason = 'busy'
+    expect(opened).toEqual([])
+    expect(host.ledger.getTask('t-sched')?.schedule?.endedReason).toBe('busy')
+    host.dispose()
+  })
 })

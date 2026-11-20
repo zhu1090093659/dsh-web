@@ -38,11 +38,14 @@ import {
   preparedProbeCommand,
   pushBranchCommand,
   remoteStartRef,
+  removeWorktreeCommand,
 } from './remote-git.ts'
 import {
   downloadFromHost,
+  execRemote,
   execRemoteChecked,
   probeRemote,
+  redactGitUrl,
   removeRemoteFile,
   uploadToHost,
 } from './remote.ts'
@@ -56,6 +59,25 @@ type WorkspaceSource = Extract<SshGitSource, { kind: 'workspace' }>
 
 /** Prefix of every local scratch directory, so a leaked one is attributable. */
 const SCRATCH_PREFIX = 'dsh-task-board-ssh-'
+
+/**
+ * Per-(host, bare cache) serialization tails so concurrent runs against the
+ * same repository (e.g. default perHostCap = 2) never collide on `git init`,
+ * `worktree prune`, or shared `refs/dsh-remote/*` ref locks.
+ */
+const cacheQueues = new Map<string, Promise<unknown>>()
+
+async function withCacheLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const prev = cacheQueues.get(key) ?? Promise.resolve()
+  const run = prev.catch(() => {}).then(fn)
+  const tail = run.then(() => {}, () => {})
+  cacheQueues.set(key, tail)
+  try {
+    return await run
+  } finally {
+    if (cacheQueues.get(key) === tail) cacheQueues.delete(key)
+  }
+}
 
 /**
  * The git mechanism's shared state machine.
@@ -77,6 +99,12 @@ abstract class GitWorkspaceStrategyBase implements SshWorkspaceStrategyWithNote 
     this.sourceIdentity = sourceIdentity
   }
 
+  /** Effective run whose worktree/branch this operation owns (reused on follow-up/rework). */
+  private layoutFor(run: SshWorkspaceRun): GitWorkspaceLayout {
+    const effectiveRunId = run.reuseWorktreeRunId ?? run.runId
+    return gitWorkspaceLayout({ ...run, runId: effectiveRunId }, this.sourceIdentity)
+  }
+
   /**
    * Make the run's worktree exist on its branch, or confirm it already does.
    * @param run - the run being prepared.
@@ -84,19 +112,22 @@ abstract class GitWorkspaceStrategyBase implements SshWorkspaceStrategyWithNote 
    * @throws SshWorkspaceError when the host, the source or git refused.
    */
   async prepare(run: SshWorkspaceRun): Promise<SshWorkspacePreparationNote> {
-    const layout = gitWorkspaceLayout(run, this.sourceIdentity)
+    const layout = this.layoutFor(run)
     const note = await this.sourceNote(run)
-    if (await probeRemote(run, preparedProbeCommand(layout))) return { cwd: layout.worktreeDir, ...note }
-    await execRemoteChecked(run, prepareCacheCommand(layout), 'preparing the repository cache')
-    if (await probeRemote(run, branchProbeCommand(layout))) {
-      // The branch outlived its directory; re-attach it instead of resetting it,
-      // because the commits it carries are the run's work.
-      await execRemoteChecked(run, attachWorktreeCommand(layout), `re-attaching the worktree of ${layout.branch}`)
-    } else {
-      const start = await this.seed(run, layout)
-      await execRemoteChecked(run, addWorktreeCommand(layout, start), `creating the worktree of ${layout.branch}`)
-    }
-    return { cwd: layout.worktreeDir, ...note }
+    const lockKey = `${run.host}:${layout.cacheDir}`
+    return await withCacheLock(lockKey, async () => {
+      if (await probeRemote(run, preparedProbeCommand(layout))) return { cwd: layout.worktreeDir, ...note }
+      await execRemoteChecked(run, prepareCacheCommand(layout), 'preparing the repository cache')
+      if (await probeRemote(run, branchProbeCommand(layout))) {
+        // The branch outlived its directory; re-attach it instead of resetting it,
+        // because the commits it carries are the run's work.
+        await execRemoteChecked(run, attachWorktreeCommand(layout), `re-attaching the worktree of ${layout.branch}`)
+      } else {
+        const start = await this.seed(run, layout)
+        await execRemoteChecked(run, addWorktreeCommand(layout, start), `creating the worktree of ${layout.branch}`)
+      }
+      return { cwd: layout.worktreeDir, ...note }
+    })
   }
 
   /**
@@ -106,13 +137,26 @@ abstract class GitWorkspaceStrategyBase implements SshWorkspaceStrategyWithNote 
    * @throws SshWorkspaceError when no workspace was prepared or publishing failed.
    */
   async collect(run: SshWorkspaceRun): Promise<SshWorkspaceCollection> {
-    const layout = gitWorkspaceLayout(run, this.sourceIdentity)
+    const layout = this.layoutFor(run)
     if (!(await probeRemote(run, branchProbeCommand(layout)))) {
       throw new SshWorkspaceError(`this run has no prepared git workspace on ${run.host}: ${layout.branch}`)
     }
     if ((await this.countRunCommits(run, layout)) === 0) return {}
     await this.publish(run, layout)
     return { branch: layout.branch }
+  }
+
+  /** Best-effort reclamation of a run's remote worktree, branch and base ref. */
+  async cleanup(run: SshWorkspaceRun): Promise<void> {
+    const layout = this.layoutFor(run)
+    const lockKey = `${run.host}:${layout.cacheDir}`
+    await withCacheLock(lockKey, async () => {
+      try {
+        await execRemote(run, removeWorktreeCommand(layout))
+      } catch {
+        // Best-effort cleanup on card deletion.
+      }
+    })
   }
 
   /**
@@ -172,13 +216,17 @@ export class GitUrlWorkspaceStrategy extends GitWorkspaceStrategyBase {
 
   protected async seed(run: SshWorkspaceRun, layout: GitWorkspaceLayout): Promise<string> {
     const startRef = remoteStartRef(this.source)
-    await execRemoteChecked(run, fetchUrlCommand(layout, this.source.url), `fetching ${this.source.url}`)
+    const displayUrl = redactGitUrl(this.source.url)
+    await execRemoteChecked(run, fetchUrlCommand(layout, this.source.url), `fetching ${displayUrl}`)
     await execRemoteChecked(run, pinBaseCommand(layout, startRef), `pinning the base of ${layout.branch}`)
-    return startRef
+    // Branch from the immutable per-run `layout.baseRef` rather than the
+    // shared mutable `startRef` so a concurrent fetch can never skew base..branch.
+    return layout.baseRef
   }
 
   protected async publish(run: SshWorkspaceRun, layout: GitWorkspaceLayout): Promise<void> {
-    const what = `pushing ${layout.branch} to ${this.source.url}`
+    const displayUrl = redactGitUrl(this.source.url)
+    const what = `pushing ${layout.branch} to ${displayUrl}`
     await execRemoteChecked(run, pushBranchCommand(layout, this.source.url), what)
   }
 }

@@ -304,4 +304,32 @@ describe('new-card provider seat', () => {
     expect(rows.map(row => row.getAttribute('data-provider'))).toEqual(['alpha', 'beta'])
     expect(readsAfter(rows[0] as Node, reuseSwitch(body))).toBe(true)
   })
+
+  it('user submitting while a compose provider reports an incomplete draft is blocked instead of falling back locally', async () => {
+    // Given a provider that reports a blocking error on its draft
+    function Blocker({ contribute, submitAttempt }: TaskBoardComposeSectionProps): ReactNode {
+      useEffect(() => {
+        contribute('ssh', undefined, { summary: 'remote', error: 'remote path required' })
+      }, [contribute])
+      return <div data-provider="ssh" data-attempts={String(submitAttempt ?? 0)} />
+    }
+    const modal = renderModal(seatsOf(props => <Blocker {...props} />))
+    runRegionBody(modal.container)
+    // Collapse Run Mode before clicking create to verify the modal re-opens it and blocks submit
+    const runHeader = [...modal.container.querySelectorAll('button')]
+      .find(button => button.textContent?.includes(t('new.section.run')))
+    if (runHeader === undefined) throw new Error('missing run-mode section toggle')
+    act(() => { runHeader.click() })
+
+    // When the user submits the form
+    const form = modal.container.querySelector('form')
+    if (form === null) throw new Error('no create-dialog form')
+    await act(async () => {
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+
+    // Then the modal did NOT create a local card and signaled the provider's submitAttempt
+    expect(modal.createTaskConfirmed).not.toHaveBeenCalled()
+    expect(modal.container.querySelector('[data-provider="ssh"]')?.getAttribute('data-attempts')).toBe('1')
+  })
 })

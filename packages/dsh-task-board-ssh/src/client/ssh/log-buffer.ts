@@ -36,8 +36,27 @@ export interface SshLogFrame {
   endOffset: number
   /** The bytes themselves, verbatim. */
   text: string
-  /** Whether the provider itself skipped bytes before `baseOffset`. */
+  /** Legacy flag: whether bytes before `baseOffset` were skipped (unless `hasMore` is set). */
   truncated?: boolean
+  /** Explicit flag from Host: more trailing bytes exist after `endOffset` (NOT missing earlier output). */
+  hasMore?: boolean
+}
+
+/** Drop the first `from` UTF-8 bytes of `text` without splitting multi-byte code points. */
+function sliceTextFromByte(text: string, from: number): string {
+  if (from <= 0) return text
+  const encoder = new TextEncoder()
+  let bytes = 0
+  let index = 0
+  while (index < text.length) {
+    const code = text.codePointAt(index) ?? 0
+    const character = String.fromCodePoint(code)
+    const size = encoder.encode(character).length
+    if (bytes + size > from) break
+    bytes += size
+    index += character.length
+  }
+  return text.slice(index)
 }
 
 /** What a renderer reads out of the buffer. */
@@ -113,12 +132,20 @@ export class SshLogBuffer {
     }
     if (frame.text.length === 0) return false
     if (frame.endOffset <= this.endOffset) return false
+    let incoming = frame.text
     if (this.count === 0 && frame.baseOffset > 0) this.gap = true
     else if (this.endOffset > 0 && frame.baseOffset > this.endOffset) this.gap = true
-    if (frame.truncated === true) this.gap = true
+    else if (this.endOffset > 0 && frame.baseOffset < this.endOffset) {
+      incoming = sliceTextFromByte(incoming, this.endOffset - frame.baseOffset)
+      if (incoming.length === 0) return false
+    }
+    // `hasMore: true` means more tail bytes remain to be paged/polled — NOT that
+    // earlier output before `baseOffset` was skipped. Only flag `gap` when a
+    // legacy frame sets `truncated` without `hasMore`.
+    if (frame.truncated === true && frame.hasMore !== true) this.gap = true
     this.startOffset = this.count === 0 ? frame.baseOffset : Math.min(this.startOffset, frame.baseOffset)
     this.endOffset = frame.endOffset
-    const combined = (this.tail ?? '') + frame.text
+    const combined = (this.tail ?? '') + incoming
     let from = 0
     for (;;) {
       const newline = combined.indexOf('\n', from)

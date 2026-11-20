@@ -1221,6 +1221,10 @@
   border-top: 1px solid var(--dsw-alias-separator-primary);
 }
 
+.formSectionBody[hidden] {
+  display: none;
+}
+
 .field {
   display: flex;
   flex-direction: column;

@@ -139,6 +139,22 @@ function readPathInLayer(target: unknown, path: readonly string[]): { found: boo
   return { found: true, value: curr }
 }
 
+/** Structural equality for JSON settings values (primitives, arrays, plain objects). */
+function jsonValuesEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true
+  if (typeof left !== 'object' || left === null || typeof right !== 'object' || right === null) return false
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false
+    return left.every((item, index) => jsonValuesEqual(item, right[index]))
+  }
+  const a = left as Record<string, unknown>
+  const b = right as Record<string, unknown>
+  const keysA = Object.keys(a).filter(key => a[key] !== undefined)
+  const keysB = Object.keys(b).filter(key => b[key] !== undefined)
+  if (keysA.length !== keysB.length) return false
+  return keysA.every(key => Object.hasOwn(b, key) && jsonValuesEqual(a[key], b[key]))
+}
+
 /**
  * Judge each requested field against a redacted namespace view. A secret
  * field is redacted from the user layer, so it is judged by the view's
@@ -157,7 +173,7 @@ function judgeLandedFields(fields: BridgeBatchOp[], view: { user?: unknown; secr
     if (secretFlag !== undefined) return { field, landed: secretFlag }
     const read = readPathInLayer(user, keyPath)
     if (op === 'set') {
-      return { field, landed: read.found && read.value === value }
+      return { field, landed: read.found && jsonValuesEqual(read.value, value) }
     }
     return { field, landed: !read.found }
   })

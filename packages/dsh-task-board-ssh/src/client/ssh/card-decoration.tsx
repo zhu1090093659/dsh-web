@@ -36,13 +36,14 @@ export function SshCardDecoration({ task }: SshCardDecorationProps) {
   if (target === undefined) return null
   // Nothing is mounted to keep this chip true, so the card claims nothing.
   if (hostHalf === 'unmounted') return null
-  const state = t(phaseKey(view.phase))
+  const isProxy = target.mode === 'proxy'
+  const state = isProxy ? t('detail.mode.proxy') : t(phaseKey(view.phase))
   return (
     <span
       className={css.badge}
       data-dsh-plugin={PLUGIN_ATTR}
       data-dsh-part="badge"
-      data-run={view.phase}
+      data-run={isProxy ? 'idle' : view.phase}
       title={t('card.badgeTitle', { host: target.host, state })}
     >
       <span className={css.badgeDot} aria-hidden="true" />

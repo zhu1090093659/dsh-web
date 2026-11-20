@@ -11,6 +11,8 @@
  * @module dsh-task-board-ssh/core/target
  */
 
+import { validateCustomTemplate } from './adapters/custom.ts'
+
 /** How a pinned card reaches the remote host. */
 export type SshExecutionMode = 'direct' | 'proxy'
 
@@ -136,7 +138,7 @@ export type SshValidationResult<T> =
   | { ok: false; errors: readonly SshValidationIssue[] }
 
 /** Host aliases `dshSsh` accepts: letters, digits, dots, hyphens, underscores. */
-const HOST_ALIAS_RE = /^[A-Za-z0-9._-]{1,128}$/
+export const HOST_ALIAS_RE = /^[A-Za-z0-9._-]{1,128}$/
 
 /** Longest accepted free text in one target or run field. */
 const FIELD_MAX = 2_048
@@ -167,7 +169,16 @@ function startsWithDash(value: string): boolean {
 
 /** Whether a string is a usable absolute POSIX path. */
 function isAbsolutePath(value: string): boolean {
-  return value.startsWith('/') && !value.includes('\u0000') && !value.includes('\n')
+  return value.startsWith('/') && !value.includes('\u0000') && !value.includes('\n') && !value.includes('\r')
+}
+
+/** Whether a string is safe to compose into a git branch/ref name. */
+function isSafeGitRefSegment(value: string): boolean {
+  if (/[\u0000-\u001f\u007f\s~^:?*[\\]/.test(value)) return false
+  if (value.includes('..') || value.includes('@{') || value.startsWith('/') || value.endsWith('/') || value.endsWith('.') || value.endsWith('.lock') || value.includes('//')) {
+    return false
+  }
+  return true
 }
 
 /** Collects issues while a parser walks one value. */
@@ -239,6 +250,10 @@ function parseGitSource(value: unknown, path: string, issues: IssueList): SshGit
       issues.add(urlPath, OPTION_INJECTION_REASON)
       return undefined
     }
+    if (url.includes('\u0000')) {
+      issues.add(urlPath, 'must not contain NUL bytes')
+      return undefined
+    }
     if (/\s/.test(url)) {
       issues.add(urlPath, 'must not contain whitespace')
       return undefined
@@ -247,12 +262,22 @@ function parseGitSource(value: unknown, path: string, issues: IssueList): SshGit
       issues.add(basePath, OPTION_INJECTION_REASON)
       return undefined
     }
+    if (base !== undefined && !isSafeGitRefSegment(base)) {
+      issues.add(basePath, 'must be a valid git branch name without whitespace or control characters')
+      return undefined
+    }
     return base === undefined ? { kind: 'url', url } : { kind: 'url', url, base }
   }
   if (value.kind === 'workspace') {
     rejectUnknownKeys(value, ['kind', 'workspaceId'], path, issues)
-    const workspaceId = readText(value.workspaceId, IssueList.join(path, 'workspaceId'), issues)
-    return workspaceId === undefined ? undefined : { kind: 'workspace', workspaceId }
+    const workspaceIdPath = IssueList.join(path, 'workspaceId')
+    const workspaceId = readText(value.workspaceId, workspaceIdPath, issues)
+    if (workspaceId === undefined) return undefined
+    if (workspaceId.includes('\u0000')) {
+      issues.add(workspaceIdPath, 'must not contain NUL bytes')
+      return undefined
+    }
+    return { kind: 'workspace', workspaceId }
   }
   issues.add(IssueList.join(path, 'kind'), 'must be "url" or "workspace"')
   return undefined
@@ -301,17 +326,27 @@ function parseAgentTarget(value: unknown, path: string, issues: IssueList): SshA
     }
     return { kind: value.kind }
   }
-  const command = readText(value.command, IssueList.join(path, 'command'), issues)
+  const commandPath = IssueList.join(path, 'command')
+  const resumePath = IssueList.join(path, 'resumeCommand')
+  const command = readText(value.command, commandPath, issues)
   const resumeCommand = value.resumeCommand === undefined
     ? undefined
-    : readText(value.resumeCommand, IssueList.join(path, 'resumeCommand'), issues)
+    : readText(value.resumeCommand, resumePath, issues)
   if (command === undefined) {
-    issues.add(IssueList.join(path, 'command'), 'a custom agent needs a start template')
+    issues.add(commandPath, 'a custom agent needs a start template')
     return undefined
   }
-  if (!command.includes('{prompt_file}')) {
-    issues.add(IssueList.join(path, 'command'), 'the start template must reference {prompt_file}')
+  const commandProblem = validateCustomTemplate(command)
+  if (commandProblem !== undefined) {
+    issues.add(commandPath, commandProblem)
     return undefined
+  }
+  if (resumeCommand !== undefined) {
+    const resumeProblem = validateCustomTemplate(resumeCommand)
+    if (resumeProblem !== undefined) {
+      issues.add(resumePath, resumeProblem)
+      return undefined
+    }
   }
   return resumeCommand === undefined ? { kind: 'custom', command } : { kind: 'custom', command, resumeCommand }
 }
@@ -350,7 +385,7 @@ export function parseSshRunRecord(value: unknown): SshValidationResult<SshRunRec
     '',
     issues,
   )
-  const runId = typeof value.runId === 'string' && /^[A-Za-z0-9._-]{1,128}$/.test(value.runId) ? value.runId : undefined
+  const runId = typeof value.runId === 'string' && value.runId !== '.' && value.runId !== '..' && /^[A-Za-z0-9._-]{1,128}$/.test(value.runId) ? value.runId : undefined
   if (runId === undefined) issues.add('runId', 'must be 1-128 characters of letters, digits, dots, underscores or hyphens')
   if (!oneOf(value.phase, ['queued', 'running', 'succeeded', 'failed', 'cancelled', 'lost'] as const)) {
     issues.add('phase', 'must be one of: queued, running, succeeded, failed, cancelled, lost')

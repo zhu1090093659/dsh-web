@@ -17,6 +17,8 @@ export interface WorkspaceRecorder {
   prepared: string[]
   /** Run ids whose result was collected, in order. */
   collected: string[]
+  /** Run ids whose workspace was cleaned up, in order. */
+  cleaned: string[]
   /** Every run handed to `prepare`, in order. */
   runs: SshWorkspaceRun[]
 }
@@ -35,6 +37,12 @@ export interface FakeWorkspaceOptions {
   branch?: string
   /** Failure the next `prepare` throws, to prove a run fails before any agent starts. */
   prepareError?: Error
+  /** Failure `collect` throws, to prove a failed branch push/fetch settles the run as failed. */
+  collectError?: Error
+  /** Hook awaited inside `prepare`, for deterministic race testing. */
+  onPrepare?: (run: SshWorkspaceRun) => Promise<void>
+  /** Hook awaited inside `collect`, for deterministic race testing. */
+  onCollect?: (run: SshWorkspaceRun) => Promise<void>
   /** Untracked local files the run did not receive, as a real strategy reports them. */
   untrackedFiles?: number
 }
@@ -44,6 +52,7 @@ interface FakeStrategy {
   readonly kind: 'in-place'
   prepare(run: SshWorkspaceRun): Promise<{ cwd: string; untrackedFiles?: number }>
   collect(run: SshWorkspaceRun): Promise<{ branch?: string }>
+  cleanup(run: SshWorkspaceRun): Promise<void>
 }
 
 /**
@@ -52,12 +61,13 @@ interface FakeStrategy {
  * @returns the resolver and its record.
  */
 export function fakeWorkspaces(options: FakeWorkspaceOptions): FakeWorkspaces {
-  const recorder: WorkspaceRecorder = { prepared: [], collected: [], runs: [] }
+  const recorder: WorkspaceRecorder = { prepared: [], collected: [], cleaned: [], runs: [] }
   const strategy: FakeStrategy = {
     kind: 'in-place',
     async prepare(run) {
       recorder.prepared.push(run.runId)
       recorder.runs.push(run)
+      if (options.onPrepare !== undefined) await options.onPrepare(run)
       if (options.prepareError !== undefined) throw options.prepareError
       return options.untrackedFiles === undefined
         ? { cwd: options.cwd }
@@ -65,7 +75,12 @@ export function fakeWorkspaces(options: FakeWorkspaceOptions): FakeWorkspaces {
     },
     async collect(run) {
       recorder.collected.push(run.runId)
+      if (options.onCollect !== undefined) await options.onCollect(run)
+      if (options.collectError !== undefined) throw options.collectError
       return options.branch === undefined ? {} : { branch: options.branch }
+    },
+    async cleanup(run) {
+      recorder.cleaned.push(run.runId)
     },
   }
   return { resolver: () => strategy, recorder }

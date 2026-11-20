@@ -21,12 +21,15 @@ import type { SshDetailSectionProps } from '../seat-props.ts'
 import { SshLogBuffer } from './log-buffer.ts'
 import { SshLogView } from './log-view.tsx'
 import { draftOf, isSshRunActive, sshCardView, targetSummaryParts } from './model.ts'
-import { useHostHalfStatus, usePublishedSummary } from './summary.ts'
+import { getLastBoardError, useHostHalfStatus, usePublishedSummary } from './summary.ts'
 import { SshTargetForm } from './target-form.tsx'
 import css from '../ssh.module.css'
 
 /** Short plugin name the semantic attributes carry. */
 const PLUGIN_ATTR = 'task-board-ssh'
+
+/** Upper bound for auto-paging settled remote logs into the detail viewer, in bytes. */
+const AUTO_PAGE_MAX_BYTES = 512 * 1024
 
 /** Copy key naming one run phase; the pill and the badge read the same table. */
 function phaseKey(phase: ReturnType<typeof sshCardView>['phase']): TaskBoardSshKey {
@@ -56,16 +59,37 @@ export function SshDetailSection({ task, dispatch }: SshDetailSectionProps) {
   const [saving, setSaving] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [sending, setSending] = useState(false)
-  const [queued, setQueued] = useState<number | undefined>()
+  const [queuedLocal, setQueuedLocal] = useState(false)
   const [text, setText] = useState('')
   const [error, setError] = useState<string | undefined>()
   const buffer = useRef<SshLogBuffer | undefined>(undefined)
   if (buffer.current === undefined) buffer.current = new SshLogBuffer()
   const [version, setVersion] = useState(0)
+  const awaitingReplay = useRef(false)
+  const lastRequestedOffset = useRef(0)
 
   const targeted = view.target !== undefined
-  const active = isSshRunActive(view.phase)
+  const isProxy = view.target?.mode === 'proxy'
+  const archived = task.archivedAt !== undefined
+  const active = !isProxy && isSshRunActive(view.phase)
   const pending = summary?.logs?.[task.id]
+
+  // Reset per-card ephemeral state whenever the reused TaskDetail panel
+  // switches to another card, preventing cross-card form/draft/error bleed.
+  useEffect(() => {
+    setEditing(false)
+    setSaving(false)
+    setCancelling(false)
+    setSending(false)
+    setQueuedLocal(false)
+    setText('')
+    setError(undefined)
+  }, [task.id])
+
+  // Close target edit form automatically if a run becomes active or archived.
+  useEffect(() => {
+    if (active || archived) setEditing(false)
+  }, [active, archived])
 
   // One write path for every control: the board's action channel, with a
   // refusal (a thrown channel error or a refused commit) surfacing as a line
@@ -74,7 +98,10 @@ export function SshDetailSection({ task, dispatch }: SshDetailSectionProps) {
     setError(undefined)
     try {
       const accepted = await dispatch(request)
-      if (!accepted) setError(t('detail.rejected'))
+      if (!accepted) {
+        const hostReason = getLastBoardError()
+        setError(hostReason !== undefined && hostReason !== '' ? t('detail.actionFailed', { error: hostReason }) : t('detail.rejected'))
+      }
       return accepted
     } catch (cause) {
       setError(t('detail.actionFailed', { error: messageOf(cause) }))
@@ -89,31 +116,54 @@ export function SshDetailSection({ task, dispatch }: SshDetailSectionProps) {
     const current = buffer.current
     if (current === undefined) return
     current.reset(view.runId)
+    lastRequestedOffset.current = 0
+    awaitingReplay.current = targeted && !isProxy && view.runId !== undefined
     setVersion(previous => previous + 1)
-    if (!targeted) return
+    if (!targeted || isProxy) return
     void dispatch({
       extensionId: SSH_EXTENSION_ID,
       action: 'refresh',
       taskId: task.id,
       ...(view.runId === undefined ? {} : { payload: { runId: view.runId } }),
     }).catch(() => {})
-  }, [task.id, view.runId, targeted])
+  }, [task.id, view.runId, targeted, isProxy])
 
-  // The provider publishes log increments; the buffer decides whether one is
-  // new, so a mirror frame that changed nothing on this card costs nothing.
+  // The provider publishes log increments; ignore stale pre-replay frames with
+  // a non-zero offset until the byte-0 replay lands, and auto-page remaining
+  // windows of settled >8 KiB logs via `refresh({ runId, offset })`.
   useEffect(() => {
     const current = buffer.current
-    if (current === undefined || pending === undefined) return
+    if (current === undefined || pending === undefined || isProxy) return
+    if (view.runId !== undefined && pending.runId !== view.runId) return
+    if (awaitingReplay.current) {
+      if (pending.baseOffset > 0) return
+      awaitingReplay.current = false
+    }
     if (current.append(pending)) setVersion(previous => previous + 1)
-  }, [pending])
+    if (
+      pending.hasMore === true
+      && !active
+      && view.runId !== undefined
+      && pending.endOffset > lastRequestedOffset.current
+      && pending.endOffset < AUTO_PAGE_MAX_BYTES
+    ) {
+      lastRequestedOffset.current = pending.endOffset
+      void dispatch({
+        extensionId: SSH_EXTENSION_ID,
+        action: 'refresh',
+        taskId: task.id,
+        payload: { runId: view.runId, offset: pending.endOffset },
+      }).catch(() => {})
+    }
+  }, [pending, isProxy, active, task.id, view.runId, dispatch])
 
-  // A queued follow-up leaves the "sent after this turn" state the moment the
-  // run accounts for it, or when the run it was queued behind ends.
-  const delivered = view.activeRun?.followUps ?? 0
+  // Clear local optimistic queued chip when the run is no longer active or the
+  // ledger itself now owns the pending state.
   useEffect(() => {
-    if (queued === undefined) return
-    if (delivered > queued || view.phase !== 'running') setQueued(undefined)
-  }, [queued, delivered, view.phase])
+    if (!active || view.pending !== undefined) setQueuedLocal(false)
+  }, [active, view.pending])
+
+  const hasQueuedFollowUp = view.pending !== undefined || (queuedLocal && active)
 
   const saveTarget = async (target: SshTarget): Promise<void> => {
     setSaving(true)
@@ -145,7 +195,7 @@ export function SshDetailSection({ task, dispatch }: SshDetailSectionProps) {
     setSending(false)
     if (!accepted) return
     setText('')
-    if (view.phase === 'running') setQueued(delivered)
+    if (active) setQueuedLocal(true)
   }
 
   // A deployment that ships dsh-ssh disabled never mounts this provider's host
@@ -160,10 +210,12 @@ export function SshDetailSection({ task, dispatch }: SshDetailSectionProps) {
   }
 
   if (!targeted) {
+    if (archived) return null
     return (
       <section className={css.section} data-dsh-plugin={PLUGIN_ATTR} data-dsh-part="target">
         <h4 className={css.sectionTitle}>{t('detail.setTarget')}</h4>
         <SshTargetForm
+          key={task.id}
           initial={draftOf(undefined, summary?.defaults)}
           hosts={summary?.hosts ?? []}
           saving={saving}
@@ -178,6 +230,11 @@ export function SshDetailSection({ task, dispatch }: SshDetailSectionProps) {
   const target = view.target as SshTarget
   const parts = targetSummaryParts(target)
   const lastRun = view.lastRun
+  const canEditTarget = !active && !archived
+  // Only offer follow-ups on direct cards that are active or have already run
+  // (sending a follow-up on a never-run idle card would overwrite the card's
+  // initial prompt on first launch).
+  const canFollowUp = !isProxy && !archived && (active || lastRun !== undefined)
   // What the run left behind in the workspace it came back from; the provider
   // publishes a count only when there was something to report.
   const untracked = summary?.runs?.find(run => run.taskId === task.id)?.untrackedFiles ?? 0
@@ -185,19 +242,29 @@ export function SshDetailSection({ task, dispatch }: SshDetailSectionProps) {
     <section className={css.section} data-dsh-plugin={PLUGIN_ATTR} data-dsh-part="run">
       <div className={css.head}>
         <h4 className={css.sectionTitle}>{t('detail.target')}</h4>
-        <span className={css.statePill} data-run={view.phase}>{t(phaseKey(view.phase))}</span>
-        <button type="button" className={css.linkButton} onClick={() => setEditing(current => !current)}>
-          {t(editing ? 'detail.cancelEdit' : 'detail.editTarget')}
-        </button>
+        {!isProxy && (
+          <span className={css.statePill} data-run={view.phase}>{t(phaseKey(view.phase))}</span>
+        )}
+        {canEditTarget && (
+          <button type="button" className={css.linkButton} onClick={() => setEditing(current => !current)}>
+            {t(editing ? 'detail.cancelEdit' : 'detail.editTarget')}
+          </button>
+        )}
       </div>
       {!editing && (
         <p className={css.targetLine} title={parts.workspace}>
-          {t('detail.targetSummary', { host: parts.host, agent: agentLabel(parts.agent), workspace: parts.workspace })}
+          {t('detail.targetSummary', {
+            host: parts.host,
+            agent: isProxy ? t('detail.mode.proxy') : agentLabel(parts.agent),
+            workspace: parts.workspace,
+          })}
         </p>
       )}
+      {!editing && isProxy && <p className={css.meta}>{t('detail.modeHintProxy')}</p>}
 
-      {editing && (
+      {editing && canEditTarget && (
         <SshTargetForm
+          key={`${task.id}:edit`}
           initial={draftOf(target, summary?.defaults)}
           hosts={summary?.hosts ?? []}
           unknownHost={(summary?.hosts ?? []).some(host => host.alias === target.host) ? undefined : target.host}
@@ -208,59 +275,71 @@ export function SshDetailSection({ task, dispatch }: SshDetailSectionProps) {
         />
       )}
 
-      {lastRun?.error !== undefined && <p className={css.formError}>{lastRun.error}</p>}
-      {lastRun?.branch !== undefined && <p className={css.meta}>{t('detail.branch', { branch: lastRun.branch })}</p>}
-      {untracked > 0 && <p className={css.meta}>{t('detail.untrackedFiles', { count: String(untracked) })}</p>}
-      {lastRun?.summary !== undefined && lastRun.summary !== '' && (
+      {!isProxy && !active && lastRun?.error !== undefined && <p className={css.formError}>{lastRun.error}</p>}
+      {!isProxy && lastRun?.branch !== undefined && <p className={css.meta}>{t('detail.branch', { branch: lastRun.branch })}</p>}
+      {!isProxy && untracked > 0 && <p className={css.meta}>{t('detail.untrackedFiles', { count: String(untracked) })}</p>}
+      {!isProxy && !active && lastRun?.summary !== undefined && lastRun.summary !== '' && (
         <p className={css.summary} title={lastRun.summary}>{lastRun.summary}</p>
       )}
 
-      <SshLogView
-        buffer={buffer.current as SshLogBuffer}
-        version={version}
-        live={view.phase === 'running'}
-        labels={{
-          empty: t('detail.logEmpty'),
-          truncated: t('detail.logTruncated'),
-          latest: t('detail.logLatest'),
-          name: t('detail.log'),
-        }}
-      />
-
-      <div className={css.actions}>
-        <textarea
-          className={css.followUp}
-          aria-label={t('detail.followUp')}
-          placeholder={t('detail.followUpPlaceholder')}
-          rows={2}
-          value={text}
-          disabled={sending}
-          onChange={event => setText(event.target.value)}
-          onKeyDown={event => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault()
-              void submitFollowUp()
-            }
+      {!isProxy && (
+        <SshLogView
+          buffer={buffer.current as SshLogBuffer}
+          version={version}
+          live={view.phase === 'running'}
+          resetKey={`${task.id}:${view.runId ?? ''}`}
+          labels={{
+            empty: t('detail.logEmpty'),
+            truncated: t('detail.logTruncated'),
+            latest: t('detail.logLatest'),
+            name: t('detail.log'),
           }}
         />
-        <div className={css.actionRow}>
-          {queued !== undefined && <span className={css.queuedChip}>{t('detail.followUpQueued')}</span>}
-          {active && (
-            <button type="button" className={css.ghostButton} onClick={() => { void cancelRun() }} disabled={cancelling}>
-              {t(cancelling ? 'detail.cancelling' : 'detail.cancel')}
-            </button>
+      )}
+
+      {(canFollowUp || (!isProxy && active && !archived)) && (
+        <div className={css.actions}>
+          {canFollowUp && (
+            <textarea
+              className={css.followUp}
+              aria-label={t('detail.followUp')}
+              placeholder={t('detail.followUpPlaceholder')}
+              rows={2}
+              value={text}
+              disabled={sending}
+              onChange={event => setText(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault()
+                  void submitFollowUp()
+                }
+              }}
+            />
           )}
-          <button
-            type="button"
-            className={css.primaryButton}
-            onClick={() => { void submitFollowUp() }}
-            disabled={sending || text.trim() === ''}
-          >
-            {t('detail.followUpSend')}
-          </button>
+          <div className={css.actionRow}>
+            {hasQueuedFollowUp && <span className={css.queuedChip}>{t('detail.followUpQueued')}</span>}
+            {active && !archived && (
+              <button type="button" className={css.ghostButton} onClick={() => { void cancelRun() }} disabled={cancelling}>
+                {t(cancelling ? 'detail.cancelling' : 'detail.cancel')}
+              </button>
+            )}
+            {canFollowUp && (
+              <button
+                type="button"
+                className={css.primaryButton}
+                onClick={() => { void submitFollowUp() }}
+                disabled={sending || text.trim() === ''}
+              >
+                {t('detail.followUpSend')}
+              </button>
+            )}
+          </div>
+          {error !== undefined && <p className={css.formError} role="alert">{error}</p>}
         </div>
-        {error !== undefined && <p className={css.formError} role="alert">{error}</p>}
-      </div>
+      )}
+      {!canFollowUp && !(active && !archived) && error !== undefined && (
+        <p className={css.formError} role="alert">{error}</p>
+      )}
     </section>
   )
 }

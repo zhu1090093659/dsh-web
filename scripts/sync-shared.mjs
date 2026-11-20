@@ -152,6 +152,7 @@ const MANIFEST = [
       'packages/dsh-liangshen/src/mount-once.ts',
       'packages/dsh-task-board/src/mount-once.ts',
       'packages/dsh-task-board-github/src/mount-once.ts',
+      'packages/dsh-task-board-ssh/src/mount-once.ts',
       'packages/dsh-plugin-manager/src/mount-once.ts',
       'packages/dsh-web-settings/src/mount-once.ts',
       'packages/dsh-skill-explorer/src/mount-once.ts',

@@ -130,11 +130,11 @@ describe('launcher command construction', () => {
       buildLauncherCommand({ stateDir, verb: verb as 'start' | 'status' | 'cancel', runId: 'run-1' }),
     )
 
-    // Then each call quotes the script, the verb and the run id separately
+    // Then each call pins TASK_BOARD_SSH_STATE and quotes the script, verb and run id separately
     expect(calls).toEqual([
-      "'sh' '" + scriptPath + "' 'start' 'run-1'",
-      "'sh' '" + scriptPath + "' 'status' 'run-1'",
-      "'sh' '" + scriptPath + "' 'cancel' 'run-1'",
+      "TASK_BOARD_SSH_STATE='" + stateDir + "' 'sh' '" + scriptPath + "' 'start' 'run-1'",
+      "TASK_BOARD_SSH_STATE='" + stateDir + "' 'sh' '" + scriptPath + "' 'status' 'run-1'",
+      "TASK_BOARD_SSH_STATE='" + stateDir + "' 'sh' '" + scriptPath + "' 'cancel' 'run-1'",
     ])
     expect(stateDir).toBe('/home/deploy/.dsh/task-board-ssh')
   })
@@ -146,8 +146,8 @@ describe('launcher command construction', () => {
     // When the tail call is built from a byte offset
     const call = buildLauncherCommand({ stateDir, verb: 'tail', runId: 'run-1', offset: 4_096 })
 
-    // Then the offset arrives as a separate argument
-    expect(call).toBe("'sh' '" + launcherScriptPath(stateDir) + "' 'tail' 'run-1' '4096'")
+    // Then the offset arrives as a separate argument with state dir pinned
+    expect(call).toBe("TASK_BOARD_SSH_STATE='" + stateDir + "' 'sh' '" + launcherScriptPath(stateDir) + "' 'tail' 'run-1' '4096'")
   })
 
   it('operator passing a run id or an offset the script would refuse is refused here first', () => {
@@ -190,13 +190,15 @@ describe('launcher command construction', () => {
     expect(statSync(directory).isDirectory()).toBe(true)
   })
 
-  it('operator running an agent that needs no stdin gets an explicit empty stdin instead', () => {
-    // Given a command with no prompt file
+  it('operator running a custom template without stdinFile keeps pipes and redirections intact', () => {
+    // Given a custom command template (launcher run_exec already binds cmd.sh stdin to /dev/null)
     // When the run script is built
     const script = agentScript({ command: "'myagent' '--once'" })
+    const piped = agentScript({ command: "cat '/tmp/prompt.txt' | myagent" })
 
-    // Then the shell cannot inherit the launcher's stdin
-    expect(script).toBe("'myagent' '--once' < /dev/null")
+    // Then the template is kept verbatim without appending a trailing `< /dev/null`
+    expect(script).toBe("'myagent' '--once'")
+    expect(piped).toBe("cat '/tmp/prompt.txt' | myagent")
   })
 })
 

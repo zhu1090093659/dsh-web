@@ -80,6 +80,8 @@ export interface SshExtensionOptions {
   commandTimeoutMs?: number
   /** Where a refusal or a failed remote call is reported. */
   log?: (message: string, detail?: unknown) => void
+  /** Register a hook invoked whenever volatile settings change while mounted. */
+  onSettingsHook?: (notify: (() => void) | undefined) => void
 }
 
 /** The message of anything thrown below. */
@@ -222,9 +224,9 @@ async function routeAction(
       reply = engine.setTarget(action.taskId, action.target)
       break
     default:
-      // The detail view names the run whose log it wants, so a settled run can
-      // still be replayed from its first byte.
-      reply = await engine.refresh(action.taskId, action.runId)
+      // The detail view names the run (and optional byte offset for paging past
+      // one window) whose log it wants, so a settled run can be read in full.
+      reply = await engine.refresh(action.taskId, action.runId, action.offset)
       break
   }
   const answer: SshActionReply = reply.ok
@@ -271,6 +273,7 @@ export function createSshExtension(options: SshExtensionOptions): TaskBoardExten
         log,
       })
       engine = live
+      options.onSettingsHook?.(() => { live.onSettingsUpdated() })
       live.start()
       for (const tool of buildSshTools(live)) {
         try {
@@ -287,6 +290,7 @@ export function createSshExtension(options: SshExtensionOptions): TaskBoardExten
       }
     },
     stop(): void {
+      options.onSettingsHook?.(undefined)
       for (const dispose of toolDisposers.splice(0)) {
         try { dispose() } catch { /* best-effort */ }
       }

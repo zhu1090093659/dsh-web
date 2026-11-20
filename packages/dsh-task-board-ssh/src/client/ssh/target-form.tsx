@@ -16,10 +16,10 @@
  *
  * @module dsh-task-board-ssh/client/ssh/target-form
  */
-import { type FormEvent, useId, useState } from 'react'
+import { type FormEvent, useEffect, useId, useState } from 'react'
 import { validateDraft, type SshDraftField, type SshTargetDraft } from './model.ts'
 import type { SshAgentKind, SshExecutionMode, SshTarget, SshValidationIssue, SshWorkspaceKind } from '../../core/target.ts'
-import type { SshSummaryHost } from './summary.ts'
+import { useBoardWorkspaces, type SshBoardWorkspaceOption, type SshSummaryHost } from './summary.ts'
 import { t, type TaskBoardSshKey } from '../locales.ts'
 import css from '../ssh.module.css'
 
@@ -38,7 +38,7 @@ const WORKSPACE_KINDS: readonly SshWorkspaceKind[] = ['in-place', 'git']
  * @param issue - the parser's own sentence, used when the field has no copy of its own.
  * @returns the sentence to render under the field.
  */
-function refusalText(field: SshDraftField, issue: SshValidationIssue): string {
+export function refusalText(field: SshDraftField, issue: SshValidationIssue): string {
   switch (field) {
     case 'host': return t('detail.error.host')
     case 'workspacePath': return t('detail.error.path')
@@ -57,12 +57,16 @@ export interface SshTargetFieldsProps {
   errors: Partial<Record<SshDraftField, SshValidationIssue>>
   /** Hosts the picker offers; empty when the provider publishes none. */
   hosts: readonly SshSummaryHost[]
+  /** Local workspaces the picker offers for `git` -> `workspace` source; falls back to board mirror. */
+  workspaces?: readonly SshBoardWorkspaceOption[]
   /** The pinned alias that is no longer in the host list, when there is one. */
   unknownHost?: string
   /** Whether every control is read-only because a write is in flight. */
   disabled?: boolean
   /** One line under the mode choice; a frame with room for it passes one, a dialog skips it. */
   modeHint?: string
+  /** Called when the operator leaves a field (blur), so progressive validation can surface refusals. */
+  onTouch?(field: SshDraftField): void
   /** Called with the fields one control changed. */
   onChange(patch: Partial<SshTargetDraft>): void
 }
@@ -72,8 +76,11 @@ export interface SshTargetFieldsProps {
  * @param props - the values, the refusals, the hosts to offer and the edit callback.
  * @returns the field set, in the shape the current draft asks for.
  */
-export function SshTargetFields({ draft, errors, hosts, unknownHost, disabled = false, modeHint, onChange }: SshTargetFieldsProps) {
+export function SshTargetFields({ draft, errors, hosts, workspaces, unknownHost, disabled = false, modeHint, onTouch, onChange }: SshTargetFieldsProps) {
   const baseId = useId()
+  const mirrorWorkspaces = useBoardWorkspaces()
+  const workspaceOptions = workspaces ?? mirrorWorkspaces
+  const isProxy = draft.mode === 'proxy'
 
   const errorFor = (field: SshDraftField): string | undefined => {
     const issue = errors[field]
@@ -102,6 +109,7 @@ export function SshTargetFields({ draft, errors, hosts, unknownHost, disabled = 
           aria-invalid={error !== undefined}
           aria-describedby={error === undefined ? undefined : `${id}-error`}
           onChange={event => onChangeText(event.target.value)}
+          onBlur={() => onTouch?.(field)}
           disabled={disabled}
         />
         {error !== undefined && <p className={css.fieldError} id={`${id}-error`}>{error}</p>}
@@ -118,12 +126,18 @@ export function SshTargetFields({ draft, errors, hosts, unknownHost, disabled = 
     onChangeChoice: (next: Value) => void,
   ) => {
     const error = errorFor(field)
+    const errorId = `${baseId}-${field}-error`
     return (
-      <fieldset className={css.field} data-invalid={error !== undefined || undefined} key={field}>
+      <fieldset
+        className={css.field}
+        data-invalid={error !== undefined || undefined}
+        aria-describedby={error === undefined ? undefined : errorId}
+        key={field}
+      >
         <legend className={css.fieldLabel}>{t(labelKey)}</legend>
         <div className={css.segments}>
           {options.map(option => (
-            <label key={option.value} className={css.segment}>
+            <label key={option.value} className={css.segment} data-disabled={disabled || undefined}>
               <input
                 type="radio"
                 name={`${baseId}-${field}`}
@@ -136,7 +150,7 @@ export function SshTargetFields({ draft, errors, hosts, unknownHost, disabled = 
             </label>
           ))}
         </div>
-        {error !== undefined && <p className={css.fieldError}>{error}</p>}
+        {error !== undefined && <p className={css.fieldError} id={errorId}>{error}</p>}
       </fieldset>
     )
   }
@@ -173,6 +187,7 @@ export function SshTargetFields({ draft, errors, hosts, unknownHost, disabled = 
           aria-invalid={hostError !== undefined}
           aria-describedby={hostDescribedBy === '' ? undefined : hostDescribedBy}
           onChange={event => onChange({ host: event.target.value })}
+          onBlur={() => onTouch?.('host')}
           disabled={disabled || hostOptions.length === 0}
         >
           <option value="">{t(hostOptions.length === 0 ? 'detail.hostNone' : 'detail.host')}</option>
@@ -187,24 +202,27 @@ export function SshTargetFields({ draft, errors, hosts, unknownHost, disabled = 
         {hostError !== undefined && <p className={css.fieldError} id={`${baseId}-host-error`}>{hostError}</p>}
       </div>
 
-      <div className={css.field}>
-        <label className={css.fieldLabel} htmlFor={`${baseId}-agent`}>{t('detail.agent')}</label>
-        <select
-          id={`${baseId}-agent`}
-          className={css.select}
-          value={draft.agent}
-          aria-invalid={agentError !== undefined}
-          onChange={event => onChange({ agent: event.target.value as SshAgentKind })}
-          disabled={disabled}
-        >
-          {AGENTS.map(agent => (
-            <option key={agent} value={agent}>{t(`detail.agent.${agent}` as TaskBoardSshKey)}</option>
-          ))}
-        </select>
-        {agentError !== undefined && <p className={css.fieldError}>{agentError}</p>}
-      </div>
+      {!isProxy && (
+        <div className={css.field}>
+          <label className={css.fieldLabel} htmlFor={`${baseId}-agent`}>{t('detail.agent')}</label>
+          <select
+            id={`${baseId}-agent`}
+            className={css.select}
+            value={draft.agent}
+            aria-invalid={agentError !== undefined}
+            aria-describedby={agentError === undefined ? undefined : `${baseId}-agent-error`}
+            onChange={event => onChange({ agent: event.target.value as SshAgentKind })}
+            disabled={disabled}
+          >
+            {AGENTS.map(agent => (
+              <option key={agent} value={agent}>{t(`detail.agent.${agent}` as TaskBoardSshKey)}</option>
+            ))}
+          </select>
+          {agentError !== undefined && <p className={css.fieldError} id={`${baseId}-agent-error`}>{agentError}</p>}
+        </div>
+      )}
 
-      {draft.agent === 'custom' && (
+      {!isProxy && draft.agent === 'custom' && (
         <>
           {textField('agentCommand', 'detail.agentCommand', draft.agentCommand, next => onChange({ agentCommand: next }), '{prompt_file}')}
           {textField('agentResumeCommand', 'detail.agentResumeCommand', draft.agentResumeCommand, next => onChange({ agentResumeCommand: next }))}
@@ -223,7 +241,7 @@ export function SshTargetFields({ draft, errors, hosts, unknownHost, disabled = 
         ? textField('workspacePath', 'detail.workspace.path', draft.workspacePath, next => onChange({ workspacePath: next }), '/home/me/project')
         : (
             <>
-              {choiceGroup(
+              {!isProxy && choiceGroup(
                 'gitSource',
                 'detail.workspace.source',
                 [
@@ -233,14 +251,44 @@ export function SshTargetFields({ draft, errors, hosts, unknownHost, disabled = 
                 draft.gitSource,
                 next => onChange({ gitSource: next }),
               )}
-              {draft.gitSource === 'url'
+              {(isProxy || draft.gitSource === 'url')
                 ? (
                     <>
                       {textField('repositoryUrl', 'detail.workspace.url', draft.repositoryUrl, next => onChange({ repositoryUrl: next }), 'git@example.com:team/repo.git')}
                       {textField('baseBranch', 'detail.workspace.base', draft.baseBranch, next => onChange({ baseBranch: next }), 'main')}
                     </>
                   )
-                : textField('workspaceId', 'detail.workspace.workspaceId', draft.workspaceId, next => onChange({ workspaceId: next }), t('detail.workspace.workspaceIdPlaceholder'))}
+                : workspaceOptions.length > 0
+                  ? (() => {
+                      const id = `${baseId}-workspaceId`
+                      const wsError = errorFor('workspaceId')
+                      const known = workspaceOptions.some(item => item.workspaceId === draft.workspaceId)
+                      return (
+                        <div className={css.field} key="workspaceId">
+                          <label className={css.fieldLabel} htmlFor={id}>{t('detail.workspace.workspaceId')}</label>
+                          <select
+                            id={id}
+                            className={css.select}
+                            value={draft.workspaceId}
+                            aria-invalid={wsError !== undefined}
+                            aria-describedby={wsError === undefined ? undefined : `${id}-error`}
+                            onChange={event => onChange({ workspaceId: event.target.value })}
+                            onBlur={() => onTouch?.('workspaceId')}
+                            disabled={disabled}
+                          >
+                            <option value="">{t('detail.workspace.workspaceIdPlaceholder')}</option>
+                            {!known && draft.workspaceId !== '' && (
+                              <option value={draft.workspaceId}>{draft.workspaceId}</option>
+                            )}
+                            {workspaceOptions.map(item => (
+                              <option key={item.workspaceId} value={item.workspaceId}>{item.title}</option>
+                            ))}
+                          </select>
+                          {wsError !== undefined && <p className={css.fieldError} id={`${id}-error`}>{wsError}</p>}
+                        </div>
+                      )
+                    })()
+                  : textField('workspaceId', 'detail.workspace.workspaceId', draft.workspaceId, next => onChange({ workspaceId: next }), t('detail.workspace.workspaceIdPlaceholder'))}
             </>
           )}
     </div>
@@ -272,9 +320,16 @@ export interface SshTargetFormProps {
  */
 export function SshTargetForm({ initial, hosts, unknownHost, saving, submitLabel, onCancel, onSubmit }: SshTargetFormProps) {
   const [draft, setDraft] = useState<SshTargetDraft>(initial)
+  const [dirty, setDirty] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<SshDraftField, SshValidationIssue>>>({})
 
+  // Adopt late-arriving provider defaults until the operator starts editing.
+  useEffect(() => {
+    if (!dirty) setDraft(initial)
+  }, [dirty, initial.mode, initial.host, initial.agent, initial.agentCommand, initial.agentResumeCommand, initial.workspaceKind, initial.gitSource, initial.workspacePath, initial.repositoryUrl, initial.baseBranch, initial.workspaceId])
+
   const edit = (patch: Partial<SshTargetDraft>): void => {
+    setDirty(true)
     setDraft(current => ({ ...current, ...patch }))
     // A field that changed is re-judged on the next submit; its old refusal
     // must not outlive the value it was about.

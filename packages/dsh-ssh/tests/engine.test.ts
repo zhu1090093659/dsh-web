@@ -214,9 +214,10 @@ describe('exec', () => {
       // When the call runs against that signal
       const result = await engine.exec('exec-preabort', 'hang', 30_000, controller.signal)
 
-      // Then it reports a cancellation
+      // Then it reports a cancellation and never executed the remote command
       expect(result.success).toBe(false)
       expect(result.error).toContain('cancelled by the caller')
+      expect(seen).toEqual([])
     } finally {
       onCommandStarted(undefined)
     }

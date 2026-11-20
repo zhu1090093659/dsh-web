@@ -298,4 +298,44 @@ describe('the three tools', () => {
     // And the summary the board publishes carries none of them either
     expect(JSON.stringify(mounted.published())).not.toContain('hunter2-secret')
   })
+
+  it('operator whose profile mounts the plugin twice sees the provider admitted once via mountOnce', async () => {
+    // Given one host context serving taskBoard and dshSsh
+    const root = new Context()
+    const board = fakeBoardFace()
+    const ssh = createScriptedSsh()
+    root.provide('taskBoard', board.face as never)
+    root.provide('dshSsh', ssh.service as never)
+
+    // When the plugin is applied twice (aggregate + explicit row)
+    const first = root.plugin(apply, Config({}) as never)
+    const second = root.plugin(apply, Config({}) as never)
+    cleanups.push(() => { void first.dispose(); void second.dispose() })
+    await settle()
+
+    // Then the provider was admitted exactly once
+    expect(board.record.admitted).toHaveLength(1)
+    expect(board.record.tools).toEqual([...SSH_TOOL_NAMES])
+  })
+
+  it('operator calling task_board_ssh_target with an invalid mode gets an explicit error instead of silent coercion', async () => {
+    // Given a mounted provider and one card
+    const ssh = createScriptedSsh()
+    const board = createBoard({ sessions: false })
+    cleanups.push(() => { board.dispose() })
+    const mounted = mountEngine({ board, ssh: ssh.service, workspaces: fakeWorkspaces({ cwd: '/srv/work' }).resolver, now: () => NOW })
+    cleanups.push(() => { mounted.release() })
+    const taskId = board.createCard('task-bad-enum', { title: 'bad enum' }).id
+
+    // When the tool is called with an unknown mode
+    // Then the tool schema refuses the unknown mode explicitly
+    await expect(runTool(mounted, 'task_board_ssh_target', {
+      action: 'set',
+      taskId,
+      mode: 'tunnel',
+      host: 'build-box',
+      workspaceKind: 'in-place',
+      workspacePath: '/srv/work',
+    })).rejects.toThrow(/mode/)
+  })
 })

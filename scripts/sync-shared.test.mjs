@@ -85,7 +85,9 @@ test('copies cover the settings trio for all consumers plus host and http helper
   // derivations (chrome, form primitives, stylesheet, segmented control, slider
   // bubble) and deliberately none of the entry-bound form fallback: its fields
   // are written through the board, not a family settings namespace.
-  assert.equal(entries.length, 135)
+  // dsh-task-board-ssh also adds src/mount-once.ts (the host-half single-instance
+  // guard), bringing totals below to 136 / 80 / 45.
+  assert.equal(entries.length, 136)
   const clientTrio = entries.filter(entry => entry.target.includes('/src/client/'))
   assert.equal(clientTrio.length, 80)
   const hostCopies = entries.filter(entry => entry.target.includes('/src/host/')
@@ -96,7 +98,7 @@ test('copies cover the settings trio for all consumers plus host and http helper
     || entry.target.includes('/src/connection-trust.ts')
     || entry.target.includes('/src/agent/')
     || entry.target.endsWith('/packages/dsh-task-board/src/http.ts'))
-  assert.equal(hostCopies.length, 44)
+  assert.equal(hostCopies.length, 45)
 })
 
 test('checkSync detects drift and applySync repairs it', async () => {

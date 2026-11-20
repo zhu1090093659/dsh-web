@@ -50,6 +50,8 @@ export interface SshLogViewProps {
   version: number
   /** Whether the run is still producing output, so the tail follows. */
   live: boolean
+  /** Identity key (e.g. task + run) that resets scroll position and follow state when changed. */
+  resetKey?: string
   /** Localized copy. */
   labels: SshLogLabels
 }
@@ -59,10 +61,16 @@ export interface SshLogViewProps {
  * @param props - the buffer, its revision, and the copy it reads.
  * @returns the scroller, its notices and the return-to-tail control.
  */
-export function SshLogView({ buffer, live, labels, version }: SshLogViewProps) {
+export function SshLogView({ buffer, live, labels, resetKey, version }: SshLogViewProps) {
   const scroller = useRef<HTMLDivElement | null>(null)
   const [scrollTop, setScrollTop] = useState(0)
   const [following, setFollowing] = useState(true)
+
+  useEffect(() => {
+    setScrollTop(0)
+    setFollowing(true)
+    if (scroller.current !== null) scroller.current.scrollTop = 0
+  }, [resetKey])
   const snapshot = buffer.snapshot()
   const count = snapshot.count
   const maxScroll = Math.max(0, count * LOG_ROW_HEIGHT - LOG_VIEWPORT_HEIGHT)

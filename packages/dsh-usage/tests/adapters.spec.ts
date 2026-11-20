@@ -388,6 +388,13 @@ describe('minimax plan parse', () => {
 
 describe('openai-codex plan parse', () => {
   const adapter = adapterFor('openai-codex')!
+
+  it('uses an English host fallback that the client dictionary can replace', () => {
+    // Given the host-produced provider payload
+    // When a client without the usage locale service reads it
+    // Then the fallback contains no hardcoded Chinese subscription suffix
+    expect(adapter.displayName).toBe('Codex (ChatGPT)')
+  })
   it('builds the wham/usage probe with the oauth bearer and account header', () => {
     expect(adapter.plan?.build({ apiKey: 'tok', accountId: 'acc-1' })).toEqual({
       url: 'https://chatgpt.com/backend-api/wham/usage',

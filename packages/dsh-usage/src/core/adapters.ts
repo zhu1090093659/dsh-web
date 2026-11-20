@@ -434,7 +434,7 @@ const ZENMUX: ProviderAdapter = {
  */
 const OPENAI_CODEX: ProviderAdapter = {
   ids: ['openai-codex'],
-  displayName: 'Codex (ChatGPT 订阅)',
+  displayName: 'Codex (ChatGPT)',
   plan: {
     build: ({ apiKey, accountId }) => ({
       url: 'https://chatgpt.com/backend-api/wham/usage',

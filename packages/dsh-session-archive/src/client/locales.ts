@@ -292,8 +292,9 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
  * below is unwired.
  */
 export function dictionary(): Record<ArchKey, string> {
-  const lang = typeof document !== 'undefined' ? document.documentElement.lang : 'zh'
-  return lang.toLowerCase().startsWith('en') ? en : zh
+  // Chinese keeps the Chinese table; every other UI language falls back to English.
+  const lang = (typeof document !== 'undefined' && document.documentElement.lang !== '' ? document.documentElement.lang : 'zh').toLowerCase()
+  return lang.startsWith('zh') ? zh : en
 }
 
 /**

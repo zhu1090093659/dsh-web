@@ -11,7 +11,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { UsageStoreInstance } from './usage-store.ts'
-import { t } from './locales.ts'
+import { providerDisplayName, t } from './locales.ts'
 import styles from './usage.module.css'
 import cardCss from './settings-card.module.css'
 import { PeakBadge } from './PeakBadge.tsx'
@@ -142,7 +142,7 @@ function ProviderRow(props: { provider: ProviderSnapshotView; current?: string }
   return (
     <div className={styles.providerRow} data-dsh-part="provider-row">
       <span className={styles.providerName}>
-        {provider.displayName}
+        {providerDisplayName(provider.provider, provider.displayName)}
         {current === provider.provider && <span className={styles.currentBadge}>{t('usage.current')}</span>}
       </span>
       <span className={styles.providerTokens}>{balanceLine(provider)}</span>
@@ -339,7 +339,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
           {/* The cards below already say when there is no usage; without a current route the slot stays empty. */}
           <span className={styles.currentProvider}>
             {currentProvider !== undefined
-              ? `${currentProvider.displayName}${current.model !== undefined && current.model !== '' ? ' · ' + current.model : ''}`
+              ? `${providerDisplayName(currentProvider.provider, currentProvider.displayName)}${current.model !== undefined && current.model !== '' ? ' · ' + current.model : ''}`
               : null}
           </span>
           <span className={styles.headerActions}>
@@ -399,7 +399,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
                   {(day?.providers ?? []).map((row) => (
                     <div key={row.provider} className={styles.providerRow}>
                       <span className={styles.providerName}>
-                        {snapshot.providers.find((provider) => provider.provider === row.provider)?.displayName ?? row.provider}
+                        {providerDisplayName(row.provider, snapshot.providers.find((provider) => provider.provider === row.provider)?.displayName ?? row.provider)}
                         {current.provider === row.provider && <span className={styles.currentBadge}>{t('usage.current')}</span>}
                       </span>
                       <span className={styles.providerTokens}>{formatTokens(row.totals.inputTokens + row.totals.cacheReadTokens + row.totals.cacheWriteTokens + row.totals.outputTokens)} · {t('usage.calls', { n: row.totals.calls })}{row.totals.cost > 0 ? ` · ${formatSpend(row.totals.cost, snapshot.display)}` : ''}</span>
@@ -426,7 +426,7 @@ export function UsageSectionCard(props: UsageSectionProps): ReactNode {
               })()}
               {snapshot.providers.some((provider) => isConfigured(provider) && provider.error !== undefined) && (
                 <span className={styles.errorLine}>
-                  {snapshot.providers.filter((provider) => isConfigured(provider) && provider.error !== undefined).map((provider) => `${provider.displayName}: ${t('usage.provider.error', { error: provider.error ?? '' })}`).join(t('usage.errorListSeparator'))}
+                  {snapshot.providers.filter((provider) => isConfigured(provider) && provider.error !== undefined).map((provider) => `${providerDisplayName(provider.provider, provider.displayName)}: ${t('usage.provider.error', { error: provider.error ?? '' })}`).join(t('usage.errorListSeparator'))}
                 </span>
               )}
             </div>
@@ -487,7 +487,7 @@ function RangeCard(props: { range?: UsageOverviewView['usage']['range']; provide
   if (range === undefined) return null
   const grandTotal = range.totals.inputTokens + range.totals.outputTokens + range.totals.cacheReadTokens + range.totals.cacheWriteTokens
   const maxProvider = Math.max(1, ...range.providers.map((row) => totalOf(row.totals)))
-  const nameOf = (id: string): string => providers.find((provider) => provider.provider === id)?.displayName ?? id
+  const nameOf = (id: string): string => providerDisplayName(id, providers.find((provider) => provider.provider === id)?.displayName ?? id)
   return (
     <div className={styles.card} data-dsh-part="trend-card">
       <span className={styles.cardTitle}>{t('usage.trend')}</span>
@@ -652,7 +652,7 @@ function PlanCard(props: { provider: ProviderSnapshotView; current?: string }): 
     <div className={`${styles.card} ${styles.planCard}`} data-dsh-part="plan-card">
       <div className={styles.planHead}>
         <span className={styles.planName}>
-          {provider.displayName}
+          {providerDisplayName(provider.provider, provider.displayName)}
           {current === provider.provider && <span className={styles.currentBadge}>{t('usage.current')}</span>}
           {provider.plan?.planName !== undefined ? ` · ${provider.plan.planName}` : ''}
         </span>

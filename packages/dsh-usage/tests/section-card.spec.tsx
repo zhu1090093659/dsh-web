@@ -17,7 +17,10 @@ import { UsageSettingsCardController, type UsageSettingsCardFace } from '../src/
 import { type UsageStoreInstance, type UsageUiState } from '../src/client/usage-store.ts'
 import { emptyTotals, type ProviderSnapshotView, type UsageDayView, type UsageOverviewView } from '../src/core/types.ts'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  document.documentElement.lang = ''
+})
 
 /** A wire provider row with view defaults; callers override the credential. */
 function provider(row: Partial<ProviderSnapshotView> & Pick<ProviderSnapshotView, 'provider'>): ProviderSnapshotView {
@@ -153,6 +156,24 @@ describe('UsageSectionCard configured-provider filter', () => {
     expect(screen.getAllByText('Kimi For Coding')).toHaveLength(1)
     expect(screen.queryByText('ZenMux')).toBeNull()
     expect(screen.queryByText('Codex')).toBeNull()
+  })
+
+  it('user sees the dictionary label for Codex in a non-Chinese locale', () => {
+    // Given a configured Codex plan whose host payload still carries a legacy Chinese label
+    document.documentElement.lang = 'ru'
+    const codex = provider({
+      provider: 'openai-codex',
+      displayName: '代码助手 (ChatGPT)',
+      credential: 'oauth',
+      planSupported: true,
+      plan: { windows: [{ key: '5h', percent: 12.5 }], updatedAt: 1 },
+    })
+    render(<UsageSectionCard {...cardProps(overview([codex]))} />)
+    // When the user opens the plans tab
+    fireEvent.click(screen.getByRole('tab', { name: 'Plans' }))
+    // Then the client replaces the host label with its dictionary entry
+    expect(screen.getByText('Codex (ChatGPT)')).not.toBeNull()
+    expect(screen.queryByText('代码助手 (ChatGPT)')).toBeNull()
   })
 
   it('user sees the none-configured empty states when no provider has a credential', () => {

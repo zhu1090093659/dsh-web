@@ -25,7 +25,7 @@
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { t } from './locales.ts'
+import { providerDisplayName, t } from './locales.ts'
 import styles from './usage.module.css'
 import { formatClock, PeakBadge } from './PeakBadge.tsx'
 import { formatTokens, type UsageSettings } from './UsageSectionCard.tsx'
@@ -136,9 +136,9 @@ function spendRoute(snapshot: UsageOverviewView): string | undefined {
 function spendProvider(snapshot: UsageOverviewView): string | undefined {
   const route = spendRoute(snapshot)
   if (route === undefined) return undefined
-  return snapshot.providers.find((entry) => entry.provider === route)?.displayName
+  const displayName = snapshot.providers.find((entry) => entry.provider === route)?.displayName
     ?? (route === snapshot.current.provider ? snapshot.current.displayName : undefined)
-    ?? route
+  return displayName === undefined ? route : providerDisplayName(route, displayName)
 }
 
 /**
@@ -166,7 +166,7 @@ function usageLine(snapshot: UsageOverviewView, tokenFallback: boolean): string 
 function balanceLine(snapshot: UsageOverviewView): string | undefined {
   const rows = snapshot.providers.filter(balanceRow)
   if (rows.length === 0) return undefined
-  const shown = rows.slice(0, BALANCE_CAP).map((provider) => provider.displayName + ' ' + formatBalance(provider.balance!))
+  const shown = rows.slice(0, BALANCE_CAP).map((provider) => providerDisplayName(provider.provider, provider.displayName) + ' ' + formatBalance(provider.balance!))
   return shown.join(' · ') + (rows.length > BALANCE_CAP ? ' +' + String(rows.length - BALANCE_CAP) : '')
 }
 

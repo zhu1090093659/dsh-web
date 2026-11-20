@@ -280,8 +280,9 @@ export type TaskBoardGithubKey = keyof typeof zh
 
 /** The dictionary this module falls back to when no runtime seat is wired. */
 function dictionary(): Record<TaskBoardGithubKey, string> {
-  const lang = typeof document !== 'undefined' ? document.documentElement.lang : 'zh'
-  return lang.toLowerCase().startsWith('en') ? en : zh
+  // Chinese keeps the Chinese table; every other UI language falls back to English.
+  const lang = (typeof document !== 'undefined' && document.documentElement.lang !== '' ? document.documentElement.lang : 'zh').toLowerCase()
+  return lang.startsWith('zh') ? zh : en
 }
 
 /**

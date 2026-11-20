@@ -58,6 +58,7 @@ export const ru: Record<string, string> = {
   'usage.plan.windows.month': 'Месяц',
   'usage.plan.windows.week': 'Неделя',
   'usage.provider.error': 'Не удалось выполнить запрос: {error}',
+  'usage.provider.openai-codex.name': 'Codex (ChatGPT)',
   'usage.refresh': 'Обновить',
   'usage.refreshing': 'Обновление…',
   'usage.tab.bank': 'Банк токенов',

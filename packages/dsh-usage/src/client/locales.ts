@@ -55,6 +55,7 @@ export const zh = {
   'usage.plan.windows.week': '每周',
   'usage.plan.windows.month': '每月',
   'usage.provider.error': '查询失败：{error}',
+  'usage.provider.openai-codex.name': 'Codex (ChatGPT 订阅)',
   'usage.errorListSeparator': '；',
   'usage.config.title': '设置',
   'usage.config.pollIntervalSec': '轮询间隔（秒）',
@@ -139,6 +140,7 @@ export const en: Record<UsageKey, string> = {
   'usage.plan.windows.week': 'Weekly',
   'usage.plan.windows.month': 'Monthly',
   'usage.provider.error': 'Query failed: {error}',
+  'usage.provider.openai-codex.name': 'Codex (ChatGPT)',
   'usage.errorListSeparator': '; ',
   'usage.config.title': 'Settings',
   'usage.config.pollIntervalSec': 'Poll interval (seconds)',
@@ -177,14 +179,25 @@ export const en: Record<UsageKey, string> = {
 
 export type UsageKey = keyof typeof zh
 
+const PROVIDER_NAME_KEYS: Readonly<Record<string, UsageKey>> = {
+  'openai-codex': 'usage.provider.openai-codex.name',
+}
+
 /**
  * Active dictionary, picked by the document language at call time. The
  * section resolves its copy the same tiny way the pet's DOM-injected surface
  * does (the settings section has no framework locale seat of its own).
  */
 export function dictionary(): Record<UsageKey, string> {
-  const lang = typeof document !== 'undefined' ? document.documentElement.lang : 'zh'
-  return lang.toLowerCase().startsWith('en') ? en : zh
+  // Chinese keeps the Chinese table; every other UI language falls back to English.
+  const lang = (typeof document !== 'undefined' && document.documentElement.lang !== '' ? document.documentElement.lang : 'zh').toLowerCase()
+  return lang.startsWith('zh') ? zh : en
+}
+
+/** Resolve a provider's display name through the active dictionary when it has a key. */
+export function providerDisplayName(providerId: string, fallback: string): string {
+  const key = PROVIDER_NAME_KEYS[providerId]
+  return key === undefined ? fallback : t(key)
 }
 
 /** Translate a key with optional `{name}` template params; missing keys degrade to the key. */

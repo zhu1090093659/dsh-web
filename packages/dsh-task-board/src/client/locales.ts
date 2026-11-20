@@ -813,8 +813,9 @@ export type SettingsCardKey = TaskBoardKey
 
 /** Active dictionary, picked by the document language at call time. */
 export function dictionary(): Record<TaskBoardKey, string> {
-  const lang = typeof document !== 'undefined' ? document.documentElement.lang : 'zh'
-  return lang.toLowerCase().startsWith('en') ? en : zh
+  // Chinese keeps the Chinese table; every other UI language falls back to English.
+  const lang = (typeof document !== 'undefined' && document.documentElement.lang !== '' ? document.documentElement.lang : 'zh').toLowerCase()
+  return lang.startsWith('zh') ? zh : en
 }
 
 /**

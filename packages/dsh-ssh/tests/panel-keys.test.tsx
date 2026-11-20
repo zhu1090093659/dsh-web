@@ -91,7 +91,7 @@ describe('SSH managed keys tab (#2069)', () => {
   it('user editing a referenced key sees its host aliases before any write', async () => {
     // Given a referenced key and an operator who cancels the first warning
     const api = fakeApi()
-    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
+    const confirm = vi.fn((_message: string) => false).mockReturnValueOnce(false).mockReturnValueOnce(true)
     const container = await renderKeys(api, confirm)
     await act(async () => { button(container, '编辑').click() })
     // When save is attempted, cancelled, and then confirmed
@@ -106,7 +106,7 @@ describe('SSH managed keys tab (#2069)', () => {
   it('user deleting a referenced key is told that hosts and key files stay intact', async () => {
     // Given a referenced managed key
     const api = fakeApi()
-    const confirm = vi.fn(() => false)
+    const confirm = vi.fn((_message: string) => false)
     const container = await renderKeys(api, confirm)
     // When the user opens the delete confirmation and cancels
     await act(async () => { button(container, '删除').click() })

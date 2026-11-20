@@ -77,7 +77,7 @@ test('copies cover the settings trio for all consumers plus host and http helper
   // derivations plus the entry-bound form fallback its card binds through. That
   // is six client copies and no package-root test setup — the provider's own
   // component tests mount nothing that needs the browser module loader.
-  // totals below are 133 / 80 / 42.
+  // Two connection-trust host copies bring the totals to 135 / 80 / 44.
   // dsh-browser-view's real-browser settings card adds seven client copies:
   // the card chrome, form primitives, stylesheet, entry fallback, card seat,
   // segmented control and slider bubble. dsh-task-board-team fills the board's
@@ -85,7 +85,7 @@ test('copies cover the settings trio for all consumers plus host and http helper
   // derivations (chrome, form primitives, stylesheet, segmented control, slider
   // bubble) and deliberately none of the entry-bound form fallback: its fields
   // are written through the board, not a family settings namespace.
-  assert.equal(entries.length, 133)
+  assert.equal(entries.length, 135)
   const clientTrio = entries.filter(entry => entry.target.includes('/src/client/'))
   assert.equal(clientTrio.length, 80)
   const hostCopies = entries.filter(entry => entry.target.includes('/src/host/')
@@ -93,9 +93,10 @@ test('copies cover the settings trio for all consumers plus host and http helper
     || entry.target.includes('/src/mount-once.ts')
     || entry.target.includes('/src/loopback.ts')
     || entry.target.includes('/src/pair-access.ts')
+    || entry.target.includes('/src/connection-trust.ts')
     || entry.target.includes('/src/agent/')
     || entry.target.endsWith('/packages/dsh-task-board/src/http.ts'))
-  assert.equal(hostCopies.length, 42)
+  assert.equal(hostCopies.length, 44)
 })
 
 test('checkSync detects drift and applySync repairs it', async () => {

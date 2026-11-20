@@ -1,5 +1,5 @@
 /**
- * The SSH operations panel shell: a header with a close control, a five-tab
+ * The SSH operations panel shell: a header with a close control, a six-tab
  * bar, and the active tab's content.
  *
  * The active tab and the terminal tabs live in the controller, not in
@@ -14,6 +14,7 @@ import type { PanelController, SshTab } from './controller.ts'
 import { tt, type TerminalFontSource } from './helpers.ts'
 import { ClusterTab } from './ClusterTab.tsx'
 import { HostsTab } from './HostsTab.tsx'
+import { KeysTab } from './KeysTab.tsx'
 import { TerminalTab } from './TerminalTab.tsx'
 import { TransferTab } from './TransferTab.tsx'
 import { TunnelsTab } from './TunnelsTab.tsx'
@@ -32,6 +33,7 @@ export interface SshPanelProps {
 /** The tab bar definition (labels resolved at render time). */
 const TABS: ReadonlyArray<{ id: SshTab; label: () => string }> = [
   { id: 'hosts', label: () => tt('tab.hosts') },
+  { id: 'keys', label: () => tt('tab.keys') },
   { id: 'terminal', label: () => tt('tab.terminal') },
   { id: 'transfer', label: () => tt('tab.transfer') },
   { id: 'tunnels', label: () => tt('tab.tunnels') },
@@ -70,6 +72,7 @@ export function SshPanel({ controller, api, terminalFont }: SshPanelProps) {
       </div>
       <div className={css.panelContent}>
         {activeTab === 'hosts' && <HostsTab api={api} onConnect={alias => { controller.requestConnect(alias) }} />}
+        {activeTab === 'keys' && <KeysTab api={api} />}
         {activeTab === 'terminal' && (
           <TerminalTab api={api} controller={controller} terminalFont={terminalFont} />
         )}

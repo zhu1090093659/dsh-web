@@ -28,6 +28,7 @@ afterEach(() => {
 function fakeApi(): SshApi {
   return {
     listHosts: vi.fn(async () => []),
+    listKeys: vi.fn(async () => []),
   } as unknown as SshApi
 }
 
@@ -68,7 +69,7 @@ describe('SshPanel L2 semantic attributes (#506)', () => {
     await act(async () => { root.render(<SshPanel controller={fakeController()} api={fakeApi()} />) })
 
     const tabs = container.querySelectorAll('[role="tab"]')
-    expect(tabs.length).toBe(5)
+    expect(tabs.length).toBe(6)
     for (const tab of tabs) {
       expect(tab.getAttribute('data-dsh-part')).toBe('tab')
     }

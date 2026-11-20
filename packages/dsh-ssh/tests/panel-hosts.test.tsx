@@ -224,6 +224,7 @@ describe('HostsTab agent forwarding', () => {
   function makeApi(hosts: SshHostSummary[]): SshApi {
     return {
       listHosts: vi.fn(async () => hosts),
+      listKeys: vi.fn(async () => []),
       createHost: vi.fn(async (payload: HostPayload) => makeHost(payload.alias ?? 'new-host')),
       updateHost: vi.fn(async (alias: string) => makeHost(alias)),
     } as unknown as SshApi

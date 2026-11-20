@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { SshApi } from '../api.ts'
-import type { ImportSkipBlock, ImportSkipReason, SshHostSummary, TestResult } from '../../protocol.ts'
+import type { ImportSkipBlock, ImportSkipReason, SshPanelHostSummary, TestResult } from '../../protocol.ts'
 import type { SshKey } from '../locales.ts'
 import { errorMessage, tt } from './helpers.ts'
 import { HostFormDialog } from './HostFormDialog.tsx'
@@ -19,7 +19,7 @@ export interface HostsTabProps {
 }
 
 /** The host-form dialog invocation. */
-type DialogState = { mode: 'create' } | { mode: 'edit'; host: SshHostSummary }
+type DialogState = { mode: 'create' } | { mode: 'edit'; host: SshPanelHostSummary }
 
 /** Skipped-block rows rendered before the "and N more" summary. */
 const IMPORT_SKIP_LIMIT = 8
@@ -39,7 +39,7 @@ export type HostGroupBy = 'none' | 'environment' | 'tags'
 export interface HostGroup {
   /** Group key: the environment name, one tag, or '' for the ungrouped bucket. */
   key: string
-  hosts: SshHostSummary[]
+  hosts: SshPanelHostSummary[]
 }
 
 /**
@@ -48,10 +48,10 @@ export interface HostGroup {
  * the grouping key land in the '' bucket, which always sorts last. Groups
  * sort alphabetically; host order inside a group follows the API listing.
  */
-export function groupHosts(hosts: SshHostSummary[], groupBy: HostGroupBy): HostGroup[] {
+export function groupHosts(hosts: SshPanelHostSummary[], groupBy: HostGroupBy): HostGroup[] {
   if (groupBy === 'none') return [{ key: '', hosts }]
-  const buckets = new Map<string, SshHostSummary[]>()
-  const push = (key: string, host: SshHostSummary): void => {
+  const buckets = new Map<string, SshPanelHostSummary[]>()
+  const push = (key: string, host: SshPanelHostSummary): void => {
     const bucket = buckets.get(key)
     if (bucket === undefined) buckets.set(key, [host])
     else bucket.push(host)
@@ -72,7 +72,7 @@ export function groupHosts(hosts: SshHostSummary[], groupBy: HostGroupBy): HostG
 
 /** The hosts table plus its toolbar and dialogs. */
 export function HostsTab({ api, onConnect }: HostsTabProps) {
-  const [hosts, setHosts] = useState<SshHostSummary[] | null>(null)
+  const [hosts, setHosts] = useState<SshPanelHostSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [testingAlias, setTestingAlias] = useState<string | null>(null)
@@ -177,7 +177,7 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
     }
   }
 
-  const renderHostRow = (host: SshHostSummary): ReactNode => {
+  const renderHostRow = (host: SshPanelHostSummary): ReactNode => {
     const test = testResults[host.alias]
     return (
       <tr key={host.alias}>
@@ -216,7 +216,7 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
     )
   }
 
-  const renderHostTable = (rows: SshHostSummary[]): ReactNode => (
+  const renderHostTable = (rows: SshPanelHostSummary[]): ReactNode => (
     <table className={css.table}>
       <thead>
         <tr>

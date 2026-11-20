@@ -16,11 +16,11 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HostFormDialog } from '../src/client/panel/HostFormDialog.tsx'
 import type { SshApi } from '../src/client/api.ts'
-import type { HostPayload, SshHostSummary } from '../src/protocol.ts'
+import type { HostPayload, SshPanelHostSummary } from '../src/protocol.ts'
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-function makeHost(alias: string, extra: Partial<SshHostSummary> = {}): SshHostSummary {
+function makeHost(alias: string, extra: Partial<SshPanelHostSummary> = {}): SshPanelHostSummary {
   return {
     alias,
     host: alias + '.example.com',
@@ -40,6 +40,7 @@ function makeHost(alias: string, extra: Partial<SshHostSummary> = {}): SshHostSu
 function makeApi(): SshApi {
   return {
     listHosts: vi.fn(async () => []),
+    listKeys: vi.fn(async () => []),
     createHost: vi.fn(async (payload: HostPayload) => makeHost(payload.alias ?? 'new-host')),
     updateHost: vi.fn(async (alias: string) => makeHost(alias)),
   } as unknown as SshApi
@@ -83,7 +84,7 @@ async function chooseAuth(container: HTMLElement, label: string): Promise<void> 
 const saveButtonOf = (container: HTMLElement): HTMLButtonElement =>
   [...container.querySelectorAll('button')].find(button => button.textContent === '保存') as HTMLButtonElement
 
-async function renderEdit(host: SshHostSummary, api: SshApi): Promise<HTMLElement> {
+async function renderEdit(host: SshPanelHostSummary, api: SshApi): Promise<HTMLElement> {
   const container = document.createElement('div')
   document.body.appendChild(container)
   const root = createRoot(container)
@@ -150,6 +151,64 @@ describe('HostFormDialog editing auth (#1910)', () => {
 
     // Then the auth block stays omitted
     expect(vi.mocked(api.updateHost).mock.calls[0]![1].auth).toBeUndefined()
+  })
+
+  it('user editing a matching hand-written path gets the managed key selected automatically', async () => {
+    // Given a legacy host path equal to a managed key path
+    const api = makeApi()
+    vi.mocked(api.listKeys).mockResolvedValue([{
+      id: 'key-work', name: 'Work key', path: '/keys/work', hasPassphrase: true,
+      exists: true, usedBy: ['managed-1'], createdAt: 1, updatedAt: 1,
+    }])
+    const container = await renderEdit(makeHost('managed-1', { keyPath: '/keys/work' }), api)
+    // When the managed list loads and the user saves
+    const select = container.querySelector('select[aria-label="受管密钥"]') as HTMLSelectElement
+    expect(select.value).toBe('key-work')
+    await act(async () => { saveButtonOf(container).click() })
+    // Then the visual match does not silently replace a legacy host's stored passphrase
+    const payload = vi.mocked(api.updateHost).mock.calls[0]![1]
+    expect(payload.managedKeyId).toBeUndefined()
+    expect(payload.auth).toEqual({ kind: 'key', keyPath: '/keys/work', passphrase: undefined })
+  })
+
+  it('user explicitly selecting a managed key sends its transient id and path', async () => {
+    // Given a custom-path host and an available managed key
+    const api = makeApi()
+    vi.mocked(api.listKeys).mockResolvedValue([{
+      id: 'key-work', name: 'Work key', path: '/keys/work', hasPassphrase: true,
+      exists: true, usedBy: [], createdAt: 1, updatedAt: 1,
+    }])
+    const container = await renderEdit(makeHost('select-1', { keyPath: '/custom/id_rsa' }), api)
+    const select = container.querySelector('select[aria-label="受管密钥"]') as HTMLSelectElement
+    // When the user actively chooses the managed key and saves
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')?.set?.call(select, 'key-work')
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await act(async () => { saveButtonOf(container).click() })
+    // Then the Host resolves the selected credentials without returning the managed passphrase
+    const payload = vi.mocked(api.updateHost).mock.calls[0]![1]
+    expect(payload.managedKeyId).toBe('key-work')
+    expect(payload.auth).toEqual({ kind: 'key', keyPath: '/keys/work', passphrase: undefined })
+  })
+
+  it('user editing an unmatched hand-written path keeps it as a custom path', async () => {
+    // Given a stored custom path not present in the managed list
+    const api = makeApi()
+    vi.mocked(api.listKeys).mockResolvedValue([{
+      id: 'key-other', name: 'Other', path: '/keys/other', hasPassphrase: false,
+      exists: false, usedBy: [], createdAt: 1, updatedAt: 1,
+    }])
+    const container = await renderEdit(makeHost('custom-1', { keyPath: '/custom/id_rsa' }), api)
+    // When the list loads and the user saves without changing the selection
+    const select = container.querySelector('select[aria-label="受管密钥"]') as HTMLSelectElement
+    expect(select.value).toBe('')
+    expect((fieldOf(container, '私钥路径').querySelector('input') as HTMLInputElement).value).toBe('/custom/id_rsa')
+    await act(async () => { saveButtonOf(container).click() })
+    // Then the original path is preserved and no managed id is invented
+    const payload = vi.mocked(api.updateHost).mock.calls[0]![1]
+    expect(payload.managedKeyId).toBeUndefined()
+    expect(payload.auth).toEqual({ kind: 'key', keyPath: '/custom/id_rsa', passphrase: undefined })
   })
 
   it('user hint no longer claims an empty agent path keeps the previous auth kind', async () => {

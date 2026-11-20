@@ -1,12 +1,12 @@
 /**
  * Host form dialog: create/edit one stored host entry. A fixed backdrop with
- * a centered card; Escape and backdrop clicks close it. Secrets (key path,
- * passphrase, password) are never pre-filled when editing (the API only
- * exposes the secret-free summary).
+ * a centered card; Escape and backdrop clicks close it. Passwords and
+ * passphrases are never pre-filled. The browser-only panel summary includes
+ * the key path solely to match a managed key; passphrases resolve Host-side.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { SshApi } from '../api.ts'
-import type { HostPayload, SshAuthKind, SshHostSummary } from '../../protocol.ts'
+import type { HostPayload, SshAuthKind, SshKeySummary, SshPanelHostSummary } from '../../protocol.ts'
 import { errorMessage, tt } from './helpers.ts'
 import css from './panel.module.css'
 
@@ -14,9 +14,9 @@ import css from './panel.module.css'
 export interface HostFormDialogProps {
   api: SshApi
   /** The host being edited; null/undefined means create. */
-  editing?: SshHostSummary | null
+  editing?: SshPanelHostSummary | null
   onClose: () => void
-  onSaved: (host: SshHostSummary) => void
+  onSaved: (host: SshPanelHostSummary) => void
 }
 
 /** The staged form values (all strings; parsed on save). */
@@ -27,6 +27,7 @@ interface FormState {
   user: string
   authKind: SshAuthKind
   keyPath: string
+  managedKeyId: string
   passphrase: string
   password: string
   agentPath: string
@@ -45,14 +46,15 @@ function splitList(text: string): string[] {
 }
 
 /** Initial form state: the summary's public fields plus empty secrets. */
-function blankOf(editing: SshHostSummary | null | undefined): FormState {
+function blankOf(editing: SshPanelHostSummary | null | undefined): FormState {
   return {
     alias: editing?.alias ?? '',
     host: editing?.host ?? '',
     port: String(editing?.port ?? 22),
     user: editing?.user ?? '',
     authKind: editing?.auth ?? 'key',
-    keyPath: '',
+    keyPath: editing?.keyPath ?? '',
+    managedKeyId: '',
     passphrase: '',
     password: '',
     agentPath: '',
@@ -71,6 +73,9 @@ export function HostFormDialog({ api, editing, onClose, onSaved }: HostFormDialo
   const [form, setForm] = useState<FormState>(() => blankOf(editing))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [keys, setKeys] = useState<SshKeySummary[] | null>(null)
+  const [keysError, setKeysError] = useState<string | null>(null)
+  const keySelectionTouched = useRef(false)
 
   // Escape closes the dialog.
   useEffect(() => {
@@ -81,8 +86,35 @@ export function HostFormDialog({ api, editing, onClose, onSaved }: HostFormDialo
     return () => { document.removeEventListener('keydown', onKey) }
   }, [onClose])
 
+  useEffect(() => {
+    let cancelled = false
+    void api.listKeys().then(list => {
+      if (cancelled) return
+      setKeys(list)
+      setForm(previous => {
+        if (keySelectionTouched.current || previous.authKind !== 'key' || previous.managedKeyId !== '' || previous.keyPath === '') return previous
+        const match = list.find(key => key.path === previous.keyPath)
+        return match === undefined ? previous : { ...previous, managedKeyId: match.id, keyPath: match.path }
+      })
+    }, cause => {
+      if (!cancelled) setKeysError(errorMessage(cause))
+    })
+    return () => { cancelled = true }
+  }, [api])
+
   const set = <K extends keyof FormState>(key: K, value: FormState[K]): void => {
     setForm(prev => ({ ...prev, [key]: value }))
+  }
+
+  const chooseManagedKey = (id: string): void => {
+    keySelectionTouched.current = true
+    const selected = keys?.find(key => key.id === id)
+    setForm(previous => ({
+      ...previous,
+      managedKeyId: selected?.id ?? '',
+      keyPath: selected?.path ?? previous.keyPath,
+      passphrase: '',
+    }))
   }
 
   const save = async (): Promise<void> => {
@@ -96,6 +128,10 @@ export function HostFormDialog({ api, editing, onClose, onSaved }: HostFormDialo
     const port = Number(form.port)
     if (!Number.isInteger(port) || port < 1 || port > 65535) {
       setError(tt('form.portInvalid'))
+      return
+    }
+    if (form.authKind === 'key' && form.keyPath.trim() === '' && (editing == null || editing.auth !== 'key')) {
+      setError(tt('form.keyPathRequired'))
       return
     }
     // A password-auth host needs a password on create; when editing, a blank
@@ -120,13 +156,14 @@ export function HostFormDialog({ api, editing, onClose, onSaved }: HostFormDialo
       : form.authKind === 'password'
         ? { kind: 'password', password: form.password }
         : form.authKind === 'key'
-          ? { kind: 'key', keyPath: form.keyPath.trim(), passphrase: form.passphrase === '' ? undefined : form.passphrase }
+          ? { kind: 'key', keyPath: form.keyPath.trim(), passphrase: form.managedKeyId !== '' || form.passphrase === '' ? undefined : form.passphrase }
           : { kind: 'agent', agentPath: form.agentPath.trim() === '' ? undefined : form.agentPath.trim() }
     const payload: HostPayload = {
       host,
       port,
       user,
       auth,
+      ...(form.authKind === 'key' && form.managedKeyId !== '' && (editing == null || keySelectionTouched.current) ? { managedKeyId: form.managedKeyId } : {}),
       proxyJump: splitList(form.proxyJump),
       // Always sent (never omitted): an empty value is the explicit clear,
       // because the API cannot express "remove this field" any other way.
@@ -197,17 +234,37 @@ export function HostFormDialog({ api, editing, onClose, onSaved }: HostFormDialo
           {editing != null && <span className={css.hint}>{tt('form.authKeepHint')}</span>}
         </div>
         {form.authKind === 'key' ? (
-          <div className={css.formRow}>
+          <>
+            <div className={css.field}>
+              <span className={css.fieldLabel}>{tt('form.managedKey')}</span>
+              <select
+                className={css.input}
+                aria-label={tt('form.managedKey')}
+                value={form.managedKeyId}
+                disabled={keys === null}
+                onChange={event => { chooseManagedKey(event.target.value) }}
+              >
+                <option value="">{tt('form.key.custom')}</option>
+                {(keys ?? []).map(key => <option key={key.id} value={key.id}>{key.name} — {key.path}</option>)}
+              </select>
+              <span className={css.hint}>
+                {keysError !== null
+                  ? tt('form.keyListError', { error: keysError })
+                  : form.managedKeyId !== '' ? tt('form.key.managedHint') : tt('form.key.customHint')}
+              </span>
+            </div>
+            <div className={css.formRow}>
             <label className={css.field}>
               <span className={css.fieldLabel}>{tt('form.keyPath')}</span>
-              <input className={css.input} value={form.keyPath} onChange={event => { set('keyPath', event.target.value) }} />
+              <input className={css.input} value={form.keyPath} readOnly={form.managedKeyId !== ''} onChange={event => { set('keyPath', event.target.value) }} />
               <span className={css.hint}>{tt('form.keyPathHint')}</span>
             </label>
             <label className={css.field}>
               <span className={css.fieldLabel}>{tt('form.passphrase')}</span>
-              <input className={css.input} type="password" value={form.passphrase} onChange={event => { set('passphrase', event.target.value) }} />
+              <input className={css.input} type="password" value={form.passphrase} disabled={form.managedKeyId !== ''} onChange={event => { set('passphrase', event.target.value) }} />
             </label>
-          </div>
+            </div>
+          </>
         ) : form.authKind === 'agent' ? (
           <label className={css.field}>
             <span className={css.fieldLabel}>{tt('form.agentPath')}</span>

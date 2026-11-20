@@ -22,6 +22,7 @@
 | 能力 | 说明 |
 | --- | --- |
 | 主机管理 | 增删改查、搜索、连接测试；支持按环境 / 标签分组折叠与组内批量测试；配置存 `~/.dsh/dsh-ssh.json`；支持密钥 / 密码 / ssh-agent 认证（OpenSSH agent，Windows 上仍可选 Pageant）、passphrase 密钥、ProxyJump 跳板机（多级）与 OpenSSH `ProxyCommand` 传输层（堡垒机客户端场景） |
+| 受管密钥 | 「密钥」页签登记名称、本机私钥绝对路径、可选口令与备注，列表显示文件是否存在及引用主机。主机表单提供受管密钥下拉框与自定义路径，旧的手填路径自动匹配；显式选择后由宿主侧解析路径与口令，不向浏览器回读受管口令。只读取文件元数据，绝不读取或复制私钥内容 |
 | 配置导入 | 一键解析标准 `~/.ssh/config`（Host/HostName/User/Port/IdentityFile/IdentityAgent/ForwardAgent/ProxyJump/ProxyCommand、`Include` 文件、无 HostName 的块）；`ForwardAgent yes|true|on` 导入为启用，`no|false|off` 或没有该指令导入为关闭；被跳过的块逐条列出原因（通配符 pattern、别名已存在、Match 条件块、字段不合法） |
 | 持久连接池 | 每台主机复用长连接（对应 ssh-skill 的守护进程），空闲 30 分钟自动断开，断线自动重连（最多 3 次） |
 | Agent 转发 | 按主机选择性启用（`ssh -A`）：主机表单提供「启用 Agent 转发」勾选框，主机列表为已启用的主机显示「Agent 转发」标记；`ssh_list` 输出带 `forwardAgent`，渲染表格中对应一列。转发的本地端点依次取主机配置的 agent 路径、`SSH_AUTH_SOCK`、Windows 上的原生 OpenSSH 命名管道（`\\.\pipe\openssh-ssh-agent`）；三者都拿不到时连接直接报错，不会静默地不转发。服务端拒绝该请求（`AllowAgentForwarding no`）时原样呈现服务端错误，绝不静默降级为未转发的会话。关闭时不写入配置文件 |
@@ -82,7 +83,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-ssh
 
 ## 数据
 
-- 主机配置：`~/.dsh/dsh-ssh.json`（版本化 JSON，原子写入）
+- 主机与受管密钥配置：`~/.dsh/dsh-ssh.json`（版本化 JSON，原子写入；新增首个受管密钥时才增加增量 `keys` 集合）
 - 传输暂存：`os.tmpdir()/dsh-ssh-uploads/`（目录 0700，传输中的文件 0600）
 
 ## 开发
@@ -95,6 +96,7 @@ pnpm --filter @linxin666/dsh-ssh build   # tsc 类型 + tsdown 双半区产物
 
 ## 已知限制
 
+- 修改或删除受管密钥只改变受管记录，绝不改写或删除既有主机的 `auth.keyPath` / 口令与私钥文件；确认框列出全部引用主机，路径不再匹配的主机保留为自定义路径。
 - 上传的远程目标路径必须是绝对路径（相对路径会被拒绝）。
 - 下载暂不支持整个目录（逐文件下载）；上传支持目录递归（walk 本地目录逐文件传）。
 - exec 断线自动重连（最多 3 次）可能重复执行非幂等命令——长命令注意副作用。

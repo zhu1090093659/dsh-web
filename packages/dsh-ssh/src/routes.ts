@@ -23,7 +23,7 @@ import { TerminalSessionRegistry } from './engine/terminal-sessions.ts'
 import { readJsonBody, writeJson } from './http.ts'
 import { isLoopbackRequest } from './loopback.ts'
 import { connectionAdmits, type HostConnectionReader } from './connection-trust.ts'
-import { SSH_API, type HostPayload, type TerminalServerFrame } from './protocol.ts'
+import { SSH_API, type HostPayload, type SshKeyPayload, type TerminalServerFrame } from './protocol.ts'
 import type { HostStore } from './store.ts'
 
 /** Cap on declared upload bodies (staged to disk before SFTP). */
@@ -101,7 +101,7 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
         }
         const url = new URL(req.url ?? '/', 'http://localhost')
         if (method === 'GET') {
-          writeJson(res, 200, { hosts: engine.list(queryParam(url, 'query')) })
+          writeJson(res, 200, { hosts: store.list(queryParam(url, 'query')).map(entry => store.summarizePanel(entry)) })
           return
         }
         if (method === 'POST') {
@@ -111,8 +111,8 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
             return
           }
           try {
-            const entry = store.create(body as unknown as HostPayload)
-            writeJson(res, 201, { host: store.summarize(entry) })
+            const entry = store.create(store.resolveManagedKey(body as unknown as HostPayload))
+            writeJson(res, 201, { host: store.summarizePanel(entry) })
           } catch (error) {
             writeJson(res, 400, { error: error instanceof Error ? error.message : String(error) })
           }
@@ -134,7 +134,7 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
             return
           }
           try {
-            const entry = store.update(alias, body as unknown as Partial<HostPayload>)
+            const entry = store.update(alias, store.resolveManagedKey(body as unknown as Partial<HostPayload>))
             // Connection-relevant changes invalidate the pooled connection:
             // without this the pool would keep running commands on the old
             // host/credentials until the idle sweep (up to 30 min later).
@@ -145,7 +145,7 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
             if (['host', 'port', 'user', 'auth', 'proxyJump', 'proxyCommand', 'forwardAgent'].some(key => patch[key] !== undefined)) {
               engine.dropAlias(alias)
             }
-            writeJson(res, 200, { host: store.summarize(entry) })
+            writeJson(res, 200, { host: store.summarizePanel(entry) })
           } catch (error) {
             writeJson(res, 400, { error: error instanceof Error ? error.message : String(error) })
           }
@@ -162,6 +162,63 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
           return
         }
         writeJson(res, 405, { error: `method not allowed: ${method}` })
+      },
+    },
+    {
+      kind: 'exact',
+      path: SSH_API.keys,
+      handler: async (req, res) => {
+        const method = req.method ?? 'GET'
+        if (!allowed(req)) {
+          writeJson(res, 403, { error: 'forbidden: loopback-only' })
+          return
+        }
+        if (method === 'GET') {
+          writeJson(res, 200, { keys: store.listKeys() })
+          return
+        }
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        if (method === 'POST') {
+          const body = (await readJsonBody(req)) as Record<string, unknown> | null
+          if (body === null) {
+            writeJson(res, 400, { error: 'invalid JSON body' })
+            return
+          }
+          try {
+            writeJson(res, 201, { key: store.createKey(body as SshKeyPayload) })
+          } catch (error) {
+            writeJson(res, 400, { error: error instanceof Error ? error.message : String(error) })
+          }
+          return
+        }
+        if (method !== 'PATCH' && method !== 'DELETE') {
+          writeJson(res, 405, { error: `method not allowed: ${method}` })
+          return
+        }
+        const id = queryParam(url, 'id')
+        if (id === undefined || id === '') {
+          writeJson(res, 400, { error: 'id query parameter is required' })
+          return
+        }
+        if (method === 'DELETE') {
+          try {
+            store.deleteKey(id)
+            writeJson(res, 200, { ok: true })
+          } catch (error) {
+            writeJson(res, 400, { error: error instanceof Error ? error.message : String(error) })
+          }
+          return
+        }
+        const body = (await readJsonBody(req)) as Record<string, unknown> | null
+        if (body === null) {
+          writeJson(res, 400, { error: 'invalid JSON body' })
+          return
+        }
+        try {
+          writeJson(res, 200, { key: store.updateKey(id, body as SshKeyPayload) })
+        } catch (error) {
+          writeJson(res, 400, { error: error instanceof Error ? error.message : String(error) })
+        }
       },
     },
     {

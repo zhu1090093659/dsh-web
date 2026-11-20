@@ -23,7 +23,7 @@
 import type { TerminalConnection } from '../api.ts'
 
 /** The panel's tab identifiers. */
-export type SshTab = 'hosts' | 'terminal' | 'transfer' | 'tunnels' | 'cluster'
+export type SshTab = 'hosts' | 'keys' | 'terminal' | 'transfer' | 'tunnels' | 'cluster'
 
 /** Stable id shared by the sidebar panel row and the main-slot page. */
 export const SSH_PANEL_ID = 'ssh'

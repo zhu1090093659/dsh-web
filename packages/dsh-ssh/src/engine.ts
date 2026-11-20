@@ -65,14 +65,7 @@ export class SshEngine {
 
   /** Secret-free host list (filtered by the optional query). */
   list(query?: string): SshHostSummary[] {
-    const needle = query?.trim().toLowerCase()
-    return this.store.list()
-      .filter(entry => needle === undefined || needle === ''
-        || entry.alias.toLowerCase().includes(needle)
-        || (entry.description ?? '').toLowerCase().includes(needle)
-        || entry.host.toLowerCase().includes(needle)
-        || entry.tags.some(tag => tag.toLowerCase().includes(needle)))
-      .map(entry => this.store.summarize(entry))
+    return this.store.list(query).map(entry => this.store.summarize(entry))
   }
 
   /** One host summary by alias. */

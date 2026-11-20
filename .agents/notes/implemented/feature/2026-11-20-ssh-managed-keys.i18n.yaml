@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-11-20-ssh-managed-keys.md: 3a84975701c32675aaa6e8ab6521e9bd5b974365
+2026-11-20-ssh-managed-keys.zh.md: e427d00a7016ec9f62feec44d4797d7efcd14e81

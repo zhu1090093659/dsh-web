@@ -22,6 +22,7 @@ A dedicated remote Linux server operations and cluster management plugin for Dee
 | Capability | Description |
 | --- | --- |
 | Host management | CRUD, search, connection test; collapsible grouping by environment / tags with per-group batch test; config stored in `~/.dsh/dsh-ssh.json`; supports key / password / ssh-agent auth (OpenSSH agent, with Pageant still selectable on Windows), passphrase keys, ProxyJump jump hosts (multi-level) and OpenSSH `ProxyCommand` transports (bastion clients) |
+| Managed keys | The Keys tab registers a name, absolute local private-key path, optional passphrase and note. Rows show file existence and referencing hosts. The host form offers managed keys plus a custom-path option, auto-matches legacy hand-written paths, and resolves an explicitly selected key's path/passphrase Host-side without returning the managed passphrase to the browser. Only metadata is statted; private-key contents are never read or copied |
 | Config import | One-click parse of a standard `~/.ssh/config` (Host/HostName/User/Port/IdentityFile/IdentityAgent/ForwardAgent/ProxyJump/ProxyCommand, `Include` files, blocks without HostName); `ForwardAgent yes|true|on` imports as enabled and `no|false|off` (or no directive) as disabled; skipped blocks are listed with their reason (wildcard pattern, existing alias, Match block, invalid fields) |
 | Persistent connection pool | Reuses a long-lived connection per host (opposite of the ssh-skill daemon), automatically disconnects after 30 minutes idle, auto-reconnects on disconnect (up to 3 times) |
 | Agent forwarding | Opt-in per host through the `forwardAgent` flag (`ssh -A`); the form has an "Enable agent forwarding" checkbox, the host list shows an agent-forwarding badge for enabled hosts, and `ssh_list` reports `forwardAgent` with a forward column in its table. The endpoint is the host's configured agent path, otherwise `SSH_AUTH_SOCK`, otherwise the native OpenSSH named pipe (`\\.\pipe\openssh-ssh-agent`) on Windows; a host with no local endpoint fails with an explicit error instead of connecting without forwarding. A server that refuses the request (`AllowAgentForwarding no`) surfaces its own error and is never downgraded to a silent non-forwarded session. The flag never touches the stored profile when it is off |
@@ -82,7 +83,7 @@ The settings panel (plugin config) toggles `announceToAgent` (whether to announc
 
 ## Data
 
-- Host config: `~/.dsh/dsh-ssh.json` (versioned JSON, atomic write)
+- Host and managed-key config: `~/.dsh/dsh-ssh.json` (versioned JSON, atomic write; incremental `keys` collection appears only after the first managed key is added)
 - Transfer staging: `os.tmpdir()/dsh-ssh-uploads/` (0700 directory, 0600 in-flight files)
 
 ## Development
@@ -95,6 +96,7 @@ pnpm --filter @linxin666/dsh-ssh build   # tsc types + tsdown dual-half artifact
 
 ## Known limitations
 
+- Editing or deleting a managed key changes only its managed record. Existing host `auth.keyPath` / passphrase values and private-key files are never rewritten or deleted; confirmations name every referencing host, and a host whose path no longer matches remains a custom-path entry.
 - The remote target path of an upload must be an absolute path (relative paths are rejected).
 - Download does not support a whole directory yet (download files individually); upload supports recursive directories (walks the local directory and transfers file by file).
 - exec auto-reconnect on disconnect (up to 3 times) may re-execute non-idempotent commands — watch out for side effects on long commands.

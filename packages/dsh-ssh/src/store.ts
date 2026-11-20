@@ -8,10 +8,11 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { dshHome } from './dsh-home.ts'
-import type { HostPayload, ImportResult, ImportSkipBlock, ImportSkipReason, SshHostEntry, SshHostSummary } from './protocol.ts'
+import type { HostPayload, ImportResult, ImportSkipBlock, ImportSkipReason, SshHostEntry, SshHostSummary, SshKeyEntry, SshKeyPayload, SshKeySummary, SshPanelHostSummary } from './protocol.ts'
 import { readSshConfigBlocks } from './ssh-config.ts'
 
 /** File format version. */
@@ -30,6 +31,8 @@ export function sshConfigPath(): string {
 interface StoreFile {
   version: number
   hosts: SshHostEntry[]
+  /** Incremental managed-key collection; absent in every pre-feature store. */
+  keys?: SshKeyEntry[]
 }
 
 /** Validate the wire shape of a host payload; returns a message or undefined. */
@@ -105,10 +108,15 @@ export class HostStore {
     this.sshConfigOverride = sshConfigOverride
   }
 
-  /** Load all entries (empty store when the file is absent). */
-  list(): SshHostEntry[] {
+  /** Load host entries, optionally filtered by the panel's search text. */
+  list(query?: string): SshHostEntry[] {
     const file = this.load()
-    return file.hosts
+    const needle = query?.trim().toLowerCase()
+    if (needle === undefined || needle === '') return file.hosts
+    return file.hosts.filter(entry => entry.alias.toLowerCase().includes(needle)
+      || (entry.description ?? '').toLowerCase().includes(needle)
+      || entry.host.toLowerCase().includes(needle)
+      || entry.tags.some(tag => tag.toLowerCase().includes(needle)))
   }
 
   /** Find one entry by alias. */
@@ -147,6 +155,16 @@ export class HostStore {
     }
   }
 
+  /** Browser-only projection that can match a stored path to a managed key. */
+  summarizePanel(entry: SshHostEntry): SshPanelHostSummary {
+    return {
+      ...this.summarize(entry),
+      ...(entry.auth.kind === 'key' && entry.auth.keyPath !== undefined && entry.auth.keyPath !== ''
+        ? { keyPath: entry.auth.keyPath }
+        : {}),
+    }
+  }
+
   /** Create one entry. Throws on alias collision or invalid payload. */
   create(payload: HostPayload): SshHostEntry {
     const alias = payload.alias?.trim()
@@ -167,7 +185,7 @@ export class HostStore {
       auth: {
         kind: payload.auth.kind,
         keyPath: payload.auth.kind === 'key' ? expandHome(payload.auth.keyPath?.trim() ?? '') : undefined,
-        passphrase: payload.auth.kind === 'key' ? payload.auth.passphrase ?? undefined : undefined,
+        passphrase: payload.auth.kind === 'key' ? payload.auth.passphrase || undefined : undefined,
         password: payload.auth.kind === 'password' ? payload.auth.password : undefined,
         agentPath: payload.auth.kind === 'agent' ? normalizeAgentPath(payload.auth.agentPath) : undefined,
       },
@@ -248,7 +266,7 @@ export class HostStore {
         kind: auth.kind,
         keyPath: auth.kind === 'key' ? expandHome(auth.keyPath?.trim() ?? '') : undefined,
         passphrase: auth.kind === 'key'
-          ? (auth.passphrase !== undefined ? auth.passphrase : (keyChanged ? undefined : entry.auth.passphrase))
+          ? (auth.passphrase !== undefined ? auth.passphrase || undefined : (keyChanged ? undefined : entry.auth.passphrase))
           : undefined,
         password: auth.kind === 'password' ? auth.password : undefined,
         agentPath: auth.kind === 'agent'
@@ -276,6 +294,92 @@ export class HostStore {
     if (index < 0) throw new Error(`alias '${alias}' not found`)
     file.hosts.splice(index, 1)
     this.save(file)
+  }
+
+  /** List managed keys with file-existence and host-reference metadata. */
+  listKeys(): SshKeySummary[] {
+    const file = this.load()
+    return (file.keys ?? []).map(key => this.summarizeKey(key, file))
+  }
+
+  /** Create one managed key reference without reading its contents. */
+  createKey(payload: SshKeyPayload): SshKeySummary {
+    const name = requiredKeyName(payload.name)
+    const path = requiredKeyPath(payload.path)
+    const file = this.load()
+    const now = Date.now()
+    const entry: SshKeyEntry = {
+      id: randomUUID(),
+      name,
+      path,
+      passphrase: typeof payload.passphrase === 'string' && payload.passphrase !== '' ? payload.passphrase : undefined,
+      note: payload.note?.trim() || undefined,
+      createdAt: now,
+      updatedAt: now,
+    }
+    const keys = file.keys ??= []
+    keys.push(entry)
+    this.save(file)
+    return this.summarizeKey(entry, file)
+  }
+
+  /** Update a managed key; omitted fields and a blank passphrase keep old values. */
+  updateKey(id: string, patch: SshKeyPayload): SshKeySummary {
+    const file = this.load()
+    const entry = file.keys?.find(candidate => candidate.id === id)
+    if (entry === undefined) throw new Error(`managed key '${id}' not found`)
+    if (patch.name !== undefined) entry.name = requiredKeyName(patch.name)
+    if (patch.path !== undefined) entry.path = requiredKeyPath(patch.path)
+    if (patch.passphrase !== undefined) {
+      entry.passphrase = patch.passphrase === null || patch.passphrase === '' ? undefined : patch.passphrase
+    }
+    if (patch.note !== undefined) entry.note = patch.note.trim() || undefined
+    entry.updatedAt = Date.now()
+    this.save(file)
+    return this.summarizeKey(entry, file)
+  }
+
+  /** Delete only the managed reference; stored host auth.keyPath values stay untouched. */
+  deleteKey(id: string): void {
+    const file = this.load()
+    const index = file.keys?.findIndex(candidate => candidate.id === id) ?? -1
+    if (index < 0) throw new Error(`managed key '${id}' not found`)
+    file.keys!.splice(index, 1)
+    this.save(file)
+  }
+
+  /** Resolve a transient managedKeyId into the host's existing keyPath/passphrase shape. */
+  resolveManagedKey<T extends HostPayload | Partial<HostPayload>>(payload: T): T {
+    if (payload.managedKeyId === undefined) return payload
+    if (typeof payload.managedKeyId !== 'string' || payload.managedKeyId === '') throw new Error('managedKeyId must be a non-empty string')
+    if (payload.auth !== undefined && payload.auth.kind !== 'key') throw new Error('managedKeyId requires key auth')
+    const key = this.load().keys?.find(candidate => candidate.id === payload.managedKeyId)
+    if (key === undefined) throw new Error(`managed key '${payload.managedKeyId}' not found`)
+    const { managedKeyId: _managedKeyId, ...rest } = payload
+    return {
+      ...rest,
+      auth: {
+        ...payload.auth,
+        kind: 'key',
+        keyPath: key.path,
+        // An explicit empty value clears an old host passphrase when the managed key has none.
+        passphrase: key.passphrase ?? '',
+      },
+    } as T
+  }
+
+  private summarizeKey(key: SshKeyEntry, file: StoreFile): SshKeySummary {
+    return {
+      id: key.id,
+      name: key.name,
+      path: key.path,
+      hasPassphrase: key.passphrase !== undefined && key.passphrase !== '',
+      note: key.note,
+      exists: existsSync(expandHome(key.path)),
+      usedBy: file.hosts.filter(host => host.auth.kind === 'key' && host.auth.keyPath === expandHome(key.path)).map(host => host.alias),
+      createdAt: key.createdAt,
+      updatedAt: key.updatedAt,
+    }
   }
 
   /**
@@ -435,6 +539,18 @@ export function normalizeProxyCommand(raw: string | undefined): string | undefin
 export function parseForwardAgentValue(raw: string | undefined): boolean {
   const value = raw?.trim().toLowerCase()
   return value === 'yes' || value === 'true' || value === 'on'
+}
+
+function requiredKeyName(value: string | undefined): string {
+  if (typeof value !== 'string' || value.trim() === '') throw new Error('key name is required')
+  return value.trim()
+}
+
+function requiredKeyPath(value: string | undefined): string {
+  if (typeof value !== 'string' || value.trim() === '') throw new Error('key path is required')
+  const path = expandHome(value.trim())
+  if (!isAbsolute(path)) throw new Error('key path must be absolute')
+  return path
 }
 
 /** Expand a leading `~` in a filesystem path. */

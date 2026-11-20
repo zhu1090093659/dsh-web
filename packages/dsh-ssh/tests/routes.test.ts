@@ -204,6 +204,43 @@ describe('host connection trust', () => {
   })
 })
 
+describe('managed key API (#2069)', () => {
+  it('operator creates a key, assigns it to a host and deletes only the managed record', async () => {
+    // Given one local path registered through the real HTTP route
+    const keyPath = join(dir, 'route-managed-key')
+    writeFileSync(keyPath, 'fixture-not-a-private-key')
+    const createdResponse = await fetch('http://127.0.0.1:' + port + SSH_API.keys, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Route key', path: keyPath, passphrase: 'route-secret' }),
+    })
+    const createdBody = await createdResponse.json() as any
+    expect(createdResponse.status).toBe(201)
+    expect(createdBody.key).toMatchObject({ path: keyPath, hasPassphrase: true, exists: true })
+    expect(JSON.stringify(createdBody)).not.toContain('route-secret')
+    // When a host selects that managed key
+    const hostResponse = await fetch('http://127.0.0.1:' + port + SSH_API.hosts, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        alias: 'managed-route', host: '127.0.0.2', user: 'root',
+        managedKeyId: createdBody.key.id, auth: { kind: 'key', keyPath: '/ignored' },
+      }),
+    })
+    const hostBody = await hostResponse.json() as any
+    // Then the browser receives the panel path and the Host stores the managed passphrase
+    expect(hostResponse.status).toBe(201)
+    expect(hostBody.host.keyPath).toBe(keyPath)
+    expect(store.find('managed-route')?.auth.passphrase).toBe('route-secret')
+    const listed = await (await fetch('http://127.0.0.1:' + port + SSH_API.keys)).json() as any
+    expect(listed.keys[0].usedBy).toEqual(['managed-route'])
+    // And deleting the managed record never rewrites the host
+    await fetch('http://127.0.0.1:' + port + SSH_API.keys + '?id=' + createdBody.key.id, { method: 'DELETE' })
+    expect(store.find('managed-route')?.auth.keyPath).toBe(keyPath)
+    store.delete('managed-route')
+  })
+})
+
 describe('hosts CRUD (one handler per path)', () => {
   it('creates, lists, patches, and deletes through the shared route', async () => {
     const create = await fetch('http://127.0.0.1:' + port + SSH_API.hosts, {

@@ -86,6 +86,48 @@ export interface SshHostSummary {
   updatedAt: number
 }
 
+/** Browser-only host projection: includes the key path needed for managed-key matching. */
+export interface SshPanelHostSummary extends SshHostSummary {
+  /** Private-key path for key auth; never exposed through the agent/service summary. */
+  keyPath?: string
+}
+
+/** One managed private-key reference stored in dsh-ssh.json. */
+export interface SshKeyEntry {
+  id: string
+  name: string
+  /** Absolute local path; key contents are never copied or read by the plugin. */
+  path: string
+  passphrase?: string
+  note?: string
+  createdAt: number
+  updatedAt: number
+}
+
+/** Secret-free managed-key projection for the browser. */
+export interface SshKeySummary {
+  id: string
+  name: string
+  path: string
+  hasPassphrase: boolean
+  note?: string
+  /** Whether the local path currently exists (stat-only check). */
+  exists: boolean
+  /** Aliases whose stored auth.keyPath equals this key's path. */
+  usedBy: string[]
+  createdAt: number
+  updatedAt: number
+}
+
+/** Managed-key create/update payload; null passphrase explicitly clears it on update. */
+export interface SshKeyPayload {
+  name?: string
+  path?: string
+  passphrase?: string | null
+  /** Empty string clears the note; omission preserves it on update. */
+  note?: string
+}
+
 /** Result of one non-interactive command execution. */
 export interface ExecResult {
   success: boolean
@@ -162,6 +204,8 @@ export interface HostPayload {
    * stored secrets (the browser never receives them back).
    */
   auth?: SshHostEntry['auth']
+  /** Transient managed-key selection resolved Host-side; never persisted on the host row. */
+  managedKeyId?: string
   proxyJump?: string[]
   /**
    * ProxyCommand to store. An empty string or 'none' clears a stored value;
@@ -230,6 +274,7 @@ export const SSH_API_BASE = '/api/dsh-ssh' as const
 
 export const SSH_API = {
   hosts: SSH_API_BASE + '/hosts',
+  keys: SSH_API_BASE + '/keys',
   importSshConfig: SSH_API_BASE + '/hosts/import-ssh-config',
   test: SSH_API_BASE + '/test',
   exec: SSH_API_BASE + '/exec',

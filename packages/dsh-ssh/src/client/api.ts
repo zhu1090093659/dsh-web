@@ -11,6 +11,9 @@ import {
   type ImportResult,
   type RemoteDirEntry,
   type SshHostSummary,
+  type SshKeyPayload,
+  type SshKeySummary,
+  type SshPanelHostSummary,
   type TerminalClientFrame,
   type TerminalServerFrame,
   type TestResult,
@@ -235,34 +238,66 @@ export interface TerminalConnection {
 /** The browser half's only data entry point. */
 export class SshApi {
   // -------------------------------------------------------------- hosts
-  async listHosts(queryText?: string): Promise<SshHostSummary[]> {
+  async listHosts(queryText?: string): Promise<SshPanelHostSummary[]> {
     const response = await fetch(SSH_API.hosts + query({ query: queryText }))
-    const body = await readJson<{ hosts: SshHostSummary[] }>(response)
+    const body = await readJson<{ hosts: SshPanelHostSummary[] }>(response)
     return body.hosts
   }
 
-  async createHost(payload: HostPayload): Promise<SshHostSummary> {
+  async createHost(payload: HostPayload): Promise<SshPanelHostSummary> {
     const response = await fetch(SSH_API.hosts, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    const body = await readJson<{ host: SshHostSummary }>(response)
+    const body = await readJson<{ host: SshPanelHostSummary }>(response)
     return body.host
   }
 
-  async updateHost(alias: string, patch: HostPayload): Promise<SshHostSummary> {
+  async updateHost(alias: string, patch: HostPayload): Promise<SshPanelHostSummary> {
     const response = await fetch(SSH_API.hosts + query({ alias }), {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(patch),
     })
-    const body = await readJson<{ host: SshHostSummary }>(response)
+    const body = await readJson<{ host: SshPanelHostSummary }>(response)
     return body.host
   }
 
   async deleteHost(alias: string): Promise<void> {
     const response = await fetch(SSH_API.hosts + query({ alias }), { method: 'DELETE' })
+    await readJson<{ ok: boolean }>(response)
+  }
+
+  // -------------------------------------------------------------- managed keys
+  async listKeys(): Promise<SshKeySummary[]> {
+    const response = await fetch(SSH_API.keys)
+    const body = await readJson<{ keys: SshKeySummary[] }>(response)
+    return body.keys
+  }
+
+  async createKey(payload: SshKeyPayload): Promise<SshKeySummary> {
+    const response = await fetch(SSH_API.keys, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const body = await readJson<{ key: SshKeySummary }>(response)
+    return body.key
+  }
+
+  async updateKey(id: string, patch: SshKeyPayload): Promise<SshKeySummary> {
+    const response = await fetch(SSH_API.keys + query({ id }), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    const body = await readJson<{ key: SshKeySummary }>(response)
+    return body.key
+  }
+
+  async deleteKey(id: string): Promise<void> {
+    const response = await fetch(SSH_API.keys + query({ id }), { method: 'DELETE' })
     await readJson<{ ok: boolean }>(response)
   }
 

@@ -32,6 +32,15 @@ dsh Web GUI 的远程 SSH 运维插件：Host 进程内的持久 ssh2 连接池 
   它只交出主机的公开字段，`proxyCommand` 原文与任何凭据永不外露；纪律见下节「宿主服务
   dshSsh」。
 
+## 受管密钥
+
+- 受管密钥只登记本机路径、可选口令与备注；存在性检查只用 stat，不读取或复制私钥内容。
+  浏览器收到 hasPassphrase，不收口令明文；dshSsh / agent 主机投影仍不含私钥路径，面板专用投影才带
+  keyPath 供旧手填路径自动匹配。
+- 主机持久形状仍是 auth.keyPath + passphrase。表单的 managedKeyId 只是线上瞬态字段，由 Host 在
+  create/update 前解析并剥离；自动匹配只改变显示，只有用户显式选择才重新应用受管口令，避免保存无关
+  字段时覆盖旧主机凭据。受管记录的编辑 / 删除不改写主机或私钥文件，确认框必须列出引用主机。
+
 ## Agent 工具面
 
 - 六个工具 `ssh_list` / `ssh_exec` / `ssh_upload` / `ssh_download` /

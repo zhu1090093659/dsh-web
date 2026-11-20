@@ -975,3 +975,71 @@ describe('optional registry resolution', () => {
   })
 })
 
+
+describe('a card whose run a provider takes over', () => {
+  /** Register a provider that takes every run over and describes its cards. */
+  function withProvider(live: Harness, options: { refuse?: boolean } = {}): void {
+    live.host.registerExtension({
+      id: 'remote-test',
+      apiVersion: 1,
+      start(face) {
+        face.launch?.intercept(() => options.refuse === true
+          ? { kind: 'refuse', code: 'run-active', reason: 'a run is already in flight' }
+          : { kind: 'external' })
+      },
+      describeTask: task => ({ host: 'box', agent: 'claude', mode: 'direct', canFollowUp: true, localPermission: false, runId: 'r-' + task.id }),
+      describeRun: taskId => ({ executionId: 'e-1', runId: 'r-' + taskId, logPath: 'box:/state/runs/r/stdout.log', target: { host: 'box' }, estimatedDurationMs: 1000, next: 'wait with the provider tool' }),
+    })
+  }
+
+  it('operator running the card gets the provider handle at the top level instead of an empty list', async () => {
+    // Given a provider that takes every run over
+    const live = harness()
+    withProvider(live)
+    await call(live, 'task_board_create', { title: 'remote job', prompt: 'p' })
+    const taskId = await onlyTaskId(live)
+
+    // When the card is run through the board tool
+    const run = await call(live, 'task_board_run', { taskId })
+
+    // Then the handle is lifted to the top level and the note names the next call
+    expect(run.ok).toBe(true)
+    expect(run.started).toEqual([])
+    expect(run).toMatchObject({ executionId: 'e-1', runId: 'r-' + taskId, logPath: 'box:/state/runs/r/stdout.log', estimatedDurationMs: 1000 })
+    expect(run.note).toBe('wait with the provider tool')
+  })
+
+  it('operator reading list and get sees the provider summary on the card', async () => {
+    // Given a provider that describes its cards
+    const live = harness()
+    withProvider(live)
+    await call(live, 'task_board_create', { title: 'remote job', prompt: 'p' })
+    const taskId = await onlyTaskId(live)
+
+    // When the card is listed and read
+    const list = await call(live, 'task_board_list')
+    const get = await call(live, 'task_board_get', { taskId })
+
+    // Then both carry the remote summary, and a card outside the Host reports no pending permission
+    const row = (list.tasks as Array<Record<string, unknown>>)[0]
+    expect(row?.remote).toMatchObject({ provider: 'remote-test', host: 'box', agent: 'claude', canFollowUp: true })
+    expect((get.task as Record<string, unknown>).remote).toMatchObject({ host: 'box' })
+    expect(row?.permissionPending).toBeUndefined()
+  })
+
+  it('operator running a card the provider refuses hears the provider code', async () => {
+    // Given a provider that refuses the launch
+    const live = harness()
+    withProvider(live, { refuse: true })
+    await call(live, 'task_board_create', { title: 'remote job', prompt: 'p' })
+    const taskId = await onlyTaskId(live)
+
+    // When the card is run
+    const run = await call(live, 'task_board_run', { taskId })
+
+    // Then the refusal carries the stable code and the card did not move
+    expect(run).toMatchObject({ ok: false, code: 'run-active', message: 'a run is already in flight' })
+    const get = await call(live, 'task_board_get', { taskId })
+    expect((get.task as Record<string, unknown>).status).toBe('todo')
+  })
+})

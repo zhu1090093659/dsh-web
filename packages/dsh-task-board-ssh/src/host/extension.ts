@@ -21,6 +21,7 @@ import {
   type TaskBoardExtensionHost,
 } from '../core/contract.ts'
 import { SSH_AGENT_KINDS, type SshAgentKind, type SshExecutionMode } from '../core/target.ts'
+import type { TaskRecord } from '../core/task-record.ts'
 import type { BoardActionSeat } from './board.ts'
 import { SshRunEngine, type SshEngineReply, type SshLogPage } from './engine.ts'
 import {
@@ -74,6 +75,8 @@ export interface SshExtensionOptions {
   now?: () => number
   /** Identifier source for request ids and run ids. */
   uuid?: () => string
+  /** Wait source of a blocking status call; a real timer when absent. */
+  sleep?: (ms: number) => Promise<void>
   /** Poll cadence, in milliseconds. */
   pollIntervalMs?: number
   /** Ceiling for one remote command, in milliseconds. */
@@ -268,6 +271,7 @@ export function createSshExtension(options: SshExtensionOptions): TaskBoardExten
         ...(options.localRepository === undefined ? {} : { localRepository: options.localRepository }),
         ...(options.now === undefined ? {} : { now: options.now }),
         ...(options.uuid === undefined ? {} : { uuid: options.uuid }),
+        ...(options.sleep === undefined ? {} : { sleep: options.sleep }),
         ...(options.pollIntervalMs === undefined ? {} : { pollIntervalMs: options.pollIntervalMs }),
         ...(options.commandTimeoutMs === undefined ? {} : { commandTimeoutMs: options.commandTimeoutMs }),
         log,
@@ -297,6 +301,8 @@ export function createSshExtension(options: SshExtensionOptions): TaskBoardExten
       engine?.stop()
       engine = undefined
     },
+    describeTask: (task: TaskRecord) => engine?.describeTask(task),
+    describeRun: (taskId: string) => engine?.describeRun(taskId),
     async handleAction(request: TaskBoardExtensionActionRequest): Promise<unknown> {
       return await routeAction(request, engine, options.settingsWriter)
     },

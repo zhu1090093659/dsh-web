@@ -280,6 +280,8 @@ export function parseLedger(raw: string | null): TaskRecord[] {
       // is what the history is for, and only its instructions are unrecoverable.
       rework: normalizeExecutionRework(execution.rework),
       external: execution.external === true ? true : undefined,
+      errorCode: typeof execution.errorCode === 'string' && execution.errorCode !== '' ? execution.errorCode : undefined,
+      retryHint: typeof execution.retryHint === 'string' && execution.retryHint !== '' ? execution.retryHint : undefined,
     }))
     // Execution targets are normalized like the schedule: blank strings
     // clear the pin and unknown permission strings from a future version

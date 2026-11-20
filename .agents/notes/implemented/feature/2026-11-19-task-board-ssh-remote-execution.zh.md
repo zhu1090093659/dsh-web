@@ -68,7 +68,7 @@ handler 抛错被隔离，按 `undefined` 处理。没有 handler 注册时，�
 
 ### 卡片界面
 
-详情区：目标表单（模式、主机、Agent、工作区；`proxy` 模式隐藏仅远端生效的 Agent/日志/追问控件；运行中或归档卡片禁用目标编辑）、执行状态、支持超过 8 KiB 自动分页的虚拟化日志查看、追问输入、取消。新建弹窗「运行方式」席位：同步回报草稿载荷与摘要/阻断错误（防止未填完 SSH 目标时静默退回本机执行）、折叠展开保留状态，并预填复制卡片的目标。卡片徽标：主机与执行状态（排队、运行、失联）。看板设置卡内的配置区块：开关、默认值、每主机上限、Agent 命令覆盖（编辑时保留 `resumeCommand` 与 `custom` 条目）。全部四个席位均通过 `slots.inject` 跟随看板槽位声明生命周期。三个模型可见工具：`task_board_ssh_target`、`task_board_ssh_status`、`task_board_ssh_follow_up`。
+详情区：目标表单（模式、主机、Agent、工作区；`proxy` 模式隐藏仅远端生效的 Agent/日志/追问控件；运行中或归档卡片禁用目标编辑）、执行状态、支持超过 8 KiB 自动分页的虚拟化日志查看、追问输入、取消。新建弹窗「运行方式」席位：同步回报草稿载荷与摘要/阻断错误（防止未填完 SSH 目标时静默退回本机执行）、折叠展开保留状态，并预填复制卡片的目标。卡片徽标：主机与执行状态（排队、运行、失联）。看板设置卡内的配置区块：开关、默认值、每主机上限、Agent 命令覆盖（编辑时保留 `resumeCommand` 与 `custom` 条目）。全部四个席位均通过 `slots.inject` 跟随看板槽位声明生命周期。模型可见工具：统一入口 `task_board_ssh`（create、bind、read、run、status、log、followup）与兼容工具 `task_board_ssh_target`、`task_board_ssh_status`、`task_board_ssh_follow_up`。
 
 ## Context & Efficiency Impact
 
@@ -106,3 +106,15 @@ direct 模式不消耗本机模型 token。提供方新增三个工具与一小�
 - **看板这道缝改动了每张卡片的启动路径**；无 handler 的路径必须逐字节不变，并由契约测试钉住。
 - **未跟踪文件留在本机**，因为 bundle 只带提交；该数量写进执行摘要，而不是被静默忽略。
 - **挂载没齐备时卡片上看不到任何本提供方的界面**：宿主半区要等看板与 `dsh-ssh` 都在才登记，而 `dsh-ssh` 在聚合包里是一行默认关闭的插件，因此刚装好的全家桶里，卡片详情只显示「需要先在插件管理里启用 SSH 插件」，直到那一行被打开。
+
+## Agent 入口（2026-11-20）
+
+用 Claude 在 `local1` 上做的一次端到端运行用了六个工具和大量轮询：建卡不能带目标、没有预检、`run` 返回 `started: []`、`status` 不能阻塞且结束后换了结构、日志是 12.7 MB 的原始 stream-json、成功摘要躺在 `execution.error` 里。决策：
+
+- **一个工具、一次调用。** `task_board_ssh action:create` 在建卡时绑定目标（先检查目标，再用同一次写入带目标建卡，因此被拒绝不留卡片）；`run:true` 启动，`wait:true` 阻塞到结论。已否决：给 `task_board_create` 加 `ssh` 字段，会把 SSH 词汇带进看板。旧三个工具作为薄兼容入口保留，调用同一批引擎方法。
+- **任何东西保存之前先预检**，一条只读远端命令（`inspect.ts`）：主机可达、agent 程序在 PATH 上、in-place 目录存在且可写。错误码：`host-unreachable`、`agent-missing`、`path-missing`、`permission-required`。agent 参数刻意不做 schema 枚举，坏名字返回 `agent-missing` 而不是 schema 错误。in-place 目录从不自动创建。
+- **启动即给句柄。** 启动拦截器现在同步选定 `runId` 与 `executionId`；看板可选的 `describeRun` 面把它们提到 `task_board_run` 的返回里，`record-external-outcome` 接受可选的 `executionId` 与 `startedAt`，结束后的执行记录沿用发出去的 id。运行进行中再次运行，经新的启动决策 `{kind:'refuse'}` 以 `run-active` 明确拒绝，而不是被吞掉。
+- **统一状态与阻塞等待。** `statusView` 报告活动运行，否则报告最近一次已结束的运行，所有键始终存在（缺失为 `null`），`phase` 永不缺失；`wait` 轮询引擎自身状态直到结束或 `timeoutMs`；超时是 `timedOut:true`，不是错误。`lastActivity`（最后一次工具调用的名字与一行参数）从过滤后的日志尾部读出。
+- **摘要与错误分开。** 看板把外部成功结论存为 `summary`，`error` 只留给失败，另有可选的 `errorCode` 与 `retryHint`；执行视图与看板历史两者都渲染。早先把成功文字存在 `error` 里的外部记录仍按结论渲染。
+- **日志在主机侧处理。** 噪声过滤（除 `init` 外的 `system`、`rate_limit_event`、`stream_event`）、截行、`tail`/`since` 选段与字节上限都在一条 `awk | tail | head` 管线里对 `stdout.log` 完成，12 MB 的日志只花一次短回复；回复带 `rawBytes`、`filteredLines`、`filteredBytes`。启动器脚本与 SSH 连接层都没有改动。
+- **看板可选面**（API 版本仍为 1）：`describeTask`（`task_board_get` 与 `task_board_list` 上的 `remote` 摘要；`localPermission:false` 去掉 `permissionPending`，因为 direct 卡不受本地权限闸管辖）与 `describeRun`。

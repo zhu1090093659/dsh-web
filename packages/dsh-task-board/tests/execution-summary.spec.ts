@@ -114,7 +114,9 @@ describe('reading what a run left behind', () => {
     // Then prose survives trimmed, an overlong text is bounded, and unusable ones are dropped
     expect(normalizeExecutionSummary({ text: '  shipped  ', seq: 12 })).toEqual({ text: 'shipped', seq: 12 })
     expect(normalizeExecutionSummary({ text: '   ', seq: 12 })).toBeUndefined()
-    expect(normalizeExecutionSummary({ text: 'shipped' })).toBeUndefined()
+    // An external conclusion was never read out of a session, so it has no seq.
+    expect(normalizeExecutionSummary({ text: 'shipped' })).toEqual({ text: 'shipped' })
+    expect(normalizeExecutionSummary({ text: 'shipped', seq: 'x' })).toBeUndefined()
     expect(normalizeExecutionSummary('shipped')).toBeUndefined()
     expect(normalizeExecutionSummary({ text: 'x'.repeat(EXECUTION_SUMMARY_LIMIT + 1), seq: 3 })?.text.length).toBe(EXECUTION_SUMMARY_LIMIT)
   })

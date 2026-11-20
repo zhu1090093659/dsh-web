@@ -108,6 +108,14 @@ export function mountEngine(options: MountOptions): Mounted {
     ...(options.now === undefined ? {} : { now: options.now }),
     uuid: options.uuid ?? (() => { sequence += 1; return 'id-' + String(sequence) }),
     pollIntervalMs: options.pollIntervalMs ?? TICK_MS,
+    // A blocking status call waits by driving the poll clock, with a short real
+    // pause so a locally executed run can make progress between polls.
+    sleep: async (ms: number) => {
+      timers.advance(ms)
+      await flush()
+      await new Promise<void>(resolve => { setTimeout(resolve, 25) })
+      await flush()
+    },
     log: options.log ?? (() => { /* a spec asserts on state, not on the provider's own chatter */ }),
   })
   const decorated: TaskBoardExtension = {

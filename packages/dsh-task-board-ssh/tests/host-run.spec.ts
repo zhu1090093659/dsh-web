@@ -120,7 +120,7 @@ describe('a direct card', () => {
     expect(executions).toHaveLength(1)
     expect(executions[0]?.external).toBe(true)
     expect(executions[0]?.result).toBe('succeeded')
-    expect(executions[0]?.error).toBe('the work is done')
+    expect(executions[0]?.summary?.text).toBe('the work is done')
     expect(executions[0]?.initiatedBy).toBe('ssh:' + runId)
     const settled = payloadOf(board, taskId)
     expect(settled?.activeRun).toBeUndefined()
@@ -305,7 +305,7 @@ describe('a git workspace run', () => {
     expect(workspaces.recorder.prepared).toEqual([runId])
     expect(workspaces.recorder.collected).toEqual([runId])
     expect(payloadOf(board, taskId)?.history[0]?.branch).toBe('dsh-task/run-1')
-    expect(executionsOf(board.task(taskId))[0]?.error).toBe('parser fixed')
+    expect(executionsOf(board.task(taskId))[0]?.summary?.text).toBe('parser fixed')
   })
 })
 
@@ -387,7 +387,7 @@ describe('a host that restarts mid-run', () => {
     const executions = executionsOf(board.task(finished))
     expect(executions).toHaveLength(1)
     expect(executions[0]?.result).toBe('succeeded')
-    expect(executions[0]?.error).toBe('closed while the host was down')
+    expect(executions[0]?.summary?.text).toBe('closed while the host was down')
     expect(executions[0]?.initiatedBy).toBe('ssh:' + finishedRun)
     expect(board.task(live)?.status).toBe('running')
 

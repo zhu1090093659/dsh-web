@@ -108,7 +108,7 @@ describe('an instruction for a settled remote card', () => {
     const executions = executionsOf(board.task(taskId))
     expect(executions).toHaveLength(2)
     expect(executions[1]?.initiatedBy).toBe('ssh:' + secondRun)
-    expect(executions[1]?.error).toBe('changelog written')
+    expect(executions[1]?.summary?.text).toBe('changelog written')
   })
 
   it('operator following up on an agent that cannot resume gets a fresh run carrying the earlier summary', async () => {
@@ -143,8 +143,8 @@ describe('an instruction for a settled remote card', () => {
     // Then the record says it was the fresh run, not a continuation
     const executions = executionsOf(board.task(taskId))
     expect(executions).toHaveLength(2)
-    expect(executions[1]?.error?.startsWith(SSH_DEGRADED_SUMMARY_MARKER)).toBe(true)
-    expect(executions[1]?.error).toContain('changelog written')
+    expect(executions[1]?.summary?.text?.startsWith(SSH_DEGRADED_SUMMARY_MARKER)).toBe(true)
+    expect(executions[1]?.summary?.text).toContain('changelog written')
   })
 
   it('operator sending a finished card back with rework instructions continues the same session', async () => {

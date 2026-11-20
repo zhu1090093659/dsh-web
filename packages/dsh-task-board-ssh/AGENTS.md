@@ -22,7 +22,7 @@
 - `src/host/`：宿主半区。`engine.ts` 是运行引擎（准入、排队、轮询、追问、取消、重启
   对账），`remote.ts` 是远端操作面，`logs.ts` 按字节偏移读日志，`queue.ts` 是每主机
   并发与 FIFO 队列，`payload.ts` 组装账本载荷，`prompt.ts` 是 proxy 前言与续跑提示词，
-  `tools.ts` 是三个模型可见工具，`settings.ts` 读配置与唯一的写回路径，
+  `tools.ts` 是模型可见工具（统一入口 `task_board_ssh` 加三个兼容旧工具），`inspect.ts` 是预检命令、主机侧日志过滤管线与最后活动解析，`settings.ts` 读配置与唯一的写回路径，
   `workspace/` 是三种工作区机制（`in-place`、`git`+地址、`git`+本机仓库）与
   `layout.ts` 的远端路径/引用派生，`extension.ts` 是看板扩展面，`board.ts` 解析看板
   自己的动作应用器。

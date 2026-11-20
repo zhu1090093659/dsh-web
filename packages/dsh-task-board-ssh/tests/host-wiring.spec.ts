@@ -125,7 +125,7 @@ describe('the extension row', () => {
     cleanups.push(() => { void sshProvision.dispose() })
     await settle()
 
-    // Then the provider is admitted and its three tools are there
+    // Then the provider is admitted and its four tools are there
     expect(board.record.admitted).toHaveLength(1)
     expect(board.record.tools).toEqual([...SSH_TOOL_NAMES])
 
@@ -182,7 +182,7 @@ describe('the extension row', () => {
   })
 })
 
-describe('the three tools', () => {
+describe('the four tools', () => {
   it('operator switching the extension off loses its tools, its interception and its polling, and switching it back rebuilds them', async () => {
     // Given a host serving both services, mounted as its own fiber, and a switch
     // that is on
@@ -205,7 +205,7 @@ describe('the three tools', () => {
     fiber.ctx.emit('loader/volatile-update', [[]])
     await settle()
 
-    // Then the provider was released with everything it registered: its three
+    // Then the provider was released with everything it registered: its four
     // tools, its launch handler and its engine (which takes the poll timer with
     // it, so no host is asked about any run again)
     expect(board.record.released).toBe(1)
@@ -217,7 +217,7 @@ describe('the three tools', () => {
     fiber.ctx.emit('loader/volatile-update', [[]])
     await settle()
 
-    // Then the provider is admitted again and its three tools are back
+    // Then the provider is admitted again and its four tools are back
     expect(board.record.admitted).toHaveLength(2)
     expect([...board.record.tools].sort()).toEqual([...SSH_TOOL_NAMES].sort())
   })
@@ -260,7 +260,7 @@ describe('the three tools', () => {
     const registry = { names: new Set<string>() }
     const mounted = mountEngine({ board, ssh: ssh.service, workspaces: fakeWorkspaces({ cwd: '/srv/work' }).resolver, now: () => NOW, toolRegistry: registry })
     cleanups.push(() => { mounted.release() })
-    expect(registry.names.size).toBe(3)
+    expect(registry.names.size).toBe(4)
 
     // When the board's master switch goes off
     board.board.setConfiguration(false, false)

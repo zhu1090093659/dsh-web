@@ -9,7 +9,7 @@
 - 向任务看板登记 `ssh` 提供方扩展，并在看板唯一的启动闸口接管钉住了远端目标的卡片，因此原生运行按钮、定时调度与 `task_board_run` 走同一条路径。
 - 通过一个 POSIX `sh` 启动器在主机上运行 dsh、Claude Code、Codex 或自定义命令，优先用 `setsid nohup` 脱离（主机无 `setsid` 如 macOS 时回退到 `nohup`），使一次运行活过 SSH 连接与本机。
 - 运行的账目留在卡片自己的载荷里，输出留在远端文件里按有界字节偏移分页读回，因此日志随时可以从头回放。
-- 新增三个模型可见工具（`task_board_ssh_target`、`task_board_ssh_status`、`task_board_ssh_follow_up`）与一个任务详情席位，席位上放目标表单、运行状态、日志视图、追问框与取消。
+- 新增模型可见工具（统一入口 `task_board_ssh`，以及作为兼容层保留的 `task_board_ssh_target`、`task_board_ssh_status`、`task_board_ssh_follow_up`）与一个任务详情席位，席位上放目标表单、运行状态、日志视图、追问框与取消。
 - 新建弹窗的「运行方式」区块里也提供同一套目标选择，卡片可以在建出来之前就钉住主机。默认是不指定：这样的卡片建出来时不带目标，建好后仍由详情席位设置，与以前完全一样。
 - 从任务详情席位取消一次运行会停掉远端进程并把卡片放回待办列，不写任何结论。
 
@@ -59,9 +59,20 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board-ssh
 - `agent`：`dsh`、`claude`、`codex` 或 `custom`；自定义 agent 需要一条带 `{prompt_file}` 的启动命令模板，可选一条续跑模板。
 - `workspace`：`in-place` 配一个远端路径，或 `git` 配仓库地址与可选起始分支，或 `git` 配一个本机工作区标识。
 
+### Agent 入口
+
+`task_board_ssh` 的 `action` 取 `create | bind | read | run | status | log | followup`。一次调用 `{action:"create", title, prompt, host, workspacePath, run:true, wait:true}` 即可带目标建卡、预检、启动并阻塞到结束。
+
+- 目标怎么选：`mode` 为 `direct` 时在主机上起无头 agent、不留本地会话（自包含任务）；`proxy` 由本地会话驱动主机（需要本地上下文的工作）。`workspaceKind` 为 `in-place` 时直接在已存在的远端目录 `workspacePath` 里干活；`git` 按次建工作树、分支 `dsh-task/<runId>`，来源是 `repositoryUrl` 或本机 `workspaceId`。`agent` 取 `dsh`（默认）、`claude`、`codex` 或 `custom`（需 `agentCommand`）。
+- `create` 与 `bind` 在保存任何东西之前先预检（`preflight:false` 可跳过）：`host-unreachable`（别名 dsh-ssh 不认识或主机无应答）、`agent-missing`（不是受支持的 agent 名，或其程序不在主机 PATH 上）、`path-missing`（in-place 目录从不自动创建）、`permission-required`（ssh 用户对目录无写权限）。被拒绝的 `create` 不留卡片。`run-active` 在已有运行进行中时拒绝再次运行。其余字段不合法时返回 `invalid-target` 并逐项列出。
+- 运行句柄：`task_board_run` 与 `action:"run"` 返回 `executionId`、`runId`、`logPath`、`target`、`estimatedDurationMs`（同卡以往成功运行的中位数，否则 180000）和一条指明阻塞调用的提示；结束后的看板执行记录沿用这个 `executionId`。
+- `status` 对运行中与已结束的运行返回同一种结构：`phase`（永不缺失）、`exitCode`、`result`、`summary`、`error`（`code`、`message`、`retryHint`，仅失败时有值）、`durationMs`、`remoteSessionId`、`lastActivityAt`，运行中另有 `lastActivity`（agent 最后一次工具调用）。`wait:true` 配合 `timeoutMs`（默认 120000，上限 600000）阻塞到运行结束；超时返回 `timedOut:true`，运行不受影响。
+- `log` 在主机侧过滤：丢弃 `init` 以外的 `system` 事件、`rate_limit_event` 与流式增量，单行截断到 2000 字节。读取方式是 `tail` 末尾 N 行（默认 40）或 `since` 游标（`nextSince`），单次至多 64 KB（`maxBytes` 最大 128 KB）；每次回复都带 `stats`（`rawBytes`、`filteredLines`、`filteredBytes`），`statsOnly:true` 只回统计；`raw:true` 跳过过滤。
+- 成功运行的结论写入执行记录的 `summary`；`error` 只承载失败，并附 `errorCode` 与 `retryHint`。`task_board_get` 与 `task_board_list` 对这类卡片给出 `remote` 摘要（主机、agent、模式、`canFollowUp`），且对 direct 卡不再报告 `permissionPending`（本地权限闸不管它）。
+
 ### 扩展设置
 
-- `enabled`：总开关；关闭即撤下详情席位、卡片徽标、新建弹窗里的那一行、三个工具与启动拦截器，并停掉对所有在跟运行的轮询。
+- `enabled`：总开关；关闭即撤下详情席位、卡片徽标、新建弹窗里的那一行、四个工具与启动拦截器，并停掉对所有在跟运行的轮询。
 - `defaultMode`、`defaultAgent` 与 `defaultHost`：卡片在还没钉目标时打开的默认值。
 - `perHostCap`：一台主机同时跑几张卡，1 到 16，默认 2；超出的按提交顺序排队。
 - `agentCommands`：按 agent 覆写的命令模板，替换内置命令行。

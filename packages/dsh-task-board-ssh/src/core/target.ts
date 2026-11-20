@@ -122,6 +122,12 @@ export interface SshRunRecord {
   error?: string
   /** Follow-up messages delivered into this run's session. */
   followUps?: number
+  /** Execution id handed out at launch; the settled board execution record takes it. */
+  executionId?: string
+  /** Last instant the remote log grew (ms epoch). */
+  lastActivityAt?: number
+  /** Stable failure code of a failed run. */
+  errorCode?: string
 }
 
 /** One diagnostic about a malformed value, addressed by its path inside it. */
@@ -381,7 +387,7 @@ export function parseSshRunRecord(value: unknown): SshValidationResult<SshRunRec
   if (!isPlainObject(value)) return { ok: false, errors: [{ path: '', message: 'must be an object' }] }
   rejectUnknownKeys(
     value,
-    ['runId', 'phase', 'startedAt', 'finishedAt', 'exitCode', 'sessionId', 'bytes', 'branch', 'summary', 'error', 'followUps'],
+    ['runId', 'phase', 'startedAt', 'finishedAt', 'exitCode', 'sessionId', 'bytes', 'branch', 'summary', 'error', 'followUps', 'executionId', 'lastActivityAt', 'errorCode'],
     '',
     issues,
   )
@@ -391,11 +397,11 @@ export function parseSshRunRecord(value: unknown): SshValidationResult<SshRunRec
     issues.add('phase', 'must be one of: queued, running, succeeded, failed, cancelled, lost')
   }
   if (typeof value.startedAt !== 'number' || !Number.isFinite(value.startedAt)) issues.add('startedAt', 'must be a finite millisecond timestamp')
-  for (const key of ['finishedAt', 'exitCode', 'bytes', 'followUps'] as const) {
+  for (const key of ['finishedAt', 'exitCode', 'bytes', 'followUps', 'lastActivityAt'] as const) {
     if (value[key] === undefined) continue
     if (typeof value[key] !== 'number' || !Number.isFinite(value[key])) issues.add(key, 'must be a finite number')
   }
-  for (const key of ['sessionId', 'branch', 'summary', 'error'] as const) {
+  for (const key of ['sessionId', 'branch', 'summary', 'error', 'executionId', 'errorCode'] as const) {
     if (value[key] === undefined) continue
     readText(value[key], key, issues)
   }

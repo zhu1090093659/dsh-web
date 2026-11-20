@@ -50,3 +50,5 @@ A summary is informational in every direction: it never changes a verdict, never
 Verification: `tests/execution-summary.spec.ts` pins extraction, the execution window, truncation, repair, persistence, both settlement paths and the snapshot; `tests/host-runner.spec.ts` pins that the verdict the runner returns carries the closing text. The package gate is `pnpm --filter @linxin666/dsh-client-ui-task-board test` plus the repository `pnpm test`, `pnpm typecheck` and `pnpm build`.
 
 The [card surface contract](2026-10-20-task-board-card-surface-contract.md) owns the type scale, outcome slots and fold behaviour of these surfaces.
+
+An external record (`record-external-outcome`) follows the same field: a succeeded outside run stores its conclusion as `summary` (without a `seq`, since no session event produced it) and leaves `error` empty; a failed one stores its reason in `error` with optional `errorCode` and `retryHint`. The action also takes an optional `executionId` and `startedAt` so a provider that handed out an execution handle at launch keeps it on the settled record.

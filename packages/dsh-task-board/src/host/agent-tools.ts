@@ -47,6 +47,23 @@ export interface TaskBoardToolHost {
    * a provider's launch handler can tell an agent's run from a person's.
    */
   apply(requestId: string, action: TaskBoardAction, initiator?: string, trigger?: TaskBoardLaunchTrigger): TaskBoardSnapshot | Promise<TaskBoardSnapshot>
+  /** What running providers say about one card, keyed by extension id (optional). */
+  describeTask?(task: TaskRecord): Record<string, Record<string, unknown>> | undefined
+  /** The run handle a provider holds for one card, keyed by extension id (optional). */
+  describeRun?(taskId: string): Record<string, Record<string, unknown>> | undefined
+}
+
+/**
+ * The one provider view a card carries, with its extension id as `provider`.
+ * A provider that says `localPermission: false` marks a card the board's
+ * session permission gate does not govern (it runs outside this Host).
+ */
+function remoteView(views: Record<string, Record<string, unknown>> | undefined): { view: Record<string, unknown>; localPermission: boolean } | undefined {
+  if (views === undefined) return undefined
+  const [id, view] = Object.entries(views)[0] ?? []
+  if (id === undefined || view === undefined) return undefined
+  const { localPermission, ...rest } = view
+  return { view: { provider: id, ...rest }, localPermission: localPermission !== false }
 }
 
 /** Registered tool names, in registration order. */
@@ -130,7 +147,12 @@ function executionView(execution: ExecutionRecord): Record<string, unknown> {
     startedAt: execution.startedAt,
     ...(execution.endedAt === undefined ? {} : { endedAt: execution.endedAt }),
     ...(execution.result === undefined ? {} : { result: execution.result }),
+    // The conclusion of a succeeded run and the reason of a failed one never
+    // share a field: summary says what was done, error says why it failed.
+    ...(execution.summary === undefined ? {} : { summary: execution.summary.text }),
     ...(execution.error === undefined ? {} : { error: execution.error }),
+    ...(execution.errorCode === undefined ? {} : { errorCode: execution.errorCode }),
+    ...(execution.retryHint === undefined ? {} : { retryHint: execution.retryHint }),
     // The session that asked for the run (audit only; client-asserted by the
     // browser, the calling session here). On an external record it names the
     // outside agent instead, which is what distinguishes it in the history.
@@ -158,8 +180,10 @@ function taskSummary(
   task: TaskRecord,
   tasks: readonly TaskRecord[],
   sessionDefault: TaskPermission | undefined,
+  host?: TaskBoardToolHost,
 ): Record<string, unknown> {
   const latest = task.executions.at(-1)
+  const remote = remoteView(host?.describeTask?.(task))
   const subtaskCount = directSubtasks(tasks, task.id).length
   return {
     id: task.id,
@@ -182,9 +206,12 @@ function taskSummary(
     ...(task.permissionConfirmedAt === undefined ? {} : { permissionConfirmedAt: task.permissionConfirmedAt }),
     // Whether this card may run at all: an elevated binding still needs a
     // human confirmation, and only a human can give it.
-    ...(requiresPermissionConfirmation(task, sessionDefault ?? DEFAULT_SESSION_PERMISSION)
+    // A card that runs outside this Host is not governed by the session
+    // permission gate, so it never reports a pending confirmation it cannot use.
+    ...(remote?.localPermission !== false && requiresPermissionConfirmation(task, sessionDefault ?? DEFAULT_SESSION_PERMISSION)
       ? { permissionPending: true }
       : {}),
+    ...(remote === undefined ? {} : { remote: remote.view }),
     executionCount: task.executions.length,
     ...(latest === undefined ? {} : { latestExecution: executionView(latest) }),
     createdAt: task.createdAt,
@@ -197,10 +224,11 @@ function taskDetail(
   task: TaskRecord,
   tasks: readonly TaskRecord[],
   sessionDefault: TaskPermission | undefined,
+  host?: TaskBoardToolHost,
 ): Record<string, unknown> {
   const parent = task.parentId === undefined ? undefined : tasks.find(item => item.id === task.parentId)
   return {
-    ...taskSummary(task, tasks, sessionDefault),
+    ...taskSummary(task, tasks, sessionDefault, host),
     prompt: task.prompt,
     depth: taskDepth(tasks, task.id),
     ...(parent === undefined ? {} : { parent: { id: parent.id, title: parent.title, status: parent.status } }),
@@ -227,7 +255,7 @@ function taskDetail(
           bundledAt: task.handover.bundledAt,
         },
       }),
-    subtasks: directSubtasks(tasks, task.id).map(child => taskSummary(child, tasks, sessionDefault)),
+    subtasks: directSubtasks(tasks, task.id).map(child => taskSummary(child, tasks, sessionDefault, host)),
     executions: task.executions.slice(-10).map(executionView),
   }
 }
@@ -236,6 +264,15 @@ function taskDetail(
 function openedExecutions(before: readonly ExecutionRecord[], after: readonly ExecutionRecord[]): ExecutionRecord[] {
   const known = new Set(before.map(execution => execution.id))
   return after.filter(execution => !known.has(execution.id))
+}
+
+/** The identifiers of a run handle, lifted to the top level of the run output. */
+function liftHandle(handle: Record<string, unknown>): Record<string, unknown> {
+  const lifted: Record<string, unknown> = {}
+  for (const key of ['executionId', 'runId', 'logPath', 'target', 'estimatedDurationMs']) {
+    if (handle[key] !== undefined) lifted[key] = handle[key]
+  }
+  return lifted
 }
 
 /** Board summary attached to task_board_list. */
@@ -298,7 +335,7 @@ function buildSetParentTool(host: TaskBoardToolHost): ToolDefinition {
         )
         const task = snapshot.tasks.find(item => item.id === args.taskId)
         if (task === undefined) return refused('task-not-found', 'no task with id ' + args.taskId)
-        return json({ ok: true, task: taskSummary(task, snapshot.tasks, snapshot.sessionDefaultPermission) })
+        return json({ ok: true, task: taskSummary(task, snapshot.tasks, snapshot.sessionDefaultPermission, host) })
       } catch (error) {
         return refused('refused', messageOf(error))
       }
@@ -314,6 +351,7 @@ function buildRunTool(host: TaskBoardToolHost): ToolDefinition {
       'Running a card opens ONE session for that card: no session is opened for its subtasks, and the card agent dispatches them itself with subagent. A card whose subtasks are still unfinished runs under the liangshen agent preset and is told which cards to pick up.',
       'Clicking a subtask runs that subtask as its own root, again without opening anything for its descendants.',
       'A card whose effective permission is above the deployment session default is refused with confirmation-required until a HUMAN confirms the binding in the board UI; this tool cannot confirm it.',
+      'A card whose run a provider takes over (for example a card pinned to a remote host) answers with that run handle at the top level - executionId, runId, logPath, target, estimatedDurationMs - and a note naming the call that blocks until it settles; a second run request against a card that already has a run in flight is refused with a stable code instead of overwriting it.',
       'Executions consume real API quota. Sessions are created asynchronously, so read their ids and outcomes back with task_board_get.',
     ].join(' '),
     parameters: {
@@ -341,15 +379,24 @@ function buildRunTool(host: TaskBoardToolHost): ToolDefinition {
           }))
         })
         const root = snapshot.tasks.find(task => task.id === args.taskId)
+        // A provider that took the run over opens no board execution, so its
+        // own handle (run id, log location, target, estimate) is what the
+        // caller needs to follow it.
+        const handle = remoteView(host.describeRun?.(String(args.taskId)))?.view
+        const waitHint = typeof handle?.next === 'string' ? handle.next : undefined
         return json({
           ok: true,
           started,
-          ...(root === undefined ? {} : { task: taskSummary(root, snapshot.tasks, snapshot.sessionDefaultPermission) }),
-          note: 'Executions run asynchronously; call task_board_get to read session ids and the settled outcome.',
+          ...(handle === undefined ? {} : { run: handle, ...liftHandle(handle) }),
+          ...(root === undefined ? {} : { task: taskSummary(root, snapshot.tasks, snapshot.sessionDefaultPermission, host) }),
+          note: waitHint ?? 'Executions run asynchronously; call task_board_get to read session ids and the settled outcome.',
         })
       } catch (error) {
         const message = messageOf(error)
-        return refused(message.startsWith('confirmation-required') ? 'confirmation-required' : 'refused', message)
+        if (message.startsWith('confirmation-required')) return refused('confirmation-required', message)
+        // A provider refusal reads `code: reason`; the code is the stable part.
+        const coded = /^([a-z][a-z0-9-]*): ([\s\S]+)$/.exec(message)
+        return coded === null ? refused('refused', message) : refused(coded[1] as string, coded[2] as string)
       }
     },
   })
@@ -418,7 +465,7 @@ function buildManageTool(host: TaskBoardToolHost): ToolDefinition {
           return json({
             ok: true,
             action: args.action,
-            ...(task === undefined ? {} : { task: taskSummary(task, snapshot.tasks, snapshot.sessionDefaultPermission) }),
+            ...(task === undefined ? {} : { task: taskSummary(task, snapshot.tasks, snapshot.sessionDefaultPermission, host) }),
             note: 'The outcome is recorded as its own execution, so the terminal column and the run history agree. Read it back with task_board_get.',
           })
         } catch (error) {
@@ -446,7 +493,7 @@ function buildManageTool(host: TaskBoardToolHost): ToolDefinition {
         if (args.action === 'delete') return json({ ok: true, action: args.action, taskId: args.taskId })
         const task = snapshot.tasks.find(item => item.id === args.taskId)
         if (task === undefined) return refused('task-not-found', 'no task with id ' + args.taskId)
-        return json({ ok: true, action: args.action, task: taskSummary(task, snapshot.tasks, snapshot.sessionDefaultPermission) })
+        return json({ ok: true, action: args.action, task: taskSummary(task, snapshot.tasks, snapshot.sessionDefaultPermission, host) })
       } catch (error) {
         return refused('refused', messageOf(error))
       }
@@ -506,7 +553,7 @@ function buildScheduleTool(host: TaskBoardToolHost): ToolDefinition {
         return json({
           ok: true,
           schedule: task.schedule === undefined ? null : scheduleView(task.schedule),
-          task: taskSummary(task, snapshot.tasks, snapshot.sessionDefaultPermission),
+          task: taskSummary(task, snapshot.tasks, snapshot.sessionDefaultPermission, host),
         })
       } catch (error) {
         return refused('refused', messageOf(error))
@@ -522,7 +569,7 @@ function buildListTool(host: TaskBoardToolHost): ToolDefinition {
     description: [
       'List tasks on the DSH task board (the Host-authoritative ledger behind the Web GUI task board).',
       'Filters: status column, parentId (direct subtasks), rootsOnly, tag, free-text query, and archived inclusion.',
-      'Returns each task id, title, column, parent/subtask link, execution targets, schedule and latest run outcome, plus the board summary (revision, time zone, subtask depth limit, session-default permission).',
+      'Returns each task id, title, column, parent/subtask link, execution targets, schedule and latest run outcome (a card a provider runs remotely also carries a `remote` summary: host, agent, mode, whether a follow-up is possible), plus the board summary (revision, time zone, subtask depth limit, session-default permission).',
       'Use task_board_get for one task in full, task_board_create to add work, and task_board_run to execute it.',
     ].join(' '),
     parameters: {
@@ -557,7 +604,7 @@ function buildListTool(host: TaskBoardToolHost): ToolDefinition {
         board: boardView(snapshot, snapshot.maxSubtaskDepth ?? DEFAULT_SUBTASK_DEPTH),
         total: matched.length,
         count: Math.min(matched.length, limit),
-        tasks: matched.slice(0, limit).map(task => taskSummary(task, snapshot.tasks, snapshot.sessionDefaultPermission)),
+        tasks: matched.slice(0, limit).map(task => taskSummary(task, snapshot.tasks, snapshot.sessionDefaultPermission, host)),
       })
     },
   })
@@ -580,7 +627,7 @@ function buildGetTool(host: TaskBoardToolHost): ToolDefinition {
       const snapshot = host.snapshot()
       const task = snapshot.tasks.find(item => item.id === args.taskId)
       if (task === undefined) return refused('task-not-found', 'no task with id ' + args.taskId)
-      return json({ ok: true, task: taskDetail(task, snapshot.tasks, snapshot.sessionDefaultPermission) })
+      return json({ ok: true, task: taskDetail(task, snapshot.tasks, snapshot.sessionDefaultPermission, host) })
     },
   })
 }
@@ -669,7 +716,7 @@ function buildCreateTool(host: TaskBoardToolHost): ToolDefinition {
         const snapshot = await host.apply(crypto.randomUUID(), { kind: 'create', id, input }, callingSessionId(exec))
         const task = snapshot.tasks.find(item => item.id === id)
         if (task === undefined) return refused('create-failed', 'the Host did not confirm the new task')
-        return json({ ok: true, task: taskDetail(task, snapshot.tasks, snapshot.sessionDefaultPermission) })
+        return json({ ok: true, task: taskDetail(task, snapshot.tasks, snapshot.sessionDefaultPermission, host) })
       } catch (error) {
         return refused('refused', messageOf(error))
       }
@@ -756,7 +803,7 @@ function buildUpdateTool(host: TaskBoardToolHost): ToolDefinition {
         const snapshot = await host.apply(crypto.randomUUID(), { kind: 'update', taskId: args.taskId, patch }, callingSessionId(exec))
         const task = snapshot.tasks.find(item => item.id === args.taskId)
         if (task === undefined) return refused('task-not-found', 'no task with id ' + args.taskId)
-        return json({ ok: true, task: taskDetail(task, snapshot.tasks, snapshot.sessionDefaultPermission) })
+        return json({ ok: true, task: taskDetail(task, snapshot.tasks, snapshot.sessionDefaultPermission, host) })
       } catch (error) {
         return refused('refused', messageOf(error))
       }

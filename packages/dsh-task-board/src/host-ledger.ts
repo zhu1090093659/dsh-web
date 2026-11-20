@@ -1306,15 +1306,26 @@ export class HostTaskLedger {
         // terminal verdict over it. This is also what keeps a stale report from
         // racing the session it claims to have replaced.
         if (hasOpenExecution(task)) throw new Error('running task cannot receive an external outcome')
+        // A caller-chosen id must stay unique in the history: a duplicate would
+        // make one handle name two attempts.
+        if (action.executionId !== undefined && task.executions.some(entry => entry.id === action.executionId)) {
+          throw new Error('execution id already recorded')
+        }
+        const succeeded = action.result === 'succeeded'
         const execution: ExecutionRecord = {
-          // A fresh id, exactly like a Host-launched run: the external work is a
-          // new attempt in the history, never an overwrite of an earlier record.
-          id: crypto.randomUUID(),
+          // A fresh id unless the provider handed one out at launch: the external
+          // work is a new attempt in the history, never an overwrite.
+          id: action.executionId ?? crypto.randomUUID(),
           sessionId: undefined,
-          startedAt: now,
+          startedAt: action.startedAt === undefined ? now : Math.min(action.startedAt, now),
           endedAt: now,
           result: action.result,
-          error: action.summary,
+          // The two texts never share a field: a conclusion is a summary and only
+          // a failure is an error.
+          error: succeeded ? undefined : action.summary,
+          ...(succeeded || action.errorCode === undefined ? {} : { errorCode: action.errorCode }),
+          ...(succeeded || action.retryHint === undefined ? {} : { retryHint: action.retryHint }),
+          ...(succeeded && action.summary !== undefined ? { summary: { text: action.summary } } : {}),
           initiatedBy: action.initiatedBy,
           external: true,
         }
@@ -1560,6 +1571,12 @@ export class HostTaskLedger {
     // document is touched: a decision to hand the run over is not a mutation
     // the ledger has to roll back.
     const decision: TaskBoardLaunchDecision | undefined = this.launchGate?.(participant, { trigger })
+    if (decision?.kind === 'refuse') {
+      // A scheduled occurrence has no caller to answer, so it is skipped like an
+      // open execution; every other entry hears the provider's own code.
+      if (progress !== undefined) return { runs: [], committed: false }
+      throw new Error(`${decision.code}: ${decision.reason}`)
+    }
     if (decision?.kind === 'external') {
       // The provider runs this card outside the board. The Host writes no
       // execution record, so nothing here can be inspected, settled or

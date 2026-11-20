@@ -89,8 +89,9 @@ export function executionSummaryOf(events: readonly SummaryEvent[], startedAt: n
 export function normalizeExecutionSummary(value: unknown): ExecutionSummary | undefined {
   if (typeof value !== 'object' || value === null) return undefined
   const row = value as Record<string, unknown>
-  if (typeof row.text !== 'string' || typeof row.seq !== 'number' || !Number.isFinite(row.seq)) return undefined
+  if (typeof row.text !== 'string') return undefined
+  if (row.seq !== undefined && (typeof row.seq !== 'number' || !Number.isFinite(row.seq))) return undefined
   const text = row.text.trim()
   if (text === '') return undefined
-  return { text: truncateExecutionSummary(text), seq: row.seq }
+  return { text: truncateExecutionSummary(text), ...(row.seq === undefined ? {} : { seq: row.seq }) }
 }

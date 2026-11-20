@@ -140,6 +140,9 @@ function boundRun(record: SshRunRecord): SshRunRecord {
   if (summary !== undefined) next.summary = summary
   if (error !== undefined) next.error = error
   if (record.followUps !== undefined) next.followUps = record.followUps
+  if (record.executionId !== undefined) next.executionId = boundText(record.executionId, 128)
+  if (record.lastActivityAt !== undefined) next.lastActivityAt = record.lastActivityAt
+  if (record.errorCode !== undefined) next.errorCode = boundText(record.errorCode, 64)
   return next
 }
 
@@ -155,6 +158,8 @@ function stripRunText(record: SshRunRecord): SshRunRecord {
   if (record.sessionId !== undefined) stripped.sessionId = record.sessionId
   if (record.bytes !== undefined) stripped.bytes = record.bytes
   if (record.followUps !== undefined) stripped.followUps = record.followUps
+  if (record.executionId !== undefined) stripped.executionId = record.executionId
+  if (record.lastActivityAt !== undefined) stripped.lastActivityAt = record.lastActivityAt
   return stripped
 }
 

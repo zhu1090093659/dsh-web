@@ -25,6 +25,10 @@ export type BoardAction =
     result: 'succeeded' | 'failed'
     initiatedBy: string
     summary?: string
+    executionId?: string
+    startedAt?: number
+    errorCode?: string
+    retryHint?: string
   }
 
 /**

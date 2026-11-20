@@ -529,6 +529,16 @@ export class TaskBoardHostService {
     return this.extensions.registerExtension(extension)
   }
 
+  /** What running providers say about one card, for the model-facing tools. */
+  describeTask(task: TaskRecord): Record<string, Record<string, unknown>> | undefined {
+    return this.extensions.describeTask(task)
+  }
+
+  /** The run handle a running provider holds for one card, for `task_board_run`. */
+  describeRun(taskId: string): Record<string, Record<string, unknown>> | undefined {
+    return this.extensions.describeRun(taskId)
+  }
+
   /**
    * The host model catalog the settings card's model and reasoning-level
    * choices come from.

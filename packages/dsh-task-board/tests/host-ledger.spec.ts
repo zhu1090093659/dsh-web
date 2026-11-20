@@ -713,7 +713,49 @@ describe('HostTaskLedger', () => {
     expect(task.executions[0].initiatedBy).toBe('codex')
     expect(task.executions[0].sessionId).toBeUndefined()
     expect(task.executions[0].endedAt).toBe(NOW)
-    expect(task.executions[0].error).toBe('fixed the parser, tests green')
+    // The conclusion is a summary; the error field is reserved for failures.
+    expect(task.executions[0].summary).toEqual({ text: 'fixed the parser, tests green' })
+    expect(task.executions[0].error).toBeUndefined()
+  })
+
+  it('operator reading a handle handed out at launch finds the same id on the settled record', () => {
+    // Given a card and an outside run that was given an execution id up front
+    const ledger = new HostTaskLedger(tempRoot(), () => NOW)
+    ledger.applyRequest('create', { kind: 'create', id: 'task-a', input: { title: 'A', description: '', prompt: '' } })
+
+    // When its failed verdict arrives with that id, its start instant, a code and a hint
+    ledger.applyRequest('ext', {
+      kind: 'record-external-outcome',
+      taskId: 'task-a',
+      result: 'failed',
+      initiatedBy: 'ssh:run-1',
+      summary: 'the agent exited with code 2',
+      executionId: 'exec-from-launch',
+      startedAt: NOW - 5_000,
+      errorCode: 'agent-exit',
+      retryHint: 'read the log tail, then run again',
+    })
+
+    // Then the record keeps the id and start, and the failure text stays on error
+    const execution = ledger.state().tasks[0].executions[0]
+    expect(execution.id).toBe('exec-from-launch')
+    expect(execution.startedAt).toBe(NOW - 5_000)
+    expect(execution.error).toBe('the agent exited with code 2')
+    expect(execution.errorCode).toBe('agent-exit')
+    expect(execution.retryHint).toBe('read the log tail, then run again')
+    expect(execution.summary).toBeUndefined()
+  })
+
+  it('operator running a card whose provider refuses the launch hears the provider code', () => {
+    // Given a ledger whose launch gate refuses every run
+    const ledger = new HostTaskLedger(tempRoot(), () => NOW)
+    ledger.applyRequest('create', { kind: 'create', id: 'task-a', input: { title: 'A', description: '', prompt: '' } })
+    ledger.setLaunchGate(() => ({ kind: 'refuse', code: 'run-active', reason: 'a run is already in flight' }))
+
+    // When the card is run
+    // Then the refusal names the code and the card is not moved
+    expect(() => ledger.applyRequest('run', { kind: 'run', taskId: 'task-a' })).toThrow('run-active: a run is already in flight')
+    expect(ledger.state().tasks[0].status).toBe('todo')
   })
 
   it('operator recording a failed external outcome lands in the failed column', () => {

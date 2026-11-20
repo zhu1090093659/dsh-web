@@ -207,6 +207,14 @@ function launchDecision(
   }
   const kind = (answer as { kind?: unknown }).kind
   if (kind === 'external') return { kind: 'external' }
+  if (kind === 'refuse') {
+    const { code, reason } = answer as { code?: unknown; reason?: unknown }
+    if (typeof code !== 'string' || !/^[a-z][a-z0-9-]*$/.test(code) || typeof reason !== 'string' || reason.trim() === '') {
+      warn('returned a malformed refusal')
+      return undefined
+    }
+    return { kind: 'refuse', code, reason: reason.trim() }
+  }
   if (kind !== 'local') {
     warn('returned an unknown decision kind')
     return undefined
@@ -392,6 +400,34 @@ export class TaskBoardExtensionRegistry {
       }
     }
     return undefined
+  }
+
+  /**
+   * What the running providers say about one card, keyed by extension id.
+   * Isolated per provider: a throw drops that provider's entry only.
+   */
+  describeTask(task: TaskRecord): Record<string, Record<string, unknown>> | undefined {
+    return this.describe(entry => entry.extension.describeTask?.(task))
+  }
+
+  /** The run handle a running provider holds for one card, keyed by extension id. */
+  describeRun(taskId: string): Record<string, Record<string, unknown>> | undefined {
+    return this.describe(entry => entry.extension.describeRun?.(taskId))
+  }
+
+  private describe(read: (entry: { extension: TaskBoardExtension }) => Record<string, unknown> | undefined): Record<string, Record<string, unknown>> | undefined {
+    if (this.disposed) return undefined
+    const result: Record<string, Record<string, unknown>> = {}
+    for (const entry of this.entries.values()) {
+      if (!entry.active) continue
+      try {
+        const view = read(entry)
+        if (typeof view === 'object' && view !== null && !Array.isArray(view)) result[entry.extension.id] = view
+      } catch (error) {
+        this.logger.error(`[dsh-task-board] extension "${entry.extension.id}" description failed`, error)
+      }
+    }
+    return Object.keys(result).length === 0 ? undefined : result
   }
 
   /** Published summaries of currently running providers, keyed by extension id. */

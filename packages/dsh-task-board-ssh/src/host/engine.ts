@@ -29,7 +29,7 @@ import {
 } from '../core/adapters/index.ts'
 import type { DshSshHost, DshSshService, TaskBoardExtensionHost, TaskBoardLaunchContext, TaskBoardLaunchDecision, TaskBoardStatusChangedEvent, TaskBoardTaskDeletedEvent } from '../core/contract.ts'
 import { SSH_ERROR_MAX_LENGTH, SSH_SUMMARY_MAX_LENGTH } from '../core/ledger.ts'
-import { runFilePath, type LauncherStatus } from '../core/launcher.ts'
+import { REMOTE_STATE_SUFFIX, runFilePath, type LauncherStatus } from '../core/launcher.ts'
 import { isTerminalRunPhase, type SshAgentKind, type SshAgentTarget, type SshRunPhase, type SshRunRecord, type SshTarget } from '../core/target.ts'
 import type { TaskRecord } from '../core/task-record.ts'
 import type { SshWorkspaceCollection, SshWorkspaceRun, SshWorkspaceStrategy } from '../core/workspace.ts'
@@ -50,6 +50,19 @@ import { LOG_WINDOW_BUDGET_BYTES, PUBLISH_BODY_LIMIT_BYTES, SshLogWindows, byteL
 import { SSH_DEGRADED_SUMMARY_MARKER, proxyPreamble, runPrompt } from './prompt.ts'
 import { admitRuns, type SshQueueEntry } from './queue.ts'
 import { SshRemote } from './remote.ts'
+import {
+  agentProgram,
+  lastActivity,
+  logCommand,
+  preflightCommand,
+  readLogAnswer,
+  readPreflight,
+  tailStart,
+  type SshActivity,
+  type SshLogQuery,
+  type SshLogStats,
+  type SshPreflightFailure,
+} from './inspect.ts'
 import type { SshProviderSettings } from './settings.ts'
 import type { HostTimerFace } from './timers.ts'
 import { readUntrackedFiles, untrackedNote, type SshWorkspaceStrategyResolver } from './workspace-seam.ts'
@@ -59,6 +72,9 @@ export const DEFAULT_POLL_INTERVAL_MS = 2_000
 
 /** Consecutive unreadable polls after which a run is recorded as lost. */
 export const LOST_AFTER_FAILURES = 3
+
+/** Expected run length when no earlier run says better, in milliseconds. */
+export const DEFAULT_ESTIMATED_DURATION_MS = 180_000
 
 /** Longest tail of a run's log this engine parses, in characters. */
 const PARSE_WINDOW = 256 * 1024
@@ -93,6 +109,8 @@ export interface SshRunEngineOptions {
   uuid?: () => string
   /** Poll cadence, in milliseconds. */
   pollIntervalMs?: number
+  /** Wait source for a blocking status call; defaults to a real timer. */
+  sleep?: (ms: number) => Promise<void>
   /** Ceiling for one remote command, in milliseconds. */
   commandTimeoutMs?: number
   /** Where a refusal or a failed remote call is reported. */
@@ -169,6 +187,67 @@ export interface SshRunStatusView {
   pending?: 'follow-up' | 'rework'
 }
 
+/** A target as the agent-facing views report it. */
+export interface SshTargetView {
+  host: string
+  agent: SshAgentKind
+  mode: 'direct' | 'proxy'
+  workspaceKind: 'in-place' | 'git'
+  workspacePath?: string
+}
+
+/** The one shape a run is reported in, running or settled; absent facts are null. */
+export interface SshStatusView {
+  taskId: string
+  target: SshTargetView | null
+  /** `none` before any run, otherwise the run's phase; never missing. */
+  phase: SshRunPhase | 'none'
+  /** Whether the run reached a terminal phase and its verdict is recorded. */
+  settled: boolean
+  runId: string | null
+  executionId: string | null
+  exitCode: number | null
+  /** The verdict once settled (succeeded, failed, cancelled, lost); null while running. */
+  result: SshRunPhase | null
+  /** What the agent reported on success. */
+  summary: string | null
+  /** The failure only: code, message and a retry hint. */
+  error: { code: string; message: string; retryHint: string } | null
+  durationMs: number | null
+  remoteSessionId: string | null
+  lastActivityAt: number | null
+  bytes: number | null
+  pendingInstruction: 'follow-up' | 'rework' | null
+}
+
+/** One filtered page of a run's log, or the refusal that says why there is none. */
+export type SshLogReply =
+  | {
+      ok: true
+      runId: string
+      filtered: boolean
+      stats: SshLogStats
+      /** First filtered line in `text`, 1-based. */
+      from: number
+      lines: number
+      /** Pass as `since` to continue where this page ended. */
+      nextSince: number
+      more: boolean
+      text: string
+    }
+  | { ok: false; code: string; error: string }
+
+/** The target as a model reads it. */
+function targetView(target: SshTarget): SshTargetView {
+  return {
+    host: target.host,
+    agent: target.agent.kind,
+    mode: target.mode,
+    workspaceKind: target.workspace.kind,
+    ...(target.workspace.kind === 'in-place' ? { workspacePath: target.workspace.path } : {}),
+  }
+}
+
 /** One page of a run's log. */
 export type SshLogPage =
   | { ok: true; taskId: string; runId: string; offset: number; nextOffset: number; bytes: number; eof: boolean; text: string }
@@ -227,6 +306,26 @@ export function agentCommandLine(input: SshAgentRunInput, templates: SshCustomTe
   return templates === undefined ? buildAgentCommandLine(input) : customAgentCommand(input, templates)
 }
 
+/** Stable code of a failed run, from what the launcher and the agent reported. */
+function failureCode(phase: SshRunPhase, status: LauncherStatus, collection: boolean, thrown: boolean): string {
+  if (thrown) return 'run-error'
+  if (collection) return 'collection-failed'
+  if (phase === 'lost') return 'run-lost'
+  if (status.exitCode !== undefined && status.exitCode !== 0) return 'agent-exit'
+  return 'agent-error'
+}
+
+/** One sentence on whether and how to retry a failed run. */
+function retryHintFor(code: string): string {
+  switch (code) {
+    case 'agent-exit': return 'Read the log tail (task_board_ssh action "log"), fix the cause, then run again; a follow-up resumes the same remote session.'
+    case 'run-lost': return 'The remote process vanished (host restart or kill); running again starts a fresh run.'
+    case 'collection-failed': return 'The agent finished but its result could not be brought back; the remote branch or directory still holds the work.'
+    case 'run-error': return 'The run could not be driven (see the error text); retry once the host is reachable.'
+    default: return 'Read the log tail for the agent error, then run again or send a follow-up.'
+  }
+}
+
 export class SshRunEngine {
   private readonly host: TaskBoardExtensionHost
   private readonly ssh: DshSshService
@@ -238,6 +337,9 @@ export class SshRunEngine {
   private readonly now: () => number
   private readonly uuid: () => string
   private readonly pollIntervalMs: number
+  private readonly sleep: (ms: number) => Promise<void>
+  /** Ids handed out at launch, keyed by card, until the run record takes them over. */
+  private readonly reserved = new Map<string, { runId: string; executionId: string; startedAt: number }>()
   private readonly log: (message: string, detail?: unknown) => void
   private readonly remote: SshRemote
   /** Runs this process follows, keyed by card id: a card has at most one. */
@@ -280,6 +382,7 @@ export class SshRunEngine {
     this.now = options.now ?? (() => Date.now())
     this.uuid = options.uuid ?? (() => crypto.randomUUID())
     this.pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS
+    this.sleep = options.sleep ?? (ms => new Promise<void>(resolve => { setTimeout(resolve, ms) }))
     this.log = options.log ?? ((message, detail) => {
       if (detail === undefined) console.error('[dsh-task-board-ssh] ' + message)
       else console.error('[dsh-task-board-ssh] ' + message, detail)
@@ -330,6 +433,7 @@ export class SshRunEngine {
     this.pumping.clear()
     this.pumpAgain.clear()
     this.settling.clear()
+    this.reserved.clear()
     this.untracked.clear()
     this.logs.clear()
     this.remote.forget()
@@ -380,6 +484,236 @@ export class SshRunEngine {
     return this.payloadOf(taskId)?.target
   }
 
+  // --- agent-facing views --------------------------------------------------------
+
+  /**
+   * One card's run in a single shape, whether it is still running or settled.
+   *
+   * The active run wins; with none, the newest settled one answers, so the same
+   * fields exist before and after the run ends and `phase` is never missing.
+   * Absent facts are `null`, never undefined, so a caller reads one schema.
+   * @param taskId - card to read.
+   * @returns the uniform view.
+   */
+  statusView(taskId: string): SshStatusView {
+    const payload = this.payloadOf(taskId)
+    const target = payload?.target
+    const empty: SshStatusView = {
+      taskId,
+      target: target === undefined ? null : targetView(target),
+      phase: 'none',
+      settled: false,
+      runId: null,
+      executionId: null,
+      exitCode: null,
+      result: null,
+      summary: null,
+      error: null,
+      durationMs: null,
+      remoteSessionId: null,
+      lastActivityAt: null,
+      bytes: null,
+      pendingInstruction: payload?.pending?.kind ?? null,
+    }
+    if (payload === undefined) return empty
+    const reservation = this.reserved.get(taskId)
+    if (reservation !== undefined && payload.activeRun === undefined) {
+      return { ...empty, phase: 'queued', runId: reservation.runId, executionId: reservation.executionId, durationMs: this.now() - reservation.startedAt, lastActivityAt: reservation.startedAt }
+    }
+    const run = payload.activeRun ?? payload.history[payload.history.length - 1]
+    if (run === undefined) return empty
+    const settled = isTerminalRunPhase(run.phase) && !this.settling.has(taskId)
+    const phase: SshRunPhase | 'settling' = !settled && isTerminalRunPhase(run.phase) ? 'running' : run.phase
+    return {
+      ...empty,
+      phase,
+      settled,
+      runId: run.runId,
+      executionId: run.executionId ?? null,
+      exitCode: run.exitCode ?? null,
+      result: settled ? run.phase : null,
+      summary: run.summary ?? null,
+      error: run.error === undefined
+        ? null
+        : { code: run.errorCode ?? 'agent-error', message: run.error, retryHint: retryHintFor(run.errorCode ?? 'agent-error') },
+      durationMs: (run.finishedAt ?? this.now()) - run.startedAt,
+      remoteSessionId: run.sessionId ?? null,
+      lastActivityAt: run.lastActivityAt ?? run.finishedAt ?? run.startedAt,
+      bytes: run.bytes ?? null,
+    }
+  }
+
+  /**
+   * Block until the card's run settles or the wait runs out.
+   * @param taskId - card to wait on.
+   * @param timeoutMs - longest wait, clamped to ten minutes.
+   * @returns the uniform view and whether the wait ran out.
+   */
+  async waitStatus(taskId: string, timeoutMs = 120_000): Promise<{ view: SshStatusView; timedOut: boolean }> {
+    const limit = Math.max(0, Math.min(Math.trunc(timeoutMs), 10 * 60_000))
+    const deadline = this.now() + limit
+    for (;;) {
+      const view = this.statusView(taskId)
+      if (view.settled || view.phase === 'none') return { view, timedOut: false }
+      const left = deadline - this.now()
+      if (left <= 0 || this.disposed) return { view, timedOut: true }
+      await this.sleep(Math.min(1_000, left))
+    }
+  }
+
+  /**
+   * What the agent did last, read from the tail of the run's filtered log.
+   * @param taskId - card to inspect.
+   * @returns the last tool call or message, or undefined when none can be read.
+   */
+  async activityOf(taskId: string): Promise<SshActivity | undefined> {
+    const page = await this.queryLog(taskId, { tail: 30, maxBytes: 48 * 1024 })
+    return page.ok ? lastActivity(page.text) : undefined
+  }
+
+  /**
+   * One filtered, bounded read of a run's log.
+   *
+   * The filter, the line selection and the byte cap all run on the host, so a
+   * 12 MB stream-json log costs one short reply; the reply carries the filtered
+   * line count and size so a caller sees the cost before asking for more.
+   * @param taskId - card whose run to read.
+   * @param options - run, tail/since window, raw switch, cap and stats-only.
+   * @returns the page, or the refusal that says why there is none.
+   */
+  async queryLog(
+    taskId: string,
+    options: { runId?: string; tail?: number; since?: number; raw?: boolean; maxBytes?: number; statsOnly?: boolean } = {},
+  ): Promise<SshLogReply> {
+    const payload = this.payloadOf(taskId)
+    const target = payload?.target
+    if (payload === undefined || target === undefined) {
+      return { ok: false, code: 'no-target', error: `task ${taskId} pins no SSH target` }
+    }
+    if (options.runId !== undefined && findRun(payload, options.runId) === undefined) {
+      return { ok: false, code: 'unknown-run', error: `task ${taskId} has no run ${options.runId}` }
+    }
+    const runId = options.runId ?? payload.activeRun?.runId ?? this.reserved.get(taskId)?.runId ?? payload.history[payload.history.length - 1]?.runId
+    if (runId === undefined) return { ok: false, code: 'no-run', error: `task ${taskId} has never run remotely` }
+    let stateDir: string
+    try {
+      stateDir = await this.remote.stateDir(target.host)
+    } catch (error) {
+      return { ok: false, code: 'host-unreachable', error: error instanceof Error ? error.message : String(error) }
+    }
+    const query: SshLogQuery = {
+      file: runFilePath(stateDir, runId, 'stdout.log'),
+      ...(options.tail === undefined ? {} : { tail: options.tail }),
+      ...(options.since === undefined ? {} : { since: options.since }),
+      ...(options.raw === true ? { raw: true } : {}),
+      ...(options.maxBytes === undefined ? {} : { maxBytes: options.maxBytes }),
+      ...(options.statsOnly === true ? { statsOnly: true } : {}),
+    }
+    const result = await this.remote.probe(target.host, logCommand(query))
+    if (!result.success) {
+      return { ok: false, code: 'log-unavailable', error: result.error ?? (result.stderr.trim() || 'the log could not be read') }
+    }
+    const answer = readLogAnswer(result.stdout, query)
+    if (answer.stats === undefined) return { ok: false, code: 'no-log-yet', error: `run ${runId} has not written a log yet` }
+    const from = query.since ?? tailStart(answer.stats, options.tail ?? 40)
+    return {
+      ok: true,
+      runId,
+      filtered: options.raw !== true,
+      stats: answer.stats,
+      from,
+      lines: answer.lines,
+      nextSince: from + answer.lines,
+      more: answer.more,
+      text: answer.text,
+    }
+  }
+
+  /**
+   * Check a target can work before a card is bound to it or a run starts.
+   * @param target - the candidate target.
+   * @returns the first failed check, or undefined when the target is usable.
+   */
+  async preflight(target: SshTarget): Promise<SshPreflightFailure | undefined> {
+    if (this.hostByAlias(target.host) === undefined) {
+      const known = this.hosts().slice(0, 20).map(host => host.alias)
+      return {
+        code: 'host-unreachable',
+        message: `dsh-ssh has no host with alias "${target.host}"${known.length === 0 ? ' (no host is configured at all)' : `; configured aliases: ${known.join(', ')}`}`,
+        hint: 'Use one of the configured aliases, or add the host in the dsh-ssh settings first.',
+      }
+    }
+    const overridden = this.settings().agentCommands[target.agent.kind] !== undefined
+    const program = overridden ? undefined : agentProgram(target.agent)
+    const result = await this.remote.probe(target.host, preflightCommand(target, program), 15_000)
+    return readPreflight(target, program, result)
+  }
+
+  /** Summary of one card this provider owns, for `task_board_get` / `task_board_list`. */
+  describeTask(task: TaskRecord): Record<string, unknown> | undefined {
+    const payload = readHostPayload(task.integrations?.[SSH_INTEGRATION_KEY])
+    const target = payload?.target
+    if (payload === undefined || target === undefined) return undefined
+    const live = liveRunOf(payload)
+    const last = payload.activeRun ?? payload.history[payload.history.length - 1]
+    const canFollowUp = target.mode === 'direct' && task.archivedAt === undefined && payload.pending === undefined
+    return {
+      kind: 'ssh',
+      host: target.host,
+      agent: target.agent.kind,
+      mode: target.mode,
+      workspace: target.workspace.kind,
+      canFollowUp,
+      ...(canFollowUp ? {} : { followUpBlockedBy: target.mode !== 'direct' ? 'proxy cards take follow-ups in their local session' : task.archivedAt !== undefined ? 'archived' : 'an instruction is already queued' }),
+      ...(last === undefined ? {} : { phase: this.reserved.has(task.id) ? 'queued' : last.phase, runId: last.runId }),
+      ...(live === undefined && !this.reserved.has(task.id) ? {} : { runActive: true }),
+      // A direct card runs on the host with its own agent: the board's local
+      // session permission gate never applies to it.
+      localPermission: target.mode !== 'direct',
+    }
+  }
+
+  /** The handle of the run just taken over for one card, for `task_board_run`. */
+  describeRun(taskId: string): Record<string, unknown> | undefined {
+    const payload = this.payloadOf(taskId)
+    const target = payload?.target
+    if (target === undefined || target.mode !== 'direct') return undefined
+    const reservation = this.reserved.get(taskId)
+    const run = payload?.activeRun
+    const runId = run?.runId ?? reservation?.runId
+    if (runId === undefined) return undefined
+    const stateDir = this.remote.cachedStateDir(target.host) ?? `~/${REMOTE_STATE_SUFFIX}`
+    const estimate = this.estimateDuration(taskId, target)
+    return {
+      kind: 'ssh',
+      executionId: run?.executionId ?? reservation?.executionId ?? null,
+      runId,
+      logPath: `${target.host}:${runFilePath(stateDir, runId, 'stdout.log')}`,
+      target: targetView(target),
+      estimatedDurationMs: estimate.ms,
+      estimateBasis: estimate.basis,
+      next: `The run is remote and has no board execution until it settles. Block on it with task_board_ssh {action:"status", taskId:"${taskId}", wait:true}; read its filtered log with {action:"log", taskId:"${taskId}"}.`,
+    }
+  }
+
+  /** Expected duration of a run: the median of earlier successful runs, else a default. */
+  private estimateDuration(taskId: string, target: SshTarget): { ms: number; basis: 'card-history' | 'host-history' | 'default' } {
+    const durations = (records: readonly SshRunRecord[]): number[] => records
+      .filter(record => record.phase === 'succeeded' && record.finishedAt !== undefined)
+      .map(record => (record.finishedAt as number) - record.startedAt)
+    const median = (values: number[]): number => {
+      const sorted = [...values].sort((a, b) => a - b)
+      return sorted[Math.floor(sorted.length / 2)] as number
+    }
+    const own = durations(this.payloadOf(taskId)?.history ?? [])
+    if (own.length > 0) return { ms: median(own), basis: 'card-history' }
+    const shared = this.linkedEntries()
+      .filter(entry => entry.payload?.target?.host === target.host && entry.payload.target.agent.kind === target.agent.kind)
+      .flatMap(entry => durations(entry.payload?.history ?? []))
+    if (shared.length > 0) return { ms: median(shared), basis: 'host-history' }
+    return { ms: DEFAULT_ESTIMATED_DURATION_MS, basis: 'default' }
+  }
+
   /** One card's remote-run state. */
   status(taskId: string): SshRunStatusView {
     const payload = this.payloadOf(taskId)
@@ -428,6 +762,67 @@ export class SshRunEngine {
     }
     this.publishSummary()
     return { ok: true, taskId, message: 'target pinned' }
+  }
+
+  /**
+   * Create a card already bound to a target, in one step.
+   *
+   * The target is checked first and the card is created only when the check
+   * passes, with the target in the same write, so a refused target leaves no
+   * half-made card behind and a created card is never unbound.
+   * @param draft - card content.
+   * @param target - the target to bind.
+   * @param options - `preflight: false` skips the reachability check.
+   * @returns the new card id, or the stable refusal.
+   */
+  async createBound(
+    draft: { title: string; prompt: string; description?: string; workspaceId?: string; parentId?: string },
+    target: SshTarget,
+    options: { preflight?: boolean } = {},
+  ): Promise<SshEngineReply> {
+    if (options.preflight !== false) {
+      const failure = await this.preflight(target)
+      if (failure !== undefined) return { ok: false, code: failure.code, error: `${failure.message}. ${failure.hint}` }
+    } else if (this.hostByAlias(target.host) === undefined) {
+      return { ok: false, code: 'host-unreachable', error: `dsh-ssh has no host with alias "${target.host}"` }
+    }
+    try {
+      const task = this.host.tasks.create({
+        title: draft.title,
+        description: draft.description ?? '',
+        prompt: draft.prompt,
+        ...(draft.workspaceId === undefined ? {} : { workspaceId: draft.workspaceId }),
+        ...(draft.parentId === undefined ? {} : { parentId: draft.parentId }),
+      }, { payload: writeHostPayload({ updatedAt: this.now(), history: [], target }, this.now()) })
+      this.publishSummary()
+      return { ok: true, taskId: task.id, message: 'card created with its target' }
+    } catch (error) {
+      return { ok: false, code: 'create-refused', error: error instanceof Error ? error.message : String(error) }
+    }
+  }
+
+  /**
+   * Start a card's pinned run and wait for the board to accept or refuse it, so
+   * the run's handle exists when this returns.
+   * @param taskId - card to run.
+   * @returns the reply; a board or provider refusal keeps its stable code.
+   */
+  async runCard(taskId: string): Promise<SshEngineReply> {
+    const target = this.targetOf(taskId)
+    if (target === undefined) return { ok: false, code: 'no-target', error: `task ${taskId} pins no SSH target` }
+    if (target.mode !== 'direct') {
+      return { ok: false, code: 'proxy-mode', error: 'a proxy card runs in a local session: start it from the board with task_board_run' }
+    }
+    const seat = this.seat?.()
+    if (seat === undefined) return { ok: false, code: 'board-unavailable', error: 'this board revision serves no action applier' }
+    try {
+      await seat.apply(this.uuid(), { kind: 'run', taskId }, 'ssh')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const coded = /^([a-z][a-z0-9-]*): ([\s\S]+)$/.exec(message)
+      return coded === null ? { ok: false, code: 'run-refused', error: message } : { ok: false, code: coded[1] as string, error: coded[2] as string }
+    }
+    return { ok: true, taskId, ...(this.reserved.get(taskId) === undefined ? {} : { runId: this.reserved.get(taskId)?.runId }), message: 'run started' }
   }
 
   /**
@@ -730,6 +1125,19 @@ export class SshRunEngine {
       this.log(`task ${task.id} pins a remote host but this board revision serves no launch interception or action applier, so it cannot run remotely`)
       return { kind: 'external' }
     }
+    // One run per card: a second request while a run is in flight (or its start
+    // is being prepared) is refused out loud instead of overwriting the first.
+    const live = liveRunOf(payload)
+    if (live !== undefined || this.reserved.has(task.id)) {
+      return {
+        kind: 'refuse',
+        code: 'run-active',
+        reason: `task ${task.id} already has a remote run in flight (${live?.runId ?? this.reserved.get(task.id)?.runId ?? 'starting'}); wait for it with task_board_ssh status (wait: true), or cancel it before running again`,
+      }
+    }
+    // The ids are chosen here, synchronously, so the run tool can hand them back
+    // before the remote side has done anything.
+    this.reserved.set(task.id, { runId: this.newRunId(), executionId: this.uuid(), startedAt: this.now() })
     void this.openRun(task.id, target.host).catch(error => { this.log(`the remote run of task ${task.id} could not be opened`, error) })
     return { kind: 'external' }
   }
@@ -741,12 +1149,22 @@ export class SshRunEngine {
     await Promise.resolve()
     if (this.disposed) return
     const task = this.host.tasks.get(taskId)
-    if (task === undefined || task.archivedAt !== undefined || task.status !== 'running') return
+    if (task === undefined || task.archivedAt !== undefined || task.status !== 'running') {
+      this.reserved.delete(taskId)
+      return
+    }
     const payload = this.payloadOf(taskId)
-    if (payload?.target === undefined) return
+    if (payload?.target === undefined) {
+      this.reserved.delete(taskId)
+      return
+    }
     const live = liveRunOf(payload)
     if (live !== undefined) return
-    const run: SshRunRecord = { runId: this.newRunId(), phase: 'queued', startedAt: this.now() }
+    const reservation = this.reserved.get(taskId)
+    this.reserved.delete(taskId)
+    const run: SshRunRecord = reservation === undefined
+      ? { runId: this.newRunId(), phase: 'queued', startedAt: this.now() }
+      : { runId: reservation.runId, phase: 'queued', startedAt: reservation.startedAt, executionId: reservation.executionId }
     this.rememberRun(taskId, alias, run.runId, payload.target)
     if (!this.writePayload(taskId, { ...payload, activeRun: run })) return
     await this.pump(alias)
@@ -1115,7 +1533,7 @@ export class SshRunEngine {
       const bytes = status.bytes ?? run.bytes
       if (bytes !== undefined && bytes !== run.bytes) {
         const current = this.payloadOf(job.taskId)
-        if (current?.activeRun?.runId === run.runId) this.writePayload(job.taskId, withActiveRun(current, { ...run, bytes }))
+        if (current?.activeRun?.runId === run.runId) this.writePayload(job.taskId, withActiveRun(current, { ...run, bytes, lastActivityAt: this.now() }))
       }
       await this.readLogIncrement(job.taskId, target, run, bytes ?? 0)
       return
@@ -1272,6 +1690,9 @@ export class SshRunEngine {
         ...(run.followUps === undefined ? {} : { followUps: run.followUps }),
         ...(summary === undefined ? {} : { summary }),
         ...(errorText === undefined ? {} : { error: errorText }),
+        ...(run.executionId === undefined ? {} : { executionId: run.executionId }),
+        ...(run.lastActivityAt === undefined ? {} : { lastActivityAt: run.lastActivityAt }),
+        ...(errorText === undefined || phase === 'succeeded' ? {} : { errorCode: failureCode(phase, status, collectionError !== undefined, failure !== undefined) }),
       }
       const untracked = this.untracked.get(taskId)
       const note = untrackedNote(untracked !== undefined && untracked.runId === run.runId ? untracked.files : undefined)
@@ -1315,7 +1736,7 @@ export class SshRunEngine {
     }
     const marker = degraded ? SSH_DEGRADED_SUMMARY_MARKER + ' ' : ''
     const room = Math.max(0, SSH_SUMMARY_MAX_LENGTH - marker.length - (note === '' ? 0 : note.length + 1))
-    const text = run.phase === 'succeeded' ? (run.summary ?? run.error) : (run.error ?? run.summary)
+    const text = run.phase === 'succeeded' ? run.summary : (run.error ?? run.summary)
     const body = text === undefined ? '' : bound(text, room)
     const composed = [marker + body, note].filter(part => part !== '').join(' ')
     const summary = composed === '' ? undefined : bound(composed, SSH_SUMMARY_MAX_LENGTH)
@@ -1326,6 +1747,9 @@ export class SshRunEngine {
         result: run.phase === 'succeeded' ? 'succeeded' : 'failed',
         initiatedBy: SSH_INITIATOR_PREFIX + run.runId,
         ...(summary === undefined ? {} : { summary }),
+        startedAt: run.startedAt,
+        ...(run.executionId === undefined ? {} : { executionId: run.executionId }),
+        ...(run.phase === 'succeeded' || run.errorCode === undefined ? {} : { errorCode: run.errorCode, retryHint: retryHintFor(run.errorCode) }),
       }, 'ssh')
     } catch (error) {
       this.log(`the board refused the verdict of run ${run.runId}`, error)

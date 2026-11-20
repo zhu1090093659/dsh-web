@@ -316,6 +316,13 @@ export type TaskBoardLaunchDecision =
    * `record-external-outcome` action once its own run settles.
    */
   | { kind: 'external' }
+  /**
+   * The provider refuses this run. The board opens nothing, writes nothing and
+   * answers the caller with `code: reason`, so a second run request against a
+   * card the provider already holds is an explicit refusal rather than a
+   * silent overwrite. A scheduled occurrence is skipped instead of thrown.
+   */
+  | { kind: 'refuse'; code: string; reason: string }
 
 /**
  * Decide whether one launch belongs to the provider, and how it runs.
@@ -437,6 +444,20 @@ export interface TaskBoardExtension {
   stop?(): void
   /** Route one dispatched action; the returned value goes back to the dispatcher. */
   handleAction?(request: TaskBoardExtensionActionRequest): unknown | Promise<unknown>
+  /**
+   * Model-facing summary of one card this provider owns, merged into the card
+   * the `task_board_get` / `task_board_list` tools return under `remote`. An
+   * object may carry `localPermission: false` to say the board's local session
+   * permission gate does not apply to the card, which drops `permissionPending`
+   * from the tool output. Optional: the API version stays 1.
+   */
+  describeTask?(task: TaskRecord): Record<string, unknown> | undefined
+  /**
+   * The handle of the run the provider took over for `taskId`, read right after
+   * `task_board_run` so the caller gets identifiers instead of an empty list.
+   * Optional on the same terms as {@link TaskBoardExtension.describeTask}.
+   */
+  describeRun?(taskId: string): Record<string, unknown> | undefined
 }
 
 /** Board mirror an extension's browser half observes. */

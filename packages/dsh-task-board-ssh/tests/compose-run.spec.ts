@@ -122,7 +122,7 @@ describe('a card created with its target already chosen', () => {
     expect(executions).toHaveLength(1)
     expect(executions[0]?.external).toBe(true)
     expect(executions[0]?.result).toBe('succeeded')
-    expect(executions[0]?.error).toBe('the work is done')
+    expect(executions[0]?.summary?.text).toBe('the work is done')
     expect(executions[0]?.initiatedBy).toBe('ssh:' + runId)
     const settled = parseSshLedgerPayload(board.task(task.id)?.integrations?.['ssh'])
     expect(settled.ok).toBe(true)

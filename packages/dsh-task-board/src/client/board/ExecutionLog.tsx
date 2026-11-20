@@ -62,7 +62,10 @@ function ExecutionRow({ execution, timeZone, onOpen }: {
   // it prints verbatim, in the neutral secondary style the row's other metadata
   // uses. A failed or cancelled one still reads as the error it is, and so does
   // every text a Host-run execution recorded.
+  // New records keep that conclusion on `summary`; the error-field reading stays
+  // for the succeeded external records written before the two were separated.
   const recordedConclusion = external && result === 'succeeded'
+  const conclusion = execution.summary?.text
   return (
     <li
       className={css.executionRow}
@@ -100,6 +103,9 @@ function ExecutionRow({ execution, timeZone, onOpen }: {
           <span className={css.executionTimes} title={execution.initiatedBy}>
             {t('detail.execution.initiator', { session: execution.initiatedBy })}
           </span>
+        )}
+        {conclusion !== undefined && (
+          <span className={css.executionTimes}>{conclusion}</span>
         )}
         {execution.error !== undefined && execution.error !== '' && (
           <span className={recordedConclusion ? css.executionTimes : css.executionError}>

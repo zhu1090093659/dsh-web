@@ -207,6 +207,7 @@ export interface TaskBoardLaunchContext {
 export type TaskBoardLaunchDecision =
   | { kind: 'local'; promptPreamble?: string }
   | { kind: 'external' }
+  | { kind: 'refuse'; code: string; reason: string }
 
 /**
  * One launch interception. Synchronous by contract: the runner may not await a
@@ -256,6 +257,10 @@ export interface TaskBoardExtension {
   stop?(): void
   /** Route one dispatched action; the returned value goes back to the dispatcher. */
   handleAction?(request: TaskBoardExtensionActionRequest): unknown | Promise<unknown>
+  /** Model-facing summary of one owned card, merged into `task_board_get` / `task_board_list`. */
+  describeTask?(task: TaskRecord): Record<string, unknown> | undefined
+  /** Handle of the run taken over for `taskId`, merged into `task_board_run`'s answer. */
+  describeRun?(taskId: string): Record<string, unknown> | undefined
 }
 
 /** Board mirror an extension's browser half observes. */

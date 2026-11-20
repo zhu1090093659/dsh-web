@@ -27,8 +27,11 @@ export type ExecutionOutcome = 'succeeded' | 'failed' | 'cancelled'
 export interface ExecutionSummary {
   /** Last assistant message text of the run, bounded by {@link EXECUTION_SUMMARY_LIMIT}. */
   text: string
-  /** Seq of the session event that text came from; absent text has no seq either. */
-  seq: number
+  /**
+   * Seq of the session event that text came from. Absent on an external run's
+   * conclusion, which was never read out of a Host session.
+   */
+  seq?: number
 }
 
 /**
@@ -75,8 +78,16 @@ export interface ExecutionRecord {
   endedAt: number | undefined
   /** Outcome once settled. */
   result: ExecutionOutcome | undefined
-  /** Human failure text when the run failed (prompt rejection or agent error). */
+  /**
+   * Human failure text when the run failed (prompt rejection or agent error).
+   * Only a failure writes it: an external run's success conclusion rides
+   * {@link ExecutionRecord.summary}.
+   */
   error: string | undefined
+  /** Stable machine-readable failure code a provider reported with the verdict. */
+  errorCode?: string
+  /** One line telling the caller whether and how to retry a failed external run. */
+  retryHint?: string
   /**
    * Session id of the DSH session that issued the run/rerun action (issue #6
    * audit origin). Client-asserted, not a trust boundary; absent when the run

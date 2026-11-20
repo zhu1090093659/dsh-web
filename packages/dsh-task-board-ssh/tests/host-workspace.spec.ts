@@ -147,8 +147,8 @@ describe('a run whose repository is the local workspace', () => {
     // files the bundle could not carry
     const executions = executionsOf(board.task(taskId))
     expect(executions).toHaveLength(1)
-    expect(executions[0]?.error).toContain('parser fixed')
-    expect(executions[0]?.error).toContain(untrackedNote(repository.untracked))
+    expect(executions[0]?.summary?.text).toContain('parser fixed')
+    expect(executions[0]?.summary?.text).toContain(untrackedNote(repository.untracked))
     // And the workspace detail never became a payload member of its own
     expect(JSON.stringify(board.task(taskId)?.integrations)).not.toContain('untrackedFiles')
   })
@@ -186,7 +186,7 @@ describe('a run whose repository is the local workspace', () => {
 
     // Then the verdict is exactly what the agent reported
     const executions = executionsOf(board.task(taskId))
-    expect(executions[0]?.error).toBe('parser fixed')
+    expect(executions[0]?.summary?.text).toBe('parser fixed')
     const live = (mounted.published()?.runs ?? []) as Array<Record<string, unknown>>
     expect(live.some(entry => entry.untrackedFiles !== undefined)).toBe(false)
   })
@@ -206,7 +206,7 @@ describe('a run whose repository is the local workspace', () => {
     })
 
     // Then the verdict fits the field and the note survived the cut
-    const error = executionsOf(board.task(taskId))[0]?.error ?? ''
+    const error = executionsOf(board.task(taskId))[0]?.summary?.text ?? ''
     expect(error.length).toBeLessThanOrEqual(512)
     expect(error.endsWith(untrackedNote(2))).toBe(true)
     expect(error).toContain('a very long report')

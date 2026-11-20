@@ -50,3 +50,5 @@ Agent 工具面（`src/host/agent-tools.ts` 的 `executionView`）刻意不投�
 验证：`tests/execution-summary.spec.ts` 固定了抽取、执行窗口、截断、修复、持久化、两条结算路径与快照；`tests/host-runner.spec.ts` 固定了 runner 返回的判决携带收尾文本。包级门禁是 `pnpm --filter @linxin666/dsh-client-ui-task-board test`，加上仓库的 `pnpm test`、`pnpm typecheck` 与 `pnpm build`。
 
 这些界面的字号尺度、结果槽位与折叠行为由[卡片界面呈现契约](2026-10-20-task-board-card-surface-contract.md)所有。
+
+外部记录（`record-external-outcome`）沿用同一个字段：成功的外部运行把结论存进 `summary`（没有 `seq`，因为没有会话事件产生它）、`error` 留空；失败的运行把原因存进 `error`，并可附 `errorCode` 与 `retryHint`。该动作还接受可选的 `executionId` 与 `startedAt`，让启动时发出过执行句柄的提供方在结束后的记录上沿用它。

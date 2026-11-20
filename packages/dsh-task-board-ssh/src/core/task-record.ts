@@ -28,6 +28,14 @@ export interface ExecutionRecord {
   settledAt?: number
   /** Settlement, absent while the execution is still running. */
   result?: ExecutionOutcome
+  /** Conclusion of a succeeded run. */
+  summary?: { text: string; seq?: number }
+  /** Failure text of a failed run. */
+  error?: string
+  /** Stable failure code a provider reported. */
+  errorCode?: string
+  /** Who recorded the execution (`ssh:<runId>` for this provider). */
+  initiatedBy?: string
 }
 
 /** One card, as a provider reads it through the capability face. */

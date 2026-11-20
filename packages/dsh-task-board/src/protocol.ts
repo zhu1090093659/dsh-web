@@ -196,7 +196,22 @@ export type TaskBoardAction =
    * `cancelled` is deliberately absent: nothing outside a DSH session may
    * claim the Host closed a run, and `running` must stay Host-only.
    */
-  | { kind: 'record-external-outcome'; taskId: string; result: 'succeeded' | 'failed'; initiatedBy: string; summary?: string }
+  | {
+    kind: 'record-external-outcome'
+    taskId: string
+    result: 'succeeded' | 'failed'
+    initiatedBy: string
+    /** Success: stored as the execution summary. Failure: stored as the error text. */
+    summary?: string
+    /** Id the execution record takes, so a handle returned at launch stays valid. */
+    executionId?: string
+    /** Instant the outside run started (ms epoch); the record starts there instead of at settlement. */
+    startedAt?: number
+    /** Failure only: stable machine-readable code. */
+    errorCode?: string
+    /** Failure only: one line on whether and how to retry. */
+    retryHint?: string
+  }
   | { kind: 'set-schedule'; taskId: string; patch: SetSchedulePatch }
   | { kind: 'run'; taskId: string }
   | { kind: 'rerun'; taskId: string }
@@ -584,7 +599,7 @@ function parseEnvelopeAction(value: unknown): TaskBoardActionEnvelope | undefine
       }
     }
     case 'record-external-outcome': {
-      if (!exactKeys(action, ['kind', 'taskId', 'result', 'initiatedBy', 'summary'])) return undefined
+      if (!exactKeys(action, ['kind', 'taskId', 'result', 'initiatedBy', 'summary', 'executionId', 'startedAt', 'errorCode', 'retryHint'])) return undefined
       if (taskId === undefined) return undefined
       // Only a real outside verdict is accepted: `running` is Host-only and
       // `cancelled` is the Host's own bookkeeping for a run it closed.
@@ -596,6 +611,13 @@ function parseEnvelopeAction(value: unknown): TaskBoardActionEnvelope | undefine
       if (initiatedBy === '' || initiatedBy.length > EXTERNAL_INITIATOR_MAX_LENGTH) return undefined
       if (action.summary !== undefined && typeof action.summary !== 'string') return undefined
       const summary = typeof action.summary === 'string' ? action.summary.trim().slice(0, EXTERNAL_SUMMARY_MAX_LENGTH) : ''
+      if (action.executionId !== undefined && (typeof action.executionId !== 'string' || action.executionId === '' || action.executionId.length > 128)) return undefined
+      if (action.startedAt !== undefined && (typeof action.startedAt !== 'number' || !Number.isFinite(action.startedAt) || action.startedAt < 0)) return undefined
+      for (const key of ['errorCode', 'retryHint'] as const) {
+        if (action[key] !== undefined && typeof action[key] !== 'string') return undefined
+      }
+      const errorCode = typeof action.errorCode === 'string' ? action.errorCode.trim().slice(0, 64) : ''
+      const retryHint = typeof action.retryHint === 'string' ? action.retryHint.trim().slice(0, EXTERNAL_SUMMARY_MAX_LENGTH) : ''
       return {
         requestId: envelope.requestId,
         action: {
@@ -604,6 +626,10 @@ function parseEnvelopeAction(value: unknown): TaskBoardActionEnvelope | undefine
           result: action.result,
           initiatedBy,
           ...(summary === '' ? {} : { summary }),
+          ...(action.executionId === undefined ? {} : { executionId: action.executionId as string }),
+          ...(action.startedAt === undefined ? {} : { startedAt: action.startedAt as number }),
+          ...(errorCode === '' ? {} : { errorCode }),
+          ...(retryHint === '' ? {} : { retryHint }),
         },
       }
     }

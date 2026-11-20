@@ -119,6 +119,11 @@ export class SshRemote {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS
   }
 
+  /** The state directory of a host when it was already resolved, without a round trip. */
+  cachedStateDir(alias: string): string | undefined {
+    return this.stateDirs.get(alias)
+  }
+
   /** Forget every cached path of one host, or of all hosts when none is named. */
   forget(alias?: string): void {
     if (alias === undefined) {
@@ -311,6 +316,29 @@ export class SshRemote {
    */
   async removeRun(ref: SshRemoteRef): Promise<void> {
     await this.run(ref.alias, shellRemoveDir(runDirectory(ref.stateDir, ref.runId)), 'run directory removal')
+  }
+
+  /**
+   * Run one read-only diagnostic command and hand back the raw result, whether
+   * or not it succeeded: the caller decides what a failure means.
+   * @param alias - host alias.
+   * @param command - command line, already quoted.
+   * @param timeoutMs - ceiling for this command.
+   * @returns what the forwarder reported; a thrown forwarder becomes a failed result.
+   */
+  async probe(alias: string, command: string, timeoutMs = this.timeoutMs): Promise<{ success: boolean; stdout: string; stderr: string; error?: string; timedOut: boolean }> {
+    try {
+      const result = await this.ssh.exec(alias, command, { timeoutMs })
+      return {
+        success: result.success,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        timedOut: result.timedOut,
+        ...(result.error === undefined ? {} : { error: result.error }),
+      }
+    } catch (error) {
+      return { success: false, stdout: '', stderr: '', timedOut: false, error: error instanceof Error ? error.message : String(error) }
+    }
   }
 
   /** Run one command and refuse a failed one in the host's own words. */

@@ -35,8 +35,9 @@ gateway stream mux 正是靠这条路径从 `dsh-app://app` 文档抵达外壳�
 `ownsHost` 授予已配对的局域网／隧道页面，而该页面恰恰因为非本机才被门控通道围栏保护，网页
 绝不能被改道到它无权抵达的主机上。
 
-宿主半区未改动。socket 依然落在 loopback socket 上、携带 loopback `Host`，依然通过升级路由
-里的 `isLoopbackRequest`，凭据依然由外壳附加——本次改动只改变拨号目标，不扩大任何信任边界。
+升级路由声明 `auth: 'anonymous'`，并采用与其他 SSH API 相同的宿主 connection 准入或
+loopback 围栏。凭据仍由外壳附加；上述拨号规则本身不放行任何请求，远程页面仍须通过宿主
+裁决或严格回环校验。
 zh/en/ru 的 `terminal.noWebSocket` 文案现在描述的是剩余情形（外壳没有公布任何主机地址），而
 不再声称外壳永远无法承载 socket。
 

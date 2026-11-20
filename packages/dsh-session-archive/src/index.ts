@@ -7,6 +7,7 @@ import z from '@deepseek-ai/schemastery'
 import { mountOnce } from './mount-once.ts'
 import { ArchiveService } from './host/janitor.ts'
 import { makeArchiveRoutes } from './host/routes.ts'
+import { captureConnection } from './host/connection-trust.ts'
 import { readArchiveConfig, resolveAutoConfig, type SessionArchiveConfigFields } from './core/config.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -45,6 +46,7 @@ export const Config = z.object({
 })
 
 export const apply = mountOnce('@linxin666/dsh-session-archive', (ctx: Context, config?: SessionArchiveConfigFields): void => {
+  const connection = captureConnection(ctx, 'dsh-session-archive: connection trust')
   let service: ArchiveService | undefined
   let disposeRoutes: (() => void) | undefined
 
@@ -67,7 +69,7 @@ export const apply = mountOnce('@linxin666/dsh-session-archive', (ctx: Context, 
       const next = new ArchiveService(ctx)
       service = next
       void next.start()
-      const disposers = makeArchiveRoutes(next).map((route) => ctx.webServer.register(route))
+      const disposers = makeArchiveRoutes(next, connection).map((route) => ctx.webServer.register(route))
       disposeRoutes = () => {
         for (const dispose of disposers) {
           try {

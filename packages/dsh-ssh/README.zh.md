@@ -44,7 +44,7 @@
 
 ## 安全模型
 
-- 所有 `/api/dsh-ssh/*` 路由仅限 loopback 访问（含同源校验）——对远程服务器执行命令的接口不会暴露给局域网。
+- `/api/dsh-ssh/*` 与终端 upgrade 优先采用宿主 `connection` 服务的准入判定（已认证 / trusted-host 反向代理），否则沿用严格的 loopback + 同源校验。远程访问必须配置宿主自己的 `--trusted-host`；转发头本身绝不构成放行依据，宿主拒绝或无法裁决时原回环围栏保持不变。
 - 密码 / 密钥口令以明文保存在 `~/.dsh/dsh-ssh.json`，文件权限 0600、目录 0700（与 ssh-skill 把密码写进 ssh-config 注释同一信任模型）。
 - ssh-agent 认证仅保存 agent socket 路径（或 `pageant` 特殊值），不读取也不保存任何私钥材料。空的 agent 路径不是机密，任何时候都会提交：它表示自动检测（`SSH_AUTH_SOCK`，Windows 上再退到原生 OpenSSH 命名管道），因此把主机改成 SSH Agent 后即使路径留空也会生效。
 - Agent 转发是按主机选择性启用的能力，默认关闭。启用 `forwardAgent` 后，该主机上的每个 exec 与 PTY 会话都会向服务端请求 `auth-agent-req@openssh.com`，这意味着远端主机可以用你本机的密钥以这台机器的身份完成认证。只为你信任的主机启用，并记住这类主机上的每个会话都能使用被转发的 agent。本地端点（主机配置的 agent 路径、`SSH_AUTH_SOCK`、Windows 上的原生 OpenSSH 命名管道）解析不出来时连接直接失败，而不是什么都不转发；服务端拒绝该请求时，其错误原样呈现。

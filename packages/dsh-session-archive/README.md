@@ -25,7 +25,7 @@ A comprehensive session lifecycle and archive management plugin for DeepSeek Har
 - **Batch operations**: archive, unarchive, and physical delete over the selected set, executed as bounded server-side chunks with live progress, per-session results (success / skipped with reason / failed with reason), and a retry-failed-only action. The current session, running sessions, and sessions with running descendants are always protected and skipped with an explanation.
 - **Physical delete with cascade semantics**: deleting a session also removes its storage (jsonl.zstd directory or session-rdb rows), workspace accounting, archive-set entries, projection cache, and the plugin's archive ledger. Deleting a parent pulls in all descendants; a family containing any protected member is skipped whole — never half-deleted. Deletion requires an explicit confirmation that states the direct count, the cascade count, the final total, the skipped protected count, and the estimated freed space; large deletes require an extra acknowledgement.
 - **Optional automatic maintenance (off by default)**: auto-archive sessions inactive beyond a threshold (by last-activity time, never creation time) and auto-delete archived sessions past their retention (by the recorded archive time, never file times). Manual and automatic archiving both support bare UUID and `session-`-prefixed IDs, while the archive ledger uses canonical IDs. Both are independent switches with pre-enable previews, run-now buttons, and persisted last-run/next-check status. Sessions archived before this plugin existed have no reliable archive time, are shown as "unknown", and are never auto-deleted unless the optional backfill below is enabled.
-- **Safe by construction**: all routes are loopback-fenced (tunnels and LAN clients get 403), deletion never follows symlinks outside the sessions root, and operations serialize so two batches can never interleave.
+- **Safe by construction**: all routes require Host connection admission or strict loopback (untrusted tunnels and LAN clients get 403), deletion never follows symlinks outside the sessions root, and operations serialize so two batches can never interleave.
 
 ## Install
 
@@ -68,10 +68,10 @@ Invalid or out-of-range values are never saved; the form shows a validation mess
 
 ## Security model
 
-All HTTP routes (`/api/dsh-session-archive/*`) are fenced to loopback sockets with a loopback Host header and browser same-origin markers; `X-Forwarded-For` is never trusted. Deletion resolves storage paths only through the plugin's own sessions-root index, re-validates realpaths before removal, and rejects anything outside `$DSH_HOME/sessions`. Clients send session IDs only — never file paths. The session-rdb store (SQLite) is fingerprint-checked before any row deletion.
+All HTTP routes (`/api/dsh-session-archive/*`) first accept requests admitted by the Host `connection` service (`admit` or `requestRejection`), then fall back to loopback sockets with a loopback Host header and browser same-origin markers. An authenticated reverse proxy therefore works only when the Host itself trusts its authority (for example through `--trusted-host`); `X-Forwarded-For` is never sufficient and an unavailable or throwing bridge grants nothing. Deletion resolves storage paths only through the plugin's own sessions-root index, re-validates realpaths before removal, and rejects anything outside `$DSH_HOME/sessions`. Clients send session IDs only — never file paths. The session-rdb store (SQLite) is fingerprint-checked before any row deletion.
 
 ## Known limitations
 
-- Remote-browser users (LAN or `dsh-remote-web-ui` tunnels) cannot operate this section; every route is loopback-only by design, because it can destroy local session data.
+- Remote browsers without Host connection admission cannot operate this section. An operator may deliberately expose it through an authenticated, trusted-host reverse proxy; an ordinary unauthenticated LAN or tunnel client remains refused because these routes can destroy local session data.
 - Sessions missing from the host feed and the projection cache are flagged "incomplete metadata" and excluded from automatic flows.
 - Attachments under `$DSH_HOME/attachments` are shared and content-addressed; this plugin does not reclaim orphaned ones.

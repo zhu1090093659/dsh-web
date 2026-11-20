@@ -46,10 +46,10 @@ paired LAN or tunnel page, and that page must stay fenced behind its pairing
 channel, so a web page must never be rerouted onto a host it is not entitled to
 reach.
 
-The host half is untouched. The socket still arrives on the loopback socket with
-a loopback `Host`, still passes `isLoopbackRequest` in the upgrade route, and
-the shell still attaches the credential - so this moves the dial and widens no
-trust boundary. The `terminal.noWebSocket` copy in zh/en/ru now describes the
+The upgrade route declares `auth: 'anonymous'` and applies the same Host
+connection-admission-or-loopback fence as the other SSH APIs. The shell still
+attaches the credential; the dial rules above do not themselves admit a request,
+and a remote page remains subject to the Host decision or strict loopback checks. The `terminal.noWebSocket` copy in zh/en/ru now describes the
 remaining case (a shell that published no Host address) rather than claiming a
 shell can never carry a socket.
 

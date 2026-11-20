@@ -15,10 +15,14 @@ import { tmpdir } from 'node:os'
 import { randomBytes } from 'node:crypto'
 import { WebSocketServer } from 'ws'
 import type { WebRoute, WebUpgradeRoute } from '@deepseek-ai/dsh-host-webserver'
+
+type AuthAwareWebRoute = WebRoute & { readonly auth: 'anonymous' }
+type AuthAwareWebUpgradeRoute = WebUpgradeRoute & { readonly auth: 'anonymous' }
 import type { SshEngine } from './engine.ts'
 import { TerminalSessionRegistry } from './engine/terminal-sessions.ts'
 import { readJsonBody, writeJson } from './http.ts'
 import { isLoopbackRequest } from './loopback.ts'
+import { connectionAdmits, type HostConnectionReader } from './connection-trust.ts'
 import { SSH_API, type HostPayload, type TerminalServerFrame } from './protocol.ts'
 import type { HostStore } from './store.ts'
 
@@ -44,6 +48,8 @@ export interface SshRoutesDeps {
   store: HostStore
   /** The engine (ops). */
   engine: SshEngine
+  /** Optional Host connection trust decision, read afresh for each request. */
+  connection?: HostConnectionReader
   /** Temp dir for upload/download staging (tests inject a sandbox). */
   stagingDir?: string
 /** Upload byte cap override (tests); defaults to MAX_UPLOAD_BYTES. */
@@ -65,9 +71,11 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
   // staged files below are 0600; downloads are pre-created 0600 as well).
   mkdirSync(staging, { recursive: true, mode: 0o700 })
 
-  /** Guard helper: fence + method check. */
+  const allowed = (req: IncomingMessage): boolean => connectionAdmits(deps.connection?.(), req) || isLoopbackRequest(req)
+
+  /** Guard helper: Host connection trust or loopback fence + method check. */
   const guard = (req: IncomingMessage, res: ServerResponse, method: string): boolean => {
-    if (!isLoopbackRequest(req)) {
+    if (!allowed(req)) {
       writeJson(res, 403, { error: 'forbidden: loopback-only' })
       return false
     }
@@ -87,7 +95,7 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
         // One handler per path (the webserver keyed route registry rejects
         // duplicate (kind, path)); dispatch by HTTP method here.
         const method = req.method ?? 'GET'
-        if (!isLoopbackRequest(req)) {
+        if (!allowed(req)) {
           writeJson(res, 403, { error: 'forbidden: loopback-only' })
           return
         }
@@ -459,7 +467,7 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
   const upgrade: WebUpgradeRoute = {
     path: SSH_API.terminal,
     handler: (req, socket, head) => {
-      if (!isLoopbackRequest(req)) {
+      if (!allowed(req)) {
         socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
         socket.destroy()
         return
@@ -493,5 +501,9 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
     },
   }
 
-  return { routes, upgrade, terminalSessions }
+  return {
+    routes: routes.map((route): AuthAwareWebRoute => ({ ...route, auth: 'anonymous' })),
+    upgrade: { ...upgrade, auth: 'anonymous' } as AuthAwareWebUpgradeRoute,
+    terminalSessions,
+  }
 }

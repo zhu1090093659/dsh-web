@@ -8,10 +8,13 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
+
+type AuthAwareWebRoute = WebRoute & { readonly auth: 'anonymous' }
 import type { BatchRequestBody } from '../core/types.ts'
 import { BusyError, PlanMismatchError, type ArchiveService } from './janitor.ts'
 import { readBoundedJson, writeJson } from './http.ts'
 import { isLoopbackRequest } from './loopback.ts'
+import { connectionAdmits, type HostConnectionReader } from './connection-trust.ts'
 import { canonicalSessionId } from './session-files.ts'
 
 export const ARCHIVE_API_PREFIX = '/api/dsh-session-archive'
@@ -19,7 +22,9 @@ export const ARCHIVE_API_PREFIX = '/api/dsh-session-archive'
 /** Batch bodies carry id arrays; 4 MiB covers ~50k ids with margin. */
 const BODY_MAX_BYTES = 4_000_000
 
-function fenced(req: IncomingMessage, res: ServerResponse): boolean {
+type RouteFence = (req: IncomingMessage, res: ServerResponse) => boolean
+
+function loopbackFenced(req: IncomingMessage, res: ServerResponse): boolean {
   if (!isLoopbackRequest(req)) {
     writeJson(res, 403, { ok: false, error: 'forbidden: loopback-only' })
     return false
@@ -63,7 +68,7 @@ function errorDetail(error: unknown): string {
   return error instanceof Error ? error.message.slice(0, 300) : String(error)
 }
 
-export function makeInventoryRoute(service: ArchiveService): WebRoute {
+export function makeInventoryRoute(service: ArchiveService, fenced: RouteFence = loopbackFenced): WebRoute {
   return {
     kind: 'exact',
     path: `${ARCHIVE_API_PREFIX}/inventory`,
@@ -79,7 +84,7 @@ export function makeInventoryRoute(service: ArchiveService): WebRoute {
   }
 }
 
-export function makePreviewRoute(service: ArchiveService): WebRoute {
+export function makePreviewRoute(service: ArchiveService, fenced: RouteFence = loopbackFenced): WebRoute {
   return {
     kind: 'exact',
     path: `${ARCHIVE_API_PREFIX}/preview`,
@@ -101,7 +106,7 @@ export function makePreviewRoute(service: ArchiveService): WebRoute {
   }
 }
 
-function batchRoute(service: ArchiveService, path: string, run: (body: BatchRequestBody) => Promise<{ results: unknown; freedBytes: number }>): WebRoute {
+function batchRoute(service: ArchiveService, path: string, run: (body: BatchRequestBody) => Promise<{ results: unknown; freedBytes: number }>, fenced: RouteFence = loopbackFenced): WebRoute {
   return {
     kind: 'exact',
     path,
@@ -144,22 +149,22 @@ function batchRoute(service: ArchiveService, path: string, run: (body: BatchRequ
   }
 }
 
-export function makeArchiveRoute(service: ArchiveService): WebRoute {
-  return batchRoute(service, `${ARCHIVE_API_PREFIX}/archive`, (body) => service.archive(body.ids, 'manual', body.currentSessionId))
+export function makeArchiveRoute(service: ArchiveService, fenced: RouteFence = loopbackFenced): WebRoute {
+  return batchRoute(service, `${ARCHIVE_API_PREFIX}/archive`, (body) => service.archive(body.ids, 'manual', body.currentSessionId), fenced)
 }
 
-export function makeUnarchiveRoute(service: ArchiveService): WebRoute {
-  return batchRoute(service, `${ARCHIVE_API_PREFIX}/unarchive`, (body) => service.unarchive(body.ids))
+export function makeUnarchiveRoute(service: ArchiveService, fenced: RouteFence = loopbackFenced): WebRoute {
+  return batchRoute(service, `${ARCHIVE_API_PREFIX}/unarchive`, (body) => service.unarchive(body.ids), fenced)
 }
 
-export function makeDeleteRoute(service: ArchiveService): WebRoute {
+export function makeDeleteRoute(service: ArchiveService, fenced: RouteFence = loopbackFenced): WebRoute {
   return batchRoute(service, `${ARCHIVE_API_PREFIX}/delete`, (body) => service.deleteSessions(body.ids, {
     currentSessionId: body.currentSessionId,
     ...(body.expectedTotal !== undefined ? { expectedTotal: body.expectedTotal } : {}),
-  }))
+  }), fenced)
 }
 
-export function makeAutoPreviewRoute(service: ArchiveService): WebRoute {
+export function makeAutoPreviewRoute(service: ArchiveService, fenced: RouteFence = loopbackFenced): WebRoute {
   return {
     kind: 'exact',
     path: `${ARCHIVE_API_PREFIX}/auto/preview`,
@@ -174,7 +179,7 @@ export function makeAutoPreviewRoute(service: ArchiveService): WebRoute {
   }
 }
 
-export function makeAutoRunRoute(service: ArchiveService): WebRoute {
+export function makeAutoRunRoute(service: ArchiveService, fenced: RouteFence = loopbackFenced): WebRoute {
   return {
     kind: 'exact',
     path: `${ARCHIVE_API_PREFIX}/auto/run`,
@@ -209,14 +214,15 @@ export function makeAutoRunRoute(service: ArchiveService): WebRoute {
   }
 }
 
-export function makeArchiveRoutes(service: ArchiveService): WebRoute[] {
+export function makeArchiveRoutes(service: ArchiveService, connection?: HostConnectionReader): WebRoute[] {
+  const fenced: RouteFence = (req, res) => connectionAdmits(connection?.(), req) || loopbackFenced(req, res)
   return [
-    makeInventoryRoute(service),
-    makePreviewRoute(service),
-    makeArchiveRoute(service),
-    makeUnarchiveRoute(service),
-    makeDeleteRoute(service),
-    makeAutoPreviewRoute(service),
-    makeAutoRunRoute(service),
-  ]
+    makeInventoryRoute(service, fenced),
+    makePreviewRoute(service, fenced),
+    makeArchiveRoute(service, fenced),
+    makeUnarchiveRoute(service, fenced),
+    makeDeleteRoute(service, fenced),
+    makeAutoPreviewRoute(service, fenced),
+    makeAutoRunRoute(service, fenced),
+  ].map((route): AuthAwareWebRoute => ({ ...route, auth: 'anonymous' }))
 }

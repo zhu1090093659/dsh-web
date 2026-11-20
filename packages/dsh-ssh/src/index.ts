@@ -22,6 +22,7 @@ import { DSH_SSH_API_VERSION, DSH_SSH_SERVICE, type DshSshHost, type DshSshServi
 import { HostStore } from './store.ts'
 import { sshClusterTool, sshDownloadTool, sshExecTool, sshListTool, sshTunnelTool, sshUploadTool } from './tools.ts'
 import { mountOnce } from './mount-once.ts'
+import { captureConnection } from './connection-trust.ts'
 import { PLUGIN_TOOL_SECTION_ORDERS, visibleToolText } from './tool-surface.ts'
 
 /** Stable cordis plugin name. */
@@ -209,8 +210,12 @@ function applyImpl(ctx: Context, config?: ResolvedConfig): void {
     }
   }
 
+  // The connection bridge resolves authentication through its calling fiber;
+  // capture it in a scope that injects both halves before routes use it.
+  const connection = captureConnection(ctx, 'dsh-ssh: connection trust')
+
   // The /api/dsh-ssh route family + terminal upgrade.
-  const { routes, upgrade, terminalSessions } = makeRoutes({ store, engine })
+  const { routes, upgrade, terminalSessions } = makeRoutes({ store, engine, connection })
   let disposeRoutes: (() => void) | undefined
 
   // Agent tools + their prompt sections.

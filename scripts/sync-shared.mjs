@@ -195,6 +195,11 @@ const MANIFEST = [
     targets: ['packages/dsh-skill-explorer/src/pair-access.ts', 'packages/dsh-usage/src/host/pair-access.ts', 'packages/dsh-diagrams/src/host/pair-access.ts'],
   },
   {
+    file: 'connection-trust.ts',
+    source: 'shared/host/connection-trust.ts',
+    targets: ['packages/dsh-ssh/src/connection-trust.ts', 'packages/dsh-session-archive/src/host/connection-trust.ts'],
+  },
+  {
     file: 'loopback.ts',
     source: 'shared/host/loopback.ts',
     targets: ['packages/dsh-ssh/src/loopback.ts', 'packages/dsh-task-board/src/loopback.ts', 'packages/dsh-task-board-github/src/loopback.ts', 'packages/dsh-skill-explorer/src/loopback.ts', 'packages/dsh-plugin-manager/src/host/loopback.ts', 'packages/dsh-market/src/loopback.ts', 'packages/dsh-usage/src/host/loopback.ts', 'packages/dsh-session-archive/src/host/loopback.ts', 'packages/dsh-browser-view/src/host/loopback.ts', 'packages/dsh-diagrams/src/host/loopback.ts'],

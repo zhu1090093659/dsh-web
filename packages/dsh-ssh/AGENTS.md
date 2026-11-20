@@ -13,7 +13,8 @@ dsh Web GUI 的远程 SSH 运维插件：Host 进程内的持久 ssh2 连接池 
 - exec / cluster 输出**原样返回**（不脱敏），如 `env` 可能把远端环境密钥带回
   对话记录；传输 / 执行消耗**真实远程资源**，Agent 使用前先确认。
 - `ssh_upload` / `ssh_download` 以宿主进程权限直接读写本机任意路径（不经
-  bash 沙箱）；所有 `/api/dsh-ssh/*` 路由仅限 loopback，隧道只监听 `127.0.0.1`。
+  bash 沙箱）；`/api/dsh-ssh/*` 与终端 upgrade 先采用宿主 connection 准入，缺失或拒绝时
+  回退严格 loopback（转发头本身绝不放行），隧道只监听 `127.0.0.1`。
 - `proxyCommand` 是由宿主进程以其权限执行的 shell 命令（与 `ssh(1)` 执行同一行的
   信任模型）：只来自用户 0600 配置文件；agent 工具只暴露是否配置、不暴露命令原文，
   agent 也不能创建 / 修改主机；POSIX 按进程组回收子进程，Windows 只杀 shell
@@ -64,7 +65,7 @@ dsh Web GUI 的远程 SSH 运维插件：Host 进程内的持久 ssh2 连接池 
 - **PTY 会话归 Host**（`src/engine/terminal-sessions.ts`）：会话按 id 存活，
   视图卸载只 detach、重新挂载按 id reattach 并回放滚动缓冲；只有显式
   `close` 帧、远端退出后的宽限期到期或空闲回收才结束会话。路由层只做
-  loopback 围栏与 socket 接线，会话表随路由注销一并 dispose。
+  connection 准入或 loopback 围栏与 socket 接线，会话表随路由注销一并 dispose。
 - **终端多标签（#1950）**：标签与其状态（alias / host session id / status / 待答
   2FA / 关闭失败）都存 `panel/controller.ts`，视图只保留**一个 xterm**，切 tab 是
   重绑这一个终端而不是叠终端。切走已 ready 的标签只 detach，切回按 sessionId
@@ -97,7 +98,7 @@ dsh Web GUI 的远程 SSH 运维插件：Host 进程内的持久 ssh2 连接池 
   authority 并改写该 Host 的握手，因此在这种页面上改拨该地址（仅当它是可解析、
   无 userinfo、authority 非空的 http(s) origin）。网页始终按自身 origin 解析——
   远程通道会把 `ownsHost` 授予已配对的局域网页面，那类页面必须继续留在门控通道里。
-  宿主侧围栏不变，socket 仍走 loopback。决策与被取代的旧方案见
+  宿主侧仍由 connection 准入或 loopback 围栏裁决，远程页面不能自行绕过。决策与被取代的旧方案见
   `.agents/notes/implemented/bug-fix/2026-10-02-ssh-terminal-dials-shell-owned-host.md`。
 
 ## 提交前检查

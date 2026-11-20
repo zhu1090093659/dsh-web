@@ -162,6 +162,48 @@ describe('loopback fence', () => {
   })
 })
 
+describe('host connection trust', () => {
+  it('operator through a Host-admitted reverse proxy reaches the hosts API', async () => {
+    // Given a forwarded request that the legacy loopback fence would reject
+    const requestRejection = vi.fn(() => undefined)
+    const made = makeRoutes({
+      store: new HostStore(join(dir, 'trusted-proxy-hosts.json')),
+      engine: engine(new StubEngine()),
+      stagingDir: join(dir, 'trusted-proxy-staging'),
+      connection: () => ({ requestRejection }),
+    })
+    const { req } = fakeJsonRequest(SSH_API.hosts, undefined, 'GET')
+    req.headers['x-forwarded-for'] = '203.0.113.20'
+    // When the Host connection service admits the request
+    const { res, state } = fakeJsonResponse()
+    await handlerFor(SSH_API.hosts, made.routes).handler(req, res)
+    // Then the API answers normally and the Host decision was consulted
+    expect(state.status).toBe(200)
+    expect(requestRejection).toHaveBeenCalledWith(req)
+    expect(made.routes.every(route => 'auth' in route && route.auth === 'anonymous')).toBe(true)
+    expect(made.upgrade).toMatchObject({ auth: 'anonymous' })
+    made.terminalSessions.dispose()
+  })
+
+  it('operator through an untrusted reverse proxy keeps the 403 refusal', async () => {
+    // Given a forwarded request the Host connection service rejects
+    const made = makeRoutes({
+      store: new HostStore(join(dir, 'untrusted-proxy-hosts.json')),
+      engine: engine(new StubEngine()),
+      stagingDir: join(dir, 'untrusted-proxy-staging'),
+      connection: () => ({ requestRejection: () => 403 }),
+    })
+    const { req } = fakeJsonRequest(SSH_API.hosts, undefined, 'GET')
+    req.headers['x-forwarded-for'] = '203.0.113.20'
+    // When the hosts API checks admission
+    const { res, state } = fakeJsonResponse()
+    await handlerFor(SSH_API.hosts, made.routes).handler(req, res)
+    // Then the pre-existing fence still refuses it
+    expect(state.status).toBe(403)
+    made.terminalSessions.dispose()
+  })
+})
+
 describe('hosts CRUD (one handler per path)', () => {
   it('creates, lists, patches, and deletes through the shared route', async () => {
     const create = await fetch('http://127.0.0.1:' + port + SSH_API.hosts, {

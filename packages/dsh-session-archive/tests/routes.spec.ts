@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, expect, it, afterAll } from 'vitest'
+import { describe, expect, it, afterAll, vi } from 'vitest'
 import { createServer, request as httpRequest, type Server, type IncomingMessage, type ServerResponse } from 'node:http'
 import { AddressInfo } from 'node:net'
 import { makeArchiveRoutes } from '../src/host/routes.ts'
@@ -67,6 +67,30 @@ describe('route fencing and contracts', () => {
     expect(foreignHost.status).toBe(403)
     const ok = await get(url, '/api/dsh-session-archive/inventory')
     expect(ok.status).toBe(200)
+  })
+
+  it('operator through a Host-admitted reverse proxy reads inventory', async () => {
+    // Given a forwarded request admitted by the Host connection service
+    const service = makeService()
+    const requestRejection = vi.fn(() => undefined)
+    const { server, url } = await startServer(makeArchiveRoutes(service, () => ({ requestRejection })))
+    servers.push(server)
+    // When the inventory API checks admission
+    const response = await get(url, '/api/dsh-session-archive/inventory', { 'x-forwarded-for': '203.0.113.20' })
+    // Then it responds normally instead of reporting loopback-only
+    expect(response.status).toBe(200)
+    expect(requestRejection).toHaveBeenCalledOnce()
+  })
+
+  it('operator through an untrusted reverse proxy keeps the 403 refusal', async () => {
+    // Given a forwarded request rejected by the Host connection service
+    const service = makeService()
+    const { server, url } = await startServer(makeArchiveRoutes(service, () => ({ requestRejection: () => 403 })))
+    servers.push(server)
+    // When the inventory API checks admission
+    const response = await get(url, '/api/dsh-session-archive/inventory', { 'x-forwarded-for': '203.0.113.20' })
+    // Then the pre-existing fence still refuses it
+    expect(response.status).toBe(403)
   })
 
   it('gates mutating routes to POST', async () => {
@@ -185,6 +209,7 @@ describe('route paths are prefixed', () => {
     const routes = makeArchiveRoutes(service)
     for (const route of routes) {
       expect(route.path.startsWith('/api/dsh-session-archive/')).toBe(true)
+      expect('auth' in route && route.auth === 'anonymous').toBe(true)
     }
   })
 })

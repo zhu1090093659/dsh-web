@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-.agents/notes/implemented/bug-fix/2026-10-02-ssh-terminal-dials-shell-owned-host.md: db3fb7159e9a92726f790c7396b92f8809d1633b
-.agents/notes/implemented/bug-fix/2026-10-02-ssh-terminal-dials-shell-owned-host.zh.md: 671b9ac78a309c64054883080eb36e6efc56f78d
+.agents/notes/implemented/bug-fix/2026-10-02-ssh-terminal-dials-shell-owned-host.md: a3fff6d2a93ad27a45ec1b80d9d82438eb3d484e
+.agents/notes/implemented/bug-fix/2026-10-02-ssh-terminal-dials-shell-owned-host.zh.md: 29809c4f6291cae8f73fbd91ee044beb36a45da5

@@ -105,6 +105,7 @@ import {
   summarizeInactive,
   validatePagedToolPatterns,
 } from './paging.mjs'
+import { publishWirePresentation } from './wire-presentation.mjs'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'liangshen-tool-catalog'
@@ -981,6 +982,12 @@ export function apply(ctx, config) {
       agentBySession.set(agent.session, agent)
     }
 
+    // The presentation is knowable before the rest of the waterfall runs. Publish
+    // it now so minimal-prompt reads THIS request's transport after its own next()
+    // regardless of which prepended listener wraps the other.
+    const effectivePresentation = collapsedTransport() ? 'ptc' : 'native'
+    publishWirePresentation(agent, effectivePresentation)
+
     // Page the scope before the providers are collected; a scope the lifecycle
     // hooks already paged re-derives the same state, so this is idempotent.
     syncBeforeAssembly(agent)
@@ -1002,7 +1009,6 @@ export function apply(ctx, config) {
     // under both, so the configured mode plus a mounted runtime is the answer -
     // and a mode whose runtime is missing keeps the native wording, because
     // that is the wire an executor-less deployment renders.
-    const effectivePresentation = collapsedTransport() ? 'ptc' : 'native'
 
     // An unreadable projection is NOT an empty one. Keep the catalog this scope
     // last published instead of rewriting it: recording "this session has no

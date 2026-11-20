@@ -93,6 +93,13 @@ describe('readCompositionRows', () => {
     expect(configOf(rowOf(rows(), 'minimal-prompt'))['dispatcher']).toBe(true)
   })
 
+  it('operator reads an empty third-party section allowlist by default', () => {
+    // Given the factory composition
+    // When the operator reads the minimal-prompt row
+    // Then the opt-in extension point is present but changes no default selection
+    expect(configOf(rowOf(rows(), 'minimal-prompt'))['keepSections']).toEqual([])
+  })
+
   it('operator keeps a literal block scalar verbatim', () => {
     // Given the persona row's `prefix: |-` scalar, When the operator reads it,
     // Then the prose is content and the next composition row ends it.

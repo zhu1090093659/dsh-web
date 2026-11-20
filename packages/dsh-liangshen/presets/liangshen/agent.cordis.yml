@@ -146,7 +146,9 @@
 # #49: a full-text dump as context measurably flips the trajectory). Both
 # non-default modes trade the harness's own channel for a preset-owned one; the
 # default keeps the upstream contract. Set `keepPlanPolicy: false` to drop
-# plan mode's policy section as well.
+# plan mode's policy section as well. `keepSections` (default []) appends
+# explicitly named third-party sections to that fail-closed allowlist; a name
+# absent from an assembly logs a diagnostic instead of failing silently.
 #
 # `dispatcher` (default true) is orthogonal to `presentation`: it changes the
 # PROMPT, not the wire. On, the persona section additionally carries the
@@ -195,6 +197,7 @@
   name: ./minimal-prompt.mjs
   config:
     keepPlanPolicy: true
+    keepSections: []
     instructionSource: host
     instructionMaxBytes: 65536
     # Append the dispatcher rule block to the persona (orthogonal to the wire

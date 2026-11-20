@@ -7,9 +7,10 @@
  *
  * The assembled prompt is filtered down to the persona section, plus the plan
  * policy when plan mode is active, plus the official PTC tool SDK sections
- * (`tools:sdk` and `tools:ptc-only`) exactly when the assembled wire carries
- * the `run_code` transport (presentation 'ptc'; an unreadable wire
- * keeps them, matching the harness's own empty-section drop): the harness
+ * (`tools:sdk` and `tools:ptc-only`) exactly when the effective wire carries
+ * the `run_code` transport (presentation 'ptc'). Legacy hosts expose the final
+ * tools array; current hosts use the sibling-published transport, while a
+ * standalone assembly with neither signal keeps the historical fallback. The harness
  * identity, web-surface, tool-guidance, file-reference, and structured-output
  * sections never reach the model. Keeping the official SDK sections when the
  * transport is present ensures the model receives the complete generated tool
@@ -82,7 +83,8 @@
  *
  * PLAN MODE is kept by default. `dsh-plan-mode` enforces its rules through
  * the `plan:policy` prompt section alone. `keepPlanPolicy: false` restores the
- * strict one-line surface.
+ * strict one-line surface. `keepSections` (default []) explicitly appends
+ * third-party section names to the allowlist and warns once for an unmatched name.
  *
  * DISPATCHER RULES (`dispatcher`, default `true`): the switch appends
  * `./dispatcher-rules.mjs` to the persona text, after the workspace line, under
@@ -98,6 +100,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
 import { DISPATCHER_RULES, DISPATCHER_RULES_APPENDIX, DISPATCHER_RULES_WITH_APPENDIX } from './dispatcher-rules.mjs'
+import { wirePresentationFor } from './wire-presentation.mjs'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'liangshen-minimal-prompt'
@@ -176,6 +179,14 @@ function optionalBoolean(value, field, fallback) {
     throw new TypeError(`${name}: ${field} must be a boolean`)
   }
   return value
+}
+
+function optionalKeepSections(value) {
+  if (value === undefined) return []
+  if (!Array.isArray(value) || value.some(sectionName => typeof sectionName !== 'string' || sectionName.length === 0)) {
+    throw new TypeError(`${name}: keepSections must be an array of non-empty strings`)
+  }
+  return [...new Set(value)]
 }
 
 function optionalSource(value, field, fallback) {
@@ -747,6 +758,7 @@ export function withWorkspaceLine(sections, agent, dispatcher = false) {
 /** Register the section filter, workspace-instruction source, and dynamic discovery hooks. */
 export function apply(ctx, config) {
   const keepPlanPolicy = optionalBoolean(config?.keepPlanPolicy, 'keepPlanPolicy', true)
+  const keepSections = optionalKeepSections(config?.keepSections)
   const dispatcher = optionalBoolean(config?.dispatcher, 'dispatcher', true)
   const instructionSource = optionalSource(config?.instructionSource, 'instructionSource', 'host')
   const instructionMaxBytes = optionalByteSize(config?.instructionMaxBytes, 'instructionMaxBytes', DEFAULT_INSTRUCTION_MAX_BYTES)
@@ -794,6 +806,8 @@ export function apply(ctx, config) {
     return state
   }
 
+  const warnedKeepSections = new Set()
+
   let warned = false
   const warnOnce = (message) => {
     if (warned) return
@@ -809,17 +823,31 @@ export function apply(ctx, config) {
   ctx.on('system-prompt/assemble', async (_assembly, context, next) => {
     const assembled = await next()
     if (!Array.isArray(assembled.sections)) return assembled
-    // The official SDK sections belong to the run_code transport: keep them
-    // exactly when this assembly's wire carries it ('ptc'), drop
-    // them from a native wire they would only confuse. An unreadable wire keeps
-    // them, matching the harness's own empty-section drop under 'native'.
+    // Old hosts exposed the final tool array here; current hosts expose only
+    // sections, so the sibling tool-catalog publishes the effective transport
+    // before this waterfall continues. Standalone use with neither signal keeps
+    // the historical fail-open behavior for these two SDK sections.
     const wire = Array.isArray(assembled?.tools) ? assembled.tools : undefined
-    const wireHasRunCode = wire === undefined ? true : wire.some(tool => tool?.name === 'run_code')
+    const presentation = wirePresentationFor(context?.agent)
+    const wireHasRunCode = wire !== undefined
+      ? wire.some(tool => tool?.name === 'run_code')
+      : presentation === undefined ? true : presentation === 'ptc'
     const keep = new Set([
       ...PERSONA_SECTION_NAMES,
       ...(keepPlanPolicy ? [PLAN_POLICY_SECTION_NAME] : []),
       ...(wireHasRunCode ? PTC_SECTION_NAMES : []),
+      ...keepSections,
     ])
+    const availableNames = new Set(assembled.sections.map(section => section?.name))
+    for (const sectionName of keepSections) {
+      if (availableNames.has(sectionName) || warnedKeepSections.has(sectionName)) continue
+      warnedKeepSections.add(sectionName)
+      try {
+        ctx.logger?.warn?.(`${name}: keepSections entry ${JSON.stringify(sectionName)} never matched any assembled section`)
+      } catch {
+        // Logger unavailable
+      }
+    }
     const sections = assembled.sections.filter(section => keep.has(section?.name))
     if (sections.length === 0) {
       warnOnce(`${name}: no section matched ${JSON.stringify([...keep])} — `

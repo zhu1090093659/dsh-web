@@ -63,6 +63,7 @@ DeepSeek V4.1 Flash 的后训练直接对齐其原生 DSML 工具调用面，官
 | 键 | 默认值 | 行为 |
 | --- | --- | --- |
 | `keepPlanPolicy` | `true` | 在只有一行 persona 的系统提示词中保留 plan mode 的 `plan:policy` 段。置 `false` 得到严格的一行表面，此时 plan mode 背后没有任何策略文本。 |
+| `keepSections` | `[]` | 合并进 fail-closed 白名单的额外提示词段名，例如 `['mnemon:strategy', 'mnemon:routing']`。空默认让既有段选择逐字节不变。每项必须是非空字符串；配置的名字未在某次组装中命中时会发出一次可见告警，不再静默无效。 |
 | `instructionSource` | `host` | 工作区指令送达模型的方式。`host`（默认）不追加任何自有段，也不改动宿主的 agent-instructions 注入，工作区指令以宿主自己的 user 角色消息送达：一条持久基线，加上触碰目录后的增量、替换与移除；`system-prompt` 在组装时读取 AGENTS.md 链并追加进系统提示词（harness 自己的注入被丢弃）；`hint` 把首次注入替换为一次性的、非命令式的参考文件提示，后续注入丢弃。 |
 | `instructionMaxBytes` | `65536` | 渲染后的 workspace-instructions 段的字节预算，仅在 `system-prompt` 模式下生效：最宽的文件先被省略，最具体的文件最后被截断。 |
 | `descriptionMaxLength` | `200` | 注入目录中单个工具一行摘要的长度上限，作用于所有未被策展表覆盖的工具；被策展的宿主内置工具直接使用整行手写短描述。完整关键参数语义保持完整。 |

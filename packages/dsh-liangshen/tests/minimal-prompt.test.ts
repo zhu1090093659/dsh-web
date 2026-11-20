@@ -18,6 +18,7 @@ import {
   WORKSPACE_INSTRUCTIONS_SECTION_NAME,
 } from '../presets/liangshen/minimal-prompt.mjs'
 import * as promptModule from '../presets/liangshen/minimal-prompt.mjs'
+import { publishWirePresentation, wirePresentationFor } from '../presets/liangshen/wire-presentation.mjs'
 import { DISPATCHER_RULES, DISPATCHER_RULES_APPENDIX, DISPATCHER_RULES_PROVENANCE, DISPATCHER_RULES_WITH_APPENDIX } from '../presets/liangshen/dispatcher-rules.mjs'
 
 type Listener = (first: any, second: any, third: any) => Promise<any>
@@ -180,6 +181,37 @@ describe('liangshen-minimal-prompt', () => {
     expect(result.sections.map((section: any) => section.name)).toEqual(['deployment:persona-prefix'])
   })
 
+  test('operator keeps explicitly configured third-party sections in addition to the defaults', async () => {
+    // Given a third-party prompt section and an explicit opt-in list
+    const sections = [PERSONA, PLAN, { name: 'mnemon:strategy', text: 'memory protocol' }]
+    // When the operator assembles with keepSections configured
+    const result = await assemble(register({ dispatcher: false, keepSections: ['mnemon:strategy'] }), sections)
+    // Then the custom entry merges with the built-in persona and plan policy
+    expect(result.sections.map((section: any) => section.name)).toEqual([
+      'deployment:persona-prefix', 'plan:policy', 'mnemon:strategy',
+    ])
+  })
+
+  test('operator receives one visible warning for an unmatched keepSections entry', async () => {
+    // Given a misspelled configured section name
+    const harness = register({ keepSections: ['mnemon:stratgy'] })
+    // When multiple assemblies never contain that name
+    await assemble(harness)
+    await assemble(harness)
+    // Then the configuration mistake is visible without logging every step
+    expect(harness.warns.filter(message => message.includes('never matched any assembled section'))).toHaveLength(1)
+    expect(harness.warns[0]).toContain('mnemon:stratgy')
+  })
+
+  test('operator with no keepSections keeps the byte-identical default section selection', async () => {
+    // Given the same assembled input with and without the new option
+    const withoutOption = await assemble(register({ dispatcher: false }))
+    const withDefault = await assemble(register({ dispatcher: false, keepSections: [] }))
+    // When the default is left absent or explicitly empty
+    // Then both results are identical
+    expect(withDefault).toEqual(withoutOption)
+  })
+
   test('keeps the assembled prompt and warns once when no persona section exists', async () => {
     const harness = register()
     const withoutPersona = [{ name: 'harness:identity', text: 'identity' }]
@@ -195,6 +227,9 @@ describe('liangshen-minimal-prompt', () => {
     expect(() => register({ instructionMaxBytes: 0 })).toThrow(/instructionMaxBytes must be a positive/)
     expect(() => register({ instructionMaxBytes: 'big' })).toThrow(/instructionMaxBytes must be a positive/)
     expect(() => register({ keepPlanPolicy: 1 })).toThrow(/keepPlanPolicy must be a boolean/)
+    expect(() => register({ keepSections: 'mnemon:strategy' })).toThrow(/keepSections must be an array/)
+    expect(() => register({ keepSections: [''] })).toThrow(/keepSections must be an array/)
+    expect(() => register({ keepSections: [1] })).toThrow(/keepSections must be an array/)
   })
 
   test('appends the session workspace directory to the persona', async () => {
@@ -1024,6 +1059,38 @@ describe('liangshen-minimal-prompt', () => {
         { name: 'read', description: 'read' },
       ])
       expect(result.sections.map((s: any) => s.name)).toEqual(['deployment:persona-prefix'])
+    })
+
+    test('operator on a current native Host drops SDK sections even though the waterfall has no tools array', async () => {
+      // Given the current PromptPresentation payload and a published native transport
+      const agent = agentOf()
+      publishWirePresentation(agent, 'native')
+      const ptcSections = [PERSONA, { name: 'tools:ptc-only', text: 'run_code only' }, { name: 'tools:sdk', text: 'SDK' }]
+      // When the assembly contains no tools property at all
+      const result = await listener(register(), 'system-prompt/assemble')(
+        undefined,
+        { agent },
+        async () => ({ sections: ptcSections, contexts: [], variables: {} }),
+      )
+      // Then the sibling-provided transport replaces the old always-true fallback
+      expect(result.sections.map((section: any) => section.name)).toEqual(['deployment:persona-prefix'])
+      publishWirePresentation(agent, undefined)
+    })
+
+    test('operator on a current ptc Host retains SDK sections without a tools array', async () => {
+      // Given the current PromptPresentation payload and a published ptc transport
+      const agent = agentOf()
+      publishWirePresentation(agent, 'ptc')
+      // When the assembly runs
+      const result = await listener(register(), 'system-prompt/assemble')(
+        undefined,
+        { agent },
+        async () => ({ sections: [PERSONA, { name: 'tools:sdk', text: 'SDK' }], contexts: [], variables: {} }),
+      )
+      // Then the SDK instructions remain beside the run_code transport
+      expect(result.sections.map((section: any) => section.name)).toContain('tools:sdk')
+      expect(wirePresentationFor(agent)).toBe('ptc')
+      publishWirePresentation(agent, undefined)
     })
 
     test('keeps the SDK sections when the wire is unreadable', async () => {

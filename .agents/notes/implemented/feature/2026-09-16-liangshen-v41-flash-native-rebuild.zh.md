@@ -15,6 +15,7 @@ Status: implemented
 preset 在整个会话中保持单一 wire 呈现，并把外部工具发现迁移到温和的分页机制上。
 
 - `tool-catalog` 新增 `presentation` 键，取三个值：`native`（组装出的原生清单）、`ptc`（wire 收拢为 `run_code`，其余工具经生成的 SDK 调用；**出厂默认**）与 `both`（完整原生清单同驻一个 `run_code`）。默认值取 `ptc` 是一次**未测量的取舍**：它让原生清单的 schema 负载离开每个请求，静态上下文为三者最省；但官方已发表的脚手架横评把该呈现排在原生面之后（DeepSWE v1.1：67.6 对 72.6；Terminal-Bench 2.1：85.8 对 90.6），而本仓库尚未运行包内评测矩阵来裁决它。`presentation: 'native'` 是切回官方数据支持面的一行配置。`both` 与 `ptc` 需要挂载的 code runtime，缺失时回退为 `native` 并一次性告警。回合边界跃迁不复存在：选定的呈现从第一个请求持续到最后一个。旧键 `ptcPresentation` 映射到 `'ptc'`/`'native'` 并发出弃用告警；`anchorTools` 首回合锚定退役，设置它会收到告警且不再收窄 wire。
+- `wire-presentation.mjs` 在 tool-catalog 与 minimal-prompt 之间共享实际 native/ptc 传输。现行宿主组装瀑布只携带不含 `tools` 的 `PromptPresentation`，因此 tool-catalog 在调用下一监听器之前发布「配置模式 + runtime」的裁决。minimal-prompt 优先使用旧宿主给出的最终 tools 数组，否则读取该共享值；两种信号都缺席的独立组装保持历史 SDK 段回退。
 - 温和工具分页：`pagedToolPatterns`（默认 `['mcp__*']`）把匹配工具扣留在被执行面之外——作用域级 `tools.restrict` 把它们移出该作用域的可见集合，因此既离开组装出的 wire，也离开生成的 SDK 声明——直到模型通过 `tool_activate({ namespace })` 激活其命名空间。被扣留的命名空间在注入目录中以一行摘要出现；同时最多三个分页命名空间保持激活（激活第四个时逐出最近最少使用的那个，退回摘要状态）；激活状态从持久会话事件流重建，压缩与恢复都会还原出同一张工具面。
 - persona 的工作纪律替换为行动触发式规则：同一假设的推演不超过两轮，随后立即闭合思考并调用检查工具；思考只决定下一步具体操作而不预演代码；正确性以工具实际输出验证。`tool-result-pruner` 收紧为 4096/1500/500 字符（阈值/头部/尾部）。本决定当时随包发布的 preset 自有 win32 Git Bash shell 此后已退役，改用上游持久 shell 栈的 pwsh 孪生，那行平台专属 persona 纪律也随之移除；见 [shell 与分页决定](2026-09-17-liangshen-shell-and-paging-ptc-surface.md)。最小版 working-context 行（plan-mode 状态、已激活的分页命名空间、进行中的 todo）只在其来源可读时注入到最新消息尾部。 纪律条目总数由测试钉为 7 条；其中 Parallel Inspection 行（单轮并发发射多个独立调用）追加「两个及以上同类目标时用一次 run_code 程序打包、只保留结论」的指向。
 - 静态 schema 面本身受一个诊断守卫看护：`maxResidentTokens`（默认 6000）按序列化 schema 约四字符一 token 估算常驻 wire 面，超过阈值时每次会话告警一次、列出最重的工具并指向 `pagedToolPatterns` 作为处置手段。该默认值刻意校准在本 preset 出厂清单之上——温和分页让全部非 `mcp__*` 工具常驻，出厂清单本身就在数千 token 量级，阈值若低于出厂基线会在每个寻常会话上误报，反而训练读者忽略它。该守卫只告警不截断——静默丢掉会话需要的工具，等于用可度量的上下文成本换取不可度量的能力损失。已激活分页家族的工具在目录中归在其命名空间标题下，未分页工具保持扁平条目；persona 另增 `Bounded Output` 一条纪律（在源头用 grep/head/tail/wc 过滤，禁止把大段命令输出倾泻进会话），因为长程注意力是有界预算，原始日志会把会话自身的约束挤出该预算。
@@ -28,6 +29,7 @@ preset 在整个会话中保持单一 wire 呈现，并把外部工具发现迁�
 ## Testing
 
 - tool-catalog 测试钉住三种呈现模式、`both` 下同驻的 `run_code`、缺少 code runtime 时的一次性降级告警、旧键映射告警与 `anchorTools` 退役告警。
+- 传输桥接有回归覆盖：native 与 ptc 的 PromptPresentation 都不含 tools 数组，且发布发生在下一组装监听器运行之前。
 - 分页行为钉住模式匹配、被扣留工具不进 wire、目录中的命名空间摘要、`tool_activate` 从下一请求起挂载、三个激活命名空间的 LRU 驱逐，以及跨压缩与恢复从持久事件流重建激活状态。
 - minimal-prompt 测试钉住替换后的纪律文本、win32 临时 shell 行与 working-context 投射的可读门控；preset-composition 测试校验随包发布的 `agent.cordis.yml` 在新键下结构合法。
 - 常驻预算守卫与目录分组各有覆盖：估算器对空面、不可序列化的畸形 schema 与四字符一 token 的换算；超限告警每次会话只发一次、未超限保持静默、提高阈值即静默，且非正阈值被配置校验拒绝。分组覆盖「已激活家族出现在其命名空间标题下且每个工具只出现一次」，以及未配置分页模式时不产生命名空间字段。

@@ -15,6 +15,7 @@ import {
   toolSummary,
 } from '../presets/liangshen/tool-catalog.mjs'
 import { DEFAULT_PAGED_TOOL_PATTERNS } from '../presets/liangshen/paging.mjs'
+import { wirePresentationFor } from '../presets/liangshen/wire-presentation.mjs'
 
 type Listener = (first: any, second: any, third: any) => Promise<any>
 
@@ -242,6 +243,24 @@ describe('liangshen-tool-catalog', () => {
     const harness = register()
     expect(harness.listeners.get('system-prompt/assemble')?.options).toMatchObject({ prepend: true })
     expect(harness.listeners.get('agent/pre-step')?.options).toMatchObject({ prepend: true })
+  })
+
+  test('operator sibling reads the native presentation before the next assembly listener', async () => {
+    // Given a native tool-catalog and a current PromptPresentation waterfall
+    const harness = register({ presentation: 'native' })
+    const agent = agentOf()
+    let seen
+    // When the next listener asks for the transport from inside the waterfall
+    await listener(harness, 'system-prompt/assemble')(
+      { sections: [] },
+      { agent, toolSet: STEP_TOOL_SET },
+      async () => {
+        seen = wirePresentationFor(agent)
+        return { sections: [], contexts: [], variables: {} }
+      },
+    )
+    // Then publication happened before next(), not after the sibling returned
+    expect(seen).toBe('native')
   })
 
   test('injects the on-wire surface with argument signatures after the user message', async () => {

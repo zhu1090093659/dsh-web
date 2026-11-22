@@ -5,7 +5,7 @@
  */
 
 import { existsSync, lstatSync, mkdirSync, readdirSync, statSync } from 'node:fs'
-import { dirname, join, relative, resolve as resolvePath } from 'node:path'
+import { dirname, join, posix, relative, resolve as resolvePath } from 'node:path'
 import { Client, type SFTPWrapper } from 'ssh2'
 import type { RemoteDirEntry, TransferProgress } from '../protocol.ts'
 import { withClient, type PoolEngine } from './connection-pool.ts'
@@ -47,21 +47,24 @@ export async function upload(
   if (!existsSync(local)) throw new Error('local path not found: \'' + localPath + '\'')
   return withClient(engine, alias, (client) => withSftp(client, async (sftp) => {
     const stat = statSync(local)
+    const ensuredDirs = new Set<string>()
     let files: string[]
     if (stat.isDirectory()) {
       if (!recursive) throw new Error('\'' + localPath + '\' is a directory — enable recursive upload')
       files = walkLocalDir(local)
-      await ensureRemoteDir(sftp, remotePath)
+      await ensureRemoteDir(sftp, remotePath, ensuredDirs)
     } else {
       files = ['']
-      await ensureRemoteDir(sftp, dirname(remotePath))
+      await ensureRemoteDir(sftp, posix.dirname(remotePath), ensuredDirs)
     }
     let bytes = 0
+    const baseRemote = remotePath.replace(/\/$/, '')
     for (const rel of files) {
       const src = rel === '' ? local : join(local, rel)
       // Remote paths always use forward slashes; normalize any OS separators.
       const remoteRel = rel.split(/[\\/]/).join('/')
-      const dst = rel === '' ? remotePath : remotePath.replace(/\/$/, '') + '/' + remoteRel
+      const dst = rel === '' ? remotePath : baseRemote + '/' + remoteRel
+      if (rel !== '') await ensureRemoteDir(sftp, posix.dirname(dst), ensuredDirs)
       await fastPut(sftp, src, dst, engine.opts.sftpConcurrency, onProgress)
       bytes += statSync(src).size
     }
@@ -143,38 +146,66 @@ function sftpChannel(client: Client): Promise<SFTPWrapper> {
   })
 }
 
-/** Create a remote directory chain (stat-then-mkdir per segment). */
-function ensureRemoteDir(sftp: SFTPWrapper, remote: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const segments = remote.replace(/^\/+/, '').split('/').filter(segment => segment !== '')
-    const walk = (index: number): void => {
-      if (index >= segments.length) {
-        resolve()
-        return
-      }
-      const current = '/' + segments.slice(0, index + 1).join('/')
-      sftp.stat(current, (statError) => {
-        if (statError === undefined) {
-          walk(index + 1)
-          return
-        }
-        // Statting a missing path fails; mkdir it (idempotent because the
-        // stat check runs first — some sftp servers throw on EEXIST).
-        sftp.mkdir(current, (mkdirError) => {
-          if (mkdirError !== undefined) {
-            reject(mkdirError)
-            return
-          }
-          walk(index + 1)
-        })
-      })
-    }
-    walk(0)
+function normalizeRemoteDir(remote: string): string {
+  const cleaned = remote.replace(/\/+$/, '')
+  return cleaned === '' ? '/' : cleaned
+}
+
+function recordEnsuredPrefixes(segments: string[], upToIndex: number, ensuredDirs?: Set<string>): void {
+  if (ensuredDirs === undefined) return
+  for (let index = 0; index <= upToIndex; index += 1) {
+    ensuredDirs.add('/' + segments.slice(0, index + 1).join('/'))
+  }
+}
+
+function statRemote(sftp: SFTPWrapper, path: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    sftp.stat(path, (error) => { resolve(error === undefined) })
   })
 }
 
+function mkdirRemote(sftp: SFTPWrapper, path: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    sftp.mkdir(path, (error) => {
+      if (error !== undefined) reject(error)
+      else resolve()
+    })
+  })
+}
+
+/** Create a remote directory chain (with a 1-RTT stat fast path and prefix cache). */
+export async function ensureRemoteDir(sftp: SFTPWrapper, remote: string, ensuredDirs?: Set<string>): Promise<void> {
+  const normalized = normalizeRemoteDir(remote)
+  if (normalized === '/' || ensuredDirs?.has(normalized) === true) return
+  const segments = normalized.slice(1).split('/').filter(segment => segment !== '')
+  if (segments.length === 0) return
+
+  // Fast path: a single stat on a multi-segment path avoids N sequential RTTs
+  // when the target directory already exists.
+  if (segments.length > 1 && await statRemote(sftp, normalized)) {
+    recordEnsuredPrefixes(segments, segments.length - 1, ensuredDirs)
+    return
+  }
+
+  for (let index = 0; index < segments.length; index += 1) {
+    const current = '/' + segments.slice(0, index + 1).join('/')
+    if (ensuredDirs?.has(current) === true) continue
+    const isLastAfterMissedFastPath = segments.length > 1 && index === segments.length - 1
+    if (!isLastAfterMissedFastPath && await statRemote(sftp, current)) {
+      ensuredDirs?.add(current)
+      continue
+    }
+    try {
+      await mkdirRemote(sftp, current)
+    } catch (error) {
+      if (!(await statRemote(sftp, current))) throw error
+    }
+    ensuredDirs?.add(current)
+  }
+}
+
 /** One fastPut/fastGet transfer with throttled progress (the two directions share everything but the verb). */
-function fastTransfer(sftp: SFTPWrapper, kind: 'put' | 'get', src: string, dst: string, concurrency: number, onProgress?: (progress: TransferProgress) => void): Promise<void> {
+export function fastTransfer(sftp: SFTPWrapper, kind: 'put' | 'get', src: string, dst: string, concurrency: number, onProgress?: (progress: TransferProgress) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     // Progress frames name the destination on upload, the source on download;
     // the final size comes from the local side of the transfer.
@@ -183,6 +214,7 @@ function fastTransfer(sftp: SFTPWrapper, kind: 'put' | 'get', src: string, dst: 
     let last = 0
     let lastEmit = 0
     const started = Date.now()
+    let prevEmit = started
     if (kind === 'put') {
       onProgress?.({ phase: 'transferring', file, transferred: 0, total: statSync(src).size, percent: 0 })
     }
@@ -192,23 +224,25 @@ function fastTransfer(sftp: SFTPWrapper, kind: 'put' | 'get', src: string, dst: 
       // needs ~10 frames per second.
       if (now - lastEmit < 100 && transferred < total) return
       lastEmit = now
-      const elapsed = (now - started) / 1000
+      const windowSec = (now - prevEmit) / 1000
       onProgress?.({
         phase: 'transferring',
         file,
         transferred,
         total,
         percent: total > 0 ? Math.round((transferred / total) * 1000) / 10 : 0,
-        speedBps: elapsed > 0 ? Math.round((transferred - last) / elapsed) : undefined,
+        speedBps: windowSec > 0 ? Math.round((transferred - last) / windowSec) : undefined,
       })
+      prevEmit = now
       last = transferred
     }
     const done = (error: unknown): void => {
-      if (error !== undefined) {
+      if (error !== undefined && error !== null) {
         onProgress?.({ phase: 'error', file, transferred: 0, total: 0, percent: 0, error: String(error) })
         reject(error)
       } else {
-        onProgress?.({ phase: 'done', file, transferred: finalSize(), total: finalSize(), percent: 100 })
+        const size = finalSize()
+        onProgress?.({ phase: 'done', file, transferred: size, total: size, percent: 100 })
         resolve()
       }
     }

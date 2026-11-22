@@ -5,7 +5,7 @@
  * SFTP upload/download/ls, and the connection probe.
  */
 
-import { existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { connect, createServer, type AddressInfo } from 'node:net'
@@ -445,6 +445,35 @@ describe.skipIf(process.platform === 'win32' || !existsSync('/usr/sbin/sshd'))('
       const downloaded = await engine.download('sftp-real', join(remoteDir, 'payload.txt'), join(sshd.root, 'out.txt'))
       expect(downloaded.bytes).toBe(content.length)
       expect(readFileSync(join(sshd.root, 'out.txt'), 'utf8')).toBe(content)
+    } finally {
+      await sshd.stop()
+    }
+  })
+
+  it('operator recursively uploads nested subdirectories to a real sshd', async () => {
+    // Given a real sshd host and a local directory containing nested subdirectories
+    const sshd = await TestSshd.start()
+    try {
+      store.create({
+        alias: 'sftp-real-nested',
+        host: '127.0.0.1',
+        port: sshd.port,
+        user: process.env.USER ?? 'root',
+        auth: { kind: 'key', keyPath: sshd.clientKey },
+      })
+      const localTree = join(sshd.root, 'tree')
+      mkdirSync(join(localTree, 'nested', 'inner'), { recursive: true })
+      writeFileSync(join(localTree, 'top.txt'), 'top', 'utf8')
+      writeFileSync(join(localTree, 'nested', 'inner', 'leaf.txt'), 'leaf', 'utf8')
+      const remoteTree = join(sshd.root, 'remote-tree')
+
+      // When recursive upload runs
+      const outcome = await engine.upload('sftp-real-nested', localTree, remoteTree, true)
+
+      // Then both files land at their nested remote destinations intact
+      expect(outcome).toEqual({ bytes: 7, files: 2 })
+      expect(readFileSync(join(remoteTree, 'top.txt'), 'utf8')).toBe('top')
+      expect(readFileSync(join(remoteTree, 'nested', 'inner', 'leaf.txt'), 'utf8')).toBe('leaf')
     } finally {
       await sshd.stop()
     }

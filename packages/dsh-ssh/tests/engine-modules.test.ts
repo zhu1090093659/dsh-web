@@ -7,13 +7,14 @@
 
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, posix } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import { describe, expect, it, vi } from 'vitest'
-import type { Client } from 'ssh2'
+import type { Client, SFTPWrapper } from 'ssh2'
 import { appendOutput, disposeRecord, sweepPool, DEFAULTS, type PoolEngine, type PoolRecord } from '../src/engine/connection-pool.ts'
 import { openShell } from '../src/engine/pty.ts'
-import { walkLocalDir, upload } from '../src/engine/sftp.ts'
+import { ensureRemoteDir, fastTransfer, walkLocalDir, upload } from '../src/engine/sftp.ts'
+import type { TransferProgress } from '../src/protocol.ts'
 import { listTunnels, stopAllTunnels, type TunnelEngine, type TunnelRecord } from '../src/engine/tunnel.ts'
 import { cluster } from '../src/engine/cluster.ts'
 import type { HostStore } from '../src/store.ts'
@@ -151,6 +152,123 @@ describe('sftp', () => {
     await expect(upload(engine, 'host', '/tmp/x', 'relative/file.txt', false)).rejects.toThrow(/absolute/)
     expect(engine.pool.size).toBe(0)
     expect(engine.acquireQueue.size).toBe(0)
+  })
+
+  it('operator recursively uploading nested subdirectories creates every parent dir once and caches prefixes', async () => {
+    // Given a local tree with nested subdirectories and an SFTP server that rejects missing parents
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-ssh-sftp-nested-'))
+    try {
+      mkdirSync(join(dir, 'sub', 'a'), { recursive: true })
+      mkdirSync(join(dir, 'sub', 'b'), { recursive: true })
+      writeFileSync(join(dir, 'root.txt'), 'r', 'utf8')
+      writeFileSync(join(dir, 'sub', 'a', 'one.txt'), '1', 'utf8')
+      writeFileSync(join(dir, 'sub', 'a', 'two.txt'), '2', 'utf8')
+      writeFileSync(join(dir, 'sub', 'b', 'three.txt'), '3', 'utf8')
+
+      const remoteDirs = new Set<string>(['/'])
+      const statPaths: string[] = []
+      const mkdirPaths: string[] = []
+      const uploadedDsts: string[] = []
+      const fakeSftp = {
+        once: () => fakeSftp,
+        end: () => undefined,
+        stat(path: string, cb: (error?: Error, stats?: unknown) => void) {
+          statPaths.push(path)
+          cb(remoteDirs.has(path) ? undefined : new Error('ENOENT'))
+        },
+        mkdir(path: string, cb: (error?: Error) => void) {
+          mkdirPaths.push(path)
+          const parent = posix.dirname(path)
+          if (!remoteDirs.has(parent)) {
+            cb(new Error('missing parent ' + parent))
+            return
+          }
+          remoteDirs.add(path)
+          cb()
+        },
+        fastPut(_src: string, dst: string, _opts: unknown, cb: (error?: Error) => void) {
+          const parent = posix.dirname(dst)
+          if (!remoteDirs.has(parent)) {
+            cb(new Error('ENOENT parent ' + parent))
+            return
+          }
+          uploadedDsts.push(dst)
+          cb()
+        },
+      }
+      const engine = fakeEngine()
+      const client = { sftp: (cb: (err: Error | undefined, sftp: unknown) => void) => cb(undefined, fakeSftp) } as unknown as Client
+      engine.pool.set('host', fakeRecord(client))
+
+      // When recursive upload runs into /remote/out
+      const outcome = await upload(engine, 'host', dir, '/remote/out', true)
+
+      // Then all 4 files succeed, every parent exists, and sibling files in sub/a share the cached prefix
+      expect(outcome).toEqual({ bytes: 4, files: 4 })
+      expect(uploadedDsts.sort()).toEqual([
+        '/remote/out/root.txt',
+        '/remote/out/sub/a/one.txt',
+        '/remote/out/sub/a/two.txt',
+        '/remote/out/sub/b/three.txt',
+      ])
+      expect(mkdirPaths.filter(p => p === '/remote/out/sub/a')).toHaveLength(1)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('operator ensuring an already-existing deep remote directory pays a single stat RTT', async () => {
+    // Given an SFTP target where /var/log/app/releases already exists
+    const statPaths: string[] = []
+    const mkdirPaths: string[] = []
+    const fakeSftp = {
+      stat(path: string, cb: (error?: Error) => void) {
+        statPaths.push(path)
+        cb(path === '/var/log/app/releases' ? undefined : new Error('unexpected'))
+      },
+      mkdir(path: string, cb: (error?: Error) => void) {
+        mkdirPaths.push(path)
+        cb()
+      },
+    } as unknown as SFTPWrapper
+
+    // When ensureRemoteDir checks the nested directory
+    await ensureRemoteDir(fakeSftp, '/var/log/app/releases/')
+
+    // Then only one stat round-trip runs and no mkdir is issued
+    expect(statPaths).toEqual(['/var/log/app/releases'])
+    expect(mkdirPaths).toEqual([])
+  })
+
+  it('operator receives instantaneous window speedBps instead of cumulative decay during SFTP transfers', async () => {
+    // Given fake timers and a local source file
+    const dir = mkdtempSync(join(tmpdir(), 'dsh-ssh-sftp-speed-'))
+    vi.useFakeTimers()
+    vi.setSystemTime(1_000_000)
+    try {
+      const src = join(dir, 'data.bin')
+      writeFileSync(src, 'x'.repeat(2000), 'utf8')
+      const frames: TransferProgress[] = []
+      const fakeSftp = {
+        fastPut(_s: string, _d: string, opts: { step: (t: number, c: number, total: number) => void }, cb: (err?: Error) => void) {
+          vi.advanceTimersByTime(500)
+          opts.step(1000, 1000, 2000)
+          vi.advanceTimersByTime(500)
+          opts.step(2000, 1000, 2000)
+          cb()
+        },
+      } as unknown as SFTPWrapper
+
+      // When fastTransfer completes across two 500ms windows of 1000 bytes each
+      await fastTransfer(fakeSftp, 'put', src, '/remote/data.bin', 1, frame => frames.push(frame))
+
+      // Then both window speed reports remain 2000 B/s instead of halving on the second tick
+      const speeds = frames.filter(f => f.phase === 'transferring' && f.speedBps !== undefined).map(f => f.speedBps)
+      expect(speeds).toEqual([2000, 2000])
+    } finally {
+      vi.useRealTimers()
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })
 

@@ -245,7 +245,7 @@ describe('detail footer actions', () => {
 
     // Then it holds exactly the three actions, in the order primary actions read
     // (a card that already ran keeps only its labels editable)
-    expect(labels).toEqual(['编辑标签', '重新执行', '删除'])
+    expect(labels).toEqual(['编辑', '重新执行', '删除'])
 
     // And the creation stamp sits between the primary action and delete, so the
     // destructive control is never adjacent to the main action
@@ -270,7 +270,7 @@ describe('detail footer actions', () => {
     // Then duplicate and archive are one press away, and out of the footer
     expect(container.querySelector('footer')!.textContent).not.toContain('归档')
     act(() => { trigger.click() })
-    expect([...container.querySelectorAll('[role="menuitem"]')].map(item => item.textContent)).toEqual(['修改并新建副本', '归档'])
+    expect([...container.querySelectorAll('[role="menuitem"]')].map(item => item.textContent)).toEqual(['修改并新建副本', '编辑标签', '归档'])
 
     // And archiving goes through the same controller call as before
     act(() => { buttonOf(container.querySelector('[role="menu"]') as HTMLElement, '归档').click() })

@@ -121,6 +121,15 @@ export interface ExecutionRecord {
   /** Freeze source session captured from the card snapshot when the run opened. */
   frozenBy?: string
   /**
+   * The prompt this execution was opened with, captured at run start. The
+   * card's prompt stays editable between runs; this snapshot — not the live
+   * field — is the record of what actually ran. Absent on executions recorded
+   * before snapshots were introduced.
+   */
+  promptSnapshot?: string
+  /** Title captured alongside {@link promptSnapshot} when the run opened. */
+  titleSnapshot?: string
+  /**
    * Cascade run group shared by the parent execution and every descendant
    * execution one run request opened. Absent on a plain single-task run.
    */
@@ -841,6 +850,10 @@ export function startExecution(
       frozenAt: task.freeze.frozenAt,
       ...(task.freeze.frozenBy === undefined ? {} : { frozenBy: task.freeze.frozenBy }),
     }),
+    // Freeze the content this run was opened with; the card may be edited
+    // between runs, but history answers from these snapshots, not the card.
+    promptSnapshot: task.prompt,
+    titleSnapshot: task.title,
   }
   return {
     task: {

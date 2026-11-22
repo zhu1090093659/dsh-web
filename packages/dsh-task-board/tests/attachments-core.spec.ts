@@ -19,7 +19,7 @@ import {
 } from '../src/core/attachment.ts'
 import { parseLedger } from '../src/core/store.ts'
 import { createTask, type TaskRecord } from '../src/core/tasks.ts'
-import { applyUpdateTask, canEditTaskContent, hasContentPatch } from '../src/core/use-cases/task-update.ts'
+import { applyUpdateTask, canEditTaskAttachments, canEditTaskContent, hasContentPatch } from '../src/core/use-cases/task-update.ts'
 import { parseActionEnvelope, TASK_BOARD_SCHEMA_VERSION } from '../src/protocol.ts'
 import { HostTaskLedger } from '../src/host-ledger.ts'
 
@@ -185,7 +185,10 @@ describe('card attachment metadata', () => {
     }
     // When the edit touches the attachments
     // Then the card content is frozen and the patch counts as a content change
-    expect(canEditTaskContent(executed)).toBe(false)
+    expect(canEditTaskAttachments(executed)).toBe(false)
+    // The content fields themselves stay editable between runs; attachments
+    // are the part that freezes with the first execution.
+    expect(canEditTaskContent(executed)).toBe(true)
     expect(hasContentPatch({ attachments: [fileAttachment()] })).toBe(true)
   })
 

@@ -104,7 +104,7 @@ describe('use-case: update', () => {
 })
 
 describe('use-case: update content editability', () => {
-  it('allows content edits only before the first execution', () => {
+  it('locks content only under an open execution; settled history stays editable', () => {
     const fresh = seed(1)[0]
     expect(canEditTaskContent(fresh)).toBe(true)
 
@@ -114,11 +114,11 @@ describe('use-case: update content editability', () => {
 
     const done = settleExecution(running, 'e-run', 'succeeded', NOW + 1, undefined)
     expect(done.status).toBe('done')
-    expect(canEditTaskContent(done)).toBe(false)
+    expect(canEditTaskContent(done)).toBe(true)
 
     const cancelled = settleExecution(startExecution(fresh, NOW, 'e-cancel').task, 'e-cancel', 'cancelled', NOW + 1, undefined)
     expect(cancelled.status).toBe('todo')
-    expect(canEditTaskContent(cancelled)).toBe(false)
+    expect(canEditTaskContent(cancelled)).toBe(true)
 
     expect(canEditTaskContent({ ...fresh, archivedAt: NOW })).toBe(false)
   })

@@ -37,7 +37,7 @@ dsh Web GUI 的 Host 权威多列任务看板。任务通过真实 DSH 会话执
 - 上传走 `POST /api/task-board/attachments/upload`：图片走 `validateImage` + `saveImage`（类型与解码由存储判定），文件走 `saveFileStream`（字节流式计量与摘要，内存不随文件大小增长）。两条路径都按**实际请求流**字节封顶，返回 Host 自己算出的元数据。超限的请求被拒，**不会进入账本**；SDK 不保证已写入后端的部分对象被清理，因此看板不承诺后端不留残余。图片读取走 `GET /api/task-board/attachments/image?id=`，且只服务**本看板某张卡片引用过**的标识。
 - 执行时每次运行都重新解析附件：图片成为 Prompt 的图片部件（排在文字部件之后），非图片文件用 `ctx.attachments.fileHostPath(ref)` 的可读路径写进独立于交接引用的只读附件小节；路径缺失或不可读时运行在 Prompt 之前失败，绝不静默丢掉附件。
 - 图片能力预检用**实际路由**（卡片钉住的模型，或复用会话当前所在路由）与 `ctx.llm.resolveModelInfo(provider, model)`：模型目录没有输入模态信息，不得用于回答该问题。声明了模态且不含 image 时在**Prompt 入队之前**拒绝（会话此时可能已经创建）；模态缺席（未知）时放行。路由**解析不出来**时预检被跳过，此时官方 Host 的检查仍是兜底。
-- 官方存储没有删除接口：移除附件或删除卡片只移除元数据，界面与 README 都只承诺「移除」，不承诺物理删除，也不做任何删除绕路。附件与卡片内容一起冻结（执行过或已归档的卡片不可再改附件）。
+- 官方存储没有删除接口：移除附件或删除卡片只移除元数据，界面与 README 都只承诺「移除」，不承诺物理删除，也不做任何删除绕路。附件在首次执行后冻结，归档卡片同样不可改附件；文本内容的跑后编辑边界见[执行快照决策](../../.agents/notes/implemented/feature/2026-11-22-task-board-execution-content-snapshots.md)。
 - 编辑表单只在**结果集合与卡片当前集合不同**时才把附件放进 patch：只改标题或标签的编辑不重读、不重验附件，在没有附件存储的部署里也照常保存。表单提交期间移除按钮禁用，拖放区可聚焦且可用键盘操作（回车/空格打开文件选择器，按钮自身不被重复触发）。附件失败保留自己的类别：存储不可用在动作路径上同样是 503，而不是被压成 400。
 - 契约全文见[卡片附件决策](../../.agents/notes/implemented/feature/2026-10-30-task-board-card-attachments.md)。
 
@@ -66,7 +66,7 @@ dsh Web GUI 的 Host 权威多列任务看板。任务通过真实 DSH 会话执
 - 客户端来源分组是 API v1 的可选增量：provider 注册 `(task) => { id, label } | undefined`，注册顺序中第一个认领者生效，controller attach 前的 pending 注册与挂接后的 disposer 都保持有效；函数只存在浏览器内存，五列与归档只消费通用组 id/label，不解释 provider payload。
 - 载荷不透明：`TaskRecord.integrations` 是 `Record<string, unknown>`，只校验纯 JSON 对象且单条不超过 64KiB；协议只有泛化的 `{ kind: "extension-action", extensionId, action, taskId?, payload? }`；快照只有 `extensions?: Record<string, unknown>`；不做账本 schema 迁移，远端语义的归一化不再被看板核心引用。
 - 凭据不出网：出站投影的唯一实现在 `src/core/wire-projection.ts`，入口是 `TaskBoardHostService.snapshot()` 与 `apply()`（HTTP `state`/`action` 应答与远端桥 `board.snapshot` 都从这两个出口走）。投影把每条扩展载荷里按整键、大小写不敏感、任意深度命中的 `leaseToken` / `lease_token` / `token` / `secret` / `password` / `apiKey` / `credential` 剥掉；账本保留原值，提供方只能经进程内 `integration.read` 或主机侧直接读账本取回。新增提供方需要凭据时必须主机侧读账本，不得写进 `integrations` 后指望客户端读回。
-- 不变量由看板上收执行：`patchContent` 复用 `canEditTaskContent`（执行过或已归档的卡内容冻结）、`setStatus` 走既有列与权限门禁、事件回调 try/catch 隔离且绝不打断执行；远端身份的索引归 provider，看板不提供 `findTaskByGitHubIdentity` 或 `updateTaskIntegrations`。
+- 不变量由看板上收执行：`patchContent` 复用 `canEditTaskContent`（未归档且无未结算执行才可改内容）、`setStatus` 走既有列与权限门禁、事件回调 try/catch 隔离且绝不打断执行；远端身份的索引归 provider，看板不提供 `findTaskByGitHubIdentity` 或 `updateTaskIntegrations`。
 - 开关三态：loader 行禁用（需重启，最重）> 扩展 `enabled`（volatile，默认 true，即时惰性：停轮询、停写回、注销工具、撤下详情区与徽章，不清数据）> 看板总开关；扩展的设置区块必须保持可达（它是重新开启的地方），只收放其中的配置表单。契约全文见 [Agent Note](../../.agents/notes/implemented/architecture/2026-09-30-task-board-extension-contract.md)。
 
 ## 电源保护

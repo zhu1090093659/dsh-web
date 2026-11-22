@@ -329,6 +329,8 @@ function validImportedKnownFields(value: Record<string, unknown>): boolean {
       if (execution.external !== undefined && typeof execution.external !== 'boolean') return false
       if (execution.frozenBy !== undefined && typeof execution.frozenBy !== 'string') return false
       if (execution.frozenAt !== undefined && typeof execution.frozenAt !== 'number') return false
+      if (execution.promptSnapshot !== undefined && typeof execution.promptSnapshot !== 'string') return false
+      if (execution.titleSnapshot !== undefined && typeof execution.titleSnapshot !== 'string') return false
     }
   }
   return true
@@ -358,6 +360,8 @@ function importedTask(value: unknown): TaskRecord | undefined {
       ...(execution.external === true ? { external: true } : {}),
       ...(execution.frozenAt === undefined ? {} : { frozenAt: execution.frozenAt }),
       ...(execution.frozenBy === undefined ? {} : { frozenBy: execution.frozenBy }),
+      ...(execution.promptSnapshot === undefined ? {} : { promptSnapshot: execution.promptSnapshot }),
+      ...(execution.titleSnapshot === undefined ? {} : { titleSnapshot: execution.titleSnapshot }),
     })),
     // The rule was already reconstructed field by field by parseLedger (which
     // is what drops an unknown or malformed field), so the import keeps that

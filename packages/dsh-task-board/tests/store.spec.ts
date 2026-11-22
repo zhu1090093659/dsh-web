@@ -161,6 +161,21 @@ describe('parseLedger', () => {
     expect(parsed[0].permission).toBeUndefined()
   })
 
+  it('user round-trips execution content snapshots and leaves legacy records without them', () => {
+    // Given a run recorded with its opening content and an older run without snapshots
+    const task = createTask({ title: 'current', description: '', prompt: 'current prompt' }, 1, 't-1')
+    const execution = { id: 'e-1', startedAt: 2, endedAt: 3, result: 'succeeded' as const, promptSnapshot: 'opening prompt', titleSnapshot: 'opening title' }
+    // When both documents load
+    const parsed = parseLedger(JSON.stringify([{ ...task, executions: [execution] }]))
+    const legacy = parseLedger(JSON.stringify([{ ...task, executions: [{ id: 'e-old', startedAt: 2, endedAt: 3, result: 'succeeded' }] }]))
+    // Then the record answers from its own snapshot and no legacy snapshot is invented
+    expect(parsed[0]?.executions[0]).toMatchObject({ promptSnapshot: 'opening prompt', titleSnapshot: 'opening title' })
+    expect(legacy[0]?.executions[0]).not.toHaveProperty('promptSnapshot')
+    expect(legacy[0]?.executions[0]).not.toHaveProperty('titleSnapshot')
+    // And malformed snapshot values cannot enter the typed ledger
+    expect(parseLedger(JSON.stringify([{ ...task, executions: [{ ...execution, promptSnapshot: 42 }] }]))).toEqual([])
+  })
+
   it('keeps a numeric archivedAt and drops malformed values', () => {
     const base = {
       id: 't1', title: 'a', description: '', prompt: 'a',

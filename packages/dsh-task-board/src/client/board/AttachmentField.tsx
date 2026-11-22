@@ -156,6 +156,7 @@ export function AttachmentField({
   onChange,
   limits,
   disabled = false,
+  lockedHint,
   onError,
 }: {
   /** What the card currently carries and what is staged on top of it. */
@@ -166,6 +167,8 @@ export function AttachmentField({
   limits?: AttachmentLimits
   /** Whether the field refuses new input. */
   disabled?: boolean
+  /** Replaces the inviting upload hint when the caller locks the field. */
+  lockedHint?: string
   /** Receives the reason a selection was refused. */
   onError?: (message: string) => void
 }) {
@@ -275,7 +278,9 @@ export function AttachmentField({
   return (
     <div className={css.field} data-dsh-part="form-section">
       <span className={css.fieldLabel}>{t('new.attachments')}</span>
-      <span className={css.fieldHint}>{t('new.attachmentsHint')}</span>
+      {/* When the caller locks the field (an executed card), the inviting
+          upload hint is replaced by why the field refuses input. */}
+      <span className={css.fieldHint}>{lockedHint ?? t('new.attachmentsHint')}</span>
       <div
         className={css.attachmentDrop}
         // A disabled field is not styled as a drop target: the drag state is

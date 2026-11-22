@@ -894,7 +894,7 @@ describe('HostTaskLedger', () => {
     expect(ledger.state().tasks[0].executions).toEqual([])
   })
 
-  it('edits task content only before the first execution and keeps targets editable after', () => {
+  it('locks content only mid-run; settled history reopens content and keeps targets editable', () => {
     const ledger = new HostTaskLedger(tempRoot(), () => NOW)
     ledger.applyRequest('create', { kind: 'create', id: 'task-a', input: { title: 'A', description: 'd', prompt: 'p' } })
     const edited = ledger.applyRequest('update', { kind: 'update', taskId: 'task-a', patch: { title: 'B', description: 'd2', prompt: 'p2' } })
@@ -907,12 +907,16 @@ describe('HostTaskLedger', () => {
     expect(() => ledger.applyRequest('update-running', { kind: 'update', taskId: 'task-a', patch: { prompt: 'live' } })).toThrow('task has already been executed')
 
     ledger.settle('task-a', executionId, 'failed', 'boom')
-    expect(() => ledger.applyRequest('update-done', { kind: 'update', taskId: 'task-a', patch: { title: 'C' } })).toThrow('task has already been executed')
+    // Settled history no longer freezes the card: the run above carries its
+    // own prompt/title snapshot, so editing only shapes the next run.
+    const reopened = ledger.applyRequest('update-done', { kind: 'update', taskId: 'task-a', patch: { title: 'C' } })
+    expect(reopened.state.tasks[0].title).toBe('C')
+    expect(reopened.state.tasks[0].executions[0].promptSnapshot).toBe('p2')
 
-    // Execution targets stay editable on an executed task; content stays fixed.
+    // Execution targets keep editing on the same surface as content.
     const targets = ledger.applyRequest('update-targets', { kind: 'update', taskId: 'task-a', patch: { workspaceId: 'ws-1', mode: 'anchored', permission: 'read-only' } })
     expect(targets.state.tasks[0]).toMatchObject({
-      title: 'B', description: 'd2', prompt: 'p2',
+      title: 'C', description: 'd2', prompt: 'p2',
       workspaceId: 'ws-1', mode: 'anchored', permission: 'read-only',
     })
   })

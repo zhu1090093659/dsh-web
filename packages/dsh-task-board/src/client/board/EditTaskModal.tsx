@@ -113,7 +113,10 @@ export function EditTaskModal({ controller, task, onClose, phase }: { controller
         selection={attachments}
         onChange={setAttachments}
         limits={controller.getSnapshot().host?.attachmentLimits}
-        disabled={pending}
+        // Attachments freeze at the first run (they are not snapshotted on
+        // the execution record); an executed card edits its content only.
+        disabled={pending || task.executions.length > 0}
+        lockedHint={task.executions.length > 0 ? t('edit.attachmentsLocked') : undefined}
         onError={message => { setAttachmentError(message) }}
       />
       {attachmentError !== undefined && <p className={css.formError}>{attachmentError}</p>}

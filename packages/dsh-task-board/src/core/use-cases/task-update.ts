@@ -8,7 +8,7 @@
  * back to the runtime default); an unknown permission string is ignored so
  * stale UI can never persist a value the execution service rejects.
  */
-import { freezeOf, isTaskPermission, normalizeTags, normalizeTargetId, type TaskRecord, type TaskPermission, type TaskTag } from '../tasks.ts'
+import { freezeOf, hasOpenExecution, isTaskPermission, normalizeTags, normalizeTargetId, type TaskRecord, type TaskPermission, type TaskTag } from '../tasks.ts'
 import { normalizeAttachments, type TaskAttachment } from '../attachment.ts'
 import type { FreezeSnapshot } from '../freeze-snapshot.ts'
 import type { TaskHandoverInput } from '../handover.ts'
@@ -39,23 +39,19 @@ export type TaskUpdatePatch = Partial<Pick<TaskRecord, 'title' | 'description' |
   attachments?: TaskAttachment[] | null
 }
 
-/** The fields that edit the task's content (what the user reads and what the
- * next execution sends). Unlike the execution targets they stay editable only
- * while the task has never started executing — after the first run the
- * recorded prompt is the record of what actually ran, so it becomes read-only.
+/**
+ * The fields that freeze with the first run. Split by what keeps them honest:
+ *
+ * - The CONTENT fields stay editable between runs because every execution
+ *   record captures the prompt/title snapshot it was opened with (see
+ *   `startExecution`), so a post-run edit changes only the next run, never
+ *   the audit trail.
+ * - The ATTACHMENTS freeze at the first run and stay frozen: they are binary
+ *   references the record does not snapshot, and a card whose first run
+ *   already consumed an image keeps that image — the record of what ran
+ *   stays what it was. `canEditTaskAttachments` owns that boundary.
  */
 export const TASK_CONTENT_FIELDS = ['title', 'description', 'prompt'] as const
-
-/**
- * The fields that freeze with the card content: the text the card says AND
- * the attachments it carries.
- *
- * The attachments freeze with the content because they ARE part of what the
- * card hands to its execution: a card whose first run already consumed an
- * image keeps that image, and the record of what ran stays what it was. An
- * executed or archived card therefore refuses an attachment change exactly
- * as it refuses a prompt change.
- */
 export const TASK_FROZEN_FIELDS = [...TASK_CONTENT_FIELDS, 'attachments'] as const
 
 /** Whether an update patch touches any task-content field. */
@@ -65,12 +61,26 @@ export function hasContentPatch(patch: TaskUpdatePatch): boolean {
 
 /**
  * Whether a task's content may still be edited: the task must be on-board
- * (not archived) and must never have started executing. Fail-closed: a task
- * with any execution record — running, settled, or cancelled before launch —
- * keeps its content fixed. The run, not the column, is the trigger: a card
- * parked in 'running' by hand has nothing recorded yet and stays editable.
+ * (not archived) and must not have an open execution. Settled history does
+ * NOT lock the card: new execution records carry the prompt/title snapshot
+ * they were opened with (`promptSnapshot`/`titleSnapshot`), so a
+ * post-run edit changes only the next run, never the audit trail. The run,
+ * not the column, stays the trigger: a card parked in 'running' by hand has
+ * nothing recorded yet and stays editable, and a card mid-run is locked
+ * until its execution settles.
  */
 export function canEditTaskContent(task: TaskRecord): boolean {
+  return task.archivedAt === undefined && !hasOpenExecution(task)
+}
+
+/**
+ * Whether a task's attachments may still be edited: unlike the content
+ * fields, attachments are NOT captured on the execution record, so they keep
+ * the historical boundary — editable until the first run opens, frozen for
+ * every executed or archived card afterwards. The record of what ran keeps
+ * referencing exactly what ran.
+ */
+export function canEditTaskAttachments(task: TaskRecord): boolean {
   return task.archivedAt === undefined && task.executions.length === 0
 }
 

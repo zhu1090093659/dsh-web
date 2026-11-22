@@ -2,6 +2,8 @@
 
 Status: implemented
 
+Superseded in part by [execution content snapshots](2026-11-22-task-board-execution-content-snapshots.md): settled cards may now edit their text between runs; execution summaries and the rejection of automatic description write-back are unchanged.
+
 ## Problem
 
 A task board card recorded one verdict per execution attempt and nothing else: `result`, the failure text in `error`, and the cascade bookkeeping. A card that ran successfully therefore left no trace of what it produced, and a parent card inspecting its subtasks could only see that they succeeded — not what they delivered. The reader's remaining options were to guess, or to redo the work.

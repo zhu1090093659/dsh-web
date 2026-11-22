@@ -125,6 +125,29 @@ describe('status transitions', () => {
     expect(execution.result).toBeUndefined()
     expect(task.updatedAt).toBe(NOW + 5)
   })
+
+  it('user snapshots the prompt and title when a run opens', () => {
+    // Given a card with its current opening content
+    const task = sampleTask()
+    // When the execution opens
+    const { execution } = startExecution(task, NOW, 'exec-1')
+    // Then the record carries that exact content
+    expect(execution.promptSnapshot).toBe(task.prompt)
+    expect(execution.titleSnapshot).toBe(task.title)
+  })
+
+  it('user keeps earlier snapshots unchanged when card content is edited', () => {
+    // Given a first execution and a card edited before its next run
+    const task = sampleTask()
+    const first = startExecution(task, NOW, 'exec-1').execution
+    const edited = { ...task, title: '改后的标题', prompt: '改后的提示词' }
+    // When the edited card opens a second execution
+    const second = startExecution(edited, NOW + 10, 'exec-2')
+    // Then each execution answers from its own opening content
+    expect(first.promptSnapshot).toBe(task.prompt)
+    expect(second.execution.promptSnapshot).toBe('改后的提示词')
+    expect(second.execution.titleSnapshot).toBe('改后的标题')
+  })
 })
 
 describe('settleExecution', () => {

@@ -842,10 +842,25 @@ export function TaskDetail({ controller, task, phase = 'open' }: { controller: B
   if (!archived) {
     headerActions.push({
       key: 'duplicate',
-      label: canEditTaskContent(current) ? t('detail.duplicate') : t('detail.duplicateAndEdit'),
+      // Label keys on execution history, not editability: an executed card
+      // keeps the「duplicate-and-edit」wording even though its content is now
+      // directly editable between runs.
+      label: current.executions.length === 0 ? t('detail.duplicate') : t('detail.duplicateAndEdit'),
       disabled: pending,
       onSelect: () => { setShowDuplicate(true) },
     })
+    // Tags stay directly editable on executed cards (they shape the next
+    // run, not the record of what ran); the full edit modal covers them too,
+    // this header entry is the shortcut. Keys on execution history so it
+    // survives content-edit unlocking instead of turning into dead code.
+    if (current.executions.length > 0 && !busy) {
+      headerActions.push({
+        key: 'editTags',
+        label: t('detail.editTags'),
+        disabled: pending,
+        onSelect: () => { setShowEditTags(true) },
+      })
+    }
     if (current.status === 'done' || current.status === 'failed') {
       headerActions.push({
         key: 'archive',
@@ -1071,16 +1086,6 @@ export function TaskDetail({ controller, task, phase = 'open' }: { controller: B
               onClick={() => { setShowEdit(true) }}
             >
               {t('detail.edit')}
-            </button>
-          )}
-          {!archived && !canEditTaskContent(current) && !busy && (
-            <button
-              type="button"
-              className={css.ghostButton}
-              disabled={pending}
-              onClick={() => { setShowEditTags(true) }}
-            >
-              {t('detail.editTags')}
             </button>
           )}
           {!archived && (

@@ -237,7 +237,7 @@ describe('a launch nobody intercepts', () => {
     // card body, and nothing injected in front of either
     expect(creates).toEqual([{ workspaceId: 'workspace-fixture' }])
     expect(prompts).toEqual([{ sessionId: 'session-1', text: UNTOUCHED_PROMPT, mode: 'queue' }])
-    expect(recordOf(host, 'card')).toEqual({ sessionId: 'session-1', startedAt: NOW, initiatedBy: 'session-operator' })
+    expect(recordOf(host, 'card')).toEqual({ sessionId: 'session-1', startedAt: NOW, initiatedBy: 'session-operator', promptSnapshot: 'do the work', titleSnapshot: 'Card' })
     expect(host.ledger.getTask('card')?.status).toBe('running')
     expect(host.ledger.getTask('card')?.updatedAt).toBe(NOW)
     host.dispose()

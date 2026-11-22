@@ -296,16 +296,23 @@ describe('task detail tags and edit-tags flow', () => {
     expect(badges[0]!.textContent).toBe('frontend')
     expect(badges[1]!.textContent).toBe('core')
 
-    // Edit content button must NOT be present
+    // Edit content button is present too: settled history no longer locks
+    // the card (execution snapshots keep what ran auditable).
     const buttons = [...container.querySelectorAll('footer button')]
-    expect(buttons.some(b => b.textContent === t('detail.edit'))).toBe(false)
+    expect(buttons.some(b => b.textContent === t('detail.edit'))).toBe(true)
 
-    // Edit tags button MUST be present
-    const editTagsBtn = buttons.find(b => b.textContent === t('detail.editTags'))
-    expect(editTagsBtn).toBeDefined()
+    // Edit tags stays one press away in the header menu (the footer keeps
+    // its three primary controls on an executed card).
+    const moreBtn = [...container.querySelectorAll('header button')]
+      .find(b => (b.textContent || '') === t('detail.more'))
+    expect(moreBtn?.textContent).toBe(t('detail.more'))
+    click(moreBtn!)
+    const editTagsItem = [...container.querySelectorAll('[role="menuitem"]')]
+      .find(item => item.textContent === t('detail.editTags'))
+    expect(editTagsItem?.textContent).toBe(t('detail.editTags'))
 
-    // Click editTags button to open modal
-    click(editTagsBtn!)
+    // Click the editTags menu item to open modal
+    click(editTagsItem!)
 
     // Modal should be open
     expect(document.querySelector('[role="dialog"][aria-label="' + t('detail.editTags') + '"]')).not.toBeNull()

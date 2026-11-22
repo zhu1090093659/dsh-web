@@ -223,6 +223,20 @@ describe('continuation card: import keeps the freeze snapshot', () => {
     expect(parsed.action.tasks[0]?.freeze).toMatchObject({ goal: 'g', frozenAt: NOW })
   })
 
+  it('user keeps imported execution content snapshots', () => {
+    // Given an imported card whose historical run carries its opening content
+    const task = createTask({ title: 'current', description: '', prompt: 'current prompt' }, NOW, 'card-i')
+    const parsed = envelope({
+      kind: 'import', sourceId: 'browser-x',
+      tasks: [{ ...task, executions: [{ id: 'e-1', startedAt: NOW, endedAt: NOW + 1, result: 'succeeded', promptSnapshot: 'opening prompt', titleSnapshot: 'opening title' }] }],
+    })
+    // When the import protocol validates and normalizes the card
+    expect(parsed?.action.kind).toBe('import')
+    if (parsed?.action.kind !== 'import') return
+    // Then the execution keeps answering from its own snapshots
+    expect(parsed.action.tasks[0]?.executions[0]).toMatchObject({ promptSnapshot: 'opening prompt', titleSnapshot: 'opening title' })
+  })
+
   // 对抗场景 b（提权）：import 不是人工确认动作，伪造的确认戳必须被剥除，
   // 高于会话默认权限的绑定导入后重新武装 confirm-permission 门。
   it('strips an imported permissionConfirmedAt stamp so the confirmation gate re-arms', () => {

@@ -28,7 +28,7 @@ import { applyDeleteTask } from './core/use-cases/task-delete.ts'
 import { applySetSchedule, applyScheduleProgress, applyScheduleRefund, type ScheduleProgress } from './core/use-cases/task-schedule.ts'
 import { applySetParent } from './core/use-cases/task-parent.ts'
 import { applyDeleteTag, applyRenameTag } from './core/use-cases/task-tag.ts'
-import { applyUpdateTask, canEditTaskContent, hasContentPatch } from './core/use-cases/task-update.ts'
+import { applyUpdateTask, canEditTaskAttachments, canEditTaskContent, hasContentPatch } from './core/use-cases/task-update.ts'
 import { TASK_BOARD_MIGRATABLE_SCHEMA_VERSIONS, TASK_BOARD_SCHEMA_VERSION, TASK_BOARD_ZONE_STAMP_SCHEMA_VERSION, type TaskBoardAction, type TaskBoardSchedulerSnapshot } from './protocol.ts'
 import { DEFAULT_SESSION_PERMISSION, requiresPermissionConfirmation, type TaskPermission } from './core/handover.ts'
 import type { TaskBoardLaunchDecision, TaskBoardLaunchHandler, TaskBoardLaunchTrigger } from './core/extension.ts'
@@ -1244,10 +1244,16 @@ export class HostTaskLedger {
         const task = this.document.tasks.find(task => task.id === action.taskId)
         if (task === undefined) throw new Error('task not found')
         if (task.archivedAt !== undefined) throw new Error('archived task is read-only')
-        // The task content (title/description/prompt) is the record of what
-        // was planned; once an execution started it must not change under a
-        // running session or an executed history. Execution targets stay
-        // editable (they only affect future runs).
+        // Attachments keep the historical boundary: they are not captured on
+        // the execution record, so they freeze at the first run and stay
+        // frozen for every executed or archived card afterwards.
+        if ('attachments' in action.patch && !canEditTaskAttachments(task)) {
+          throw new Error('task has already been executed')
+        }
+        // The content fields (title/description/prompt) may change between
+        // runs — each execution record carries the snapshot it was opened
+        // with — but never under an open execution. Execution targets stay
+        // editable throughout (they only affect future runs).
         if (hasContentPatch(action.patch) && !canEditTaskContent(task)) {
           throw new Error('task has already been executed')
         }

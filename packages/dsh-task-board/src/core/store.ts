@@ -88,6 +88,8 @@ function isTaskRecordShape(value: unknown): value is Omit<TaskRecord, 'status'> 
     if (entry.initiatedBy !== undefined && typeof entry.initiatedBy !== 'string') return false
     if (entry.frozenBy !== undefined && typeof entry.frozenBy !== 'string') return false
     if (entry.frozenAt !== undefined && typeof entry.frozenAt !== 'number') return false
+    if (entry.promptSnapshot !== undefined && typeof entry.promptSnapshot !== 'string') return false
+    if (entry.titleSnapshot !== undefined && typeof entry.titleSnapshot !== 'string') return false
     // An external-outcome marker is optional in BOTH directions: a ledger
     // written before the field existed carries none, and a non-boolean value
     // is dropped by the repair below rather than trusted as provenance.

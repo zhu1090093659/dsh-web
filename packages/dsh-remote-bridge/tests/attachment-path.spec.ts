@@ -288,10 +288,12 @@ describe('attachment path over protocol v1', () => {
     const harness = attachmentHarness(storeOf([offloadedMessage(link, 1, 16)], 1))
     // When the client asks for the path the session named
     const answer = await ask(harness, 1, { sessionId: 's-1', path: link })
-    // Then the symlink is not followed: that path no longer resolves to itself
+    // Then the link is refused without being followed, and the refusal names the
+    // path the session actually gave rather than what the link points at
     expect(answer.ok).toBe(false)
     expect(answer.e?.code).toBe('path-not-in-session')
-    expect(answer.e?.msg).toContain(target)
+    expect(answer.e?.msg).toContain(link)
+    expect(answer.e?.msg).not.toContain(target)
     expect(answer.r).toBeUndefined()
   })
 

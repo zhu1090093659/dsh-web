@@ -1,0 +1,5 @@
+# Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with git hash-object.
+2026-11-22-remote-bridge-attachment-path-identity.md: 1e87fba6ff98b64fdf4f04dde71028fe02ea2d9c
+2026-11-22-remote-bridge-attachment-path-identity.zh.md: 4b388eafd1d457455b661debe47c0e16f07d72ee

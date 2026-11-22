@@ -582,8 +582,9 @@ export const CODE_UI_LIST_UNAVAILABLE = 'ui-list-unavailable'
 export const CODE_SESSION_NOT_FOLLOWABLE = 'session-not-followable'
 /**
  * 该路径不在这次会话自己的持久 transcript 里：白名单只有两处来源，客户端自选的路径
- * 一律不在其中。`realpath()` 解析结果不再等于该字符串时也回这一码——那个路径已经
- * 指向别处，就不再是这次会话点过的那个文件。
+ * 一律不在其中。该名字本身是个链接时也回这一码——它已被换成指向别处的一层门面，就
+ * 不再是这次会话点过的那个文件。判据看的是条目自身（`lstat`），不比较 `realpath()`
+ * 的解析结果：同一个文件的两种写法（Windows 8.3 短名、macOS `/var` 前缀）不等于换目标。
  */
 export const CODE_PATH_NOT_IN_SESSION = 'path-not-in-session'
 /**

@@ -28,7 +28,7 @@
  */
 
 import { isAbsolute } from 'node:path'
-import { readFile, realpath, stat } from 'node:fs/promises'
+import { lstat, readFile } from 'node:fs/promises'
 import { FRAME_TOO_LARGE, MAX_FRAME_BYTES } from './envelope.ts'
 import { CODE_ATTACHMENT_NOT_FOUND, CODE_NOT_AN_IMAGE, CODE_PATH_NOT_IN_SESSION } from './protocol.ts'
 
@@ -238,10 +238,13 @@ export function mediaTypeOfSignature(head: Buffer): string | undefined {
  *
  * The whitelist is the first decision and it is not this function's: a caller
  * hands over a path it already matched byte for byte. What is left is whether the
- * file at that path is still the one the session named — `realpath()` has to
- * return the same string, so a symlink pointing anywhere else is refused rather
- * than followed — whether it is a regular file at all, and whether its own first
- * bytes are one of the four image signatures. The extension is never consulted: a
+ * name at that path is still the file the session named — the name itself must not
+ * be a link, so a symlink pointing anywhere else is refused rather than followed —
+ * whether it is a regular file at all, and whether its own first bytes are one of
+ * the four image signatures. The link test reads the entry itself (`lstat`) rather
+ * than resolving it: comparing `realpath()` against the stored string rejects every
+ * 8.3 short name (Windows temp directories are `RUNNER~1`) and every macOS `/var`
+ * path, where two spellings of one file are not a substitution attack. The extension is never consulted: a
  * `.png` that is not a PNG is refused, and a PNG named `.txt` is served.
  *
  * The answer's `image` is the reference the session's transcript named; this
@@ -251,23 +254,19 @@ export function mediaTypeOfSignature(head: Buffer): string | undefined {
  */
 export async function readAttachment(facts: AttachmentFacts): Promise<AttachmentRead> {
   const path = facts.path
-  let resolved: string
-  try {
-    resolved = await realpath(path)
-  } catch {
-    // Gone, unreadable, or a parent that is not a directory: either way there is
-    // no file at this path, which is the one thing `not-found` states.
-    return { ok: false, code: CODE_ATTACHMENT_NOT_FOUND, msg: 'no file at ' + path }
-  }
-  if (resolved !== path) {
-    return { ok: false, code: CODE_PATH_NOT_IN_SESSION, msg: path + ' resolves to ' + resolved + ', which this session never named' }
-  }
   let size: number
   try {
-    const info = await stat(path)
+    const info = await lstat(path)
+    // One syscall answers both questions: the entry is the file (not a link that
+    // stands in for one), and it carries the size the frame cap needs.
+    if (info.isSymbolicLink()) {
+      return { ok: false, code: CODE_PATH_NOT_IN_SESSION, msg: path + ' is a link, not the file this session named' }
+    }
     if (!info.isFile()) return { ok: false, code: CODE_ATTACHMENT_NOT_FOUND, msg: path + ' is not a regular file' }
     size = info.size
   } catch {
+    // Gone, unreadable, or a parent that is not a directory: either way there is
+    // no file at this path, which is the one thing `not-found` states.
     return { ok: false, code: CODE_ATTACHMENT_NOT_FOUND, msg: 'no file at ' + path }
   }
   // Base64 inflates by a third, so a file at or past the frame cap cannot fit one

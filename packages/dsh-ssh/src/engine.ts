@@ -12,6 +12,8 @@ import {
   DEFAULTS,
   execCommand,
   disposeRecord,
+  invalidateAlias,
+  markPoolDisposed,
   sweepPool,
   type EngineOptions,
   type KeyboardInteractiveHandler,
@@ -151,6 +153,7 @@ export class SshEngine {
    * connection — the next operation re-connects from the current config.
    */
   dropAlias(alias: string): void {
+    invalidateAlias(this, alias)
     stopAllTunnels(this, alias)
     disposeRecord(this, alias)
   }
@@ -172,6 +175,7 @@ export class SshEngine {
 
   /** Close every pooled connection and tunnel. */
   dispose(): void {
+    markPoolDisposed(this)
     if (this.sweepTimer !== undefined) clearInterval(this.sweepTimer)
     for (const id of [...this.tunnels.keys()]) stopTunnel(this, id)
     for (const alias of [...this.pool.keys()]) disposeRecord(this, alias)

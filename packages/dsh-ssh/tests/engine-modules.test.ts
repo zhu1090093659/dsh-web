@@ -8,6 +8,7 @@
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { StringDecoder } from 'node:string_decoder'
 import { describe, expect, it, vi } from 'vitest'
 import type { Client } from 'ssh2'
 import { appendOutput, disposeRecord, sweepPool, DEFAULTS, type PoolEngine, type PoolRecord } from '../src/engine/connection-pool.ts'
@@ -55,6 +56,27 @@ describe('connection-pool', () => {
     // Already truncated: a later chunk is ignored.
     appendOutput(target, Buffer.from('world'), 3)
     expect(target.text).toBe('hel…[output truncated]')
+  })
+
+  it('operator sees split multi-byte UTF-8 chunks decoded intact and bounded by UTF-8 byte length', () => {
+    // Given a Chinese character split across two Buffer chunks and a 4-byte cap
+    const full = Buffer.from('中文', 'utf8')
+    const part1 = full.subarray(0, 2)
+    const part2 = full.subarray(2, 3)
+    const part3 = full.subarray(3)
+    const target = { text: '', truncated: false, bytes: 0 }
+    const decoder = new StringDecoder('utf8')
+
+    // When the split chunks arrive and exceed the 4-byte cap on the second character
+    appendOutput(target, part1, 4, decoder)
+    appendOutput(target, part2, 4, decoder)
+    expect(target.text).toBe('中')
+    expect(target.truncated).toBe(false)
+    appendOutput(target, part3, 4, decoder)
+
+    // Then the first character decoded intact and the second was truncated cleanly by byte budget
+    expect(target.text).toBe('中…[output truncated]')
+    expect(target.truncated).toBe(true)
   })
 
   it('sweepPool disposes only idle, unpinned, unused records', () => {

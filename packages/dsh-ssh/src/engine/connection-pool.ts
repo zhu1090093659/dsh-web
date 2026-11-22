@@ -5,6 +5,7 @@
 
 import { existsSync, readFileSync } from 'node:fs'
 import type { Duplex } from 'node:stream'
+import { StringDecoder } from 'node:string_decoder'
 import { Client, type ConnectConfig } from 'ssh2'
 import type { ExecResult, SshHostEntry } from '../protocol.ts'
 import { expandHome, normalizeAgentPath, type HostStore } from '../store.ts'
@@ -216,14 +217,21 @@ export function connectClient(config: ConnectConfig, onKeyboardInteractive?: Key
       const cause = error instanceof Error ? error : new Error(String(error))
       reject(isReadyTimeout(cause) ? new Error(readyTimeoutMessage(config.readyTimeout, handshakeComplete)) : cause)
     }
+    const onPreReadyClose = (): void => {
+      fail(new Error('SSH connection closed before ready'))
+    }
     client.once('handshake', () => {
       handshakeComplete = true
     })
     client.once('ready', () => {
       if (settled) return
       settled = true
+      client.removeListener?.('close', onPreReadyClose)
       resolve(client)
     })
+    // ssh2 clears readyTimeout and emits only 'close' (no 'error') when the peer
+    // closes cleanly after sending the SSH banner; settle instead of hanging forever.
+    client.once('close', onPreReadyClose)
     client.on('keyboard-interactive', (name, instructions, instructionsLang, prompts, finish) => {
       if (onKeyboardInteractive !== undefined) {
         onKeyboardInteractive(name, instructions, instructionsLang, prompts.map(p => ({ prompt: p.prompt, echo: Boolean(p.echo) })), finish)
@@ -250,18 +258,43 @@ export function connectClient(config: ConnectConfig, onKeyboardInteractive?: Key
   })
 }
 
-/** Cap captured output at the configured byte budget (marks truncation). */
-export function appendOutput(target: { text: string; truncated: boolean }, chunk: Buffer, maxBytes: number): void {
-  if (target.truncated) return
-  if (target.text.length + chunk.length > maxBytes) {
-    let cut = chunk.toString('utf8').slice(0, maxBytes - target.text.length)
-    // Never split a surrogate pair at the cut boundary.
-    if (/[\uD800-\uDBFF]$/.test(cut)) cut = cut.slice(0, -1)
+/** Truncate `text` so its UTF-8 encoding fits within `maxBytes` without splitting code points. */
+function sliceUtf8ToBytes(text: string, maxBytes: number): string {
+  if (maxBytes <= 0 || text === '') return ''
+  if (Buffer.byteLength(text, 'utf8') <= maxBytes) return text
+  let bytes = 0
+  let end = 0
+  for (const char of text) {
+    const code = char.codePointAt(0)!
+    const charBytes = code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4
+    if (bytes + charBytes > maxBytes) break
+    bytes += charBytes
+    end += char.length
+  }
+  return text.slice(0, end)
+}
+
+/** Append an already-decoded string chunk under a UTF-8 byte budget. */
+function appendDecodedOutput(target: { text: string; truncated: boolean; bytes?: number }, decoded: string, maxBytes: number): void {
+  if (target.truncated || decoded === '') return
+  const usedBytes = target.bytes ?? Buffer.byteLength(target.text, 'utf8')
+  const decodedBytes = Buffer.byteLength(decoded, 'utf8')
+  if (usedBytes + decodedBytes > maxBytes) {
+    const cut = sliceUtf8ToBytes(decoded, maxBytes - usedBytes)
     target.text += cut + '…[output truncated]'
+    target.bytes = maxBytes
     target.truncated = true
     return
   }
-  target.text += chunk.toString('utf8')
+  target.text += decoded
+  target.bytes = usedBytes + decodedBytes
+}
+
+/** Cap captured output at the configured UTF-8 byte budget (marks truncation). */
+export function appendOutput(target: { text: string; truncated: boolean; bytes?: number }, chunk: Buffer, maxBytes: number, decoder?: StringDecoder): void {
+  if (target.truncated) return
+  const decoded = decoder !== undefined ? decoder.write(chunk) : chunk.toString('utf8')
+  appendDecodedOutput(target, decoded, maxBytes)
 }
 
 /** The ProxyCommand token source for one entry. */
@@ -431,8 +464,43 @@ export async function connectChain(
   }
 }
 
+interface PoolLifecycle {
+  disposed: boolean
+  generations: Map<string, number>
+}
+
+const poolLifecycles = new WeakMap<PoolEngine, PoolLifecycle>()
+
+function lifecycleOf(engine: PoolEngine): PoolLifecycle {
+  let state = poolLifecycles.get(engine)
+  if (state === undefined) {
+    state = { disposed: false, generations: new Map() }
+    poolLifecycles.set(engine, state)
+  }
+  return state
+}
+
+/**
+ * Invalidate any in-flight acquire for `alias` so a connection still handshaking
+ * under stale config or before a delete cannot enter `engine.pool` after completion.
+ */
+export function invalidateAlias(engine: PoolEngine, alias: string): void {
+  const state = lifecycleOf(engine)
+  state.generations.set(alias, (state.generations.get(alias) ?? 0) + 1)
+  engine.acquireQueue.delete(alias)
+}
+
+/** Mark the pool disposed so in-flight acquires tear down instead of entering the pool. */
+export function markPoolDisposed(engine: PoolEngine): void {
+  const state = lifecycleOf(engine)
+  state.disposed = true
+  engine.acquireQueue.clear()
+}
+
 /** Connect (or reuse) the pooled chain for one alias; pins nothing. */
 export async function acquire(engine: PoolEngine, alias: string): Promise<PoolRecord> {
+  const state = lifecycleOf(engine)
+  if (state.disposed) throw new Error('ssh engine has been disposed')
   const pending = engine.acquireQueue.get(alias)
   if (pending !== undefined) return pending
   const task = doAcquire(engine, alias)
@@ -445,12 +513,32 @@ export async function acquire(engine: PoolEngine, alias: string): Promise<PoolRe
 }
 
 async function doAcquire(engine: PoolEngine, alias: string): Promise<PoolRecord> {
+  const state = lifecycleOf(engine)
+  if (state.disposed) throw new Error('ssh engine has been disposed')
+  const gen = state.generations.get(alias) ?? 0
   const entry = engine.store.find(alias)
   if (entry === undefined) throw new Error('alias \'' + alias + '\' not found — add it first')
   const { client, hops } = await connectChain(engine, entry)
   const record: PoolRecord = { client, hops, idleAt: Date.now(), pinned: false, broken: false, inFlight: 0 }
-  client.on('error', () => { record.broken = true })
-  client.on('close', () => { record.broken = true })
+  if (state.disposed || (state.generations.get(alias) ?? 0) !== gen) {
+    endRecordChain(record)
+    throw new Error(state.disposed
+      ? 'ssh engine disposed while connecting \'' + alias + '\''
+      : 'host \'' + alias + '\' configuration changed while connecting')
+  }
+  const markBroken = (): void => { record.broken = true }
+  const onTargetClosed = (): void => {
+    record.broken = true
+    for (const hop of record.hops) {
+      try { hop.end() } catch { /* already closed */ }
+    }
+  }
+  client.on('error', markBroken)
+  client.on('close', onTargetClosed)
+  for (const hop of hops) {
+    hop.on('error', markBroken)
+    hop.on('close', markBroken)
+  }
   engine.pool.set(alias, record)
   return record
 }
@@ -491,6 +579,32 @@ function isAborted(signal?: AbortSignal): boolean {
   return signal?.aborted === true
 }
 
+/** Race an in-flight promise against an optional AbortSignal without leaving an unhandled rejection behind. */
+function waitWithSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (signal === undefined) return promise
+  if (signal.aborted) {
+    promise.catch(() => undefined)
+    return Promise.reject(new Error('command cancelled by the caller'))
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = (): void => {
+      promise.catch(() => undefined)
+      reject(new Error('command cancelled by the caller'))
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort)
+        resolve(value)
+      },
+      (error) => {
+        signal.removeEventListener('abort', onAbort)
+        reject(error)
+      },
+    )
+  })
+}
+
 /**
  * Run `fn` with a live client for `alias`, reconnecting (up to the
  * attempt budget) when the connection broke mid-flight.
@@ -504,7 +618,7 @@ export async function withClient<T>(engine: PoolEngine, alias: string, fn: (clie
     let record = engine.pool.get(alias)
     if (record === undefined || record.broken) {
       if (record !== undefined) disposeRecord(engine, alias, record)
-      record = await acquire(engine, alias)
+      record = await waitWithSignal(acquire(engine, alias), signal)
     }
     record.idleAt = Date.now()
     record.inFlight += 1
@@ -554,8 +668,16 @@ export async function execCommand(engine: PoolEngine, alias: string, command: st
         // in a mutable slot because abort may fire before client.exec calls back.
         let aborted = signal !== undefined && signal.aborted
         let settled = false
-        const stdout = { text: '', truncated: false }
-        const stderr = { text: '', truncated: false }
+        const stdout = { text: '', truncated: false, bytes: 0 }
+        const stderr = { text: '', truncated: false, bytes: 0 }
+        const stdoutDecoder = new StringDecoder('utf8')
+        const stderrDecoder = new StringDecoder('utf8')
+        const flushDecoders = (): void => {
+          const outTail = stdoutDecoder.end()
+          if (outTail !== '') appendDecodedOutput(stdout, outTail, engine.opts.maxOutputBytes)
+          const errTail = stderrDecoder.end()
+          if (errTail !== '') appendDecodedOutput(stderr, errTail, engine.opts.maxOutputBytes)
+        }
         let timer: ReturnType<typeof setTimeout> | undefined
         let kill = (): void => { /* channel not open yet */ }
         /** One cancelled outcome: the remote channel was killed on caller request. */
@@ -573,6 +695,7 @@ export async function execCommand(engine: PoolEngine, alias: string, command: st
           settled = true
           if (timer !== undefined) clearTimeout(timer)
           signal?.removeEventListener('abort', onAbort)
+          flushDecoders()
           resolve(cancelledResult())
         }
         const onAbort = (): void => {
@@ -613,6 +736,7 @@ export async function execCommand(engine: PoolEngine, alias: string, command: st
             settled = true
             if (timer !== undefined) clearTimeout(timer)
             signal?.removeEventListener('abort', onAbort)
+            flushDecoders()
             resolve({
               success: false,
               exitCode: null,
@@ -631,13 +755,14 @@ export async function execCommand(engine: PoolEngine, alias: string, command: st
             // channel close (the stream 'close' handler is then a no-op).
             finish()
           }, budget)
-          stream.on('data', (chunk: Buffer) => appendOutput(stdout, chunk, engine.opts.maxOutputBytes))
-          stream.stderr.on('data', (chunk: Buffer) => appendOutput(stderr, chunk, engine.opts.maxOutputBytes))
+          stream.on('data', (chunk: Buffer) => appendOutput(stdout, chunk, engine.opts.maxOutputBytes, stdoutDecoder))
+          stream.stderr.on('data', (chunk: Buffer) => appendOutput(stderr, chunk, engine.opts.maxOutputBytes, stderrDecoder))
           stream.on('close', (code: number | null) => {
             if (settled) return
             settled = true
             if (timer !== undefined) clearTimeout(timer)
             signal?.removeEventListener('abort', onAbort)
+            flushDecoders()
             // A caller cancellation settles as cancelled, never as a broken
             // connection: the latter would send withClient into a retry that
             // re-runs a command the caller asked to stop.
@@ -666,6 +791,7 @@ export async function execCommand(engine: PoolEngine, alias: string, command: st
             settled = true
             if (timer !== undefined) clearTimeout(timer)
             signal?.removeEventListener('abort', onAbort)
+            flushDecoders()
             if (aborted) {
               resolve(cancelledResult())
               return

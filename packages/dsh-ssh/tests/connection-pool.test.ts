@@ -10,7 +10,18 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULTS, WINDOWS_AGENT_PIPE, buildConnectConfig, connectChain, connectClient, parseJumpSpec } from '../src/engine/connection-pool.ts'
+import {
+  DEFAULTS,
+  WINDOWS_AGENT_PIPE,
+  acquire,
+  buildConnectConfig,
+  connectChain,
+  connectClient,
+  execCommand,
+  invalidateAlias,
+  markPoolDisposed,
+  parseJumpSpec,
+} from '../src/engine/connection-pool.ts'
 import type { SshHostEntry } from '../src/protocol.ts'
 import type { HostStore } from '../src/store.ts'
 
@@ -256,6 +267,20 @@ describe('connectClient', () => {
     })
     const config = buildConnectConfig(passwordEntry('otp-host', { auth: { kind: 'password', password: 'pw' } }), undefined, defaultOpts() as never)
     await expect(connectClient(config)).rejects.toThrow(/Authentication failed \(keyboard-interactive\): OTP:/)
+  })
+
+  it('operator sees a rejection when the server closes cleanly after handshake without an error event', async () => {
+    // Given a client that completes key exchange and then closes with no error event
+    sshMock.behaviors.push((client) => {
+      client.emit('handshake')
+      client.emit('close')
+    })
+    const config = buildConnectConfig(passwordEntry('clean-close'), undefined, defaultOpts() as never)
+
+    // When connectClient awaits the connection
+    // Then it rejects instead of hanging forever and destroys the client once
+    await expect(connectClient(config)).rejects.toThrow(/closed before ready/)
+    expect(sshMock.instances[0]!.destroyCalls).toBe(1)
   })
 })
 
@@ -621,5 +646,89 @@ describe('parseJumpSpec', () => {
     expect(parseJumpSpec('host:0')).toBeUndefined()
     expect(parseJumpSpec('host:not-a-port')).toBeUndefined()
     expect(parseJumpSpec('   ')).toBeUndefined()
+  })
+})
+
+describe('pool lifecycle and acquire cancellation', () => {
+  beforeEach(() => {
+    sshMock.instances.length = 0
+    sshMock.behaviors.length = 0
+  })
+
+  it('operator dropping an alias while acquire is in flight rejects the stale handshake and keeps the pool empty', async () => {
+    // Given an alias whose handshake is paused mid-flight
+    const entry = passwordEntry('inflight-drop')
+    const engine = poolEngine(fakeStore([entry])) as { pool: Map<string, unknown> }
+    let pendingClient!: (typeof sshMock.instances)[number]
+    sshMock.behaviors.push((client) => { pendingClient = client })
+
+    // When acquire starts, the alias is invalidated before ready, and the stale handshake later finishes
+    const pending = acquire(engine as never, 'inflight-drop')
+    invalidateAlias(engine as never, 'inflight-drop')
+    pendingClient.emit('ready')
+
+    // Then the stale connection is closed immediately, never enters the pool, and acquire rejects
+    await expect(pending).rejects.toThrow(/configuration changed while connecting/)
+    expect(engine.pool.has('inflight-drop')).toBe(false)
+    expect(pendingClient.endCalls).toBe(1)
+  })
+
+  it('operator disposing the pool while acquire is in flight closes the completing connection without pooling it', async () => {
+    // Given an engine whose acquire is waiting on a handshake
+    const entry = passwordEntry('inflight-dispose')
+    const engine = poolEngine(fakeStore([entry])) as { pool: Map<string, unknown> }
+    let pendingClient!: (typeof sshMock.instances)[number]
+    sshMock.behaviors.push((client) => { pendingClient = client })
+
+    // When the pool is marked disposed before the handshake finishes
+    const pending = acquire(engine as never, 'inflight-dispose')
+    markPoolDisposed(engine as never)
+    pendingClient.emit('ready')
+
+    // Then the connection is closed, nothing lands in the pool, and a subsequent acquire rejects immediately
+    await expect(pending).rejects.toThrow(/disposed while connecting/)
+    expect(engine.pool.has('inflight-dispose')).toBe(false)
+    expect(pendingClient.endCalls).toBe(1)
+    await expect(acquire(engine as never, 'inflight-dispose')).rejects.toThrow(/disposed/)
+  })
+
+  it('operator aborting execCommand while acquire is still connecting cancels immediately without waiting', async () => {
+    // Given an acquire that never emits ready and an AbortController
+    const entry = passwordEntry('abort-acquire')
+    const engine = poolEngine(fakeStore([entry]))
+    let pendingClient!: (typeof sshMock.instances)[number]
+    sshMock.behaviors.push((client) => { pendingClient = client })
+    const controller = new AbortController()
+
+    // When execCommand is aborted while still waiting for the connection
+    const pending = execCommand(engine as never, 'abort-acquire', 'uptime', 30_000, controller.signal)
+    controller.abort()
+    const outcome = await pending
+
+    // Then execCommand settles immediately as cancelled, and a late failure on the background handshake is absorbed
+    expect(outcome.success).toBe(false)
+    expect(outcome.timedOut).toBe(false)
+    expect(outcome.error).toBe('command cancelled by the caller')
+    pendingClient.emit('error', new Error('late handshake failure'))
+  })
+
+  it('operator sees hop connections close when the target closes and record marked broken when a hop closes', async () => {
+    // Given a pooled jump-host chain acquired through doAcquire
+    const hop = passwordEntry('bastion')
+    const target = passwordEntry('app', { proxyJump: ['bastion'] })
+    const engine = poolEngine(fakeStore([hop, target]))
+    sshMock.behaviors.push((client) => { client.emit('ready') })
+    sshMock.behaviors.push((client) => { client.emit('ready') })
+    const record = await acquire(engine as never, 'app')
+    const hopClient = sshMock.instances[0]!
+    const targetClient = sshMock.instances[1]!
+
+    // When the hop closes first, then the target closes
+    hopClient.emit('close')
+    expect(record.broken).toBe(true)
+    targetClient.emit('close')
+
+    // Then the target close also ends the hop client instead of leaving it dangling
+    expect(hopClient.endCalls).toBe(1)
   })
 })

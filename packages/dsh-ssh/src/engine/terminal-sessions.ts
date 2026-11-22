@@ -9,6 +9,7 @@
  * for a short grace window so a reattaching view still sees the final screen.
  */
 import { randomBytes } from 'node:crypto'
+import { StringDecoder } from 'node:string_decoder'
 import { WebSocket } from 'ws'
 import type { KeyboardInteractiveHandler } from './connection-pool.ts'
 import type { ShellSession } from './pty.ts'
@@ -29,15 +30,27 @@ const DEFAULT_IDLE_MS = 10 * 60 * 1000
 /** An exited session is kept this long for a reattaching view. */
 const DEFAULT_EXIT_GRACE_MS = 60 * 1000
 
+/** Clamp a terminal column/row dimension to an integer >= `min`. */
+function clampDimension(value: unknown, min: number, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
+  return Math.max(min, Math.trunc(value))
+}
+
 /** One live terminal session and the sockets currently watching it. */
 interface HostedTerminal {
   id: string
   alias: string
   shell?: ShellSession
   sockets: Set<WebSocket>
-  /** Bounded scrollback replayed to an attaching socket. */
+  decoder: StringDecoder
+  /** Bounded scrollback ring replayed to an attaching socket. */
   buffer: string[]
+  bufferChunkBytes: number[]
+  bufferHead: number
   bufferBytes: number
+  paused: boolean
+  /** Cached drain callback reused across backed-up sends without per-frame allocation. */
+  onDrain?: () => void
   exited: boolean
   exit?: { code: number | null; error?: string }
   /** Pending keyboard-interactive challenge, whoever attached when it arrived. */
@@ -83,9 +96,16 @@ export class TerminalSessionRegistry {
       id: randomBytes(9).toString('hex'),
       alias,
       sockets: new Set(),
+      decoder: new StringDecoder('utf8'),
       buffer: [],
+      bufferChunkBytes: [],
+      bufferHead: 0,
       bufferBytes: 0,
+      paused: false,
       exited: false,
+    }
+    session.onDrain = () => {
+      if (session.paused) this.applyBackpressure(session)
     }
     this.sessions.set(session.id, session)
     this.bind(ws, session)
@@ -97,12 +117,15 @@ export class TerminalSessionRegistry {
         return
       }
       session.shell = shell
-      shell.onData = data => { this.pushOutput(session, data.toString('utf8')) }
+      shell.onData = data => {
+        const text = session.decoder.write(data)
+        if (text !== '') this.pushOutput(session, text)
+      }
       shell.onExit = (code, error) => { this.finish(session, code, error) }
       this.send(session, { type: 'ready', alias, sessionId: session.id })
     } catch (error) {
-      this.sessions.delete(session.id)
       this.send(session, { type: 'exit', code: null, error: error instanceof Error ? error.message : String(error) })
+      this.end(session)
     }
   }
 
@@ -115,22 +138,24 @@ export class TerminalSessionRegistry {
     if (session === undefined) return false
     this.bind(ws, session)
     this.clearReap(session)
-    for (const chunk of session.buffer) this.sendTo(session, ws, { type: 'output', data: chunk })
-    this.sendTo(session, ws, { type: 'ready', alias: session.alias, sessionId: session.id })
+    for (let index = session.bufferHead; index < session.buffer.length; index += 1) {
+      this.sendPayload(session, ws, JSON.stringify({ type: 'output', data: session.buffer[index]! }))
+    }
+    this.sendPayload(session, ws, JSON.stringify({ type: 'ready', alias: session.alias, sessionId: session.id }))
     if (session.exited) {
-      this.sendTo(session, ws, { type: 'exit', code: session.exit?.code ?? null, error: session.exit?.error })
+      this.sendPayload(session, ws, JSON.stringify({ type: 'exit', code: session.exit?.code ?? null, error: session.exit?.error }))
       // Re-arm the grace window: this socket now holds the exited session open.
       this.scheduleReap(session, this.exitGraceMs)
     } else {
-      session.shell?.resize(Math.max(2, size.cols), Math.max(1, size.rows))
-      session.shell?.resume()
+      session.shell?.resize(clampDimension(size.cols, 2, 80), clampDimension(size.rows, 1, 24))
+      this.applyBackpressure(session)
     }
     return true
   }
 
   /** End every session (host teardown, plugin dispose). */
   dispose(): void {
-    for (const session of [...this.sessions.values()]) this.end(session, false)
+    for (const session of [...this.sessions.values()]) this.end(session)
     this.sessions.clear()
   }
 
@@ -143,22 +168,26 @@ export class TerminalSessionRegistry {
   private bind(ws: WebSocket, session: HostedTerminal): void {
     session.sockets.add(ws)
     ws.on('message', (data) => {
-      let frame: { type?: string; data?: string; cols?: number; rows?: number; responses?: string[] }
+      let frame: { type?: unknown; data?: unknown; cols?: unknown; rows?: unknown; responses?: unknown }
       try {
         frame = JSON.parse(String(data)) as typeof frame
       } catch {
         return
       }
+      if (typeof frame !== 'object' || frame === null) return
       if (frame.type === 'input') {
-        session.shell?.send(frame.data ?? '')
+        if (typeof frame.data === 'string') session.shell?.send(frame.data)
       } else if (frame.type === 'resize') {
-        session.shell?.resize(Math.max(2, frame.cols ?? 80), Math.max(1, frame.rows ?? 24))
+        session.shell?.resize(clampDimension(frame.cols, 2, 80), clampDimension(frame.rows, 1, 24))
       } else if (frame.type === 'auth_response') {
         const finish = session.pendingAuthFinish
         session.pendingAuthFinish = undefined
-        try { finish?.(frame.responses ?? []) } catch { /* the connect already failed */ }
+        const responses = Array.isArray(frame.responses)
+          ? frame.responses.filter((item): item is string => typeof item === 'string')
+          : []
+        try { finish?.(responses) } catch { /* the connect already failed */ }
       } else if (frame.type === 'close') {
-        this.end(session, true)
+        this.end(session)
       } else if (frame.type === 'detach') {
         this.detach(ws)
       }
@@ -177,19 +206,23 @@ export class TerminalSessionRegistry {
         // screen is dropped).
         this.scheduleReap(session, session.exited ? this.exitGraceMs : this.idleMs)
       }
+      if (session.paused) this.applyBackpressure(session)
       return
     }
   }
 
-  /** End the session a socket is attached to (explicit close from the view). */
-  private end(session: HostedTerminal, notify: boolean): void {
+  /** End the session and close every socket still attached to it. */
+  private end(session: HostedTerminal): void {
     this.clearReap(session)
-    if (this.sessions.delete(session.id) && notify) {
-      if (session.pendingAuthFinish !== undefined) {
-        const finish = session.pendingAuthFinish
-        session.pendingAuthFinish = undefined
-        try { finish([]) } catch { /* the connect already failed */ }
-      }
+    this.sessions.delete(session.id)
+    if (session.pendingAuthFinish !== undefined) {
+      const finish = session.pendingAuthFinish
+      session.pendingAuthFinish = undefined
+      try { finish([]) } catch { /* the connect already failed */ }
+    }
+    for (const ws of [...session.sockets]) {
+      session.sockets.delete(ws)
+      try { ws.close(1000) } catch { /* already closed */ }
     }
     try { session.shell?.close() } catch { /* channel gone */ }
   }
@@ -197,6 +230,8 @@ export class TerminalSessionRegistry {
   /** Mark a session exited and keep it briefly so a reattaching view sees it. */
   private finish(session: HostedTerminal, code: number | null, error?: string): void {
     if (session.exited) return
+    const tail = session.decoder.end()
+    if (tail !== '') this.pushOutput(session, tail)
     session.exited = true
     session.exit = { code, error }
     this.send(session, { type: 'exit', code, error })
@@ -210,40 +245,80 @@ export class TerminalSessionRegistry {
     this.scheduleReap(session, this.exitGraceMs)
   }
 
-  /** Append output to the replay buffer, trimmed to the byte cap. */
+  /** Keep at most `maxBytes` from the tail of `data` on a valid UTF-8 boundary. */
+  private trimTailToUtf8Bytes(data: string, maxBytes: number): { text: string; bytes: number } {
+    if (maxBytes <= 0) return { text: '', bytes: 0 }
+    const buf = Buffer.from(data, 'utf8')
+    if (buf.byteLength <= maxBytes) return { text: data, bytes: buf.byteLength }
+    let start = buf.byteLength - maxBytes
+    while (start < buf.byteLength && (buf[start]! & 0xc0) === 0x80) start += 1
+    const tail = buf.subarray(start)
+    return { text: tail.toString('utf8'), bytes: tail.byteLength }
+  }
+
+  /** Append output to the O(1) replay ring, trimmed to the byte cap. */
   private pushOutput(session: HostedTerminal, data: string): void {
-    session.buffer.push(data)
-    session.bufferBytes += Buffer.byteLength(data)
-    while (session.bufferBytes > this.maxBufferBytes && session.buffer.length > 1) {
-      const dropped = session.buffer.shift()
-      session.bufferBytes -= Buffer.byteLength(dropped ?? '')
+    const chunkBytes = Buffer.byteLength(data, 'utf8')
+    if (chunkBytes > this.maxBufferBytes) {
+      const trimmed = this.trimTailToUtf8Bytes(data, this.maxBufferBytes)
+      session.buffer = trimmed.text === '' ? [] : [trimmed.text]
+      session.bufferChunkBytes = trimmed.text === '' ? [] : [trimmed.bytes]
+      session.bufferHead = 0
+      session.bufferBytes = trimmed.bytes
+    } else {
+      session.buffer.push(data)
+      session.bufferChunkBytes.push(chunkBytes)
+      session.bufferBytes += chunkBytes
+      while (session.bufferBytes > this.maxBufferBytes && session.buffer.length - session.bufferHead > 1) {
+        session.bufferBytes -= session.bufferChunkBytes[session.bufferHead]!
+        session.bufferHead += 1
+      }
+      if (session.bufferHead >= 64 && session.bufferHead * 2 >= session.buffer.length) {
+        session.buffer = session.buffer.slice(session.bufferHead)
+        session.bufferChunkBytes = session.bufferChunkBytes.slice(session.bufferHead)
+        session.bufferHead = 0
+      }
     }
     this.send(session, { type: 'output', data })
   }
 
   /** Broadcast one frame to every attached socket, honoring backpressure. */
   private send(session: HostedTerminal, frame: TerminalServerFrame): void {
-    for (const ws of session.sockets) this.sendTo(session, ws, frame)
+    const payload = JSON.stringify(frame)
+    for (const ws of session.sockets) this.sendPayload(session, ws, payload)
     this.applyBackpressure(session)
   }
 
-  private sendTo(session: HostedTerminal, ws: WebSocket, frame: TerminalServerFrame): void {
+  private sendPayload(session: HostedTerminal, ws: WebSocket, payload: string): void {
     if (ws.readyState !== WebSocket.OPEN) return
-    try { ws.send(JSON.stringify(frame)) } catch { /* socket raced away */ }
+    try {
+      // Attach the drain callback only when buffered output is near/above the
+      // low-water mark so uncontested frames incur zero callback overhead.
+      if ((session.paused || ws.bufferedAmount + payload.length > BACKPRESSURE_LOW_WATER) && session.onDrain !== undefined) {
+        ws.send(payload, session.onDrain)
+      } else {
+        ws.send(payload)
+      }
+    } catch { /* socket raced away */ }
   }
 
   /** Pause while any attached socket is backed up; resume once all drained. */
   private applyBackpressure(session: HostedTerminal): void {
     const shell = session.shell
-    if (shell === undefined) return
+    if (shell === undefined || session.exited) return
     let high = false
     let low = true
     for (const ws of session.sockets) {
       if (ws.bufferedAmount > BACKPRESSURE_HIGH_WATER) high = true
       if (ws.bufferedAmount > BACKPRESSURE_LOW_WATER) low = false
     }
-    if (high) shell.pause()
-    else if (low) shell.resume()
+    if (high && !session.paused) {
+      session.paused = true
+      shell.pause()
+    } else if (low && session.paused) {
+      session.paused = false
+      shell.resume()
+    }
   }
 
   /** Answer a keyboard-interactive challenge through whoever is attached. */
@@ -264,7 +339,7 @@ export class TerminalSessionRegistry {
     const timer = setTimeout(() => {
       session.reapTimer = undefined
       if (session.sockets.size > 0) return
-      this.end(session, false)
+      this.end(session)
     }, delayMs)
     // Never hold the host process open for an idle terminal.
     ;(timer as { unref?: () => void }).unref?.()

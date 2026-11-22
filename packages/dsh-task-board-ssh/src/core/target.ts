@@ -180,6 +180,7 @@ function isAbsolutePath(value: string): boolean {
 
 /** Whether a string is safe to compose into a git branch/ref name. */
 function isSafeGitRefSegment(value: string): boolean {
+  // oxlint-disable-next-line no-control-regex -- rejecting control characters in a ref name IS the check.
   if (/[\u0000-\u001f\u007f\s~^:?*[\\]/.test(value)) return false
   if (value.includes('..') || value.includes('@{') || value.startsWith('/') || value.endsWith('/') || value.endsWith('.') || value.endsWith('.lock') || value.includes('//')) {
     return false

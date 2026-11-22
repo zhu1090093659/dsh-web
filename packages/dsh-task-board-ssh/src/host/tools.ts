@@ -273,7 +273,7 @@ async function runResult(engine: SshRunEngine, taskId: string, args: Record<stri
   if (!reply.ok) return refused(reply.code, reply.error)
   const handle = engine.describeRun(taskId)
   const status = args.wait === true ? await statusResult(engine, taskId, args) : undefined
-  return json({ ok: true, taskId, ...(handle ?? {}), ...(status === undefined ? {} : { status }) })
+  return json({ ok: true, taskId, ...handle, ...(status === undefined ? {} : { status }) })
 }
 
 /** The one surface: every action an agent needs against a remote card. */

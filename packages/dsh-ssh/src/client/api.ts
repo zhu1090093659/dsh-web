@@ -10,7 +10,6 @@ import {
   type HostPayload,
   type ImportResult,
   type RemoteDirEntry,
-  type SshHostSummary,
   type SshKeyPayload,
   type SshKeySummary,
   type SshPanelHostSummary,

@@ -662,4 +662,95 @@ describe('hosts PATCH connection invalidation', () => {
       realEngine.dispose()
     }
   })
+
+  it('operator patching only managedKeyId updates credentials and drops the pooled connection', async () => {
+    // Given a host using key A, a second managed key B, and an active pooled connection
+    const realStore = new HostStore(join(dir, 'managed-key-patch-hosts.json'))
+    const keyAPath = join(dir, 'key-a')
+    const keyBPath = join(dir, 'key-b')
+    writeFileSync(keyAPath, 'key-a')
+    writeFileSync(keyBPath, 'key-b')
+    const keyB = realStore.createKey({ name: 'Key B', path: keyBPath, passphrase: 'pb' })
+    realStore.create({
+      alias: 'key-patch',
+      host: '10.0.0.10',
+      user: 'root',
+      auth: { kind: 'key', keyPath: keyAPath },
+    })
+    const realEngine = new SshEngine(realStore, { idleTimeoutMs: 60_000, connectTimeoutMs: 5_000 })
+    const closed: string[] = []
+    realEngine.pool.set('key-patch', {
+      client: { end: () => { closed.push('target') } },
+      hops: [],
+      idleAt: Date.now(),
+      pinned: false,
+      broken: false,
+      inFlight: 0,
+    } as unknown as PoolRecord)
+    const routes = makeRoutes({
+      store: realStore,
+      engine: realEngine,
+      stagingDir: join(dir, 'managed-key-patch-staging'),
+    }).routes
+    try {
+      // When PATCH carries only managedKeyId without an explicit auth block
+      const { req } = fakeJsonRequest(SSH_API.hosts + '?alias=key-patch', JSON.stringify({ managedKeyId: keyB.id }), 'PATCH')
+      const { res, state } = fakeJsonResponse()
+      await handlerFor(SSH_API.hosts, routes).handler(req, res)
+
+      // Then the host switches to key B and its stale pooled connection is dropped
+      expect(state.status).toBe(200)
+      expect(realStore.find('key-patch')?.auth.keyPath).toBe(keyBPath)
+      expect(realEngine.pool.has('key-patch')).toBe(false)
+      expect(closed).toEqual(['target'])
+    } finally {
+      realEngine.dispose()
+    }
+  })
+
+  it('operator downloading a file with control chars in basename gets sanitized header and clean staging after abort', async () => {
+    // Given an isolated download route serving a larger payload into a dedicated staging directory
+    const localStaging = join(dir, 'download-abort-staging')
+    const localStore = new HostStore(join(dir, 'download-abort-hosts.json'))
+    const largePayload = Buffer.alloc(512 * 1024, 0x61)
+    const localStub = new StubEngine()
+    localStub.download = async (_alias: string, _remotePath: string, localPath: string) => {
+      writeFileSync(localPath, largePayload)
+      return { bytes: largePayload.byteLength }
+    }
+    const localRoutes = makeRoutes({ store: localStore, engine: engine(localStub), stagingDir: localStaging }).routes
+    const downloadRoute = handlerFor(SSH_API.download, localRoutes)
+
+    let handlerPromise: Promise<void> | undefined
+    const abortServer = createServer((req, res) => {
+      handlerPromise = Promise.resolve(downloadRoute.handler(req, res))
+    })
+    await new Promise<void>((resolve) => { abortServer.listen(0, '127.0.0.1', resolve) })
+    const abortPort = (abortServer.address() as AddressInfo).port
+    try {
+      // When the client reads headers for a basename with quotes/backslash/CR/LF and aborts mid-download
+      const disposition = await new Promise<string>((resolve, reject) => {
+        const clientReq = httpRequest({
+          host: '127.0.0.1',
+          port: abortPort,
+          path: `${SSH_API.download}?alias=web-01&remotePath=${encodeURIComponent('/tmp/bad"\r\n\\name.bin')}`,
+          method: 'GET',
+        }, (clientRes) => {
+          const rawHeader = String(clientRes.headers['content-disposition'] ?? '')
+          clientRes.destroy()
+          clientReq.destroy()
+          resolve(rawHeader)
+        })
+        clientReq.on('error', reject)
+        clientReq.end()
+      })
+      await handlerPromise
+
+      // Then Content-Disposition strips CR/LF/quotes/backslash and staging retains no leaked temp file
+      expect(disposition).toBe('attachment; filename="badname.bin"')
+      expect(readdirSync(localStaging)).toEqual([])
+    } finally {
+      await new Promise<void>((resolve) => { abortServer.close(() => resolve()) })
+    }
+  })
 })

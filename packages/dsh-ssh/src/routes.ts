@@ -42,6 +42,17 @@ function queryParam(url: URL, name: string): string | undefined {
   return value === null ? undefined : value
 }
 
+/** Strip control characters, quotes, and backslashes from a Content-Disposition filename. */
+function safeAttachmentFilename(raw: string): string {
+  let clean = ''
+  for (let i = 0; i < raw.length; i += 1) {
+    const code = raw.charCodeAt(i)
+    if (code < 0x20 || code === 0x7f || code === 0x22 || code === 0x5c) continue
+    clean += raw[i]!
+  }
+  return clean === '' ? 'download' : clean
+}
+
 /** Route family dependencies. */
 export interface SshRoutesDeps {
   /** The host store (CRUD). */
@@ -134,14 +145,14 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
             return
           }
           try {
-            const entry = store.update(alias, store.resolveManagedKey(body as unknown as Partial<HostPayload>))
+            const resolved = store.resolveManagedKey(body as unknown as Partial<HostPayload>)
+            const entry = store.update(alias, resolved)
             // Connection-relevant changes invalidate the pooled connection:
             // without this the pool would keep running commands on the old
             // host/credentials until the idle sweep (up to 30 min later).
-            // Agent forwarding belongs here too: it is fixed per connection
-            // (ssh2 negotiates it when the channel opens), so toggling it must
-            // reconnect or the new setting silently never takes effect.
-            const patch = body as Record<string, unknown>
+            // Check the resolved patch so a managedKeyId-only update (which
+            // resolves into `resolved.auth`) invalidates the pool too.
+            const patch = resolved as Record<string, unknown>
             if (['host', 'port', 'user', 'auth', 'proxyJump', 'proxyCommand', 'forwardAgent'].some(key => patch[key] !== undefined)) {
               engine.dropAlias(alias)
             }
@@ -396,6 +407,8 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
         const emit = (line: unknown): void => {
           try { res.write(JSON.stringify(line) + '\n') } catch { /* client gone */ }
         }
+        // Ensure the private staging directory still exists (e.g. after a /tmp sweep).
+        mkdirSync(staging, { recursive: true, mode: 0o700 })
         // Stage the uploaded bytes, then SFTP them out with progress frames.
         const tmp = join(staging, `upload-${randomBytes(6).toString('hex')}`)
         const sink = createWriteStream(tmp, { mode: 0o600 })
@@ -482,22 +495,49 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
         }
         const tmp = join(staging, `download-${randomBytes(6).toString('hex')}`)
         try {
+          mkdirSync(staging, { recursive: true, mode: 0o700 })
           // Pre-create with 0600: ssh2's fastGet opens the destination with
           // umask-default permissions and a pre-created file keeps the mode.
           closeSync(openSync(tmp, 'w', 0o600))
           const outcome = await engine.download(alias, remotePath, tmp)
+          if (req.destroyed || res.destroyed) return
           res.writeHead(200, {
             'content-type': 'application/octet-stream',
             'content-length': String(outcome.bytes),
-            'content-disposition': `attachment; filename="${basename(remotePath).replace(/"/g, '')}"`,
+            'content-disposition': `attachment; filename="${safeAttachmentFilename(basename(remotePath))}"`,
             'referrer-policy': 'no-referrer',
           })
           await new Promise<void>((resolve, reject) => {
             const source = createReadStream(tmp)
-            source.on('error', reject)
-            res.on('error', reject)
+            let settled = false
+            const finish = (err?: unknown): void => {
+              if (settled) return
+              settled = true
+              res.off('error', onResError)
+              res.off('close', onResClose)
+              if (err !== undefined) reject(err)
+              else resolve()
+            }
+            const abortSource = (err?: unknown): void => {
+              if (settled) return
+              if (source.closed) {
+                finish(err)
+                return
+              }
+              source.once('close', () => { finish(err) })
+              if (!source.destroyed) {
+                try { source.destroy() } catch { finish(err) }
+              }
+            }
+            const onResError = (err: Error): void => { abortSource(err) }
+            const onResClose = (): void => {
+              if (!res.writableEnded) abortSource()
+            }
+            source.on('error', (err) => { abortSource(err) })
+            source.on('close', () => { finish() })
+            res.on('error', onResError)
+            res.on('close', onResClose)
             source.pipe(res)
-            source.on('end', resolve)
           })
         } catch (error) {
           if (!res.headersSent) {

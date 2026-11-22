@@ -557,6 +557,40 @@ describe('partial updates', () => {
     const touched = store.update('web-01', { auth: { kind: 'key', keyPath: '~/keys/same' } })
     expect(touched.auth.passphrase).toBe('secret')
   })
+
+  it('operator leaves cached host entry untouched when a multi-field update fails validation', () => {
+    // Given an existing cached host entry
+    const store = makeStore()
+    store.create(basePayload)
+
+    // When a partial update mixes valid field changes with an invalid auth block
+    expect(() => store.update('web-01', {
+      host: '10.99.99.99',
+      port: 2222,
+      auth: { kind: 'key', keyPath: '' },
+    })).toThrow(/keyPath/)
+
+    // Then neither memory cache nor disk retains partial mutations from the rejected update
+    const current = store.find('web-01')
+    expect(current?.host).toBe('192.168.1.10')
+    expect(current?.port).toBe(22)
+    expect(current?.auth.kind).toBe('password')
+  })
+
+  it('operator sees keyReady=false in summarize when a key entry lacks keyPath', () => {
+    // Given a legacy or hand-edited store entry with key auth and empty keyPath
+    const store = makeStore()
+    store.create({ ...basePayload, auth: { kind: 'key', keyPath: '~/keys/id_ed25519' } })
+    const raw = JSON.parse(readFileSync(store.path, 'utf8')) as { hosts: Array<{ auth: { kind: string; keyPath?: string } }> }
+    raw.hosts[0]!.auth.keyPath = ''
+    writeFileSync(store.path, JSON.stringify(raw))
+
+    // When the store summarizes the entry
+    const summary = store.summarize(store.find('web-01')!)
+
+    // Then keyReady is false instead of misreporting a missing key as ready
+    expect(summary.keyReady).toBe(false)
+  })
 })
 
 describe('DSH_HOME wiring', () => {

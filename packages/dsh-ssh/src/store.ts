@@ -7,8 +7,8 @@
  * as ssh-skill's annotated ssh-config comments; document it, never log it.
  */
 
-import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
-import { randomUUID } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { dshHome } from './dsh-home.ts'
@@ -35,25 +35,33 @@ interface StoreFile {
   keys?: SshKeyEntry[]
 }
 
+/** Validate an auth block shape; returns an error message or undefined. */
+function validateAuth(auth: unknown): string | undefined {
+  if (typeof auth !== 'object' || auth === null) return 'auth must be an object'
+  const a = auth as Record<string, unknown>
+  if (a.kind !== 'key' && a.kind !== 'password' && a.kind !== 'agent') return 'auth.kind must be key, password or agent'
+  if (a.kind === 'key') {
+    if (typeof a.keyPath !== 'string' || a.keyPath.trim() === '') return 'auth.keyPath is required for key auth'
+    if (a.passphrase !== undefined && typeof a.passphrase !== 'string') return 'auth.passphrase must be a string when provided'
+  }
+  if (a.kind === 'password' && a.password !== undefined && typeof a.password !== 'string') {
+    return 'auth.password must be a string when provided'
+  }
+  if (a.kind === 'agent' && a.agentPath !== undefined && typeof a.agentPath !== 'string') {
+    return 'auth.agentPath must be a string when provided'
+  }
+  return undefined
+}
+
 /** Validate the wire shape of a host payload; returns a message or undefined. */
 export function validateHostPayload(payload: unknown): string | undefined {
   if (typeof payload !== 'object' || payload === null) return 'body must be a JSON object'
   const p = payload as Record<string, unknown>
   if (typeof p.host !== 'string' || p.host.trim() === '') return 'host is required'
   if (typeof p.user !== 'string' || p.user.trim() === '') return 'user is required'
-  const auth = p.auth as Record<string, unknown> | undefined
-  if (auth !== undefined) {
-    if (typeof auth !== 'object' || auth === null) return 'auth must be an object'
-    if (auth.kind !== 'key' && auth.kind !== 'password' && auth.kind !== 'agent') return 'auth.kind must be key, password or agent'
-    if (auth.kind === 'key' && (typeof auth.keyPath !== 'string' || auth.keyPath.trim() === '')) {
-      return 'auth.keyPath is required for key auth'
-    }
-    if (auth.kind === 'password' && auth.password !== undefined && typeof auth.password !== 'string') {
-      return 'auth.password must be a string when provided'
-    }
-    if (auth.kind === 'agent' && auth.agentPath !== undefined && typeof auth.agentPath !== 'string') {
-      return 'auth.agentPath must be a string when provided'
-    }
+  if (p.auth !== undefined) {
+    const authError = validateAuth(p.auth)
+    if (authError !== undefined) return authError
   }
   if (p.port !== undefined && (typeof p.port !== 'number' || !Number.isInteger(p.port) || p.port < 1 || p.port > 65535)) {
     return 'port must be an integer in 1..65535'
@@ -79,6 +87,41 @@ export function validateHostPayload(payload: unknown): string | undefined {
     return 'forwardAgent must be a boolean'
   }
   return undefined
+}
+
+/** Validate a full creation payload and build its normalized entry. */
+function buildValidatedHostEntry(payload: HostPayload, now: number): SshHostEntry {
+  const alias = payload.alias?.trim()
+  if (!alias) throw new Error('alias is required')
+  const aliasError = validateAlias(alias)
+  if (aliasError !== undefined) throw new Error(aliasError)
+  const bodyError = validateHostPayload(payload)
+  if (bodyError !== undefined) throw new Error(bodyError)
+  if (payload.auth === undefined) throw new Error('auth is required')
+  return {
+    alias,
+    host: payload.host.trim(),
+    port: payload.port ?? 22,
+    user: payload.user.trim(),
+    auth: {
+      kind: payload.auth.kind,
+      keyPath: payload.auth.kind === 'key' ? expandHome(payload.auth.keyPath?.trim() ?? '') : undefined,
+      passphrase: payload.auth.kind === 'key' ? payload.auth.passphrase || undefined : undefined,
+      password: payload.auth.kind === 'password' ? payload.auth.password : undefined,
+      agentPath: payload.auth.kind === 'agent' ? normalizeAgentPath(payload.auth.agentPath) : undefined,
+    },
+    proxyJump: [...(payload.proxyJump ?? [])],
+    proxyCommand: normalizeProxyCommand(payload.proxyCommand),
+    description: payload.description?.trim() || undefined,
+    environment: payload.environment?.trim() || undefined,
+    tags: [...(payload.tags ?? [])].map(tag => tag.trim()).filter(tag => tag !== ''),
+    location: payload.location?.trim() || undefined,
+    // Stored only when enabled, so a store file written without agent
+    // forwarding stays byte-identical to the pre-feature format.
+    forwardAgent: payload.forwardAgent === true ? true : undefined,
+    createdAt: now,
+    updatedAt: now,
+  }
 }
 
 /** Alias grammar: letters/digits plus dots, hyphens, underscores (IP/domain aliases included). */
@@ -112,7 +155,7 @@ export class HostStore {
   list(query?: string): SshHostEntry[] {
     const file = this.load()
     const needle = query?.trim().toLowerCase()
-    if (needle === undefined || needle === '') return file.hosts
+    if (needle === undefined || needle === '') return [...file.hosts]
     return file.hosts.filter(entry => entry.alias.toLowerCase().includes(needle)
       || (entry.description ?? '').toLowerCase().includes(needle)
       || entry.host.toLowerCase().includes(needle)
@@ -121,14 +164,16 @@ export class HostStore {
 
   /** Find one entry by alias. */
   find(alias: string): SshHostEntry | undefined {
-    return this.list().find(entry => entry.alias === alias)
+    return this.load().hosts.find(entry => entry.alias === alias)
   }
 
   /** Secret-free projection for the browser and agent surfaces. */
   summarize(entry: SshHostEntry): SshHostSummary {
     let keyReady = true
-    if (entry.auth.kind === 'key' && entry.auth.keyPath) {
-      keyReady = existsSync(expandHome(entry.auth.keyPath))
+    if (entry.auth.kind === 'key') {
+      keyReady = entry.auth.keyPath !== undefined
+        && entry.auth.keyPath !== ''
+        && existsSync(expandHome(entry.auth.keyPath))
     } else if (entry.auth.kind === 'agent') {
       keyReady = false
     }
@@ -167,52 +212,28 @@ export class HostStore {
 
   /** Create one entry. Throws on alias collision or invalid payload. */
   create(payload: HostPayload): SshHostEntry {
-    const alias = payload.alias?.trim()
-    if (!alias) throw new Error('alias is required')
-    const aliasError = validateAlias(alias)
-    if (aliasError !== undefined) throw new Error(aliasError)
-    const bodyError = validateHostPayload(payload)
-    if (bodyError !== undefined) throw new Error(bodyError)
-    if (payload.auth === undefined) throw new Error('auth is required')
+    const entry = buildValidatedHostEntry(payload, Date.now())
     const file = this.load()
-    if (file.hosts.some(entry => entry.alias === alias)) throw new Error(`alias '${alias}' already exists`)
-    const now = Date.now()
-    const entry: SshHostEntry = {
-      alias,
-      host: payload.host.trim(),
-      port: payload.port ?? 22,
-      user: payload.user.trim(),
-      auth: {
-        kind: payload.auth.kind,
-        keyPath: payload.auth.kind === 'key' ? expandHome(payload.auth.keyPath?.trim() ?? '') : undefined,
-        passphrase: payload.auth.kind === 'key' ? payload.auth.passphrase || undefined : undefined,
-        password: payload.auth.kind === 'password' ? payload.auth.password : undefined,
-        agentPath: payload.auth.kind === 'agent' ? normalizeAgentPath(payload.auth.agentPath) : undefined,
-      },
-      proxyJump: [...(payload.proxyJump ?? [])],
-      proxyCommand: normalizeProxyCommand(payload.proxyCommand),
-      description: payload.description?.trim() || undefined,
-      environment: payload.environment?.trim() || undefined,
-      tags: [...(payload.tags ?? [])].map(tag => tag.trim()).filter(tag => tag !== ''),
-      location: payload.location?.trim() || undefined,
-      // Stored only when enabled, so a store file written without agent
-      // forwarding stays byte-identical to the pre-feature format.
-      forwardAgent: payload.forwardAgent === true ? true : undefined,
-      createdAt: now,
-      updatedAt: now,
+    if (file.hosts.some(existing => existing.alias === entry.alias)) {
+      throw new Error(`alias '${entry.alias}' already exists`)
     }
-    file.hosts.push(entry)
-    this.save(file)
+    const nextFile: StoreFile = {
+      version: file.version,
+      hosts: [...file.hosts, entry],
+      ...(file.keys !== undefined ? { keys: file.keys } : {}),
+    }
+    this.save(nextFile)
     return entry
   }
 
   /** Update the fields present in `patch`; unknown aliases throw. */
   update(alias: string, patch: Partial<HostPayload>): SshHostEntry {
     const file = this.load()
-    const entry = file.hosts.find(candidate => candidate.alias === alias)
-    if (entry === undefined) throw new Error(`alias '${alias}' not found`)
-    // Partial-patch validation: only the present fields are checked (a
-    // caller may update just tags without resending host/user).
+    const index = file.hosts.findIndex(candidate => candidate.alias === alias)
+    if (index < 0) throw new Error(`alias '${alias}' not found`)
+    const entry = file.hosts[index]!
+    // Validate every present field before constructing the updated entry so a
+    // failed patch never partially mutates cached store state.
     if (patch.host !== undefined && (typeof patch.host !== 'string' || patch.host.trim() === '')) {
       throw new Error('host is required')
     }
@@ -242,27 +263,29 @@ export class HostStore {
     if (patch.tags !== undefined && (!Array.isArray(patch.tags) || patch.tags.some(x => typeof x !== 'string'))) {
       throw new Error('tags must be an array of strings')
     }
-    if (patch.host !== undefined) entry.host = patch.host.trim()
-    if (patch.port !== undefined) entry.port = patch.port
-    if (patch.user !== undefined) entry.user = patch.user.trim()
+    if (patch.description !== undefined && typeof patch.description !== 'string') {
+      throw new Error('description must be a string when provided')
+    }
+    if (patch.environment !== undefined && typeof patch.environment !== 'string') {
+      throw new Error('environment must be a string when provided')
+    }
+    if (patch.location !== undefined && typeof patch.location !== 'string') {
+      throw new Error('location must be a string when provided')
+    }
+    if (patch.auth !== undefined) {
+      const authError = validateAuth(patch.auth)
+      if (authError !== undefined) throw new Error(authError)
+    }
+
+    let nextAuth = entry.auth
     if (patch.auth !== undefined) {
       const auth = patch.auth
-      if (auth.kind !== 'key' && auth.kind !== 'password' && auth.kind !== 'agent') throw new Error('auth.kind must be key, password or agent')
-      if (auth.kind === 'key' && (typeof auth.keyPath !== 'string' || auth.keyPath.trim() === '')) {
-        throw new Error('auth.keyPath is required for key auth')
-      }
-      if (auth.kind === 'password' && auth.password !== undefined && typeof auth.password !== 'string') {
-        throw new Error('auth.password must be a string when provided')
-      }
-      if (auth.kind === 'agent' && auth.agentPath !== undefined && typeof auth.agentPath !== 'string') {
-        throw new Error('auth.agentPath must be a string when provided')
-      }
       // A changed key path with no passphrase means the new key has none;
       // only keep the old passphrase when the key path is unchanged.
       const keyChanged = auth.kind === 'key'
         && auth.keyPath !== undefined
         && expandHome(auth.keyPath.trim()) !== entry.auth.keyPath
-      entry.auth = {
+      nextAuth = {
         kind: auth.kind,
         keyPath: auth.kind === 'key' ? expandHome(auth.keyPath?.trim() ?? '') : undefined,
         passphrase: auth.kind === 'key'
@@ -274,17 +297,34 @@ export class HostStore {
           : undefined,
       }
     }
-    if (patch.proxyJump !== undefined) entry.proxyJump = [...patch.proxyJump]
-    if (patch.proxyCommand !== undefined) entry.proxyCommand = mergedProxyCommand
-    if (patch.description !== undefined) entry.description = patch.description.trim() || undefined
-    if (patch.environment !== undefined) entry.environment = patch.environment.trim() || undefined
-    if (patch.tags !== undefined) entry.tags = [...patch.tags].map(tag => tag.trim()).filter(tag => tag !== '')
-    if (patch.location !== undefined) entry.location = patch.location.trim() || undefined
-    // PATCH semantics: an omitted key keeps the stored value, false clears it.
-    if (patch.forwardAgent !== undefined) entry.forwardAgent = patch.forwardAgent === true ? true : undefined
-    entry.updatedAt = Date.now()
-    this.save(file)
-    return entry
+
+    const nextEntry: SshHostEntry = {
+      ...entry,
+      host: patch.host !== undefined ? patch.host.trim() : entry.host,
+      port: patch.port !== undefined ? patch.port : entry.port,
+      user: patch.user !== undefined ? patch.user.trim() : entry.user,
+      auth: nextAuth,
+      proxyJump: patch.proxyJump !== undefined ? [...patch.proxyJump] : entry.proxyJump,
+      proxyCommand: patch.proxyCommand !== undefined ? mergedProxyCommand : entry.proxyCommand,
+      description: patch.description !== undefined ? patch.description.trim() || undefined : entry.description,
+      environment: patch.environment !== undefined ? patch.environment.trim() || undefined : entry.environment,
+      tags: patch.tags !== undefined
+        ? [...patch.tags].map(tag => tag.trim()).filter(tag => tag !== '')
+        : entry.tags,
+      location: patch.location !== undefined ? patch.location.trim() || undefined : entry.location,
+      // PATCH semantics: an omitted key keeps the stored value, false clears it.
+      forwardAgent: patch.forwardAgent !== undefined
+        ? (patch.forwardAgent === true ? true : undefined)
+        : entry.forwardAgent,
+      updatedAt: Date.now(),
+    }
+    const nextFile: StoreFile = {
+      version: file.version,
+      hosts: file.hosts.map((candidate, candidateIndex) => (candidateIndex === index ? nextEntry : candidate)),
+      ...(file.keys !== undefined ? { keys: file.keys } : {}),
+    }
+    this.save(nextFile)
+    return nextEntry
   }
 
   /** Remove one entry. */
@@ -292,14 +332,21 @@ export class HostStore {
     const file = this.load()
     const index = file.hosts.findIndex(candidate => candidate.alias === alias)
     if (index < 0) throw new Error(`alias '${alias}' not found`)
-    file.hosts.splice(index, 1)
-    this.save(file)
+    const nextFile: StoreFile = {
+      version: file.version,
+      hosts: file.hosts.filter((_, candidateIndex) => candidateIndex !== index),
+      ...(file.keys !== undefined ? { keys: file.keys } : {}),
+    }
+    this.save(nextFile)
   }
 
   /** List managed keys with file-existence and host-reference metadata. */
   listKeys(): SshKeySummary[] {
     const file = this.load()
-    return (file.keys ?? []).map(key => this.summarizeKey(key, file))
+    const keys = file.keys ?? []
+    if (keys.length === 0) return []
+    const usedByPath = buildUsedByPathMap(file.hosts)
+    return keys.map(key => this.summarizeKey(key, file, usedByPath))
   }
 
   /** Create one managed key reference without reading its contents. */
@@ -313,39 +360,63 @@ export class HostStore {
       name,
       path,
       passphrase: typeof payload.passphrase === 'string' && payload.passphrase !== '' ? payload.passphrase : undefined,
-      note: payload.note?.trim() || undefined,
+      note: typeof payload.note === 'string' ? payload.note.trim() || undefined : undefined,
       createdAt: now,
       updatedAt: now,
     }
-    const keys = file.keys ??= []
-    keys.push(entry)
-    this.save(file)
-    return this.summarizeKey(entry, file)
+    const nextFile: StoreFile = {
+      version: file.version,
+      hosts: file.hosts,
+      keys: [...(file.keys ?? []), entry],
+    }
+    this.save(nextFile)
+    return this.summarizeKey(entry, nextFile)
   }
 
   /** Update a managed key; omitted fields and a blank passphrase keep old values. */
   updateKey(id: string, patch: SshKeyPayload): SshKeySummary {
     const file = this.load()
-    const entry = file.keys?.find(candidate => candidate.id === id)
-    if (entry === undefined) throw new Error(`managed key '${id}' not found`)
-    if (patch.name !== undefined) entry.name = requiredKeyName(patch.name)
-    if (patch.path !== undefined) entry.path = requiredKeyPath(patch.path)
-    if (patch.passphrase !== undefined) {
-      entry.passphrase = patch.passphrase === null || patch.passphrase === '' ? undefined : patch.passphrase
+    const keys = file.keys ?? []
+    const index = keys.findIndex(candidate => candidate.id === id)
+    if (index < 0) throw new Error(`managed key '${id}' not found`)
+    const entry = keys[index]!
+    const nextName = patch.name !== undefined ? requiredKeyName(patch.name) : entry.name
+    const nextPath = patch.path !== undefined ? requiredKeyPath(patch.path) : entry.path
+    const nextPassphrase = patch.passphrase !== undefined
+      ? (patch.passphrase === null || patch.passphrase === '' ? undefined : patch.passphrase)
+      : entry.passphrase
+    const nextNote = patch.note !== undefined
+      ? (typeof patch.note === 'string' ? patch.note.trim() || undefined : undefined)
+      : entry.note
+    const nextEntry: SshKeyEntry = {
+      ...entry,
+      name: nextName,
+      path: nextPath,
+      passphrase: nextPassphrase,
+      note: nextNote,
+      updatedAt: Date.now(),
     }
-    if (patch.note !== undefined) entry.note = patch.note.trim() || undefined
-    entry.updatedAt = Date.now()
-    this.save(file)
-    return this.summarizeKey(entry, file)
+    const nextFile: StoreFile = {
+      version: file.version,
+      hosts: file.hosts,
+      keys: keys.map((candidate, candidateIndex) => (candidateIndex === index ? nextEntry : candidate)),
+    }
+    this.save(nextFile)
+    return this.summarizeKey(nextEntry, nextFile)
   }
 
   /** Delete only the managed reference; stored host auth.keyPath values stay untouched. */
   deleteKey(id: string): void {
     const file = this.load()
-    const index = file.keys?.findIndex(candidate => candidate.id === id) ?? -1
+    const keys = file.keys ?? []
+    const index = keys.findIndex(candidate => candidate.id === id)
     if (index < 0) throw new Error(`managed key '${id}' not found`)
-    file.keys!.splice(index, 1)
-    this.save(file)
+    const nextFile: StoreFile = {
+      version: file.version,
+      hosts: file.hosts,
+      keys: keys.filter((_, candidateIndex) => candidateIndex !== index),
+    }
+    this.save(nextFile)
   }
 
   /** Resolve a transient managedKeyId into the host's existing keyPath/passphrase shape. */
@@ -368,15 +439,21 @@ export class HostStore {
     } as T
   }
 
-  private summarizeKey(key: SshKeyEntry, file: StoreFile): SshKeySummary {
+  private summarizeKey(key: SshKeyEntry, file: StoreFile, usedByPath?: Map<string, string[]>): SshKeySummary {
+    const resolvedPath = expandHome(key.path)
+    const usedBy = usedByPath !== undefined
+      ? [...(usedByPath.get(resolvedPath) ?? [])]
+      : file.hosts
+        .filter(host => host.auth.kind === 'key' && host.auth.keyPath !== undefined && host.auth.keyPath !== '' && expandHome(host.auth.keyPath) === resolvedPath)
+        .map(host => host.alias)
     return {
       id: key.id,
       name: key.name,
       path: key.path,
       hasPassphrase: key.passphrase !== undefined && key.passphrase !== '',
       note: key.note,
-      exists: existsSync(expandHome(key.path)),
-      usedBy: file.hosts.filter(host => host.auth.kind === 'key' && host.auth.keyPath === expandHome(key.path)).map(host => host.alias),
+      exists: existsSync(resolvedPath),
+      usedBy,
       createdAt: key.createdAt,
       updatedAt: key.updatedAt,
     }
@@ -392,25 +469,27 @@ export class HostStore {
    * @returns import statistics.
    */
   importFromSshConfig(): ImportResult {
-    // Per-run statistics: a later import must not report earlier runs' skips.
-    this.skippedBlocks = []
     const configPath = this.sshConfigOverride ?? sshConfigPath()
     if (!existsSync(configPath)) return { parsed: 0, added: 0, skipped: 0, skippedBlocks: [] }
     const { blocks, skipped } = readSshConfigBlocks(configPath)
-    this.skippedBlocks = [...skipped]
+    const skippedBlocks: ImportSkipBlock[] = [...skipped]
+    const skippedNames = new Set(skipped.map(block => block.name))
     const skip = (name: string, reason: ImportSkipReason): void => {
-      if (name === '') return
-      if (this.skippedBlocks.some(block => block.name === name)) return
-      this.skippedBlocks.push({ name, reason })
+      if (name === '' || skippedNames.has(name)) return
+      skippedNames.add(name)
+      skippedBlocks.push({ name, reason })
     }
-    let added = 0
+    const file = this.load()
+    const existingAliases = new Set(file.hosts.map(entry => entry.alias))
+    const addedEntries: SshHostEntry[] = []
+    const now = Date.now()
     for (const block of blocks) {
       const pattern = block.pattern.split(/\s+/)[0]
       if (pattern.includes('*') || pattern.includes('?')) {
         skip(pattern, 'wildcard')
         continue
       }
-      if (this.list().some(entry => entry.alias === pattern)) {
+      if (existingAliases.has(pattern)) {
         skip(pattern, 'existing')
         continue
       }
@@ -447,17 +526,24 @@ export class HostStore {
         forwardAgent: parseForwardAgentValue(block.props.forwardagent),
       }
       try {
-        this.create(payload)
-        added += 1
+        const entry = buildValidatedHostEntry(payload, now)
+        existingAliases.add(entry.alias)
+        addedEntries.push(entry)
       } catch {
         // Unusable entry (bad alias grammar, conflicting transports, ...).
         skip(pattern, 'invalid')
       }
     }
-    return { parsed: blocks.length, added, skipped: this.skippedBlocks.length, skippedBlocks: [...this.skippedBlocks] }
+    if (addedEntries.length > 0) {
+      const nextFile: StoreFile = {
+        version: file.version,
+        hosts: [...file.hosts, ...addedEntries],
+        ...(file.keys !== undefined ? { keys: file.keys } : {}),
+      }
+      this.save(nextFile)
+    }
+    return { parsed: blocks.length, added: addedEntries.length, skipped: skippedBlocks.length, skippedBlocks }
   }
-
-  private skippedBlocks: ImportSkipBlock[] = []
 
   /**
    * Last parsed store keyed by file identity. list/find ride every acquire
@@ -499,13 +585,31 @@ export class HostStore {
   private save(file: StoreFile): void {
     const dir = dirname(this.path)
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true, mode: 0o700 })
-    const tmp = this.path + '.tmp'
+    const tmp = `${this.path}.tmp-${process.pid}-${randomBytes(4).toString('hex')}`
     // Secrets live in this file: keep it readable by the owner only. The
     // tmp file carries the 0600 mode through the rename.
-    writeFileSync(tmp, JSON.stringify(file, null, 2) + '\n', { encoding: 'utf8', mode: 0o600 })
-    renameSync(tmp, this.path)
+    try {
+      writeFileSync(tmp, JSON.stringify(file, null, 2) + '\n', { encoding: 'utf8', mode: 0o600 })
+      renameSync(tmp, this.path)
+    } catch (error) {
+      try { unlinkSync(tmp) } catch { /* best effort */ }
+      throw error
+    }
     this.cache = undefined
   }
+}
+
+/** Group aliases by expanded private-key path in a single pass. */
+function buildUsedByPathMap(hosts: readonly SshHostEntry[]): Map<string, string[]> {
+  const usedByPath = new Map<string, string[]>()
+  for (const host of hosts) {
+    if (host.auth.kind !== 'key' || !host.auth.keyPath) continue
+    const resolvedPath = expandHome(host.auth.keyPath)
+    const existing = usedByPath.get(resolvedPath)
+    if (existing === undefined) usedByPath.set(resolvedPath, [host.alias])
+    else existing.push(host.alias)
+  }
+  return usedByPath
 }
 
 /** Normalize an agent endpoint for storage: trim, expand `~`, and resolve the SSH_AUTH_SOCK token. */

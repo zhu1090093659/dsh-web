@@ -102,4 +102,17 @@ describe('managed SSH keys (#2069)', () => {
     // Then ordinary host writes do not invent the new top-level field
     expect('keys' in JSON.parse(readFileSync(file, 'utf8'))).toBe(false)
   })
+
+  it('operator keeps cached managed-key fields unchanged when an update fails path validation', () => {
+    // Given an existing managed key in the cached store
+    const { store, keyPath } = setup()
+    const created = store.createKey({ name: 'Original key', path: keyPath })
+
+    // When an update includes a valid name change alongside an invalid relative path
+    expect(() => store.updateKey(created.id, { name: 'Renamed key', path: 'relative/key' })).toThrow(/absolute/)
+
+    // Then the cached managed key retains its original name and path
+    expect(store.listKeys()[0]?.name).toBe('Original key')
+    expect(store.listKeys()[0]?.path).toBe(keyPath)
+  })
 })

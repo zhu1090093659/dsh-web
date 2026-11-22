@@ -58,15 +58,15 @@ whenToUse: Explicit dsh-web release/publish requests; release-pipeline, automati
 
 在修改版本号、合并到 `main`、创建或推送 tag 之前，先按第 1 节确定 `PREVIOUS_VERSION` 与 `TARGET_VERSION`，再完成本审计；全新安装成功不能替代存量用户自动升级成功。
 
-自动升级至少要覆盖两条真实路径：plugin-manager 的 `check-updates` → `update` 路径，以及 Doctor 启动 DSH 前的自动迁移路径；如果某种启动方式绕过迁移器，必须明确标为不支持，并在 release notes 写出恢复方式，不能默认为兼容。
+自动升级必须覆盖真实存在的每一条路径：当前唯一会改写用户 profile 的入口是 plugin-manager 的 `check-updates` → `update` 任务；`dsh-doctor` 已在 0.4.0 退出家族，仓库里没有启动期迁移器，直接 `dsh web` 不做迁移。若将来重新引入启动期迁移器，必须为它补上同样的验证；任何绕过迁移器的启动方式都要明确标为不支持，并在 release notes 写出恢复方式，不能默认为兼容。
 
 以 `PREVIOUS_TAG..HEAD` 的实际 diff、目标 npm tarball 和当前 profile 格式为依据，逐项检查以下兼容面：
 
 - 包身份与加载契约：npm `name`、`exports`、`dsh.bundle` / `cordis.patch.yml`、`dsh.client`、浏览器 loader id、聚合包 self row、旧包别名和迁移元数据。
 - 用户 profile 与写入文件：`$DSH_HOME/profiles/*/package.json`、`pnpm-lock.yaml`、`dsh.profile.bundles`、`cordis.patch.yml`、`disabled` 覆盖行、bundle 顺序和官方 CLI 写入行为。
 - 持久化与线协议：设置 section id、API path、请求头、localStorage / 配置 key、IPC / wire shape、schema 默认值、旧字段读取和新字段写入。已经持久化或上线路径中的标识符默认视为冻结，除非有可验证的映射。
-- 宿主与 SDK 契约：`@deepseek-ai/*` 公共 API、服务注入、模块表、DSH 最低版本、Node 版本、CLI 参数、进程启动和退出语义。包声明的 `dsh.engines.dsh` 下限必须不高于发布验证所使用的 DSH 版本；CI 固定版本低于声明下限时阻断发布。plugin-manager 与 Doctor 的 DSH 兼容判定必须一致，或在支持矩阵中明确差异与限制。
-- 自动迁移入口：分别验证 plugin-manager 的更新任务、Doctor 启动前迁移和直接 `dsh web`；直接入口若绕过 Doctor 迁移，必须补齐迁移或在 release notes 给出明确的不支持声明和人工恢复步骤。两条自动迁移路径的安装顺序、目标版本、回滚结果必须一致，不能只在一条路径修复。
+- 宿主与 SDK 契约：`@deepseek-ai/*` 公共 API、服务注入、模块表、DSH 最低版本、Node 版本、CLI 参数、进程启动和退出语义。包声明的 `dsh.engines.dsh` 下限必须不高于发布验证所使用的 DSH 版本；CI 固定版本低于声明下限时阻断发布。更新入口与启动入口的 DSH 兼容判定必须一致，或在支持矩阵中明确差异与限制。
+- 自动迁移入口：分别验证 plugin-manager 的更新任务和直接 `dsh web`。直接启动不执行迁移，旧聚合名迁移只发生在更新任务里；这一点必须在 release notes 声明，并给出人工恢复步骤（在 profile 里改包名或重装聚合包）。两条入口的安装顺序、目标版本、回滚结果必须一致，不能只在一条路径修复。
 - 跨平台生命周期：macOS、Linux、Windows 的路径、权限、临时文件、备份、服务启动方式和崩溃恢复；不要只用当前 macOS 环境的路径或进程假设。
 - 生成与发布产物：共享源与同步副本、`lib/`、aggregate manifest、market / skin 产物、npm 包内文件白名单；不能只检查源码而漏掉实际 tarball。
 
@@ -84,7 +84,7 @@ whenToUse: Explicit dsh-web release/publish requests; release-pipeline, automati
 - 上一正式版本 → 目标版本：保留真实旧 profile、配置、启停状态、bundle 顺序和已安装扩展，执行用户会触发的自动升级路径，重启或执行 `--dump-config` 后确认数据和功能仍在。
 - 仍受支持的最旧版本以及每一个 legacy mapping：验证旧字段、旧包名、旧路径和旧锁文件都能到达目标状态；一次跨多个版本的升级不能只测逐级升级。
 - 失败与重试：注入目标不可用、安装成功但验证失败、旧包移除失败、进程中断和重复执行，确认旧状态可恢复、不会出现新旧包同时挂载，第二次执行是安全 no-op。
-- 真实用户入口：分别验证 plugin-manager 更新按钮、Doctor 启动前迁移和任何 direct CLI 启动入口；入口行为不一致时阻断发布或明确限制。
+- 真实用户入口：分别验证 plugin-manager 更新按钮和任何 direct CLI 启动入口；入口行为不一致时阻断发布或明确限制。
 - 跨平台：凡涉及路径、权限、服务、spawn、临时文件或锁的变更，至少在 macOS / Linux / Windows 各验证一次；不能以单平台单元测试代替。
 
 发布前至少执行以下门禁，并把针对本次迁移的测试文件和证据一并纳入提交：

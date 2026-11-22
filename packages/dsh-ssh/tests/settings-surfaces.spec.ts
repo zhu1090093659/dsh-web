@@ -25,6 +25,12 @@ interface RecordedSurfaces {
   tools: string[]
   sections: string[]
   upgrades: number
+  routeRegistrations: number
+  routeDisposals: number
+  upgradeRegistrations: number
+  upgradeDisposals: number
+  toolRegistrations: number
+  toolDisposals: number
 }
 
 /** A fake host context: effects, the three surface registries, and the loader entry. */
@@ -38,11 +44,13 @@ interface FakeHost {
 }
 
 /** One registration that removes itself from its log when disposed. */
-function register(log: string[], name: string): () => void {
+function register(log: string[], name: string, onRegister?: () => void, onDispose?: () => void): () => void {
   log.push(name)
+  onRegister?.()
   return () => {
     const at = log.indexOf(name)
     if (at >= 0) log.splice(at, 1)
+    onDispose?.()
   }
 }
 
@@ -52,7 +60,18 @@ function register(log: string[], name: string): () => void {
  * @returns the context, its recorded surfaces, and its teardown.
  */
 function fakeHost(profileEntryConfig?: Record<string, unknown>): FakeHost {
-  const recorded: RecordedSurfaces = { routes: [], tools: [], sections: [], upgrades: 0 }
+  const recorded: RecordedSurfaces = {
+    routes: [],
+    tools: [],
+    sections: [],
+    upgrades: 0,
+    routeRegistrations: 0,
+    routeDisposals: 0,
+    upgradeRegistrations: 0,
+    upgradeDisposals: 0,
+    toolRegistrations: 0,
+    toolDisposals: 0,
+  }
   const disposers: Array<() => void> = []
   const listeners = new Map<string, Array<() => void>>()
   const ctx = {
@@ -80,14 +99,28 @@ function fakeHost(profileEntryConfig?: Record<string, unknown>): FakeHost {
       section: (options: { name: string }) => register(recorded.sections, options.name),
     },
     webServer: {
-      register: (route: { path: string }) => register(recorded.routes, route.path),
+      register: (route: { path: string }) => register(
+        recorded.routes,
+        route.path,
+        () => { recorded.routeRegistrations += 1 },
+        () => { recorded.routeDisposals += 1 },
+      ),
       registerUpgrade: () => {
         recorded.upgrades += 1
-        return () => { recorded.upgrades -= 1 }
+        recorded.upgradeRegistrations += 1
+        return () => {
+          recorded.upgrades -= 1
+          recorded.upgradeDisposals += 1
+        }
       },
     },
     tools: {
-      register: (tool: { name: string }) => register(recorded.tools, tool.name),
+      register: (tool: { name: string }) => register(
+        recorded.tools,
+        tool.name,
+        () => { recorded.toolRegistrations += 1 },
+        () => { recorded.toolDisposals += 1 },
+      ),
     },
   }
   return {
@@ -170,7 +203,7 @@ describe('dsh-ssh host surfaces follow the plugin config', () => {
     apply(host.ctx, Config({ enabled: false }))
 
     // Then nothing is registered
-    expect(host.recorded).toEqual({ routes: [], tools: [], sections: [], upgrades: 0 })
+    expect(host.recorded).toMatchObject({ routes: [], tools: [], sections: [], upgrades: 0 })
     host.teardown()
   })
 
@@ -187,7 +220,7 @@ describe('dsh-ssh host surfaces follow the plugin config', () => {
     host.emit('loader/volatile-update')
 
     // Then every surface is gone
-    expect(host.recorded).toEqual({ routes: [], tools: [], sections: [], upgrades: 0 })
+    expect(host.recorded).toMatchObject({ routes: [], tools: [], sections: [], upgrades: 0 })
 
     // When the operator turns the switch back on through the same reference
     reference[VOLATILE_WRITE](true)
@@ -221,7 +254,7 @@ describe('dsh-ssh host surfaces follow the plugin config', () => {
     apply(host.ctx, Config({ enabled: false }))
 
     // Then the explicit switch stands and no surface is registered
-    expect(host.recorded).toEqual({ routes: [], tools: [], sections: [], upgrades: 0 })
+    expect(host.recorded).toMatchObject({ routes: [], tools: [], sections: [], upgrades: 0 })
     host.teardown()
   })
 
@@ -236,4 +269,58 @@ describe('dsh-ssh host surfaces follow the plugin config', () => {
     // Then the prompt section carries the plugin guidance under the stable name
     expect(host.recorded.sections).toEqual(['plugin:dsh-ssh'])
     host.teardown()
-  })})
+  })
+
+  it('operator editing terminalFontFamily or connectTimeoutMs never tears down routes, upgrade, or tools', () => {
+    // Given a running instance with active routes, terminal upgrade, and tools
+    useDshHome()
+    const host = fakeHost()
+    const config = Config({})
+    apply(host.ctx, config)
+    const initialRoutes = host.recorded.routeRegistrations
+    const initialUpgrades = host.recorded.upgradeRegistrations
+    const initialTools = host.recorded.toolRegistrations
+
+    // When the operator edits terminalFontFamily and connectTimeoutMs through volatile references
+    const fontRef = config.terminalFontFamily as unknown as Record<symbol, (next: string) => void>
+    const timeoutRef = config.connectTimeoutMs as unknown as Record<symbol, (next: number) => void>
+    fontRef[VOLATILE_WRITE]('"JetBrains Mono", monospace')
+    host.emit('loader/volatile-update')
+    timeoutRef[VOLATILE_WRITE](45_000)
+    host.emit('loader/volatile-update')
+
+    // Then none of the mounted routes, terminal upgrade, or tools were disposed or re-registered
+    expect(host.recorded.routeDisposals).toBe(0)
+    expect(host.recorded.upgradeDisposals).toBe(0)
+    expect(host.recorded.toolDisposals).toBe(0)
+    expect(host.recorded.routeRegistrations).toBe(initialRoutes)
+    expect(host.recorded.upgradeRegistrations).toBe(initialUpgrades)
+    expect(host.recorded.toolRegistrations).toBe(initialTools)
+    host.teardown()
+  })
+
+  it('operator toggling announceToAgent updates only the prompt section and leaves live routes untouched', () => {
+    // Given an enabled instance starting with announceToAgent disabled
+    useDshHome()
+    const host = fakeHost()
+    const config = Config({})
+    apply(host.ctx, config)
+    const announceRef = config.announceToAgent as unknown as Record<symbol, (next: boolean) => void>
+    expect(host.recorded.sections).toEqual([])
+
+    // When announceToAgent flips to true and back to false
+    announceRef[VOLATILE_WRITE](true)
+    host.emit('loader/volatile-update')
+    expect(host.recorded.sections).toEqual(['plugin:dsh-ssh'])
+
+    announceRef[VOLATILE_WRITE](false)
+    host.emit('loader/volatile-update')
+
+    // Then the prompt section follows the toggle while routes, upgrade, and tools stay continuously mounted
+    expect(host.recorded.sections).toEqual([])
+    expect(host.recorded.routeDisposals).toBe(0)
+    expect(host.recorded.upgradeDisposals).toBe(0)
+    expect(host.recorded.toolDisposals).toBe(0)
+    host.teardown()
+  })
+})

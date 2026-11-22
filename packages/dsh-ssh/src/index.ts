@@ -238,37 +238,41 @@ function applyImpl(ctx: Context, config?: ResolvedConfig): void {
   let disposeService: (() => void) | undefined
 
   // Register (or drop) every surface to match the resolved config. Each group
-  // is kept under one disposer: re-registering first tears the old one down
-  // so duplicate-name registrations never throw.
+  // stays mounted while its own condition holds, so unrelated volatile edits
+  // (such as terminalFontFamily or connectTimeoutMs) never tear down routes
+  // and kill live terminal sessions.
   const sync = (): void => {
     // A settings edit reaches this instance without a remount; apply the
     // connection ceiling before re-deriving the surfaces so connections opened
     // by the request that follows use the new value.
     engine.setConnectTimeout(readConfigField(config?.connectTimeoutMs, DEFAULT_CONNECT_TIMEOUT_MS))
     const value = resolve()
-    if (disposeSection !== undefined) {
+    const wantSection = value.enabled && value.announceToAgent
+    if (!wantSection && disposeSection !== undefined) {
       disposeSection()
       disposeSection = undefined
     }
-    if (disposeRoutes !== undefined) {
-      disposeRoutes()
-      disposeRoutes = undefined
+    if (!value.enabled) {
+      if (disposeRoutes !== undefined) {
+        disposeRoutes()
+        disposeRoutes = undefined
+      }
+      if (disposeTools !== undefined) {
+        disposeTools()
+        disposeTools = undefined
+      }
+      // The service follows the master switch only: a settings edit that keeps
+      // the plugin on leaves the provision — and every dependent's inject scope —
+      // alone, so an unrelated field does not reboot consumers.
+      if (disposeService !== undefined) {
+        // Unproviding releases every dependent fiber that injected the service;
+        // each of those scopes unloads with it.
+        disposeService()
+        disposeService = undefined
+      }
+      return
     }
-    if (disposeTools !== undefined) {
-      disposeTools()
-      disposeTools = undefined
-    }
-    // The service follows the master switch only: a settings edit that keeps
-    // the plugin on leaves the provision — and every dependent's inject scope —
-    // alone, so an unrelated field does not reboot consumers.
-    if (disposeService !== undefined && !value.enabled) {
-      // Unproviding releases every dependent fiber that injected the service;
-      // each of those scopes unloads with it.
-      disposeService()
-      disposeService = undefined
-    }
-    if (!value.enabled) return
-    if (value.announceToAgent) {
+    if (wantSection && disposeSection === undefined) {
       disposeSection = ctx.systemPrompt.section({
         name: 'plugin:dsh-ssh',
         order: SECTION_ORDER,
@@ -279,27 +283,31 @@ function applyImpl(ctx: Context, config?: ResolvedConfig): void {
         text: visibleToolText(ctx.tools, SSH_TOOL_NAMES, SSH_GUIDANCE),
       })
     }
-    disposeRoutes = ctx.effect(
-      () => {
-        const disposers = routes.map(route => ctx.webServer.register(route))
-        const upgradeDisposer = ctx.webServer.registerUpgrade(upgrade)
-        return () => {
-          for (const dispose of disposers) dispose()
-          upgradeDisposer()
-          // Dropping the routes also ends the terminal sessions they served:
-          // a live shell must not outlive the surface that can reach it.
-          terminalSessions.dispose()
-        }
-      },
-      'dsh-ssh: routes',
-    )
-    disposeTools = ctx.effect(
-      () => {
-        const disposers = tools.map(tool => ctx.tools.register(tool))
-        return () => { for (const dispose of disposers) dispose() }
-      },
-      'dsh-ssh: tools',
-    )
+    if (disposeRoutes === undefined) {
+      disposeRoutes = ctx.effect(
+        () => {
+          const disposers = routes.map(route => ctx.webServer.register(route))
+          const upgradeDisposer = ctx.webServer.registerUpgrade(upgrade)
+          return () => {
+            for (const dispose of disposers) dispose()
+            upgradeDisposer()
+            // Dropping the routes also ends the terminal sessions they served:
+            // a live shell must not outlive the surface that can reach it.
+            terminalSessions.dispose()
+          }
+        },
+        'dsh-ssh: routes',
+      )
+    }
+    if (disposeTools === undefined) {
+      disposeTools = ctx.effect(
+        () => {
+          const disposers = tools.map(tool => ctx.tools.register(tool))
+          return () => { for (const dispose of disposers) dispose() }
+        },
+        'dsh-ssh: tools',
+      )
+    }
     if (disposeService === undefined && typeof (ctx as { provide?: unknown }).provide === 'function') {
       disposeService = ctx.provide(DSH_SSH_SERVICE, createService(engine))
     }

@@ -1,7 +1,7 @@
 {
   "name": "@linxin666/dsh-client-ui-task-board-ssh",
   "description": "Task board provider that runs a pinned card as a headless agent session on a remote host reached through dsh-ssh, with a POSIX launcher that survives the local host going away.",
-  "version": "0.4.20",
+  "version": "0.4.21",
   "icon": "icon.svg",
   "type": "module",
   "engines": {

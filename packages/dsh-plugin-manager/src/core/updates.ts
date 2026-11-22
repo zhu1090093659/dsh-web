@@ -23,6 +23,38 @@ import type { PluginUpdateItem } from './protocol.ts'
 /** The npm scope DSH's own packages are published under. */
 export const OFFICIAL_SCOPE = '@deepseek-ai/'
 
+/** One exact registry version the user chose not to install. */
+export interface IgnoredPluginUpdate {
+  id: string
+  version: string
+}
+
+/** Whether this exact offer is ignored; a newer version does not match. */
+export function isUpdateIgnored(item: PluginUpdateItem, ignored: readonly IgnoredPluginUpdate[]): boolean {
+  return ignored.some(entry => entry.id === item.id && entry.version === item.latest)
+}
+
+/** Rows still offered to the user and to the bulk-update queue. */
+export function unignoredUpdates(items: readonly PluginUpdateItem[], ignored: readonly IgnoredPluginUpdate[]): PluginUpdateItem[] {
+  return items.filter(item => !isUpdateIgnored(item, ignored))
+}
+
+/** Rows currently hidden by an exact-version ignore rule. */
+export function ignoredUpdates(items: readonly PluginUpdateItem[], ignored: readonly IgnoredPluginUpdate[]): PluginUpdateItem[] {
+  return items.filter(item => isUpdateIgnored(item, ignored))
+}
+
+/** Add an idempotent exact-version ignore rule. */
+export function withIgnoredUpdate(current: readonly IgnoredPluginUpdate[], item: PluginUpdateItem): IgnoredPluginUpdate[] {
+  if (isUpdateIgnored(item, current)) return [...current]
+  return [...current, { id: item.id, version: item.latest }]
+}
+
+/** Remove this exact offer's ignore rule, leaving other plugins untouched. */
+export function withoutIgnoredUpdate(current: readonly IgnoredPluginUpdate[], item: PluginUpdateItem): IgnoredPluginUpdate[] {
+  return current.filter(entry => entry.id !== item.id || entry.version !== item.latest)
+}
+
 /** Whether a package id is a third-party plugin rather than a DSH-shipped one. */
 export function isThirdPartyPlugin(id: string): boolean {
   return !id.startsWith(OFFICIAL_SCOPE)

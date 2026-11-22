@@ -316,6 +316,11 @@
   font-size: 12px;
 }
 
+.rowAction {
+  flex: none;
+  margin-inline-start: auto;
+}
+
 /* Updates that landed but which this process has not loaded. They still count
  * as applied; this list is the fact a clean in-place success would have hidden,
  * and the toolbar's own restart entry is what resolves it. */

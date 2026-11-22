@@ -21,7 +21,10 @@ import { PluginUpdatePatch, type PluginUpdatePatchInjected, type PluginPageSubje
 import { en, type PluginManagerKey } from '../src/client/locales.ts'
 import type { InstallProgressItem, PluginUpdateItem, PluginUpdateResult } from '../src/core/protocol.ts'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  localStorage.clear()
+})
 
 /** English translate stub with {param} interpolation. */
 const t: ComponentProps<typeof PluginUpdatePatch>['t'] = (key, params) => {
@@ -145,6 +148,35 @@ describe('update check', () => {
 
     // Then the section records the version the update would install
     await waitFor(() => { expect(document.querySelector('[data-update-latest]')?.getAttribute('data-update-latest')).toBe('0.5.0') })
+  })
+
+  it('user ignores and restores one version, and a newer release is offered again', async () => {
+    // Given a newer release for this page's bundle
+    let latest = '0.5.0'
+    const update = vi.fn(async (_id: string) => landed(latest))
+    renderPatch(face({ checkUpdates: async () => [{ ...updateItem, latest }], update }))
+    fireEvent.click(screen.getByRole('button', { name: t('checkUpdates') }))
+    await waitFor(() => { expect(updateAction().disabled).toBe(false) })
+
+    // When that exact version is ignored
+    fireEvent.click(screen.getByRole('button', { name: t('ignoreUpdate') }))
+
+    // Then the update action is replaced by an explanation and a restore action
+    await waitFor(() => { expect(document.querySelector('[data-update-ignored]')?.textContent).toBe(t('ignoredUpdate')) })
+    expect(screen.queryByRole('button', { name: t('update') })).toBeNull()
+    expect(update).not.toHaveBeenCalled()
+
+    // A restore brings the same offer back
+    fireEvent.click(screen.getByRole('button', { name: t('restoreUpdate') }))
+    await waitFor(() => { expect(updateAction().disabled).toBe(false) })
+
+    // Ignoring 0.5.0 does not suppress the later 0.6.0 offer
+    fireEvent.click(screen.getByRole('button', { name: t('ignoreUpdate') }))
+    await waitFor(() => { expect(document.querySelector('[data-update-ignored]')?.textContent).toBe(t('ignoredUpdate')) })
+    latest = '0.6.0'
+    fireEvent.click(screen.getByRole('button', { name: t('checkUpdates') }))
+    await waitFor(() => { expect(document.querySelector('[data-update-latest]')?.getAttribute('data-update-latest')).toBe('0.6.0') })
+    expect(updateAction().disabled).toBe(false)
   })
 
   it('user sees no compatibility line for a release that declares no DSH requirement', async () => {

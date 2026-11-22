@@ -19,8 +19,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { PluginBatchUpdateResult, PluginUpdateItem, RestartMode, RestartPlanWire } from '../core/protocol.ts'
-import { applicableUpdates, thirdPartyUpdates } from '../core/updates.ts'
+import { applicableUpdates, ignoredUpdates, thirdPartyUpdates, unignoredUpdates, type IgnoredPluginUpdate } from '../core/updates.ts'
 import { displayMinimumVersion } from '../core/version.ts'
+import { forgetIgnoredUpdate, loadIgnoredUpdates, rememberIgnoredUpdate } from './ignored-updates.ts'
 import { dshGateOf } from './PluginUpdatePatch.tsx'
 import css from './plugin-manager.module.css'
 
@@ -110,6 +111,8 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
   const [checked, setChecked] = useState(false)
   /** Every third-party row the last check reported, including the applied ones. */
   const [rows, setRows] = useState<PluginUpdateItem[]>([])
+  /** Exact-version offers hidden by the user; the rows remain available for restore. */
+  const [ignored, setIgnored] = useState<IgnoredPluginUpdate[]>(() => loadIgnoredUpdates())
   const [applied, setApplied] = useState<string[]>([])
   /**
    * Updates this run applied whose new version the running host has not loaded,
@@ -133,7 +136,9 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
   /** Synchronous in-flight mirror of the phase: a click and a keypress can land in one frame. */
   const busyRef = useRef(false)
 
-  const pending = applicableUpdates(rows)
+  const visibleRows = unignoredUpdates(rows, ignored)
+  const ignoredRows = ignoredUpdates(rows, ignored)
+  const pending = applicableUpdates(visibleRows)
 
   /** Close the flyout on Escape, the shell's own dismissal gesture. */
   useEffect(() => {
@@ -151,6 +156,8 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
     setPhase('checking')
     setError(undefined)
     setRestartMode(undefined)
+    // Re-read on every check so a rule written by the per-plugin block is honored too.
+    setIgnored(loadIgnoredUpdates())
     void checkUpdates().then(items => {
       const thirdParty = thirdPartyUpdates(items)
       setRows(thirdParty)
@@ -168,9 +175,19 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
     })
   }
 
+  const onIgnore = (row: PluginUpdateItem): void => {
+    if (busyRef.current) return
+    setIgnored(rememberIgnoredUpdate(ignored, row))
+  }
+
+  const onRestore = (row: PluginUpdateItem): void => {
+    if (busyRef.current) return
+    setIgnored(forgetIgnoredUpdate(ignored, row))
+  }
+
   const onUpdateAll = (): void => {
     if (busyRef.current) return
-    const queue = applicableUpdates(rows)
+    const queue = applicableUpdates(unignoredUpdates(rows, ignored))
     if (queue.length === 0) return
     busyRef.current = true
     setPhase('updating')
@@ -262,7 +279,7 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
     ? null
     : <p className={css.error} role="alert" data-update-error>{error}</p>
   /** What is still pending after a partial run (the applied rows leave the list). */
-  const remaining = rows.length
+  const remaining = visibleRows.length
   const failedCount = failures.length
   /**
    * One line for the whole run: the row in flight, what is still pending, and —
@@ -335,10 +352,10 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
               ))}
             </ul>
           )}
-          {rows.length === 0 && applied.length === 0 && error === undefined && <p className={css.hint}>{t('noUpdates')}</p>}
-          {rows.length > 0 && (
+          {visibleRows.length === 0 && applied.length === 0 && error === undefined && <p className={css.hint}>{t('noUpdates')}</p>}
+          {visibleRows.length > 0 && (
             <ul className={css.panelList}>
-              {rows.map(row => {
+              {visibleRows.map(row => {
                 // One verdict per row, read once: the badge, its copy and the
                 // bulk action's exclusion all come from the same answer.
                 const gate = dshGateOf(row)
@@ -361,10 +378,41 @@ export function PluginListToolbar(props: PluginListToolbarProps) {
                         {t('updateFailedRow', { reason: failure.error })}
                       </span>
                     )}
+                    <button
+                      type="button"
+                      className={`${css.toolbarButton} ${css.rowAction}`}
+                      data-update-ignore={row.id}
+                      disabled={busy}
+                      onClick={() => { onIgnore(row) }}
+                    >
+                      {t('ignoreUpdate')}
+                    </button>
                   </li>
                 )
               })}
             </ul>
+          )}
+          {ignoredRows.length > 0 && (
+            <div data-ignored-updates>
+              <p className={css.hint}>{t('ignoredUpdates', { count: String(ignoredRows.length) })}</p>
+              <ul className={css.panelList}>
+                {ignoredRows.map(row => (
+                  <li key={row.id} className={css.panelRow} data-ignored-update-row={row.id}>
+                    <span className={css.panelName}>{row.id}</span>
+                    <span className={css.panelVersion}>{row.current} → {row.latest}</span>
+                    <button
+                      type="button"
+                      className={`${css.toolbarButton} ${css.rowAction}`}
+                      data-update-restore={row.id}
+                      disabled={busy}
+                      onClick={() => { onRestore(row) }}
+                    >
+                      {t('restoreUpdate')}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           <div className={css.panelActions}>
             {pending.length > 0 && (

@@ -20,7 +20,10 @@ import { PluginListToolbar } from '../src/client/PluginListToolbar.tsx'
 import { en, type PluginManagerKey } from '../src/client/locales.ts'
 import type { PluginBatchUpdateResult, PluginUpdateItem, PluginUpdateOutcome } from '../src/core/protocol.ts'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  localStorage.clear()
+})
 
 /** English translate stub with {param} interpolation. */
 const t: ComponentProps<typeof PluginListToolbar>['t'] = (key, params) => {
@@ -156,6 +159,35 @@ describe('updating every third-party plugin', () => {
     expect(updateAll.mock.calls[0]?.[0]).toEqual(['dsh-usage', 'dsh-weather'])
     expect(listedRows()).toEqual([])
     expect(document.querySelector('[data-update-applied]')?.textContent).toBe(t('updateAllDone'))
+  })
+
+  it('user ignores one exact version without touching the rest of the batch, then restores it', async () => {
+    // Given two third-party updates
+    const second: PluginUpdateItem = { id: 'dsh-weather', current: '1.0.0', latest: '1.1.0' }
+    const updateAll = vi.fn(async (ids: string[]) => batch(ids.map(id => applied(id, '1.1.0'))))
+    renderToolbar(face({ checkUpdates: vi.fn(async () => [thirdParty, second]), updateAll }))
+    fireEvent.click(screen.getByRole('button', { name: t('checkUpdates') }))
+    await waitFor(() => { expect(listedRows()).toEqual(['dsh-usage', 'dsh-weather']) })
+
+    // When only dsh-usage 0.9.2 is ignored
+    fireEvent.click(document.querySelector('[data-update-ignore="dsh-usage"]') as HTMLElement)
+
+    // Then it leaves the offered rows, remains restorable, and the batch contains only the other plugin
+    expect(listedRows()).toEqual(['dsh-weather'])
+    expect(document.querySelector('[data-ignored-update-row="dsh-usage"]')?.textContent).toContain('0.9.2')
+    expect(JSON.parse(localStorage.getItem('dsh.plugin-manager.ignored-updates.v1') ?? '[]')).toEqual([{ id: 'dsh-usage', version: '0.9.2' }])
+    fireEvent.click(document.querySelector('[data-update-all]') as HTMLElement)
+    await waitFor(() => { expect(updateAll).toHaveBeenCalledWith(['dsh-weather'], expect.anything()) })
+    expect(updateAll.mock.calls[0]?.[0]).toEqual(['dsh-weather'])
+
+    // When the ignored offer is restored after the batch
+    await waitFor(() => { expect(document.querySelector('[data-update-restart]')?.getAttribute('data-restart-pending')).toBe('1') })
+    fireEvent.click(document.querySelector('[data-update-restore="dsh-usage"]') as HTMLElement)
+
+    // Then it alone returns to the offered list and its persisted rule is gone
+    expect(listedRows()).toEqual(['dsh-usage'])
+    expect(document.querySelector('[data-ignored-update-row="dsh-usage"]')).toBeNull()
+    expect(JSON.parse(localStorage.getItem('dsh.plugin-manager.ignored-updates.v1') ?? '[]')).toEqual([])
   })
 
   it('user sees a row below the declared DSH minimum listed but never applied', async () => {

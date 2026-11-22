@@ -45,6 +45,7 @@ packages/AGENTS.md 的全局/包级规则。
 - **批量更新策略放 core，不放 host**：`src/core/updates.ts` 是唯一策略源——只更新第三方
   （非 `@deepseek-ai/`）且 `compatible !== false` 的行；官方包随 DSH 本体升级，绝不批量改写。
   单页区块（`plugins.detail.section`）仍可对官方包做单包更新，那是用户逐条确认的动作。
+- **忽略更新按精确版本**：`src/core/updates.ts` 以插件 id + `latest` 判定，列表面板与单页区块共用；`src/client/ignored-updates.ts` 负责浏览器本地持久化并容忍存储失败。忽略行必须可恢复，批量队列只取未忽略且兼容的行。
 - **重启四态，禁止臆造命令行**：`src/host/restart.ts` 判定并回传实际模式——`relaunch`
   （终端启动：detached helper 等旧进程退出后重放本进程自身的 execPath + argv，剔除
   `--inspect*`）、`shell`（打包桌面**且**外壳声明了重启保证：只退出，由外壳重新拉起）、

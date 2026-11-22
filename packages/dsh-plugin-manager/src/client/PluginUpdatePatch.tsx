@@ -21,7 +21,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { InstallProgressItem, PluginUpdateItem, PluginUpdateResult } from '../core/protocol.ts'
+import { isUpdateIgnored } from '../core/updates.ts'
 import { displayMinimumVersion } from '../core/version.ts'
+import { forgetIgnoredUpdate, loadIgnoredUpdates, rememberIgnoredUpdate } from './ignored-updates.ts'
 import css from './plugin-manager.module.css'
 
 /**
@@ -152,6 +154,8 @@ export function PluginUpdatePatch(props: PluginUpdatePatchProps) {
 
   const [checked, setChecked] = useState(false)
   const [found, setFound] = useState<PluginUpdateItem | undefined>(undefined)
+  /** Whether the exact offer in found is currently ignored. */
+  const [ignored, setIgnored] = useState(false)
   const [busy, setBusy] = useState<'check' | 'update' | undefined>(undefined)
   const [error, setError] = useState<string | undefined>(undefined)
   const [progress, setProgress] = useState<InstallProgressItem>({ kind: 'idle', stage: 'fetch' })
@@ -197,7 +201,9 @@ export function PluginUpdatePatch(props: PluginUpdatePatchProps) {
     setBusy('check')
     setError(undefined)
     void checkUpdates().then(items => {
-      setFound(items.find(item => item.id === name))
+      const update = items.find(item => item.id === name)
+      setFound(update)
+      setIgnored(update !== undefined && isUpdateIgnored(update, loadIgnoredUpdates()))
       setChecked(true)
     }).catch(reason => {
       setError(t('failed', { reason: messageOf(reason) }))
@@ -207,8 +213,20 @@ export function PluginUpdatePatch(props: PluginUpdatePatchProps) {
     })
   }
 
-  const onUpdate = (): void => {
+  const onIgnore = (): void => {
     if (busyRef.current || found === undefined) return
+    rememberIgnoredUpdate(loadIgnoredUpdates(), found)
+    setIgnored(true)
+  }
+
+  const onRestore = (): void => {
+    if (busyRef.current || found === undefined) return
+    forgetIgnoredUpdate(loadIgnoredUpdates(), found)
+    setIgnored(false)
+  }
+
+  const onUpdate = (): void => {
+    if (busyRef.current || found === undefined || ignored) return
     busyRef.current = true
     setBusy('update')
     setError(undefined)
@@ -275,7 +293,7 @@ export function PluginUpdatePatch(props: PluginUpdatePatchProps) {
               : t('updateUnverifiedDshUnknownRange')}
           </span>
         )}
-        {found !== undefined && (
+        {found !== undefined && !ignored && (
           <button
             type="button"
             className={`${css.button} ${css.primary}`}
@@ -283,6 +301,19 @@ export function PluginUpdatePatch(props: PluginUpdatePatchProps) {
             onClick={onUpdate}
           >
             {busy === 'update' ? t('updating') : t('update')}
+          </button>
+        )}
+        {found !== undefined && !ignored && (
+          <button type="button" className={css.button} data-update-ignore disabled={busy !== undefined} onClick={onIgnore}>
+            {t('ignoreUpdate')}
+          </button>
+        )}
+        {found !== undefined && ignored && (
+          <span className={css.hint} data-update-ignored>{t('ignoredUpdate')}</span>
+        )}
+        {found !== undefined && ignored && (
+          <button type="button" className={css.button} data-update-restore disabled={busy !== undefined} onClick={onRestore}>
+            {t('restoreUpdate')}
           </button>
         )}
       </div>

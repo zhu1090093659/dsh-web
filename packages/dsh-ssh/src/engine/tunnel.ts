@@ -98,6 +98,11 @@ export async function startTunnel(
           destroyQuietly(socket)
           return
         }
+        if (socket.destroyed) {
+          try { stream.close() } catch { /* gone */ }
+          destroyQuietly(stream)
+          return
+        }
         // Both ends of the pipe can die independently; destroy the pair so an
         // unhandled 'error' event can never crash the host process.
         const destroy = (): void => {
@@ -118,6 +123,8 @@ export async function startTunnel(
       abortTunnel(engine, id)
     }
   })
+  // Guard the pooled connection from sweepPool or sibling teardown while binding.
+  record.inFlight += 1
   try {
     await new Promise<void>((resolve, reject) => {
       server.once('error', reject)
@@ -127,11 +134,14 @@ export async function startTunnel(
       })
     })
   } catch (error) {
+    record.inFlight -= 1
     // Roll back: never leave an unpinned orphan connection behind.
     if (!record.pinned && record.inFlight === 0) disposeRecord(engine, alias, record)
     throw error
   }
   record.pinned = true
+  record.inFlight -= 1
+  server.on('error', () => { abortTunnel(engine, id) })
   const address = server.address()
   info.localPort = typeof address === 'object' && address !== null ? address.port : 0
   info.state = 'forwarding'
@@ -175,8 +185,16 @@ export function stopTunnel(engine: TunnelEngine, id: string): boolean {
   // replaced (e.g. after a broken-connection recycle) is ended directly.
   const shared = [...engine.tunnels.values()].some(candidate => candidate.record === tunnel.record)
   if (!shared) {
-    if (engine.pool.get(tunnel.alias) === tunnel.record) disposeRecord(engine, tunnel.alias, tunnel.record)
-    else endRecordChain(tunnel.record)
+    if (engine.pool.get(tunnel.alias) === tunnel.record) {
+      if (!tunnel.record.broken && tunnel.record.inFlight > 0) {
+        tunnel.record.pinned = false
+        tunnel.record.idleAt = Date.now()
+      } else {
+        disposeRecord(engine, tunnel.alias, tunnel.record)
+      }
+    } else {
+      endRecordChain(tunnel.record)
+    }
   }
   return true
 }

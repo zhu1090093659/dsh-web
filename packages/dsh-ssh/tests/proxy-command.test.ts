@@ -77,4 +77,24 @@ describe('startProxyCommand', () => {
     expect(error.message).toContain('ProxyCommand')
     await waitFor(() => child.exitCode !== null || child.signalCode !== null)
   })
+
+  it('operator: cleans up escalation timer on normal exit and deduplicates repeated stdin errors', async () => {
+    // Given a running ProxyCommand process
+    const { stream, child } = startProxyCommand(echoCommand(), target)
+    const exited = new Promise<void>((resolve) => {
+      if (child.exitCode !== null || child.signalCode !== null) resolve()
+      else child.once('exit', () => resolve())
+    })
+
+    // When repeated stdin error events arrive before destruction
+    const beforeListeners = child.listenerCount('exit')
+    child.stdin?.emit('error', new Error('EPIPE-1'))
+    child.stdin?.emit('error', new Error('EPIPE-2'))
+    expect(child.listenerCount('exit')).toBe(beforeListeners + 1)
+
+    // Then destroying the stream reaps the child and clears pending exit listeners cleanly
+    stream.destroy()
+    await exited
+    expect(child.exitCode !== null || child.signalCode !== null).toBe(true)
+  })
 })

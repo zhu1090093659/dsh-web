@@ -41,8 +41,13 @@ class FakeClient extends EventEmitter {
   readonly forwarded: string[] = []
   /** Channels this client was asked to end. */
   ended = 0
+  /** Opened remote channels whose close() was called. */
+  closedChannels = 0
   /** Switchable, so one tunnel can be seen refusing and then forwarding. */
   mode: LinkMode
+  /** Optional deferred forwardOut callbacks for simulating socket close before channel open. */
+  deferChannelCallback = false
+  pendingChannelCallbacks: Array<() => void> = []
   private readonly waiting: Array<(payload: string) => void> = []
 
   constructor(mode: LinkMode) {
@@ -63,7 +68,9 @@ class FakeClient extends EventEmitter {
       cb(new Error('connect failed: Connection refused'))
       return
     }
-    cb(undefined, this.remoteChannel())
+    const deliver = (): void => { cb(undefined, this.remoteChannel()) }
+    if (this.deferChannelCallback) this.pendingChannelCallbacks.push(deliver)
+    else deliver()
   }
 
   end(): void {
@@ -72,7 +79,7 @@ class FakeClient extends EventEmitter {
 
   /** A channel that swallows everything written to it and reports it here. */
   private remoteChannel(): Duplex {
-    return new Duplex({
+    const channel = new Duplex({
       read() { /* the remote side never speaks in this fixture */ },
       write: (chunk: Buffer, _encoding, done) => {
         const payload = chunk.toString('utf8')
@@ -80,7 +87,19 @@ class FakeClient extends EventEmitter {
         for (const resolve of this.waiting.splice(0)) resolve(payload)
         done()
       },
-    })
+    }) as Duplex & { close: () => void }
+    let closed = false
+    const markClosed = (): void => {
+      if (closed) return
+      closed = true
+      this.closedChannels += 1
+    }
+    channel.close = () => {
+      markClosed()
+      channel.destroy()
+    }
+    channel.on('close', markClosed)
+    return channel
   }
 
   /** Resolve with the next payload a local connection forwards. */
@@ -262,5 +281,55 @@ describe('tunnel dead link', () => {
     // The pooled client outlives its tunnels, so a stopped tunnel must not
     // keep a listener on it.
     expect(client.listenerCount('close')).toBe(0)
+  })
+
+  it('operator: closes remote forwardOut channel if the local socket destroyed before callback arrived', async () => {
+    // Given a healthy tunnel whose forwardOut callback resolves after the local socket disconnects
+    const client = new FakeClient('healthy')
+    client.deferChannelCallback = true
+    const { engine } = tunnelEngine(client)
+    const tunnel = await startTunnel(engine, ALIAS, { remotePort: 5432 })
+
+    // When a local client connects, triggers forwardOut, and the server socket finishes closing before deliver
+    const socket = connect(tunnel.localPort, '127.0.0.1')
+    socket.on('error', () => { /* expected close */ })
+    await new Promise<void>((resolve) => { socket.once('connect', resolve) })
+    await new Promise<void>((resolve) => {
+      const check = () => {
+        if (client.pendingChannelCallbacks.length > 0) resolve()
+        else setImmediate(check)
+      }
+      setImmediate(check)
+    })
+    const serverSocket = [...engine.tunnels.get(tunnel.id)!.sockets][0]!
+    const serverSocketClosed = new Promise<void>((resolve) => {
+      if (serverSocket.destroyed) resolve()
+      else serverSocket.once('close', () => { resolve() })
+    })
+    socket.destroy()
+    await serverSocketClosed
+    for (const deliver of client.pendingChannelCallbacks.splice(0)) deliver()
+
+    // Then the delivered remote channel is closed immediately instead of leaking
+    expect(client.closedChannels).toBe(1)
+    expect(stopTunnel(engine, tunnel.id)).toBe(true)
+  })
+
+  it('operator: stopping a tunnel while in-flight work shares the pooled link unpins without ending it', async () => {
+    // Given a healthy tunnel whose pooled record currently serves in-flight exec/SFTP work
+    const client = new FakeClient('healthy')
+    const { engine, record } = tunnelEngine(client)
+    const tunnel = await startTunnel(engine, ALIAS, { remotePort: 5432 })
+    expect(record.pinned).toBe(true)
+    record.inFlight = 1
+
+    // When the operator stops the tunnel
+    expect(stopTunnel(engine, tunnel.id)).toBe(true)
+
+    // Then the tunnel leaves the registry and unpins the connection without killing active work
+    expect(listTunnels(engine)).toHaveLength(0)
+    expect(record.pinned).toBe(false)
+    expect(client.ended).toBe(0)
+    expect(engine.pool.get(ALIAS)).toBe(record)
   })
 })

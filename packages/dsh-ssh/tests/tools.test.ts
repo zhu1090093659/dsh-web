@@ -21,7 +21,8 @@ import {
 class StubEngine {
   hosts: SshHostSummary[] = []
   execFailure: Error | undefined
-  tunnelStartError: Error | undefined
+   tunnelStartError: Error | undefined
+  tunnelStartResult: TunnelInfo | undefined
   tunnelExists = true
 
   list(): SshHostSummary[] {
@@ -48,6 +49,7 @@ class StubEngine {
   }
   async startTunnel(): Promise<TunnelInfo> {
     if (this.tunnelStartError !== undefined) throw this.tunnelStartError
+    if (this.tunnelStartResult !== undefined) return this.tunnelStartResult
     throw new Error('unexpected')
   }
   stopTunnel(_id: string): boolean {
@@ -219,6 +221,31 @@ describe('ssh_tunnel', () => {
     const text = render(tool, result)
     expect(text).toContain('tunnel failed')
     expect(text).toContain('EADDRINUSE')
+  })
+
+  it('operator gets ok=false when startTunnel resolves with a failed tunnel state', async () => {
+    // Given an engine whose tunnel link died while the listener bound
+    const stub = new StubEngine()
+    stub.tunnelStartResult = {
+      id: 'tun-2',
+      alias: 'web-01',
+      localPort: 4567,
+      remoteHost: '127.0.0.1',
+      remotePort: 5432,
+      state: 'failed',
+      error: 'ssh link closed while the tunnel was starting',
+      startedAt: 100,
+    }
+    const tool = sshTunnelTool(engine(stub))
+
+    // When ssh_tunnel starts the tunnel
+    const result = await run(tool, { action: 'start', alias: 'web-01', remotePort: 5432 })
+
+    // Then the tool reports ok: false and renders the failure instead of success
+    expect(result.ok).toBe(false)
+    expect((result.tunnel as { state?: string } | undefined)?.state).toBe('failed')
+    expect(render(tool, result)).toContain('tunnel failed')
+    expect(render(tool, result)).toContain('ssh link closed')
   })
 })
 

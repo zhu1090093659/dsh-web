@@ -6,11 +6,32 @@
 import type { ClusterResult } from '../protocol.ts'
 import { execCommand, type PoolEngine } from './connection-pool.ts'
 
-interface ClusterOptions {
-  command: string
+/** Target selector fields shared by cluster engine, routes, and agent tool. */
+export interface ClusterSelector {
   aliases?: string[]
   environment?: string
   tags?: string[]
+}
+
+function normalizeStringList(values: unknown): string[] | undefined {
+  if (!Array.isArray(values)) return undefined
+  return values
+    .filter((value): value is string => typeof value === 'string')
+    .map(value => value.trim())
+    .filter(value => value !== '')
+}
+
+/** Whether at least one trimmed non-empty cluster target filter is present. */
+export function hasClusterSelector(options: ClusterSelector): boolean {
+  const aliases = normalizeStringList(options.aliases)
+  if (aliases !== undefined && aliases.length > 0) return true
+  if (typeof options.environment === 'string' && options.environment.trim() !== '') return true
+  const tags = normalizeStringList(options.tags)
+  return tags !== undefined && tags.length > 0
+}
+
+interface ClusterOptions extends ClusterSelector {
+  command: string
   timeoutMs?: number
   maxWorkers?: number
   /** Caller cancellation, forwarded to every host's command. */
@@ -19,23 +40,25 @@ interface ClusterOptions {
 
 /** Run one command against many hosts concurrently. */
 export async function cluster(engine: PoolEngine, options: ClusterOptions): Promise<ClusterResult[]> {
-  const hasAliases = Array.isArray(options.aliases) && options.aliases.some(alias => typeof alias === 'string' && alias.trim() !== '')
-  const hasEnvironment = typeof options.environment === 'string' && options.environment.trim() !== ''
-  const hasTags = Array.isArray(options.tags) && options.tags.some(tag => typeof tag === 'string' && tag.trim() !== '')
-  if (!hasAliases && !hasEnvironment && !hasTags) {
+  const aliases = normalizeStringList(options.aliases)
+  const environment = typeof options.environment === 'string' && options.environment.trim() !== ''
+    ? options.environment.trim()
+    : undefined
+  const tags = normalizeStringList(options.tags)
+  if (!hasClusterSelector({ aliases, environment, tags })) {
     throw new Error('ssh_cluster requires aliases, environment, or tags to limit the target set')
   }
 
   let targets = engine.store.list()
-  if (options.aliases !== undefined && options.aliases.length > 0) {
-    targets = targets.filter(entry => options.aliases!.includes(entry.alias))
+  if (aliases !== undefined && aliases.length > 0) {
+    targets = targets.filter(entry => aliases.includes(entry.alias))
   }
-  if (options.environment !== undefined && options.environment !== '') {
-    targets = targets.filter(entry => entry.environment === options.environment)
+  if (environment !== undefined) {
+    targets = targets.filter(entry => entry.environment === environment)
   }
-  if (options.tags !== undefined && options.tags.length > 0) {
+  if (tags !== undefined && tags.length > 0) {
     // ALL semantics (matches the ssh_cluster tool description).
-    targets = targets.filter(entry => options.tags!.every(tag => entry.tags.includes(tag)))
+    targets = targets.filter(entry => tags.every(tag => entry.tags.includes(tag)))
   }
   if (targets.length === 0) return []
   if (options.maxWorkers !== undefined && (!Number.isInteger(options.maxWorkers) || options.maxWorkers < 1)) {
@@ -49,7 +72,16 @@ export async function cluster(engine: PoolEngine, options: ClusterOptions): Prom
       const entry = queue.shift()!
       try {
         const result = await execCommand(engine, entry.alias, options.command, options.timeoutMs, options.signal)
-        results.push({ alias: entry.alias, ok: result.success, exitCode: result.exitCode, timedOut: result.timedOut, stdout: result.stdout, stderr: result.stderr, durationMs: result.durationMs })
+        results.push({
+          alias: entry.alias,
+          ok: result.success,
+          exitCode: result.exitCode,
+          timedOut: result.timedOut,
+          stdout: result.stdout,
+          stderr: result.stderr,
+          durationMs: result.durationMs,
+          ...(result.error !== undefined ? { error: result.error } : {}),
+        })
       } catch (error) {
         results.push({ alias: entry.alias, ok: false, error: error instanceof Error ? error.message : String(error) })
       }

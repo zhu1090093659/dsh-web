@@ -19,6 +19,7 @@ import type { WebRoute, WebUpgradeRoute } from '@deepseek-ai/dsh-host-webserver'
 type AuthAwareWebRoute = WebRoute & { readonly auth: 'anonymous' }
 type AuthAwareWebUpgradeRoute = WebUpgradeRoute & { readonly auth: 'anonymous' }
 import type { SshEngine } from './engine.ts'
+import { hasClusterSelector } from './engine/cluster.ts'
 import { TerminalSessionRegistry } from './engine/terminal-sessions.ts'
 import { readJsonBody, writeJson } from './http.ts'
 import { isLoopbackRequest } from './loopback.ts'
@@ -299,10 +300,7 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
         const environment = typeof body?.environment === 'string' ? body.environment : undefined
         const timeoutMs = typeof body?.timeoutMs === 'number' ? body.timeoutMs : undefined
         const maxWorkers = typeof body?.maxWorkers === 'number' ? body.maxWorkers : undefined
-        const hasAliases = aliases?.some(alias => alias.trim() !== '') === true
-        const hasEnvironment = typeof environment === 'string' && environment.trim() !== ''
-        const hasTags = tags?.some(tag => tag.trim() !== '') === true
-        if (!hasAliases && !hasEnvironment && !hasTags) {
+        if (!hasClusterSelector({ aliases, environment, tags })) {
           writeJson(res, 400, { error: 'ssh_cluster requires aliases, environment, or tags to limit the target set' })
           return
         }

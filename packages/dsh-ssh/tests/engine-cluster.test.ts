@@ -78,4 +78,31 @@ describe('cluster', () => {
       expect(result.error).toBe('boom')
     }
   })
+
+  it('operator sees timeout errors and keeps sibling environment matches when blank alias strings are passed', async () => {
+    // Given hosts in prod and staging, where execCommand resolves with a timeout error string
+    execCommandMock.mockResolvedValue({
+      success: false,
+      exitCode: null,
+      timedOut: true,
+      stdout: '',
+      stderr: '',
+      durationMs: 100,
+      error: 'timed out after 100ms',
+    })
+    const entries = [
+      { alias: 'prod-1', environment: 'prod', tags: [] },
+      { alias: 'staging-1', environment: 'staging', tags: [] },
+    ]
+    const engine = fakeEngine(entries)
+
+    // When cluster runs with a blank aliases entry alongside environment: 'prod'
+    const results = await cluster(engine, { command: 'sleep 5', aliases: ['   '], environment: 'prod' })
+
+    // Then the blank aliases list is ignored cleanly, prod-1 runs, and result.error is preserved
+    expect(results.map(r => r.alias)).toEqual(['prod-1'])
+    expect(results[0]?.ok).toBe(false)
+    expect(results[0]?.timedOut).toBe(true)
+    expect(results[0]?.error).toBe('timed out after 100ms')
+  })
 })

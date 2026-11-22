@@ -7,6 +7,7 @@
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { SshEngine } from './engine.ts'
+import { hasClusterSelector } from './engine/cluster.ts'
 import type { ClusterResult, ExecResult, SshAuthKind, SshHostSummary, TunnelInfo } from './protocol.ts'
 
 /** One text content block (the only render shape these tools emit). */
@@ -336,7 +337,7 @@ export function sshTunnelTool(engine: SshEngine) {
             remoteHost: args.remoteHost,
             localPort: args.localPort,
           })
-          return { ok: true, tunnel }
+          return { ok: tunnel.state !== 'failed', tunnel }
         } catch (error) {
           return { ok: false, tunnel: { id: '', alias: args.alias, localPort: 0, remoteHost: args.remoteHost ?? '127.0.0.1', remotePort: args.remotePort, state: 'failed' as const, error: error instanceof Error ? error.message : String(error), startedAt: Date.now() } }
         }
@@ -398,10 +399,7 @@ export function sshClusterTool(engine: SshEngine) {
       render: (_args, value: { results?: ClusterResult[] }) => text(renderCluster(value.results ?? [])),
     },
     async execute(args, exec) {
-      const hasSelector = (Array.isArray(args.aliases) && args.aliases.some((alias) => typeof alias === 'string' && alias.trim() !== '')) ||
-        (typeof args.environment === 'string' && args.environment.trim() !== '') ||
-        (Array.isArray(args.tags) && args.tags.some((tag) => typeof tag === 'string' && tag.trim() !== ''))
-      if (!hasSelector) throw new Error('ssh_cluster requires aliases, environment, or tags to limit the target set')
+      if (!hasClusterSelector(args)) throw new Error('ssh_cluster requires aliases, environment, or tags to limit the target set')
       // Cancellation reaches every host's in-flight command.
       return { results: await engine.cluster({ ...args, signal: exec.signal }) }
     },

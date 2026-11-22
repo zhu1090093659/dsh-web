@@ -96,8 +96,15 @@ export function startProxyCommand(rawCommand: string, target: ProxyTarget): Prox
   })
 
   let killed = false
+  let exited = false
+  let escalateTimer: ReturnType<typeof setTimeout> | undefined
+  const clearEscalate = (): void => {
+    if (escalateTimer === undefined) return
+    clearTimeout(escalateTimer)
+    escalateTimer = undefined
+  }
   const kill = (): void => {
-    if (killed) return
+    if (killed || exited || child.exitCode !== null || child.signalCode !== null) return
     killed = true
     const pid = child.pid
     const group = process.platform !== 'win32' && pid !== undefined
@@ -105,13 +112,15 @@ export function startProxyCommand(rawCommand: string, target: ProxyTarget): Prox
       if (group) process.kill(-pid, 'SIGTERM')
       else child.kill()
     } catch { /* already gone */ }
-    const escalate = setTimeout(() => {
+    escalateTimer = setTimeout(() => {
+      escalateTimer = undefined
+      if (exited || child.exitCode !== null || child.signalCode !== null) return
       try {
         if (group) process.kill(-pid, 'SIGKILL')
         else child.kill('SIGKILL')
       } catch { /* already gone */ }
     }, KILL_GRACE_MS)
-    escalate.unref()
+    escalateTimer.unref()
   }
 
   function formatExitError(code: number | null, signal: NodeJS.Signals | null, stderrDetail: string): Error {
@@ -199,7 +208,6 @@ export function startProxyCommand(rawCommand: string, target: ProxyTarget): Prox
   // instead of the generic "connection lost before handshake" ssh2 produces
   // for a socket that simply closed.
   let stdoutEnded = false
-  let exited = false
   const finishIfClean = (): void => {
     if (exited && stdoutEnded && !failed && !stream.destroyed) stream.push(null)
   }
@@ -214,6 +222,7 @@ export function startProxyCommand(rawCommand: string, target: ProxyTarget): Prox
   child.stdout?.on('error', (error: Error) => {
     fail(new Error('ProxyCommand stdout error: ' + error.message))
   })
+  let stdinErrorPending = false
   child.stdin?.on('error', (error: Error) => {
     // A broken pipe (EPIPE) on stdin occurs naturally when the proxy command
     // exits early or closes its standard input. Prevent unhandled EventEmitter errors.
@@ -221,22 +230,30 @@ export function startProxyCommand(rawCommand: string, target: ProxyTarget): Prox
       fail(formatExitError(child.exitCode, child.signalCode, stderr))
       return
     }
-    const timer = setTimeout(() => {
-      fail(new Error('ProxyCommand transport error: ' + error.message))
-    }, 200)
-    timer.unref()
-    child.once('exit', (code, signal) => {
+    if (exited || child.exitCode !== null || stdinErrorPending || failed || stream.destroyed) return
+    stdinErrorPending = true
+    const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
+      stdinErrorPending = false
       clearTimeout(timer)
       if ((code !== null && code !== 0) || signal !== null) {
         fail(formatExitError(code, signal, stderr))
       }
-    })
+    }
+    const timer = setTimeout(() => {
+      stdinErrorPending = false
+      child.removeListener('exit', onExit)
+      fail(new Error('ProxyCommand transport error: ' + error.message))
+    }, 200)
+    timer.unref()
+    child.once('exit', onExit)
   })
   child.on('error', (error: Error) => {
+    clearEscalate()
     fail(new Error('ProxyCommand could not start: ' + error.message))
   })
   child.on('exit', (code, signal) => {
     exited = true
+    clearEscalate()
     if ((code !== null && code !== 0) || signal !== null) {
       fail(formatExitError(code, signal, stderr))
       return

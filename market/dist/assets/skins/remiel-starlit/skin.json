@@ -7,7 +7,7 @@
   "author": "oh-wang",
   "license": "CC BY-NC-SA 4.0",
   "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
-  "noticeUrl": "https://github.com/zhu1090093659/dsh-web/blob/dev/packages/skins/skin-center/skins/remiel-starlit/NOTICE",
+  "noticeUrl": "https://github.com/zhu1090093659/dsh-skins/blob/main/skins/remiel-starlit/NOTICE",
   "attribution": "角色与素材出自米哈游《绝区零》(Zenless Zone Zero)，版权归米哈游所有；本皮肤为个人非商业同人作品，背景与弹窗素材取自官方公开素材、作者不主张权利，CC BY-NC-SA 4.0 仅覆盖皮肤工程",
   "tagline": "粉樱冰翎，明暗皆星光",
   "description": "以蕾米埃尔的樱粉发色、冰蓝羽翼与夜靛礼装构成半透明玻璃质感。浅色如晨雾羽光，深色以紫红与靛黑承接更沉浸的场景背景。",
@@ -20,7 +20,7 @@
   ],
   "accent": "#d75b8d",
   "order": 99,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "preview": {
     "light": "preview/light.jpg",
     "dark": "preview/dark.jpg"

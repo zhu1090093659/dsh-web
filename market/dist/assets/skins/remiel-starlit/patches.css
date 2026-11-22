@@ -122,54 +122,54 @@ button[role='tab']:active:not(:disabled) {
   backdrop-filter: blur(12px);
 }
 
-:global(.aionui-root) {
+.aionui-root {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 
-:global(.aionui-dialog),
-:global(.aionui-menu),
-:global(.aionui-toast) {
+.aionui-dialog,
+.aionui-menu,
+.aionui-toast {
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
 
-:global(.aionui-overlay) {
+.aionui-overlay {
   background: rgba(65, 35, 58, 0.4);
 }
 
-body[data-ds-dark-theme] :global(.aionui-overlay) {
+body[data-ds-dark-theme] .aionui-overlay {
   background: rgba(7, 4, 11, 0.55);
 }
 
 /* aionui panel: drag handles glow with the cherry pink on hover. */
-:global(.aionui-explorer-handle),
-:global(.aionui-preview-handle) {
+.aionui-explorer-handle,
+.aionui-preview-handle {
   background: rgba(120, 82, 115, 0.2);
 }
 
-:global(.aionui-explorer-handle):hover,
-:global(.aionui-preview-handle):hover {
+.aionui-explorer-handle:hover,
+.aionui-preview-handle:hover {
   background: #d75b8d;
   box-shadow: 0 0 6px rgba(215, 91, 141, 0.4);
 }
 
-body[data-ds-dark-theme] :global(.aionui-explorer-handle),
-body[data-ds-dark-theme] :global(.aionui-preview-handle) {
+body[data-ds-dark-theme] .aionui-explorer-handle,
+body[data-ds-dark-theme] .aionui-preview-handle {
   background: rgba(232, 200, 222, 0.2);
 }
 
-body[data-ds-dark-theme] :global(.aionui-explorer-handle):hover,
-body[data-ds-dark-theme] :global(.aionui-preview-handle):hover {
+body[data-ds-dark-theme] .aionui-explorer-handle:hover,
+body[data-ds-dark-theme] .aionui-preview-handle:hover {
   background: #e891b3;
   box-shadow: 0 0 6px rgba(232, 145, 179, 0.4);
 }
 
-:global(.aionui-menu-item:not(.aionui-menu-item-disabled):hover) {
+.aionui-menu-item:not(.aionui-menu-item-disabled):hover {
   background: rgba(215, 91, 141, 0.12);
 }
 
-body[data-ds-dark-theme] :global(.aionui-menu-item:not(.aionui-menu-item-disabled):hover) {
+body[data-ds-dark-theme] .aionui-menu-item:not(.aionui-menu-item-disabled):hover {
   background: rgba(232, 145, 179, 0.16);
 }
 
@@ -251,14 +251,115 @@ body[data-ds-dark-theme] [role="dialog"] * {
   backdrop-filter: none !important;
 }
 
+/* --- 平台一致性：锁死面板透明度（0.1.2）---------------------------------
+
+   目标：无论宿主是 macOS 还是 Windows，侧栏 / 顶栏 / 中栏 / 底栏的表面
+   观感必须与作者本机完全一致。只锁不透明度，不改毛玻璃强度。
+
+   根因（逐条核对官方 shell 的 AppFrame.module.css 常量）：
+
+     macOS 侧栏  [data-platform=darwin] .sidebarCol:not(抽屉)
+        background: linear-gradient(...),
+                    color-mix(in srgb, color-mix(in srgb, var(--fill) 97%, #7a9bf0) 40%, transparent)
+        => 有效 alpha = 0.74 × 0.40 ≈ 0.299
+
+     Windows 侧栏  .sidebarCol
+        background: var(--fill)                       => alpha = 0.74（未稀释）
+
+     帧本体  [data-platform=darwin] .frame { background: 0 0 }   ← 透明
+             Windows 上 .frame 直接铺 var(--fill)                => 0.74
+
+   于是同一份皮肤：作者看到的中栏 = 0.62；Windows 上 = 0.62 叠在 0.74 之上
+   ≈ 0.90。这正是对方“整屏发白、背景几乎看不见”的来源，且靠调滑杆救不回来
+   ——滑杆只动 backgroundMedia 的 scrim，动不了这两处面板底。
+
+   本段三个动作：
+   1) 侧栏锁定为作者本机的实际合成值；
+   2) 帧本体底色中和为透明（Windows 独有，macOS 本就是 0 0，设置无害），
+      使两边中栏/底栏都回到 bg-base 的 0.62 / 0.48；
+   3) Windows 标题栏拖拽条（挂 .frame::before）同步锁值，否则顶栏会比侧栏更实。
+
+   锚点说明：本 build 的侧栏 DOM 只有 CSS-Modules 哈希类名，没有 data-slot /
+   data-dsh-surface；稳定的钩子是 dsh-web-all 兼容层补打的 [data-pane='sidebar']
+   （由 [class*="sidebarCol"] 映射而来），故两套写法并行兜底。 */
+
+/* 1) 侧栏：锁定到作者本机（macOS）的实际合成值。
+      前置限定 [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed])
+      是必需的，不是保险：
+      - 抽屉态（data-sidebar-drawer）是窄屏浮层，本来就该是实心面板，锁成 0.3
+        会让底下正文透上来；
+      - 收起态（data-sidebar-collapsed）在 <=768px 由兼容层给出 52px 宽的竖条并
+        声明 background: transparent !important（dsh-web-all 0-3-0）。本规则转换
+        后是 0-3-2，同时带 !important 时按权重取胜，会把那条通明覆盖成半透明暗色，
+        在左侧留下一条多余竖条。限定后两条规则互不重叠。 */
+[data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [data-pane='sidebar'],
+[data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [data-dsh-surface='sidebar'],
+[data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [class*='sidebarCol'] {
+  background-color: rgba(250, 242, 251, 0.3) !important;
+  background-image: none !important;
+}
+
+body[data-ds-dark-theme] [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [data-pane='sidebar'],
+body[data-ds-dark-theme] [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [data-dsh-surface='sidebar'],
+body[data-ds-dark-theme] [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [class*='sidebarCol'] {
+  background-color: rgba(31, 20, 39, 0.29) !important;
+  background-image: none !important;
+}
+
+/* 2) 帧本体：Windows 上多出的一层 0.74 底，中和为透明（与 darwin 分支对齐）。
+      不加这条，中栏会合成到 0.90 而整屏发白。
+      锚点 [data-dsh-frame] 由 dsh-web-all 兼容层打在 .frame（侧栏父元素）上，
+      不用 [class*='frame']——那会误伤 body 等含 "frame" 的字样。 */
+[data-dsh-frame] {
+  background: transparent !important;
+}
+
+/* 3) Windows 标题栏拖拽条：实色块（inset:0 0 auto），单列锁值。
+      锚点是 [data-dsh-frame]::before 而不是 [data-windows-titlebar]::before：
+      该属性挂在 <html> 上（renderer 读 document.documentElement 判断），
+      而 transformSkinCss 把每条选择器都强制前缀成
+      html[data-dsh-skin="<id>"] <你的选择器>——[data-windows-titlebar] 于是变成
+      html 的后代选择器，永远匹配不到 html 自己。
+      官方 AppFrame.module.css 里唯一给 .frame::before 设 content: '' 的正是
+      [data-windows-titlebar] 分支，所以改写 .frame 的 ::before 即可锁住顶栏，
+      且 macOS 上该伪元素没有 content，规则落空、无副作用。 */
+[data-dsh-frame]::before {
+  background-color: rgba(250, 242, 251, 0.3) !important;
+  background-image: none !important;
+}
+
+body[data-ds-dark-theme] [data-dsh-frame]::before {
+  background-color: rgba(31, 20, 39, 0.29) !important;
+  background-image: none !important;
+}
+
+/* 4) 中栏 / 右栏 / 底栏：钉住 bg-base 的定值，防止宿主改 token 或叠帧底后偏移 */
+[data-pane='conversation'],
+[data-dsh-surface='conversation'],
+[class*='centerCol'],
+[class*='bottomRow'],
+[data-rightbar-col] {
+  background-color: rgba(255, 248, 252, 0.62) !important;
+  background-image: none !important;
+}
+
+body[data-ds-dark-theme] [data-pane='conversation'],
+body[data-ds-dark-theme] [data-dsh-surface='conversation'],
+body[data-ds-dark-theme] [class*='centerCol'],
+body[data-ds-dark-theme] [class*='bottomRow'],
+body[data-ds-dark-theme] [data-rightbar-col] {
+  background-color: rgba(25, 16, 31, 0.48) !important;
+  background-image: none !important;
+}
+
 /* --- Motion: short appearance-only transitions, folded under reduced-motion */
 
 button,
 a,
-:global(.aionui-btn),
-:global(.aionui-menu-item),
-:global(.aionui-explorer-handle),
-:global(.aionui-preview-handle) {
+.aionui-btn,
+.aionui-menu-item,
+.aionui-explorer-handle,
+.aionui-preview-handle {
   transition: background-color 0.13s ease, border-color 0.13s ease,
     box-shadow 0.13s ease, color 0.13s ease, opacity 0.13s ease;
 }
@@ -285,8 +386,8 @@ body[data-ds-dark-theme] a:active {
 }
 
 button:disabled,
-:global(.aionui-btn:disabled),
-:global(.aionui-menu-item-disabled) {
+.aionui-btn:disabled,
+.aionui-menu-item-disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -294,10 +395,10 @@ button:disabled,
 @media (prefers-reduced-motion: reduce) {
   button,
   a,
-  :global(.aionui-btn),
-  :global(.aionui-menu-item),
-  :global(.aionui-explorer-handle),
-  :global(.aionui-preview-handle),
+  .aionui-btn,
+  .aionui-menu-item,
+  .aionui-explorer-handle,
+  .aionui-preview-handle,
   ::-webkit-scrollbar-thumb {
     transition: none;
   }

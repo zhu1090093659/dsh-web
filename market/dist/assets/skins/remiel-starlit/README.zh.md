@@ -26,6 +26,24 @@
 
 ## 变更
 
+### 0.1.2
+
+- 平台一致性：锁死面板透明度，使 macOS 与 Windows 上的表面观感一致。官方
+  shell 给侧栏用了两条平台专属表达式——macOS 走
+  `color-mix(in srgb, color-mix(in srgb, var(--fill) 97%, #7a9bf0) 40%, transparent)`，
+  把本皮肤的 0.74 alpha 稀释到约 0.299；Windows 直接用 `var(--fill)`（0.74）。
+  且只有 Windows 的帧本体额外铺一层 `var(--fill)`，导致 0.62 的中栏合成到约
+  0.901。新增段落对每个表面写定 `rgba` 并用 `!important`（侧栏浅色 0.30 /
+  深色 0.29、帧本体中和为透明、中/右/底栏钉在 `bg-base`），把两个平台收敛到
+  作者本机的结果。取值等于 macOS 的实际合成值（0.74 × 0.40），因此作者本人
+  的观感不变（alpha 仅差 0.0008）。
+- 移除 0.1.1 沿用下来的 git-graph 泳道配色与 composer 选择器 chip 段落：两者都以
+  `data-gitgraph-*` 为锚点，而该属性唯一的生产者 `dsh-git-graph` 插件已下线，
+  在当前安装里匹配不到任何元素，故删除而非留作死选择器。
+- 锚点使用 dsh-web-all 兼容层补打的稳定钩子（`[data-pane="sidebar"]`、
+  `[data-dsh-frame]`），CSS-Modules 类名只作兜底。已在真实页面验证：把同一组
+  选择器改成红色探针后，侧栏确实变红。
+
 ### 0.1.1
 
 - 修复亮色与暗色的可读性对比度。暗色块不再镜像反转 `--dsw-static-neutral-*`

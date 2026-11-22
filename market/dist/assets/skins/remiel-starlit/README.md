@@ -29,6 +29,29 @@ square ride `contributes` and plain CSS.
 
 ## Changes
 
+### 0.1.2
+
+- Platform parity: panel opacity is now pinned so the surfaces read the same on
+  macOS and Windows. The official shell paints the sidebar with two different
+  expressions per platform — on macOS
+  `color-mix(in srgb, color-mix(in srgb, var(--fill) 97%, #7a9bf0) 40%, transparent)`
+  drops the skin's 0.74 alpha to ~0.299, while Windows uses `var(--fill)` at the
+  full 0.74; the Windows frame additionally paints `var(--fill)` itself, so a
+  0.62 centre column composites to ~0.901. The new block states one literal rgba
+  per surface with `!important` (sidebar 0.30 light / 0.29 dark, frame neutralised
+  to transparent, centre/right/bottom held at `bg-base`), which converges both
+  platforms on the author's macOS result. The value chosen is the exact macOS
+  composite (0.74 x 0.40), so the author's own view is unchanged (alpha differs
+  by 0.0008).
+- Dropped the git-graph commit lane ramp and the composer selector chip rules
+  carried over from 0.1.1: both anchor on `data-gitgraph-*`, which the retired
+  `dsh-git-graph` plugin was the only producer of. They matched nothing in a
+  current install, so they are removed rather than left as dead selectors.
+- Anchors are the stable hooks stamped by the dsh-web-all compat layer
+  (`[data-pane="sidebar"]`, `[data-dsh-frame]`), with the CSS-Modules class
+  substring only as a fallback. Verified against a live page: applying the same
+  selector set as a red probe turned the sidebar red.
+
 ### 0.1.1
 
 - Read contrast fix, dark and light. The dark block no longer mirrors the

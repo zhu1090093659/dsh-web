@@ -691,6 +691,43 @@ describe('SSH terminal tabs (#1950)', () => {
     // Then the retained screen was replayed into the one terminal, exactly once
     expect(writeSpy.mock.calls.filter(args => args[0] === 'early\n')).toHaveLength(1)
   })
+
+  it('Operator remounting TerminalTab clears retained output before host replay so scrollback is not duplicated', async () => {
+    // Given a connected tab with output captured in the controller before panel unmount
+    const h = harness()
+    await mount(<TerminalTab api={h.api} controller={h.controller} presetAlias="edge" />)
+    await act(async () => {
+      const container = document.body.lastElementChild as HTMLElement
+      await connectHost(container)
+    })
+    await act(async () => { h.opened[0]!.onReady?.('s-edge', 'edge') })
+    await act(async () => { h.opened[0]!.onOutput?.('prompt$ uname\n') })
+    const tabId = h.controller.getSnapshot().terminalTabs[0]!.id
+    expect(h.controller.readTerminalOutput(tabId)).toBe('prompt$ uname\n')
+
+    // When the panel unmounts, remounts, and the host replays its scrollback on reattach
+    await act(async () => { roots.pop()!.unmount() })
+    await mount(<TerminalTab api={h.api} controller={h.controller} />)
+    await act(async () => { h.attached[0]!.connection.onOutput?.('prompt$ uname\n') })
+
+    // Then the controller holds one copy of the scrollback instead of doubling it
+    expect(h.controller.readTerminalOutput(tabId)).toBe('prompt$ uname\n')
+  })
+
+  it('Operator receiving a single chunk larger than 256 KiB trims to UTF-8 budget without splitting surrogate pairs', () => {
+    // Given a PanelController and a single 280,000-byte chunk of 4-byte emoji code points
+    const controller = new PanelController()
+    const oversized = '\u{1F600}'.repeat(70_000)
+
+    // When that chunk is appended to a tab screen
+    controller.appendTerminalOutput('tab-big', oversized)
+    const retained = controller.readTerminalOutput('tab-big')
+
+    // Then the retained output stays within 256 KiB and preserves valid UTF-16 surrogate pairs
+    expect(Buffer.byteLength(retained, 'utf8')).toBe(256 * 1024)
+    expect(retained).toBe('\u{1F600}'.repeat((256 * 1024) / 4))
+    expect(Buffer.from(retained, 'utf8').toString('utf8')).toBe(retained)
+  })
 })
 
 describe('SSH challenge ownership (#1950)', () => {

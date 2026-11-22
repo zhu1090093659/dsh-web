@@ -25,7 +25,11 @@ import { tt } from './panel/helpers.ts'
 /** Minimal File System Access API surface (not in all lib.dom versions). */
 interface WindowWithFileSystemAccess {
   showSaveFilePicker?: (options: { suggestedName?: string }) => Promise<{
-    createWritable: () => Promise<{ write: (data: Uint8Array) => Promise<void>; close: () => Promise<void> }>
+    createWritable: () => Promise<{
+      write: (data: Uint8Array) => Promise<void>
+      close: () => Promise<void>
+      abort?: () => Promise<void>
+    }>
   }>
 }
 
@@ -418,28 +422,44 @@ export class SshApi {
     let finalError: string | undefined
     let sawResult = false
     let transferredBytes = 0
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() ?? ''
-      for (const line of lines) {
-        if (line.trim() === '') continue
-        let parsed: TransferStreamLine
-        try {
-          parsed = JSON.parse(line) as TransferStreamLine
-        } catch {
-          continue
-        }
-        if (parsed.type === 'progress') {
-          onProgress?.(parsed.progress)
-        } else if (parsed.type === 'result') {
-          sawResult = true
-          if (parsed.ok) transferredBytes = parsed.transferredBytes ?? 0
-          finalError = parsed.ok ? undefined : parsed.error ?? 'upload failed'
-        }
+    let doneReading = false
+    const processLine = (line: string): void => {
+      if (line.trim() === '') return
+      let parsed: TransferStreamLine
+      try {
+        parsed = JSON.parse(line) as TransferStreamLine
+      } catch {
+        return
       }
+      if (parsed.type === 'progress') {
+        onProgress?.(parsed.progress)
+      } else if (parsed.type === 'result') {
+        sawResult = true
+        if (parsed.ok) transferredBytes = parsed.transferredBytes ?? 0
+        finalError = parsed.ok ? undefined : parsed.error ?? 'upload failed'
+      }
+    }
+    try {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) {
+          doneReading = true
+          break
+        }
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+        for (const line of lines) processLine(line)
+      }
+      buffer += decoder.decode()
+      if (buffer !== '') {
+        for (const line of buffer.split('\n')) processLine(line)
+      }
+    } finally {
+      if (!doneReading) {
+        try { await reader.cancel() } catch { /* ignore */ }
+      }
+      try { reader.releaseLock() } catch { /* ignore */ }
     }
     if (finalError !== undefined) throw new SshApiError(finalError)
     if (!sawResult) throw new SshApiError('upload ended without a result frame — the transfer did not complete')
@@ -471,11 +491,21 @@ export class SshApi {
       ? (window as WindowWithFileSystemAccess).showSaveFilePicker
       : undefined
     let streamed = false
-    let writable: { write: (data: Uint8Array) => Promise<void>; close: () => Promise<void> } | undefined
+    let writable: {
+      write: (data: Uint8Array) => Promise<void>
+      close: () => Promise<void>
+      abort?: () => Promise<void>
+    } | undefined
     const chunks: Uint8Array<ArrayBuffer>[] = []
     let received = 0
-    const progress = (): void => {
-      onProgress?.({
+    let lastProgressAt = -Infinity
+    const PROGRESS_THROTTLE_MS = 100
+    const emitProgress = (force = false): void => {
+      if (onProgress === undefined) return
+      const now = Date.now()
+      if (!force && now - lastProgressAt < PROGRESS_THROTTLE_MS) return
+      lastProgressAt = now
+      onProgress({
         phase: 'transferring',
         file: remotePath,
         transferred: received,
@@ -483,33 +513,52 @@ export class SshApi {
         percent: total > 0 ? Math.round((received / total) * 1000) / 10 : 0,
       })
     }
+    let doneReading = false
+    let completed = false
     try {
-      if (picker !== undefined) {
-        const handle = await picker.call(window, { suggestedName: filename })
-        writable = await handle.createWritable()
-        streamed = true
+      try {
+        if (picker !== undefined) {
+          const handle = await picker.call(window, { suggestedName: filename })
+          writable = await handle.createWritable()
+          streamed = true
+        }
+      } catch {
+        // User cancelled the save dialog or the API is unavailable: fall back.
       }
-    } catch {
-      // User cancelled the save dialog or the API is unavailable: fall back.
-    }
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      if (writable !== undefined) {
-        await writable.write(value as Uint8Array)
-      } else {
-        chunks.push(value as Uint8Array<ArrayBuffer>)
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) {
+          doneReading = true
+          break
+        }
+        if (writable !== undefined) {
+          await writable.write(value as Uint8Array)
+        } else {
+          chunks.push(value as Uint8Array<ArrayBuffer>)
+        }
+        received += value.length
+        emitProgress(lastProgressAt < 0)
       }
-      received += value.length
-      progress()
-    }
-    if (writable !== undefined) await writable.close()
-    onProgress?.({ phase: 'done', file: remotePath, transferred: received, total: received > 0 ? received : total, percent: 100 })
-    return {
-      blob: streamed ? undefined : new Blob(chunks),
-      filename,
-      streamed,
-      bytes: received,
+      if (writable !== undefined) await writable.close()
+      completed = true
+      onProgress?.({ phase: 'done', file: remotePath, transferred: received, total: received > 0 ? received : total, percent: 100 })
+      return {
+        blob: streamed ? undefined : new Blob(chunks),
+        filename,
+        streamed,
+        bytes: received,
+      }
+    } finally {
+      if (!completed && writable !== undefined) {
+        try {
+          if (writable.abort !== undefined) await writable.abort()
+          else await writable.close()
+        } catch { /* ignore */ }
+      }
+      if (!doneReading) {
+        try { await reader.cancel() } catch { /* ignore */ }
+      }
+      try { reader.releaseLock() } catch { /* ignore */ }
     }
   }
 
@@ -625,6 +674,12 @@ export class SshApi {
     // A deliberate detach/close must not surface as a transport error: the
     // view tears down silently, and only an UNEXPECTED close reports exit.
     let leaving = false
+    let exited = false
+    const notifyExit = (code: number | null, error?: string): void => {
+      if (exited) return
+      exited = true
+      connection.onExit?.(code, error)
+    }
     const sendFrame = (frame: TerminalClientFrame): void => {
       if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(frame))
     }
@@ -656,11 +711,11 @@ export class SshApi {
       }
       if (frame.type === 'ready') connection.onReady?.(frame.sessionId, frame.alias)
       else if (frame.type === 'output') connection.onOutput?.(frame.data)
-      else if (frame.type === 'exit') connection.onExit?.(frame.code, frame.error)
+      else if (frame.type === 'exit') notifyExit(frame.code, frame.error)
       else if (frame.type === 'auth_prompt') connection.onAuthPrompt?.(frame.name, frame.instructions, frame.prompts)
     }
-    socket.onclose = () => { if (!leaving) connection.onExit?.(null, 'connection closed') }
-    socket.onerror = () => { if (!leaving) connection.onExit?.(null, 'connection error') }
+    socket.onclose = () => { if (!leaving) notifyExit(null, 'connection closed') }
+    socket.onerror = () => { if (!leaving) notifyExit(null, 'connection error') }
     return connection
   }
 }

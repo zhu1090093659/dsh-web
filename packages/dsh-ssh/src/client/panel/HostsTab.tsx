@@ -75,7 +75,7 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
   const [hosts, setHosts] = useState<SshPanelHostSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [testingAlias, setTestingAlias] = useState<string | null>(null)
+  const [testingAliases, setTestingAliases] = useState<ReadonlySet<string>>(() => new Set())
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({})
   const [importing, setImporting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -93,7 +93,10 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
   // sibling tabs (terminal / transfer / tunnels) already guard with a
   // disposed flag.
   const mountedRef = useRef(true)
-  useEffect(() => () => { mountedRef.current = false }, [])
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
 
   const load = useCallback(async (query?: string): Promise<void> => {
     const seq = ++seqRef.current
@@ -108,23 +111,37 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
     }
   }, [api])
 
-  useEffect(() => { void load() }, [load])
-
-  // Debounced search: every keystroke re-filters through the API.
+  // Initial load fires once right away; later search edits debounce through the API.
+  const loadedApiRef = useRef<SshApi | null>(null)
   useEffect(() => {
+    const query = search.trim()
+    const normalized = query === '' ? undefined : query
+    if (loadedApiRef.current !== api) {
+      loadedApiRef.current = api
+      void load(normalized)
+      return
+    }
     const timer = setTimeout(() => {
-      const query = search.trim()
-      void load(query === '' ? undefined : query)
+      void load(normalized)
     }, 300)
     return () => { clearTimeout(timer) }
-  }, [search, load])
+  }, [api, search, load])
+
+  const reloadCurrent = (): void => {
+    const query = search.trim()
+    void load(query === '' ? undefined : query)
+  }
 
   // Every async setState path guards with mountedRef, not just load(): a
   // promise settling after unmount would setState against the torn-down
   // environment (window is not defined, main-CI flake).
   const runTest = async (alias: string): Promise<void> => {
     if (!mountedRef.current) return
-    setTestingAlias(alias)
+    setTestingAliases(prev => {
+      const next = new Set(prev)
+      next.add(alias)
+      return next
+    })
     try {
       const result = await api.testHost(alias)
       if (!mountedRef.current) return
@@ -133,7 +150,14 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
       if (!mountedRef.current) return
       setTestResults(prev => ({ ...prev, [alias]: { ok: false, error: errorMessage(cause) } }))
     } finally {
-      if (mountedRef.current) setTestingAlias(null)
+      if (mountedRef.current) {
+        setTestingAliases(prev => {
+          if (!prev.has(alias)) return prev
+          const next = new Set(prev)
+          next.delete(alias)
+          return next
+        })
+      }
     }
   }
 
@@ -142,7 +166,7 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
     try {
       await api.deleteHost(alias)
       if (!mountedRef.current) return
-      void load()
+      reloadCurrent()
     } catch (cause) {
       if (!mountedRef.current) return
       setError(errorMessage(cause))
@@ -168,7 +192,7 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
       if (!mountedRef.current) return
       setNotice(tt('hosts.imported', { parsed: result.parsed, added: result.added, skipped: result.skipped }))
       setImportSkips(result.skippedBlocks)
-      void load()
+      reloadCurrent()
     } catch (cause) {
       if (!mountedRef.current) return
       setError(errorMessage(cause))
@@ -179,6 +203,7 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
 
   const renderHostRow = (host: SshPanelHostSummary): ReactNode => {
     const test = testResults[host.alias]
+    const testing = testingAliases.has(host.alias)
     return (
       <tr key={host.alias}>
         <td className={css.mono}>{host.alias}</td>
@@ -198,10 +223,10 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
         <td className={css.cellMuted}>{host.description ?? ''}</td>
         <td>
           <div className={css.actions}>
-            <button type="button" className={css.linkButton} disabled={testingAlias === host.alias} onClick={() => { void runTest(host.alias) }}>
-              {testingAlias === host.alias ? tt('hosts.testing') : tt('hosts.test')}
+            <button type="button" className={css.linkButton} disabled={testing} onClick={() => { void runTest(host.alias) }}>
+              {testing ? tt('hosts.testing') : tt('hosts.test')}
             </button>
-            {testingAlias === host.alias && <span className={css.spinner} aria-hidden="true" />}
+            {testing && <span className={css.spinner} aria-hidden="true" />}
             {test !== undefined && (
               <span className={css.inlineTest} data-status={test.ok ? 'ok' : 'fail'}>
                 {test.ok ? tt('hosts.testOk', { latency: test.latencyMs ?? 0 }) : tt('hosts.testFail', { error: test.error ?? '' })}
@@ -320,7 +345,7 @@ export function HostsTab({ api, onConnect }: HostsTabProps) {
           api={api}
           editing={dialog.mode === 'edit' ? dialog.host : null}
           onClose={() => { setDialog(null) }}
-          onSaved={() => { setDialog(null); void load() }}
+          onSaved={() => { setDialog(null); reloadCurrent() }}
         />
       )}
     </div>

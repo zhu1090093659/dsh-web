@@ -172,10 +172,12 @@ export function HostFormDialog({ api, editing, onClose, onSaved }: HostFormDialo
       // form can both enable and clear forwarding (omitting it would keep the
       // stored value under PATCH semantics).
       forwardAgent: form.forwardAgent,
-      description: form.description.trim() === '' ? undefined : form.description.trim(),
-      environment: form.environment.trim() === '' ? undefined : form.environment.trim(),
+      // Always sent (never omitted): an empty string is the explicit PATCH
+      // clear, matching store.ts semantics.
+      description: form.description.trim(),
+      environment: form.environment.trim(),
       tags: splitList(form.tags),
-      location: form.location.trim() === '' ? undefined : form.location.trim(),
+      location: form.location.trim(),
     }
     setSaving(true)
     setError(null)

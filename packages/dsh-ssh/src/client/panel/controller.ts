@@ -117,11 +117,53 @@ const MAX_RETAINED_BYTES = 256 * 1024
  */
 function utf8Bytes(text: string): number {
   let bytes = 0
-  for (const char of text) {
-    const code = char.codePointAt(0) ?? 0
-    bytes += code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i)
+    if (code >= 0xd800 && code <= 0xdbff && i + 1 < text.length) {
+      const low = text.charCodeAt(i + 1)
+      if (low >= 0xdc00 && low <= 0xdfff) {
+        bytes += 4
+        i += 1
+        continue
+      }
+    }
+    bytes += code < 0x80 ? 1 : code < 0x800 ? 2 : 3
   }
   return bytes
+}
+
+/** Trim leading code units from an oversized chunk so its tail fits maxBytes without splitting surrogate pairs. */
+function trimTrailingUtf8(text: string, maxBytes: number): { text: string; bytes: number } {
+  let bytes = 0
+  let start = text.length
+  for (let i = text.length - 1; i >= 0; i -= 1) {
+    const code = text.charCodeAt(i)
+    let charBytes: number
+    let stepStart = i
+    if (code >= 0xdc00 && code <= 0xdfff && i > 0) {
+      const high = text.charCodeAt(i - 1)
+      if (high >= 0xd800 && high <= 0xdbff) {
+        charBytes = 4
+        stepStart = i - 1
+      } else {
+        charBytes = 3
+      }
+    } else {
+      charBytes = code < 0x80 ? 1 : code < 0x800 ? 2 : 3
+    }
+    if (bytes + charBytes > maxBytes) break
+    bytes += charBytes
+    start = stepStart
+    i = stepStart
+  }
+  return { text: start === 0 ? text : text.slice(start), bytes }
+}
+
+interface RetainedScreen {
+  chunks: string[]
+  chunkBytes: number[]
+  head: number
+  bytes: number
 }
 
 /** The panel state owner the sidebar row and the view both read. */
@@ -138,7 +180,7 @@ export class PanelController {
    * not re-render the panel on every chunk, and only the terminal view reads
    * this (when a tab has no session left to replay from).
    */
-  private readonly retainedScreens = new Map<string, { chunks: string[]; bytes: number }>()
+  private readonly retainedScreens = new Map<string, RetainedScreen>()
   /**
    * Sockets that outlived their view while still connecting. Their session id
    * is unknown, so they cannot be detached yet; keeping them here is what
@@ -403,19 +445,42 @@ export class PanelController {
 
   /** Append one output chunk to the retained screen of a tab. */
   appendTerminalOutput(id: string, chunk: string): void {
-    const screen = this.retainedScreens.get(id) ?? { chunks: [], bytes: 0 }
-    screen.chunks.push(chunk)
-    screen.bytes += utf8Bytes(chunk)
-    while (screen.bytes > MAX_RETAINED_BYTES && screen.chunks.length > 1) {
-      const dropped = screen.chunks.shift() ?? ''
-      screen.bytes -= utf8Bytes(dropped)
+    if (chunk === '') return
+    const size = utf8Bytes(chunk)
+    if (size > MAX_RETAINED_BYTES) {
+      const trimmed = trimTrailingUtf8(chunk, MAX_RETAINED_BYTES)
+      this.retainedScreens.set(id, {
+        chunks: trimmed.text === '' ? [] : [trimmed.text],
+        chunkBytes: trimmed.text === '' ? [] : [trimmed.bytes],
+        head: 0,
+        bytes: trimmed.bytes,
+      })
+      return
     }
-    this.retainedScreens.set(id, screen)
+    let screen = this.retainedScreens.get(id)
+    if (screen === undefined) {
+      this.retainedScreens.set(id, { chunks: [chunk], chunkBytes: [size], head: 0, bytes: size })
+      return
+    }
+    screen.chunks.push(chunk)
+    screen.chunkBytes.push(size)
+    screen.bytes += size
+    while (screen.bytes > MAX_RETAINED_BYTES && screen.chunks.length - screen.head > 1) {
+      screen.bytes -= screen.chunkBytes[screen.head]!
+      screen.head += 1
+    }
+    if (screen.head >= 256 && screen.head * 2 >= screen.chunks.length) {
+      screen.chunks = screen.chunks.slice(screen.head)
+      screen.chunkBytes = screen.chunkBytes.slice(screen.head)
+      screen.head = 0
+    }
   }
 
   /** The retained screen of a tab, concatenated for a redraw. */
   readTerminalOutput(id: string): string {
-    return (this.retainedScreens.get(id)?.chunks ?? []).join('')
+    const screen = this.retainedScreens.get(id)
+    if (screen === undefined) return ''
+    return screen.head === 0 ? screen.chunks.join('') : screen.chunks.slice(screen.head).join('')
   }
 
   /** Forget the retained screen (a fresh replay from the host replaces it). */

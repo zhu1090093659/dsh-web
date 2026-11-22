@@ -110,6 +110,8 @@ export function TerminalTab({ api, controller, presetAlias, terminalFont }: Term
   const dataSubRef = useRef<IDisposable | null>(null)
   /** Tab whose screen the terminal currently holds. */
   const renderedRef = useRef<string | undefined>(undefined)
+  /** Last geometry pushed to the active socket to skip duplicate resizes. */
+  const lastSentSizeRef = useRef<{ connection: TerminalConnection; cols: number; rows: number } | null>(null)
   /** Tabs with a background close in flight, so one click cannot open two. */
   const closingRef = useRef<Set<string>>(new Set())
   const fontSource = terminalFont ?? NO_FONT_SOURCE
@@ -129,7 +131,10 @@ export function TerminalTab({ api, controller, presetAlias, terminalFont }: Term
     term.options.fontFamily = next
     fitRef.current?.fit()
     const link = linkRef.current
-    if (link !== null) link.connection.resize(term.cols, term.rows)
+    if (link !== null) {
+      link.connection.resize(term.cols, term.rows)
+      lastSentSizeRef.current = { connection: link.connection, cols: term.cols, rows: term.rows }
+    }
   }, [fontOverride])
 
   // Fetch the host list on tab activation.
@@ -159,17 +164,16 @@ export function TerminalTab({ api, controller, presetAlias, terminalFont }: Term
   // height and the last line is clipped below the fold). ResizeObserver may
   // be absent (jsdom tests); the window listener then remains the only path.
   useEffect(() => {
-    let lastCols = -1
-    let lastRows = -1
     const sync = (): void => {
       const term = termRef.current
       const fit = fitRef.current
       if (term === null || fit === null) return
       fit.fit()
       const link = linkRef.current
-      if (link !== null && (term.cols !== lastCols || term.rows !== lastRows)) {
-        lastCols = term.cols
-        lastRows = term.rows
+      if (link === null) return
+      const last = lastSentSizeRef.current
+      if (last === null || last.connection !== link.connection || term.cols !== last.cols || term.rows !== last.rows) {
+        lastSentSizeRef.current = { connection: link.connection, cols: term.cols, rows: term.rows }
         link.connection.resize(term.cols, term.rows)
       }
     }
@@ -336,11 +340,12 @@ export function TerminalTab({ api, controller, presetAlias, terminalFont }: Term
     }
     if (tab.status === 'connected' && tab.sessionId !== undefined) {
       const sessionId = tab.sessionId
+      // Always clear retained output before attaching: the host replays its
+      // full scrollback on attach, including after a panel remount where the
+      // local xterm starts fresh (renderedRef.current === undefined).
+      controller.clearTerminalOutput(tab.id)
       if (needsScreenClear(tab.id)) {
-        // The host replays its scrollback on attach, so the screen starts empty
-        // and the retained copy is replaced by that replay.
         view.term.reset()
-        controller.clearTerminalOutput(tab.id)
         renderedRef.current = tab.id
       }
       bindConnection(tab, api.attachTerminal(sessionId, view.term.cols, view.term.rows))

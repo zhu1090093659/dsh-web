@@ -186,4 +186,58 @@ describe('TunnelsTab polling contract', () => {
     expect(listTunnels).toHaveBeenCalledOnce()
     expect(vi.getTimerCount()).toBe(0)
   })
+
+  it('operator sees an error and keeps form inputs when startTunnel resolves in failed state', async () => {
+    // Given hosts ready and an engine whose startTunnel returns state='failed'
+    const api = {
+      listHosts: async () => [{
+        alias: 'db',
+        host: '10.0.0.2',
+        port: 22,
+        user: 'ops',
+        auth: 'key',
+        keyReady: true,
+        proxyJump: [],
+        forwardAgent: false,
+        tags: [],
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      listTunnels: async () => [],
+      startTunnel: async () => ({
+        id: 'tun-fail',
+        alias: 'db',
+        localPort: 0,
+        remoteHost: '127.0.0.1',
+        remotePort: 5432,
+        state: 'failed' as const,
+        error: 'ssh link closed while the tunnel was starting',
+        startedAt: 1000,
+      }),
+    } as unknown as SshApi
+    const view = await mount(api)
+    const select = view.container.querySelector('select') as HTMLSelectElement
+    const portInput = view.container.querySelector('input[type="number"]') as HTMLInputElement
+    const startButton = [...view.container.querySelectorAll('button')].find(b => b.textContent === '新建隧道') as HTMLButtonElement
+
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')?.set?.call(select, 'db')
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set?.call(portInput, '5432')
+      portInput.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    // When the operator clicks start tunnel
+    await act(async () => {
+      startButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    // Then the error banner survives list refresh, no green notice renders, and remotePort stays filled
+    const errorBanner = view.container.querySelector('[data-kind="error"]')
+    expect(errorBanner?.textContent).toContain('ssh link closed')
+    expect(view.container.querySelector('[data-kind="ok"]')).toBeNull()
+    expect(portInput.value).toBe('5432')
+  })
 })

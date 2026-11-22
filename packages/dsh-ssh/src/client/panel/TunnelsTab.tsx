@@ -72,6 +72,11 @@ export function TunnelsTab({ api, active = true }: TunnelsTabProps) {
   // state, and the list is diff-set so an unchanged poll tick keeps the
   // previous state reference (no wasted re-render).
   const seqRef = useRef(0)
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
   const automaticRead = useRef<{ running: boolean; resume?: () => void }>({ running: false })
   useEffect(() => {
     if (!active) return
@@ -128,24 +133,26 @@ export function TunnelsTab({ api, active = true }: TunnelsTabProps) {
     }
   }, [api, active])
 
-  const refresh = async (): Promise<void> => {
+  const refresh = async (preserveError = false): Promise<void> => {
     const seq = ++seqRef.current
     try {
       const list = await api.listTunnels()
-      if (seq !== seqRef.current) return
+      if (!mountedRef.current || seq !== seqRef.current) return
       setTunnels(list)
-      setError(null)
+      if (!preserveError) setError(null)
     } catch (cause) {
-      if (seq !== seqRef.current) return
-      setError(errorMessage(cause))
+      if (!mountedRef.current || seq !== seqRef.current) return
+      if (!preserveError) setError(errorMessage(cause))
     }
   }
 
   const stopTunnel = async (tunnelId: string): Promise<void> => {
     try {
       await api.stopTunnel(tunnelId)
+      if (!mountedRef.current) return
       await refresh()
     } catch (cause) {
+      if (!mountedRef.current) return
       setError(errorMessage(cause))
     }
   }
@@ -155,11 +162,13 @@ export function TunnelsTab({ api, active = true }: TunnelsTabProps) {
     setBusy(true)
     try {
       await api.stopAllTunnels(alias === '' ? undefined : alias)
+      if (!mountedRef.current) return
       await refresh()
     } catch (cause) {
+      if (!mountedRef.current) return
       setError(errorMessage(cause))
     } finally {
-      setBusy(false)
+      if (mountedRef.current) setBusy(false)
     }
   }
 
@@ -176,6 +185,7 @@ export function TunnelsTab({ api, active = true }: TunnelsTabProps) {
       return
     }
     setBusy(true)
+    setError(null)
     setNotice(null)
     try {
       const tunnel = await api.startTunnel({
@@ -184,15 +194,22 @@ export function TunnelsTab({ api, active = true }: TunnelsTabProps) {
         remoteHost: remoteHost.trim() === '' ? undefined : remoteHost.trim(),
         localPort: localPortNumber,
       })
+      if (!mountedRef.current) return
+      if (tunnel.state === 'failed') {
+        setError(tt('tunnel.failed', { error: tunnel.error ?? 'unknown error' }))
+        await refresh(true)
+        return
+      }
       setNotice(tt('tunnel.started', { localPort: tunnel.localPort }))
       setRemotePort('')
       setRemoteHost('')
       setLocalPort('')
       await refresh()
     } catch (cause) {
+      if (!mountedRef.current) return
       setError(tt('tunnel.failed', { error: errorMessage(cause) }))
     } finally {
-      setBusy(false)
+      if (mountedRef.current) setBusy(false)
     }
   }
 

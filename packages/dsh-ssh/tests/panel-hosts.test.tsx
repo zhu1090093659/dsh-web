@@ -322,4 +322,112 @@ describe('HostsTab agent forwarding', () => {
     expect(rowOfBuild.contains(badges[0]!)).toBe(true)
     expect(rowOfPlain.querySelector('span[data-kind="forward-agent"]')).toBeNull()
   })
+
+  it('user mounting HostsTab fetches hosts once without a duplicate debounced load', async () => {
+    // Given a hosts API and fake timers covering the 300ms search debounce window
+    vi.useFakeTimers()
+    try {
+      const queries: Array<string | undefined> = []
+      const api = {
+        listHosts: async (query?: string) => {
+          queries.push(query)
+          return [makeHost('alpha')]
+        },
+      } as unknown as SshApi
+
+      // When HostsTab mounts and 400ms elapses without typing into search
+      await renderTab(api)
+      await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+
+      // Then listHosts was called once on mount with no second 300ms duplicate fetch
+      expect(queries).toEqual([undefined])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('user batch-testing a group sees per-host testing indicators independently', async () => {
+    // Given two prod hosts whose testHost calls settle in opposite order
+    let resolveA!: (res: TestResult) => void
+    let resolveB!: (res: TestResult) => void
+    const hosts = [
+      makeHost('a-host', { environment: 'prod' }),
+      makeHost('b-host', { environment: 'prod' }),
+    ]
+    const api = {
+      listHosts: async () => hosts,
+      testHost: (alias: string) => new Promise<TestResult>((resolve) => {
+        if (alias === 'a-host') resolveA = resolve
+        else resolveB = resolve
+      }),
+    } as unknown as SshApi
+    const container = await renderTab(api)
+    const select = container.querySelector('select') as HTMLSelectElement
+    await act(async () => {
+      select.value = 'environment'
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+
+    // When the user triggers Test all for the group and only b-host settles first
+    const batchButton = [...container.querySelectorAll('section button')].find(b => b.textContent === '测试全部') as HTMLButtonElement
+    let batchPromise!: Promise<void>
+    await act(async () => {
+      batchButton.click()
+      await Promise.resolve()
+      batchPromise = Promise.resolve()
+    })
+    const buttonsMidFlight = [...container.querySelectorAll('tbody tr button')].filter(b => b.textContent === '连接测试中…')
+    expect(buttonsMidFlight).toHaveLength(2)
+
+    await act(async () => {
+      resolveB({ ok: true, latencyMs: 5 })
+      await Promise.resolve()
+    })
+
+    // Then a-host stays in testing state while b-host already displays its ok result
+    const rows = [...container.querySelectorAll('tbody tr')]
+    const rowA = rows.find(r => r.textContent?.includes('a-host.example.com'))!
+    const rowB = rows.find(r => r.textContent?.includes('b-host.example.com'))!
+    expect(rowA.textContent).toContain('连接测试中…')
+    expect(rowB.textContent).toContain('连接成功')
+
+    await act(async () => {
+      resolveA({ ok: true, latencyMs: 8 })
+      await batchPromise
+    })
+  })
+
+  it('user deleting a host while searching keeps the active search filter on reload', async () => {
+    // Given HostsTab filtered by "prod" and an allowed delete confirmation
+    vi.useFakeTimers()
+    const originalConfirm = window.confirm
+    window.confirm = () => true
+    try {
+      const queries: Array<string | undefined> = []
+      const api = {
+        listHosts: async (query?: string) => {
+          queries.push(query)
+          return [makeHost('prod-1')]
+        },
+        deleteHost: async () => undefined,
+      } as unknown as SshApi
+      const container = await renderTab(api)
+      const searchInput = container.querySelector('input[type="search"]') as HTMLInputElement
+      await typeInto(searchInput, 'prod')
+      await act(async () => { await vi.advanceTimersByTimeAsync(350) })
+
+      // When the user deletes the filtered host
+      const deleteButton = [...container.querySelectorAll('button')].find(b => b.textContent === '删除') as HTMLButtonElement
+      await act(async () => {
+        deleteButton.click()
+        await Promise.resolve()
+      })
+
+      // Then the post-delete reload passes the active "prod" filter
+      expect(queries).toEqual([undefined, 'prod', 'prod'])
+    } finally {
+      window.confirm = originalConfirm
+      vi.useRealTimers()
+    }
+  })
 })

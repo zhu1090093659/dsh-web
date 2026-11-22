@@ -224,4 +224,26 @@ describe('HostFormDialog editing auth (#1910)', () => {
     expect(hint).toContain('Agent 路径留空是合法的自动检测')
     expect(hint).not.toContain('密钥/密码/Agent 留空')
   })
+
+  it('user clearing description, environment, and location on an edited host submits empty strings so PATCH clears them', async () => {
+    // Given an existing host with non-empty description, environment, and location
+    const api = makeApi()
+    const container = await renderEdit(makeHost('clear-1', {
+      description: 'old desc',
+      environment: 'staging',
+      location: 'dc-1',
+    }), api)
+
+    // When the user clears those three fields and saves
+    await typeInto(fieldOf(container, '备注').querySelector('input') as HTMLInputElement, '   ')
+    await typeInto(fieldOf(container, '环境').querySelector('input') as HTMLInputElement, '')
+    await typeInto(fieldOf(container, '位置').querySelector('input') as HTMLInputElement, ' ')
+    await act(async () => { saveButtonOf(container).click() })
+
+    // Then the PATCH payload submits explicit empty strings rather than undefined
+    const payload = vi.mocked(api.updateHost).mock.calls[0]![1]
+    expect(payload.description).toBe('')
+    expect(payload.environment).toBe('')
+    expect(payload.location).toBe('')
+  })
 })

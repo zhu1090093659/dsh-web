@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record (docs/i18n.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with git hash-object.
-2026-10-17-remote-web-ui-wildcard-bind-capability.md: 546cd3bc8a058812ced4954617ec1660abe0e263
-2026-10-17-remote-web-ui-wildcard-bind-capability.zh.md: 6f14792da3f8435729e19c03d53c6f777926d84a
+2026-10-17-remote-web-ui-wildcard-bind-capability.md: 01b78c4ec981d2587df470f929bc9c8bb61d0a92
+2026-10-17-remote-web-ui-wildcard-bind-capability.zh.md: e86b35d13b048f60ce8e6119d1a3b08584cad35d

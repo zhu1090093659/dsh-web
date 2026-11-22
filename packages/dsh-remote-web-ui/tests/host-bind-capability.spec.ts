@@ -9,6 +9,19 @@
  */
 import { describe, expect, it } from 'vitest'
 import { bindAccepted, bindUrlHostOf, configSchemaOf, isLoopbackBind, isWildcardLiteral, probeWildcardBindSupport, wildcardBindSupported } from '../src/host-bind-capability.ts'
+import buildConfig from '../tsdown.config.ts'
+import prepareConfig from '../tsdown.prepare.config.ts'
+
+describe('publish build', () => {
+  it('operator keeps the installed host webserver out of the plugin bundle', () => {
+    // Given the consumer prepare build used for published and git-installed artifacts
+    // When its host configuration is resolved
+    const host = prepareConfig({ env: {} })
+    // Then it is the primary configuration and the host owns the WebServer implementation
+    expect(prepareConfig).toBe(buildConfig)
+    expect(host[0]).toMatchObject({ external: expect.arrayContaining(['@deepseek-ai/dsh-host-webserver']) })
+  })
+})
 
 /** A schema factory that accepts anything, counting its calls. */
 function acceptingSchema(): { factory: (value: unknown) => unknown; calls: number[] } {

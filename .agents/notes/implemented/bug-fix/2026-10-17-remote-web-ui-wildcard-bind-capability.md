@@ -64,6 +64,7 @@ premise inside it: that the block may pin the wildcard literal `0.0.0.0`.
   wildcard literal, and answers false when the module cannot be interrogated (a
   failed import, an unexpected throw). The host's own schema is the one authority
   that cannot drift away from the host, whatever the line is called.
+- **Both build entry points keep that module external.** `tsdown.prepare.config.ts` re-exports `tsdown.config.ts` instead of restating `clientBundle`, so development, npm and git-install builds share one external list. The published plugin contains no bundled `WebServer`/`writeResponse` implementation (issue #2082).
 - **The block pins what the host accepts.** `desiredBindHost(lanBind, startupHost, capability)`
   decides in this order: `127.0.0.1` while the toggle is off; the CLI `--host`
   when it is a concrete address literal; `0.0.0.0` only while the probe reports
@@ -168,6 +169,7 @@ premise inside it: that the block may pin the wildcard literal `0.0.0.0`.
 - `desiredBindHost` is a pure helper and keeps its direct unit coverage in
   `tests/lan-bind-plan.spec.ts`, where it is already pinned; the capability and
   address-list inputs extend that coverage rather than adding a test seam.
+- `tests/host-bind-capability.spec.ts` also resolves the prepare build and pins the host-webserver external; the prepare build itself verifies that the emitted host bundle imports that package instead of defining `WebServer` or `writeResponse`.
 - The three locale dictionaries (zh, en, ru) and the card copy are covered by
   `pnpm i18n:check`; the package lane for the host half is
   `pnpm --filter @linxin666/dsh-remote-web-ui test` plus `pnpm typecheck`.

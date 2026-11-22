@@ -54,6 +54,7 @@ CLI 的 `--host` 旗标喂的是同一个 `Config`，所以本 cohort 上
   已安装的 `@deepseek-ai/dsh-host-webserver` 模块自己的 `Config` 是否接受通配
   字面量；模块无法被询问时（导入失败、抛出意料之外的错误）回答 false。宿主自己
   的 schema 是唯一不会与宿主漂移的权威，无论这条线叫什么名字。
+- **两个构建入口都让该模块保持外置。** `tsdown.prepare.config.ts` 直接重导出 `tsdown.config.ts`，而不是重新调用一遍 `clientBundle`，因此开发、npm 与 git 安装构建共用同一份 external 清单。发布的插件不再捆绑 `WebServer`/`writeResponse` 实现（issue #2082）。
 - **块只固定宿主接受的值。** `desiredBindHost(lanBind, startupHost, capability)`
   按此顺序判定：开关关闭时为 `127.0.0.1`；CLI `--host` 是具体地址字面量时用它；
   仅当探测报告支持通配时才用 `0.0.0.0`；否则用本机第一个可通告的局域网 IPv4——
@@ -130,5 +131,6 @@ CLI 的 `--host` 旗标喂的是同一个 `Config`，所以本 cohort 上
   并以所引原文拒绝 `0.0.0.0`、`::`、`localhost` 与 `example.com`。
 - `desiredBindHost` 是纯函数，其直接单测覆盖已在 `tests/lan-bind-plan.spec.ts`
   中钉住；能力与地址列表两个入参扩展的是那份覆盖，而不是新增测试接缝。
+- `tests/host-bind-capability.spec.ts` 还会解析 prepare 构建并钉住宿主 webserver 的 external；prepare 构建本身验证产物的 host bundle 导入该包，而不是定义 `WebServer` 或 `writeResponse`。
 - 三份语言字典（zh、en、ru）与卡片文案由 `pnpm i18n:check` 覆盖；宿主半边的包内
   通道是 `pnpm --filter @linxin666/dsh-remote-web-ui test` 加 `pnpm typecheck`。

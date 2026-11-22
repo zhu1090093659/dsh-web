@@ -11,6 +11,15 @@
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
+// Source-level assertions read files inside this package. Resolve them from the
+// test file's own directory so a run started from the repository root, where
+// process.cwd() is the monorepo root, still finds them.
+function packageRoot(): string {
+  const dirname = (import.meta as ImportMeta & { dirname?: string }).dirname
+  if (!dirname) throw new Error('import.meta.dirname is unavailable; run the suite through vitest')
+  return join(dirname, '..')
+}
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SlotCore } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SshApi } from '../src/client/api.ts'
@@ -101,8 +110,8 @@ describe('ssh registrations against the real slot core', () => {
 
   it('operator sees the page keep the semantic anchor and plugin marker', () => {
     // Given the registration source and the page stylesheet
-    const source = readFileSync(join(process.cwd(), 'src', 'client', 'native-panel.tsx'), 'utf8')
-    const css = readFileSync(join(process.cwd(), 'src', 'client', 'panel', 'panel.module.css'), 'utf8')
+    const source = readFileSync(join(packageRoot(), 'src', 'client', 'native-panel.tsx'), 'utf8')
+    const css = readFileSync(join(packageRoot(), 'src', 'client', 'panel', 'panel.module.css'), 'utf8')
 
     // When the page renders in the layout's main seat
     // Then the takeover container's semantic anchors are preserved, so skin

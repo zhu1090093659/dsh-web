@@ -8,6 +8,15 @@
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
+// Source-level assertions read files inside this package. Resolve them from the
+// test file's own directory so a run started from the repository root, where
+// process.cwd() is the monorepo root, still finds them.
+function packageRoot(): string {
+  const dirname = (import.meta as ImportMeta & { dirname?: string }).dirname
+  if (!dirname) throw new Error('import.meta.dirname is unavailable; run the suite through vitest')
+  return join(dirname, '..')
+}
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -115,7 +124,7 @@ describe('HostsTab unmount race (main-CI flake)', () => {
   })
 
   it('guards every load-path setState with the mounted ref', () => {
-    const source = readFileSync(join(process.cwd(), 'src', 'client', 'panel', 'HostsTab.tsx'), 'utf8')
+    const source = readFileSync(join(packageRoot(), 'src', 'client', 'panel', 'HostsTab.tsx'), 'utf8')
     expect(source).toContain('mountedRef')
     expect(source).toContain('if (!mountedRef.current || seq !== seqRef.current) return')
   })

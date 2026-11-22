@@ -40,7 +40,9 @@ describe('resolveTerminalFontFamily (#577)', () => {
     const style = document.createElement('style')
     style.textContent = 'body { --dsh-ssh-terminal-font: "JetBrainsMono Nerd Font", monospace; }'
     document.head.appendChild(style)
-    expect(resolveTerminalFontFamily()).toBe('"JetBrainsMono Nerd Font", monospace')
+    // jsdom normalizes the comma spacing while parsing a stylesheet, so compare
+    // the family stack with that whitespace collapsed.
+    expect(resolveTerminalFontFamily().replace(/\s*,\s*/g, ',')).toBe('"JetBrainsMono Nerd Font",monospace')
   })
 
   it('ignores a custom property that is only whitespace', () => {

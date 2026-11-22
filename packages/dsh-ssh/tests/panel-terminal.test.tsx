@@ -8,6 +8,15 @@
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
+// Source-level assertions read files inside this package. Resolve them from the
+// test file's own directory so a run started from the repository root, where
+// process.cwd() is the monorepo root, still finds them.
+function packageRoot(): string {
+  const dirname = (import.meta as ImportMeta & { dirname?: string }).dirname
+  if (!dirname) throw new Error('import.meta.dirname is unavailable; run the suite through vitest')
+  return join(dirname, '..')
+}
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -87,7 +96,7 @@ describe('TerminalTab dispose and resize cleanup', () => {
     // the component must release the terminal instance and the input
     // subscription. Assert that the source wires both disposes so a future
     // refactor cannot silently drop them.
-    const source = readFileSync(join(process.cwd(), 'src', 'client', 'panel', 'TerminalTab.tsx'), 'utf8')
+    const source = readFileSync(join(packageRoot(), 'src', 'client', 'panel', 'TerminalTab.tsx'), 'utf8')
     expect(source).toContain('dataSubRef.current?.dispose()')
     expect(source).toContain('termRef.current?.dispose()')
     expect(source).toContain('window.removeEventListener(\'resize\', sync)')
@@ -98,7 +107,7 @@ describe('TerminalTab dispose and resize cleanup', () => {
     // without a container-level observer the viewport keeps the old height
     // and the last line is clipped. Guard the contract at source level
     // (jsdom has no ResizeObserver to exercise at runtime).
-    const source = readFileSync(join(process.cwd(), 'src', 'client', 'panel', 'TerminalTab.tsx'), 'utf8')
+    const source = readFileSync(join(packageRoot(), 'src', 'client', 'panel', 'TerminalTab.tsx'), 'utf8')
     expect(source).toContain('new ResizeObserver(')
     expect(source).toContain('observer.observe(container)')
     expect(source).toContain('observer.disconnect()')

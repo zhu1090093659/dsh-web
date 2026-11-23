@@ -155,6 +155,9 @@ export function startEnhancement(options: EnhancementOptions = {}): () => void {
       startOnLoad: false,
       theme,
       securityLevel: 'strict',
+      // Mermaid otherwise leaves its error diagram under body when render throws;
+      // the rollback below owns the failure UI and restores the source block.
+      suppressErrorRendering: true,
       // Labels must be SVG text: mermaid's HTML labels live in <foreignObject>,
       // which the sanitizer strips, so an HTML label renders as an empty box.
       htmlLabels: false,

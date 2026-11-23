@@ -44,19 +44,34 @@ describe('diagram enhancement', () => {
     stop()
   })
 
-  it('user keeps the original code block when the diagram is rejected', async () => {
-    // Given a fence the runtime cannot parse
+  it('user keeps only the original code block when the diagram is rejected', async () => {
+    // Given a runtime that reproduces mermaid's default orphaned error diagram
     document.body.innerHTML = ''
     document.body.append(codeBlock('mermaid', 'graph TD;A--'))
-    const runtime = { initialize: vi.fn(), render: vi.fn(async () => { throw new Error('parse error') }) } as unknown as MermaidRuntime
+    let suppressErrorRendering = false
+    const initialize = vi.fn((config: Record<string, unknown>) => {
+      suppressErrorRendering = config.suppressErrorRendering === true
+    })
+    const render = vi.fn(async () => {
+      if (!suppressErrorRendering) {
+        const errorDiagram = document.createElement('div')
+        errorDiagram.id = 'mermaid-error-diagram'
+        errorDiagram.textContent = 'Syntax error in text'
+        document.body.append(errorDiagram)
+      }
+      throw new Error('parse error')
+    })
+    const runtime = { initialize, render } as unknown as MermaidRuntime
     // When the enhancement tries to render it
     const stop = startEnhancement({ root: document.body, load: async () => runtime })
-    // Then no container survives and the block is free to retry later
-    await vi.waitFor(() => { expect(runtime.render).toHaveBeenCalled() })
+    // Then no diagram or mermaid-owned error node survives the rollback
+    await vi.waitFor(() => { expect(render).toHaveBeenCalled() })
     await vi.waitFor(() => { expect(document.querySelector(`.${DIAGRAM_CLASS}`)).toBeNull() })
     const pre = document.querySelector('pre') as HTMLPreElement
     expect(pre.hasAttribute(DATA_CLAIMED)).toBe(false)
     expect(pre.style.display).not.toBe('none')
+    expect(initialize).toHaveBeenCalledWith(expect.objectContaining({ suppressErrorRendering: true }))
+    expect(document.querySelector('#mermaid-error-diagram')).toBeNull()
     stop()
   })
 

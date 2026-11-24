@@ -29,6 +29,23 @@ square ride `contributes` and plain CSS.
 
 ## Changes
 
+### 0.1.3
+
+- The pinned sidebar opacity no longer defeats the system "reduce transparency"
+  accessibility switch. The host raises the sidebar to 90% of its fill inside
+  `@media (prefers-reduced-transparency: reduce)` (`AppFrame.module.css`), and
+  the previous `!important` overrode it. The skin now restates the host's value
+  in the same media query, derived from its two `color-mix` steps: 0.7478 x 0.90
+  = 0.673 light, 0.58 x 0.90 = 0.522 dark.
+- `[data-dsh-surface]` selectors dropped. The attribute is registered in
+  `semantic-attrs-v1.md` but no current plugin emits it, so those heads could
+  never match; `[data-pane]` plus the class-name fallback carry the rule.
+- **Cross-platform trade-off, recorded deliberately.** 0.1.2 pins all three
+  platforms to the macOS composite (sidebar 0.30). Linux and the plain-web host
+  are therefore more transparent than they were in 0.1.1, which used the
+  undiluted 0.74 fill. That is the accepted cost of one consistent look across
+  macOS, Windows and Linux; it is not a regression to be re-tuned per platform.
+
 ### 0.1.2
 
 - Platform parity: panel opacity is now pinned so the surfaces read the same on

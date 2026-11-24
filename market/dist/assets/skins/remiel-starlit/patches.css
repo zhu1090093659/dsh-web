@@ -251,7 +251,7 @@ body[data-ds-dark-theme] [role="dialog"] * {
   backdrop-filter: none !important;
 }
 
-/* --- 平台一致性：锁死面板透明度（0.1.2）---------------------------------
+/* --- 平台一致性：锁死面板透明度（0.1.3）---------------------------------
 
    目标：无论宿主是 macOS 还是 Windows，侧栏 / 顶栏 / 中栏 / 底栏的表面
    观感必须与作者本机完全一致。只锁不透明度，不改毛玻璃强度。
@@ -279,9 +279,11 @@ body[data-ds-dark-theme] [role="dialog"] * {
       使两边中栏/底栏都回到 bg-base 的 0.62 / 0.48；
    3) Windows 标题栏拖拽条（挂 .frame::before）同步锁值，否则顶栏会比侧栏更实。
 
-   锚点说明：本 build 的侧栏 DOM 只有 CSS-Modules 哈希类名，没有 data-slot /
-   data-dsh-surface；稳定的钩子是 dsh-web-all 兼容层补打的 [data-pane='sidebar']
-   （由 [class*="sidebarCol"] 映射而来），故两套写法并行兜底。 */
+   锚点说明：本 build 的侧栏 DOM 只有 CSS-Modules 哈希类名，没有 data-slot；
+   [data-dsh-surface] 在 semantic-attrs-v1.md 里有登记，但当前任何插件都不产出，
+   匹配不到元素，故不再写（0.1.3 清理）。真正稳定的钩子是 dsh-web-all 兼容层
+   补打的 [data-pane='sidebar']（由 [class*="sidebarCol"] 映射而来），
+   与类名兜底并行。 */
 
 /* 1) 侧栏：锁定到作者本机（macOS）的实际合成值。
       前置限定 [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed])
@@ -293,17 +295,36 @@ body[data-ds-dark-theme] [role="dialog"] * {
         后是 0-3-2，同时带 !important 时按权重取胜，会把那条通明覆盖成半透明暗色，
         在左侧留下一条多余竖条。限定后两条规则互不重叠。 */
 [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [data-pane='sidebar'],
-[data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [data-dsh-surface='sidebar'],
 [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [class*='sidebarCol'] {
   background-color: rgba(250, 242, 251, 0.3) !important;
   background-image: none !important;
 }
 
 body[data-ds-dark-theme] [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [data-pane='sidebar'],
-body[data-ds-dark-theme] [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [data-dsh-surface='sidebar'],
 body[data-ds-dark-theme] [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [class*='sidebarCol'] {
   background-color: rgba(31, 20, 39, 0.29) !important;
   background-image: none !important;
+}
+
+/* 无障碍：系统的「降低透明度」开关必须仍然有效。
+   宿主在 @media (prefers-reduced-transparency: reduce) 里把侧栏改成
+   color-mix(in srgb, var(--dsw-specific-sidebar-fill) 90%, transparent)
+   （AppFrame.module.css），而上面那条 !important 会盖掉它，让开关失效。
+   这里在同一媒体查询内把侧栏恢复到宿主该分支的实际合成值：
+     浅色 0.7478 × 0.90 = 0.673
+     暗色 0.58   × 0.90 = 0.522
+   取值由宿主的两段 color-mix 逐步推算，不是估的。 */
+
+@media (prefers-reduced-transparency: reduce) {
+  [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [data-pane='sidebar'],
+  [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [class*='sidebarCol'] {
+    background-color: rgba(250, 242, 251, 0.673) !important;
+  }
+
+  body[data-ds-dark-theme] [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [data-pane='sidebar'],
+  body[data-ds-dark-theme] [data-dsh-frame]:not([data-sidebar-drawer]):not([data-sidebar-collapsed]) [class*='sidebarCol'] {
+    background-color: rgba(31, 20, 39, 0.522) !important;
+  }
 }
 
 /* 2) 帧本体：Windows 上多出的一层 0.74 底，中和为透明（与 darwin 分支对齐）。
@@ -335,7 +356,6 @@ body[data-ds-dark-theme] [data-dsh-frame]::before {
 
 /* 4) 中栏 / 右栏 / 底栏：钉住 bg-base 的定值，防止宿主改 token 或叠帧底后偏移 */
 [data-pane='conversation'],
-[data-dsh-surface='conversation'],
 [class*='centerCol'],
 [class*='bottomRow'],
 [data-rightbar-col] {
@@ -344,7 +364,6 @@ body[data-ds-dark-theme] [data-dsh-frame]::before {
 }
 
 body[data-ds-dark-theme] [data-pane='conversation'],
-body[data-ds-dark-theme] [data-dsh-surface='conversation'],
 body[data-ds-dark-theme] [class*='centerCol'],
 body[data-ds-dark-theme] [class*='bottomRow'],
 body[data-ds-dark-theme] [data-rightbar-col] {

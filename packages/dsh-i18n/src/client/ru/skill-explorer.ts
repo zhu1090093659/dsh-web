@@ -118,6 +118,6 @@ export const ru: Record<string, string> = {
   'tab.edit': 'Редактировать навык',
   'tab.import': 'Импорт',
   'tab.list': 'Навыки',
-  'workspace.isolated': 'Изоляция рабочей области',
+  'workspace.isolated': 'Изоляция рабочего пространства',
   'workspace.isolatedHint': 'Этот навык принадлежит рабочему пространству «{workspace}» и изолирован от контекста текущей сессии',
 }

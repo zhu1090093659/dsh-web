@@ -51,6 +51,10 @@ allowBuilds:
 # module top level and declares as a required peer. Without it in the tree the
 # import fails at runtime and the base class degrades to `any` for every
 # consumer, so the root devDependencies carry it as a host face.
+#
+# @deepseek-ai/dsh-launch-environment is the same shape at 0.2.3-alpha.2:
+# dsh-credentials@0.2.3-alpha.2 declares it as a required peer and imports it
+# at module top level, so the root devDependencies carry it as a host face.
 packageExtensions:
   '@deepseek-ai/dsh-client-store@0.2.3-alpha.2':
     dependencies:
@@ -135,6 +139,7 @@ minimumReleaseAgeExclude:
   - '@deepseek-ai/dsh-deque@0.2.3-alpha.2'
   - '@deepseek-ai/dsh-error@0.2.3-alpha.2'
   - '@deepseek-ai/dsh-host-webserver@0.2.3-alpha.2'
+  - '@deepseek-ai/dsh-launch-environment@0.2.3-alpha.2'
   - '@deepseek-ai/dsh-llm@0.2.3-alpha.2'
   - '@deepseek-ai/dsh-message-quotes@0.2.3-alpha.2'
   - '@deepseek-ai/dsh-native-command@0.2.3-alpha.2'

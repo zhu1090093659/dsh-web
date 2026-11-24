@@ -11,14 +11,14 @@ import {
 describe('renderer DOM contract', () => {
   it('operator gets a failing pin when the renderer renames a hook', () => {
     // Given the official markdown renderer (ui-primitives CodeBlock) emits
-    // these exact names across its two known banner shapes: the older
-    // infostring element and the 0.2.2-rc.3 _language_ span (#2056)
+    // these exact names across both legacy _<local>_<hash> and 0.2.3-alpha.2
+    // <hash>_<local> CSS Modules class patterns
     // When this package's constants are read
     // Then they still match: a renderer rename must fail here, not silently
     // disable diagrams in production.
     expect(CODE_BLOCK_CLASS).toBe('md-code-block')
-    expect(INFOSTRING_CLASS_FRAGMENT).toBe('_infostring_')
-    expect(LANGUAGE_CLASS_FRAGMENT).toBe('_language_')
+    expect(INFOSTRING_CLASS_FRAGMENT).toBe('_infostring')
+    expect(LANGUAGE_CLASS_FRAGMENT).toBe('_language')
     expect(RENDERED_LANGUAGE).toBe('mermaid')
     expect(DIAGRAM_CLASS).toBe('dsh-diagrams-figure')
   })

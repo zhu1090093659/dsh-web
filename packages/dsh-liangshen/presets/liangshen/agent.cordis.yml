@@ -266,16 +266,18 @@
 - id: fact-ledger
   name: ./fact-ledger.mjs
 
-# The child-route guard. The harness records a Session's authorized child
-# routes as a durable `subagent/model-selection-policy` event, but its own
+# The child-route guard. The harness exposes a live `subagentModelSelection`
+# service (`allowedRoutes()`) starting in 0.2.3-alpha.2 (and on older cohorts
+# records `subagent/model-selection-policy` Session events), while its own
 # delegation tool only rejects an EXPLICIT route outside that list: a call that
 # names no `provider`/`model` inherits the parent route unchecked, and an
 # inherit-only tool such as `subagent_fork` cannot name one at all. This row
-# closes that gap on the preset plane — an allowlist-carrying Session must
-# resolve every policed delegation to an authorized route, and a refusal names
-# the routes that would work. It fails open on every fact it cannot read (no
-# policy event, no session registry, no registry probe), so a Host that cannot
-# answer keeps the harness's own delegation behavior.
+# closes that gap on the preset plane — whenever an allowlist is active, every
+# policed delegation must resolve to an authorized route, and a refusal names the
+# routes that would work. It fails open on every fact it cannot read (no live
+# service / policy event, invalid settings error, no session registry, no
+# registry probe), so a Host that cannot answer keeps the harness's own
+# delegation behavior.
 - id: subagent-routes
   name: ./subagent-routes.mjs
 

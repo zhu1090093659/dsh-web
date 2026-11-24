@@ -13,8 +13,7 @@
  *    would mount the host half only and leave the update-check section dead;
  * 2. the row's `id` is claimed by nobody else: not an official DSH bundle row
  *    (the roster below, snapshotted from the installed
- *    `@deepseek-ai/dsh-web-app` across the 0.2.2-rc.1..0.2.2-rc.3 cohorts and
- *    DSH master preview rows) and
+ *    `@deepseek-ai/dsh-web-app` across the 0.2.3-alpha.2 cohort) and
  *    not another family package. Reusing the official `ui-plugin-manager` id
  *    dropped the official row, and because only the official client registers
  *    `sidebar.panellist`, the sidebar "Plugins" entry and the whole plugin
@@ -66,8 +65,7 @@ function familyClaimedIds(): Map<string, string[]> {
 /**
  * Row ids the official DSH bundles already claim, snapshotted from the
  * installed `@deepseek-ai/dsh-base` and `@deepseek-ai/dsh-web-app` bundle
- * patches (union of cohorts 0.2.2-rc.1..0.2.2-rc.3 and DSH master preview rows,
- * both bundles: the
+ * patches (0.2.3-alpha.2 cohort, both bundles: the
  * official id space is not only `ui-*` — `dsh-base` claims a bare
  * `plugin-manager`, which is why this package's own id could not simply drop
  * the prefix). A family row must stay out of this set: the loader cannot mount
@@ -76,22 +74,24 @@ function familyClaimedIds(): Map<string, string[]> {
  * pass.
  */
 const OFFICIAL_ROW_IDS: ReadonlySet<string> = new Set([
-  'account-controller', 'agent', 'agent-default-model', 'agent-instructions', 'agent-loop',
+  'action-cards', 'agent', 'agent-default-model', 'agent-instructions', 'agent-loop',
   'agent-preset-registry', 'agent-team', 'api-remotes', 'approval', 'attachment-local',
-  'authentication-token', 'authorization', 'bash-sandbox', 'client-hmr', 'command-compact',
-  'command-feedback',
-  'command-goal', 'commands', 'compaction-basic', 'config-editor', 'connection',
-  'cordis-client-runner', 'cordis-host-runner', 'cordis-inspect-providers', 'credentials',
-  'deepseek-account', 'deepseek-llm-api-extensions', 'deliverable-file-references',
-  'desktop-product-telemetry', 'directory-picker', 'entry-customization', 'file-reference-local',
-  'file-upload', 'fs-observation-policy', 'fs-sandbox', 'goal', 'goal-round-driver',
-  'harness-dev-context', 'hmr', 'image-offload', 'job-controller', 'jobs', 'llm',
-  'llm-deepseek', 'llm-deepseek-account', 'llm-pi-ai', 'llm-retry', 'locale', 'mcp-manager',
-  'mcp-resources', 'message-feedback', 'message-quotes', 'modules', 'office-kit',
-  'office-to-pdf', 'open-in-app', 'otel', 'permission', 'plan-mode', 'plugin-inventory',
-  'plugin-manager', 'plugin-package-inventory-deepseek', 'product-analytics', 'ptc-runtime',
-  'pwsh-sandbox', 'remote-access', 'repeat-tool-reminder', 'resources', 'sandbox',
-  'sandbox-policy', 'schedule', 'session', 'session-checkpoint-policy', 'session-controller',
+  'authentication-token', 'authorization', 'bash-sandbox', 'cli-account', 'client-hmr',
+  'client-ui-action-cards', 'client-ui-creation-recommendations',
+  'client-ui-plugin-recommendations', 'command-compact', 'command-feedback', 'command-goal',
+  'commands', 'compaction-basic', 'config-editor', 'connection', 'cordis-client-runner',
+  'cordis-host-runner', 'cordis-inspect-providers', 'creation-recommendations', 'credentials',
+  'deepseek-account', 'deepseek-auth', 'deepseek-llm-api-extensions',
+  'deliverable-file-references', 'desktop-product-telemetry', 'directory-picker',
+  'entry-customization', 'file-reference-local', 'file-upload', 'fs-observation-policy',
+  'fs-sandbox', 'goal', 'goal-round-driver', 'harness-dev-context', 'hmr', 'image-offload',
+  'job-controller', 'jobs', 'llm', 'llm-deepseek', 'llm-deepseek-account', 'llm-pi-ai',
+  'llm-retry', 'locale', 'mcp-account', 'mcp-manager', 'mcp-resources', 'message-feedback',
+  'message-quotes', 'modules', 'office-kit', 'open-in-app', 'otel', 'permission', 'plan-mode',
+  'plugin-inventory', 'plugin-manager', 'plugin-package-inventory-deepseek',
+  'plugin-recommendations', 'product-analytics', 'ptc-runtime', 'pwsh-sandbox', 'remote-access',
+  'remote-connection', 'repeat-tool-reminder', 'resources', 'sandbox', 'sandbox-policy',
+  'schedule', 'session', 'session-checkpoint-policy', 'session-controller',
   'session-log-deepseek', 'session-log-download', 'session-persistence-jsonl',
   'session-projection', 'session-projection-cache', 'session-query-sqlite', 'session-reference',
   'session-stats', 'session-telemetry-otel', 'session-title', 'session-title-llm',
@@ -101,25 +101,25 @@ const OFFICIAL_ROW_IDS: ReadonlySet<string> = new Set([
   'subagent-spawn-in-process', 'subprocess', 'system-prompt', 'terminal-controller',
   'timeout-policy', 'timer', 'token-meter', 'tool-agent-team', 'tool-bash',
   'tool-executor-native', 'tool-executor-ptc', 'tool-fs', 'tool-fs-search', 'tool-goal',
-  'tool-jobs', 'tool-plugin-manager', 'tool-pwsh', 'tool-result-pruner', 'tool-skill',
-  'tool-subagent', 'tool-subagent-control', 'tool-subagent-fork', 'tool-todo', 'tool-web',
-  'tool-workflow', 'tool-working-directory', 'tools', 'typert', 'typert-gateway', 'typert-loader',
+  'tool-jobs', 'tool-plugin-manager', 'tool-pwsh', 'tool-result-pruner', 'tool-session-control',
+  'tool-skill', 'tool-subagent', 'tool-subagent-control', 'tool-subagent-fork', 'tool-todo',
+  'tool-web', 'tool-workflow', 'tools', 'typert', 'typert-gateway', 'typert-loader',
   'ui-account-notifications', 'ui-agent-preset', 'ui-agent-team', 'ui-approval', 'ui-attachment',
-  'ui-brand-official', 'ui-chat', 'ui-commands', 'ui-context-menu', 'ui-conversation',
-  'ui-cordis', 'ui-deliverables', 'ui-file-actions', 'ui-file-drag', 'ui-goal',
-  'ui-input-trigger', 'ui-jobs', 'ui-layout', 'ui-message-feedback', 'ui-model-selection',
-  'ui-open-in-app', 'ui-permission', 'ui-plan', 'ui-plugin-manager', 'ui-reference',
-  'ui-renderer', 'ui-schedule', 'ui-secret-mask', 'ui-session', 'ui-session-status',
-  'ui-settings',
-  'ui-settings-account', 'ui-settings-agent-loop', 'ui-settings-general', 'ui-settings-models',
-  'ui-settings-plugin-inventory', 'ui-settings-plugins', 'ui-settings-session-log',
-  'ui-settings-shell', 'ui-settings-subagent', 'ui-settings-web-search', 'ui-shortcuts',
-  'ui-sidebar', 'ui-sidebar-browser', 'ui-sidebar-documentpreview', 'ui-sidebar-files',
-  'ui-sidebar-right', 'ui-sidebar-terminal', 'ui-skill', 'ui-subagent', 'ui-theme', 'ui-tool',
-  'ui-trajectory', 'ui-user-questions', 'ui-workflow-run', 'ui-workspace', 'user-questions',
-  'web', 'web-deepseek-api', 'web-fetch-http', 'web-runtime', 'web-search-deepseek',
-  'web-startup', 'webserver', 'workflow-ptc', 'working-directory', 'workspace',
-  'workspace-changes', 'workspace-controller', 'workspace-dependencies', 'workspace-files',
+  'ui-brand-official', 'ui-chat', 'ui-commands', 'ui-connector-account', 'ui-context-menu',
+  'ui-conversation', 'ui-cordis', 'ui-deliverables', 'ui-file-actions', 'ui-file-drag',
+  'ui-goal', 'ui-input-trigger', 'ui-jobs', 'ui-layout', 'ui-message-feedback',
+  'ui-model-selection', 'ui-open-in-app', 'ui-permission', 'ui-plan', 'ui-plugin-manager',
+  'ui-reference', 'ui-renderer', 'ui-schedule', 'ui-secret-mask', 'ui-session',
+  'ui-session-panel', 'ui-session-status', 'ui-settings', 'ui-settings-account',
+  'ui-settings-agent-loop', 'ui-settings-general', 'ui-settings-models',
+  'ui-settings-session-log', 'ui-settings-shell', 'ui-settings-subagent',
+  'ui-settings-web-search', 'ui-shortcuts', 'ui-sidebar', 'ui-sidebar-browser',
+  'ui-sidebar-documentpreview', 'ui-sidebar-files', 'ui-sidebar-right', 'ui-sidebar-terminal',
+  'ui-skill', 'ui-subagent', 'ui-theme', 'ui-tool', 'ui-trajectory', 'ui-user-questions',
+  'ui-workflow-run', 'ui-workspace', 'upstream-skills', 'user-questions', 'web',
+  'web-deepseek-api', 'web-fetch-http', 'web-runtime', 'web-search-deepseek', 'web-startup',
+  'webserver', 'workflow-ptc', 'working-directory', 'workspace', 'workspace-changes',
+  'workspace-controller', 'workspace-dependencies', 'workspace-files',
 ])
 
 describe('this package\'s bundle row', () => {
@@ -140,7 +140,9 @@ describe('this package\'s bundle row', () => {
     // only half registering the sidebar Plugins panel,
     expect(OFFICIAL_ROW_IDS.has(id ?? '')).toBe(false)
     expect(OFFICIAL_ROW_IDS.has('ui-plugin-manager')).toBe(true)
-    expect(OFFICIAL_ROW_IDS.has('ui-settings-plugin-inventory')).toBe(true)
+    expect(OFFICIAL_ROW_IDS.has('plugin-inventory')).toBe(true)
+    expect(OFFICIAL_ROW_IDS.has('plugin-manager')).toBe(true)
+    expect(OFFICIAL_ROW_IDS.has('ui-settings-plugins')).toBe(false)
     // Then the shipped id is its own, distinguishable namespace.
     expect(id).not.toBe('ui-plugin-manager')
   })

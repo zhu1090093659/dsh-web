@@ -8,10 +8,12 @@
  * The DOM hooks are NOT a published contract: the renderer has no code-block
  * extension seam (see the Agent Note), so they are read off its elements.
  * `md-code-block` is a literal class name in the renderer's JSX. The banner has
- * two known shapes: an `_infostring_` element carrying the raw fence infostring,
- * and the 0.2.2-rc.3 `_language_` span, which shows the language only when the
- * highlighter knows it - an unsupported language (mermaid among them) renders a
- * localized placeholder such as `代码块` or `Code block` instead.
+ * two known shapes across legacy `_<local>_<hash>` and 0.2.3-alpha.2
+ * `<hash>_<local>` CSS Module class patterns: an `_infostring` element carrying
+ * the raw fence infostring, and a `_language` span, which shows the language
+ * only when the highlighter knows it - an unsupported language (mermaid among
+ * them) renders a localized placeholder such as `代码块` or `Code block`
+ * instead.
  * @module @linxin666/dsh-client-ui-diagrams/core/contract
  */
 
@@ -21,11 +23,11 @@ export const RUNTIME_ROUTE = '/api/dsh-diagrams/vendor/mermaid.js'
 /** Class the official markdown renderer puts on every fenced code block. */
 export const CODE_BLOCK_CLASS = 'md-code-block'
 
-/** Class-name fragment of the older banner element carrying the fence infostring. */
-export const INFOSTRING_CLASS_FRAGMENT = '_infostring_'
+/** Class-name fragment of the banner element carrying the fence infostring. */
+export const INFOSTRING_CLASS_FRAGMENT = '_infostring'
 
-/** Class-name fragment of the 0.2.2-rc.3 banner span carrying the language label. */
-export const LANGUAGE_CLASS_FRAGMENT = '_language_'
+/** Class-name fragment of the banner span carrying the language label. */
+export const LANGUAGE_CLASS_FRAGMENT = '_language'
 
 /** Fence language this package renders. Everything else is left untouched. */
 export const RENDERED_LANGUAGE = 'mermaid'

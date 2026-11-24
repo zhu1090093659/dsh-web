@@ -5,7 +5,7 @@
   "icon": "icon.svg",
   "type": "module",
   "engines": {
-    "node": ">=24.9.0"
+    "node": "^24.22.3 || >=26.13.1"
   },
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -21,7 +21,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.2.2-rc.3"
+      "dsh": ">=0.2.3-alpha.2"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -34,10 +34,10 @@
     "typecheck": "tsgo --noEmit"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh": ">=0.2.2-rc.3"
+    "@deepseek-ai/dsh": ">=0.2.3-alpha.2"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.1.0",
+    "@deepseek-ai/cordis": "~4.2.0-alpha.1",
     "@types/node": "^22.20.0",
     "tsdown": "0.22.2",
     "typescript": "~5.7.2",

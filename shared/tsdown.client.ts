@@ -6,11 +6,13 @@
  * ({id, factory}) and resolves externals through the injected require
  * (loader module table — cordis DI entities, no globals, no import map).
  * CSS Modules are compiled by lightningcss inside the bundle: importing
- * `x.module.css` yields the hashed class map, and the css text auto-injects
- * a <style data-plugin="<id>"> tag at factory execution (the loader removes
- * plugin-owned tags on unload). The virtual loader registers each real
- * stylesheet as a watch dependency. The platform module list mirrors the
- * shell's seed table in `./web-platform.ts`.
+ * `x.module.css` yields the hashed class map, and the compiled stylesheet text
+ * is attached through `meta: () => ({ stylesheets })` on
+ * `window.__ModuleLoader__.load({ id, factory, meta })` so the renderer's
+ * `DocumentStyles` owns `<style data-plugin="<id>" data-path="...">` lifecycle
+ * without evaluating DOM writes inside `factory`. The virtual loader registers
+ * each real stylesheet as a watch dependency. The platform module list mirrors
+ * the shell's seed table in `./web-platform.ts`.
  */
 import { readFile } from 'node:fs/promises'
 import { existsSync, readFileSync } from 'node:fs'
@@ -166,6 +168,7 @@ function clientLibraryConfig(
 }
 
 function clientConfig(id: string, entry: string, extraPlugins: ReadonlyArray<NonNullable<UserConfig['plugins']>> = []): UserConfig {
+  const stylesheets = new Map<string, { readonly fileId: string; readonly css: string }>()
   return {
     name: `${id}/client`,
     entry: { client: entry },
@@ -257,25 +260,11 @@ function clientConfig(id: string, entry: string, extraPlugins: ReadonlyArray<Non
         for (const [local, exp] of Object.entries(cssExports ?? {}).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
           classMap[local] = exp.name
         }
-        // One <style data-plugin> per module file; idempotent under re-evaluation.
-        // The tag id carries the full repo-relative file id, not the basename:
-        // the aggregate build inlines several packages whose module files share
-        // a basename (eight settings-card.module.css copies), and a basename-only
-        // id lets the first tag suppress the others while each package's class
-        // map carries a path-derived hash — leaving every later copy's classes
-        // with no stylesheet at all.
-        return [
-          `const css = ${JSON.stringify(code.toString())};`,
-          `const tagId = ${JSON.stringify(`${id}/${fileId}`)};`,
-          'if (typeof document !== \'undefined\' && document.querySelector(\'style[data-plugin-css=\' + JSON.stringify(tagId) + \']\') === null) {',
-          '  const tag = document.createElement(\'style\');',
-          `  tag.dataset.plugin = ${JSON.stringify(id)};`,
-          '  tag.dataset.pluginCss = tagId;',
-          '  tag.textContent = css;',
-          '  document.head.appendChild(tag);',
-          '}',
-          `export default ${JSON.stringify(classMap)};`,
-        ].join('\n')
+        stylesheets.set(virtualId, { fileId, css: code.toString() })
+        return {
+          code: `export default ${JSON.stringify(classMap)};`,
+          moduleSideEffects: 'no-treeshake' as const,
+        }
       },
     }],
     outputOptions: {
@@ -286,7 +275,20 @@ function clientConfig(id: string, entry: string, extraPlugins: ReadonlyArray<Non
       // without exposing that tree as an HTTP route.
       sourcemapPathTransform: browserSourcePath,
       banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(id)}, factory: (require) => {`,
-      footer: 'return module.exports; } });',
+      footer: (chunk) => {
+        if (!chunk.isEntry) return ''
+        const chunkModuleIds = new Set(chunk.moduleIds.length > 0 ? chunk.moduleIds : Object.keys(chunk.modules ?? {}))
+        const collected: Array<{ readonly fileId: string; readonly css: string }> = []
+        for (const [virtualId, entry] of stylesheets) {
+          if (chunkModuleIds.has(virtualId)) collected.push(entry)
+        }
+        collected.sort((a, b) => (a.fileId < b.fileId ? -1 : a.fileId > b.fileId ? 1 : 0))
+        if (collected.length === 0) return 'return module.exports; } });'
+        const entries = collected
+          .map(({ fileId, css }) => `${JSON.stringify(fileId)}: { text: () => ${JSON.stringify(css)} }`)
+          .join(', ')
+        return `return module.exports; }, meta: () => ({ stylesheets: { ${entries} } }) });`
+      },
       intro: 'var module = { exports: {} }; var exports = module.exports;',
     },
   }

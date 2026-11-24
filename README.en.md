@@ -23,7 +23,7 @@ dsh-web is an all-in-one modular plugin ecosystem and AI agent workbench for Dee
   &nbsp;
   <a href="https://dsh-market.com"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fdsh-market.com%2Fapi%2Ftelemetry%2Fbadge%2Fusers&style=flat-square&label=users" alt="users"></a>
   &nbsp;
-  <a href="https://www.npmjs.com/package/@deepseek-ai/dsh"><img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--rc.3-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH"></a>
+  <a href="https://www.npmjs.com/package/@deepseek-ai/dsh"><img src="https://img.shields.io/badge/DSH-%3E%3D0.2.3--alpha.2-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH"></a>
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
@@ -217,7 +217,7 @@ The classic Blue Fantasy theme serves as the built-in default skin: rich indigo 
 ### System Requirements
 
 - DeepSeek Harness installed with `dsh web` functioning properly.
-- npm installations have no extra requirements; building from the source repository requires Node.js >= 24.9 and pnpm.
+- npm installations have no extra requirements; building from the source repository requires Node.js >= 24.22.3 / >= 26.13.1 and pnpm.
 
 ### Get Started in 3 Steps (npm, Recommended)
 
@@ -245,7 +245,7 @@ This approach is equivalent to installing the npm aggregate package. Use either 
 
 ### Install from the Repository (Development)
 
-For plugin development and debugging, build from source using Node.js >= 24.9 and pnpm:
+For plugin development and debugging, build from source using Node.js >= 24.22.3 / >= 26.13.1 and pnpm:
 
 ```sh
 # 1. Clone the repository
@@ -378,7 +378,7 @@ dsh-web is engineered for seamless operation across diverse operating systems, c
 | Browsers & Devices | Desktop Chrome, Edge, Safari, Firefox; Mobile iOS Safari, Android Chrome, and modern mobile browsers |
 | Network Topologies | Localhost (127.0.0.1), Local Area Network (LAN), Secure WAN Tunnels (Cloudflare Tunnel, Tailscale, FRP, Nginx reverse proxies) |
 | LLM Provider Matrix | DeepSeek official routes & V4.1 series models, Anthropic Claude, Google Gemini, OpenAI, Kimi (Moonshot), GLM, MiniMax, Ollama local & cloud models, SiliconFlow, etc. |
-| Runtime Prerequisites | npm installation requires no extra developer tools; building from source requires Node.js >= 24.9 and pnpm >= 9 |
+| Runtime Prerequisites | npm installation requires no extra developer tools; building from source requires Node.js >= 24.22.3 / >= 26.13.1 and pnpm >= 9 |
 
 ## FAQ
 
@@ -443,7 +443,7 @@ With `dsh-usage` installed, open "Settings > Usage Statistics" to view daily inp
 - Task board scheduling runs on the backend host; closing browser tabs will not interrupt tasks, but stopping the host process or putting the machine to sleep will skip missed schedules without backfilling. Optional power management prevents idle sleep only and cannot bypass manual sleep, lid closure, or power shutdown (see [dsh-task-board README](packages/dsh-task-board/README.md)).
 - SSH credentials (passwords and private key passphrases) persist locally in `~/.dsh/dsh-ssh.json` with 0600 permissions; reconnecting during connection drops may replay non-idempotent commands, and remote outputs return without sanitization (see [dsh-ssh README](packages/dsh-ssh/README.md)).
 - Mobile app streaming is relayed through a tunnel or the stable-hostname relay, adding wide-area round-trip latency to each update; the relay costs one hop more than a bare quick tunnel, and both are available.
-- Full repository builds require Node.js >= 24.9 and pnpm; standard npm installations have no developer tool prerequisites.
+- Full repository builds require Node.js >= 24.22.3 / >= 26.13.1 and pnpm; standard npm installations have no developer tool prerequisites.
 
 ## Community
 

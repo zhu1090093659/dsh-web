@@ -8,9 +8,8 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 
 /**
  * Pinned union of dsh.client.inject module ids across every workspace
- * package. Re-verified for the 0.2.2-rc.3 cohort (sixteen names, unchanged
- * from rc.2, until message-edit's removal dropped the three it alone injected,
- * leaving thirteen):
+ * package. Re-verified for the 0.2.3-alpha.2 cohort (thirteen names,
+ * unchanged from 0.2.2-rc.3):
  * each name is a browser
  * roster row of the shell composition (dsh-web-app cordis.patch.yml
  * dsh.client rows) or a frozen static module (dsh-client-ui-slots;
@@ -70,11 +69,11 @@ function collectInjects() {
   return [...names].sort()
 }
 
-test('every dsh.client.inject name is an approved 0.2.2-rc.3 client module', () => {
+test('every dsh.client.inject name is an approved 0.2.3-alpha.2 client module', () => {
   for (const name of collectInjects()) {
     assert.ok(
       APPROVED_INJECT_MODULES.includes(name),
-      `inject name outside the approved 0.2.2-rc.3 module set: ${name}`,
+      `inject name outside the approved 0.2.3-alpha.2 module set: ${name}`,
     )
   }
 })

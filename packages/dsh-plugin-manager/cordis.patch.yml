@@ -18,12 +18,3 @@
 - insert:
     - id: ui-plugin-manager-update-check
       name: '@linxin666/dsh-client-ui-plugin-manager'
-
-# The official @deepseek-ai/dsh-client-ui-settings-plugins section listed the
-# built-in rows in Settings; they now render at the bottom of the official Plugins
-# page, beside the manager that toggles them, so that settings-only view is retired.
-# A top-level bare row patches an already-mounted row by id — it spends none of the
-# loader's id namespace, and the aggregate carries it into the profile patch
-# verbatim, applying this layer after @deepseek-ai/dsh-web-app.
-- id: ui-settings-plugins
-  disabled: true

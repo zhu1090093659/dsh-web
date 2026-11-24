@@ -23,7 +23,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.2.2-rc.3"
+      "dsh": ">=0.2.3-alpha.2"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -49,30 +49,30 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh": ">=0.2.2-rc.3",
+    "@deepseek-ai/dsh": ">=0.2.3-alpha.2",
     "react": "^18.2.0"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "^3.19.0"
+    "@deepseek-ai/schemastery": "~3.20.0-alpha.1"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.1.0",
-    "@deepseek-ai/dsh-agent": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-api-gateway": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-api-session-controller": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-client-locale": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-client-store": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-client-ui-layout": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-client-ui-renderer": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-client-ui-settings": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-client-ui-sidebar": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-client-ui-workspace": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-host-webserver": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-llm": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-system-prompt": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-tools": "^0.2.2-rc.3",
-    "@deepseek-ai/dsh-workspace": "^0.2.2-rc.3",
+    "@deepseek-ai/cordis": "~4.2.0-alpha.1",
+    "@deepseek-ai/dsh-agent": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-api-gateway": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-api-session-controller": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-client-locale": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-client-store": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-client-ui-layout": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-client-ui-sidebar": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-client-ui-workspace": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-host-webserver": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-llm": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-system-prompt": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-tools": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-workspace": "^0.2.3-alpha.2",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",
     "@types/react-dom": "^18.3.5",

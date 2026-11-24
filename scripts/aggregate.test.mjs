@@ -5,11 +5,13 @@
  * files are the contract — scripts/aggregate.mjs --check enforces drift
  * separately.
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { parsePatchBlocks, renderPatch } from './aggregate.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(SCRIPT_DIR, '..')
@@ -367,28 +369,49 @@ test('a host-only child row keeps its platform guard in the aggregate patch', ()
 })
 
 test('a child bare patch row keeps its scalar overrides and spells no empty name', () => {
-  // packages/dsh-plugin-manager retires the official `ui-settings-plugins`
-  // settings entry from a top-level bare row (`- id: …` + `disabled: true`, no
-  // `name:`) — the shape parsePatchBlocks documents for patching a row this
-  // repository does not own. Patch rows used to render through the insert path
-  // only half-way: `row.extraLines` was never written (so `disabled: true`
-  // vanished and the override did nothing) and the absent name became
-  // `name: ''`, an empty specifier inside the loader entry.
-  const child = readFileSync(join(ROOT, 'packages/dsh-plugin-manager/cordis.patch.yml'), 'utf8')
-  assert.match(
-    child,
-    /^- id: ui-settings-plugins\n {2}disabled: true$/mu,
-    'the child declares the bare patch row this case is about',
-  )
+  // Synthetic bare patch coverage: a top-level bare row (`- id: ...` +
+  // `disabled: true`, no `name:`) must preserve scalar overrides verbatim
+  // without emitting `name: ''`. Meanwhile 0.2.3-alpha.2 removed
+  // `ui-settings-plugins` upstream, so both dsh-plugin-manager and
+  // dsh-web-all keep it absent.
+  const dir = mkdtempSync(join(tmpdir(), 'agg-bare-patch-'))
+  try {
+    const childPatchPath = join(dir, 'cordis.patch.yml')
+    writeFileSync(
+      childPatchPath,
+      '- insert:\n    - id: ui-sample\n      name: \'@linxin666/sample\'\n\n- id: foreign-row\n  disabled: true\n',
+    )
+    const errors = []
+    const rows = parsePatchBlocks(childPatchPath, errors)
+    assert.deepEqual(errors, [])
+    const rendered = renderPatch(
+      [{ entry: '../sample', via: [], rows }],
+      [],
+      [],
+      [],
+      [],
+      {},
+      errors,
+      'packages/dsh-web-all',
+      dir,
+    )
+    assert.deepEqual(errors, [])
+    assert.match(
+      rendered,
+      /^- id: foreign-row\n {2}disabled: true$/mu,
+      'the aggregate carries the bare patch row verbatim, override included',
+    )
+    assert.doesNotMatch(rendered, /^- id: foreign-row\n {2}name:/mu, 'a bare patch row names no package')
+    assert.doesNotMatch(rendered, /^ {2}name: ''$/mu, 'no row in the rendered patch may carry an empty package name')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 
-  const patch = readFileSync(join(ROOT, 'packages/dsh-web-all/cordis.patch.yml'), 'utf8')
-  assert.match(
-    patch,
-    /^- id: ui-settings-plugins\n {2}disabled: true$/mu,
-    'the aggregate carries the bare patch row verbatim, override included',
-  )
-  assert.doesNotMatch(patch, /^- id: ui-settings-plugins\n {2}name:/mu, 'a bare patch row names no package')
-  assert.doesNotMatch(patch, /^ {2}name: ''$/mu, 'no row in the aggregate may carry an empty package name')
+  const pmPatch = readFileSync(join(ROOT, 'packages/dsh-plugin-manager/cordis.patch.yml'), 'utf8')
+  const aggPatch = readFileSync(join(ROOT, 'packages/dsh-web-all/cordis.patch.yml'), 'utf8')
+  assert.doesNotMatch(pmPatch, /ui-settings-plugins/u, 'ui-settings-plugins was removed in 0.2.3-alpha.2')
+  assert.doesNotMatch(aggPatch, /ui-settings-plugins/u, 'ui-settings-plugins must stay absent from dsh-web-all')
+  assert.doesNotMatch(aggPatch, /^ {2}name: ''$/mu, 'no row in the aggregate may carry an empty package name')
 })
 
 test('the win-bash family row and subpath use the short family name', () => {

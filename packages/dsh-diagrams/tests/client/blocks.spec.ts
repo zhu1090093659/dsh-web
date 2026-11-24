@@ -127,6 +127,33 @@ describe('mermaid block discovery across renderer banner shapes (#2056)', () => 
     // Then the source signature decides
     expect(found).toHaveLength(1)
   })
+
+  it('user on the 0.2.3-alpha.2 [hash]_[local] CSS Modules renderer gets mermaid fences claimed and real languages ignored', () => {
+    // Given 0.2.3-alpha.2 [hash]_[local] class names without a trailing underscore
+    document.body.innerHTML = ''
+    const mermaidBanner = document.createElement('div')
+    mermaidBanner.className = 'md-code-block Xy12Za_card'
+    mermaidBanner.innerHTML = '<div class="Ab12Cd_header" data-code-block-banner><span class="Ab12Cd_language">代码块</span></div>'
+      + '<div data-code-block-content><pre>flowchart TD\nA-->B</pre></div>'
+
+    const infostringBlock = document.createElement('div')
+    infostringBlock.className = 'md-code-block'
+    infostringBlock.innerHTML = '<div class="banner"><div class="Ab12Cd_infostring">mermaid</div></div>'
+      + '<div data-code-block-content><pre>sequenceDiagram\nA->>B: ping</pre></div>'
+
+    const tsBlock = document.createElement('div')
+    tsBlock.className = 'md-code-block'
+    tsBlock.innerHTML = '<div class="Ab12Cd_header" data-code-block-banner><span class="Ab12Cd_language">ts</span></div>'
+      + '<div data-code-block-content><pre>graph TD\nX-->Y</pre></div>'
+
+    document.body.append(mermaidBanner, infostringBlock, tsBlock)
+    // When discovery scans the container
+    const found = findMermaidBlocks(document.body)
+    // Then both mermaid fences match and the typescript fence is skipped
+    expect(found).toHaveLength(2)
+    expect(found[0]?.textContent).toContain('flowchart TD')
+    expect(found[1]?.textContent).toContain('sequenceDiagram')
+  })
 })
 
 describe('diagram containers', () => {

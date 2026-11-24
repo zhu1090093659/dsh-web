@@ -20,10 +20,6 @@
     - id: web-ui-plugin-manager
       name: '@linxin666/dsh-client-ui-plugin-manager'
 
-# from ../dsh-plugin-manager (patch row ui-settings-plugins)
-- id: ui-settings-plugins
-  disabled: true
-
 # from ../dsh-market
 - insert:
     - id: web-ui-market

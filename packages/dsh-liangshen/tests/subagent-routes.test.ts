@@ -312,4 +312,86 @@ describe('liangshen-subagent-routes', () => {
     apply(ctx, { enabled: false })
     expect(calls).toBe(0)
   })
+
+  it('operator sees the guard enforce routes from the live subagentModelSelection service when mounted', () => {
+    // Given an agent whose Session has no recorded policy event, and a live
+    // subagentModelSelection service authorizing ROUTES
+    const agent = agentAt(OFF_LIST_ROUTE, unpolicedSession())
+    const modelSelection = { allowedRoutes: () => ROUTES }
+    // When explicit and inherit delegations are evaluated against the live service
+    const badExplicit = delegationDenialReason({ agent, toolName: 'subagent', args: callArgs(OFF_LIST_ROUTE), modelSelection })
+    const goodExplicit = delegationDenialReason({ agent, toolName: 'subagent', args: callArgs(PARENT_ROUTE), modelSelection })
+    const badInherit = delegationDenialReason({ agent, toolName: 'subagent_fork', args: {}, modelSelection })
+    // Then disallowed explicit and inherited calls are refused, and authorized ones pass
+    expect(badExplicit).toContain('gamma/g1')
+    expect(goodExplicit).toBeUndefined()
+    expect(badInherit).toContain('gamma/g1')
+  })
+
+  it('operator sees live undefined override legacy policy events without falling back', () => {
+    // Given a Session carrying a stale policy event while the live service
+    // reports undefined (selection disabled / unrestricted)
+    const agent = agentAt(OFF_LIST_ROUTE, policedSession(ROUTES))
+    const modelSelection = { allowedRoutes: () => undefined }
+    // When the guard evaluates both explicit and inherit delegations
+    const explicit = delegationDenialReason({ agent, toolName: 'subagent', args: callArgs(OFF_LIST_ROUTE), modelSelection })
+    const inherit = delegationDenialReason({ agent, toolName: 'subagent_fork', args: {}, modelSelection })
+    // Then both allow directly without consulting the legacy session event
+    expect(explicit).toBeUndefined()
+    expect(inherit).toBeUndefined()
+  })
+
+  it('operator sees a throwing live subagentModelSelection service fail open so official errors surface', () => {
+    // Given a live service throwing INVALID_MODEL_SELECTION_SETTINGS and a legacy event
+    const agent = agentAt(OFF_LIST_ROUTE, policedSession(ROUTES))
+    const modelSelection = {
+      allowedRoutes: () => {
+        throw new Error('INVALID_MODEL_SELECTION_SETTINGS')
+      },
+    }
+    // When the guard evaluates a delegation call
+    const denial = delegationDenialReason({ agent, toolName: 'subagent', args: callArgs(OFF_LIST_ROUTE), modelSelection })
+    // Then it fails open instead of masking the harness settings error
+    expect(denial).toBeUndefined()
+  })
+
+  it('operator falls back to durable session policy events when subagentModelSelection is absent and picks up live service when provided', async () => {
+    // Given a real Cordis tree whose sibling provides tools (first without subagentModelSelection)
+    const { root, registered } = treeWithSiblingRegistry()
+    root.plugin({ name, inject, apply })
+    await vi.waitFor(() => { expect(registered).toHaveLength(1) })
+    const guard = registered[0] as (exec: unknown) => string | undefined
+
+    // When subagentModelSelection is absent and a Session carries a legacy policy event
+    const legacyDenial = guard({
+      agent: agentAt(OFF_LIST_ROUTE, policedSession(ROUTES)),
+      name: 'subagent',
+      arguments: callArgs(OFF_LIST_ROUTE),
+    })
+    const legacyAllowSecond = guard({
+      agent: agentAt(ROUTES[1], policedSession(ROUTES)),
+      name: 'subagent',
+      arguments: callArgs(ROUTES[1]),
+    })
+    // Then the legacy session event enforces ROUTES
+    expect(legacyDenial).toContain('gamma/g1')
+    expect(legacyAllowSecond).toBeUndefined()
+
+    // When a sibling subsequently provides a live subagentModelSelection narrowing to PARENT_ROUTE
+    root.plugin({
+      name: 'host-subagent-model-selection',
+      apply(provider) {
+        provider.provide('subagentModelSelection' as never, { allowedRoutes: () => [PARENT_ROUTE] } as never)
+      },
+    })
+    await vi.waitFor(() => {
+      expect(guard({
+        agent: agentAt(ROUTES[1], policedSession(ROUTES)),
+        name: 'subagent',
+        arguments: callArgs(ROUTES[1]),
+      })).toContain('beta/b1')
+    })
+    // Then the guard reads the live service per call without reinstalling
+    expect(registered).toHaveLength(1)
+  })
 })

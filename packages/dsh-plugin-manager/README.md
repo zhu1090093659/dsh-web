@@ -5,7 +5,7 @@ English | [中文](README.zh.md)
 <p align="center">
   <img src="https://img.shields.io/npm/v/@linxin666/dsh-client-ui-plugin-manager?style=flat-square" alt="Version">
   &nbsp;
-  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--rc.3-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
+  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.3--alpha.2-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
@@ -19,7 +19,7 @@ An update and lifecycle manager for DeepSeek Harness (DSH) Web GUI and official 
 
 ## What it does
 
-- Contributes a check-for-updates block into the official Plugins page (the `plugins.detail.section` seat that page declares), rendered on an installed bundle's page and nowhere else. There is no tab of its own in the Plugins settings section.
+- Contributes a check-for-updates block into the official Plugins page (the `plugins.detail.section` seat that page declares), rendered on an installed bundle's page and nowhere else. There is no settings section of its own.
 - Adds a list-level toolbar beside that page's **Installed** heading. The heading is the page's own chrome and the page declares no seat beside it (its extension points are `plugins.detail.*`, `plugins.item`, `plugins.bundle.config`, `plugins.row.config` and `plugins.bundle.activation`), so the toolbar is inserted into that element and kept in place through the family's shared body-mutation hub. One click checks every installed plugin; the panel lists the third-party rows that have a newer release, with the declared DSH minimum for any row this runtime is too old for; **Update all** applies the eligible rows in one host job, in order, with per-row progress — a row the host refuses is named in place with its own reason and the run carries on with the rows behind it; **Restart now** then makes the update effective (see the restart note under Known limitations). Official `@deepseek-ai/` packages are never updated in bulk — their version belongs to the DSH installation.
 - **Exact-version update ignore**: each offered row in the list panel and each found update in the per-bundle block carries **Ignore this version**. The rule is stored in this browser as a plugin id plus the offered version, so it excludes only that offer from **Update all** and the single-package action; other plugins continue normally and a newer release appears again. Ignored rows remain listed in a separate section with **Restore update**. Unavailable or malformed local storage degrades to an empty or session-local rule rather than blocking update checks.
 - Dual-channel transport: on runtimes with the official installer services (DSHCode and the 1.0.4 checkout web), every operation rides the official `/plugin-installer` and `/plugin-control` loopback RPC channels; on the npm-published web runtime those channels do not exist, so the package's host half mounts a loopback-fenced HTTP gateway that spawns the official `dsh plugin` CLI for installs/removals (the single writer) and writes `disabled` override rows for enablement. An application-owned profile (a packaged Desktop launch) takes the third writer for installs, updates and removals: the official in-process plugin manager the host mounts, because the CLI refuses to write that profile at all.
@@ -79,8 +79,6 @@ The contract source of truth is `src/core/service.ts` (`PluginManagerService`). 
 - The npm runtime's boot preflight (`--dump-config`) catches composition failures, and the static insert check catches insert rows naming packages that resolve nowhere; runtime import/apply failures still surface only at the next real start.
 - Duplicate-mount safeguard (gateway mode): the official CLI's bundle reconciliation re-adds every bundle-declaring dependency to `dsh.profile.bundles` after any install/remove — including packages the composition already mounts through a patch row (a bundle that mounts an external plugin by row), which would double-mount and fail the next boot (`duplicate prefix route`). After every successful CLI mutation the gateway strips exactly the newly added, already-row-mounted bundles entries back out (the manifest write goes through backup + tmp + atomic rename), reports one notice per stripped entry on the job result, and leaves normal installs' bundles entries — and every entry the user had before — untouched.
 - The wire shapes mirror the official installer protocol; on drift the tolerant parsers degrade to error rows rather than misbehaving.
-- Settings "Built-in plugins" section retired: this package's `cordis.patch.yml` includes a top-level bare row `- id: ui-settings-plugins` with `disabled: true`, which the aggregation layer applies after `@deepseek-ai/dsh-web-app` to override and retire that settings section; management is consolidated into the "Built-in plugins" group on the official Plugins page, and disabling this package restores that settings section.
-- Residual official Plugins page notice: the explanatory copy on the official Plugins page still states that built-in plugins can be viewed in Settings → Built-in plugins, though that entrance has been retired by this package; this text belongs to the official bundle and cannot be modified by this repository.
 
 ## Security model
 

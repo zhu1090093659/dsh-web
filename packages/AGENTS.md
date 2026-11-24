@@ -6,7 +6,7 @@
 
 ## 包形态
 
-- **独立 cordis bundle 包**：`"type": "module"`，node `>=24.9`，
+- **独立 cordis bundle 包**：`"type": "module"`，node `^24.22.3 || >=26.13.1`，
   `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }` 声明 bundle 激活；
   `dsh.client` 声明浏览器半区注入与 `platform: "web"`（形态参照
   `packages/dsh-task-board/`）。

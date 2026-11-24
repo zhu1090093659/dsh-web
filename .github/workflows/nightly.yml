@@ -52,7 +52,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 24.9.0
+          node-version: 24.22.3
           cache: pnpm
 
       # --ignore-scripts matches ci.yml: the coverage run measures the checked
@@ -97,7 +97,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 24.9.0
+          node-version: 24.22.3
           cache: pnpm
 
       - name: Install dependencies

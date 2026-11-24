@@ -11,9 +11,11 @@
  * nobody named one — or, for `subagent_fork`, because the tool cannot name one
  * at all.
  *
- * This row closes that gap from the preset plane. Whenever the calling Session
- * (or the nearest ancestor that recorded one) carries an allowlist, every
- * delegation the row polices must resolve to an authorized route:
+ * This row closes that gap from the preset plane. Starting in 0.2.3-alpha.2,
+ * the live `subagentModelSelection` service exposes `allowedRoutes()` directly;
+ * on older Hosts without that service it falls back to the recorded
+ * `subagent/model-selection-policy` Session event. Whenever an allowlist is in
+ * force, every delegation the row polices must resolve to an authorized route:
  *
  * - `explicit` tools publish `provider`/`model`; the call must name a complete
  *   pair, and that pair must be on the list;
@@ -138,6 +140,46 @@ export function policyRoutesOf(session) {
     if (routes !== undefined) return routes
   }
   return undefined
+}
+
+/**
+ * Normalize a raw route array returned by a live `subagentModelSelection` service.
+ * @param entries - Raw route entries.
+ * @returns normalized routes, or undefined when invalid.
+ */
+function normalizeRoutes(entries) {
+  if (!Array.isArray(entries)) return undefined
+  const routes = []
+  for (const entry of entries) {
+    const route = asRecord(entry)
+    const provider = asString(route?.['provider'])
+    const model = asString(route?.['model'])
+    if (provider === undefined || model === undefined) return undefined
+    routes.push({ provider, model })
+  }
+  return routes
+}
+
+/**
+ * Resolve authorized routes when the optional live `subagentModelSelection`
+ * service is mounted; when mounted, it is authoritative (returning `undefined`
+ * or throwing fails open without consulting stale session events).
+ * @param service - Optional `ctx.get('subagentModelSelection')` service instance.
+ * @returns `{ handled: true, routes }` when the live service is mounted, or
+ *   `{ handled: false, routes: undefined }` when absent.
+ */
+export function liveServiceRoutes(service) {
+  if (typeof service?.allowedRoutes !== 'function') {
+    return { handled: false, routes: undefined }
+  }
+  let raw
+  try {
+    raw = service.allowedRoutes()
+  } catch {
+    return { handled: true, routes: undefined }
+  }
+  if (raw === undefined) return { handled: true, routes: undefined }
+  return { handled: true, routes: normalizeRoutes(raw) }
 }
 
 /**
@@ -306,13 +348,17 @@ export function unauthorizedReason(toolName, provider, model, allowed) {
 export function delegationDenialReason(input) {
   const {
     agent, toolName, args, sessions,
+    modelSelection,
+    getModelSelection,
     explicitToolNames = DEFAULT_EXPLICIT_TOOLS,
     inheritToolNames = DEFAULT_INHERIT_TOOLS,
     probe,
   } = input ?? {}
   const mode = delegationModeOf(toolName, explicitToolNames, inheritToolNames)
   if (mode === undefined) return undefined
-  const allowed = authorizedRoutesFor(agent, sessions)
+  const liveService = typeof getModelSelection === 'function' ? getModelSelection() : modelSelection
+  const live = liveServiceRoutes(liveService)
+  const allowed = live.handled ? live.routes : authorizedRoutesFor(agent, sessions)
   if (allowed === undefined) return undefined
   const named = namedRouteOf(args)
   const complete = named.provider !== undefined && named.model !== undefined
@@ -358,11 +404,13 @@ export function installSubagentRoutes(ctx, config = {}) {
   const explicitToolNames = Array.isArray(config.explicitTools) ? config.explicitTools : DEFAULT_EXPLICIT_TOOLS
   const inheritToolNames = Array.isArray(config.inheritTools) ? config.inheritTools : DEFAULT_INHERIT_TOOLS
   const sessions = typeof ctx?.get === 'function' ? ctx.get('sessions') : undefined
+  const getModelSelection = typeof ctx?.get === 'function' ? () => ctx.get('subagentModelSelection') : undefined
   return tools.guard(execution => delegationDenialReason({
     agent: execution?.agent,
     toolName: execution?.name,
     args: execution?.arguments,
     sessions,
+    getModelSelection,
     explicitToolNames,
     inheritToolNames,
     probe: (agent, toolName) => routeParameterProbe(tools, agent, toolName),

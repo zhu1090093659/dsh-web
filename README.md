@@ -23,7 +23,7 @@ dsh-web 是面向 DeepSeek Harness（DSH）Web GUI、DeepSeek 网页版与官方
   &nbsp;
   <a href="https://dsh-market.com"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fdsh-market.com%2Fapi%2Ftelemetry%2Fbadge%2Fusers&style=flat-square&label=users" alt="users"></a>
   &nbsp;
-  <a href="https://www.npmjs.com/package/@deepseek-ai/dsh"><img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--rc.3-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH"></a>
+  <a href="https://www.npmjs.com/package/@deepseek-ai/dsh"><img src="https://img.shields.io/badge/DSH-%3E%3D0.2.3--alpha.2-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH"></a>
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
@@ -217,7 +217,7 @@ dsh-web 通过官方 profile 机制挂载到 `dsh web`，零修改侵入官方�
 ### 系统要求
 
 - 已安装 DeepSeek Harness 且 `dsh web` 可正常启动。
-- npm 安装方式无需额外环境；若从源码仓库构建，需要 Node.js >= 24.9 与 pnpm 环境。
+- npm 安装方式无需额外环境；若从源码仓库构建，需要 Node.js >= 24.22.3 / >= 26.13.1 与 pnpm 环境。
 
 ### 三步上手（npm 安装，推荐）
 
@@ -245,7 +245,7 @@ dsh plugin --profile web add github:zhu1090093659/dsh-web
 
 ### 从仓库安装（开发调试）
 
-如需二次开发或调试插件，可按以下步骤从源码构建（要求 Node.js >= 24.9 与 pnpm）：
+如需二次开发或调试插件，可按以下步骤从源码构建（要求 Node.js >= 24.22.3 / >= 26.13.1 与 pnpm）：
 
 ```sh
 # 1. 克隆源码仓库
@@ -378,7 +378,7 @@ dsh-web 针对主流操作系统、现代化浏览器及网络拓扑进行了深
 | 浏览器与设备 | 桌面浏览器 (Chrome, Edge, Safari, Firefox)；移动端现代浏览器 (iOS Safari, Android Chrome 等) |
 | 网络连接架构 | 本机环回访问 (127.0.0.1)、局域网多设备互联 (LAN)、公网隧道安全穿透 (Cloudflare Tunnel, Tailscale, FRP, Nginx 反向代理) |
 | 模型供应商覆盖 | DeepSeek 官方通道与 V4.1 系列模型、Anthropic Claude、Google Gemini、OpenAI、Kimi (Moonshot)、GLM (智谱)、MiniMax、Ollama 本地与云端模型、SiliconFlow 等 |
-| 运行时依赖 | npm 方式安装无特殊环境依赖；源码编译需 Node.js >= 24.9 与 pnpm >= 9 |
+| 运行时依赖 | npm 方式安装无特殊环境依赖；源码编译需 Node.js >= 24.22.3 / >= 26.13.1 与 pnpm >= 9 |
 
 ## 常见问题
 
@@ -443,7 +443,7 @@ dsh-web 针对主流操作系统、现代化浏览器及网络拓扑进行了深
 - 任务看板由后端 Host 进程统一调度，关闭前端标签页不影响任务执行；但若宿主进程停止或操作系统关机睡眠，处于离线期间的触发点将直接跳过不补跑。可选的电源保护仅阻止系统闲置睡眠，无法阻止用户主动合盖、手动休眠或电源切断，技术细节见 [dsh-task-board README](packages/dsh-task-board/README.zh.md)。
 - SSH 凭据（密码与私钥口令）保存在本地 `~/.dsh/dsh-ssh.json` 文件中（文件权限为 0600）；在网络中断重连时可能重新发送非幂等命令，终端输出保持原样返回不执行脱敏，安全规范见 [dsh-ssh README](packages/dsh-ssh/README.zh.md)。
 - 手机 App 流式交互经隧道或中继转发，广域网往返延迟叠加在每次更新上；固定域名中继比裸快速隧道多一跳，两者均可使用。
-- 从源码构建全仓需要 Node.js >= 24.9 与 pnpm 工具链，直接从 npm 安装不受此限制。
+- 从源码构建全仓需要 Node.js >= 24.22.3 / >= 26.13.1 与 pnpm 工具链，直接从 npm 安装不受此限制。
 
 ## 社区
 

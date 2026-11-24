@@ -617,7 +617,7 @@ function parseManifest(ymlPath, errors) {
  * The file format is the repo's fixed YAML subset: "- id:" followed by
  * optional "name:", then optional "config:" with deeper-indented key lines.
  */
-function parsePatchBlocks(patchPath, errors) {
+export function parsePatchBlocks(patchPath, errors) {
   const significant = []
   for (const [i, raw] of readFileSync(patchPath, 'utf8').split(/\r?\n/).entries()) {
     if (raw.trim() && !raw.trim().startsWith('#')) {
@@ -794,7 +794,7 @@ function expandExternalRow(row, aggregateDir, errors, rel) {
 
 
 /** Render the aggregate cordis.patch.yml: header + per-source insert blocks, plus verbatim harness-row patches and own-row config overrides. */
-function renderPatch(blocks, externalRows, ownPatches, inactiveRows, retireRows, familyIds, errors, rel, aggregateDir) {
+export function renderPatch(blocks, externalRows, ownPatches, inactiveRows, retireRows, familyIds, errors, rel, aggregateDir) {
   const lines = [...PATCH_HEADER]
   const seen = new Set()
   const patchedIds = new Set()
@@ -1148,132 +1148,136 @@ function validateShellFiles(pkgDir, rel, errors) {
   }
 }
 
-console.log(`[aggregate] scanning ${join(REPO_ROOT, 'packages')} for aggregate.yml manifests...`)
-const aggregates = findAggregates()
-if (aggregates.length === 0) {
-  console.log('[aggregate] no aggregate.yml found; nothing to do.')
-  process.exit(0)
-}
+const invokedDirectly = process.argv[1] !== undefined && resolvePath(process.argv[1]) === fileURLToPath(import.meta.url)
 
-const errors = []
-const results = []
-for (const { pkgDir, ymlPath } of aggregates) {
-  const rel = relative(REPO_ROOT, pkgDir)
-  const manifest = parseManifest(ymlPath, errors)
-  const blocks = []
-  const visited = new Set()
-  for (const entry of manifest.patchFrom) {
-    const target = resolvePath(pkgDir, entry)
-    if (!existsSync(target)) {
-      errors.push(`patchFrom target not found: ${ymlPath} -> ${entry} (${target})`)
-      continue
-    }
-    collectRows(target, entry, [], visited, errors, blocks)
+if (invokedDirectly) {
+  console.log(`[aggregate] scanning ${join(REPO_ROOT, 'packages')} for aggregate.yml manifests...`)
+  const aggregates = findAggregates()
+  if (aggregates.length === 0) {
+    console.log('[aggregate] no aggregate.yml found; nothing to do.')
+    process.exit(0)
   }
-  if (manifest.self) {
-    // self: the aggregate package loads ITS OWN plugin (host + client half)
-    // through one patch row, e.g. the compat shim living inside web-ui-all.
-    // unshift keeps the self block FIRST in the rendered patch so its ordering
-    // does not drift when the patchFrom entries change.
-    if (!/^[a-z0-9-]+$/.test(manifest.self)) {
-      errors.push(`invalid self entry '${manifest.self}' (must match ^[a-z0-9-]+$); skipping self block`)
-    } else {
-      let selfName
-      try {
-        selfName = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8')).name
-      } catch (e) {
-        errors.push(`cannot read self package name: ${e.message}`)
+
+  const errors = []
+  const results = []
+  for (const { pkgDir, ymlPath } of aggregates) {
+    const rel = relative(REPO_ROOT, pkgDir)
+    const manifest = parseManifest(ymlPath, errors)
+    const blocks = []
+    const visited = new Set()
+    for (const entry of manifest.patchFrom) {
+      const target = resolvePath(pkgDir, entry)
+      if (!existsSync(target)) {
+        errors.push(`patchFrom target not found: ${ymlPath} -> ${entry} (${target})`)
+        continue
       }
-      if (selfName) blocks.unshift({ entry: 'self', via: [], rows: [{ kind: 'insert', id: manifest.self, name: selfName, configLines: [] }] })
+      collectRows(target, entry, [], visited, errors, blocks)
     }
-  }
-  if (manifest.patchFrom.length === 0 && !manifest.self) {
-    console.log(`[aggregate] WARN ${rel}: aggregate.yml has no patchFrom entries (patch would be empty)`)
-  }
-  const shellSubpaths = collectShellSubpaths(manifest.tombstones)
-  if (shellSubpaths.length > 0) validateShellFiles(pkgDir, rel, errors)
-  const shellNotes = resolveShellNotes(manifest.shellNotes, shellSubpaths, rel, errors)
-  const patch = renderPatch(blocks, manifest.rows, manifest.patches ?? [], manifest.inactive ?? [], manifest.retire ?? [], manifest.familyIds, errors, rel, pkgDir)
-  const resolvedDeps = resolveEntries(pkgDir, manifest.deps, 'deps', errors)
-  const retiredPlugins = resolveRetiredPlugins(manifest.retiredPlugins, manifest.tombstones, resolvedDeps, rel, errors)
-  const pkgJson = renderPackageJson(join(pkgDir, 'package.json'), resolvedDeps, shellSubpaths)
-  let ownName
-  try {
-    ownName = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8')).name
-  } catch {
-    ownName = undefined
-  }
-  results.push({
-    rel,
-    blocks,
-    patch,
-    resolvedDeps,
-    pkgJson,
-    // Only the shell aggregate generates the retirement registry: it is the
-    // package whose shell module performs the no-op skip.
-    retiredPluginsModule: ownName === AGGREGATE_SHELL_PACKAGE ? renderRetiredPlugins(retiredPlugins) : undefined,
-    retiredPluginCount: retiredPlugins.length,
-    shellMetadata: shellMetadataFiles(pkgDir, shellSubpaths, shellNotes),
-    shellSubpaths,
-  })
-}
-
-let failed = false
-if (errors.length) {
-  for (const e of errors) console.error(`[aggregate] ERROR ${e}`)
-  failed = true
-}
-
-if (failed) {
-  console.error(CHECK ? '[aggregate] check FAILED: generated content differs from disk' : '[aggregate] FAILED: see errors above; no files written')
-  process.exit(1)
-}
-
-for (const r of results) {
-  const patchPath = join(REPO_ROOT, r.rel, 'cordis.patch.yml')
-  const pkgPath = join(REPO_ROOT, r.rel, 'package.json')
-  const metadataFiles = r.shellMetadata.map(({ path, content }) => [relative(REPO_ROOT, path), path, content])
-  const retiredFile = r.retiredPluginsModule === undefined
-    ? []
-    : [['retired-plugins.generated.ts', join(REPO_ROOT, r.rel, 'src', 'retired-plugins.generated.ts'), r.retiredPluginsModule]]
-  if (CHECK) {
-    const diffs = []
-    if (!existsSync(patchPath) || readFileSync(patchPath, 'utf8') !== r.patch) diffs.push(relative(REPO_ROOT, patchPath))
-    if (!existsSync(pkgPath) || readFileSync(pkgPath, 'utf8') !== r.pkgJson) diffs.push(relative(REPO_ROOT, pkgPath))
-    for (const [, filePath, content] of [...metadataFiles, ...retiredFile]) {
-      if (!existsSync(filePath) || readFileSync(filePath, 'utf8') !== content) diffs.push(relative(REPO_ROOT, filePath))
+    if (manifest.self) {
+      // self: the aggregate package loads ITS OWN plugin (host + client half)
+      // through one patch row, e.g. the compat shim living inside web-ui-all.
+      // unshift keeps the self block FIRST in the rendered patch so its ordering
+      // does not drift when the patchFrom entries change.
+      if (!/^[a-z0-9-]+$/.test(manifest.self)) {
+        errors.push(`invalid self entry '${manifest.self}' (must match ^[a-z0-9-]+$); skipping self block`)
+      } else {
+        let selfName
+        try {
+          selfName = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8')).name
+        } catch (e) {
+          errors.push(`cannot read self package name: ${e.message}`)
+        }
+        if (selfName) blocks.unshift({ entry: 'self', via: [], rows: [{ kind: 'insert', id: manifest.self, name: selfName, configLines: [] }] })
+      }
     }
-    // Symmetry with write mode: pruneShellMetadata deletes shell-metadata
-    // entries the manifest no longer owns, so check mode has to report them as
-    // drift — otherwise a family that lost its row keeps its directory (and
-    // its exports) forever and `--check` stays green.
-    const strays = strayShellMetadata(resolvePath(REPO_ROOT, r.rel), r.shellSubpaths)
-    if (diffs.length || strays.length) {
-      for (const d of diffs) console.log(`[aggregate] check: ${d} differs from generated content`)
-      for (const stray of strays) console.log(`[aggregate] check: ${relative(REPO_ROOT, stray)} is not owned by the manifest (run without --check to prune it)`)
-      failed = true
+    if (manifest.patchFrom.length === 0 && !manifest.self) {
+      console.log(`[aggregate] WARN ${rel}: aggregate.yml has no patchFrom entries (patch would be empty)`)
+    }
+    const shellSubpaths = collectShellSubpaths(manifest.tombstones)
+    if (shellSubpaths.length > 0) validateShellFiles(pkgDir, rel, errors)
+    const shellNotes = resolveShellNotes(manifest.shellNotes, shellSubpaths, rel, errors)
+    const patch = renderPatch(blocks, manifest.rows, manifest.patches ?? [], manifest.inactive ?? [], manifest.retire ?? [], manifest.familyIds, errors, rel, pkgDir)
+    const resolvedDeps = resolveEntries(pkgDir, manifest.deps, 'deps', errors)
+    const retiredPlugins = resolveRetiredPlugins(manifest.retiredPlugins, manifest.tombstones, resolvedDeps, rel, errors)
+    const pkgJson = renderPackageJson(join(pkgDir, 'package.json'), resolvedDeps, shellSubpaths)
+    let ownName
+    try {
+      ownName = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8')).name
+    } catch {
+      ownName = undefined
+    }
+    results.push({
+      rel,
+      blocks,
+      patch,
+      resolvedDeps,
+      pkgJson,
+      // Only the shell aggregate generates the retirement registry: it is the
+      // package whose shell module performs the no-op skip.
+      retiredPluginsModule: ownName === AGGREGATE_SHELL_PACKAGE ? renderRetiredPlugins(retiredPlugins) : undefined,
+      retiredPluginCount: retiredPlugins.length,
+      shellMetadata: shellMetadataFiles(pkgDir, shellSubpaths, shellNotes),
+      shellSubpaths,
+    })
+  }
+
+  let failed = false
+  if (errors.length) {
+    for (const e of errors) console.error(`[aggregate] ERROR ${e}`)
+    failed = true
+  }
+
+  if (failed) {
+    console.error(CHECK ? '[aggregate] check FAILED: generated content differs from disk' : '[aggregate] FAILED: see errors above; no files written')
+    process.exit(1)
+  }
+
+  for (const r of results) {
+    const patchPath = join(REPO_ROOT, r.rel, 'cordis.patch.yml')
+    const pkgPath = join(REPO_ROOT, r.rel, 'package.json')
+    const metadataFiles = r.shellMetadata.map(({ path, content }) => [relative(REPO_ROOT, path), path, content])
+    const retiredFile = r.retiredPluginsModule === undefined
+      ? []
+      : [['retired-plugins.generated.ts', join(REPO_ROOT, r.rel, 'src', 'retired-plugins.generated.ts'), r.retiredPluginsModule]]
+    if (CHECK) {
+      const diffs = []
+      if (!existsSync(patchPath) || readFileSync(patchPath, 'utf8') !== r.patch) diffs.push(relative(REPO_ROOT, patchPath))
+      if (!existsSync(pkgPath) || readFileSync(pkgPath, 'utf8') !== r.pkgJson) diffs.push(relative(REPO_ROOT, pkgPath))
+      for (const [, filePath, content] of [...metadataFiles, ...retiredFile]) {
+        if (!existsSync(filePath) || readFileSync(filePath, 'utf8') !== content) diffs.push(relative(REPO_ROOT, filePath))
+      }
+      // Symmetry with write mode: pruneShellMetadata deletes shell-metadata
+      // entries the manifest no longer owns, so check mode has to report them as
+      // drift — otherwise a family that lost its row keeps its directory (and
+      // its exports) forever and `--check` stays green.
+      const strays = strayShellMetadata(resolvePath(REPO_ROOT, r.rel), r.shellSubpaths)
+      if (diffs.length || strays.length) {
+        for (const d of diffs) console.log(`[aggregate] check: ${d} differs from generated content`)
+        for (const stray of strays) console.log(`[aggregate] check: ${relative(REPO_ROOT, stray)} is not owned by the manifest (run without --check to prune it)`)
+        failed = true
+      } else {
+        const rows = r.blocks.reduce((n, b) => n + b.rows.length, 0)
+        const retiredNote = r.retiredPluginsModule === undefined ? '' : `, ${r.retiredPluginCount} retired plugin(s)`
+        console.log(`[aggregate] check OK: ${r.rel} (${rows} row(s), ${r.resolvedDeps.length} dep(s)${retiredNote})`)
+      }
     } else {
+      writeFileSync(patchPath, r.patch)
       const rows = r.blocks.reduce((n, b) => n + b.rows.length, 0)
-      const retiredNote = r.retiredPluginsModule === undefined ? '' : `, ${r.retiredPluginCount} retired plugin(s)`
-      console.log(`[aggregate] check OK: ${r.rel} (${rows} row(s), ${r.resolvedDeps.length} dep(s)${retiredNote})`)
-    }
-  } else {
-    writeFileSync(patchPath, r.patch)
-    const rows = r.blocks.reduce((n, b) => n + b.rows.length, 0)
-    console.log(`[aggregate] wrote ${relative(REPO_ROOT, patchPath)} (${r.blocks.length} source block(s), ${rows} row(s))`)
-    writeFileSync(pkgPath, r.pkgJson)
-    console.log(`[aggregate] wrote ${relative(REPO_ROOT, pkgPath)} (${r.resolvedDeps.length} workspace dep(s))`)
-    pruneShellMetadata(resolvePath(REPO_ROOT, r.rel), r.shellSubpaths)
-    for (const [label, filePath, content] of [...metadataFiles, ...retiredFile]) {
-      mkdirSync(dirname(filePath), { recursive: true })
-      writeFileSync(filePath, content)
-      console.log(`[aggregate] wrote ${relative(REPO_ROOT, filePath)} (${label})`)
+      console.log(`[aggregate] wrote ${relative(REPO_ROOT, patchPath)} (${r.blocks.length} source block(s), ${rows} row(s))`)
+      writeFileSync(pkgPath, r.pkgJson)
+      console.log(`[aggregate] wrote ${relative(REPO_ROOT, pkgPath)} (${r.resolvedDeps.length} workspace dep(s))`)
+      pruneShellMetadata(resolvePath(REPO_ROOT, r.rel), r.shellSubpaths)
+      for (const [label, filePath, content] of [...metadataFiles, ...retiredFile]) {
+        mkdirSync(dirname(filePath), { recursive: true })
+        writeFileSync(filePath, content)
+        console.log(`[aggregate] wrote ${relative(REPO_ROOT, filePath)} (${label})`)
+      }
     }
   }
-}
 
-if (failed) {
-  console.error('[aggregate] check FAILED: generated content differs from disk')
-  process.exit(1)
+  if (failed) {
+    console.error('[aggregate] check FAILED: generated content differs from disk')
+    process.exit(1)
+  }
+  console.log('[aggregate] done')
 }
-console.log('[aggregate] done')

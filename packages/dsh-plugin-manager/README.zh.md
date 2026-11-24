@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/npm/v/@linxin666/dsh-client-ui-plugin-manager?style=flat-square" alt="Version">
   &nbsp;
-  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--rc.3-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
+  <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.3--alpha.2-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License">
 </p>
@@ -19,7 +19,7 @@
 
 ## 功能
 
-- 向官方插件页注入「检查更新」区块（该页声明的 `plugins.detail.section` 席位），只渲染在已安装组合包的页面上；「插件」设置分区不再有本包自己的 Tab。
+- 向官方插件页注入「检查更新」区块（该页声明的 `plugins.detail.section` 席位），只渲染在已安装组合包的页面上；设置里不注册本包自己的分区。
 - 在该页 **已安装** 标题旁加一条列表级工具条。该标题是官方页面自己的 chrome，页面并未为它声明席位（扩展点是 `plugins.detail.*`、`plugins.item`、`plugins.bundle.config`、`plugins.row.config` 与 `plugins.bundle.activation`），因此工具条直接插入该元素，并靠家族共享的 body mutation hub 保持就位。一次点击检查全部已装插件；面板列出有新版本的第三方插件（当前运行时版本不够的行附上其声明的 DSH 最低版本）；「全部更新」用一个 host 任务按顺序应用合格行并显示逐行进度——被拒的行就地写明原因，整批继续跑后面的行；随后「立即重启」使更新生效（见「已知限制」中的重启说明）。官方 `@deepseek-ai/` 包绝不参与批量更新——它们的版本属于 DSH 安装本身。
 - **按版本忽略更新**：列表面板中的每个更新行与组合包详情页查到的更新都提供「忽略此版本」。规则以「插件 id + 提供的版本」保存在当前浏览器，只把这一条从「全部更新」与单包更新中排除；其他插件照常更新，出现更新版本后会重新显示。被忽略的行保留在独立区域，可点「恢复更新」撤销。本地存储不可用或内容损坏时降级为空规则或当前会话内规则，不阻断更新检查。
 - 双通道传输：带官方安装器服务的运行时（DSHCode 与 1.0.4 checkout 版 web）走官方 `/plugin-installer`、`/plugin-control` loopback RPC 通道；npm 发布的官方 web 没有这些通道，本包的 host 半区挂载 loopback 门禁的 HTTP 网关——安装/卸载 spawn 官方 `dsh plugin` CLI（唯一写入器），启停写入 `disabled` 覆盖行。应用自有 profile（打包桌面启动）的安装、更新与卸载走第三种写入器：宿主挂载的官方进程内插件管理器，因为 CLI 完全拒绝写该 profile。
@@ -79,8 +79,6 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-plugin-manager
 - npm 运行时的启动预检（`--dump-config`）能抓组合失败，静态 insert 检查能抓引用不存在包的 insert 行；真正的运行时 import/apply 失败仍要到下次启动才暴露。
 - 重复挂载保护（网关模式）：官方 CLI 的 bundle 对账会在任何安装/卸载后把所有声明 `dsh.bundle` 的依赖重新加进 `dsh.profile.bundles`——包括组合树里已由 patch 行挂载的包（bundle 以 patch 行挂载外部插件时），下次启动会重复挂载而失败（`duplicate prefix route`）。每次 CLI 变更成功后，网关只把「本次新增且已被 patch 行挂载」的 bundles 条目剥除（清单写入走备份 + tmp + 原子 rename），并在任务结果上为每个被剥除的条目发一条 notice；正常安装的 bundles 条目与用户此前已有的条目一律不动。
 - wire 形状镜像官方安装器协议；漂移时宽容解析器降级为错误行，不误操作。
-- 设置界面「内置插件」分区下线：本包 `cordis.patch.yml` 包含一条顶层裸行 `- id: ui-settings-plugins` 并置 `disabled: true`，聚合层在 `@deepseek-ai/dsh-web-app` 之后应用因此覆盖生效，下线原设置分区；相关管理能力集中移至官方「插件」页的「内置插件」分组，禁用本包即可恢复原设置分区。
-- 官方插件页提示文案残留：官方「插件」页说明文案仍写有「内置插件列表及运行状态可在『设置 → 内置插件』中查看」，但该设置入口已被本包下线；该提示属于官方 bundle 的既有文案，本仓库无法修改。
 
 ## 安全模型
 

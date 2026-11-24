@@ -165,12 +165,12 @@ describe('loopback fence', () => {
 describe('host connection trust', () => {
   it('operator through a Host-admitted reverse proxy reaches the hosts API', async () => {
     // Given a forwarded request that the legacy loopback fence would reject
-    const requestRejection = vi.fn(() => undefined)
+    const admit = vi.fn(() => ({ peer: { id: 'browser-1' } }))
     const made = makeRoutes({
       store: new HostStore(join(dir, 'trusted-proxy-hosts.json')),
       engine: engine(new StubEngine()),
       stagingDir: join(dir, 'trusted-proxy-staging'),
-      connection: () => ({ requestRejection }),
+      connection: () => ({ admit }),
     })
     const { req } = fakeJsonRequest(SSH_API.hosts, undefined, 'GET')
     req.headers['x-forwarded-for'] = '203.0.113.20'
@@ -179,7 +179,7 @@ describe('host connection trust', () => {
     await handlerFor(SSH_API.hosts, made.routes).handler(req, res)
     // Then the API answers normally and the Host decision was consulted
     expect(state.status).toBe(200)
-    expect(requestRejection).toHaveBeenCalledWith(req)
+    expect(admit).toHaveBeenCalledWith(req)
     expect(made.routes.every(route => 'auth' in route && route.auth === 'anonymous')).toBe(true)
     expect(made.upgrade).toMatchObject({ auth: 'anonymous' })
     made.terminalSessions.dispose()
@@ -191,7 +191,7 @@ describe('host connection trust', () => {
       store: new HostStore(join(dir, 'untrusted-proxy-hosts.json')),
       engine: engine(new StubEngine()),
       stagingDir: join(dir, 'untrusted-proxy-staging'),
-      connection: () => ({ requestRejection: () => 403 }),
+      connection: () => ({ admit: () => ({ rejection: 403 }) }),
     })
     const { req } = fakeJsonRequest(SSH_API.hosts, undefined, 'GET')
     req.headers['x-forwarded-for'] = '203.0.113.20'

@@ -80,8 +80,10 @@ afterEach(async () => {
 
 describe('the route table', () => {
   it('operator registers exactly the frozen contract paths, in contract order', () => {
-    // Given the contract, When the Host registers its routes, Then the table is those six paths and no other.
-    expect(makeAgentsRoutes(service).map(route => route.path)).toEqual([...DSH_AGENTS_ROUTE_PATHS])
+    // Given the contract, When the Host registers its routes, Then the table is those paths and no other.
+    const routes = makeAgentsRoutes(service)
+    expect(routes.map(route => route.path)).toEqual([...DSH_AGENTS_ROUTE_PATHS])
+    expect(routes.every(route => route.auth === 'anonymous')).toBe(true)
   })
 })
 

@@ -85,6 +85,9 @@ const DEEPSEEK_BALANCE_URL = `${DEEPSEEK_API_ORIGIN}/user/balance`
 /** 官方余额适配认的 provider 路由 id，与 dsh-usage 的 deepseek adapter 同一份名单。 */
 const DEEPSEEK_ROUTES: ReadonlySet<string> = new Set(['deepseek', 'deepseek-official'])
 
+/** 官方 App 托管账户的路由 id（走 `ctx.deepseekAccount.getBalance`）。 */
+const DEEPSEEK_ACCOUNT_ROUTE = 'deepseek-account'
+
 /** pi-ai 凭据记录的 scope：一条记录以 `<scope>/<id>` 寻址。 */
 const PI_AI_CREDENTIAL_SCOPE = 'llm-pi-ai'
 
@@ -321,6 +324,45 @@ export interface SessionRouteFace {
   current(sessionId: string): Promise<{ readonly provider: string; readonly model: string } | undefined>
 }
 
+/** 官方 DeepSeek 请求鉴权服务（`ctx.deepseekAuth`，DSH 0.2.3-alpha.2+）。 */
+export interface DeepSeekAuthFace {
+  authorize(request: {
+    readonly consumer: string
+    readonly accepts: readonly ('account' | 'api-key')[]
+    readonly billing: 'auto' | 'account' | 'api-key'
+    readonly route?: string
+    readonly destination: { readonly path: string }
+  }, signal?: AbortSignal): Promise<{
+    readonly kind: 'account' | 'api-key'
+    readonly endpoint: string
+    readonly headers: Readonly<Record<string, string>>
+  } | undefined>
+}
+
+/** 官方 DeepSeek 账号钱包条目（`ctx.deepseekAccount`）。 */
+export interface DeepSeekAccountWalletFace {
+  readonly currency: string
+  readonly balance: string
+}
+
+/** 官方 DeepSeek 账号余额服务（`ctx.deepseekAccount`）。 */
+export interface DeepSeekAccountFace {
+  getState(): Promise<{ readonly status: 'signed-out' | 'credential-stored' }>
+  getBalance(client: {
+    readonly version: string
+    readonly locale: string
+    readonly timezoneOffsetSeconds: number
+  }): Promise<
+    | {
+        readonly status: 'ready'
+        readonly value: readonly DeepSeekAccountWalletFace[]
+        readonly bonusWallets: readonly DeepSeekAccountWalletFace[]
+      }
+    | { readonly status: 'failed' }
+    | null
+  >
+}
+
 /** 本模块要读的宿主服务；每一个都可能不存在。 */
 export interface UsageFaces {
   /** 活会话的存储：`usage.session` 靠它区分「不存在」与「存在但没读数」。 */
@@ -333,6 +375,10 @@ export interface UsageFaces {
   readonly settings?: SettingsFace | undefined
   /** 会话此刻的路由：`modelContextWindow` 的来源。 */
   readonly route?: SessionRouteFace | undefined
+  /** 官方 DeepSeek 请求鉴权服务（优先于手工凭据解析）。 */
+  readonly deepseekAuth?: DeepSeekAuthFace | undefined
+  /** 官方 DeepSeek App 托管账户余额服务。 */
+  readonly deepseekAccount?: DeepSeekAccountFace | undefined
 }
 
 /** 上游探测用的 fetch 一角。 */
@@ -444,13 +490,20 @@ export class UsageService {
    * @returns 余额，或者为什么读不到。
    */
   async balance(provider: string): Promise<UsageBalanceAnswer> {
-    if (!DEEPSEEK_ROUTES.has(provider)) return { provider, unsupported: 'not-deepseek-route' }
     const faces = this.#faces()
+    if (provider === DEEPSEEK_ACCOUNT_ROUTE) {
+      return await this.#accountBalance(provider, faces.deepseekAccount)
+    }
+    if (!DEEPSEEK_ROUTES.has(provider)) return { provider, unsupported: 'not-deepseek-route' }
     if (!officialRoute(provider, faces.settings)) return { provider, unsupported: 'not-deepseek-route' }
-    const credential = await this.#credentialOf(provider, faces)
-    if (credential === undefined) return { provider, unsupported: 'no-credential' }
+    const authorized = await this.#deepseekAuthOf(provider, faces)
+    const credential = authorized === undefined ? await this.#credentialOf(provider, faces) : undefined
+    if (authorized === undefined && credential === undefined) return { provider, unsupported: 'no-credential' }
+    const identity = authorized !== undefined
+      ? `${authorized.endpoint}\u0000${headerAuthFingerprint(authorized.headers)}`
+      : fingerprint(credential as string)
     // 缓存键带上凭据指纹：换一把 key 就是另一个账户，不能被上一把的读数冒充。
-    const cacheKey = `${provider}\u0000${fingerprint(credential)}`
+    const cacheKey = `${provider}\u0000${identity}`
     const cached = this.#cache.get(cacheKey)
     if (cached !== undefined && this.#options.now() - cached.at < this.#ttl()) return cached.answer
     const running = this.#inFlight.get(cacheKey)
@@ -460,7 +513,9 @@ export class UsageService {
       this.#inFlight.delete(cacheKey)
       return answer
     }
-    const probe = this.#probe(provider, credential)
+    const probe = (authorized !== undefined
+      ? this.#probeAuthorized(provider, authorized.endpoint, authorized.headers)
+      : this.#probe(provider, credential as string))
       .then(settle, (error: unknown) => settle({ provider, unsupported: 'probe-failed', reason: failureText(error) }))
     this.#inFlight.set(cacheKey, probe)
     return await probe
@@ -541,6 +596,67 @@ export class UsageService {
     return undefined
   }
 
+  /** 优先向官方 `ctx.deepseekAuth` 申请余额请求头，仅接受指向官方 origin 的 api-key 授权。 */
+  async #deepseekAuthOf(
+    provider: string,
+    faces: UsageFaces,
+  ): Promise<{ readonly endpoint: string; readonly headers: Record<string, string> } | undefined> {
+    const auth = faces.deepseekAuth
+    if (auth === undefined || typeof auth.authorize !== 'function') return undefined
+    try {
+      const authorization = await auth.authorize({
+        consumer: 'dsh-remote-bridge',
+        accepts: ['api-key'],
+        billing: 'api-key',
+        route: provider,
+        destination: { path: '/user/balance' },
+      }, AbortSignal.timeout(this.#timeout()))
+      if (authorization === undefined || authorization.kind !== 'api-key') return undefined
+      if (originOf(authorization.endpoint) !== DEEPSEEK_API_ORIGIN) return undefined
+      return { endpoint: authorization.endpoint, headers: { ...authorization.headers } }
+    } catch (error) {
+      this.#options.log(`deepseekAuth could not authorize route "${provider}": ${failureText(error)}`)
+      return undefined
+    }
+  }
+
+  /** 通过官方 `ctx.deepseekAccount` 查询 App 托管账户余额，带缓存与并发合并。 */
+  async #accountBalance(provider: string, account: DeepSeekAccountFace | undefined): Promise<UsageBalanceAnswer> {
+    if (account === undefined || typeof account.getState !== 'function' || typeof account.getBalance !== 'function') {
+      return { provider, unsupported: 'not-deepseek-route' }
+    }
+    const cacheKey = `${provider}\u0000account`
+    const cached = this.#cache.get(cacheKey)
+    if (cached !== undefined && this.#options.now() - cached.at < this.#ttl()) return cached.answer
+    const running = this.#inFlight.get(cacheKey)
+    if (running !== undefined) return await running
+    const settle = (answer: UsageBalanceAnswer): UsageBalanceAnswer => {
+      this.#remember(cacheKey, answer)
+      this.#inFlight.delete(cacheKey)
+      return answer
+    }
+    const probe = (async (): Promise<UsageBalanceAnswer> => {
+      try {
+        const state = await account.getState()
+        if (state.status !== 'credential-stored') return { provider, unsupported: 'no-credential' }
+        const offsetMin = new Date().getTimezoneOffset()
+        const outcome = await account.getBalance({
+          version: '0.2.3',
+          locale: 'zh-CN',
+          timezoneOffsetSeconds: offsetMin === 0 ? 0 : -offsetMin * 60,
+        })
+        if (outcome === null) return { provider, unsupported: 'no-credential' }
+        if (outcome.status === 'failed') return { provider, unsupported: 'probe-failed', reason: 'account balance query failed' }
+        const parsed = parseAccountWallets(outcome.value, outcome.bonusWallets)
+        return { provider, ...parsed, updatedAt: this.#options.now() }
+      } catch (error) {
+        return { provider, unsupported: 'probe-failed', reason: failureText(error) }
+      }
+    })().then(settle, (error: unknown) => settle({ provider, unsupported: 'probe-failed', reason: failureText(error) }))
+    this.#inFlight.set(cacheKey, probe)
+    return await probe
+  }
+
   /**
    * 对官方余额端点做一次探测。
    *
@@ -548,10 +664,18 @@ export class UsageService {
    * 「这次没读到」，任何一条都不会拿上一轮的旧值顶上。
    */
   async #probe(provider: string, credential: string): Promise<UsageBalanceAnswer> {
+    return await this.#probeAuthorized(provider, DEEPSEEK_BALANCE_URL, { authorization: `Bearer ${credential}` })
+  }
+
+  async #probeAuthorized(
+    provider: string,
+    endpoint: string,
+    headers: Record<string, string>,
+  ): Promise<UsageBalanceAnswer> {
     const call = this.#options.fetch ?? defaultFetch
     try {
-      const response = await call(DEEPSEEK_BALANCE_URL, {
-        headers: { authorization: `Bearer ${credential}` },
+      const response = await call(endpoint, {
+        headers,
         signal: AbortSignal.timeout(this.#timeout()),
       })
       if (!response.ok) return { provider, unsupported: 'probe-failed', reason: `HTTP ${response.status}` }
@@ -909,6 +1033,48 @@ function amount(value: unknown): number | undefined {
     ? value
     : typeof value === 'string' && value.trim() !== '' ? Number(value) : Number.NaN
   return Number.isFinite(parsed) ? parsed : undefined
+}
+
+/** 合并官方 `ctx.deepseekAccount.getBalance` 返回的充值与赠金钱包，优先 CNY，次选 USD。 */
+function parseAccountWallets(
+  value: readonly DeepSeekAccountWalletFace[],
+  bonusWallets: readonly DeepSeekAccountWalletFace[],
+): ParsedBalance {
+  const sum = (list: readonly DeepSeekAccountWalletFace[], target: string): { found: boolean; total: number } => {
+    let found = false
+    let total = 0
+    for (const wallet of list) {
+      if (wallet.currency.toUpperCase() !== target) continue
+      const num = amount(wallet.balance)
+      if (num === undefined) continue
+      found = true
+      total += num
+    }
+    return { found, total }
+  }
+  const cnyTopped = sum(value, 'CNY')
+  const cnyBonus = sum(bonusWallets, 'CNY')
+  if (cnyTopped.found || cnyBonus.found) {
+    const toppedUp = Number(cnyTopped.total.toFixed(2))
+    const granted = Number(cnyBonus.total.toFixed(2))
+    return { currency: 'CNY', toppedUp, granted, total: Number((toppedUp + granted).toFixed(2)) }
+  }
+  const usdTopped = sum(value, 'USD')
+  const usdBonus = sum(bonusWallets, 'USD')
+  if (usdTopped.found || usdBonus.found) {
+    const toppedUp = Number(usdTopped.total.toFixed(2))
+    const granted = Number(usdBonus.total.toFixed(2))
+    return { currency: 'USD', toppedUp, granted, total: Number((toppedUp + granted).toFixed(2)) }
+  }
+  return { currency: 'CNY', toppedUp: 0, granted: 0, total: 0 }
+}
+
+/** 根据授权请求头计算凭据指纹，键名小写排序确保稳定。 */
+function headerAuthFingerprint(headers: Readonly<Record<string, string>>): string {
+  const entries = Object.entries(headers)
+    .map(([key, value]) => `${key.toLowerCase()}:${value}`)
+    .sort()
+  return fingerprint(entries.join('\n'))
 }
 
 /**

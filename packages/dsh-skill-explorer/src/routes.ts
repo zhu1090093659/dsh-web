@@ -628,8 +628,7 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
       },
     },
   ]
-  // Skill explorer routes run their own guard (connection.admit/requestRejection,
+  // Skill explorer routes run their own guard (connection.admit,
   // paired device cookie, or loopback) and must opt out of webServer's auth: 'required' default.
-  type AuthAwareRoute = (typeof routes)[number] & { readonly auth?: 'anonymous' | 'required' | 'deny' }
-  return routes.map((route): AuthAwareRoute => ({ ...route, auth: 'anonymous' }))
+  return routes.map((route): WebRoute => ({ ...route, auth: 'anonymous' }))
 }

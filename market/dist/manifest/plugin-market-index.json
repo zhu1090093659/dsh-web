@@ -1,0 +1,937 @@
+{
+  "format": 1,
+  "title": {
+    "en": "DSH Community Workshop",
+    "zh": "DSH 社区创意工坊"
+  },
+  "description": {
+    "en": "DeepSeek Harness Web GUI family plugins and versioned community packages from dsh-market.com.",
+    "zh": "来自 dsh-market.com 的 DeepSeek Harness Web GUI 家族插件与带版本社区插件索引。"
+  },
+  "metadata": {
+    "categories": {
+      "bundle": {
+        "title": {
+          "en": "Bundles",
+          "zh": "全家桶与整合包"
+        }
+      },
+      "ui": {
+        "title": {
+          "en": "UI & Interface",
+          "zh": "界面与交互"
+        }
+      },
+      "tools": {
+        "title": {
+          "en": "Tools & Productivity",
+          "zh": "工具与效率"
+        }
+      },
+      "knowledge": {
+        "title": {
+          "en": "Knowledge & Skills",
+          "zh": "知识与技能"
+        }
+      },
+      "security": {
+        "title": {
+          "en": "Security & Remote",
+          "zh": "安全与远程"
+        }
+      },
+      "other": {
+        "title": {
+          "en": "Other",
+          "zh": "其他"
+        }
+      }
+    },
+    "labels": {
+      "family": {
+        "title": {
+          "en": "dsh-web Family",
+          "zh": "dsh-web 家族"
+        }
+      },
+      "community": {
+        "title": {
+          "en": "Community",
+          "zh": "社区插件"
+        }
+      }
+    },
+    "sortKeys": {
+      "rank": {
+        "title": {
+          "en": "Featured",
+          "zh": "推荐排序"
+        },
+        "order": "asc"
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "@linxin666/dsh-web-all",
+      "title": {
+        "en": "Web bundle",
+        "zh": "全家桶"
+      },
+      "description": {
+        "en": "Install every DSH Web plugin in one step.",
+        "zh": "一键装齐 DSH Web 官方插件"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-web-all"
+      },
+      "metadata": {
+        "category": "bundle",
+        "keywords": [
+          "dsh-web-all",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 1
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-agents",
+      "title": {
+        "en": "Agent squads",
+        "zh": "智能体小队"
+      },
+      "description": {
+        "en": "Reusable members grouped into squads, each started as its own session.",
+        "zh": "可复用成员组成小队，按需点播成会话"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-agents"
+      },
+      "metadata": {
+        "category": "knowledge",
+        "keywords": [
+          "dsh-agents",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 2
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-client-ui-browser-view",
+      "title": {
+        "en": "Browser view",
+        "zh": "浏览器视图"
+      },
+      "description": {
+        "en": "Watch the session's live browser beside the chat.",
+        "zh": "右侧看会话驱动的实时浏览器画面"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-browser-view"
+      },
+      "metadata": {
+        "category": "tools",
+        "keywords": [
+          "dsh-browser-view",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 3
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-client-ui-diagrams",
+      "title": {
+        "en": "Diagrams",
+        "zh": "图示渲染"
+      },
+      "description": {
+        "en": "Render mermaid fences as diagrams",
+        "zh": "把 mermaid 代码块画成图"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-diagrams"
+      },
+      "metadata": {
+        "category": "ui",
+        "keywords": [
+          "dsh-diagrams",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 4
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-client-ui-market",
+      "title": {
+        "en": "Workshop",
+        "zh": "创意工坊"
+      },
+      "description": {
+        "en": "Browse and install skins, pets and presets.",
+        "zh": "浏览并一键安装皮肤宠物与预设"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-market"
+      },
+      "metadata": {
+        "category": "ui",
+        "keywords": [
+          "dsh-market",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 5
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-client-ui-plugin-manager",
+      "title": {
+        "en": "Plugin enhancements",
+        "zh": "插件增强"
+      },
+      "description": {
+        "en": "Check updates and toggle built-in plugins on the official Plugins page.",
+        "zh": "官方插件页内检查更新与内置插件开关"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-plugin-manager"
+      },
+      "metadata": {
+        "category": "tools",
+        "keywords": [
+          "dsh-plugin-manager",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 6
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-client-ui-session-id",
+      "title": {
+        "en": "Session ID",
+        "zh": "会话 ID"
+      },
+      "description": {
+        "en": "List every session and copy its id in one click.",
+        "zh": "侧栏列出会话并一键复制 ID"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-session-id"
+      },
+      "metadata": {
+        "category": "ui",
+        "keywords": [
+          "dsh-session-id",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 7
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-client-ui-skill-explorer",
+      "title": {
+        "en": "Skill explorer",
+        "zh": "技能浏览器"
+      },
+      "description": {
+        "en": "Browse, enable and edit skills by source.",
+        "zh": "按来源浏览启停与增删技能"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-skill-explorer"
+      },
+      "metadata": {
+        "category": "tools",
+        "keywords": [
+          "dsh-skill-explorer",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 8
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-client-ui-task-board",
+      "title": {
+        "en": "Task Board",
+        "zh": "任务看板"
+      },
+      "description": {
+        "en": "Drag tasks across columns; cron runs them for real.",
+        "zh": "拖拽管理任务并按 Cron 真实执行"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-task-board"
+      },
+      "metadata": {
+        "category": "tools",
+        "keywords": [
+          "dsh-task-board",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 9
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-client-ui-task-board-github",
+      "title": {
+        "en": "GitHub sync",
+        "zh": "GitHub 同步"
+      },
+      "description": {
+        "en": "Sync GitHub Issues into the task board.",
+        "zh": "把 GitHub Issues 同步进任务看板"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-task-board-github"
+      },
+      "metadata": {
+        "category": "tools",
+        "keywords": [
+          "dsh-task-board-github",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 10
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-client-ui-task-board-ssh",
+      "title": {
+        "en": "Task Board SSH Provider",
+        "zh": "任务看板 SSH 提供方"
+      },
+      "description": {
+        "en": "Runs a pinned card as a headless agent session on a remote host reached through dsh-ssh.",
+        "zh": "把钉住的卡片送到远端主机执行"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-task-board-ssh"
+      },
+      "metadata": {
+        "category": "tools",
+        "keywords": [
+          "dsh-task-board-ssh",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 11
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-client-ui-task-board-team",
+      "title": {
+        "en": "Team board",
+        "zh": "团队看板"
+      },
+      "description": {
+        "en": "Bind local squad members as team Agents.",
+        "zh": "绑定本地智能体成员为团队 Agent"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-task-board-team"
+      },
+      "metadata": {
+        "category": "tools",
+        "keywords": [
+          "dsh-task-board-team",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 12
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-client-ui-web-ui-settings",
+      "title": {
+        "en": "Plugin settings",
+        "zh": "插件设置"
+      },
+      "description": {
+        "en": "Switches and configuration for the family's plugins.",
+        "zh": "家族插件的开关与配置入口"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-web-settings"
+      },
+      "metadata": {
+        "category": "ui",
+        "keywords": [
+          "dsh-web-settings",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 13
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-i18n",
+      "title": {
+        "en": "Russian language pack",
+        "zh": "俄语语言包"
+      },
+      "description": {
+        "en": "Register Russian and carry its interface copy.",
+        "zh": "为界面注册俄语并承载俄语词条"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-i18n"
+      },
+      "metadata": {
+        "category": "ui",
+        "keywords": [
+          "dsh-i18n",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 14
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-liangshen",
+      "title": {
+        "en": "LiangShen mode",
+        "zh": "梁神模式"
+      },
+      "description": {
+        "en": "A minimal preset with its new-session switch.",
+        "zh": "极简预设与新会话首页开关"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-liangshen"
+      },
+      "metadata": {
+        "category": "knowledge",
+        "keywords": [
+          "dsh-liangshen",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 15
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-remote-bridge",
+      "title": {
+        "en": "Remote bridge",
+        "zh": "远程桥接"
+      },
+      "description": {
+        "en": "Serve DSH as protocol v1 over one paired WebSocket route for native clients.",
+        "zh": "为原生手机端提供配对后的协议 v1 通道"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-remote-bridge"
+      },
+      "metadata": {
+        "category": "security",
+        "keywords": [
+          "dsh-remote-bridge",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 16
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-session-archive",
+      "title": {
+        "en": "Session archive",
+        "zh": "会话归档"
+      },
+      "description": {
+        "en": "Search, batch-archive and clean up old sessions.",
+        "zh": "检索、批量归档与清理旧会话"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-session-archive"
+      },
+      "metadata": {
+        "category": "tools",
+        "keywords": [
+          "dsh-session-archive",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 17
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-ssh",
+      "title": {
+        "en": "SSH terminal",
+        "zh": "SSH 终端"
+      },
+      "description": {
+        "en": "Run commands and transfer files on remote hosts.",
+        "zh": "连远程主机执行命令并传文件"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-ssh"
+      },
+      "metadata": {
+        "category": "tools",
+        "keywords": [
+          "dsh-ssh",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 18
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-task-board-remote",
+      "title": {
+        "en": "Task board remote",
+        "zh": "看板远端"
+      },
+      "description": {
+        "en": "Put the task board on the remote surface.",
+        "zh": "把任务看板接到远程访问面"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-task-board-remote"
+      },
+      "metadata": {
+        "category": "tools",
+        "keywords": [
+          "dsh-task-board-remote",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 19
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-usage",
+      "title": {
+        "en": "Usage",
+        "zh": "用量统计"
+      },
+      "description": {
+        "en": "Token usage, balance and cost monitoring.",
+        "zh": "令牌用量、余额与成本监控"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-usage"
+      },
+      "metadata": {
+        "category": "ui",
+        "keywords": [
+          "dsh-usage",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 20
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@linxin666/dsh-win-bash",
+      "title": {
+        "en": "Windows bash",
+        "zh": "Windows Bash"
+      },
+      "description": {
+        "en": "A persistent bash for Windows sessions.",
+        "zh": "为 Windows 会话提供常驻 bash"
+      },
+      "author": "zhu1090093659",
+      "repository": {
+        "url": "https://github.com/zhu1090093659/dsh-web",
+        "directory": "packages/dsh-win-bash"
+      },
+      "metadata": {
+        "category": "tools",
+        "keywords": [
+          "dsh-win-bash",
+          "dsh-web"
+        ],
+        "labels": [
+          "family"
+        ],
+        "sortKeys": {
+          "rank": 21
+        }
+      },
+      "versions": [
+        {
+          "version": "0.4.22",
+          "publishTimestamp": 1795478400,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.3-alpha.2"
+          }
+        }
+      ]
+    }
+  ]
+}

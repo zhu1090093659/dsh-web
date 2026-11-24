@@ -1,4 +1,4 @@
-//#region ../../../../../../usr/local/lib/nodejs/node-v26.13.1-linux-x64/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cosmokit/lib/index.js
+//#region ../../node_modules/.pnpm/@deepseek-ai+cosmokit@1.10.0-alpha.1/node_modules/@deepseek-ai/cosmokit/lib/index.js
 /** Return true when a value is `null` or `undefined`. */
 function isNullable(value) {
 	return value === null || value === void 0;
@@ -252,7 +252,7 @@ var Time;
 	Time.template = template;
 })(Time || (Time = {}));
 //#endregion
-//#region ../../../../../../usr/local/lib/nodejs/node-v26.13.1-linux-x64/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/schemastery/lib/index.mjs
+//#region ../../node_modules/.pnpm/@deepseek-ai+schemastery@3.20.0-alpha.1/node_modules/@deepseek-ai/schemastery/lib/index.mjs
 const kSchema = Symbol.for("schemastery");
 const kValidationError = Symbol.for("ValidationError");
 globalThis.__schemastery_index__ ??= 0;
@@ -933,6 +933,12 @@ const RETIRED_PLUGINS$1 = Object.freeze(Object.values({
 	"update": "@linxin666/dsh-update"
 }).sort());
 Schema.any().volatile();
+/**
+* Loopback-fenced degraded-state route (installed once per shell context).
+* Payload is additive: `{ ok, degraded: [{ plugin, stage, message, reason, at }] }`
+* — the reason field is what a degraded plugin's own panel renders (#1730),
+* and a reader that predates it keeps using stage/message.
+*/
 function makeDegradedRoute() {
 	return {
 		kind: "exact",

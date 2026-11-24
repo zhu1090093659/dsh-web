@@ -7,8 +7,9 @@ packages/AGENTS.md 的全局/包级规则。
 
 - 本包向官方「插件」面板（`main` 面板 id `plugins`）声明的 `plugins.detail.section` 席位贡献
   一个「检查更新」区块（id `family-update-check`，order 30），只渲染在已安装组合包的页面上；
-  它不拥有自己的设置分区——组合包的安装/卸载仍由官方页面负责，
-  本包补齐官方页面没有的 registry 更新检查、DSH 运行时兼容门禁、内置插件启停开关与 Agent 预设展示。
+  当官方页面已在详情页渲染原生版本检查区（`[data-plugin-versions]`，0.2.3-alpha.2+）时，本区块自动退让以避免重复 UI（仅在该包存在本地已忽略版本时保留一条精简的「恢复更新」提示条）；非 registry 来源或缺少原生版本区时完整保留兜底检查更新能力。
+  它不拥有自己的设置分区——组合包的安装/卸载与单包版本管理由官方页面负责，
+  本包补齐官方页面没有的列表级批量检查/更新、按版本忽略、宿主重启、内置插件启停开关与 Agent 预设展示。
   该席位是官方 list 槽，类型由官方页面运行时声明；本包在 `PluginUpdatePatch.tsx` 内以同形
   `declare module` 重新声明（跨包禁止 value import，与家族卡片复用
   `plugins.bundle.config` 的做法一致）。宿主交付的 `PluginPageSubject`（`bundle` / `row` /

@@ -97,7 +97,7 @@ window.__ModuleLoader__.load({
 		const COLUMN_SHIMS = [
 			["[class*=\"sidebarCol\"]", "data-pane=\"sidebar\""],
 			["[class*=\"centerCol\"]", "data-pane=\"conversation\""],
-			["[class*=\"detailsCol\"]", "data-pane=\"details\""]
+			["[data-rightbar-col], [class*=\"detailsCol\"]", "data-pane=\"details\""]
 		];
 		/** Stable hooks consumed by the responsive compat layer (never text/hash selectors). */
 		const RESPONSIVE_CSS = `

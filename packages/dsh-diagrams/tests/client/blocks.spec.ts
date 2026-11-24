@@ -55,6 +55,21 @@ describe('mermaid block discovery', () => {
     // Then the block's pre is found
     expect(found).toHaveLength(1)
   })
+
+  it('user in the official chat fence slot never has the fallback observer double-claim its code block', () => {
+    // Given a mermaid code block nested inside the official conversation.chat.markdown.fence slot
+    document.body.innerHTML = ''
+    const slotWrapper = document.createElement('div')
+    slotWrapper.setAttribute('data-slot', 'conversation.chat.markdown.fence')
+    slotWrapper.append(codeBlock('mermaid', 'graph TD;A-->B'))
+    const previewBlock = codeBlock('mermaid', 'graph LR;C-->D')
+    document.body.append(slotWrapper, previewBlock)
+    // When DOM fallback discovery walks the document
+    const found = findMermaidBlocks(document.body)
+    // Then the slot-managed chat fence is skipped while the non-slot preview fence is still discovered
+    expect(found).toHaveLength(1)
+    expect(found[0]?.textContent).toBe('graph LR;C-->D')
+  })
 })
 
 

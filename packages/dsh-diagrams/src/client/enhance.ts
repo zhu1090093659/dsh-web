@@ -24,10 +24,10 @@
  * @module @linxin666/dsh-client-ui-diagrams/client/enhance
  */
 
-import { CODE_BLOCK_CLASS, DIAGRAM_CLASS, DATA_STATE, RUNTIME_ROUTE } from '../core/contract.ts'
+import { CODE_BLOCK_CLASS, DIAGRAM_CLASS, DATA_STATE, FENCE_SLOT_SELECTOR, RUNTIME_ROUTE } from '../core/contract.ts'
 import { claimBlock, findMermaidBlocks, finishedContainers, hideSourceBlock, restoreBlock } from './blocks.ts'
+import { createMermaidRenderer, type MermaidRenderer } from './render.ts'
 import { loadRuntime, type MermaidRuntime } from './runtime.ts'
-import { sanitizeSvg } from './sanitize.ts'
 import { mermaidTheme, shellIsDark, watchTheme } from './theme.ts'
 
 /** Options for {@link startEnhancement} (tests override the loader and root). */
@@ -38,13 +38,9 @@ export interface EnhancementOptions {
   root?: HTMLElement
   /** Runtime loader override; defaults to the script-injecting loader. */
   load?: (url: string) => Promise<MermaidRuntime>
+  /** Shared or isolated mermaid renderer instance. */
+  renderer?: MermaidRenderer
 }
-
-/** Monotonic id source: mermaid keys its `<svg>` by the id it is handed. */
-let renderSeq = 0
-
-/** How many rendered diagrams one page keeps for reuse (oldest is evicted first). */
-const CACHE_LIMIT = 32
 
 /** Quiet period before a fence whose source changed since its last rejection retries. */
 const RETRY_DELAY_MS = 400
@@ -52,8 +48,9 @@ const RETRY_DELAY_MS = 400
 /**
  * Map one mutation batch to the minimal DOM scopes that can hold a new fence.
  * Removal-only records contribute nothing (removing a node never introduces a
- * block), and records inside an already-rendered figure are ignored so writing
- * the sanitized SVG cannot re-trigger the pass.
+ * block), and records inside an already-rendered figure or inside an official
+ * `conversation.chat.markdown.fence` slot are ignored so writing the sanitized
+ * SVG or streaming chat fences cannot trigger fallback scans.
  * @param records - The batch the observer delivered.
  * @returns Connected elements to scan, deduped by identity.
  */
@@ -62,6 +59,7 @@ export function scopesForRecords(records: MutationRecord[]): Element[] {
   const consider = (element: Element | null): void => {
     if (element === null || !element.isConnected) return
     if (element.closest(`.${DIAGRAM_CLASS}`) !== null) return
+    if (element.closest(FENCE_SLOT_SELECTOR) !== null) return
     scopes.add(element.closest(`.${CODE_BLOCK_CLASS}`) ?? element)
   }
   for (const record of records) {
@@ -123,48 +121,17 @@ export function startEnhancement(options: EnhancementOptions = {}): () => void {
   const root = options.root ?? document.body
   const runtimeUrl = options.runtimeUrl ?? RUNTIME_ROUTE
   const load = options.load ?? loadRuntime
+  const renderer = options.renderer ?? createMermaidRenderer()
 
   let disposed = false
   /** Cancels the queued flush, while one is scheduled. */
   let cancelFlush: (() => void) | undefined
   const queued = new Set<Element>()
 
-  /** Sanitized SVG per `theme + source`, oldest entry evicted past the limit. */
-  const painted = new Map<string, string>()
   /** The source that last made a block fail; the same source is never retried. */
   const rejected = new WeakMap<HTMLPreElement, string>()
   /** Pending quiet-period retries, cleared on dispose. */
   const retries = new Set<ReturnType<typeof setTimeout>>()
-  /** The runtime and palette the shared runtime was last initialized for. */
-  let initialized: { runtime: MermaidRuntime; theme: string } | undefined
-
-  /** Remember one rendered diagram, evicting the oldest entry past the limit. */
-  const remember = (key: string, svg: string): void => {
-    if (painted.has(key)) painted.delete(key)
-    painted.set(key, svg)
-    for (const oldest of painted.keys()) {
-      if (painted.size <= CACHE_LIMIT) break
-      painted.delete(oldest)
-    }
-  }
-
-  /** Apply the runtime options once per runtime and palette (mermaid re-inits are expensive). */
-  const ensureInitialized = (runtime: MermaidRuntime, theme: string): void => {
-    if (initialized?.runtime === runtime && initialized.theme === theme) return
-    runtime.initialize({
-      startOnLoad: false,
-      theme,
-      securityLevel: 'strict',
-      // Mermaid otherwise leaves its error diagram under body when render throws;
-      // the rollback below owns the failure UI and restores the source block.
-      suppressErrorRendering: true,
-      // Labels must be SVG text: mermaid's HTML labels live in <foreignObject>,
-      // which the sanitizer strips, so an HTML label renders as an empty box.
-      htmlLabels: false,
-      fontFamily: 'inherit',
-    })
-    initialized = { runtime, theme }
-  }
 
   /**
    * Paint one claimed container, reusing a memoized diagram when possible.
@@ -175,13 +142,7 @@ export function startEnhancement(options: EnhancementOptions = {}): () => void {
    */
   const paint = async (container: HTMLElement, runtime: MermaidRuntime, theme: string): Promise<string> => {
     const source = container.getAttribute('data-diagram-source') ?? ''
-    const key = `${theme}\u0000${source}`
-    const cached = painted.get(key)
-    if (cached !== undefined) return cached
-    const { svg } = await runtime.render(`dsh-diagrams-${(renderSeq += 1)}`, source)
-    const cleaned = sanitizeSvg(svg)
-    remember(key, cleaned)
-    return cleaned
+    return renderer.render(source, theme, { runtime })
   }
 
   /**
@@ -203,7 +164,7 @@ export function startEnhancement(options: EnhancementOptions = {}): () => void {
         }
         if (disposed || !pre.isConnected || pre.hasAttribute('data-diagram-claimed')) return
         const theme = currentTheme()
-        ensureInitialized(runtime, theme)
+        renderer.ensureInitialized(runtime, theme)
         await renderBlock(pre, runtime, theme)
       })()
     }, RETRY_DELAY_MS)
@@ -239,7 +200,7 @@ export function startEnhancement(options: EnhancementOptions = {}): () => void {
   const enhanceScope = async (scope: ParentNode, runtime: MermaidRuntime, theme: string): Promise<void> => {
     const blocks = findMermaidBlocks(scope).filter(pre => rejected.get(pre) !== (pre.textContent ?? ''))
     if (blocks.length === 0) return
-    ensureInitialized(runtime, theme)
+    renderer.ensureInitialized(runtime, theme)
     for (const pre of blocks) {
       if (disposed) return
       if (!pre.isConnected || pre.hasAttribute('data-diagram-claimed')) continue
@@ -253,7 +214,7 @@ export function startEnhancement(options: EnhancementOptions = {}): () => void {
 
   /** Repaint finished diagrams for the current shell theme, reusing what is cached. */
   const retheme = async (): Promise<void> => {
-    const containers = finishedContainers(root)
+    const containers = finishedContainers(root).filter(el => el.closest(FENCE_SLOT_SELECTOR) === null)
     if (containers.length === 0) return
     let runtime: MermaidRuntime
     try {
@@ -263,7 +224,7 @@ export function startEnhancement(options: EnhancementOptions = {}): () => void {
     }
     if (disposed) return
     const theme = currentTheme()
-    ensureInitialized(runtime, theme)
+    renderer.ensureInitialized(runtime, theme)
     for (const container of containers) {
       if (disposed) return
       if (!container.isConnected) continue

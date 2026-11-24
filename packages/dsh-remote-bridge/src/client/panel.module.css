@@ -442,3 +442,54 @@
   clip: rect(0, 0, 0, 0);
   clip-path: inset(0);
 }
+
+/* ── Official Remote Connection settings extension card ── */
+
+.extensionCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.extensionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.extensionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.extensionIcon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.extensionTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.extensionSubtitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.extensionActions {
+  flex: none;
+}

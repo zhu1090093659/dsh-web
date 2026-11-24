@@ -37,6 +37,7 @@ function copyCommittedTree(dir) {
   const pairs = [
     [join(ROOT, 'scripts', 'market-build'), join(dir, 'scripts', 'market-build')],
     [join(ROOT, 'scripts', 'lib', 'market-zip.cjs'), join(dir, 'scripts', 'lib', 'market-zip.cjs')],
+    [join(ROOT, 'scripts', 'lib', 'plugin-market-index.cjs'), join(dir, 'scripts', 'lib', 'plugin-market-index.cjs')],
     // The pin guard imports this to compare the cache against the gitlinks,
     // plus the shared tar capability helper its tarball fallback uses.
     [join(ROOT, 'scripts', 'market-fetch-inputs.mjs'), join(dir, 'scripts', 'market-fetch-inputs.mjs')],
@@ -66,6 +67,20 @@ function copyCommittedTree(dir) {
     // cap from it to reject catalog assets the installer could not install.
     [join(ROOT, 'packages', 'dsh-market', 'src', 'core', 'installer.ts'), join(dir, 'packages', 'dsh-market', 'src', 'core', 'installer.ts')],
   ]
+  // Copy family package manifests and locale metadata used by the official
+  // Format 1 plugin-market-index.json generator.
+  for (const entry of readdirSync(join(ROOT, 'packages'))) {
+    const pkgJson = join(ROOT, 'packages', entry, 'package.json')
+    if (existsSync(pkgJson)) {
+      pairs.push([pkgJson, join(dir, 'packages', entry, 'package.json')])
+    }
+    for (const lang of ['en.json', 'zh.json']) {
+      const localeFile = join(ROOT, 'packages', entry, 'locale', lang)
+      if (existsSync(localeFile)) {
+        pairs.push([localeFile, join(dir, 'packages', entry, 'locale', lang)])
+      }
+    }
+  }
   for (const [from, to, options] of pairs) {
     mkdirSync(dirname(to), { recursive: true })
     cpSync(from, to, { recursive: true, ...options })

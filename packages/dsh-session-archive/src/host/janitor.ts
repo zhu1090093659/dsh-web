@@ -41,7 +41,17 @@ import {
 } from './ledger.ts'
 import { DirIndexCache } from './dir-index-cache.ts'
 import { TtlMemo } from './ttl-memo.ts'
-import { canonicalSessionId, deleteRdbSession, indexSessionDirs, isSessionRdb, rdbDbPaths, removeSessionDir } from './session-files.ts'
+import {
+  canonicalSessionId,
+  deleteRdbSession,
+  hasOfficialSqliteMarker,
+  indexSessionDirs,
+  isSessionRdb,
+  officialSqliteDbPath,
+  rdbDbPaths,
+  readOfficialSqliteSessionIds,
+  removeSessionDir,
+} from './session-files.ts'
 import { dshHome as resolveDshHome } from '../dsh-home.ts'
 import { archiveSession, removeFromWorkspaceRows, unarchiveSessions, unarchiveSeamAvailable } from './workspace-store.ts'
 
@@ -546,17 +556,50 @@ export class ArchiveService {
     const targets = plan.targets
     const sizeById = new Map(built.rows.map((row) => [row.id, row.sizeBytes]))
 
+    // 0. Guard sessions managed by official `@deepseek-ai/dsh-session-persistence-sqlite`:
+    // its schema forbids deleting frames/ancestors with SQLite triggers and
+    // SessionPersistence does not expose a delete seam yet. Refuse before
+    // touching archive markers, workspace rows, or artifact-lock directories.
+    const officialSqliteIds = readOfficialSqliteSessionIds(officialSqliteDbPath(this.dshHome))
+    const deletableTargets: string[] = []
+    for (const id of targets) {
+      if (officialSqliteIds.has(id) || hasOfficialSqliteMarker(this.dshHome, id, built.nativeIds[id])) {
+        results.set(id, {
+          id,
+          status: 'failed',
+          reason: 'missing-seam',
+          detail: 'session is stored in official SQLite persistence (.segments/sessions.sqlite), which does not expose a delete seam',
+        })
+      } else {
+        deletableTargets.push(id)
+      }
+    }
+
+    if (deletableTargets.length === 0) {
+      void source
+      return {
+        results: [...plan.skipped, ...targets.map((id): OpResult => results.get(id) ?? { id, status: 'failed', reason: 'error' })],
+        freedBytes: 0,
+      }
+    }
+
     // 1. Archive markers (one public verb call per target).
     try {
-      await unarchiveSessions(this.ctx.workspaceRegistry, targets.map((id) => built.nativeIds[id] ?? id))
+      await unarchiveSessions(this.ctx.workspaceRegistry, deletableTargets.map((id) => built.nativeIds[id] ?? id))
     } catch (error) {
       const detail = error instanceof Error ? error.message.slice(0, 200) : String(error)
-      return { results: targets.map((id) => ({ id, status: 'failed' as const, reason: 'missing-seam' as const, detail })), freedBytes: 0 }
+      for (const id of deletableTargets) {
+        results.set(id, { id, status: 'failed', reason: 'missing-seam', detail })
+      }
+      return {
+        results: [...plan.skipped, ...targets.map((id): OpResult => results.get(id) ?? { id, status: 'failed', reason: 'error' })],
+        freedBytes: 0,
+      }
     }
 
     // 2. Workspace rows.
     try {
-      await removeFromWorkspaceRows(this.ctx.workspaceRegistry, targets)
+      await removeFromWorkspaceRows(this.ctx.workspaceRegistry, deletableTargets)
     } catch {
       // Row cleanup failure does not stop storage deletion; the projection
       // already drops ids whose header is gone, and the next retry cleans up.
@@ -566,7 +609,7 @@ export class ArchiveService {
     const rdbPaths = rdbDbPaths(this.dshHome).filter((path) => isSessionRdb(path))
     const rowById = new Map(built.rows.map((row) => [row.id, row]))
     const deleted = new Set<string>()
-    for (const id of targets) {
+    for (const id of deletableTargets) {
       try {
         const native = built.nativeIds[id]
         for (const dbPath of rdbPaths) {

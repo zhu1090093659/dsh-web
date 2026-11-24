@@ -187,7 +187,6 @@ flowchart LR
 | dsh-browser-view | 实时浏览器视图：嵌入式 Playwright / CDP 实时预览与人工接管侧栏面板 |
 | dsh-ssh | 远程 SSH：PTY 终端、SFTP、端口转发与 agent 工具 |
 | dsh-remote-bridge | 手机 App 远程访问：协议 v1 宿主适配与公网/局域网接入栈 |
-| dsh-remote-web-ui | 独立远程 Web UI 访问通道（已从聚合包退役进入弃用期，仍可独立安装） |
 | dsh-session-archive | 会话归档：批量归档恢复、级联删除、自动清理策略 |
 | dsh-session-id | 侧栏底部 Session ID 面板（纯浏览器半区） |
 | dsh-usage | 用量统计：provider 余额、套餐配额与实时 token 流水 |

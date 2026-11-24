@@ -21,10 +21,22 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { InstallProgressItem, PluginUpdateItem, PluginUpdateResult } from '../core/protocol.ts'
-import { isUpdateIgnored } from '../core/updates.ts'
+import { isUpdateIgnored, type IgnoredPluginUpdate } from '../core/updates.ts'
 import { displayMinimumVersion } from '../core/version.ts'
-import { forgetIgnoredUpdate, loadIgnoredUpdates, rememberIgnoredUpdate } from './ignored-updates.ts'
+import { forgetIgnoredUpdate, loadIgnoredUpdates, rememberIgnoredUpdate, saveIgnoredUpdates } from './ignored-updates.ts'
 import css from './plugin-manager.module.css'
+
+/** Official `ui-plugin-manager` 0.2.3-alpha.2+ native Versions section selector. */
+export const NATIVE_VERSIONS_SELECTOR = '[data-plugin-versions]'
+
+function hasNativeVersionsSection(): boolean {
+  return typeof document !== 'undefined' && document.querySelector(NATIVE_VERSIONS_SELECTOR) !== null
+}
+
+function ignoredForPackage(packageName: string | undefined): IgnoredPluginUpdate[] {
+  if (packageName === undefined) return []
+  return loadIgnoredUpdates().filter(entry => entry.id === packageName)
+}
 
 /**
  * The custom property carrying the determinate fraction (0 to 1). The bar is a
@@ -168,6 +180,28 @@ export function PluginUpdatePatch(props: PluginUpdatePatchProps) {
   const name = subject.kind === 'bundle' ? subject.pkg.name : undefined
   const installed = subject.kind === 'bundle' && subject.pkg.installed
 
+  // Official ui-plugin-manager (0.2.3-alpha.2+) renders its own
+  // `<section data-plugin-versions>` with version checks, compatibility gate,
+  // update dialog and rollback on registry bundle pages. When that native
+  // section is already on screen, defer to it so the detail page does not
+  // display two parallel update sections; only surface a compact restore strip
+  // when this bundle has locally ignored update versions.
+  const [nativeVersions, setNativeVersions] = useState<boolean>(hasNativeVersionsSection)
+  const [storedIgnored, setStoredIgnored] = useState<IgnoredPluginUpdate[]>(() => ignoredForPackage(name))
+
+  useEffect(() => {
+    setNativeVersions(hasNativeVersionsSection())
+    setStoredIgnored(ignoredForPackage(name))
+    if (typeof document === 'undefined' || document.body === null || typeof MutationObserver !== 'function') {
+      return undefined
+    }
+    const observer = new MutationObserver(() => {
+      setNativeVersions(hasNativeVersionsSection())
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+    return () => { observer.disconnect() }
+  }, [name])
+
   /** Poll update progress while an update is in flight. */
   useEffect(() => {
     if (busy !== 'update') {
@@ -194,6 +228,36 @@ export function PluginUpdatePatch(props: PluginUpdatePatchProps) {
   }, [busy, status])
 
   if (name === undefined || !installed) return null
+
+  if (nativeVersions) {
+    if (storedIgnored.length === 0) return null
+    const onRestoreStored = (entry: IgnoredPluginUpdate): void => {
+      const next = loadIgnoredUpdates().filter(item => !(item.id === entry.id && item.version === entry.version))
+      saveIgnoredUpdates(next)
+      setStoredIgnored(next.filter(item => item.id === name))
+    }
+    return (
+      <section className={css.section} data-update-patch data-update-patch-mode="ignored-only">
+        <div className={css.actionRow}>
+          {storedIgnored.map(entry => (
+            <div key={entry.version} className={css.actionRow}>
+              <span className={css.hint} data-update-ignored data-update-latest={entry.version}>
+                {t('ignoredUpdate')} ({entry.version})
+              </span>
+              <button
+                type="button"
+                className={css.button}
+                data-update-restore
+                onClick={() => { onRestoreStored(entry) }}
+              >
+                {t('restoreUpdate')}
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
 
   const onCheck = (): void => {
     if (busyRef.current) return

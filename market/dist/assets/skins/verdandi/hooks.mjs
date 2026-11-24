@@ -333,7 +333,7 @@ function ensureWeddingDecorations(sidebar, conversation, details) {
   // markdown of their own; decorating those puts a second and third avatar inside
   // the expanded blocks, where the skin never meant to draw one.
   for (const markdown of conversation?.querySelectorAll(
-    "[data-chat-flow-kind='assistant-step'] [data-slot='conversation.chat.node'] [class*='_markdown_']",
+    "[data-chat-flow-kind='assistant-step'] [data-slot='conversation.chat.node'] [class*='_markdown']:not(svg)",
   ) ?? []) {
     if (markdown.closest("[class*='thinkBody'], [data-step-process-body]")) continue
     ensureDecoration(markdown, 'assistant-avatar')

@@ -10,8 +10,9 @@
 # 顺序注意：ui-web-ui-settings 排在最前（self 之后），先声明
 # web-ui.plugin.item 子槽位，其余插件的设置卡再注入（slots.inject 声明感知，
 # 但更早的声明让设置组在任何卡片之前就位，避免观感上的注册顺序歧义）。
-# remote-web-ui 已从本聚合退役（包目录保留、仍可独立安装），此前「远程通道排在
-# pet 之前，非 loopback 页面先装好配对门控」的顺序约束随之失效。
+# remote-web-ui 已整包删除（由官方 dsh-client-remote-connection 与 dsh-remote-bridge
+# 分别承接浏览器配对与隧道/中继栈），此前「远程通道排在 pet 之前，非 loopback 页面
+# 先装好配对门控」的顺序约束随之失效。
 patchFrom:
   - ../dsh-web-settings
   - ../dsh-plugin-manager
@@ -238,11 +239,11 @@ tombstones:
   # profile 里记录的行名在 import 阶段硬报错。壳按 retiredPlugins 的登记把它当
   # 静默 no-op，不 import、不记 degraded。
   - git-graph
-  # remote-web-ui 已退役（包目录保留、仍可独立安装）：聚合不再挂载它的行、也不再
+  # remote-web-ui 已整包删除（npm 历史包仍在 registry 上）：聚合不再挂载它的行、也不再
   # 依赖它，但子路径导出必须留着，否则老 profile 里记录的行名在 import 阶段硬报错。
   # 壳按 retiredPlugins 的登记把它当静默 no-op，不 import、不记 degraded。
   - remote-web-ui
-  # update 同样已退役（包目录保留、仍可独立安装）：它与 remote-web-ui 走同一条
+  # update 同样已整包删除：它与 remote-web-ui、git-graph 走同一条
   # tombstones + retiredPlugins 路径，老 profile 的子路径行名照旧可解析。
   - update
   - ssh
@@ -263,8 +264,8 @@ tombstones:
 # 且不得同时出现在 deps 里（退役插件不能又是本包依赖）。新增退役家族时两段一起改。
 # 彻底移除的家族不进本段：壳与子路径导出都已消失，老 profile 的残留行名在 import 阶段就硬报错，
 # 不经过这里的静默 no-op，所以无需（也无法）登记。
-# 当前登记两个家族：remote-web-ui 与 update 的聚合行都已退役，包本身仍在仓库里、
-# 仍可独立安装，所以老 profile 的家族行要走静默 no-op，而不是被当成损坏插件。
+# 当前登记三个家族：remote-web-ui、update 与 git-graph 均已整包删除，聚合保留其
+# tombstone 子路径与这里的静默 no-op 登记，老 profile 的家族行不会被当成损坏插件。
 retiredPlugins:
   - {"family": "remote-web-ui", "plugin": "@linxin666/dsh-remote-web-ui"}
   - {"family": "update", "plugin": "@linxin666/dsh-update"}

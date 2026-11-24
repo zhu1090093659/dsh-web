@@ -976,7 +976,7 @@ html[data-dsh-skin="verdandi"] body[data-ds-dark-theme] [data-pane="conversation
   color: #ffd9df !important;
 }
 
-html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown_"] {
+html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg) {
   color: var(--vd-ink);
   background: color-mix(in srgb, var(--vd-paper-solid) 91%, transparent);
   border: 1px solid color-mix(in srgb, var(--vd-gold) 44%, transparent);
@@ -989,7 +989,7 @@ html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_ma
   box-shadow: 0 8px 24px #3e111d14;
 }
 
-html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown_"]:before {
+html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg):before {
   content: "";
   border: 1px solid color-mix(in srgb, var(--vd-gold) 32%, transparent);
   pointer-events: none;
@@ -998,7 +998,7 @@ html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_ma
   inset: 5px;
 }
 
-html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown_"]:after {
+html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg):after {
   content: "";
   background: var(--vd-crimson);
   width: 78px;
@@ -1012,13 +1012,13 @@ html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_ma
   right: 7px;
 }
 
-html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown_"]:has( > [data-verdandi-decoration="assistant-avatar"]) {
+html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg):has( > [data-verdandi-decoration="assistant-avatar"]) {
   margin-left: 0;
   position: relative;
   overflow: visible;
 }
 
-html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown_"] > [data-verdandi-decoration="assistant-avatar"] {
+html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg) > [data-verdandi-decoration="assistant-avatar"] {
   z-index: 2;
   background: var(--vd-art-vow-avatar-frame) center / contain no-repeat, var(--vd-art-wedding-avatar) center 29% / 78% auto no-repeat, radial-gradient(circle, #fffdfb 0 55%, #fffdfb2e 57%, transparent 59%);
   filter: drop-shadow(0 3px 5px #42121f33);
@@ -1051,7 +1051,7 @@ html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] > [class*="_
   background: linear-gradient(90deg, #fffdfbf5, #faedf0f0) !important;
 }
 
-html[data-dsh-skin="verdandi"] body[data-ds-dark-theme] [data-slot="conversation.chat.node"] [class*="_markdown_"], html[data-dsh-skin="verdandi"] body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRow"] [class*="_bubble"] {
+html[data-dsh-skin="verdandi"] body[data-ds-dark-theme] [data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg), html[data-dsh-skin="verdandi"] body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRow"] [class*="_bubble"] {
   color: var(--vd-ink);
   background: color-mix(in srgb, var(--vd-paper-solid) 88%, transparent);
   border-color: color-mix(in srgb, var(--vd-gold) 35%, transparent);
@@ -1070,7 +1070,7 @@ html[data-dsh-skin="verdandi"] body[data-ds-dark-theme] [data-slot="conversation
    a borderless message; here the message is a paper card, and the bleed reads as
    content escaping the card. Keep the wrapper inside the card and let the cells
    wrap the way a narrower table does, so the gold border always contains it. */
-html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown_"] [class*="md-table-wide"] {
+html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg) [class*="md-table-wide"] {
   width: 100%;
   max-width: 100%;
   margin-left: 0;
@@ -1079,7 +1079,7 @@ html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_ma
   overflow-x: auto;
 }
 
-html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown_"] [class*="md-table-wide"] > table {
+html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg) [class*="md-table-wide"] > table {
   width: 100%;
   max-width: 100%;
 }
@@ -2204,7 +2204,7 @@ html[data-dsh-skin="verdandi"] [role="tooltip"] {
 }
 
 @media (width <= 840px) {
-  html[data-dsh-skin="verdandi"] [data-pane="sidebar"]:after, html[data-dsh-skin="verdandi"] [data-verdandi-header] > [data-verdandi-decoration="header-vow-crest"], html[data-dsh-skin="verdandi"] [data-verdandi-header] > [data-verdandi-decoration="header-bridal-corners"], html[data-dsh-skin="verdandi"] [data-verdandi-header] > [data-verdandi-decoration="header-veil-corners"], html[data-dsh-skin="verdandi"] [data-composer-card] > [data-verdandi-decoration="composer-bridal-corners"], html[data-dsh-skin="verdandi"] [data-composer-card] > [data-verdandi-decoration="composer-veil-inner"], html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown_"] > [data-verdandi-decoration="assistant-avatar"], html[data-dsh-skin="verdandi"] [data-composer-card] > [data-verdandi-decoration^="hero-chibi-"] {
+  html[data-dsh-skin="verdandi"] [data-pane="sidebar"]:after, html[data-dsh-skin="verdandi"] [data-verdandi-header] > [data-verdandi-decoration="header-vow-crest"], html[data-dsh-skin="verdandi"] [data-verdandi-header] > [data-verdandi-decoration="header-bridal-corners"], html[data-dsh-skin="verdandi"] [data-verdandi-header] > [data-verdandi-decoration="header-veil-corners"], html[data-dsh-skin="verdandi"] [data-composer-card] > [data-verdandi-decoration="composer-bridal-corners"], html[data-dsh-skin="verdandi"] [data-composer-card] > [data-verdandi-decoration="composer-veil-inner"], html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg) > [data-verdandi-decoration="assistant-avatar"], html[data-dsh-skin="verdandi"] [data-composer-card] > [data-verdandi-decoration^="hero-chibi-"] {
     display: none;
   }
 
@@ -2212,7 +2212,7 @@ html[data-dsh-skin="verdandi"] [role="tooltip"] {
     display: none !important;
   }
 
-  html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown_"]:has( > [data-verdandi-decoration="assistant-avatar"]) {
+  html[data-dsh-skin="verdandi"] [data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg):has( > [data-verdandi-decoration="assistant-avatar"]) {
     margin-left: 0;
   }
 

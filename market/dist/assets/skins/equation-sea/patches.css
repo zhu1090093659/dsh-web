@@ -88,8 +88,8 @@ body[data-ds-dark-theme] [data-dsh-surface="conversation"] {
  * dockkit 的 ._tabHost_*:not(._float_*) 再一层。去掉 dockkit 那层，
  * 只保留布局层 + skin.css 的 --eq-rail-veil。
  * 只在右栏内生效；浮动窗（_float）和其他 dock 区域不受影响。 */
-[data-dsh-surface="details"] [class*="_tabHost_"]:not([class*="_float_"]),
-[data-dsh-surface="details"] [class*="_emptyTabHost_"] {
+[data-dsh-surface="details"] [class*="_tabHost"]:not([class*="_tabHostBody"]):not([class*="_float"]),
+[data-dsh-surface="details"] [class*="_emptyTabHost"] {
   background: transparent;
 }
 

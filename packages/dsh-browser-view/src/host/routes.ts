@@ -37,15 +37,6 @@ import type { BrowserViewBackend, BrowserViewSink } from './service.ts'
 /** Status route of the family; the panel's fallback probe when the socket fails. */
 export const BROWSER_VIEW_STATE_PATH = '/api/dsh-browser-view/state'
 
-/**
- * A route that declares its own admission policy. Post-#8266 Host versions
- * default every route to `auth: 'required'`; the field is optional here so
- * this package still compiles against the 0.2.2-rc.3 SDK types, which do not
- * declare it.
- */
-type AuthAwareWebRoute = WebRoute & { readonly auth?: 'anonymous' | 'required' | 'deny' }
-type AuthAwareUpgradeRoute = WebUpgradeRoute & { readonly auth?: 'anonymous' | 'required' | 'deny' }
-
 /** Close code used when the panel speaks a contract version we do not have. */
 export const PROTOCOL_MISMATCH_CLOSE_CODE = 1002
 
@@ -161,7 +152,7 @@ export function makeRoutes(deps: BrowserViewRoutesDeps): { routes: WebRoute[]; u
   // exported shape stays the SDK's own route type, which that host accepts.
   const { backend } = deps
 
-  const routes: AuthAwareWebRoute[] = [
+  const routes: WebRoute[] = [
     {
       kind: 'exact',
       path: BROWSER_VIEW_STATE_PATH,
@@ -182,7 +173,7 @@ export function makeRoutes(deps: BrowserViewRoutesDeps): { routes: WebRoute[]; u
     },
   ]
 
-  const upgrade: AuthAwareUpgradeRoute = {
+  const upgrade: WebUpgradeRoute = {
     path: BROWSER_VIEW_SOCKET_PATH,
     // Same loopback fence as the state route, applied to the handshake below.
     auth: 'anonymous',

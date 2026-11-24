@@ -2,7 +2,7 @@
 
 ## 范围
 
-本版本统一发布 `packages/` 下由 `scripts/lib/family-packages.mjs` 发现的 22 个公开家族包；根 package.json 与 shared 私有包不发布，根的 `version` 与家族包同步 bump（git 安装仓库根别名 bundle 时，插件管理器显示的就是它）。所有家族包采用统一版本号（当前为 0.4.19），皮肤中心只随包分发 `blue-fantasy`，其余皮肤由 Workshop 按需安装。
+本版本统一发布 `packages/` 下由 `scripts/lib/family-packages.mjs` 发现的 21 个公开家族包；根 package.json 与 shared 私有包不发布，根的 `version` 与家族包同步 bump（git 安装仓库根别名 bundle 时，插件管理器显示的就是它）。所有家族包采用统一版本号（当前为 0.4.22），皮肤中心只随包分发 `blue-fantasy`，其余皮肤由 Workshop 按需安装。
 
 皮肤中心、宠物、社区插件索引与预设中心已拆分为独立仓库并各自发版：`@linxin666/dsh-client-ui-skin-center`（[dsh-skins](https://github.com/zhu1090093659/dsh-skins)）、`@linxin666/dsh-pet`（[dsh-pet](https://github.com/zhu1090093659/dsh-pet)）、`@linxin666/dsh-client-ui-community-plugins`（[dsh-community-plugins](https://github.com/zhu1090093659/dsh-community-plugins)）、`@linxin666/dsh-client-ui-preset-center`（[dsh-presets](https://github.com/zhu1090093659/dsh-presets)）。本仓的聚合包按 semver 依赖它们，`satellites/` 下各 submodule 的 gitlink 固定市场站要拉取的内容。四个卫星仓与本仓发布同一个版本号：卫星先发、本仓后发，聚合包的依赖范围、锁定条目与 gitlink 随对齐一起更新，逐步流程见 [dsh-web-release 技能](../.agents/skills/dsh-web-release/SKILL.md)。
 
@@ -16,7 +16,6 @@
 | packages/dsh-market | @linxin666/dsh-client-ui-market | 0.4.19 | public |
 | packages/dsh-plugin-manager | @linxin666/dsh-client-ui-plugin-manager | 0.4.19 | public |
 | packages/dsh-remote-bridge | @linxin666/dsh-remote-bridge | 0.4.19 | public |
-| packages/dsh-remote-web-ui | @linxin666/dsh-remote-web-ui | 0.4.19 | public |
 | packages/dsh-session-archive | @linxin666/dsh-session-archive | 0.4.19 | public |
 | packages/dsh-session-id | @linxin666/dsh-client-ui-session-id | 0.4.19 | public |
 | packages/dsh-skill-explorer | @linxin666/dsh-client-ui-skill-explorer | 0.4.19 | public |
@@ -36,7 +35,7 @@
 - 无外部第三方聚合依赖：聚合包 `dsh-web-all` 不在 `aggregate.yml` 中内置任何外部第三方 npm 插件；社区插件（如 `dsh-better-sidebar` 等）均通过「设置 → 社区插件」或 `dsh plugin add` 按需安装。
 - 历史聚合包命名迁移：从 `@linxin666/dsh-web-ui-all` 向 `@linxin666/dsh-web-all` 的迁移已在 0.3.3 完成并弃用旧包名，当前统一发布 `@linxin666/dsh-web-all`。
 - 自更新组件移除：`dsh-update`（`@linxin666/dsh-update`）已整包删除（2026-11-06），不再随本仓发布；注册表上保留的最后版本 `0.4.15` 仍可解析且未标记弃用；需要弃用时由包所有者执行 `npm deprecate @linxin666/dsh-update`。插件更新的能力由 DSH 0.2.2-rc.1 起的官方插件页版本检查承担，聚合侧只留 `update` tombstone 子路径与 `retiredPlugins` 登记。
-- 远程访问组件演进与弃用：`dsh-remote-web-ui`（`@linxin666/dsh-remote-web-ui`）已从聚合包 `dsh-web-all` 摘除并进入弃用期（以 tombstone 导出与 `retiredPlugins` 登记静默退役，计划下一版本删除），当前版本仍作为独立包发布供过渡期独立安装；公网与局域网接入栈（中继与隧道）已迁入 `@linxin666/dsh-remote-bridge`。
+- 远程访问组件移除：`dsh-remote-web-ui`（`@linxin666/dsh-remote-web-ui`）已整包删除，不再随本仓发布；浏览器远程登录与配对审批由 DSH 0.2.3-alpha.2 官方 `@deepseek-ai/dsh-client-remote-connection` 承接，公网与局域网接入栈（中继与隧道）由 `@linxin666/dsh-remote-bridge` 承接，聚合侧仅保留 `remote-web-ui` tombstone 子路径与 `retiredPlugins` 静默 no-op 登记。
 - 消息编辑组件移除：`dsh-message-edit`（`@linxin666/dsh-client-ui-message-edit`）已整包删除（2026-11-14），不再随本仓发布；消息编辑与分支重发能力不再提供。该包没有设置项、持久化格式或线协议字段，删除不涉及用户迁移。
 
 ## 兼容性边界

@@ -976,7 +976,7 @@ body[data-ds-dark-theme] [data-pane="conversation"] [class*="_openError"] {
   color: #ffd9df !important;
 }
 
-[data-slot="conversation.chat.node"] [class*="_markdown_"] {
+[data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg) {
   color: var(--vd-ink);
   background: color-mix(in srgb, var(--vd-paper-solid) 91%, transparent);
   border: 1px solid color-mix(in srgb, var(--vd-gold) 44%, transparent);
@@ -989,7 +989,7 @@ body[data-ds-dark-theme] [data-pane="conversation"] [class*="_openError"] {
   box-shadow: 0 8px 24px #3e111d14;
 }
 
-[data-slot="conversation.chat.node"] [class*="_markdown_"]:before {
+[data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg):before {
   content: "";
   border: 1px solid color-mix(in srgb, var(--vd-gold) 32%, transparent);
   pointer-events: none;
@@ -998,7 +998,7 @@ body[data-ds-dark-theme] [data-pane="conversation"] [class*="_openError"] {
   inset: 5px;
 }
 
-[data-slot="conversation.chat.node"] [class*="_markdown_"]:after {
+[data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg):after {
   content: "";
   background: var(--vd-crimson);
   width: 78px;
@@ -1012,13 +1012,13 @@ body[data-ds-dark-theme] [data-pane="conversation"] [class*="_openError"] {
   right: 7px;
 }
 
-[data-slot="conversation.chat.node"] [class*="_markdown_"]:has( > [data-verdandi-decoration="assistant-avatar"]) {
+[data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg):has( > [data-verdandi-decoration="assistant-avatar"]) {
   margin-left: 0;
   position: relative;
   overflow: visible;
 }
 
-[data-slot="conversation.chat.node"] [class*="_markdown_"] > [data-verdandi-decoration="assistant-avatar"] {
+[data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg) > [data-verdandi-decoration="assistant-avatar"] {
   z-index: 2;
   background: var(--vd-art-vow-avatar-frame) center / contain no-repeat, var(--vd-art-wedding-avatar) center 29% / 78% auto no-repeat, radial-gradient(circle, #fffdfb 0 55%, #fffdfb2e 57%, transparent 59%);
   filter: drop-shadow(0 3px 5px #42121f33);
@@ -1051,7 +1051,7 @@ body[data-ds-dark-theme] [data-pane="conversation"] [class*="_openError"] {
   background: linear-gradient(90deg, #fffdfbf5, #faedf0f0) !important;
 }
 
-body[data-ds-dark-theme] [data-slot="conversation.chat.node"] [class*="_markdown_"], body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRow"] [class*="_bubble"] {
+body[data-ds-dark-theme] [data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg), body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRow"] [class*="_bubble"] {
   color: var(--vd-ink);
   background: color-mix(in srgb, var(--vd-paper-solid) 88%, transparent);
   border-color: color-mix(in srgb, var(--vd-gold) 35%, transparent);
@@ -1070,7 +1070,7 @@ body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRo
    a borderless message; here the message is a paper card, and the bleed reads as
    content escaping the card. Keep the wrapper inside the card and let the cells
    wrap the way a narrower table does, so the gold border always contains it. */
-[data-slot="conversation.chat.node"] [class*="_markdown_"] [class*="md-table-wide"] {
+[data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg) [class*="md-table-wide"] {
   width: 100%;
   max-width: 100%;
   margin-left: 0;
@@ -1079,7 +1079,7 @@ body[data-ds-dark-theme] [data-slot="conversation.chat.node"] > [class*="_userRo
   overflow-x: auto;
 }
 
-[data-slot="conversation.chat.node"] [class*="_markdown_"] [class*="md-table-wide"] > table {
+[data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg) [class*="md-table-wide"] > table {
   width: 100%;
   max-width: 100%;
 }
@@ -2204,7 +2204,7 @@ body[data-ds-dark-theme] [data-slot="sidebar.settings"] [role="dialog"][aria-mod
 }
 
 @media (width <= 840px) {
-  [data-pane="sidebar"]:after, [data-verdandi-header] > [data-verdandi-decoration="header-vow-crest"], [data-verdandi-header] > [data-verdandi-decoration="header-bridal-corners"], [data-verdandi-header] > [data-verdandi-decoration="header-veil-corners"], [data-composer-card] > [data-verdandi-decoration="composer-bridal-corners"], [data-composer-card] > [data-verdandi-decoration="composer-veil-inner"], [data-slot="conversation.chat.node"] [class*="_markdown_"] > [data-verdandi-decoration="assistant-avatar"], [data-composer-card] > [data-verdandi-decoration^="hero-chibi-"] {
+  [data-pane="sidebar"]:after, [data-verdandi-header] > [data-verdandi-decoration="header-vow-crest"], [data-verdandi-header] > [data-verdandi-decoration="header-bridal-corners"], [data-verdandi-header] > [data-verdandi-decoration="header-veil-corners"], [data-composer-card] > [data-verdandi-decoration="composer-bridal-corners"], [data-composer-card] > [data-verdandi-decoration="composer-veil-inner"], [data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg) > [data-verdandi-decoration="assistant-avatar"], [data-composer-card] > [data-verdandi-decoration^="hero-chibi-"] {
     display: none;
   }
 
@@ -2212,7 +2212,7 @@ body[data-ds-dark-theme] [data-slot="sidebar.settings"] [role="dialog"][aria-mod
     display: none !important;
   }
 
-  [data-slot="conversation.chat.node"] [class*="_markdown_"]:has( > [data-verdandi-decoration="assistant-avatar"]) {
+  [data-slot="conversation.chat.node"] [class*="_markdown"]:not(svg):has( > [data-verdandi-decoration="assistant-avatar"]) {
     margin-left: 0;
   }
 

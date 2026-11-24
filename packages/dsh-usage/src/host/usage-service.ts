@@ -84,6 +84,25 @@ interface DeepSeekAccountServiceLike {
   >
 }
 
+/**
+ * Minimal duck-typed contract for `@deepseek-ai/dsh-deepseek-auth` (`ctx.deepseekAuth`,
+ * DSH 0.2.3-alpha.2+): centralizes official DeepSeek API-key authorization and
+ * deployment endpoint resolution without duplicating credential lookups.
+ */
+interface DeepSeekAuthServiceLike {
+  authorize(request: {
+    readonly consumer: string
+    readonly accepts: readonly ('account' | 'api-key')[]
+    readonly billing: 'auto' | 'account' | 'api-key'
+    readonly route?: string
+    readonly destination: { readonly path: string }
+  }, signal?: AbortSignal): Promise<{
+    readonly kind: 'account' | 'api-key'
+    readonly endpoint: string
+    readonly headers: Readonly<Record<string, string>>
+  } | undefined>
+}
+
 /** Combine recharge wallets and bonus wallets into one display balance, preferring CNY. */
 function mergeDeepSeekAccountBalance(
   value: readonly DeepSeekAccountWallet[],
@@ -774,14 +793,22 @@ export class UsageService {
   }
 
   private async probeRoute(route: ProviderRoute, adapter: NonNullable<ReturnType<typeof adapterFor>>): Promise<void> {
-    const credential = await this.resolveCredential(route.id)
     const previous = this.snapshots.get(route.id)
+    // Official DeepSeek routes prefer `ctx.deepseekAuth` (DSH 0.2.3-alpha.2+) when
+    // mounted, falling back to credential-store / env resolution when absent or
+    // unresolved so custom pi-ai profiles and older hosts keep working.
+    const deepseekAuthSpec = await this.resolveDeepSeekAuthBalanceSpec(route.id, adapter)
+    const credential = deepseekAuthSpec !== undefined
+      ? { kind: 'api-key' as const, key: 'deepseek-auth-managed' }
+      : await this.resolveCredential(route.id)
     // The balance endpoint is per ORIGIN, not per route key: a profile that
     // points a shared route id (`deepseek`) at another host is a different
     // account, and probing the official endpoint would print this account's
     // money under that route's name (issue #1688). Such a route reports the
     // balance as unsupported instead.
-    const balanceApplies = balanceAppliesToRoute(adapter, this.routeBaseUrl(route.id))
+    const balanceApplies = deepseekAuthSpec !== undefined
+      ? true
+      : balanceAppliesToRoute(adapter, this.routeBaseUrl(route.id))
     if (credential.key === undefined) {
       // Nothing to probe with (oauth grant, no credential): retained facts
       // would never refresh again, so the row resets to its credential
@@ -808,7 +835,9 @@ export class UsageService {
       if (half === undefined) return undefined
       if (kind === 'balance' && !balanceApplies) return undefined
       try {
-        const spec = half.build({ apiKey: credential.key as string, ...(credential.accountId !== undefined ? { accountId: credential.accountId } : {}) })
+        const spec = kind === 'balance' && deepseekAuthSpec !== undefined
+          ? deepseekAuthSpec
+          : half.build({ apiKey: credential.key as string, ...(credential.accountId !== undefined ? { accountId: credential.accountId } : {}) })
         const response = await fetch(spec.url, withIdentityEncoding({
           headers: spec.headers,
           signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
@@ -910,6 +939,46 @@ export class UsageService {
     return this.piAiProfile(provider)?.baseURL ?? (isDeepSeekProviderRoute(provider) ? this.deepseekBaseUrl() : undefined)
   }
 
+  /** Optional host-mounted DeepSeek Auth service (`ctx.deepseekAuth`, DSH 0.2.3-alpha.2+). */
+  private deepseekAuthService(): DeepSeekAuthServiceLike | undefined {
+    const candidate = service<DeepSeekAuthServiceLike>(this.ctx, 'deepseekAuth')
+    return candidate !== undefined && typeof candidate.authorize === 'function' ? candidate : undefined
+  }
+
+  /**
+   * Resolve a DeepSeek balance probe request via `ctx.deepseekAuth` when mounted
+   * and authorized for the official origin; returns undefined so callers fall
+   * back cleanly to legacy credential resolution.
+   */
+  private async resolveDeepSeekAuthBalanceSpec(
+    provider: string,
+    adapter: NonNullable<ReturnType<typeof adapterFor>>,
+  ): Promise<{ url: string; headers: Record<string, string> } | undefined> {
+    if (!isDeepSeekProviderRoute(provider) || adapter.balance === undefined) return undefined
+    // Respect custom non-official baseURLs on pi-ai / llm-deepseek overrides:
+    // never attribute the official balance to a third-party proxy route.
+    if (!balanceAppliesToRoute(adapter, this.routeBaseUrl(provider))) return undefined
+    const authService = this.deepseekAuthService()
+    if (authService === undefined) return undefined
+    try {
+      const authorization = await authService.authorize({
+        consumer: 'dsh-usage',
+        accepts: ['api-key'],
+        billing: 'api-key',
+        route: provider,
+        destination: { path: '/user/balance' },
+      }, AbortSignal.timeout(PROBE_TIMEOUT_MS))
+      if (authorization === undefined || authorization.kind !== 'api-key') return undefined
+      if (!balanceAppliesToRoute(adapter, authorization.endpoint)) return undefined
+      return {
+        url: authorization.endpoint,
+        headers: { ...authorization.headers, accept: 'application/json' },
+      }
+    } catch {
+      return undefined
+    }
+  }
+
   /** Optional host-mounted App-managed DeepSeek account service (#2047). */
   private deepseekAccountService(): DeepSeekAccountServiceLike | undefined {
     return service<DeepSeekAccountServiceLike>(this.ctx, 'deepseekAccount')
@@ -938,7 +1007,7 @@ export class UsageService {
       credential = 'oauth'
       const offsetMin = new Date().getTimezoneOffset()
       const client = {
-        version: '0.2.2',
+        version: '0.2.3',
         locale: 'zh-CN',
         timezoneOffsetSeconds: offsetMin === 0 ? 0 : -offsetMin * 60,
       }

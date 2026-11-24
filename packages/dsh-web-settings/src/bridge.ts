@@ -403,6 +403,7 @@ export function makeBridgeRoutes(deps: BridgeDeps, access?: BridgeAccess): WebRo
     {
       kind: 'exact',
       path: WEB_UI_SETTINGS_BRIDGE_PREFIX + '/describe',
+      auth: 'anonymous',
       handler: async (req, res) => {
         if (!guard(req, res)) return
         writeJson(res, 200, await handlers.describe())
@@ -411,6 +412,7 @@ export function makeBridgeRoutes(deps: BridgeDeps, access?: BridgeAccess): WebRo
     {
       kind: 'exact',
       path: WEB_UI_SETTINGS_BRIDGE_PREFIX + '/mutate',
+      auth: 'anonymous',
       handler: async (req, res) => {
         if (!guard(req, res)) return
         const body = await readJsonBody(req)

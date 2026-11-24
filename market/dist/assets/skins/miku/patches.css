@@ -658,7 +658,8 @@ button[class*="bubble"]:hover {
 /* 代码块：圆角 + 发丝线 + 顶缘一道青绿细线（旧版是斜切角 + 内嵌倒角）。 */
 [data-slot="main.conversation"] pre,
 [data-dsh-part="message-body"] pre,
-[data-slot="main.conversation"] [class*="codeBlock"] {
+[data-slot="main.conversation"] [class*="codeBlock"],
+[data-dsh-surface="conversation"] [class*="md-code-block"] {
   clip-path: none !important;
   border: 1px solid var(--miku-hairline) !important;
   border-radius: var(--miku-r) !important;
@@ -668,7 +669,8 @@ button[class*="bubble"]:hover {
 
 body[data-ds-dark-theme] [data-slot="main.conversation"] pre,
 body[data-ds-dark-theme] [data-dsh-part="message-body"] pre,
-body[data-ds-dark-theme] [data-slot="main.conversation"] [class*="codeBlock"] {
+body[data-ds-dark-theme] [data-slot="main.conversation"] [class*="codeBlock"],
+body[data-ds-dark-theme] [data-dsh-surface="conversation"] [class*="md-code-block"] {
   border-color: var(--miku-hairline) !important;
   background: var(--dsw-alias-markdown-code-block) !important;
   box-shadow: inset 0 2px 0 var(--miku-brand-soft) !important;

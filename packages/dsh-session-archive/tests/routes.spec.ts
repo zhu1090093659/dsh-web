@@ -72,20 +72,20 @@ describe('route fencing and contracts', () => {
   it('operator through a Host-admitted reverse proxy reads inventory', async () => {
     // Given a forwarded request admitted by the Host connection service
     const service = makeService()
-    const requestRejection = vi.fn(() => undefined)
-    const { server, url } = await startServer(makeArchiveRoutes(service, () => ({ requestRejection })))
+    const admit = vi.fn(() => ({ peer: { id: 'browser-1' } }))
+    const { server, url } = await startServer(makeArchiveRoutes(service, () => ({ admit })))
     servers.push(server)
     // When the inventory API checks admission
     const response = await get(url, '/api/dsh-session-archive/inventory', { 'x-forwarded-for': '203.0.113.20' })
     // Then it responds normally instead of reporting loopback-only
     expect(response.status).toBe(200)
-    expect(requestRejection).toHaveBeenCalledOnce()
+    expect(admit).toHaveBeenCalledOnce()
   })
 
   it('operator through an untrusted reverse proxy keeps the 403 refusal', async () => {
     // Given a forwarded request rejected by the Host connection service
     const service = makeService()
-    const { server, url } = await startServer(makeArchiveRoutes(service, () => ({ requestRejection: () => 403 })))
+    const { server, url } = await startServer(makeArchiveRoutes(service, () => ({ admit: () => ({ rejection: 403 }) })))
     servers.push(server)
     // When the inventory API checks admission
     const response = await get(url, '/api/dsh-session-archive/inventory', { 'x-forwarded-for': '203.0.113.20' })

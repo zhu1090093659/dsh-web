@@ -13,5 +13,10 @@ export default defineConfig({
     include: ['src/**/*.test.ts', 'tests/**/*.spec.ts', 'tests/**/*.spec.tsx'],
     environment: 'node',
     pool: 'forks',
+    server: {
+      deps: {
+        inline: [/@deepseek-ai\//],
+      },
+    },
   },
 })

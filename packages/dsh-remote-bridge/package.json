@@ -73,6 +73,7 @@
     "@deepseek-ai/cordis": "~4.2.0-alpha.1",
     "@deepseek-ai/dsh-api-gateway": "^0.2.3-alpha.2",
     "@deepseek-ai/dsh-client-locale": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-client-remote-connection": "^0.2.3-alpha.2",
     "@deepseek-ai/dsh-client-ui-primitives": "^0.2.3-alpha.2",
     "@deepseek-ai/dsh-client-ui-renderer": "^0.2.3-alpha.2",
     "@deepseek-ai/dsh-client-ui-sidebar": "^0.2.3-alpha.2",

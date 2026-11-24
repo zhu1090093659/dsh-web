@@ -483,4 +483,18 @@ describe('mutate route json body failure contract', () => {
     expect(state.headers['referrer-policy']).toBe('no-referrer')
     expect(destroy).not.toHaveBeenCalled()
   })
+
+  it('operator exposes the bridge routes with anonymous webserver auth so its own fence decides', () => {
+    // Given: the settings bridge routes with their own loopback and proxy-token fence
+    const deps = {
+      settings: { describe: () => [], writable: true, mutate: async () => {} } as unknown as SettingsForms,
+      readSettingsYaml: () => '',
+    }
+
+    // When: the bridge route table is constructed
+    const routes = makeBridgeRoutes(deps)
+
+    // Then: every route opts out of webserver default auth: required so trusted proxy requests reach the fence
+    expect(routes.map(route => route.auth)).toEqual(['anonymous', 'anonymous'])
+  })
 })

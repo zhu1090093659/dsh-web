@@ -126,6 +126,19 @@ export const PLAN_POLICY_SECTION_NAME = 'plan:policy'
 export const PTC_SECTION_NAMES = ['tools:ptc-only', 'tools:sdk']
 
 /**
+ * Official `@deepseek-ai/dsh-mcp-client` on-demand tool catalog sections
+ * (`mcp:<serverName>:tools`). Retained automatically so servers configured with
+ * `toolLoading: 'on-demand'` remain discoverable alongside LiangShen's compact
+ * system prompt.
+ */
+export const MCP_ON_DEMAND_TOOLS_SECTION_RE = /^mcp:.+:tools$/
+
+/** Whether a prompt section name is an official on-demand MCP tool catalog section. */
+export function isMcpOnDemandToolsSection(sectionName) {
+  return typeof sectionName === 'string' && MCP_ON_DEMAND_TOOLS_SECTION_RE.test(sectionName)
+}
+
+/**
  * The section this plugin appends to the prompt with the workspace
  * instructions, and the assembly variable whose value carries the rendered
  * text. The section text is only the variable reference: the harness's
@@ -848,7 +861,7 @@ export function apply(ctx, config) {
         // Logger unavailable
       }
     }
-    const sections = assembled.sections.filter(section => keep.has(section?.name))
+    const sections = assembled.sections.filter(section => keep.has(section?.name) || isMcpOnDemandToolsSection(section?.name))
     if (sections.length === 0) {
       warnOnce(`${name}: no section matched ${JSON.stringify([...keep])} — `
         + 'keeping the assembled prompt instead of sending an empty one')

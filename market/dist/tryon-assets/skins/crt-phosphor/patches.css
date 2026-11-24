@@ -218,7 +218,7 @@ html[data-dsh-skin="crt-phosphor"] :is([data-conversation-scroll], [data-dsh-par
  * does nothing. Insetting the host by her width moves its first card clear of her
  * band (measured on the live shell: card left 1134 -> 1326, her band 911..1263).
  */
-html[data-dsh-skin="crt-phosphor"] [class*="_frame"]:not([data-rightbar-collapsed]) [data-rightbar-col] [class*="_pane_"] {
+html[data-dsh-skin="crt-phosphor"] [class*="_frame"]:not([data-rightbar-collapsed]) [data-rightbar-col] [class*="_pane"]:not([class*="_paneBody"]) {
   padding-left: calc(clamp(460px, 76vh, 1040px) * 0.5083333 + 14px) !important;
   box-sizing: border-box;
 }
@@ -233,7 +233,7 @@ html[data-dsh-skin="crt-phosphor"] [class*="_frame"]:not([data-rightbar-collapse
  * content out) and give the embedded browser's page surface its own margin so she
  * rests a hair over the page instead of burying it.
  */
-html[data-dsh-skin="crt-phosphor"] [class*="_frame"]:not([data-rightbar-collapsed]) [data-rightbar-col] [class*="_pane_"] {
+html[data-dsh-skin="crt-phosphor"] [class*="_frame"]:not([data-rightbar-collapsed]) [data-rightbar-col] [class*="_pane"]:not([class*="_paneBody"]) {
   padding-left: clamp(24px, calc(clamp(460px, 76vh, 1040px) * 0.13), 140px) !important;
   box-sizing: border-box;
 }

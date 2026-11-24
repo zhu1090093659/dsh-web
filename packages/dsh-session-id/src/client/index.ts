@@ -15,7 +15,10 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the ui-sidebar SlotMap merge (the 'sidebar.footer.action' hole).
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+// Type-only: pulls the official Session Panel SlotMap merge ('conversation.session.panel.environment.row').
+import type {} from '@deepseek-ai/dsh-client-ui-session-panel/client'
 import { SessionIdEntry } from './SessionIdEntry.tsx'
+import { SessionIdEnvironmentRow } from './SessionIdEnvironmentRow.tsx'
 import { en, zh, type SessionIdKey } from './locales.ts'
 import { reportDailyHeartbeat } from './telemetry.ts'
 
@@ -75,8 +78,24 @@ export function apply(ctx: ClientContext): void {
       return () => {}
     }
   })
+  // Official Session Panel Environment row (DSH 0.2.3-alpha.2+): expose the
+  // active session id with one-click copy right beside the working folder.
+  ctx.slots.inject('conversation.session.panel.environment.row', () => {
+    try {
+      return ctx.slots.register({
+        name: 'conversation.session.panel.environment.row',
+        id: ENTRY_ID,
+        order: 40,
+        locale: NS,
+        inject: (sessionId) => ({ sessionId }),
+      }, SessionIdEnvironmentRow)
+    } catch {
+      return () => {}
+    }
+  })
 }
 
 export type { SessionIdEntryProps } from './SessionIdEntry.tsx'
+export type { SessionIdEnvironmentRowProps } from './SessionIdEnvironmentRow.tsx'
 export type { SessionIdKey } from './locales.ts'
 export type { SessionListReadSource, SessionIdPanelProps } from './SessionIdPanel.tsx'

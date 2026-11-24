@@ -261,7 +261,7 @@ body[data-ds-dark-theme] [data-composer-card] {
   border-collapse: collapse;
 }
 
-[data-chat-flow-kind] :is(pre, [class*="codeBlock"]) {
+[data-chat-flow-kind] :is(pre, [class*="codeBlock"], [class*="md-code-block"]) {
   display: block;
   max-width: 100% !important;
   overflow-x: auto;
@@ -6486,19 +6486,19 @@ body :is(.q7hbua_menu,.CVUQCW_panel,.foD-wG_menu,.zpy3TW_entry,.j_8BDW_card,.P2i
  --dsw-alias-label-dimmed:#56717f;--dsw-font-family:"Segoe UI","Microsoft YaHei",sans-serif;
  font-family:"Segoe UI","Microsoft YaHei",sans-serif;
 }
-body :is(.q7hbua_menu,.CVUQCW_panel,.foD-wG_menu,.zpy3TW_entry,.j_8BDW_card,.P2izSq_card,.LqhxcW_card,.d99neW_section,.mL8Uca_panel,.ptK59a_panel,.Qzh-QG_panel) :is(._button_1rv3m_2,.mL8Uca_ghostButton,.mL8Uca_primaryButton,.ptK59a_ghostButton,.ptK59a_primaryButton,.Qzh-QG_ghost,.Qzh-QG_primary) {
+body :is(.q7hbua_menu,.CVUQCW_panel,.foD-wG_menu,.zpy3TW_entry,.j_8BDW_card,.P2izSq_card,.LqhxcW_card,.d99neW_section,.mL8Uca_panel,.ptK59a_panel,.Qzh-QG_panel) :is(._button_1rv3m_2,button[class*="_button"],.mL8Uca_ghostButton,.mL8Uca_primaryButton,.ptK59a_ghostButton,.ptK59a_primaryButton,.Qzh-QG_ghost,.Qzh-QG_primary) {
  border-radius:5px 6px 5px 5px;min-height:30px;line-height:20px;
  box-shadow:0 1px 0 #d9d1bd; font-family:inherit;
 }
-body :is(.q7hbua_menu,.CVUQCW_panel,.foD-wG_menu,.zpy3TW_entry,.j_8BDW_card,.P2izSq_card,.LqhxcW_card,.d99neW_section,.mL8Uca_panel,.ptK59a_panel,.Qzh-QG_panel) :is(._outline_1rv3m_54,.mL8Uca_ghostButton,.ptK59a_ghostButton,.Qzh-QG_ghost) {
+body :is(.q7hbua_menu,.CVUQCW_panel,.foD-wG_menu,.zpy3TW_entry,.j_8BDW_card,.P2izSq_card,.LqhxcW_card,.d99neW_section,.mL8Uca_panel,.ptK59a_panel,.Qzh-QG_panel) :is(._outline_1rv3m_54,button[class*="_outline"],.mL8Uca_ghostButton,.ptK59a_ghostButton,.Qzh-QG_ghost) {
  background:linear-gradient(#fffdf6,#f5f1e6);border:1px solid #acb7b0;color:#294f65;
 }
-body :is(.q7hbua_menu,.CVUQCW_panel,.foD-wG_menu,.zpy3TW_entry,.j_8BDW_card,.P2izSq_card,.LqhxcW_card,.d99neW_section,.mL8Uca_panel,.ptK59a_panel,.Qzh-QG_panel) :is(._primary_1rv3m_36,.mL8Uca_primaryButton,.ptK59a_primaryButton,.Qzh-QG_primary) {
+body :is(.q7hbua_menu,.CVUQCW_panel,.foD-wG_menu,.zpy3TW_entry,.j_8BDW_card,.P2izSq_card,.LqhxcW_card,.d99neW_section,.mL8Uca_panel,.ptK59a_panel,.Qzh-QG_panel) :is(._primary_1rv3m_36,button[class*="_primary"],.mL8Uca_primaryButton,.ptK59a_primaryButton,.Qzh-QG_primary) {
  background:linear-gradient(#2b7397,#276f93);border:1px solid #226789;color:#fffdf6;
  box-shadow:inset 0 1px #ffffff24,0 1px 1px #24567424;
 }
-body :is(.q7hbua_menu,.CVUQCW_panel,.foD-wG_menu,.zpy3TW_entry,.j_8BDW_card,.P2izSq_card,.LqhxcW_card,.d99neW_section,.mL8Uca_panel,.ptK59a_panel,.Qzh-QG_panel) :is(._primary_1rv3m_36,.mL8Uca_primaryButton,.ptK59a_primaryButton,.Qzh-QG_primary):hover:not(:disabled) {background:#205f81;}
-body :is(.q7hbua_menu,.CVUQCW_panel,.foD-wG_menu,.zpy3TW_entry,.j_8BDW_card,.P2izSq_card,.LqhxcW_card,.d99neW_section,.mL8Uca_panel,.ptK59a_panel,.Qzh-QG_panel) :is(._outline_1rv3m_54,.mL8Uca_ghostButton,.ptK59a_ghostButton,.Qzh-QG_ghost):hover:not(:disabled) {background:#e4eff2;}
+body :is(.q7hbua_menu,.CVUQCW_panel,.foD-wG_menu,.zpy3TW_entry,.j_8BDW_card,.P2izSq_card,.LqhxcW_card,.d99neW_section,.mL8Uca_panel,.ptK59a_panel,.Qzh-QG_panel) :is(._primary_1rv3m_36,button[class*="_primary"],.mL8Uca_primaryButton,.ptK59a_primaryButton,.Qzh-QG_primary):hover:not(:disabled) {background:#205f81;}
+body :is(.q7hbua_menu,.CVUQCW_panel,.foD-wG_menu,.zpy3TW_entry,.j_8BDW_card,.P2izSq_card,.LqhxcW_card,.d99neW_section,.mL8Uca_panel,.ptK59a_panel,.Qzh-QG_panel) :is(._outline_1rv3m_54,button[class*="_outline"],.mL8Uca_ghostButton,.ptK59a_ghostButton,.Qzh-QG_ghost):hover:not(:disabled) {background:#e4eff2;}
 body :is(.q7hbua_menu,.CVUQCW_panel,.foD-wG_menu,.zpy3TW_entry,.j_8BDW_card,.P2izSq_card,.LqhxcW_card,.d99neW_section,.mL8Uca_panel,.ptK59a_panel,.Qzh-QG_panel) :is(button,input,select,textarea,[role="option"]):focus-visible {outline:2px solid #367c9c;outline-offset:2px;}
 
 body :is(.q7hbua_menu,.CVUQCW_panel,.foD-wG_menu,.j_8BDW_card,.P2izSq_card,.LqhxcW_card,.d99neW_card,.d99neW_detail,.zpy3TW_entry) {

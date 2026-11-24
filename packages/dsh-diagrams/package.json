@@ -29,7 +29,9 @@
     },
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-locale"
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-slots"
       ],
       "platform": "web"
     }
@@ -42,15 +44,25 @@
     "typecheck": "tsgo --noEmit"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh": ">=0.2.3-alpha.2"
+    "@deepseek-ai/dsh": ">=0.2.3-alpha.2",
+    "react": "^18.2.0"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "~4.2.0-alpha.1",
     "@deepseek-ai/dsh-client-locale": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-client-ui-chat": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.2.3-alpha.2",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.2.3-alpha.2",
     "@deepseek-ai/dsh-host-webserver": "^0.2.3-alpha.2",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.1.0",
     "@types/node": "^22.20.0",
+    "@types/react": "~18.3.1",
+    "@types/react-dom": "^18.3.5",
     "jsdom": "29.1.1",
     "mermaid": "^12.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tsdown": "0.22.2",
     "typescript": "~5.7.2",
     "vite-tsconfig-paths": "^6.1.1",

@@ -22,3 +22,6 @@ export const SESSION_ID_PART_COPY = 'copy'
 
 /** The panel search input. */
 export const SESSION_ID_PART_SEARCH = 'search'
+
+/** The official session-panel environment row for the active session. */
+export const SESSION_ID_PART_ENV_ROW = 'environment-row'

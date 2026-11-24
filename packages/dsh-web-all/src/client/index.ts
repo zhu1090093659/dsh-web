@@ -23,7 +23,7 @@ import { subscribeBodyInvalidations } from './body-mutations.ts'
 const COLUMN_SHIMS: ReadonlyArray<readonly [selector: string, attribute: string]> = [
   ['[class*="sidebarCol"]', 'data-pane="sidebar"'],
   ['[class*="centerCol"]', 'data-pane="conversation"'],
-  ['[class*="detailsCol"]', 'data-pane="details"'],
+  ['[data-rightbar-col], [class*="detailsCol"]', 'data-pane="details"'],
 ]
 
 /** Stable hooks consumed by the responsive compat layer (never text/hash selectors). */

@@ -45,6 +45,7 @@ const { createRequire } = require('node:module')
 const { pathToFileURL } = require('node:url')
 const crypto = require('node:crypto')
 const { zipStore, zipSkinArchive, MAX_SERVED_ASSET_BYTES } = require('./lib/market-zip.cjs')
+const { buildPluginMarketIndex } = require('./lib/plugin-market-index.cjs')
 
 const ROOT = path.resolve(__dirname, '..')
 /** The lockfile naming which submodule carries each market input. */
@@ -658,6 +659,14 @@ function emit(outDir, files, binary, skins, pets, plugins, presets, picks, trans
   fs.writeFileSync(path.join(manDir, 'plugins.json'), mk(plugins.map(({ item }) => item)))
   fs.writeFileSync(path.join(manDir, 'presets.json'), mk(presets.map(({ item }) => item)))
   fs.writeFileSync(path.join(manDir, 'editor-picks.json'), mk(picks))
+  // Official DSH Plugin Market Index Format 1 (`@deepseek-ai/dsh-plugin-market-index`):
+  // subscribable directly in DSH 0.2.3-alpha.2+ Plugins -> Discover.
+  const marketIndex = buildPluginMarketIndex({
+    rootDir: ROOT,
+    communityPlugins: plugins.map(({ item }) => item),
+    generatedDate: GENERATED_DATE,
+  })
+  fs.writeFileSync(path.join(manDir, 'plugin-market-index.json'), JSON.stringify(marketIndex, null, 2) + '\n')
 }
 
 function walkFiles(dir, base) {

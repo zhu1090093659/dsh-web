@@ -322,7 +322,6 @@ dsh plugin --profile web add @linxin666/dsh-i18n@latest                         
 | [@linxin666/dsh-client-ui-web-ui-settings](https://www.npmjs.com/package/@linxin666/dsh-client-ui-web-ui-settings) | [README](packages/dsh-web-settings/README.zh.md) | 综合设置面板：集中承载 dsh-web 家族插件启用开关与配置表单的一级设置分区 |
 | [@linxin666/dsh-client-ui-session-id](https://www.npmjs.com/package/@linxin666/dsh-client-ui-session-id) | [README](packages/dsh-session-id/README.zh.md) | 会话 ID 辅助：侧边栏底部快速查看、搜索与一键复制会话完整 ID |
 | [@linxin666/dsh-i18n](https://www.npmjs.com/package/@linxin666/dsh-i18n) | [README](packages/dsh-i18n/README.zh.md) | 俄语语言包：集中承载家族全部插件命名空间的俄语（`ru`）多语言字典 |
-| [@linxin666/dsh-remote-web-ui](https://www.npmjs.com/package/@linxin666/dsh-remote-web-ui) | [README](packages/dsh-remote-web-ui/README.zh.md) | 跨设备浏览器远程访问（已弃用，由 dsh-remote-bridge 承接，切勿与 remote-bridge 同时启用中继） |
 | [@linxin666/dsh-client-ui-skin-center](https://www.npmjs.com/package/@linxin666/dsh-client-ui-skin-center) | [dsh-skins](https://github.com/zhu1090093659/dsh-skins) | 皮肤中心（卫星仓）：主题皮肤与 Wallpaper Engine 动态壁纸的加载引擎，内置 Blue Fantasy 主题 |
 | [@linxin666/dsh-pet](https://www.npmjs.com/package/@linxin666/dsh-pet) | [dsh-pet](https://github.com/zhu1090093659/dsh-pet) | 桌面宠物（卫星仓）：注册表驱动的桌面交互悬浮挂件与用量气泡提示 |
 | [@linxin666/dsh-client-ui-preset-center](https://www.npmjs.com/package/@linxin666/dsh-client-ui-preset-center) | [dsh-presets](https://github.com/zhu1090093659/dsh-presets) | 预设中心（卫星仓）：创意工坊社区 Agent 预设本地库管理与按需启用 |
@@ -487,7 +486,7 @@ dsh-web 针对主流操作系统、现代化浏览器及网络拓扑进行了深
 
 **插件**
 
-- **dsh-task-board / dsh-task-board-github / dsh-task-board-remote / dsh-task-board-team / dsh-agents / dsh-browser-view / dsh-win-bash / dsh-pet / dsh-remote-bridge / dsh-remote-web-ui / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n / dsh-diagrams** — 本仓库原创（zhu1090093659），Apache-2.0（zhu1090093659；`dsh-win-bash` 随包分发的 Git for Windows / MSYS2 运行时载荷许可证与来源清单见 [PROVENANCE.md](packages/dsh-win-bash/PROVENANCE.md)）
+- **dsh-task-board / dsh-task-board-github / dsh-task-board-remote / dsh-task-board-team / dsh-agents / dsh-browser-view / dsh-win-bash / dsh-pet / dsh-remote-bridge / dsh-web-settings / dsh-ssh / dsh-skill-explorer / dsh-market / dsh-plugin-manager / dsh-community-plugins / dsh-web-all / dsh-liangshen / dsh-session-id / dsh-usage / dsh-session-archive / dsh-i18n / dsh-diagrams** — 本仓库原创（zhu1090093659），Apache-2.0（zhu1090093659；`dsh-win-bash` 随包分发的 Git for Windows / MSYS2 运行时载荷许可证与来源清单见 [PROVENANCE.md](packages/dsh-win-bash/PROVENANCE.md)）
 - **dsh-diagrams** — 随包分发 [mermaid](https://github.com/mermaid-js/mermaid) 运行库（MIT）：构建时从 npm 的 `mermaid` 包复制到 `lib/assets/mermaid.min.js` 并由宿主路由伺服，仓库不提交任何第三方源码；本包自身代码为本仓库 Apache-2.0（zhu1090093659）
 - **dsh-ssh** — 依据 [badseal/ssh-skill](https://github.com/badseal/ssh-skill) 的能力清单实现；代码为本仓库 Apache-2.0（zhu1090093659），上游能力清单归属 badseal/ssh-skill
 - **社区插件索引** — 139 项外部插件，来源与版权由各作者声明，登记于 [community.json](https://github.com/zhu1090093659/dsh-community-plugins/blob/main/community.json)，可在「设置 → 社区插件」与 dsh-market.com 查看

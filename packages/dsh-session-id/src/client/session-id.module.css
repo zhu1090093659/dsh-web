@@ -269,3 +269,49 @@
   width: 12px;
   height: 12px;
 }
+
+/* ── Official Session Panel environment row ── */
+
+.envContent {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.envValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--dsw-font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.envCopyButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  padding: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.envCopyButton:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.envCopyButton[data-copied='true'] {
+  color: var(--dsw-alias-brand-primary);
+}
+
+.envCopyButton[data-failed='true'] {
+  color: var(--dsw-alias-state-error-primary);
+}

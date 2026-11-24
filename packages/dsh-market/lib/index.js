@@ -3,7 +3,7 @@ import path, { basename, dirname, isAbsolute, join, sep } from "node:path";
 import { homedir } from "node:os";
 import { isAbsolute as isAbsolute$1, join as join$1 } from "node:path/posix";
 import { createHash } from "node:crypto";
-//#region ../../../../../../usr/local/lib/nodejs/node-v26.13.1-linux-x64/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cosmokit/lib/index.js
+//#region ../../node_modules/.pnpm/@deepseek-ai+cosmokit@1.10.0-alpha.1/node_modules/@deepseek-ai/cosmokit/lib/index.js
 /** Return true when a value is `null` or `undefined`. */
 function isNullable(value) {
 	return value === null || value === void 0;
@@ -257,7 +257,7 @@ var Time;
 	Time.template = template;
 })(Time || (Time = {}));
 //#endregion
-//#region ../../../../../../usr/local/lib/nodejs/node-v26.13.1-linux-x64/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/schemastery/lib/index.mjs
+//#region ../../node_modules/.pnpm/@deepseek-ai+schemastery@3.20.0-alpha.1/node_modules/@deepseek-ai/schemastery/lib/index.mjs
 const kSchema = Symbol.for("schemastery");
 const kValidationError = Symbol.for("ValidationError");
 globalThis.__schemastery_index__ ??= 0;
@@ -1006,9 +1006,9 @@ function mountOnce(packageName, fn) {
 //#endregion
 //#region src/dsh-home.ts
 /**
-* DSH_HOME resolution shared by the plugin family's Host halves: the
-* environment override wins, the platform home fallback follows. Mirrors
-* what dsh-pet and dsh-liangshen each used to implement locally.
+* DSH_HOME and DSH_AGENTS_HOME resolution shared by the plugin family's Host
+* halves: environment overrides win (blank values treated as unset), then the
+* platform home fallbacks follow — mirroring `@deepseek-ai/dsh-home-paths`.
 */
 /** Expand a leading ~ (or ~user) in a path, platform-style. */
 function expandHome(path, home = homedir()) {
@@ -1017,6 +1017,16 @@ function expandHome(path, home = homedir()) {
 	if (path.startsWith("~/") || path.startsWith("~\\")) return j(home, path.slice(2));
 	return path;
 }
+function resolveUserRoot(envValue, defaultDirName, home) {
+	const isPosix = home.startsWith("/");
+	const j = isPosix ? join$1 : join;
+	const isAbs = isPosix ? isAbsolute$1 : isAbsolute;
+	if (envValue !== void 0 && envValue.trim() !== "") {
+		const expanded = expandHome(envValue.trim(), home);
+		return isAbs(expanded) ? expanded : j(process.cwd(), expanded);
+	}
+	return j(home, defaultDirName);
+}
 /**
 * Resolve the DSH home directory.
 * @param env - process environment to read DSH_HOME from.
@@ -1024,15 +1034,7 @@ function expandHome(path, home = homedir()) {
 * @returns the absolute DSH home path.
 */
 function resolveDshHome(env = process.env, home = homedir()) {
-	const isPosix = home.startsWith("/");
-	const j = isPosix ? join$1 : join;
-	const isAbs = isPosix ? isAbsolute$1 : isAbsolute;
-	const raw = env.DSH_HOME;
-	if (raw !== void 0 && raw.trim() !== "") {
-		const expanded = expandHome(raw.trim(), home);
-		return isAbs(expanded) ? expanded : j(process.cwd(), expanded);
-	}
-	return j(home, ".dsh");
+	return resolveUserRoot(env.DSH_HOME, ".dsh", home);
 }
 /** Resolve the DSH home directory from the live environment. */
 function dshHome() {

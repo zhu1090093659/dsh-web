@@ -15,9 +15,6 @@ import { tmpdir } from 'node:os'
 import { randomBytes } from 'node:crypto'
 import { WebSocketServer } from 'ws'
 import type { WebRoute, WebUpgradeRoute } from '@deepseek-ai/dsh-host-webserver'
-
-type AuthAwareWebRoute = WebRoute & { readonly auth: 'anonymous' }
-type AuthAwareWebUpgradeRoute = WebUpgradeRoute & { readonly auth: 'anonymous' }
 import type { SshEngine } from './engine.ts'
 import { hasClusterSelector } from './engine/cluster.ts'
 import { TerminalSessionRegistry } from './engine/terminal-sessions.ts'
@@ -597,8 +594,8 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
   }
 
   return {
-    routes: routes.map((route): AuthAwareWebRoute => ({ ...route, auth: 'anonymous' })),
-    upgrade: { ...upgrade, auth: 'anonymous' } as AuthAwareWebUpgradeRoute,
+    routes: routes.map((route): WebRoute => ({ ...route, auth: 'anonymous' })),
+    upgrade: { ...upgrade, auth: 'anonymous' },
     terminalSessions,
   }
 }

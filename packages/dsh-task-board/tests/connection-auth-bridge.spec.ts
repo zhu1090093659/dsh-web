@@ -124,9 +124,11 @@ async function send(url: string, headers: Record<string, string>, body?: string)
  */
 function connectionAnswering(rejection: 401 | 403 | undefined, seen: Array<IncomingMessage['headers']> = []): TaskBoardConnectionTrust {
   return {
-    requestRejection: (candidate) => {
+    admit: (candidate) => {
       seen.push(candidate.headers)
-      return rejection
+      return rejection === undefined
+        ? { peer: { kind: 'browser-session', id: 'sess-test' } }
+        : { rejection }
     },
   }
 }
@@ -229,7 +231,7 @@ describe('connection trust resolution', () => {
   it('operator whose composition serves no usable connection service gets no trust face', () => {
     // Given contexts that serve nothing, an object without the request check, or fail the lookup
     const missing = { get: () => undefined }
-    const incomplete = { get: () => ({ requestRejection: 'not-a-function' }) }
+    const incomplete = { get: () => ({ admit: 'not-a-function' }) }
     const broken = { get: () => { throw new Error('service unavailable') } }
     // When the board resolves the trust face
     // Then each answers undefined so the routes keep the pre-existing fence

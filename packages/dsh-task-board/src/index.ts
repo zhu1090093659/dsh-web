@@ -311,7 +311,7 @@ export function resolveConnectionTrust(ctx: Context): TaskBoardConnectionTrust |
   try {
     const connection = ctx.get('connection') as Partial<TaskBoardConnectionTrust> | undefined
     if (connection === undefined || connection === null) return undefined
-    return typeof connection.admit === 'function' || typeof connection.requestRejection === 'function'
+    return typeof connection.admit === 'function'
       ? connection as TaskBoardConnectionTrust
       : undefined
   } catch {
@@ -723,8 +723,7 @@ function applyImpl(ctx: Context, config?: Config): void {
    * \"connection.authentication\" without inject", which escaped every route
    * handler as a bare 400. The scope keeps the row's own inject list unchanged
    * (the service stays optional: a deployment without it keeps the loopback
-   * fence), and a cohort whose connection has no authentication sub-service
-   * simply never activates this scope, leaving the `requestRejection` bridge.
+   * fence).
    */
   let admittedConnection: TaskBoardConnectionTrust | undefined
   const scopedInjectConnection = (ctx as { inject?: (names: readonly string[], callback: (scoped: Context) => unknown) => unknown }).inject

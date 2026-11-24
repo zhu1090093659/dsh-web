@@ -689,7 +689,8 @@ html[data-dsh-skin="miku"] [data-dsh-part="composer-chip"] {
 /* 代码块：圆角 + 发丝线 + 顶缘一道青绿细线（旧版是斜切角 + 内嵌倒角）。 */
 html[data-dsh-skin="miku"] [data-slot="main.conversation"] pre,
 html[data-dsh-skin="miku"] [data-dsh-part="message-body"] pre,
-html[data-dsh-skin="miku"] [data-slot="main.conversation"] [class*="codeBlock"] {
+html[data-dsh-skin="miku"] [data-slot="main.conversation"] [class*="codeBlock"],
+html[data-dsh-skin="miku"] [data-dsh-surface="conversation"] [class*="md-code-block"] {
   clip-path: none !important;
   border: 1px solid var(--miku-hairline) !important;
   border-radius: var(--miku-r) !important;
@@ -699,7 +700,8 @@ html[data-dsh-skin="miku"] [data-slot="main.conversation"] [class*="codeBlock"] 
 
 html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="main.conversation"] pre,
 html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-part="message-body"] pre,
-html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="main.conversation"] [class*="codeBlock"] {
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-slot="main.conversation"] [class*="codeBlock"],
+html[data-dsh-skin="miku"] body[data-ds-dark-theme] [data-dsh-surface="conversation"] [class*="md-code-block"] {
   border-color: var(--miku-hairline) !important;
   background: var(--dsw-alias-markdown-code-block) !important;
   box-shadow: inset 0 2px 0 var(--miku-brand-soft) !important;

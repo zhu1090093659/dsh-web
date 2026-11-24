@@ -68,7 +68,7 @@ dsh plugin --profile web add link:/path/to/dsh-web/packages/dsh-session-archive
 
 ## 安全模型
 
-全部 HTTP 路由（`/api/dsh-session-archive/*`）先接受宿主 `connection` 服务（`admit` 或 `requestRejection`）认可的请求，否则回退到回环套接字 + 回环 Host 头 + 浏览器同源标记。已认证反向代理只有在宿主自身信任其 authority（例如配置 `--trusted-host`）时才可用；`X-Forwarded-For` 本身绝不充分，桥接缺失或抛错也不会放行。删除只通过插件自己的会话根目录索引解析存储路径，移除前再次校验 realpath，并拒绝任何位于 `$DSH_HOME/sessions` 之外的路径。客户端只提交会话 ID，从不提交文件路径。session-rdb（SQLite）在删除前校验存储指纹。
+全部 HTTP 路由（`/api/dsh-session-archive/*`）先接受宿主 `connection` 服务（`admit`）认可的请求，否则回退到回环套接字 + 回环 Host 头 + 浏览器同源标记。已认证反向代理只有在宿主自身信任其 authority（例如配置 `--trusted-host`）时才可用；`X-Forwarded-For` 本身绝不充分，桥接缺失或抛错也不会放行。删除只通过插件自己的会话根目录索引解析存储路径（跳过官方 `.segments` SQLite 存储目录），移除前再次校验 realpath，并拒绝任何位于 `$DSH_HOME/sessions` 之外的路径。由官方 SQLite 持久化（`.segments/sessions.sqlite`）托管的会话会在触碰归档标记、工作区行或锁目录前安全拒绝并返回 `missing-seam`。客户端只提交会话 ID，从不提交文件路径。旧版 session-rdb（SQLite）在删除前校验存储指纹。
 
 ## 已知限制
 

@@ -498,17 +498,17 @@ button[role="tab"][aria-selected="true"] {
 }
 /* 提交键 = 应用那套 _primary_ 按钮（旧配色是发暗的 #0E7D95），换亮青；
    「跳过本题」是 _outline_ 变体，显式恢复成描边样式（第一版把整排按钮都刷成青色了）。 */
-:is([class*="Mbwy4a_card"], [class*="mAtvLq_card"]) button[class*="_primary_"] {
+:is([class*="Mbwy4a_card"], [class*="mAtvLq_card"]) button[class*="_primary"] {
   background-image: none !important;
   background-color: var(--ef-cyan) !important;
   border-color: var(--ef-cyan) !important;
   color: #08171c !important;
   font-weight: 600;
 }
-:is([class*="Mbwy4a_card"], [class*="mAtvLq_card"]) button[class*="_primary_"]:hover {
+:is([class*="Mbwy4a_card"], [class*="mAtvLq_card"]) button[class*="_primary"]:hover {
   background-color: #3fdcff !important;
 }
-:is([class*="Mbwy4a_card"], [class*="mAtvLq_card"]) button[class*="_outline_"] {
+:is([class*="Mbwy4a_card"], [class*="mAtvLq_card"]) button[class*="_outline"] {
   background-image: none !important;
   background-color: transparent !important;
   border: 1px solid var(--ef-line-strong) !important;
@@ -517,8 +517,8 @@ button[role="tab"][aria-selected="true"] {
 
 /* 主按钮（模型页「保存」、其它确定键…）：应用的旧配色是发暗的蓝，统一换成亮信号青 */
 [class*="VOzbGW_panel"] button:is([class*="primary"], [class*="Primary"], [class*="submit"], [class*="Submit"]),
-[class*="VOzbGW_panel"] button[class*="_primary_"],
-:is([class*="Mbwy4a_card"], [class*="mAtvLq_card"]) button[class*="_primary_"] {
+[class*="VOzbGW_panel"] button[class*="_primary"],
+:is([class*="Mbwy4a_card"], [class*="mAtvLq_card"]) button[class*="_primary"] {
   background-image: none !important;
   background-color: var(--ef-cyan) !important;
   border-color: var(--ef-cyan) !important;
@@ -526,7 +526,7 @@ button[role="tab"][aria-selected="true"] {
   font-weight: 600;
 }
 [class*="VOzbGW_panel"] button:is([class*="primary"], [class*="Primary"]):hover,
-[class*="VOzbGW_panel"] button[class*="_primary_"]:hover {
+[class*="VOzbGW_panel"] button[class*="_primary"]:hover {
   background-color: #3fdcff !important;
 }
 
@@ -1893,13 +1893,13 @@ button.dsh-ego-side-login-btn:hover,
    皮肤没映射 --dsw-alias-label-danger → 变量未定义，底色按「无效期计算」退成透明，
    露出深色弹窗底；文字又被本节 _primary 的黑字规则盖住 → 黑字压深底（用户报的 bug）。
    显式给亮蓝底（--ef-cyan，与发送键/主按钮同色），黑字保留。 */
-button[class*="_primary_"][class*="dangerButton"] {
+button[class*="_primary"][class*="dangerButton"] {
   background: var(--ef-cyan) !important;
   background-image: none !important;
   border-color: var(--ef-cyan) !important;
   color: #0b1416 !important;
 }
-button[class*="_primary_"][class*="dangerButton"]:hover:not(:disabled) {
+button[class*="_primary"][class*="dangerButton"]:hover:not(:disabled) {
   background: var(--ef-cyan-bright) !important;
 }
 
@@ -1924,7 +1924,7 @@ body {
 }
 /* 兜底：直接压在浮层真底板上（ri079 是 0.1.7-rc2 实测哈希；token 那条是不依赖哈希的正解，
    这条保证即使 token 在更近的祖先上被应用重新定义，黑板照样生效）。 */
-[class*="_material_ri079_"] {
+:is([class*="_material_ri079_"], [class*="_material"]) {
   background: #000 !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -1996,13 +1996,13 @@ div.cvtkAW_footCard button.cvtkAW_footToggle:hover {
    → 底板实测 rgba(0,0,0,0) 全透明，面板里的字直接压在聊天内容上（最严重的一处撞色）。
    这里用 :is()/:has() 把范围钉死在「自身是 menu/listbox」或「内部含 menu/listbox」的浮层壳上，
    合成 DOM 自检过：含 listbox 的壳命中并变黑，不含的 ._surface_ri079_* 保持透明（不误伤）。 */
-[class*="_material_ri079_"] {
+:is([class*="_material_ri079_"], [class*="_material"]) {
   background: #000 !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-[class*="_surface_ri079_"]:is([role="menu"], [role="listbox"]),
-[class*="_surface_ri079_"]:has([role="menu"], [role="listbox"]) {
+:is([class*="_surface_ri079_"], [class*="_surface"]):is([role="menu"], [role="listbox"]),
+:is([class*="_surface_ri079_"], [class*="_surface"]):has([role="menu"], [role="listbox"]) {
   background-color: #000 !important;
 }
 
@@ -2427,14 +2427,14 @@ body {
    用 role 选择器（不依赖哈希），特异性 (0,3,0) > 应用 `.…:hover` (0,2,0) */
 [role="menu"] :is([role="menuitem"], [role="option"]):hover,
 [role="listbox"] :is([role="menuitem"], [role="option"]):hover,
-[class*="_surface_ri079_"] :is([role="menuitem"], [role="option"]):hover {
+:is([class*="_surface_ri079_"], [class*="_surface"]) :is([role="menuitem"], [role="option"]):hover {
   background-color: var(--ef-hover-plate);
   color: var(--ef-hover-fg);
 }
 [role="menu"] :is([role="menuitem"], [role="option"]):hover svg,
 [role="menu"] :is([role="menuitem"], [role="option"]):hover [class*="Glyph"],
 [role="listbox"] :is([role="menuitem"], [role="option"]):hover svg,
-[class*="_surface_ri079_"] :is([role="menuitem"], [role="option"]):hover svg {
+:is([class*="_surface_ri079_"], [class*="_surface"]) :is([role="menuitem"], [role="option"]):hover svg {
   color: var(--ef-hover-fg);
 }
 
@@ -2540,14 +2540,14 @@ body {
      分组标题（_7KE1Ra_groupTitle）不是可点行，不给 hover。 */
 [role="menu"] :is([role="menuitem"], [role="option"], [role="menuitemradio"], [role="menuitemcheckbox"]):hover,
 [role="listbox"] :is([role="menuitem"], [role="option"], [role="menuitemradio"], [role="menuitemcheckbox"]):hover,
-[class*="_surface_ri079_"] :is([role="menuitem"], [role="option"], [role="menuitemradio"], [role="menuitemcheckbox"]):hover {
+:is([class*="_surface_ri079_"], [class*="_surface"]) :is([role="menuitem"], [role="option"], [role="menuitemradio"], [role="menuitemcheckbox"]):hover {
   background-color: var(--ef-hover-plate);
   color: var(--ef-hover-fg);
 }
 [role="menu"] :is([role="menuitem"], [role="option"], [role="menuitemradio"], [role="menuitemcheckbox"]):hover svg,
 [role="menu"] :is([role="menuitem"], [role="option"], [role="menuitemradio"], [role="menuitemcheckbox"]):hover [class*="Glyph"],
 [role="listbox"] :is([role="menuitem"], [role="option"], [role="menuitemradio"], [role="menuitemcheckbox"]):hover svg,
-[class*="_surface_ri079_"] :is([role="menuitem"], [role="option"], [role="menuitemradio"], [role="menuitemcheckbox"]):hover svg {
+:is([class*="_surface_ri079_"], [class*="_surface"]) :is([role="menuitem"], [role="option"], [role="menuitemradio"], [role="menuitemcheckbox"]):hover svg {
   color: var(--ef-hover-fg);
 }
 

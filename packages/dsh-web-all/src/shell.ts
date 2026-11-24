@@ -126,10 +126,8 @@ declare module '@deepseek-ai/cordis' {
  * — the reason field is what a degraded plugin's own panel renders (#1730),
  * and a reader that predates it keeps using stage/message.
  */
-type AuthAwareWebRoute = WebRoute & { readonly auth?: 'anonymous' | 'required' | 'deny' }
-
 function makeDegradedRoute(): WebRoute {
-  const route: AuthAwareWebRoute = {
+  return {
     kind: 'exact',
     path: '/api/dsh-web-all/degraded',
     // Self-fenced strictly by loopback socket address (127.0.0.1 / ::1); keep
@@ -147,7 +145,6 @@ function makeDegradedRoute(): WebRoute {
       res.end(JSON.stringify({ ok: true, degraded: listDegraded() }))
     },
   }
-  return route
 }
 
 

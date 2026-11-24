@@ -55,6 +55,27 @@ export const DEFAULT_IDLE_RECLAIM_STEPS = 0
 /** The activation tool this preset registers. */
 export const TOOL_ACTIVATE_NAME = 'tool_activate'
 
+/**
+ * Official `@deepseek-ai/dsh-mcp-client` on-demand loader tool name
+ * (`mcp__<serverName>__load_tools`). A server configured with
+ * `toolLoading: 'on-demand'` already manages its own progressive loading, so
+ * its loader — and any tools the agent explicitly loads from that server —
+ * must stay resident rather than being paged out a second time by `mcp__*`.
+ */
+export const MCP_ON_DEMAND_LOADER_RE = /^mcp__(.+)__load_tools$/
+
+/** Extract the MCP server name from an official on-demand loader tool name, or undefined. */
+export function mcpOnDemandServerOf(name) {
+  if (typeof name !== 'string') return undefined
+  const match = MCP_ON_DEMAND_LOADER_RE.exec(name)
+  return match !== null && match[1].length > 0 ? match[1] : undefined
+}
+
+/** Whether a tool name is an official MCP `on-demand` loader (`mcp__<server>__load_tools`). */
+export function isMcpOnDemandLoader(name) {
+  return mcpOnDemandServerOf(name) !== undefined
+}
+
 /** Validate a positive-integer config value, or fall back when absent. */
 export function integerAtLeast(plugin, value, field, minimum, fallback) {
   if (value === undefined) return fallback
@@ -102,6 +123,7 @@ export function validatePagedToolPatterns(plugin, value, fallback = DEFAULT_PAGE
  */
 export function patternNamespace(name, pattern) {
   if (typeof name !== 'string' || typeof pattern !== 'string' || !pattern.endsWith('*')) return undefined
+  if (isMcpOnDemandLoader(name)) return undefined
   const prefix = pattern.slice(0, -1)
   if (!name.startsWith(prefix)) return undefined
   const rest = name.slice(prefix.length)
@@ -123,16 +145,33 @@ export function namespaceOf(name, patterns) {
 
 /**
  * Partition one wire tool list into resident tools and paged-but-inactive
- * namespaces. A paged tool whose namespace is active stays resident. The
- * inactive map is keyed by namespace in sorted order so one surface renders
+ * namespaces. A paged tool whose namespace is active stays resident. Official
+ * on-demand MCP servers (identified by the presence of
+ * `mcp__<server>__load_tools`) keep both their loader and any already-loaded
+ * tools resident so two progressive-loading layers do not fight each other.
+ * The inactive map is keyed by namespace in sorted order so one surface renders
  * byte-identical text across assemblies.
  */
 export function partitionWireTools(tools, patterns, activeNamespaces) {
   const resident = []
   const inactive = new Map()
   const active = activeNamespaces instanceof Set ? activeNamespaces : new Set(activeNamespaces ?? [])
-  for (const tool of Array.isArray(tools) ? tools : []) {
-    const namespace = namespaceOf(tool?.name, patterns)
+  const list = Array.isArray(tools) ? tools : []
+  const onDemandMcpServers = new Set()
+  for (const tool of list) {
+    const server = mcpOnDemandServerOf(tool?.name)
+    if (server !== undefined) onDemandMcpServers.add(server)
+  }
+  for (const tool of list) {
+    const toolName = tool?.name
+    if (typeof toolName === 'string' && toolName.startsWith('mcp__')) {
+      const server = toolName.slice('mcp__'.length).split('__')[0]
+      if (server !== '' && onDemandMcpServers.has(server)) {
+        resident.push(tool)
+        continue
+      }
+    }
+    const namespace = namespaceOf(toolName, patterns)
     if (namespace === undefined || active.has(namespace)) {
       resident.push(tool)
       continue

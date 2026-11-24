@@ -138,7 +138,7 @@ export function makeAgentsRoutes(service: AgentsHostService): WebRoute[] {
     return await readJson(req)
   }
 
-  return [
+  return ([
     {
       kind: 'exact',
       path: DSH_AGENTS_API_PREFIX + '/state',
@@ -260,5 +260,5 @@ export function makeAgentsRoutes(service: AgentsHostService): WebRoute[] {
         }
       },
     },
-  ]
+  ] satisfies WebRoute[]).map((route): WebRoute => ({ ...route, auth: 'anonymous' }))
 }

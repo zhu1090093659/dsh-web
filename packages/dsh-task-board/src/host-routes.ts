@@ -39,15 +39,13 @@ export const TASK_BOARD_PROXY_TOKEN_HEADER = 'x-dsh-task-board-proxy-token'
 
 /**
  * The composition's Host connection service, narrowed to the one check the
- * board bridges: `requestRejection` runs the Host/Origin fence and verifies
- * the authority-bound `dsh-auth-*` browser session minted by the Host. It
- * answers `undefined` only for a request it admits and 401/403 otherwise.
+ * board bridges: `admit` runs the Host/Origin fence and verifies
+ * the authority-bound `dsh-auth-*` browser session minted by the Host.
  * Declared structurally, like the official open-in-app routes do, because the
  * service's package is a browser-side dependency this Host half does not
  * import.
  */
 export interface TaskBoardConnectionTrust {
-  requestRejection?(request: { readonly headers: IncomingMessage['headers'] }): 401 | 403 | undefined
   admit?(request: { readonly headers: IncomingMessage['headers'] }): {
     readonly peer?: unknown
     readonly rejection?: 401 | 403
@@ -230,21 +228,15 @@ function matchesToken(candidate: string | string[] | undefined, expected: string
  */
 export function isTrustedTaskBoardRequest(req: IncomingMessage, access: ResolvedRouteAccess): boolean {
   const connection = access.connection?.()
-  if (connection !== undefined) {
-    // The Host connection service is a cross-cohort bridge: the npm 0.2.2-rc.3
-    // shape answers `requestRejection`, the post-#8266 shape answers `admit`,
-    // and `admit` reaches into `connection.authentication`, which throws when
+  if (connection !== undefined && typeof connection.admit === 'function') {
+    // `admit` reaches into `connection.authentication`, which throws when
     // the calling fiber does not inject it. A bridge that cannot answer is not
     // an admission decision: it must keep the fence below instead of escaping
     // as a handler error (the Host answers a throwing handler with a bare 400,
     // which the panel can only render as an unreadable response).
     try {
-      if (typeof connection.admit === 'function') {
-        const admission = connection.admit(req)
-        if (admission.rejection === undefined && 'peer' in admission && admission.peer !== undefined) return true
-      } else if (typeof connection.requestRejection === 'function' && connection.requestRejection(req) === undefined) {
-        return true
-      }
+      const admission = connection.admit(req)
+      if (admission.rejection === undefined && 'peer' in admission && admission.peer !== undefined) return true
     } catch {
       // Fall through to the pre-existing loopback / proxy fence.
     }
@@ -544,8 +536,7 @@ export function makeTaskBoardRoutes(
   }
   // Task board routes enforce their own Host/Origin, DSH connection, and
   // paired-device trust fence and must stay reachable when webServer defaults routes to auth: 'required'.
-  type AuthAwareWebRoute = WebRoute & { readonly auth?: 'anonymous' | 'required' | 'deny' }
   return [state, action, events, parse, modelCatalog, attachmentUpload, attachmentImage].map(
-    (route): AuthAwareWebRoute => ({ ...route, auth: 'anonymous' }),
+    (route): WebRoute => ({ ...route, auth: 'anonymous' }),
   )
 }

@@ -21,6 +21,7 @@ import {
   DATA_SOURCE,
   DATA_STATE,
   DIAGRAM_CLASS,
+  FENCE_SLOT_SELECTOR,
   INFOSTRING_CLASS_FRAGMENT,
   LANGUAGE_CLASS_FRAGMENT,
   PART_NAME,
@@ -61,6 +62,10 @@ export function findMermaidBlocks(scope: ParentNode): HTMLPreElement[] {
   const found: HTMLPreElement[] = []
   const seen = new Set<Element>()
   for (const block of blocks) {
+    // Official chat markdown fences are rendered natively by the
+    // `conversation.chat.markdown.fence` hoc layer; never claim or mutate them
+    // from the DOM fallback observer (whether streaming, rendered, or fallen back).
+    if (block.closest(FENCE_SLOT_SELECTOR) !== null) continue
     const pre = block.querySelector('pre')
     if (!(pre instanceof HTMLPreElement) || seen.has(pre)) continue
     seen.add(pre)

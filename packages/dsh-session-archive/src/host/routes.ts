@@ -8,8 +8,6 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
-
-type AuthAwareWebRoute = WebRoute & { readonly auth: 'anonymous' }
 import type { BatchRequestBody } from '../core/types.ts'
 import { BusyError, PlanMismatchError, type ArchiveService } from './janitor.ts'
 import { readBoundedJson, writeJson } from './http.ts'
@@ -224,5 +222,5 @@ export function makeArchiveRoutes(service: ArchiveService, connection?: HostConn
     makeDeleteRoute(service, fenced),
     makeAutoPreviewRoute(service, fenced),
     makeAutoRunRoute(service, fenced),
-  ].map((route): AuthAwareWebRoute => ({ ...route, auth: 'anonymous' }))
+  ].map((route): WebRoute => ({ ...route, auth: 'anonymous' }))
 }

@@ -53,16 +53,6 @@ interface AttachmentStoreLike {
   saveImage(input: { data: Uint8Array; mediaType: string; name?: string }): Promise<DurableImageRef>
 }
 
-/**
- * The connection service as this package uses it. Typed structurally for the
- * same reason as the attachment store: the connection SDK package is not a
- * dependency of this one, and the shape needed here is the legacy
- * launch-token URL helper on hosts prior to peer-based auth providers.
- */
-interface ConnectionLike {
-  authenticatedUrl?(baseUrl: string): string
-}
-
 interface EntryUrlCandidate {
   readonly url?: string
   readonly open?: boolean
@@ -86,26 +76,10 @@ function readWebServer(ctx: AuthenticatedUrlContext): unknown {
 }
 
 /**
- * Resolve the host's authenticated entry URL for `url` across SDK cohorts:
- * legacy hosts expose `connection.authenticatedUrl(url)`, while peer-auth
- * hosts collect entry URLs via `ctx.emit(webServer, 'webserver/entry-url', url, entries)`.
+ * Resolve the host's authenticated entry URL for `url` via the official
+ * `webserver/entry-url` event (`ctx.emit(webServer, 'webserver/entry-url', url, entries)`).
  */
 export function resolveAuthenticatedUrl(ctx: AuthenticatedUrlContext, url: string): string | undefined {
-  let connection: ConnectionLike | undefined
-  if (typeof ctx.get === 'function') {
-    try {
-      connection = ctx.get('connection') as ConnectionLike | undefined
-    } catch {
-      connection = undefined
-    }
-  }
-  if (connection !== undefined && typeof connection.authenticatedUrl === 'function') {
-    try {
-      return connection.authenticatedUrl(url)
-    } catch {
-      return undefined
-    }
-  }
   const webServer = readWebServer(ctx)
   if (webServer === undefined || typeof ctx.emit !== 'function') return undefined
   const entries: EntryUrlCandidate[] = []

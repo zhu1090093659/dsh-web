@@ -1,6 +1,5 @@
 /**
- * Optional bridge to the Host connection trust decision. Newer hosts expose
- * admit(request); the rc.3 SDK cohort exposes requestRejection(request). A
+ * Optional bridge to the Host connection trust decision (`admit(request)`). A
  * missing or throwing bridge is not an admission: callers must retain their
  * existing loopback or pairing fence.
  */
@@ -8,9 +7,8 @@
 import type { IncomingMessage } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 
-/** Structural host connection face across supported SDK cohorts. */
+/** Structural host connection face (`admit(request)` on DSH 0.2.3-alpha.2+). */
 export interface HostConnectionService {
-  requestRejection?: (request: IncomingMessage) => unknown
   admit?: (request: IncomingMessage) => { readonly peer?: unknown; readonly rejection?: unknown }
 }
 
@@ -22,9 +20,7 @@ function resolveConnection(ctx: Context): HostConnectionService | undefined {
     const candidate = typeof ctx.get === 'function'
       ? (ctx.get('connection', false) ?? ctx.get('connection'))
       : (ctx as { connection?: HostConnectionService }).connection
-    return candidate !== undefined && candidate !== null && (
-      typeof candidate.admit === 'function' || typeof candidate.requestRejection === 'function'
-    )
+    return candidate !== undefined && candidate !== null && typeof candidate.admit === 'function'
       ? candidate
       : undefined
   } catch {
@@ -34,14 +30,10 @@ function resolveConnection(ctx: Context): HostConnectionService | undefined {
 
 /** Whether the Host's own authenticated/trusted-host decision admits a request. */
 export function connectionAdmits(connection: HostConnectionService | undefined, request: IncomingMessage): boolean {
-  if (connection === undefined) return false
+  if (connection === undefined || typeof connection.admit !== 'function') return false
   try {
-    if (typeof connection.admit === 'function') {
-      const admission = connection.admit(request)
-      return admission.rejection === undefined && 'peer' in admission && admission.peer !== undefined
-    }
-    if (typeof connection.requestRejection === 'function') return connection.requestRejection(request) === undefined
-    return false
+    const admission = connection.admit(request)
+    return admission.rejection === undefined && 'peer' in admission && admission.peer !== undefined
   } catch {
     return false
   }

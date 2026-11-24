@@ -276,23 +276,8 @@ describe('auth top-up', () => {
 })
 
 describe('resolveAuthenticatedUrl', () => {
-  it('operator resolves legacy connection.authenticatedUrl when present', () => {
-    // Given a legacy SDK cohort host whose connection service mints launch-token URLs directly
-    const ctx: AuthenticatedUrlContext = {
-      get: (name) => (name === 'connection'
-        ? { authenticatedUrl: (baseUrl: string) => `${baseUrl}?token=legacy` }
-        : undefined),
-    }
-
-    // When resolving the entry URL for a loopback base URL
-    const resolved = resolveAuthenticatedUrl(ctx, 'http://127.0.0.1:4321/')
-
-    // Then the legacy connection URL is returned directly
-    expect(resolved).toBe('http://127.0.0.1:4321/?token=legacy')
-  })
-
   it('operator collects peer-auth entry URLs from webserver/entry-url preferring open=true', () => {
-    // Given a peer-auth host where connection exposes no authenticatedUrl and providers respond via webserver/entry-url
+    // Given a peer-auth host where providers respond via webserver/entry-url
     const serverToken = { tag: 'webserver' }
     const ctx: AuthenticatedUrlContext = {
       webServer: serverToken,
@@ -330,15 +315,16 @@ describe('resolveAuthenticatedUrl', () => {
     expect(resolved).toBe('http://127.0.0.1:4321/?token=fallback')
   })
 
-  it('operator receives undefined when no entry URL exists or minting throws', () => {
-    // Given both an empty peer-auth provider response and a throwing legacy connection
+  it('operator receives undefined when no entry URL exists or emit throws', () => {
+    // Given both an empty peer-auth provider response and a throwing emit hook
     const emptyCtx: AuthenticatedUrlContext = {
       webServer: {},
       get: () => undefined,
       emit: () => undefined,
     }
     const throwingCtx: AuthenticatedUrlContext = {
-      get: () => ({ authenticatedUrl: () => { throw new Error('mint failed') } }),
+      webServer: {},
+      emit: () => { throw new Error('mint failed') },
     }
 
     // When resolving entry URLs against both contexts

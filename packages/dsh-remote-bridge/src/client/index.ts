@@ -26,8 +26,11 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the ui-sidebar SlotMap merge (the 'sidebar.footer.action' hole).
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+// Type-only: pulls the official remote-connection SlotMap merge ('settings.remoteConnection.extensions').
+import type {} from '@deepseek-ai/dsh-client-remote-connection/client'
 import { writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import { PairEntry } from './PairEntry.tsx'
+import { RemoteConnectionExtension } from './RemoteConnectionExtension.tsx'
 import { readPairToken } from './pair-token.ts'
 import { registerPresentToolview } from './toolview-slot.ts'
 import { en, zh, type RemoteBridgeKey } from './locales.ts'
@@ -79,6 +82,22 @@ export function apply(ctx: ClientContext): void {
     }
   })
 
+  // Official Settings -> Remote Connection extension seat (DSH 0.2.3-alpha.2+):
+  // surface native iOS App pairing beneath the official browser remote access cards.
+  ctx.slots.inject('settings.remoteConnection.extensions', () => {
+    try {
+      return ctx.slots.register({
+        name: 'settings.remoteConnection.extensions',
+        id: `${ENTRY_ID}-ios`,
+        order: 20,
+        locale: NS,
+        inject: () => ({ read: readPairToken, copy: writeClipboard }),
+      }, RemoteConnectionExtension)
+    } catch {
+      return () => {}
+    }
+  })
+
   // The transcript card of an interactive presentation (§35.11): one keyed
   // registration under the wire Tool name draws the body of a `ui_present` call,
   // so the official Tool row keeps everything else — identity, timing and the
@@ -87,6 +106,7 @@ export function apply(ctx: ClientContext): void {
 }
 
 export type { PairEntryProps } from './PairEntry.tsx'
+export type { RemoteConnectionExtensionCardProps } from './RemoteConnectionExtension.tsx'
 export type { PairCopyState, PairPanelProps, PairPanelState } from './PairPanel.tsx'
 export type { PairTokenFetch, PairTokenOutcome, PairTokenResponse, ReadPairTokenOptions } from './pair-token.ts'
 export type { RemoteBridgeKey } from './locales.ts'

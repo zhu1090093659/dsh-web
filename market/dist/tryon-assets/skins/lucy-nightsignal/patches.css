@@ -228,7 +228,7 @@ html[data-dsh-skin="lucy-nightsignal"] :is([data-conversation-scroll], [data-dsh
  * (`[class*="_pane_"]` under `[data-rightbar-col]`); padding on the pane itself
  * does nothing because the host is positioned against the pane's padding box.
  */
-html[data-dsh-skin="lucy-nightsignal"] [class*="_frame"]:not([data-rightbar-collapsed]) [data-rightbar-col] [class*="_pane_"] {
+html[data-dsh-skin="lucy-nightsignal"] [class*="_frame"]:not([data-rightbar-collapsed]) [data-rightbar-col] [class*="_pane"]:not([class*="_paneBody"]) {
   padding-left: clamp(24px, calc(clamp(460px, 76vh, 1040px) * 0.13), 140px) !important;
   box-sizing: border-box;
 }

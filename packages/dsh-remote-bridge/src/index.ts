@@ -62,7 +62,15 @@ import { SessionMeta, type SessionStoreFace, type SessionTitleFace, type Workspa
 import { sessionQuietProbe, TURN_END_QUIET_REPORT_MS, TurnEndQuietGate } from './core/turn-end-quiet.ts'
 import { SessionPermissions, type ApprovalPolicyFace, type PermissionPresetsFace, type SandboxPolicyFace } from './core/session-permissions.ts'
 import { selectionOf, modelSelectionOf, type RelayTierFace } from './core/connection.ts'
-import { UsageService, type CredentialStoreFace, type SessionRosterFace, type SessionRouteFace, type SettingsFace } from './core/usage.ts'
+import {
+  UsageService,
+  type CredentialStoreFace,
+  type DeepSeekAccountFace,
+  type DeepSeekAuthFace,
+  type SessionRosterFace,
+  type SessionRouteFace,
+  type SettingsFace,
+} from './core/usage.ts'
 import { UsageStatsReader } from './core/usage-stats.ts'
 import { wireArgs, type GatewayPeer } from './core/wire.ts'
 import { dshHome } from './host/dsh-home.ts'
@@ -346,13 +354,23 @@ function catalogDefaultOf(value: unknown): unknown {
  * @param log - 读不到名册时的落点。
  * @returns 这些 face 此刻的样子。
  */
+function optionalService<T>(ctx: Context, name: string): T | undefined {
+  try {
+    return (ctx.get(name as never, false) ?? ctx.get(name as never)) as T | undefined
+  } catch {
+    return undefined
+  }
+}
+
 function usageFaces(ctx: Context, peer: GatewayPeer, log: (message: string) => void) {
   return {
-    sessions: ctx.get('sessions') as SessionStoreFace | undefined,
+    sessions: optionalService<SessionStoreFace>(ctx, 'sessions'),
     roster: sessionRoster(ctx, peer, log),
-    credentials: ctx.get('credentials') as CredentialStoreFace | undefined,
-    settings: ctx.get('settings') as SettingsFace | undefined,
+    credentials: optionalService<CredentialStoreFace>(ctx, 'credentials'),
+    settings: optionalService<SettingsFace>(ctx, 'settings'),
     route: sessionRoute(ctx, peer, log),
+    deepseekAuth: optionalService<DeepSeekAuthFace>(ctx, 'deepseekAuth'),
+    deepseekAccount: optionalService<DeepSeekAccountFace>(ctx, 'deepseekAccount'),
   }
 }
 

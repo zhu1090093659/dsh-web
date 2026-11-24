@@ -65,7 +65,15 @@ function applyImpl(ctx: Context, config?: Config): void {
   if (config?.enabled === false) return
   const skillCtx = ctx as unknown as SkillContext
   const dshHome = config?.dshHome ?? process.env.DSH_HOME ?? homedir() + sep + '.dsh'
-  const agentsHome = config?.agentsHome ?? process.env.DSH_AGENTS_HOME ?? homedir() + sep + '.agents'
+  const envAgentsHome = process.env.DSH_AGENTS_HOME?.trim()
+  const expandedEnvAgentsHome = envAgentsHome !== undefined && envAgentsHome !== ''
+    ? (envAgentsHome === '~'
+        ? homedir()
+        : (envAgentsHome.startsWith('~/') || envAgentsHome.startsWith('~\\')
+            ? homedir() + sep + envAgentsHome.slice(2)
+            : envAgentsHome))
+    : undefined
+  const agentsHome = config?.agentsHome ?? expandedEnvAgentsHome ?? homedir() + sep + '.agents'
   /**
    * Every custom skill root the panel should scan: this plugin's own config
    * plus whatever the live `skill-filesystem` rows declare. The official

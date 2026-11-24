@@ -9,23 +9,20 @@ import type { UsageService } from './usage-service.ts'
 
 export const USAGE_API_PREFIX = '/api/dsh-usage'
 
-type AuthAwareWebRoute = WebRoute & { readonly auth?: 'anonymous' | 'required' | 'deny' }
-
 /**
  * Overview route: provider balances, plan quotas, and token usage totals.
- * Personal account data behind the family trust fence — loopback always
- * passes, and a live paired-device cookie passes too when remote-web-ui is
- * loaded (issue #1592: the sidebar usage panel reads this from a paired LAN
- * browser); every unpaired LAN request keeps its 403.
- * @param ctx - host context; may expose remoteWebUiPairing.
+ * Personal account data behind the family trust fence — loopback and
+ * official host-admitted remote connections pass; every unauthenticated
+ * LAN request keeps its 403.
+ * @param ctx - host context.
  * @param service - the usage service.
  * @returns the route.
  */
 export function makeUsageOverviewRoute(ctx: Context, service: UsageService): WebRoute {
-  const route: AuthAwareWebRoute = {
+  return {
     kind: 'exact',
     path: USAGE_API_PREFIX + '/overview',
-    // Self-fenced by isUsageAllowed (loopback or live remote-web-ui paired device).
+    // Self-fenced by isUsageAllowed (loopback or official host-admitted connection).
     auth: 'anonymous',
     handler: async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
       if (!isUsageAllowed(ctx, req)) {
@@ -35,7 +32,6 @@ export function makeUsageOverviewRoute(ctx: Context, service: UsageService): Web
       writeJson(res, 200, service.overview(), { 'cache-control': 'no-store' })
     },
   }
-  return route
 }
 
 /**
@@ -44,12 +40,12 @@ export function makeUsageOverviewRoute(ctx: Context, service: UsageService): Web
  * pickers can show a past day instead of only today. Same trust fence as the
  * overview route, and a key that is not a real local date is refused with 400
  * rather than folded into a bogus day.
- * @param ctx - host context; may expose remoteWebUiPairing.
+ * @param ctx - host context.
  * @param service - the usage service.
  * @returns the route.
  */
 export function makeUsageDayRoute(ctx: Context, service: UsageService): WebRoute {
-  const route: AuthAwareWebRoute = {
+  return {
     kind: 'exact',
     path: USAGE_API_PREFIX + '/day',
     auth: 'anonymous',
@@ -66,18 +62,17 @@ export function makeUsageDayRoute(ctx: Context, service: UsageService): WebRoute
       writeJson(res, 200, { ok: true, day: service.day(date) } satisfies UsageDayResponse, { 'cache-control': 'no-store' })
     },
   }
-  return route
 }
 
 /**
  * Manual refresh: forces one probe cycle now and answers with the fresh
  * overview. Same trust fence as the overview route.
- * @param ctx - host context; may expose remoteWebUiPairing.
+ * @param ctx - host context.
  * @param service - the usage service.
  * @returns the route.
  */
 export function makeUsageRefreshRoute(ctx: Context, service: UsageService): WebRoute {
-  const route: AuthAwareWebRoute = {
+  return {
     kind: 'exact',
     path: USAGE_API_PREFIX + '/refresh',
     auth: 'anonymous',
@@ -99,5 +94,4 @@ export function makeUsageRefreshRoute(ctx: Context, service: UsageService): WebR
       writeJson(res, 200, service.overview(), { 'cache-control': 'no-store' })
     },
   }
-  return route
 }

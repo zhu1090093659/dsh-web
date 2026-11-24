@@ -64,15 +64,10 @@ export function makeRoutes(ctx: Context, deps: DiagramRouteDeps = {}): WebRoute[
     return cached
   }
 
-  const runtimeRoute: {
-    readonly kind: 'exact'
-    readonly path: string
-    readonly auth: 'anonymous'
-    readonly handler: (req: IncomingMessage, res: ServerResponse) => void
-  } = {
+  const runtimeRoute: WebRoute = {
     kind: 'exact',
     path: RUNTIME_ROUTE,
-    // Protected by isPairedOrLoopbackAllowed so paired mobile browsers and loopback continue working cleanly.
+    // Protected by isPairedOrLoopbackAllowed so official authenticated remote browsers and loopback continue working cleanly.
     auth: 'anonymous',
     handler: (req: IncomingMessage, res: ServerResponse): void => {
       if (!isPairedOrLoopbackAllowed(ctx, req)) {

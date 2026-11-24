@@ -2621,7 +2621,7 @@ window.__ModuleLoader__.load({
 		/** The building package's version, when the bundle carries it. */
 		function bakedVersion() {
 			try {
-				return "0.4.21";
+				return "0.4.22";
 			} catch {
 				return;
 			}

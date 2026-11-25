@@ -380,6 +380,9 @@ function scanPlugins() {
     if (p.descriptionEn) item.descriptionEn = p.descriptionEn
     if (p.repo) item.repo = p.repo
     if (p.npm) item.npm = p.npm
+    // Community entries record their published npm version, the only value the
+    // Format 1 plugin market index can install from (<npm>@<version>).
+    if (p.version) item.version = p.version
     item.category = typeof p.category === 'string' && p.category ? p.category : 'other'
     if (typeof p.subcategory === 'string' && p.subcategory) item.subcategory = p.subcategory
     plugins.push({ item })

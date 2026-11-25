@@ -580,5 +580,44 @@ describe('aggregate responsive compat contract', () => {
     expect(queries).not.toContain('(max-width: 768px)')
     cleanup?.()
   })
+
+  // #2088: the compat mobile block pins the frame to a single track
+  // (`grid-template-columns: minmax(0, 1fr) !important`), but the official
+  // AppFrame keeps the center column at `grid-area: 1 / 2`, so it landed in an
+  // implicit second ~40px track and the plugin market, task board, SSH and
+  // presets panels squeezed into a sliver at the right. The mobile block must
+  // place the conversation pane in the first (only) track.
+  it('user on a phone sees the conversation pane fill the single mobile track (#2088)', () => {
+    // Given the first mobile block that forces the frame to one column
+    const blocks = mobileBlocks(RESPONSIVE_CSS)
+    const single = blocks.find(block => block.includes('grid-template-columns: minmax(0, 1fr) !important')) ?? ''
+    // When the conversation pane rule is read
+    const rule = single.match(/\[data-pane="conversation"\]\s*\{([^}]*)\}/)?.[1] ?? ''
+    // Then it pins the pane to the first track with a 0-2-0 selector that needs no !important
+    expect(rule).toContain('grid-area: 1 / 1')
+    expect(rule).not.toContain('!important')
+    expect(single).toMatch(/\[data-pane="conversation"\]\s*\{\s*grid-area:\s*1 \/ 1;/)
+    // And the placement lives only inside the mobile block, so the desktop grid is untouched
+    expect(mobileBlocks(RESPONSIVE_CSS).filter(block => block.includes('grid-area: 1 / 1'))).toHaveLength(1)
+  })
+
+  it('user with the official rightbar layout sees the details pane tagged (#2088)', () => {
+    // Given the official shell columns carry css-module class names, and the
+    // current layout names the right column `rightbarCol` (older hosts keep
+    // `detailsCol`)
+    document.body.innerHTML = `
+      <main class="shell_frame">
+        <aside class="hash_sidebarCol"><div data-slot="sidebar"><div><div><button>toggle</button></div></div></div></aside>
+        <section class="hash_centerCol"></section>
+        <aside class="hash_rightbarCol"><div>details</div></aside>
+      </main>`
+    // When the compat shim stamps the columns
+    let cleanup: (() => void) | undefined
+    apply({ effect: (effect: () => (() => void) | void) => { cleanup = effect() ?? undefined } } as never)
+    // Then the rightbar column is stamped as the details pane
+    const details = document.querySelector('.hash_rightbarCol')
+    expect(details?.getAttribute('data-pane')).toBe('details')
+    cleanup?.()
+  })
 })
 

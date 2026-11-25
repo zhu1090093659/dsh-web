@@ -97,7 +97,7 @@ window.__ModuleLoader__.load({
 		const COLUMN_SHIMS = [
 			["[class*=\"sidebarCol\"]", "data-pane=\"sidebar\""],
 			["[class*=\"centerCol\"]", "data-pane=\"conversation\""],
-			["[data-rightbar-col], [class*=\"detailsCol\"]", "data-pane=\"details\""]
+			["[data-rightbar-col], [class*=\"detailsCol\"], [class*=\"rightbarCol\"]", "data-pane=\"details\""]
 		];
 		/** Stable hooks consumed by the responsive compat layer (never text/hash selectors). */
 		const RESPONSIVE_CSS = `
@@ -285,7 +285,18 @@ html[data-platform="darwin"] body > :is(
   :where(html:not([data-windows-titlebar])) [data-dsh-frame][data-sidebar-collapsed] [data-dsh-center-view-back] {
     margin-inline-start: 52px;
   }
+  /* The frame above is forced to a single track (#2088). The official AppFrame
+     still ships the center column at grid-area 1 / 2, so in that one-track
+     grid it lands in an implicit second ~40px track: the plugin market, task
+     board, SSH and presets panels render into a sliver pinned to the right.
+     Pin the conversation pane into the first (only) track. This selector is
+     0-2-0 (two attributes, the :where() prefix is zero-specificity), so it
+     outranks the official plain-class grid-area without adding !important and
+     leaves the 0-3-0 drawer/header cascade contract (#2013/#2050/#2053)
+     untouched. It lives inside the mobile block, so the desktop three-column
+     grid and the Windows titlebar shell keep the official placement. */
   :where(html:not([data-windows-titlebar])) [data-dsh-frame] [data-pane="conversation"] {
+    grid-area: 1 / 1;
     min-width: 0;
     width: 100%;
     min-height: 0;

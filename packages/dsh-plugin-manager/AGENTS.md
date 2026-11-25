@@ -131,8 +131,10 @@ packages/AGENTS.md 的全局/包级规则。
 - 已随「插件管理」Tab 移除的能力（`src/core/repair.ts`、修复会话、安装冲突 UI、
   安全模式横幅、只读清单与子插件展开）不要再以 client UI 形式加回：host 侧的冲突 / notice
   台账（`GatewayJob.conflicts` / `notices`）保留为可观测事实，但没有渲染方。
-- 共享件副本：`src/mount-once.ts`、`src/host/loopback.ts`、`src/host/dsh-home.ts`、
-  `src/client/body-mutations.ts` 由 `scripts/sync-shared.mjs` 生成，禁止手改。
+- 共享件副本：`src/mount-once.ts`、`src/host/dsh-home.ts`、`src/host/loopback.ts`、
+  `src/host/http.ts`、`src/host/console-output.ts`、`src/host/detached-work.ts`、
+  `src/client/body-mutations.ts`、`src/client/telemetry.ts` 由 `scripts/sync-shared.mjs`
+  生成，禁止手改。
 
 ## 提交前检查
 

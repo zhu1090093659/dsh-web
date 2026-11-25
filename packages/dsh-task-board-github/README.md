@@ -3,7 +3,7 @@
 English | [中文](README.zh.md)
 
 <p align="center">
-  <img src="https://img.shields.io/npm/v/@linxin666/dsh-task-board-github?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/npm/v/@linxin666/dsh-client-ui-task-board-github?style=flat-square" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.3--alpha.2-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;
@@ -12,10 +12,10 @@ English | [中文](README.zh.md)
 
 <p align="center">
   <strong>GitHub Issues & PR Bidirectional Sync Extension for DeepSeek Harness (DSH) Task Board</strong><br>
-  <em>Issue to Task Card · Bidirectional Status Sync · Automated PR Creation · Agent Delivery · 7 Agent Tools</em>
+  <em>Issue to Task Card · Bidirectional Status Sync · Automated PR Creation · Agent Delivery · 9 Agent Tools</em>
 </p>
 
-An official external provider extension for the DeepSeek Harness (DSH) Web GUI and desktop client task board (`@linxin666/dsh-task-board`). It seamlessly bridges GitHub Issues and automated DSH agent workflows: selected issues from configured repositories are ingested into task cards, driving autonomous agent execution, automatic pull request creation, and bidirectional status synchronization. It features GUI credential controls and mounts via `cordis.patch.yml` and profiles without modifying DSH source code.
+An official external provider extension for the DeepSeek Harness (DSH) Web GUI and desktop client task board (`@linxin666/dsh-client-ui-task-board`). It seamlessly bridges GitHub Issues and automated DSH agent workflows: selected issues from configured repositories are ingested into task cards, driving autonomous agent execution, automatic pull request creation, and bidirectional status synchronization. It features GUI credential controls and mounts via `cordis.patch.yml` and profiles without modifying DSH source code.
 
 ## Features
 
@@ -50,14 +50,14 @@ For local development:
 ```sh
 git clone https://github.com/zhu1090093659/dsh-web.git
 cd dsh-web
-pnpm install
+pnpm run deps:install
 pnpm build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board-github
 ```
 
 ## Configure it in the GUI
 
-Open the Web GUI settings and find the **GitHub Issues sync** card. Everything a normal setup needs is configured in place, with no profile patch and no restart:
+Open the Web GUI settings and find the **Task Board** card under Web Plugins: the **GitHub Issues sync** section renders inside it—as a provider for the board, its settings live beside the board's own controls. Turning off the section's master switch hides the repository and credential forms while keeping the section available to re-enable; everything a normal setup needs is configured in place, with no profile patch and no restart:
 
 1. **Paste a GitHub token** into the credential field and save it. The token goes to the local host once and is stored in the DSH credential store — the same store the Models page writes API keys into — and the browser never reads it back. A fine-grained token with repository read access (contents, issues and pull requests) is enough. A deployment that would rather keep the token out of the store can export `GITHUB_TOKEN` (or another name through `tokenEnv`) or `GH_TOKEN` instead; the card reports which source is in use and whether the store can be written at all.
 2. **Add the repositories to synchronize**: type `owner/repo`, paste a GitHub URL or an SSH remote, and optionally name the inclusion label each repository uses plus an inclusion assignee. An issue becomes a board card when it carries that label, is assigned to that login, or — for a repository whose unassigned channel is on — has no assignee at all — put `@me` in the assignee field to follow your own assignments, which is the easy way to pull in the issues you are working on without labeling anything; for a repository that assigns nothing, press that row's Unassigned toggle to also collect the unassigned backlog.
@@ -133,7 +133,7 @@ The switch defaults (`enabled: true`, `announceToAgent: false`) are the same on 
 
 ## Build and test
 
-Node 22.19 or newer and the official NPM SDK packages are required; no DSH source checkout is used.
+Node ^24.22.3 || >= 26.13.1 and the official NPM SDK packages are required; no DSH source checkout is used.
 
 ```sh
 pnpm --filter @linxin666/dsh-client-ui-task-board-github typecheck

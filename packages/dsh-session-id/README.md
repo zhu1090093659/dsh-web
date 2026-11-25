@@ -15,14 +15,15 @@ English | [中文](README.zh.md)
   <em>Sidebar Footer Trigger · Real-Time Session ID List · One-Click Clipboard Copy · Instant Local Filter</em>
 </p>
 
-A browser-only extension for DeepSeek Harness (DSH) Web GUI and desktop client: provides a quick trigger at the bottom of the sidebar to view full session IDs and copy them with one click. Mounts into `sidebar.footer.action` without modifying DSH source code and incurs zero host overhead.
+A browser-only extension for DeepSeek Harness (DSH) Web GUI and desktop client: adds a copyable session-ID row to the session environment panel (`conversation.session.panel.environment.row`) and a quick trigger at the bottom of the sidebar (`sidebar.footer.action`) to search and copy full session IDs with one click, without modifying DSH source code and with zero host overhead.
 
 ## What it does
 
+- Adds a copyable current-session ID row in the session environment panel (`conversation.session.panel.environment.row`, `id: 'session-id'`, `order: 40`).
 - Adds a "Session ID" trigger beside the sidebar settings row: an icon-only
   button in both the 56px rail and the wide sidebar (the label stays as the
   accessible name and hover tooltip).
-- In the rail it stacks vertically with the update/remote actions on the rail
+- In the rail it stacks vertically with pairing and other footer actions on the rail
   centerline; in the wide sidebar it sits inline with them.
 - Opens a centered panel listing every session: display title, full session id
   (monospace), and a per-row "Copy" button. The current session is marked.
@@ -49,8 +50,8 @@ at the bottom of the sidebar.
 ```sh
 git clone https://github.com/zhu1090093659/dsh-web.git
 cd dsh-web
-pnpm install
-pnpm -r build
+pnpm run deps:install
+pnpm build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-session-id
 ```
 
@@ -69,8 +70,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-session-id
 
 ## Known limitations
 
-- Requires a DSH shell that declares `sidebar.footer.action` (0.1.0-rc.8 and
-  newer shells). On older shells the entry does not render.
+- Requires a DSH shell declaring `sidebar.footer.action` (and `conversation.session.panel.environment.row` on DSH 0.2.3-alpha.2+ for the environment panel row); missing slots are skipped cleanly.
 - Read-only viewer: it shows and copies ids, it does not open or manage
   sessions.
 

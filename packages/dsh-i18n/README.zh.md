@@ -30,17 +30,22 @@ dsh Web GUI 与桌面客户端的家族字典包。DSH 自带俄语语言定义�
 
 | 命名空间 | 来源包 |
 | --- | --- |
+| `dsh-agents` | dsh-agents |
+| `browser-view` | dsh-browser-view |
 | `liangshen` | dsh-liangshen |
 | `dsh-web-ui-market` | dsh-market |
 | `pet` | dsh-pet |
 | `settings.pluginManager` | dsh-plugin-manager |
 | `dsh-web-ui-preset-center` | dsh-preset-center |
+| `remote-bridge` | dsh-remote-bridge |
 | `session-id` | dsh-session-id |
 | `dsh-web-ui-session-archive` | dsh-session-archive |
 | `dsh-skill-explorer` | dsh-skill-explorer |
 | `dsh-ssh` | dsh-ssh |
 | `task-board` | dsh-task-board |
 | `task-board-github` | dsh-task-board-github |
+| `task-board-ssh` | dsh-task-board-ssh |
+| `task-board-team` | dsh-task-board-team |
 | `dsh-web-ui-usage` | dsh-usage |
 | `web-ui-plugins` | dsh-web-settings |
 

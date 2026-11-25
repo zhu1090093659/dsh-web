@@ -8,27 +8,27 @@
 
 | 目录 | npm 包 | 版本 | 发布状态 |
 | --- | --- | --- | --- |
-| packages/dsh-agents | @linxin666/dsh-agents | 0.4.19 | public |
-| packages/dsh-browser-view | @linxin666/dsh-client-ui-browser-view | 0.4.19 | public |
-| packages/dsh-diagrams | @linxin666/dsh-client-ui-diagrams | 0.4.19 | public |
-| packages/dsh-i18n | @linxin666/dsh-i18n | 0.4.19 | public |
-| packages/dsh-liangshen | @linxin666/dsh-liangshen | 0.4.19 | public |
-| packages/dsh-market | @linxin666/dsh-client-ui-market | 0.4.19 | public |
-| packages/dsh-plugin-manager | @linxin666/dsh-client-ui-plugin-manager | 0.4.19 | public |
-| packages/dsh-remote-bridge | @linxin666/dsh-remote-bridge | 0.4.19 | public |
-| packages/dsh-session-archive | @linxin666/dsh-session-archive | 0.4.19 | public |
-| packages/dsh-session-id | @linxin666/dsh-client-ui-session-id | 0.4.19 | public |
-| packages/dsh-skill-explorer | @linxin666/dsh-client-ui-skill-explorer | 0.4.19 | public |
-| packages/dsh-ssh | @linxin666/dsh-ssh | 0.4.19 | public |
-| packages/dsh-task-board | @linxin666/dsh-client-ui-task-board | 0.4.19 | public |
-| packages/dsh-task-board-github | @linxin666/dsh-client-ui-task-board-github | 0.4.19 | public |
-| packages/dsh-task-board-remote | @linxin666/dsh-task-board-remote | 0.4.19 | public |
-| packages/dsh-task-board-ssh | @linxin666/dsh-client-ui-task-board-ssh | 0.4.19 | public |
-| packages/dsh-task-board-team | @linxin666/dsh-client-ui-task-board-team | 0.4.19 | public |
-| packages/dsh-usage | @linxin666/dsh-usage | 0.4.19 | public |
-| packages/dsh-web-all | @linxin666/dsh-web-all | 0.4.19 | public |
-| packages/dsh-win-bash | @linxin666/dsh-win-bash | 0.4.19 | public |
-| packages/dsh-web-settings | @linxin666/dsh-client-ui-web-ui-settings | 0.4.19 | public |
+| packages/dsh-agents | @linxin666/dsh-agents | 0.4.22 | public |
+| packages/dsh-browser-view | @linxin666/dsh-client-ui-browser-view | 0.4.22 | public |
+| packages/dsh-diagrams | @linxin666/dsh-client-ui-diagrams | 0.4.22 | public |
+| packages/dsh-i18n | @linxin666/dsh-i18n | 0.4.22 | public |
+| packages/dsh-liangshen | @linxin666/dsh-liangshen | 0.4.22 | public |
+| packages/dsh-market | @linxin666/dsh-client-ui-market | 0.4.22 | public |
+| packages/dsh-plugin-manager | @linxin666/dsh-client-ui-plugin-manager | 0.4.22 | public |
+| packages/dsh-remote-bridge | @linxin666/dsh-remote-bridge | 0.4.22 | public |
+| packages/dsh-session-archive | @linxin666/dsh-session-archive | 0.4.22 | public |
+| packages/dsh-session-id | @linxin666/dsh-client-ui-session-id | 0.4.22 | public |
+| packages/dsh-skill-explorer | @linxin666/dsh-client-ui-skill-explorer | 0.4.22 | public |
+| packages/dsh-ssh | @linxin666/dsh-ssh | 0.4.22 | public |
+| packages/dsh-task-board | @linxin666/dsh-client-ui-task-board | 0.4.22 | public |
+| packages/dsh-task-board-github | @linxin666/dsh-client-ui-task-board-github | 0.4.22 | public |
+| packages/dsh-task-board-remote | @linxin666/dsh-task-board-remote | 0.4.22 | public |
+| packages/dsh-task-board-ssh | @linxin666/dsh-client-ui-task-board-ssh | 0.4.22 | public |
+| packages/dsh-task-board-team | @linxin666/dsh-client-ui-task-board-team | 0.4.22 | public |
+| packages/dsh-usage | @linxin666/dsh-usage | 0.4.22 | public |
+| packages/dsh-web-all | @linxin666/dsh-web-all | 0.4.22 | public |
+| packages/dsh-win-bash | @linxin666/dsh-win-bash | 0.4.22 | public |
+| packages/dsh-web-settings | @linxin666/dsh-client-ui-web-ui-settings | 0.4.22 | public |
 
 ## 外部依赖与迁移说明
 
@@ -49,17 +49,20 @@
 ```sh
 pnpm sync-shared:check
 pnpm typecheck
+pnpm lint
 pnpm test
+pnpm test:standards
 pnpm test:scripts
 pnpm aggregate:check
 pnpm runtime-deps:check
 pnpm docs:check
 pnpm i18n:check
+pnpm emoji:check
 pnpm market:fetch
 pnpm market:check
 pnpm libs:check
 pnpm build
-node scripts/verify-version.mjs 0.4.19
+node scripts/verify-version.mjs 0.4.22
 ```
 
 CI 与发布挂载冒烟测试挂载目标为 `@deepseek-ai/dsh@0.2.3-alpha.2`，与家族包通过 `dsh.engines.dsh >=0.2.3-alpha.2` 声明的最低宿主版本一致。

@@ -22,7 +22,7 @@ dsh-web 是 DeepSeek Harness Web 的插件 monorepo（皮肤以「皮肤」插�
 ## 日常循环
 
 ```sh
-pnpm install
+pnpm run deps:install  # 安装依赖并把 node_modules/@deepseek-ai 对齐到本机 DSH 宿主树
 pnpm build             # 全仓构建
 pnpm dev:watch         # 监听重编浏览器产物（dsh web 宿主自动刷新 GUI）
 pnpm typecheck         # 全仓类型检查（原生编译器）
@@ -48,9 +48,9 @@ pnpm coverage:check    # 覆盖率棘轮（Tier 2，各包按核数有界并发�
 
 覆盖率棘轮由 `scripts/coverage-gate.mjs` 执行：逐包跑 `vitest --coverage`，把 lines / statements / functions / branches 记入 `scripts/coverage-baseline.json`，任一指标低于基线超过 0.5 个百分点即失败（插桩本身有约 0.04 个百分点的抖动，故留容差），提升后运行 `pnpm coverage:write` 收紧。全部包都解析到 vitest 4.x；六个自带 vitest 的包同时声明同主版本的 `@vitest/coverage-v8`，其余包由根 devDependency 经 Node 解析提供；升级某包 vitest 主版本必须同步升级其 provider，否则门禁直接报错而不是静默跳过。门禁传 `--coverage.excludeAfterRemap`：内联了第三方依赖的构建产物（如聚合包的 shell bundle 内联 `@deepseek-ai/schemastery` 与 cosmokit）否则会把依赖自身的未映射文件算进该包，把 dsh-web-all 从约 92% 压到约 51%。生成副本不计入所属包的覆盖率：`scripts/sync-shared.mjs` 的 MANIFEST 把 `shared/client/settings` 与 `shared/host` 的模块逐字节复制进消费包，门禁经其 `copyEntries()` 派生 `--coverage.exclude`，把 `packages/<包>/` 下的每个副本从该包分母剔除（统一规则，不按文件挑选，MANIFEST 新增副本自动生效）；共享源的行为证据在 `shared/tests`（`settings-form`、`mount-once`、`plugin-settings-card`、`range-bubble` 等），由 shared 包自己的 vitest 随 `pnpm test` 运行，取舍见 [覆盖率只计本包代码](../.agents/notes/implemented/testing/2026-10-27-coverage-covers-own-code.md)。基线必须在 CI 侧也成立：包内有条件运行的测试（如 `dsh` 不在 PATH 时跳过的 benchmark 用例、解析不到已安装宿主时跳过的真实启动用例）会让本机覆盖率高于 Linux runner，两侧不一致时按 CI 的较低值记录。
 
-门禁分两层：`ci.yml` 是 PR 门禁，把全部检查拆成三条并行通道——`Static checks`（文本规则 / lint / 类型检查 / 构建）、`Unit tests`（四个分片）、`Consistency gates`（已提交产物与文档一致性）——再由沿用旧名的 `CI checks` 汇聚 job 汇总，因此必需检查的墙钟是三条通道的最大值而不是总和；`nightly.yml` 是 Tier 2，每晚补充 PR 单趟看不到的证据——覆盖率棘轮与全量测试三连跑（flake 检测）。本地复现单个分片用 `node scripts/test-shard.mjs <分片> 4`，分片划分与权重表在 `scripts/test-shard.mjs`；取舍依据见 [CI 优化清单](../.agents/notes/implemented/process/2026-10-14-ci-parallel-lanes-and-optimization-checklist.md)。
+门禁分两层：`ci.yml` 是 PR 门禁，把全部检查拆成四条并行通道——`Static checks`（文本规则 / lint / 类型检查 / 构建）、`Unit tests`（四个分片）、`Consistency gates`（已提交产物与文档一致性）、`Team Hub`（`team-hub/` Go `go vet` / `go test`）——再由沿用旧名的 `CI checks` 汇聚 job 汇总，因此必需检查的墙钟是各通道的最大值而不是总和；`nightly.yml` 是 Tier 2，每晚补充 PR 单趟看不到的证据——覆盖率棘轮与全量测试三连跑（flake 检测）。本地复现单个分片用 `node scripts/test-shard.mjs <分片> 4`，分片划分与权重表在 `scripts/test-shard.mjs`；取舍依据见 [CI 优化清单](../.agents/notes/implemented/process/2026-10-14-ci-parallel-lanes-and-optimization-checklist.md)。
 
-测试环境里的 storage 由 `shared/vitest.setup.ts` 统一修好（Node 25 在全局定义了 `localStorage`，那个残桩会存活到 DOM 测试里，机理见该文件头部）；包自带的 vitest setup 必须接上它——用 `shared/vitest.config.ts`、import `shared/vitest.setup.ts`，或加进 `scripts/sync-shared.mjs` 的副本清单——否则该包在 Node 25 上跑的是降级路径，覆盖率随之偏低。
+测试环境里的 storage 由 `shared/vitest.setup.ts` 统一修好（Node 25/26 在全局定义了 `localStorage`，那个残桩会存活到 DOM 测试里，机理见该文件头部）；包自带的 vitest setup 必须接上它——用 `shared/vitest.config.ts`、import `shared/vitest.setup.ts`，或加进 `scripts/sync-shared.mjs` 的副本清单——否则该包在 Node 25/26 上跑的是降级路径，覆盖率随之偏低。
 
 失败路径审计是业务特性的交付要求，以下分支必须各有测试，或在交付说明中写明其不可达：并发与幂等（重复提交、竞态、锁过期）、资源耗尽（余额不足、缺货、限流）、基础设施故障（死锁重试、事务回滚、连接中断）、第三方故障（假实现返回 500、网关超时、熔断降级）、校验与安全（越权租户、签名篡改、非法状态流转）。
 

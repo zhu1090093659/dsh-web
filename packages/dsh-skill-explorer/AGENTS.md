@@ -13,9 +13,10 @@ DSH Web GUI 的**技能中心**插件：侧边栏「技能中心」入口打开�
   `src/import.ts`）提供
   `/api/dsh-skill-explorer/*`
   路由族（list / set-enabled / set-provider-enabled / create / import / delete /
-  health），默认 loopback
-  围栏，已配对设备 cookie 为额外放行路径（不硬依赖 remote-web-ui）；数据来自
-  文件系统扫描（官方根约定）+ `ctx.skills` 注册表合并。
+  health），显式声明 `auth: 'anonymous'` 并由插件自有围栏裁决：默认 loopback
+  围栏，放行官方 `connection.admit` 认可的请求并保留旧版已配对设备 cookie 的兼容放行
+  （不硬依赖已退役的 remote-web-ui）；数据来自文件系统扫描（对齐官方根约定与
+  `@deepseek-ai/dsh-home-paths` 的 `$DSH_AGENTS_HOME`）+ `ctx.skills` 注册表合并。
 - **导入是独立的创建面**（`import.ts`）：它只能读用户指名的目录一层
   （`<名>/SKILL.md` 或 `<名>.md`，跳过符号链接与点目录）或浏览器提交的
   `.zip`，只往用户/项目根新建 `<名>/SKILL.md`，从不改写已有文件；冲突用
@@ -52,7 +53,7 @@ DSH Web GUI 的**技能中心**插件：侧边栏「技能中心」入口打开�
 - 纯逻辑（扫描/分组/frontmatter 解析）在 host 侧单测锁定行为
   （`tests/collect.spec.ts`、`tests/frontmatter.spec.ts`、
   `tests/routes.spec.ts`、`tests/access.spec.ts`）；路由围栏与错误路径必须带测试。
-- 安全语义（loopback 围栏、已配对 cookie 额外放行、写路由只信任扫描路径）
+- 安全语义（loopback 围栏、官方 connection 准入、已配对 cookie 兼容放行、写路由只信任扫描路径）
   见 README「安全模型」节，修改安全语义时必须同步更新 README 与测试。
 - 样式纪律（`src/client/panel/panel.module.css`）：面板不持有自己的调色板——
   颜色 / 表面 / 边框 / 阴影 / 字体一律取自官方主题 token（`--dsw-alias-*`、

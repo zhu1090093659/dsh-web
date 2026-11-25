@@ -15,7 +15,7 @@ English | [中文](README.zh.md)
 ## Requirements
 
 - `@linxin666/dsh-remote-bridge` supplies the seam and the paired-device protocol.
-- `@linxin666/dsh-task-board` supplies the capability face.
+- `@linxin666/dsh-client-ui-task-board` supplies the capability face.
 
 Neither is a hard dependency. With either one absent the row registers nothing, and the Host is unaffected.
 
@@ -60,6 +60,8 @@ The revision is a lag detector, not an optimistic lock: a client whose local rev
 ## Install
 
 ```sh
+dsh plugin --profile web add @linxin666/dsh-task-board-remote@latest
+# or from a local checkout:
 dsh plugin --profile <name> add link:<repo>/packages/dsh-task-board-remote
 ```
 

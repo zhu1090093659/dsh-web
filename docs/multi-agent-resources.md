@@ -13,7 +13,7 @@
 - **重型实施子代理并发 ≤ 3**。重型 = 子代理内会做 pnpm install / vitest / tsc / 构建之一。
   实测：3 路并行时 GUI 已出现秒级响应尖峰；5-7 路时中位延迟与尖峰频率显著恶化。
 - 轻量调查类子代理（只读、不跑门禁）不受本条限制。
-- 本仓与宿主都不提供子代理并发上限：官方 `@deepseek-ai/dsh-subagent` 只声明递归深度 `maxDepth`，没有扇出宽度，settings 里也没有子代理相关的键；任务看板执行一棵子树时会在同一次提交里为每个成员各开一条 execution 而不排队，宽度只受卡片总数限制（`packages/dsh-task-board/src/host-service.ts` 的 `dispatchRuns`）。并发数完全由派发者自己把关。
+- 宿主自身不限制子代理并发扇出：官方 `@deepseek-ai/dsh-subagent` 只声明递归深度 `maxDepth`，没有扇出宽度，settings 里也没有子代理相关的键；任务看板执行带子任务的卡片时只为父卡开启唯一一个会话（由父会话经 `subagent` 自治派发），多张独立卡片并发启动则受看板设置 `runLaunchWidth`（1 至 16，默认 3）限制。会话内子代理的并发数仍完全由派发者自己把关。
 - 全仓重型门禁（全量 vitest / typecheck / build）由主会话在 wave 结束后串行执行，不与实施子代理并行。
 
 ## 复用规则

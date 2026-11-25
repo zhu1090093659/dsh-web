@@ -60,13 +60,13 @@ flowchart LR
 
 ## 浏览器半区构建与模块注入
 
-构建统一走 [shared/tsdown.client.ts](../shared/tsdown.client.ts) 预设，产出闭包工厂 bundle：运行时调用 `window.__ModuleLoader__.load` 注入 GUI，external 不打包、经宿主注入的模块表 require 解析。平台模块表 [shared/web-platform.ts](../shared/web-platform.ts) 冻结 react、cordis 与 `dsh-client-ui-*` 等成员，播种、打包 external 与 Vite alias 共用同一清单。CSS Modules 由 lightningcss 编译内联进 bundle。浏览器侧纯度门：`@deepseek-ai/*` 只能 type-only 导入，值导入仅限平台种子表成员，跨插件协作走 cordis 服务或 slot。
+构建统一走 [shared/tsdown.client.ts](../shared/tsdown.client.ts) 预设，产出闭包工厂 bundle：运行时调用 `window.__ModuleLoader__.load({ id, factory, meta })` 注入 GUI，external 不打包、经宿主注入的模块表 require 解析。平台模块表 [shared/web-platform.ts](../shared/web-platform.ts) 冻结 react、cordis 与 `dsh-client-ui-*` 等成员，播种、打包 external 与 Vite alias 共用同一清单。CSS Modules 由 lightningcss 以 `[hash]_[local]` 模式编译，并经模块加载器的 `meta: () => ({ stylesheets })` 契约注册进官方 `DocumentStyles`（不再在 `factory` 内手工注入 `<style>` 标签）。浏览器侧纯度门：`@deepseek-ai/*` 只能 type-only 导入，值导入仅限平台种子表成员，跨插件协作走 cordis 服务或 slot。
 
 ```mermaid
 flowchart LR
     SRC["插件 TypeScript 源码"] --> TSDOWN["shared/tsdown.client.ts 统一预设"]
     PLATFORM["shared/web-platform.ts 平台模块表"] -- "external 清单" --> TSDOWN
-    TSDOWN -- "闭包工厂产物 + lightningcss 内联 CSS" --> BUNDLE["lib/client.js"]
+    TSDOWN -- "闭包工厂产物 + meta stylesheets（DocumentStyles）" --> BUNDLE["lib/client.js"]
     BUNDLE -- "运行时 window.__ModuleLoader__.load" --> GUI["Web GUI 模块表"]
 ```
 
@@ -78,14 +78,14 @@ flowchart LR
 flowchart LR
     A["aggregate.yml：patchFrom、deps、rows、inactive"] -- "node scripts/aggregate.mjs 生成" --> B["dsh-web-all：cordis.patch.yml + package.json"]
     B -- "dsh plugin --profile web add link" --> C["web profile（hoisted 布局）"]
-    C -- "web-ui-* 行逐条挂载" --> D["18 个仓内家族子包 + self + 4 个卫星仓外部行"]
+    C -- "web-ui-* 行逐条挂载" --> D["19 个仓内家族子包 + self + 4 个卫星仓外部行"]
     E["mount-once 防重：双源只注册一次"] -.-> D
     F["inactive：ssh、skill-explorer 出厂默认关闭"] -.-> D
 ```
 
 ## 设置页槽位体系
 
-设置页的家族入口分两级：dsh-web-settings 在一级 `settings.section` 以稳定 id `web-ui-plugins` 注册「Web 扩展」，并声明 keyed/root 子槽 `web-ui.extension`。父级发布 `webUiExtensions` 服务，内容插件通过 `registerPage` 提交 key、顺序、标签与组件，父级按顺序动态生成 TAB、挂载当前页面并持有生命周期；Web 插件、皮肤、宠物、创意工坊和使用统计只是默认注册的五页，不构成固定枚举。独立安装、父级缺席时，共享适配器保留各插件原一级 `settings.section` 入口，并随服务可用性在两个席位间迁移。Web 插件 TAB 内的家族卡仍走 `web-ui.plugin.item`，创意工坊的资产面板仍走 `dsh-workshop.panel`（Presets 面板由 dsh-preset-center 注入）；统计速览卡经 `webUiExtensions.open('dsh-usage')` 先选 TAB 再打开父级。host 侧用 `installSettingsSection` 注册命名空间，browser 侧用 `webUiSettings.bind` 读写；官方插件管理页用 `plugins.bundle.config` 槽承载插件自带配置（按 bundle 包名分派，渲染在该 bundle 的页面上），alpha.2 起旧的 `settings.plugin.item` 槽已不存在。
+设置页的家族入口分两级：dsh-web-settings 在一级 `settings.section` 以稳定 id `web-ui-plugins` 注册「Web 扩展」，并声明 keyed/root 子槽 `web-ui.extension`。父级发布 `webUiExtensions` 服务，内容插件通过 `registerPage` 提交 key、顺序、标签与组件，父级按顺序动态生成 TAB、挂载当前页面并持有生命周期；Web 插件、皮肤、宠物、创意工坊和使用统计只是默认注册的五页，不构成固定枚举。独立安装、父级缺席时，共享适配器保留各插件原一级 `settings.section` 入口，并随服务可用性在两个席位间迁移。Web 插件 TAB 内的家族卡仍走 `web-ui.plugin.item`，创意工坊的资产面板仍走 `dsh-workshop.panel`（Presets 面板由 dsh-preset-center 注入）；统计速览卡经 `webUiExtensions.open('dsh-usage')` 先选 TAB 再打开父级。host 侧以插件 `Config` schema 的 `.volatile()` 字段定义设置面，browser 侧经官方 `configForms`（或家族 `webUiSettings.bind`）读写；官方插件管理页用 `plugins.bundle.config` 槽承载插件自带配置（按 bundle 包名分派，渲染在该 bundle 的页面上），alpha.2 起旧的 `settings.plugin.item` 槽已不存在。
 
 ```mermaid
 flowchart TB
@@ -112,7 +112,7 @@ flowchart LR
 
 ## 创意工坊与市场站
 
-市场内容的事实源随家族拆分分开：四个独立仓作为 git submodule 挂在 `satellites/`，各自的 gitlink 就是市场读到的提交，[market-inputs.lock.json](../market-inputs.lock.json) 记录哪个 submodule 承载哪份输入及其内容目录，[scripts/market-fetch-inputs.mjs](../scripts/market-fetch-inputs.mjs) 把该提交的内容目录物化到 `.market-inputs/`（submodule 检出停在该提交就地复制，否则按该提交下载 tarball，不需要历史，只取内容目录）；插件索引 `community.json` 与皮肤样式安全管线 `transformSkinCss` 从聚合包依赖树解析已发布包——管线取自该包的 `@linxin666/dsh-client-ui-skin-center/css-safety` 子路径（包根不再携带 lightningcss），较旧的已发布包回退到包根导出；预设取 dsh-presets 的 presets/、编辑推荐取 market/editor-picks.json（手工维护的皮肤 / 宠物 / 插件引用清单，构建时逐条校验可解析）。[scripts/market-build](../scripts/market-build) 派生 `market/dist`（`manifest/{skins,pets,plugins,presets,editor-picks}.json`、预览与试穿资产；产物提交进仓，`market:check` 校验一致）。tryon 试穿壳来自 market/shell 的构建产物，拷入 `dist/tryon/`。部署经 [scripts/deploy-market](../scripts/deploy-market)：先拉取内容输入并 `market-build --check`，再用 cf 应用 D1 migrations 并部署 [Worker](../market/worker/cloudflare.config.ts)（ASSETS 绑定 dist、Turnstile secret 守卫）；push 到 dev 且触及市场相关路径时由 [deploy-market.yml](../.github/workflows/deploy-market.yml) 自动上架，整站资产校验按 manifest 用 [scripts/market-verify-assets.mjs](../scripts/market-verify-assets.mjs) 逐条核对部署版本能以其 ASSETS 绑定为每个路径提供与提交文件一致的字节数（`POST /api/asset-attest`，共享密钥门控，未配置或密钥不符时 fail closed），由维护者在策略允许的网络上按需执行，不在部署车道内。匿名点赞必须保持 Turnstile 门控并经单个 D1 batch 写入（信任边界见根 [AGENTS.md](../AGENTS.md)）。
+市场内容的事实源随家族拆分分开：四个独立仓作为 git submodule 挂在 `satellites/`，各自的 gitlink 就是市场读到的提交，[market-inputs.lock.json](../market-inputs.lock.json) 记录哪个 submodule 承载哪份输入及其内容目录，[scripts/market-fetch-inputs.mjs](../scripts/market-fetch-inputs.mjs) 把该提交的内容目录物化到 `.market-inputs/`（submodule 检出停在该提交就地复制，否则按该提交下载 tarball，不需要历史，只取内容目录）；插件索引 `community.json` 与皮肤样式安全管线 `transformSkinCss` 从聚合包依赖树解析已发布包——管线取自该包的 `@linxin666/dsh-client-ui-skin-center/css-safety` 子路径（包根不再携带 lightningcss），较旧的已发布包回退到包根导出；预设取 dsh-presets 的 presets/、编辑推荐取 market/editor-picks.json（手工维护的皮肤 / 宠物 / 插件引用清单，构建时逐条校验可解析）。[scripts/market-build](../scripts/market-build) 派生 `market/dist`（`manifest/{skins,pets,plugins,presets,editor-picks,plugin-market-index}.json`、预览与试穿资产；其中 `plugin-market-index.json` 为 Format 1 官方 DSH 插件市场索引，由 `@deepseek-ai/dsh-plugin-market-index` 校验，汇集带内联图标的家族包与带版本号的社区插件；产物提交进仓，`market:check` 校验一致）。tryon 试穿壳来自 market/shell 的构建产物，拷入 `dist/tryon/`。部署经 [scripts/deploy-market](../scripts/deploy-market)：先拉取内容输入并 `market-build --check`，再用 cf 应用 D1 migrations 并部署 [Worker](../market/worker/cloudflare.config.ts)（ASSETS 绑定 dist、Turnstile secret 守卫）；push 到 dev 且触及市场相关路径时由 [deploy-market.yml](../.github/workflows/deploy-market.yml) 自动上架，整站资产校验按 manifest 用 [scripts/market-verify-assets.mjs](../scripts/market-verify-assets.mjs) 逐条核对部署版本能以其 ASSETS 绑定为每个路径提供与提交文件一致的字节数（`POST /api/asset-attest`，共享密钥门控，未配置或密钥不符时 fail closed），由维护者在策略允许的网络上按需执行，不在部署车道内。匿名点赞必须保持 Turnstile 门控并经单个 D1 batch 写入（信任边界见根 [AGENTS.md](../AGENTS.md)）。
 
 ```mermaid
 flowchart LR
@@ -131,7 +131,7 @@ flowchart LR
     FETCH --> MB["node scripts/market-build"]
     S3 --> MB
     S5 --> MB
-    SHELL["market/shell 构建：浏览器版试穿壳"] --> DIST["market/dist（提交产物）"]
+    SHELL["market/shell 构建：浏览器版试穿壳"] --> DIST["market/dist（含 manifest 与 plugin-market-index.json）"]
     MB --> DIST
     DIST -- "node scripts/deploy-market：cf deploy + D1 migrations" --> W["Cloudflare Worker：ASSETS、D1、Turnstile、定时任务"]
     W -- "node scripts/market-verify-assets.mjs 逐条校验资产" --> VERIFY["部署后资产校验"]
@@ -142,15 +142,15 @@ flowchart LR
 
 ## 共享层与同步管线
 
-[shared/](../shared/tsdown.client.ts) 是跨包事实源：构建预设与平台模块表之外，`host/` 提供 dsh-home 解析、mount-once、http、loopback 等宿主侧模块，`client/` 提供设置卡三件套、telemetry、main-session 等浏览器侧模块；只被一个包使用的模块归该包所有，不进 `shared/`。权威清单是 [scripts/sync-shared.mjs](../scripts/sync-shared.mjs) 的 manifest：它把副本生成进各消费包（带 generated 头，禁手改），`test:scripts` 的 drift 门禁防副本漂移。两个包（dsh-market、dsh-web-all）提交 `lib/` 构建产物，卫星仓各自在自己的 CI 里守同样的规则，指纹由 `libs:write` 记录、`libs:check` 把关。
+[shared/](../shared/tsdown.client.ts) 是跨包事实源：构建预设与平台模块表之外，`host/` 提供 dsh-home 解析、mount-once、http、loopback、pair-access、connection-trust、tool-surface 等宿主侧模块，`client/` 提供设置卡三件套、telemetry、main-session、body-mutations 等浏览器侧模块；只被一个包使用的模块归该包所有，不进 `shared/`。权威清单是 [scripts/sync-shared.mjs](../scripts/sync-shared.mjs) 的 manifest：它把副本生成进各消费包（带 generated 头，禁手改），`test:scripts` 的 drift 门禁防副本漂移。两个包（dsh-market、dsh-web-all）提交 `lib/` 构建产物，卫星仓各自在自己的 CI 里守同样的规则，指纹由 `libs:write` 记录、`libs:check` 把关。
 
 ```mermaid
 flowchart LR
     subgraph sharedbox["shared/（唯一事实源）"]
         PRESET["tsdown.client.ts 构建预设"]
         PLATFORM["web-platform.ts 平台模块表"]
-        HOSTM["host/：dsh-home、mount-once、http、loopback 等"]
-        CLIENTM["client/：设置卡三件套、telemetry、main-session 等"]
+        HOSTM["host/：dsh-home、mount-once、http、loopback、pair-access、connection-trust 等"]
+        CLIENTM["client/：设置卡三件套、telemetry、main-session、body-mutations 等"]
     end
     sharedbox -- "scripts/sync-shared.mjs 生成副本（generated 头）" --> PKGS["消费包 src/ 内同步副本"]
     GATE["test:scripts drift 门禁"] -.-> PKGS
@@ -172,8 +172,8 @@ flowchart LR
 | 包 | 职责 |
 | --- | --- |
 | dsh-web-all | 聚合载具包：一键装齐全家桶（含 compat 桥接层） |
-| dsh-web-settings | 设置页一级分区：家族插件启停开关与配置表单（`web-ui.plugin.item` 子槽） |
-| dsh-plugin-manager | 官方插件页增强：更新检查（单包区块、批量更新/重启工具条）与内置插件启停/Agent 预设展示（安装、卸载仍归官方页面） |
+| dsh-web-settings | 设置页一级分区「Web 扩展」：承载 `web-ui.extension` 动态页签与 `web-ui.plugin.item` 家族插件卡片 |
+| dsh-plugin-manager | 官方插件页增强：更新检查（单包区块、批量更新/重启工具条，原生版本区存在时自动退让）与内置插件启停/Agent 预设展示 |
 | dsh-market | 创意工坊商店卡：浏览 dsh-market.com 并一键安装皮肤、宠物、插件、预设 |
 | dsh-preset-center | 社区预设：惰性库、启停、工坊 Presets 面板（独立仓，以已发布包消费；presets 目录按 submodule 钉扎进市场构建） |
 | dsh-community-plugins | community.json 社区插件索引数据源（独立仓，以已发布包消费；惰性 cordis 行） |
@@ -183,18 +183,19 @@ flowchart LR
 | dsh-task-board-github | 任务看板外部提供方扩展：GitHub Issues 同步（默认开启，设置可关） |
 | dsh-task-board-team | 任务看板外部提供方扩展：团队协作与多成员汇总（Team Hub） |
 | dsh-task-board-remote | 任务看板扩展：把 `board.v1` 能力面绑定到手机远程桥接 |
+| dsh-task-board-ssh | 任务看板外部提供方扩展：经 `dsh-ssh` 把任务卡在远端主机以无头 direct 或本地 proxy 模式执行 |
 | dsh-agents | Agent 编队协同（Squads）：定义、分组与多 Agent 并行真实会话执行（`squads_*` / `squad_member_*`） |
 | dsh-browser-view | 实时浏览器视图：嵌入式 Playwright / CDP 实时预览与人工接管侧栏面板 |
-| dsh-ssh | 远程 SSH：PTY 终端、SFTP、端口转发与 agent 工具 |
-| dsh-remote-bridge | 手机 App 远程访问：协议 v1 宿主适配与公网/局域网接入栈 |
+| dsh-ssh | 远程 SSH：PTY 终端、SFTP、端口转发、受管密钥引用与 agent 工具 |
+| dsh-remote-bridge | 手机 App 远程访问：协议 v1 宿主适配、公网/局域网接入栈与官方远程连接页配对卡（`settings.remoteConnection.extensions`） |
 | dsh-session-archive | 会话归档：批量归档恢复、级联删除、自动清理策略 |
-| dsh-session-id | 侧栏底部 Session ID 面板（纯浏览器半区） |
+| dsh-session-id | 会话 ID 复制：侧栏底部面板与会话环境栏复制行（`conversation.session.panel.environment.row`，纯浏览器半区） |
 | dsh-usage | 用量统计：provider 余额、套餐配额与实时 token 流水 |
 | dsh-skill-explorer | 技能中心：按来源浏览、启停、创建技能 |
-| dsh-liangshen | 梁神 agent 预设与模式拨杆 |
+| dsh-liangshen | 梁神 agent 预设、PTC/分页运行时与模式拨杆 |
 | dsh-win-bash | Windows 钉摘要私有 bash（win_bash 持久 shell 工具，仅 win32 x64） |
 | dsh-i18n | 俄语语言包与全家族 ru 词典 |
-| dsh-diagrams | mermaid 图示渲染：观察官方 markdown 的围栏块并原地出图（不占席位、不注册服务） |
+| dsh-diagrams | mermaid 图示渲染：聊天区优先经官方 `conversation.chat.markdown.fence` 槽位渲染，文档预览等无该槽位的视图回落至作用域 DOM 观察 |
 
 ## 门禁与发布流
 

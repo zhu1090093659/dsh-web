@@ -54,7 +54,7 @@
 ## 合并门禁
 
 `dev` 与 `main` 分支保护：必需状态检查为 `CI checks` / `plugin-mount` /
-`Validate PR contribution evidence`（GitHub Actions，strict 关闭）；
+`Validate PR contribution evidence` / `guard-agent-notes`（GitHub Actions，strict 关闭）；
 **必需人工审批为 0** —— 检查全绿后，具有 write 权限的协作者（如 Aa728848）
 即可自行合并 PR（含自己提交的 PR），无需等待维护者审批；维护者仍可随时
 追加审查。

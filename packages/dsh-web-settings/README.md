@@ -19,7 +19,7 @@ A settings enhancement plugin for DeepSeek Harness (DSH) Web GUI and official de
 
 ## What it is
 
-- **One Web Extensions section**: the stable first-level `web-ui-plugins` entry hosts Web Plugins, Skins, Pet, Workshop and Usage as secondary TABs. The Web Plugins TAB holds the remaining dsh web UI family cards (task-board, remote-web-ui and others); each card expands independently to show its enable switch and configuration form.
+- **One Web Extensions section**: the stable first-level `web-ui-plugins` entry hosts Web Plugins, Skins, Pet, Workshop and Usage as secondary TABs. The Web Plugins TAB holds the remaining dsh web UI family cards (task-board, liangshen, agents, browser-view and others); each card expands independently to show its enable switch and configuration form.
 - **Standalone fallback**: Skin Center, Desktop Pet, Workshop and Usage keep their original first-level settings entries when this parent package is absent. The official Plugins section ships the official installer beside the plugin-manager tab provided by `dsh-plugin-manager`.
 - **The group is optional for the family plugins**: this package declares the `web-ui.plugin.item` list seat the family cards register into. A family plugin registers into that seat while this package is loaded, and into the official keyed `plugins.bundle.config` seat of the plugin manager page when it is not (keyed by the bundle's package name), so a profile that installs a family plugin without this group still reaches every card.
 - **Native settings transport**: the 0.1.7 settings surface addresses every configuration form by profile entry id. The host bridge resolves the entry id that owns each family namespace from the profile roster and reports it on its describe response, so the browser half binds the native shared form (`ctx.configForms`); the loopback HTTP pair stays the fallback for a page where no entry id resolves.
@@ -37,7 +37,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-web-ui-settings@latest
 ```sh
 git clone https://github.com/zhu1090093659/dsh-web.git
 cd dsh-web
-pnpm install && pnpm -r build
+pnpm run deps:install && pnpm build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-web-settings
 ```
 

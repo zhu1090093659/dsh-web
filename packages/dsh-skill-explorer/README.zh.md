@@ -46,7 +46,8 @@ DSH Web GUI 与官方桌面客户端的**技能中心**：按来源分级浏览�
   （`.dsh/skills`），生成标准 SKILL.md。
 - **编辑 tab**：从行内编辑入口打开，先经宿主读取该技能（列表只带元数据），
   再就地改写描述、适用场景与正文；技能名、位置与启用状态保持不变。
-- 数据来自按官方 dsh-skill-filesystem 根约定的文件系统扫描，并与
+- 数据来自按官方 dsh-skill-filesystem 根约定的文件系统扫描（用户
+  `~/.agents/skills` 对齐 `@deepseek-ai/dsh-home-paths` 的 `$DSH_AGENTS_HOME`），并与
   `ctx.skills` 注册表（bundled / runtime 条目）合并。扫描既读本插件自己的
   `customSkillDirs`，也读每一条在用的 `skill-filesystem` loader 行的同名
   配置，因此官方文档推荐的配法（写在 profile patch 的 provider 行上）同样可管理。
@@ -79,8 +80,8 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest
 ```sh
 git clone https://github.com/zhu1090093659/dsh-web.git
 cd dsh-web
-pnpm install
-pnpm -r build
+pnpm run deps:install
+pnpm build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
 ```
 
@@ -102,13 +103,12 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
 
 ## 安全模型
 
-- 全部 `/api/dsh-skill-explorer/*` 路由默认仅限 loopback（插件家族共享围栏：
-  loopback 套接字 + Host 头 + 浏览器同源标记）：未配对的局域网客户端在任何
-  技能文件访问前即收到 `403 forbidden: loopback-only`。经由宿主 `connection`
-  服务接纳的反向代理或入口部署（`--trusted-host`、有效签名浏览器会话）可直接
-  通行。同时装了 `dsh-remote-web-ui` 时，有效的已配对设备 cookie 是额外放行路径
-  （与 `api/gate` 检查同一枚 cookie）；未配对与已撤销设备仍 403。技能中心不硬依赖
-  远程插件。
+- 全部 `/api/dsh-skill-explorer/*` 路由显式声明 `auth: 'anonymous'` 并由自有围栏
+  裁决，默认仅限 loopback（插件家族共享围栏：loopback 套接字 + Host 头 + 浏览器同源
+  标记）：未认证的局域网客户端在任何技能文件访问前即收到 `403 forbidden: loopback-only`。
+  经由宿主 `connection` 服务接纳的反向代理或入口部署（`--trusted-host`、有效签名浏览器
+  会话）可直接通行；存在旧版已配对设备 cookie 服务时保留兼容放行，未配对与已撤销设备仍
+  返回 403。技能中心不依赖任何远程插件。
 - 写路由仅把面板展示的路径作为身份声明；执行修改前，最新文件系统扫描必须解析到
   同名且路径完全一致的技能。任意路径与过期的同名回退都会被拒绝，因此项目技能
   消失后，尚未执行的操作不会改到同名的用户级或自定义技能。read 路由走同一套

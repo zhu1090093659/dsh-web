@@ -3,7 +3,7 @@
 [English](README.md) | 中文
 
 <p align="center">
-  <img src="https://img.shields.io/npm/v/@linxin666/dsh-task-board?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/npm/v/@linxin666/dsh-client-ui-task-board?style=flat-square" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.3--alpha.2-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;
@@ -55,7 +55,7 @@
 - **Agent 工具**：每个会话都可使用八个面向模型的工具（`task_board_list`、`task_board_get`、`task_board_create`、`task_board_update`、`task_board_set_parent`、`task_board_run`、`task_board_manage`、`task_board_schedule`），它们驱动与浏览器完全相同的 Host 账本，因此 agent 可以在对话里列出看板、创建子任务、关联或解除关联、执行一张卡片、把卡片移到任意列（含不经执行直接声明完成、失败或进行中）、归档/恢复/删除卡片、对看板已无法观察的卡片强制结算，以及为卡片配置 cron 计划。
 - **Host 之外完成的执行结果（issue #1826）**：不由本 Host 执行的工作——例如在 DSH 之外用各自模型工作的 Codex、Claude Code——可以登记成一次真实执行，而不是只改一列。`task_board_manage(action: 'record-external-outcome', result: 'succeeded'|'failed', initiatedBy: <完成者>)` 会追加一条 execution 记录，带上判定、完成者与可选摘要；终态列由这条记录推导，与 Host 结算走同一条规则（`core/tasks.ts` 的 `settledStatus`）。该记录带 `external` 标记、永远不带 session，并在卡片仍有未结算 execution 时被拒绝（本 Host 正在执行时它才是唯一权威），归档卡片同样拒绝。`running` 与 `cancelled` 不能这样登记：它们只属于 Host。手工 `move-done`/`move-failed` 仍然可用，也仍然只写列——区别在于这一条会留下记录，因此列与执行历史永远不会脱节。
 
-- **外部提供方扩展**：GitHub Issues 扩展（`@linxin666/dsh-client-ui-task-board-github`，默认开启）把 GitHub Issues 同步成看板卡片。它是本看板的提供方，因此其配置渲染在本插件自己的设置卡里——仅当扩展已安装时该区块才出现，且只有扩展开启时才显示仓库与凭据表单；见[扩展包 README](../dsh-task-board-github/README.zh.md)。
+- **外部提供方扩展**：看板通过统一提供方契约挂载四个官方伴生扩展——GitHub Issues 同步（`@linxin666/dsh-client-ui-task-board-github`，默认开启，见[扩展包 README](../dsh-task-board-github/README.zh.md)）、云端团队协作（`@linxin666/dsh-client-ui-task-board-team`，见[扩展包 README](../dsh-task-board-team/README.zh.md)）、手机远端面（`@linxin666/dsh-task-board-remote`，见[扩展包 README](../dsh-task-board-remote/README.zh.md)）与 SSH 远端执行（`@linxin666/dsh-client-ui-task-board-ssh`，见[扩展包 README](../dsh-task-board-ssh/README.zh.md)）。带 GUI 设置的扩展在安装后将各自的配置区块渲染在本插件自己的设置卡内。
 
 ## 架构与协议
 
@@ -97,14 +97,14 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-task-board@latest
 ```sh
 git clone https://github.com/zhu1090093659/dsh-web.git
 cd dsh-web
-pnpm install
+pnpm run deps:install
 pnpm build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board
 ```
 
 ## 配置
 
-本插件的设置卡把选项组织成可折叠的分区——基础、新建卡片默认值，以及提供方扩展（GitHub Issues 集成）贡献的分区。每个分区默认折叠。改动即时生效：点选的选项立刻写入，输入的值在停止输入、按 Enter 或离开输入框时写入；按 Escape 恢复已保存的值。
+本插件的设置卡把选项组织成可折叠的分区——基础、新建卡片默认值，以及已安装的提供方扩展贡献的分区（如 GitHub Issues、Team Hub 与 SSH 远端执行）。每个分区默认折叠。改动即时生效：点选的选项立刻写入，输入的值在停止输入、按 Enter 或离开输入框时写入；按 Escape 恢复已保存的值。
 
 | 键 | 默认值 | 行为 |
 | --- | --- | --- |
@@ -162,7 +162,7 @@ macOS 后端启动 `/usr/bin/caffeinate -i -w <host-pid>`，绝不请求 `-d`。
 
 ## 构建与测试
 
-需要 Node 20 或更高版本及官方 NPM SDK 包；不使用 DSH 源码 checkout。
+需要 Node ^24.22.3 || >= 26.13.1 及官方 NPM SDK 包；不使用 DSH 源码 checkout。
 
 ```sh
 pnpm --filter @linxin666/dsh-client-ui-task-board typecheck

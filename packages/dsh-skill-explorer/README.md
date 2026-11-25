@@ -59,7 +59,8 @@ A visual Skill Explorer for DeepSeek Harness (DSH) Web GUI and desktop client: b
   when-to-use and body in place; the name, location and enabled state stay as
   they are.
 - Data comes from a filesystem scan following the official
-  dsh-skill-filesystem root conventions, merged with the `ctx.skills`
+  dsh-skill-filesystem root conventions (including `$DSH_AGENTS_HOME` via
+  `@deepseek-ai/dsh-home-paths` for user `~/.agents/skills`), merged with the `ctx.skills`
   registry (bundled / runtime entries). The scan reads `customSkillDirs`
   from this plugin's own config **and** from every live `skill-filesystem`
   loader row, so the documented placement (the provider row in a profile
@@ -99,8 +100,8 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest
 ```sh
 git clone https://github.com/zhu1090093659/dsh-web.git
 cd dsh-web
-pnpm install
-pnpm -r build
+pnpm run deps:install
+pnpm build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
 ```
 
@@ -123,15 +124,15 @@ sidebar.
 
 ## Security model
 
-- Every `/api/dsh-skill-explorer/*` route is loopback-only by default (the
-  shared plugin-family fence: loopback socket + Host header + browser
-  same-origin markers): unpaired LAN clients get `403 forbidden: loopback-only`
+- Every `/api/dsh-skill-explorer/*` route declares `auth: 'anonymous'` and
+  enforces its own access fence—loopback-only by default (the shared
+  plugin-family fence: loopback socket + Host header + browser same-origin
+  markers): unauthenticated LAN clients get `403 forbidden: loopback-only`
   before any skill-file access. Deployments behind an ingress or reverse proxy
   admitted by the host `connection` service (`--trusted-host`, valid signed
-  browser session) are admitted directly. When `dsh-remote-web-ui` is also
-  loaded, a live paired-device cookie is an additional allow path (the same
-  cookie `api/gate` already checks); unpaired and revoked devices stay 403. The
-  skill center does not depend on the remote plugin.
+  browser session) are admitted directly, and a live legacy paired-device cookie
+  remains accepted for backwards compatibility when present; unpaired and revoked
+  devices stay 403. The skill center depends on no remote plugin.
 - Write routes accept the path displayed by the panel only as an identity claim;
   before mutating, a fresh filesystem scan must resolve the same skill name and
   exact path. Arbitrary paths and stale same-name fallbacks are rejected, so a

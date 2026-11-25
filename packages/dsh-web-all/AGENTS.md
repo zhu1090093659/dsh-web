@@ -21,7 +21,7 @@
   代价与收益见 [Agent Note](../../.agents/notes/implemented/architecture/2026-10-18-aggregate-family-rows-mount-real-packages.md)：
   裸行不再有壳的启动期 fault-isolation，换来的是一行一插件、一行一开关。
 - **子路径导出只剩兼容壳**：`tombstones:` 里的每个家族子路径（含 `#1901` 之前的
-  12 个仓库内家族）都导出到共享壳 `lib/shells/shell.js`，供老 profile 里记录的
+  14 个仓库内家族，含 `remote-web-ui` / `update` / `git-graph` 三个退役家族，以及 4 个已迁出卫星子路径）都导出到共享壳 `lib/shells/shell.js`，供老 profile 里记录的
   子路径行名继续解析；它们不再产出 patch 行。子路径下必须有扫描器标记 manifest
   （`src/shells/package.json`，构建复制到 `lib/shells/`）：无 `dsh` 声明 +
   `type: module`，阻止 client 模块扫描器的 nearest-package 走查到达包根（否则
@@ -59,9 +59,9 @@
   搬动本清单时两者一起改。
 - `tombstones:` 段保留已退役、已迁出或已改为裸行的子路径 exports 空壳（指向
   `lib/shells/shell.js`），避免老 profile 残留旧行名时 Node 抛
-  ERR_PACKAGE_PATH_NOT_EXPORTED。迁出为独立仓库的 `pet` / `skin-center` /
-  `community-plugins` 三个子路径，以及 `#1901` 之前以子路径装配的 12 个仓库内
-  家族子路径，都必须留在本清单里。
+  ERR_PACKAGE_PATH_NOT_EXPORTED。迁出为独立仓库的 `pet` / `preset-center` / `skin-center` /
+  `community-plugins` 四个子路径，以及 `#1901` 之前以子路径装配的 14 个仓库内
+  家族子路径（含 `remote-web-ui` / `update` / `git-graph` 三个退役家族），都必须留在本清单里。
 - `retiredPlugins:` 段（单行 JSON flow mapping，`{"family","plugin"}`）是壳的退役登记
   唯一事实源：生成器把它写进 `src/retired-plugins.generated.ts`（`RETIRED_FAMILIES` /
   `RETIRED_PLUGINS`），`src/shell.ts` 由生成模块派生。老 profile 里残留的家族行 `name`

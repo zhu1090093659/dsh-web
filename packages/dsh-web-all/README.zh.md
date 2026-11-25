@@ -17,13 +17,13 @@
   <em>任务看板 · 编队协同 · 实时浏览器视图 · 手机远程控制 · SSH 运维 · 用量统计 · 主题皮肤 · 预设中心</em>
 </p>
 
-DeepSeek Harness（DSH）Web UI 与官方桌面客户端全家桶聚合插件：一键安装家族全部功能插件（任务看板与 GitHub/团队/远程扩展、Agent 编队协同、梁神模式、实时浏览器视图、手机远程桥接、SSH 终端运维、会话归档、用量统计、技能中心、Mermaid 图示渲染、Windows Bash、俄语语言包、皮肤中心、桌面宠物、创意工坊、预设中心、社区插件与插件设置，完整清单以本包 `aggregate.yml` 为准）。compat 桥接层已并入本包（`src/client`），因此无需独立的 compat npm 包。
+DeepSeek Harness（DSH）Web UI 与官方桌面客户端全家桶聚合插件：一键安装家族全部功能插件（任务看板与 GitHub/团队/远程/SSH 扩展、Agent 编队协同、梁神模式、实时浏览器视图、手机远程桥接、SSH 终端运维、会话归档、用量统计、技能中心、Mermaid 图示渲染、Windows Bash、俄语语言包、皮肤中心、桌面宠物、创意工坊、预设中心、社区插件与插件设置，完整清单以本包 `aggregate.yml` 为准）。compat 桥接层已并入本包（`src/client`），因此无需独立的 compat npm 包。
 
 > 注：本聚合包不内置任何外部第三方插件。
 
 ## 是什么
 
-- **一次安装、全部到位**：其 dependencies 引入 18 个仓内子插件包与 4 个独立卫星仓包（完整清单以 `aggregate.yml` 为准），且不内置任何外部第三方 npm 插件。`@mlgbnb/dsh-archive-manager`（社区归档管理）未内置——其上游构建仍 import 已移除的 `@deepseek-ai/dsh-client-runtime` 面。
+- **一次安装、全部到位**：其 dependencies 引入 19 个仓内子插件包与 4 个独立卫星仓包（完整清单以 `aggregate.yml` 为准），且不内置任何外部第三方 npm 插件。`@mlgbnb/dsh-archive-manager`（社区归档管理）未内置——其上游构建仍 import 已移除的 `@deepseek-ai/dsh-client-runtime` 面。
 - **聚合载具**：`cordis.patch.yml` 汇总各子插件的 `insert` 行与外部插件行，经 dsh 插件 profile 机制挂载。外部 profile bundle 由生成器展开：其 patch 行变成可导入的聚合行，bundle 自身的 harness-row patch 原样保留；标记了 `"inactive": true` 的外部行会在产物之后统一追加 `disabled: true` 覆盖行，未主动启用前不会挂载。
 - **家族行直挂真实包**：每个家族插件的行 `name` 就是它自己的 npm 包名，官方 `dsh-client-modules` 因此直接下发该包的浏览器半区——装哪个插件就只下载哪个插件的界面，不必为了一块面板承担一份整份副本（issue #1901：旧做法把 13 个家族界面内联进本包 `lib/client.js`，单文件 2.9 MB）。行 id 仍是 `web-ui-*`，老 profile 里的行级开关照样命中；行的 `disabled` 直接由 loader 决定该家族装不装，开关不再需要浏览器端二次门控。旧 profile 里记录的子路径行名（`@linxin666/dsh-web-all/<family>`）仍保留导出空壳，升级后照常解析。
 - **compat 是可选补丁层**：`web-ui-compat` 行现在只提供兼容补丁——给当前 shell 打上插件与皮肤依赖的 `data-pane` / `data-dsh-frame` 语义钩子、响应式契约与启动遮罩，不含任何家族插件代码。需要这些补丁时保持开启，不需要时可以在插件管理里按行关掉。

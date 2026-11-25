@@ -65,7 +65,7 @@
 
 ## 开发前置
 
-- Node.js >= 22 与 pnpm 11；
+- Node.js ^24.22.3 || >= 26.13.1 与 pnpm 11；
 - 插件只基于官方 NPM SDK（`@deepseek-ai/*`），**禁止修改 DSH 源码**、禁止
   tsconfig 指向任何 DSH 源码 checkout；
 - 认证：token 放用户级 `~/.npmrc`，项目 `.npmrc` 只留 scope 映射（详见
@@ -78,9 +78,9 @@ git clone https://github.com/zhu1090093659/dsh-web.git
 cd dsh-web
 git checkout dev                                 # 开发基线：dev 分支
 git fetch origin && git rebase origin/dev        # 提交 / 提 PR 前同步最新 dev
-pnpm install
-pnpm -r build
-pnpm typecheck && pnpm test && pnpm docs:check   # 提交前必过
+pnpm run deps:install
+pnpm build
+pnpm typecheck && pnpm lint && pnpm test && pnpm test:standards && pnpm docs:check && pnpm i18n:check && pnpm emoji:check   # 提交前必过
 ```
 
 四个卫星仓（`dsh-skins` / `dsh-pet` / `dsh-community-plugins` / `dsh-presets`）以 git submodule 挂在 `satellites/`，市场构建按各自的 gitlink 固定提交拉取内容。默认不需要检出：要就地改卫星仓内容时才 `git submodule update --init satellites/<仓名>`。该命令把工作树停在 gitlink 固定的提交上（detached HEAD），要提交改动先切到该仓的默认分支：`git -C satellites/<仓名> checkout main`。检出停在该固定提交时 `pnpm market:fetch` 直接复制该工作树；检出离开固定提交（切了分支，或提交了自己的改动）时，默认运行会明确提示并仍按固定提交构建，`pnpm market:fetch --local` 才读取该工作树——这样构建出的 `market/dist` 来自未固定内容，不得提交。
@@ -106,7 +106,7 @@ pnpm typecheck && pnpm test && pnpm docs:check   # 提交前必过
 **卫星仓的 `main` 受分支规则集保护**：只有仓库所有者与拥有 write 权限的协作者可以直接 push，其他贡献者必须对该仓的 `main` 开 PR，由该仓 CI 作业转绿后合入。规则集始终要求 PR、禁止强推与删除，且不要求人工审批；豁免名单与决策见 [卫星分支推送策略 Note](.agents/notes/implemented/process/2026-10-04-satellite-main-branch-push-policy.md)。
 
 **桌面宿主读到的是哪份卫星副本**：全家桶聚合包按 semver 声明这四个卫星包
-（`^0.4.6`），`pnpm install` 因此把聚合包 `node_modules/@linxin666` 下的符号链接指到
+（当前为 `^0.4.22`，以 `packages/dsh-web-all/package.json` 为准），`pnpm run deps:install` 因此把聚合包 `node_modules/@linxin666` 下的符号链接指到
 pnpm store 的已发布 tarball。桌面宿主解析聚合 patch 行贡献的外部行时从聚合包自身的
 node_modules 出发——仅提交卫星仓并重启，GUI 加载的仍是发布版旧代码。在本地检出开发
 卫星内容后重跑 `node scripts/link-profile.mjs`：它会把这些 store 链接改指到本地卫星
@@ -121,9 +121,10 @@ active panel (#76 #87)`。提交信息禁止 emoji（全仓规则）。
 
 ## 提 PR 前检查清单
 
-1. **门禁全绿**：`pnpm typecheck` / `pnpm test` / `pnpm test:scripts` /
-   `pnpm docs:check`；涉及聚合包或市场时另跑
-   `pnpm aggregate:check` / `pnpm market:check`。
+1. **门禁全绿**：`pnpm typecheck` / `pnpm lint` / `pnpm test` / `pnpm test:standards` /
+   `pnpm test:scripts` / `pnpm docs:check` / `pnpm i18n:check` / `pnpm emoji:check`；
+   涉及聚合包、提交的 `lib/` 产物或市场时另跑 `pnpm aggregate:check` / `pnpm libs:check` /
+   `pnpm market:check`。
 2. **文档同步**：改包 README 必须同 PR 维护中英双语三件套（`README.md` +
    `README.zh.md` + `README.i18n.yaml`），改完任一侧后重录配对记录：
 

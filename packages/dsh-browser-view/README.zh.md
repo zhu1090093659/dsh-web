@@ -19,7 +19,7 @@
 - **证据留在对话里**：每次 `browser_screenshot` 的结果都带图，于是对话记录保留的是 agent 真正看到的那一屏，而不只是一句转述。
 - **默认隔离**：插件自己拉起 Chromium，用一次性 profile；只要下面那个模式关着，它就不碰你已经登录的浏览器。
 - **按需接管你自己的浏览器**：把 `realBrowserEnabled` 打开后，插件经 CDP 接管你用远程调试启动的浏览器。本机每个 DSH 会话都能枚举、读取、导航、点击与输入它现有的全部标签页，以及之后新开的标签页；那个 profile 里已有的登录态直接可用，因为页面就跑在里面，插件不导入任何 cookie。
-- **能进这台机器自己的 GUI**：全新隔离 profile 没有会话 cookie，本来只会看到 401 提示页。当导航落在 loopback 上的那页提示时，插件向宿主的连接服务要一条与 `dsh web` 启动时打印的同样的带票 URL，补一次。提示页有两种：token 交换页自己的那句话，以及宿主在路由准入阶段拒绝站点根地址时返回的裸 `unauthorized`；后者只在请求 URL 就是本宿主自己的监听者（协议与端口一致）时才算数。种下的 cookie 只活在这个一次性 profile 里，随它一起销毁。
+- **能进这台机器自己的 GUI**：全新隔离 profile 没有会话 cookie，本来只会看到 401 提示页。当导航落在 loopback 上的那页提示时，插件经宿主 WebServer 的 `webserver/entry-url` 事件要一条与 `dsh web` 启动时打印的同样的带票 URL，补一次。提示页有两种：token 交换页自己的那句话，以及宿主在路由准入阶段拒绝站点根地址时返回的裸 `unauthorized`；后者只在请求 URL 就是本宿主自己的监听者（协议与端口一致）时才算数。种下的 cookie 只活在这个一次性 profile 里，随它一起销毁。
 - **关闭是显式的，闲置页面由插件自己收尾**：不带 tab id 的 `browser_close` 只关调用它的会话自己打开的标签页；被接管浏览器的标签页，只有调用里点名它的 id 才会关。面板对这种标签页不提供关闭控件。另外，插件自己打开的页面在 `idleCloseDays` 天没有工具动作后自动关闭，被遗忘的页面不会比打开它的会话活得更久。
 
 ## 工作原理
@@ -109,6 +109,8 @@ agent 工具调用 ──► 宿主半区 ──► CDP ──► 它自己的 C
 ## 安装
 
 ```sh
+dsh plugin --profile web add @linxin666/dsh-client-ui-browser-view@latest
+# 或从本地仓库检出安装：
 dsh plugin --profile web add link:<this repo>/packages/dsh-browser-view
 ```
 

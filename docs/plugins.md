@@ -54,8 +54,8 @@ node scripts/aggregate.mjs --check  # 校验模式：漂移即失败（CI 用）
 ### 5. 构建验证
 
 ```sh
-pnpm install   # workspace 链接
-pnpm -r build  # 全仓构建
+pnpm run deps:install   # workspace 链接并把 node_modules/@deepseek-ai 对齐宿主树
+pnpm build              # 全仓构建
 ```
 
 > **前置要求**：类型来源是官方 NPM SDK——`@deepseek-ai/*` 官方 NPM SDK 包（scope registry 为
@@ -109,7 +109,7 @@ dsh plugin --profile web add link:<dsh-web>/packages/dsh-web-all
 
 1. 在 [dsh-community-plugins](https://github.com/zhu1090093659/dsh-community-plugins) 仓根目录的 `community.json` 追加条目：`id` / `name` / `nameEn` / `author` / `repo`（https:// 仓库 URL）必填，`description` / `descriptionEn` / `npm` 可选；`category`（一级分类）与 `subcategory`（二级分类）可选，合法枚举见该仓 `scripts/community-index.cjs` 的 `CATEGORIES` 与 `SUBCATEGORIES`，且 `subcategory` 只在 `category` 已填时被接受——分类与二级分类一同驱动创意工坊的两级筛选；
 2. 在该仓运行 `pnpm community:check` 校验数据（CI 门禁同款校验）；
-3. 运行 `node scripts/market-build` 重新生成 `market/dist` 清单（`manifest/plugins.json` 由 community.json 派生）并提交生成物（`market:check` 校验一致）。
+3. 运行 `node scripts/market-build` 重新生成 `market/dist` 清单（`manifest/plugins.json` 与 Format 1 官方插件市场索引 `manifest/plugin-market-index.json` 均由 `community.json` 派生）并提交生成物（`market:check` 校验一致）。
 
 索引只收录链接、不搬代码，条目版权归原作者，由维护者审核合并。
 
@@ -142,12 +142,16 @@ dsh plugin --profile web add link:<dsh-web>/packages/dsh-web-all
   `packages/dsh-liangshen/src/client/index.ts`），SDK 发布对应槽位后移除。
 - **构建预设**：统一走仓库内单一共享副本 `shared/tsdown.client.ts`（平台模块表
   `shared/web-platform.ts`），各包 `tsdown.config.ts` 引用它并传参（`libExternal` /
-  `companions` 等）。**禁止**再复制预设到包内。
+  `companions` 等）。预设把 CSS Modules 以 `[hash]_[local]` 编译并通过模块加载器的
+  `meta: () => ({ stylesheets })` 契约注册进官方 `DocumentStyles`。**禁止**再复制预设到包内。
+- **宿主 HTTP 路由准入**：DSH 0.2.3-alpha.2+ 中 `WebRoute.auth` 默认为 `'authenticated'`；
+  自行用 loopback / `pair-access` / `connection-trust` 实施围栏的插件路由必须显式声明
+  `auth: 'anonymous'`，放行后再由插件围栏裁决。
 - **测试基建**：vitest 配置需 `server.deps.inline: [/@deepseek-ai\//]`（SDK 包走 vite 转译，
   处理 CSS）；client 半区闭包工厂在测试中不可直接 import——用 `vitest.setup.ts` 的最小
   `__ModuleLoader__` stub（`packages/dsh-task-board/vitest.setup.ts`）或 `vi.mock` 替换
   （`packages/dsh-ssh/tests/connection-pool.test.ts` 的 service mock）。
-- **设置页插件配置（20260811+ 可选能力）**：DSH web 的插件管理页为每个 bundle 的页面提供一片配置区（`plugins.bundle.config` 槽，按 bundle 包名分派）。Web 插件组、皮肤中心、社区插件、桌面宠物各注册一级设置分区（`settings.section`，`label` 用 thunk 跟随语言，内容直接展开）；Web 插件组声明 `web-ui.plugin.item` 子槽归组 task-board 等卡片。插件接入只需两步：
+- **设置页插件配置（20260811+ 可选能力）**：DSH web 的插件管理页为每个 bundle 的页面提供一片配置区（`plugins.bundle.config` 槽，按 bundle 包名分派）。`dsh-web-settings` 注册一级设置分区「Web 扩展」（`settings.section` id `web-ui-plugins`）并声明 `web-ui.extension` 动态页签槽与 `web-ui.plugin.item` 家族插件卡子槽，供 Web 插件、皮肤中心、桌面宠物、创意工坊与使用统计统一挂载（独立安装、父级缺席时各自回落到独立的一级 `settings.section` 入口；`dsh-community-plugins` 仅保留惰性 cordis 行）。插件接入只需两步：
   1. **host 半区**：插件的 `Config`（schemastery）就是它的设置面——`@deepseek-ai/dsh-settings` 按 profile entry 自身的 schema 生成设置表单，因此注册命名空间、`installSection`、`setSource`、`onChange` 都不再存在。需要可编辑的字段必须标记 `.volatile()`（只有 `@deepseek-ai/schemastery` 提供；未标记 volatile 的 entry 根本不生成表单），并在插件运行时通过宿主交付的引用读取当前值，用 `loader/volatile-update` 事件让已派生的行为跟随已提交的修改，无需重启。
   2. **browser 半区**：注入 `configForms`（`@deepseek-ai/dsh-client-ui-settings` 提供 `ctx.configForms`），`ctx.configForms.get(entryId)` 读写该 profile entry 自身的配置——设置命名空间即所属 profile entry id，不再由插件自选名称；一次写入返回布尔值，`false` 表示宿主拒绝或跳过，必须当作保存失败上报。然后注册卡片：家族归组用 `web-ui.plugin.item`，官方 bundle 配置页用 `plugins.bundle.config`，一级菜单用 `settings.section`（自行 `declare module '@deepseek-ai/dsh-client-ui-slots'` 声明该槽，shape 与官方一致；`order` 用 100+；一级分区卡片加 `alwaysOpen` 直接展开）。样板见 `packages/dsh-task-board`（自包含 staged 表单，不依赖兄弟 UI 包）。家族插件用共享的 `installPluginCard`（`shared/client/settings/plugin-card-seat.ts`）选席位：`dsh-web-settings` 已加载（`ctx.get('webUiSettings')` 有值）时进 `web-ui.plugin.item`，否则进官方 keyed 槽 `plugins.bundle.config`（key 用自身 bundle 包名）；**不要**用「官方席位是否已声明」判定——官方插件面属于 harness bundle，其席位在每个 web 构建上都先于外部插件声明，据此判定会让家族分区永远为空。家族插件经 `dsh-web-settings` 的 `webUiSettings` 绑定时按包身份别名表把家族 namespace 解析成所属 entry id，再走原生 `configForms`；解析不到时回落到该包的 loopback HTTP 桥。
 - **皮肤类插件**：皮肤已迁至独立仓 [dsh-skins](https://github.com/zhu1090093659/dsh-skins)，用该仓的 `node scripts/dsh-skin-new.cjs <id>` 脚手架生成纯资产目录（皮肤规范见该仓 README），不经过本流程第 3-4 步的 `dsh-web-all` 注册。皮肤中心（skin-center）虽是皮肤聚合，其 GUI 是一级设置分区（设置 → 皮肤中心），自带启用开关。

@@ -19,7 +19,7 @@ This package is an external plugin for DeepSeek Harness (DSH), structured as a c
 - **Evidence in the conversation**: every `browser_screenshot` result carries the image, so the transcript keeps the picture the agent acted on instead of only a sentence about it.
 - **Isolated by default**: the plugin launches its own Chromium with a throwaway profile, so the browser you are signed into is not touched while the mode below stays off.
 - **Your own browser on request**: with `realBrowserEnabled` set, the plugin attaches over CDP to a browser you started with remote debugging. Each DSH session on this host can enumerate, read, navigate, click and type in every tab that browser has — tabs that existed before the attach and tabs opened afterwards — and the sign-ins already in that profile work, because the pages run in it and no cookie is imported.
-- **Signs itself in to this host's own GUI**: a fresh isolated profile has no session cookie, so the viewer would only ever see the 401 challenge. When a navigation lands on that challenge over loopback, the plugin asks the host's connection service for the same ticketed URL `dsh web` printed, and retries once. The challenge is either the exchange page's own sentence or the bare `unauthorized` a Host answers when route admission refuses the site root first; the bare form only counts when the requested URL is this host's own listener origin (same protocol and port). The cookie that mints lives in the throwaway profile and dies with it.
+- **Signs itself in to this host's own GUI**: a fresh isolated profile has no session cookie, so the viewer would only ever see the 401 challenge. When a navigation lands on that challenge over loopback, the plugin asks the host webserver's `webserver/entry-url` event for the same ticketed URL `dsh web` printed, and retries once. The challenge is either the exchange page's own sentence or the bare `unauthorized` a Host answers when route admission refuses the site root first; the bare form only counts when the requested URL is this host's own listener origin (same protocol and port). The cookie that mints lives in the throwaway profile and dies with it.
 - **Closing is explicit, and idle pages clean themselves up**: `browser_close` without a tab id closes only the tabs the calling session opened; a tab of an attached browser closes only when the call names its id. The panel shows no close control for such a tab. Separately, a page the plugin opened itself closes once no browser tool has touched it for `idleCloseDays` days, so a forgotten page does not outlive the session that opened it.
 
 ## How it works
@@ -109,6 +109,8 @@ Sign in to the sites the agent should see inside that profile once; the plugin d
 ## Install
 
 ```sh
+dsh plugin --profile web add @linxin666/dsh-client-ui-browser-view@latest
+# or from a local checkout:
 dsh plugin --profile web add link:<this repo>/packages/dsh-browser-view
 ```
 

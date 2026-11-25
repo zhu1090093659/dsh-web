@@ -15,13 +15,14 @@
   <em>侧边栏底栏入口 · 实时全量会话 ID · 一键复制到剪贴板 · 本地极速过滤 · 零 Host 开销</em>
 </p>
 
-纯浏览器端的 DSH Web GUI 插件：在侧边栏底部加入口，打开面板列出全部会话的会话 ID，一键复制。挂载到官方侧边栏底部席位（`sidebar.footer.action`），不改任何 DSH 源码，host 侧零行为。
+纯浏览器端的 DSH Web GUI 插件：在会话环境面板提供当前会话 ID 一键复制行（`conversation.session.panel.environment.row`），并在侧边栏底部加入口（`sidebar.footer.action`），打开面板列出全部会话的完整 ID 一键复制，不改任何 DSH 源码，host 侧零行为。
 
 ## 是什么
 
+- 在会话环境面板注册当前会话 ID 复制行（`conversation.session.panel.environment.row`，`id: 'session-id'`，`order: 40`）。
 - 在侧边栏底部的设置行旁边新增「会话 ID」入口：收起态与展开态都只显示
   图标按钮（文字保留为无障碍名称与悬停提示）。
-- 收起态下与遥控/更新入口同列纵向堆叠、对齐轨道中轴；展开态下与其他底部
+- 收起态下与配对等其他底部入口同列纵向堆叠、对齐轨道中轴；展开态下与其他底部
   入口同行横排。
 - 点击打开居中面板，列出全部会话：显示标题、完整会话 ID（等宽字体），每行
   一个「复制」按钮；当前会话有标记。
@@ -47,8 +48,8 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-session-id@latest
 ```sh
 git clone https://github.com/zhu1090093659/dsh-web.git
 cd dsh-web
-pnpm install
-pnpm -r build
+pnpm run deps:install
+pnpm build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-session-id
 ```
 
@@ -64,8 +65,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-session-id
 
 ## 已知限制
 
-- 需要声明了 `sidebar.footer.action` 席位的 DSH Web 外壳（0.1.0-rc.8 及更新版本）；
-  旧版外壳上入口不会渲染。
+- 需要声明了 `sidebar.footer.action` 的 DSH Web 外壳（会话环境面板复制行需 DSH 0.2.3-alpha.2+ 声明 `conversation.session.panel.environment.row`）；缺失的槽位会被静默跳过。
 - 只读查看器：只展示与复制 ID，不打开或管理会话。
 
 ## 数据遥测

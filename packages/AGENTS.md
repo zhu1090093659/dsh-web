@@ -48,7 +48,8 @@
   包内；tsconfig 分层（solution + host/client 各自 program，参照
   `dsh-task-board`）。
 - **运行时共享模块**：settings 卡三件套、dsh-home、mount-once、http、loopback、
-  pair-access、telemetry、tool-surface 等家族共享模块的事实源在 `shared/`
+  pair-access、connection-trust、body-mutations、console-output、detached-work、
+  telemetry、tool-surface 等家族共享模块的事实源在 `shared/`
   （权威清单是 `scripts/sync-shared.mjs` 的 manifest），包内同名文件是生成的同步副本
   （generated 头注释，禁止手改；改 shared 源后重跑同步，test:scripts 含 drift 门禁）。
   只被一个包使用的模块归该包所有，不进 `shared/`。
@@ -56,8 +57,10 @@
   [平台种子表](../shared/web-platform.ts)成员，其余只能 type-only 导入。
   跨插件协作走 cordis 服务
   （`ctx.slots` / `ctx.sessions` / `ctx.workspaces`）或 slot，不走 value import。
-- **样式**：CSS Modules（`*.module.css`）经 lightningcss 编译进 bundle；不引入
-  UI 框架样式库。填充主按钮一律用主按钮三件套
+- **样式**：CSS Modules（`*.module.css`）经 `shared/tsdown.client.ts` 由 lightningcss
+  以 `[hash]_[local]` 模式编译，并经 `window.__ModuleLoader__.load` 的
+  `meta: () => ({ stylesheets })` 契约注册进官方 `DocumentStyles`（不再在 `factory` 内手工
+  往 DOM 注入 `<style>`）；不引入 UI 框架样式库。填充主按钮一律用主按钮三件套
   （`--dsw-alias-button-primary-fill` / `--dsw-alias-button-primary-hover` /
   `--dsw-alias-label-primary-foreground`，明暗两组），不得把
   `--dsw-alias-brand-primary` 当填充色（官方主题下它与前景同值，会出现
@@ -68,8 +71,8 @@
 
 - 会向 agent 系统提示注入公告（systemPrompt section）的插件必须提供
   `announceToAgent` 开关：schema 默认 `false`（默认不注入，保持系统提示词干净），
-  用户在设置界面（或 profile patch）按需开启；开关必须经
-  `installSettingsSection`（或等价的自定义设置卡）暴露到 Web 设置界面并即时生效。
+  用户在设置界面（或 profile patch）按需开启；开关必须作为 schema 的 `.volatile()`
+  字段，经官方 `configForms`（或家族设置卡）暴露到 Web 设置界面并即时生效。
 - 公告文本只陈述能力、约束与触发词，不包含与当前任务无关的长段声明。
 
 ## 测试纪律
@@ -80,8 +83,8 @@
 - 聚合载具包（dsh-web-all）可无单测，但聚合生成脚本必须有
   `--check` 一致性门禁（`aggregate.mjs` 的 check 模式）。
 - 例外：dsh-aionui-panel（旧右侧面板）已彻底移除——包、聚合行、内嵌设置卡与文档
-  引用均已清理；右侧面板由 dsh-better-sidebar 提供（聊天区 mermaid 出图与
-  composer 拖文件插入随包移除，官方管线无对应能力）。
+  引用均已清理（可选社区插件 `dsh-better-sidebar` 按需单独安装；聊天区 mermaid 出图
+  现由 `dsh-diagrams` 提供）。
 - 例外：dsh-live-stats（实时令牌估算）已彻底移除——包、测试、门禁与文档引用
   均已清理，不再支持。
 - 例外：dsh-desktop-launcher（桌面启动器）已彻底移除——包、聚合行、设置桥白名单、
@@ -92,6 +95,13 @@
 - 例外：dsh-git-graph（Git 图谱）已彻底移除——包、聚合行、退役登记、ru 语言包、门禁
   基线与文档引用均已清理；Git 变更视图由官方 workspace-changes 插件承接，聚合仍
   保留 `git-graph` 子路径空壳与退役登记，老 profile 残留行名走静默 no-op。
+- 例外：dsh-update（自更新）已彻底移除——包、聚合行与文档引用均已清理；插件更新由官方
+  插件页版本检查与 `dsh-plugin-manager` 承接，聚合保留 `update` 子路径空壳与
+  `retiredPlugins` 静默 no-op。
+- 例外：dsh-remote-web-ui（旧远程 Web UI）已彻底移除——包、聚合行、ru 语言包与文档引用
+  均已清理；浏览器远程配对与审批由官方 `@deepseek-ai/dsh-client-remote-connection` 承接，
+  公网/局域网接入栈与协议 v1 由 `dsh-remote-bridge` 承接，聚合保留 `remote-web-ui`
+  子路径空壳与 `retiredPlugins` 静默 no-op。
 - 例外：dsh-message-edit（消息编辑并重发）已彻底移除——包、聚合行、i18n ru 字典、
   覆盖面基线与文档引用均已清理；该能力不再提供（官方管线无对应能力）。它没有聚合
   子路径空壳与展示资源，老 profile 残留行名在 import 阶段硬报错。
@@ -128,6 +138,10 @@
 
 ## 安全语义
 
+- **宿主 HTTP 路由准入默认 `authenticated`（DSH 0.2.3-alpha.2+）**：`WebRoute.auth`
+  未显式声明时由宿主默认拦截；自行实现围栏的插件路由（如 loopback / `pair-access` /
+  `connection-trust`）必须显式声明 `auth: 'anonymous'`，放行后再由插件自身围栏裁决，
+  避免浏览器本机回环或已配对请求被宿主提前 401 拒绝。
 - 涉及密钥 / 凭据 / 远程执行 / 令牌撤销的包（如 `dsh-ssh`、`dsh-remote-bridge`）
   修改安全语义时必须同步更新 README 与测试；安全模型说明放包 README 的
   `## 安全模型` 一节。

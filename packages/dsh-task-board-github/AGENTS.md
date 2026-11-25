@@ -43,7 +43,7 @@
   公告）。
 - `src/host/`：host 半区实现（GitHub REST 客户端、同步服务、提供方工厂、
   凭据解析（credentials.ts）、配置读写（configuration.ts）、共享配置面
-  （setup.ts）、宿主路由（routes.ts）与七个模型可见工具）。
+  （setup.ts）、宿主路由（routes.ts）与九个模型可见工具）。
 - `src/core/`：两侧共享的纯逻辑（契约同形声明、GitHub 领域类型与校验、
   标签投影、定时器席位，以及配置面的线形与仓库文本解析/列表编辑（setup.ts））。
 - `src/client/`：浏览器半区（locales、设置区块与配置面板、三个席位、可见性
@@ -56,7 +56,7 @@
 
 ## 共享副本
 
-`src/mount-once.ts`、`src/loopback.ts`、`src/host/http.ts`、
-`src/client/{settings-form.ts,PluginSettingsCard.tsx,settings-card.module.css,settings-entry-form.ts}`
+`src/mount-once.ts`、`src/loopback.ts`、`src/host/http.ts`、`src/tool-surface.ts`、
+`src/client/{settings-form.ts,PluginSettingsCard.tsx,settings-card.module.css,SegmentGroup.tsx,RangeBubble.tsx,settings-entry-form.ts}`
 与 `vitest.setup.ts` 是 `scripts/sync-shared.mjs` 生成的同步副本（文件头有
 generated 注释），禁止手改；改动 shared/ 源后重跑 `node scripts/sync-shared.mjs`。

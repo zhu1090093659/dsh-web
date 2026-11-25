@@ -3,7 +3,7 @@
 English | [中文](README.zh.md)
 
 <p align="center">
-  <img src="https://img.shields.io/npm/v/@linxin666/dsh-task-board?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/npm/v/@linxin666/dsh-client-ui-task-board?style=flat-square" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.3--alpha.2-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;
@@ -55,7 +55,7 @@ Cards keep multi-line title and description previews with visible metadata. Prev
 - **Agent tools**: every session gets eight model-facing tools (`task_board_list`, `task_board_get`, `task_board_create`, `task_board_update`, `task_board_set_parent`, `task_board_run`, `task_board_manage`, `task_board_schedule`) that drive the same Host ledger the browser drives, so an agent can list the board, create subtasks, link or detach them, start a run, move a card to any column (declaring it done, failed, or in progress without a run), archive/restore/delete it, settle a card the board can no longer observe, and arm its cron schedule from the conversation.
 - **External outcomes (issue #1826)**: work that is not executed by this Host — an agent outside DSH such as Codex or Claude Code, running its own model — can be recorded as a real run rather than a bare column edit. `task_board_manage(action: 'record-external-outcome', result: 'succeeded'|'failed', initiatedBy: <who>)` appends an execution record carrying the verdict, the caller and an optional summary, and the terminal column is derived from that same record by the same rule a Host settlement uses (`core/tasks.ts` `settledStatus`). The record is marked `external`, never carries a session, and is refused while the card still has an open execution (while this Host is running the card it stays the only authority) and on an archived card. `running` and `cancelled` cannot be recorded this way: those stay Host-only. A manual `move-done`/`move-failed` remains available and still writes only the column — the difference is that this one leaves a record behind, so the column and the run history can never disagree.
 
-- **External provider extensions**: the GitHub Issues extension (`@linxin666/dsh-client-ui-task-board-github`, enabled by default) synchronizes GitHub Issues into board cards. It is a provider of THIS board, so its configuration renders inside this plugin's own settings card — the section only appears while the extension is installed, and its repository/credential form only while the extension is on; see [its README](../dsh-task-board-github/README.md).
+- **External provider extensions**: the board exposes a provider contract consumed by four official companion extensions—GitHub Issues sync (`@linxin666/dsh-client-ui-task-board-github`, enabled by default; see [its README](../dsh-task-board-github/README.md)), Cloud Team Hub collaboration (`@linxin666/dsh-client-ui-task-board-team`; see [its README](../dsh-task-board-team/README.md)), Mobile Remote surface (`@linxin666/dsh-task-board-remote`; see [its README](../dsh-task-board-remote/README.md)), and SSH Remote execution (`@linxin666/dsh-client-ui-task-board-ssh`; see [its README](../dsh-task-board-ssh/README.md)). Extensions with GUI settings render their own collapsible sections inside this plugin's settings card whenever installed.
 
 ## Architecture and protocol
 
@@ -97,14 +97,14 @@ For local development:
 ```sh
 git clone https://github.com/zhu1090093659/dsh-web.git
 cd dsh-web
-pnpm install
+pnpm run deps:install
 pnpm build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board
 ```
 
 ## Configuration
 
-This plugin's settings card groups its options into collapsible sections — Basics, New-card defaults, and the section a provider extension contributes (the GitHub Issues integration). Every section starts collapsed. A change takes effect as it is made: a pick is written at once, and a typed value once typing pauses, on Enter, or when the field is left; Escape puts the stored value back.
+This plugin's settings card groups its options into collapsible sections — Basics, New-card defaults, and any section contributed by installed provider extensions (such as GitHub Issues, Team Hub, and SSH remote execution). Every section starts collapsed. A change takes effect as it is made: a pick is written at once, and a typed value once typing pauses, on Enter, or when the field is left; Escape puts the stored value back.
 
 | Key | Default | Behavior |
 | --- | --- | --- |
@@ -162,7 +162,7 @@ On macOS the backend starts `/usr/bin/caffeinate -i -w <host-pid>` and never req
 
 ## Build and test
 
-Node 20 or newer and the official NPM SDK packages are required; no DSH source checkout is used.
+Node ^24.22.3 || >= 26.13.1 and the official NPM SDK packages are required; no DSH source checkout is used.
 
 ```sh
 pnpm --filter @linxin666/dsh-client-ui-task-board typecheck

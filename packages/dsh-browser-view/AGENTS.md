@@ -52,7 +52,8 @@ DSH Web GUI 插件 dsh-browser-view（实时浏览器视图）。包级规则：
   伪造图片或改走临时文件。
 
 - 鉴权补票（`src/host/auth.ts`）：只对 loopback 目标、且文档确实是 DSH 自己的鉴权页
-  时才取令牌，每次导航最多补一次；无 connection 服务、取票抛错、补票后仍是鉴权页都必须
+  时才经 `ctx.emit(webServer, 'webserver/entry-url', ...)` 取令牌，每次导航最多补一次；无
+  `webServer`、未返回候选 URL、取票抛错或补票后仍是鉴权页都必须
   **静默退化**，不得报错或改变导航结果。令牌只经内存流转，不落盘。鉴权页有两种形态：
   token 交换页的 `dsh web authentication required` 文本，以及 post-#8266 宿主在路由准入
   阶段拒绝时返回的裸 `unauthorized`；后者是任何本地服务都可能返回的通用正文，只有

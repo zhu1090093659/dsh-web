@@ -12,9 +12,9 @@
 
 <!-- 勾选本次改动涉及的包；仅脚本改动（维护类）可全部不勾选并说明。 -->
 
-- [ ] 任务看板 `packages/dsh-task-board`
-- [ ] 右侧面板 `packages/dsh-aionui-panel`
-- [ ] SSH 远程运维 `packages/dsh-ssh`
+- [ ] 任务看板 `packages/dsh-task-board`（及 `github` / `team` / `remote` / `ssh` 扩展）
+- [ ] 梁神模式 / 智能体小队 / 实时浏览器视图 `packages/dsh-liangshen` / `dsh-agents` / `dsh-browser-view`
+- [ ] SSH 远程运维 / 手机远程桥接 `packages/dsh-ssh` / `dsh-remote-bridge`
 - [ ] 宠物（[dsh-pet](https://github.com/zhu1090093659/dsh-pet) 仓）
 - [ ] 预设中心（[dsh-presets](https://github.com/zhu1090093659/dsh-presets) 仓）
 - [ ] 皮肤 / 皮肤中心（[dsh-skins](https://github.com/zhu1090093659/dsh-skins) 仓）

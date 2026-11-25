@@ -19,7 +19,7 @@
 
 ## 是什么
 
-- **统一 Web 扩展分区**：稳定的一级 `web-ui-plugins` 入口以二级 TAB 承载 Web 插件、皮肤、宠物、创意工坊和使用统计。Web 插件 TAB 归组其余 dsh web UI 家族卡片（task-board、remote-web-ui 等），各卡独立展开后显示启用开关与配置表单。
+- **统一 Web 扩展分区**：稳定的一级 `web-ui-plugins` 入口以二级 TAB 承载 Web 插件、皮肤、宠物、创意工坊和使用统计。Web 插件 TAB 归组其余 dsh web UI 家族卡片（task-board、liangshen、agents、browser-view 等），各卡独立展开后显示启用开关与配置表单。
 - **独立安装回退**：父级包缺席时，皮肤中心、桌面宠物、创意工坊与使用统计保留各自原一级设置入口；官方「插件」分区内置安装器，插件管理 Tab 由 `dsh-plugin-manager` 提供。
 - **家族插件不依赖本分组**：本包声明家族卡片注册的 list 槽 `web-ui.plugin.item`。本包已加载时家族插件注册进该槽；本包缺席时改注册官方插件管理页的 keyed 槽 `plugins.bundle.config`（以自身 bundle 包名为 key），因此只装家族插件、未装本分组的 profile 同样能触达每张卡片。
 - **原生设置通道**：0.1.7 的设置面以 profile entry id 定位每个配置表单。Host 侧桥接按 profile 行反查各全家桶命名空间所属的 entry id，并在 describe 响应里回传；浏览器半区据此绑定原生共享表单（`ctx.configForms`）。无法解析 entry id 的页面才退回 loopback HTTP 通道。
@@ -37,7 +37,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-web-ui-settings@latest
 ```sh
 git clone https://github.com/zhu1090093659/dsh-web.git
 cd dsh-web
-pnpm install && pnpm -r build
+pnpm run deps:install && pnpm build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-web-settings
 ```
 

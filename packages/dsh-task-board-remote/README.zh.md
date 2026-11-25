@@ -15,7 +15,7 @@
 ## 前置
 
 - `@linxin666/dsh-remote-bridge` 提供扩展缝与配对设备协议。
-- `@linxin666/dsh-task-board` 提供看板能力面。
+- `@linxin666/dsh-client-ui-task-board` 提供看板能力面。
 
 两者都不是硬依赖。任一缺席时本行什么都不注册，宿主不受影响。
 
@@ -60,6 +60,8 @@ revision 是落后检测，不是乐观锁：本地 revision 落后于事件的�
 ## 安装
 
 ```sh
+dsh plugin --profile web add @linxin666/dsh-task-board-remote@latest
+# 或从本地仓库检出安装：
 dsh plugin --profile <name> add link:<repo>/packages/dsh-task-board-remote
 ```
 

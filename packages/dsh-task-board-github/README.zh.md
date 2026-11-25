@@ -3,7 +3,7 @@
 [English](README.md) | 中文
 
 <p align="center">
-  <img src="https://img.shields.io/npm/v/@linxin666/dsh-task-board-github?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/npm/v/@linxin666/dsh-client-ui-task-board-github?style=flat-square" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.3--alpha.2-4c6ef5?style=flat-square&amp;labelColor=454a54" alt="DSH">
   &nbsp;
@@ -12,10 +12,10 @@
 
 <p align="center">
   <strong>DeepSeek Harness（DSH）任务看板 GitHub Issues 双向同步与自动化 PR 交付扩展</strong><br>
-  <em>Issue 自动转卡片 · 双向状态标签流转 · 自动创建 PR · 智能体交付流水线 · 7 大 Agent 工具</em>
+  <em>Issue 自动转卡片 · 双向状态标签流转 · 自动创建 PR · 智能体交付流水线 · 9 大 Agent 工具</em>
 </p>
 
-面向 DeepSeek Harness (DSH) Web GUI 与官方桌面客户端任务看板（`@linxin666/dsh-task-board`）的官方外部数据提供方扩展。它无缝打通 GitHub Issues 与 DSH 智能体会话流转：自动将配置仓库中指定标签或指派给认证账号的 Issue 同步为看板卡片，驱动 AI Agent 自动编码排查并创建 Pull Request，同时双向同步标签状态。扩展支持可视化开关与凭据管理，通过 `cordis.patch.yml` 与 profile 机制热插拔挂载，零侵入修改 DSH 源码。
+面向 DeepSeek Harness (DSH) Web GUI 与官方桌面客户端任务看板（`@linxin666/dsh-client-ui-task-board`）的官方外部数据提供方扩展。它无缝打通 GitHub Issues 与 DSH 智能体会话流转：自动将配置仓库中指定标签或指派给认证账号的 Issue 同步为看板卡片，驱动 AI Agent 自动编码排查并创建 Pull Request，同时双向同步标签状态。扩展支持可视化开关与凭据管理，通过 `cordis.patch.yml` 与 profile 机制热插拔挂载，零侵入修改 DSH 源码。
 
 ## 功能
 
@@ -50,7 +50,7 @@ dsh plugin --profile web add @linxin666/dsh-client-ui-task-board-github@latest
 ```sh
 git clone https://github.com/zhu1090093659/dsh-web.git
 cd dsh-web
-pnpm install
+pnpm run deps:install
 pnpm build
 dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board-github
 ```
@@ -133,7 +133,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-task-board-github
 
 ## 构建与测试
 
-需要 Node 22.19 或更高版本与官方 NPM SDK 包；不使用任何 DSH 源码 checkout。
+需要 Node ^24.22.3 || >= 26.13.1 与官方 NPM SDK 包；不使用任何 DSH 源码 checkout。
 
 ```sh
 pnpm --filter @linxin666/dsh-client-ui-task-board-github typecheck

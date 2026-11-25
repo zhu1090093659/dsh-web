@@ -5,9 +5,10 @@ DSH web GUI plugin session-id：会话 ID 查看与复制面板。包级规则�
 
 ## 本包要点
 
-- 纯浏览器插件：host 半区（src/index.ts）无行为；browser 半区注册
-  `sidebar.footer.action`（官方 list slot，与 dsh-remote-web-ui 共享席位），
-  点击打开会话 ID 面板。
+- 纯浏览器插件：host 半区（src/index.ts）无行为；browser 半区注册两个官方槽位——
+  `sidebar.footer.action`（官方 list slot，与 `dsh-remote-bridge` 等共享席位），点击打开
+  全部会话 ID 面板；以及 `conversation.session.panel.environment.row`（`id: 'session-id'`，
+  `order: 40`），在会话环境面板里提供当前会话 ID 的一键复制行。
 - 会话数据只读官方 `ctx.sessions.list`（ObservableSnapshot），经 register 的
   `inject` 传入组件，组件用 `useSyncExternalStore` 订阅；不写任何会话状态。
 - 复制走官方 `writeClipboard`（ui-primitives，平台种子表成员，允许 value

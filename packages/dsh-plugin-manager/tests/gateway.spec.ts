@@ -339,6 +339,51 @@ describe('composedEntryIdsOf', () => {
     expect(composedEntryIdsOf('')).toBeUndefined()
     expect(composedEntryIdsOf('dsh: patch: entry "retired" not found\n')).toBeUndefined()
   })
+
+  it('operator: reads the entries nested under a group entry config in a real dump shape', () => {
+    // Given a CLI dump printing a group entry whose indented config holds real
+    // child entries (one a nested group) beside a plain entry whose config
+    // nests an id-shaped data item, and a second layer document
+    const dump = [
+      '# == dsh-mnemon',
+      '- id: mnemon',
+      '  name: dsh-mnemon',
+      '  config:',
+      '    nested:',
+      '      - id: data-not-entry',
+      '- id: mnemon-bundle',
+      '  name: mnemon-bundle',
+      '  group: true',
+      '  config:',
+      '    - id: mnemon-strategy-auto-capture',
+      "      name: '@dsh/mnemon-strategy-auto-capture'",
+      '    - id: mnemon-inner-group',
+      '      name: cordis:group',
+      '      group: true',
+      '      config:',
+      '        - id: mnemon-deep-child',
+      "          name: '@dsh/deep'",
+      '# == other-layer',
+      '- id: ui-schedule',
+      '  name: other',
+      '',
+    ].join('\n')
+
+    // When the entry ids are read from it
+    const ids = composedEntryIdsOf(dump)
+
+    // Then the group's child entries are composed ids at every depth, while an
+    // id nested in a plain entry's config data is still not one
+    expect(ids).toEqual(new Set([
+      'mnemon',
+      'mnemon-bundle',
+      'mnemon-strategy-auto-capture',
+      'mnemon-inner-group',
+      'mnemon-deep-child',
+      'ui-schedule',
+    ]))
+    expect(ids?.has('data-not-entry')).toBe(false)
+  })
 })
 
 describe('detectOfficialChannels', () => {

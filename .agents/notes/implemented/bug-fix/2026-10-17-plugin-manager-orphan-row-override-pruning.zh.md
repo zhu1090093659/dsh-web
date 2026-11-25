@@ -14,7 +14,7 @@ Status: implemented
 
 插件管理器的更新事务把「清理自己的失效覆盖」当作又一道变更后守卫，与它已经在做的重复挂载剥离并列。启动时不做清理，不存在单独的命令，聚合 patch 也不改动：退场依旧是已发布的移除决定，迁移发生在本就拥有这次更新的写路径上。
 
-判定「这个行 id 是否还存在」的权威，是 loader 对**更新后** profile 自己的组合结果——即启动预检本就已经捕获的 `--dump-config` 文本，由 `composedEntryIdsOf` 读取其中列首的 `- id:` 条目——**再并上 profile 的 bundle 层仍然声明的每一个 id**（`liveOverrideIds` 对 `dsh.profile.bundles` 里每个包自己的 `cordis.patch.yml` 跑 `declaredRowIds`）。它是组合后的目标条目集合，不是源 profile，也不是 profile patch：
+判定「这个行 id 是否还存在」的权威，是 loader 对**更新后** profile 自己的组合结果——即启动预检本就已经捕获的 `--dump-config` 文本，由 `composedEntryIdsOf` 读取其中列首的 `- id:` 条目以及嵌套在 `group: true` 条目下的子条目——**再并上 profile 的 bundle 层仍然声明的每一个 id**（`liveOverrideIds` 对 `dsh.profile.bundles` 里每个包自己的 `cordis.patch.yml` 跑 `declaredRowIds`）。它是组合后的目标条目集合，不是源 profile，也不是 profile patch：
 
 - profile patch 回答不了。它只持有覆盖；覆盖指向的 id 落在管理器从不读取的 bundle patch 里，而一条「行还在」的覆盖与一条「行已没了」的覆盖在文本上完全一样。
 - 源 profile 也回答不了。更新之后旧的组合仍然声明那个已退场的 id，而那正是要修的状态。
@@ -24,6 +24,12 @@ Status: implemented
 清理发生在三处，都在变更落地且版本校验通过之后：CLI 更新分支（`runInner`，复用预检的 dump 而不额外再起一次探针）、旧聚合包迁移（`runMigration`，复用它的 `--dump-config` 输出），以及应用自有 profile 的路径（`runNativeUpdate`）——那里 CLI 被拒绝执行任何写入，但组合走的是同一个只读探针。安装与卸载不清理：它们不改变行 id 的全集，那里出现的失效行是既有状态，不是这两个动作造成的。
 
 归属按形状判定，而不是靠猜。`overrideRowId` 只在以下情况认领一个顶层条目：它是裸行（没有 `insert` 键）、`id` 是字符串、`disabled` 是布尔值，且键集合整体为 `id`/`name`/`disabled`——正是 `setRowEnabled` 写出的形状。带 `config:` 的配置行、insert 包装行，以及任何携带本包不写之键的行，即便 id 不在组合里也绝不删除、绝不改写。被删行上方的注释块属于用户文本，因此它会挪到紧随其后的行（没有则挪到文件末尾），而不是随条目一起消失。
+
+### group 条目嵌套的是真实条目
+
+`group: true` 条目的 `config:` 列表装的是真实子条目，而不是普通的组合数据：loader 会把每个子条目当作一个条目挂载，用户也能像顶层行一样用裸覆盖停用它。`dsh-mnemon` 的 `mnemon-bundle` group 下就有十个这样的子条目，其中之一是 `mnemon-strategy-auto-capture`。两处权威都没看见它们：`composedEntryIdsOf` 的列首扫描只读顶层条目，`declaredRowIds` 又跳过了某行 `config:` 下的所有 id。于是两者都把 group 的子条目当成孤儿，清理掉了仍然有效的覆盖（issue #2091）。
+
+现在两处读取器都会下探 group 的 `config:` 列表，并递归到嵌套 group，因此子条目 id 在组合结果与每个 bundle 层里都算存活。只有 `group: true` 的列表会被下探：普通（非 group）行的 `config:` 可能把一个 `id` 键当作数据携带（例如嵌套的 `{ id, x }` 项），这些 id 仍然只是子数据而非条目。
 
 ### 组合结果本身不是证明
 
@@ -77,7 +83,9 @@ Status: implemented
 
 - `packages/dsh-plugin-manager/tests/rows.spec.ts` 固定纯编辑行为：失效覆盖被删除，注释块、仍然有效的覆盖与配置行逐字节不变；对已清理的层再次运行返回原文本且不报告任何清理；配置行、insert 包装行与带额外键的行永远不会被判为覆盖。
 - `0.4.7` 事故的桌面回归用例在 `packages/dsh-plugin-manager/tests/gateway-jobs.spec.ts`：一个声明 `web-ui-remote-web-ui` 与 `ui-schedule` 的聚合 bundle、一个携带 quick tunnel 覆盖（`autoTunnel: true`、`relay: true`）与 `ui-schedule` 裸覆盖的用户层，以及一个在该 bundle 缺席时取的组合探针。更新结束后用户层逐字节不变且没有备份，因为没有任何条目失效。第二个用例删掉某个已列 bundle 的包目录，断言即便组合里真的缺了行、该层也原样保留——声明是未知，不是空。
-- `packages/dsh-plugin-manager/tests/rows.spec.ts` 固定 `declaredRowIds`：层的 insert 条目、它自己的行、被声明两次的同一个 id，以及落在某行自身 `config:` 里的 id（那是子条目，不是层条目）各自去重后得到该层的 id 集合；解析失败的层抛错，使调用方无法把它读作空。
+- `packages/dsh-plugin-manager/tests/rows.spec.ts` 固定 `declaredRowIds`：层的 insert 条目、它自己的行、被声明两次的同一个 id，以及落在普通（非 group）行 `config:` 里的 id（那是数据，不是层条目）各自去重后得到该层的 id 集合；而 `group: true` 条目 `config:` 下嵌套的子条目（含递归进入的嵌套 group）会被声明，普通行 config 数据里 id 形状的项则不会（issue #2091）；解析失败的层抛错，使调用方无法把它读作空。
+- `packages/dsh-plugin-manager/tests/gateway.spec.ts` 固定 `composedEntryIdsOf` 在多文档 dump 中读取 `group: true` 条目下任意深度的子条目，而普通条目 config 数据里嵌套的 id 仍不算条目。
+- #2091 的回归用例在 `packages/dsh-plugin-manager/tests/gateway-jobs.spec.ts`：一个 insert 携带 `group: true` 条目及其嵌套子条目 id 的 bundle、一个为用户层携带该子条目裸 `disabled: false` 覆盖并伴以一条真正退场行覆盖的用例，以及列出该 group 子条目的组合结果。更新后子条目的覆盖保留、只清理真正退场的那条；第二个用例让组合只报告 group 的 id 而不含子条目，从而验证子条目仅凭 bundle 层的声明也存活。
 - `packages/dsh-plugin-manager/tests/gateway-jobs.spec.ts` 固定事务行为：带有失效 id 的层经更新后被清理，`cordis.patch.yml.bak-plugin-manager` 保存清理前的文本；同一次更新再跑一次不写入（备份仍是清理前的文本）；覆盖全部有效的层逐字节不变且不产生备份；写入失败把任务结算为 `error` 且备份在位；桌面自有 profile 的更新经只读探针完成清理，拿不到组合时则原样保留该层。
 - `packages/dsh-plugin-manager/tests/gateway.spec.ts` 固定 `hostBundleDir`：解析 CLI 入口旁的安装副本、在回溯祖先目录前穿透 npm-global/homebrew 符号链接 shim、识别 `lib/node_modules` 前缀布局，以及在副本不存在或无法解析 CLI 路径（`binary === null`）时返回 `undefined`。
 

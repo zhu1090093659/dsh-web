@@ -18,12 +18,13 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { closeSync, existsSync, openSync, readSync, realpathSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { dirname, join, posix, win32 } from 'node:path'
+import { isMap, isSeq, parseAllDocuments } from 'yaml'
 import type { InstalledPluginItem } from '../core/protocol.ts'
 import type { ControlChange } from '../core/conflict.ts'
 import { diffLayer, overlappingIds, significantChanges, type LayerChange, type LayerSnapshot } from '../core/patch-diff.ts'
 import { declaresBundle, duplicateMountBundles } from './bundle-guard.ts'
 import { readProfileManifest, reorderProfileBundle, stripProfileBundles, type ProfileFacts } from './profile.ts'
-import { declaredRowIds, insertRowsOf, parsePatch, bareRowEnabled, bareRowId, pruneOrphanRowOverrides, repairStaleRowNames, writePatchAtomic, type PrunedOverrides, type RepairedRowNames } from './rows.ts'
+import { collectGroupEntryIds, declaredRowIds, insertRowsOf, isGroupEntry, parsePatch, bareRowEnabled, bareRowId, pruneOrphanRowOverrides, repairStaleRowNames, writePatchAtomic, type PrunedOverrides, type RepairedRowNames } from './rows.ts'
 import { buildPluginRow, claimedEntryIdsOf } from './state.ts'
 import { createOutputCapture, type OutputCapture } from './console-output.ts'
 
@@ -725,7 +726,10 @@ const OFFICIAL_INSTALLER_PATTERN = /^\s*-?\s*id:\s*['"]?plugin-(?:installer|cont
  * `# ==` header, with the composed entries as column-0 `- id:` items — an
  * entry a profile patch overrides appears once, carrying the override's keys,
  * so those lines are exactly the loader's own entry set. Nested config keeps
- * its own `id` keys indented and is never mistaken for an entry.
+ * its own `id` keys indented and is never mistaken for an entry, with one
+ * exception: a `group: true` entry's `config:` list holds real child entries
+ * (recursively), whose ids the loader composes just like top-level ones and
+ * which are collected here too (issue #2091).
  * @param dump - the dump's captured text.
  * @returns the composed entry ids, or undefined when the dump carried none.
  */
@@ -739,7 +743,36 @@ export function composedEntryIdsOf(dump: string): Set<string> | undefined {
     const unquoted = /^'(.*)'$/.exec(value)?.[1] ?? /^"(.*)"$/.exec(value)?.[1] ?? value
     if (unquoted !== '') ids.add(unquoted)
   }
+  collectDumpGroupChildIds(dump, ids)
   return ids.size === 0 ? undefined : ids
+}
+
+/**
+ * Add the ids of entries nested under any `group: true` entry's `config:` list
+ * in a composed dump. The flat `- id:` scan above only sees top-level entries;
+ * a group's children are indented beneath it, so they are read structurally.
+ * The dump prints one YAML document per layer, so every document is parsed and
+ * a document that does not parse is skipped, leaving the flat scan's ids — the
+ * same entry set it reported before groups were understood — as the result.
+ * @param dump - the dump's captured text.
+ * @param ids - the accumulator to add into.
+ */
+function collectDumpGroupChildIds(dump: string, ids: Set<string>): void {
+  let documents
+  try {
+    documents = parseAllDocuments(dump, { prettyErrors: false })
+  } catch {
+    return
+  }
+  for (const document of documents) {
+    if (document.errors.length > 0) continue
+    const root = document.contents
+    if (!isSeq(root)) continue
+    for (const entry of root.items) {
+      if (!isMap(entry) || !isGroupEntry(entry)) continue
+      collectGroupEntryIds(entry.get('config', true), ids)
+    }
+  }
 }
 
 /**

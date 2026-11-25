@@ -159,11 +159,54 @@ export function claimedIdsOf(patchText: string): string[] {
   return ids
 }
 
+/** The string id of a patch entry node (a map carrying a string `id`). */
+function entryIdOf(node: unknown): string | undefined {
+  if (!isMap(node)) return undefined
+  const id = node.get('id', true)
+  return isScalar(id) && typeof id.value === 'string' ? id.value : undefined
+}
+
+/**
+ * Whether a patch node is a `group: true` container, whose `config:` list
+ * holds real child entries rather than composition data. The loader mounts
+ * those children as entries, so their ids count as live.
+ * @param node - one patch node.
+ * @returns whether the node is a group entry.
+ */
+export function isGroupEntry(node: unknown): boolean {
+  if (!isMap(node)) return false
+  const group = node.get('group', true)
+  return isScalar(group) && typeof group.value === 'boolean' && group.value
+}
+
+/**
+ * The ids of the entries nested (recursively) under one `group: true` entry's
+ * `config:` list. These are composition children: the loader mounts each as a
+ * real entry, so an override their id carries is live even though no top-level
+ * row names them. Only a group's `config:` list is descended — a plain config
+ * value that happens to carry an `id` key (a nested `{ id, x }` item, say) is
+ * data, not an entry, and is left alone. A child that is itself a group
+ * recurses through its own `config:`.
+ * @param config - a group entry's `config` node.
+ * @param ids - the accumulator to add into.
+ */
+export function collectGroupEntryIds(config: unknown, ids: Set<string>): void {
+  if (!isSeq(config)) return
+  for (const child of config.items) {
+    const id = entryIdOf(child)
+    if (id !== undefined) ids.add(id)
+    if (isMap(child) && isGroupEntry(child)) collectGroupEntryIds(child.get('config', true), ids)
+  }
+}
+
 /**
  * Every entry id a layer declares: its top-level `- id:` rows (bare override
- * rows and config rows alike) plus the entries of its `- insert:` lists. Ids
- * nested inside a row's own `config:` are composition children of that entry,
- * not layer entries, and are not declared here.
+ * rows and config rows alike) plus the entries of its `- insert:` lists, plus —
+ * recursively — the entries nested under any `group: true` entry's `config:`
+ * list (the loader mounts those as entries too, so an override for one is not
+ * an orphan; issue #2091). Ids nested inside a non-group row's own `config:`
+ * are composition data of that entry, not layer entries, and are not declared
+ * here.
  *
  * This answers "does this layer still declare that row?" without composing, so
  * it stays true in the states where a composition probe is not: a host that
@@ -182,20 +225,27 @@ export function declaredRowIds(patchText: string, filename: string): string[] {
     if (value === undefined || ids.includes(value)) return
     ids.push(value)
   }
-  const idOf = (node: YAMLMap): string | undefined => {
-    const id = node.get('id', true)
-    return isScalar(id) && typeof id.value === 'string' ? id.value : undefined
+  // A group entry's nested entries come before the id of the next top-level
+  // row, so walk each item's children as soon as that item is emitted.
+  const pushGroupChildren = (node: YAMLMap): void => {
+    if (!isGroupEntry(node)) return
+    const children = new Set<string>()
+    collectGroupEntryIds(node.get('config', true), children)
+    for (const child of children) push(child)
   }
   for (const item of root.items) {
     if (!isMap(item)) continue
     const insert = item.get('insert', true)
     if (isSeq(insert)) {
       for (const entry of insert.items) {
-        if (isMap(entry)) push(idOf(entry))
+        if (!isMap(entry)) continue
+        push(entryIdOf(entry))
+        pushGroupChildren(entry)
       }
       continue
     }
-    push(idOf(item))
+    push(entryIdOf(item))
+    pushGroupChildren(item)
   }
   return ids
 }

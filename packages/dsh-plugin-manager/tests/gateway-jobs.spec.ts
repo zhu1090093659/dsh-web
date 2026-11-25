@@ -12,6 +12,7 @@ import { Readable } from 'node:stream'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   CliGateway,
+  composedEntryIdsOf,
   nativeManagerFailure,
   nativeManagerRestartRequired,
   unsafeSpecReason,
@@ -1893,6 +1894,68 @@ const COMPOSED_DUMP = [
   '',
 ].join('\n')
 
+/**
+ * The mnemon bundle profile (issue #2091): its insert carries a `group: true`
+ * entry whose `config` list holds the real child entries, one of them the
+ * `mnemon-strategy-auto-capture` row a user disables through a bare override.
+ */
+const MNEMON_BUNDLE_LAYER = [
+  '- insert:',
+  '    - id: mnemon-bundle',
+  '      name: mnemon-bundle',
+  '      group: true',
+  '      config:',
+  '        - id: mnemon-strategy-auto-capture',
+  "          name: '@dsh/mnemon-strategy-auto-capture'",
+  '        - id: mnemon-other',
+  "          name: '@dsh/mnemon-other'",
+  '',
+].join('\n')
+
+/**
+ * The user layer the issue reports: a bare `disabled: false` override for the
+ * group's nested child, beside a bare override for a row that is genuinely
+ * retired (no layer and no composition declares it).
+ */
+const MNEMON_USER_LAYER = [
+  '- id: mnemon-strategy-auto-capture',
+  '  name: "@dsh/mnemon-strategy-auto-capture"',
+  '  disabled: false',
+  '- id: retired-mnemon-row',
+  '  name: "@dsh/retired"',
+  '  disabled: true',
+  '',
+].join('\n')
+
+/** The user layer after only the genuinely retired override is pruned. */
+const MNEMON_PRUNED_LAYER = [
+  '- id: mnemon-strategy-auto-capture',
+  '  name: "@dsh/mnemon-strategy-auto-capture"',
+  '  disabled: false',
+  '',
+].join('\n')
+
+/**
+ * The composition of the updated profile in the CLI's dump shape: the group
+ * entry with its nested children indented under `config`, plus the update
+ * target. Neither layer lists `retired-mnemon-row`.
+ */
+const MNEMON_COMPOSED_DUMP = [
+  '# == dsh-mnemon',
+  '- id: mnemon-bundle',
+  '  name: mnemon-bundle',
+  '  group: true',
+  '  config:',
+  '    - id: mnemon-strategy-auto-capture',
+  "      name: '@dsh/mnemon-strategy-auto-capture'",
+  '    - id: mnemon-other',
+  "      name: '@dsh/mnemon-other'",
+  '# == dsh-memoir',
+  '- id: dsh-memoir',
+  '  name: dsh-memoir',
+  '',
+].join('\n')
+
 describe('CliGateway orphan row-override pruning', () => {
   /** A gateway whose fake CLI installs the update and composes a dump. */
   function updateGateway(
@@ -1906,6 +1969,68 @@ describe('CliGateway orphan row-override pruning', () => {
       return { code: 0 }
     }, calls)
   }
+
+  it('operator: keeps the group-nested override when the bundle layer is the only place it survives', async () => {
+    // Given a profile whose bundle declares the group entry, and a composition
+    // probe that reported the group only as an id with no children (the window
+    // the bundle declarations exist to widen) — the child id thus lives only
+    // in the bundle layer, not in the dump
+    const { facts, dir } = makeProfile({
+      'dsh-memoir': { version: '1.0.0' },
+      'dsh-mnemon': { version: '1.0.0', bundle: true, patch: MNEMON_BUNDLE_LAYER },
+    })
+    tempDirs.push(dir)
+    writeFileSync(facts.patchPath, MNEMON_USER_LAYER)
+    const childlessDump = [
+      '# == dsh-mnemon',
+      '- id: mnemon-bundle',
+      '  name: mnemon-bundle',
+      '  group: true',
+      '# == dsh-memoir',
+      '- id: dsh-memoir',
+      '  name: dsh-memoir',
+      '',
+    ].join('\n')
+    const gateway = updateGateway(facts, () => ({ code: 0, output: childlessDump }))
+
+    // When the update runs
+    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
+    const job = await settle(gateway, jobId)
+
+    // Then the child's override survives because the bundle layer still
+    // declares it, and the truly retired override is pruned
+    expect(job.phase).toBe('done')
+    expect(composedEntryIdsOf(childlessDump)?.has('mnemon-strategy-auto-capture')).toBe(false)
+    expect(readFileSync(facts.patchPath, 'utf8')).toBe(MNEMON_PRUNED_LAYER)
+  })
+
+  it('operator: keeps an override for a child nested under a group entry and prunes only the retired one', async () => {
+    // Given a profile whose bundle declares a group entry with nested children
+    // (the dsh-mnemon case), a user layer carrying a bare override for one of
+    // those nested children beside one for a genuinely retired row, and a
+    // composition that lists the group's children in its dump
+    const { facts, dir } = makeProfile({
+      'dsh-memoir': { version: '1.0.0' },
+      'dsh-mnemon': { version: '1.0.0', bundle: true, patch: MNEMON_BUNDLE_LAYER },
+    })
+    tempDirs.push(dir)
+    writeFileSync(facts.patchPath, MNEMON_USER_LAYER)
+    const gateway = updateGateway(facts, () => ({ code: 0, output: MNEMON_COMPOSED_DUMP }))
+
+    // When the update runs
+    const { jobId } = gateway.update('dsh-memoir', '1.1.0')
+    const job = await settle(gateway, jobId)
+
+    // Then the nested child's override survives (its id is a live composed
+    // entry), only the retired override is pruned, and the pre-prune text is
+    // the backup
+    expect(job.phase).toBe('done')
+    const pruned = readFileSync(facts.patchPath, 'utf8')
+    expect(pruned).toContain('mnemon-strategy-auto-capture')
+    expect(pruned).not.toContain('retired-mnemon-row')
+    expect(pruned).toBe(MNEMON_PRUNED_LAYER)
+    expect(readFileSync(`${facts.patchPath}.bak-plugin-manager`, 'utf8')).toBe(MNEMON_USER_LAYER)
+  })
 
   it('operator: drops the retired row override after an update and backs the file up first', async () => {
     // Given a profile carrying an override for a row the target composition

@@ -420,8 +420,43 @@ describe('declaredRowIds', () => {
     const ids = declaredRowIds(layer, 'cordis.patch.yml')
 
     // Then every layer entry is declared once, in file order, and an id nested
-    // inside a row's own config stays a child rather than a layer entry
+    // inside a plain (non-group) row's config stays a child, not a layer entry
     expect(ids).toEqual(['web-ui-remote-web-ui', 'ui-schedule', 'web-ui-pet'])
+  })
+
+  it('operator: declares the entries nested under a group entry config recursively', () => {
+    // Given a bundle layer whose insert carries a group entry whose config
+    // holds child entries (one of them a nested group), and a plain row whose
+    // config carries an id-shaped data item that is not an entry (issue #2091)
+    const layer = [
+      '- insert:',
+      '    - id: mnemon-bundle',
+      '      name: mnemon-bundle',
+      '      group: true',
+      '      config:',
+      '        - id: mnemon-strategy-auto-capture',
+      "          name: '@dsh/mnemon-strategy-auto-capture'",
+      '        - id: mnemon-inner-group',
+      '          name: cordis:group',
+      '          group: true',
+      '          config:',
+      '            - id: mnemon-deep-child',
+      "              name: '@dsh/deep'",
+      '- id: plain-row',
+      '  name: plain',
+      '  config:',
+      '    children:',
+      '      - id: data-not-entry',
+      '',
+    ].join('\n')
+
+    // When the layer's declarations are read
+    const ids = declaredRowIds(layer, 'cordis.patch.yml')
+
+    // Then every group child id is declared, deepest included, and the id
+    // inside a plain row's config data is not
+    expect(ids).toEqual(['mnemon-bundle', 'mnemon-strategy-auto-capture', 'mnemon-inner-group', 'mnemon-deep-child', 'plain-row'])
+    expect(ids).not.toContain('data-not-entry')
   })
 
   it('operator: fails loud on a layer it cannot parse so the caller prunes nothing', () => {

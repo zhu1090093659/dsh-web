@@ -67,12 +67,16 @@ function copyCommittedTree(dir) {
     // cap from it to reject catalog assets the installer could not install.
     [join(ROOT, 'packages', 'dsh-market', 'src', 'core', 'installer.ts'), join(dir, 'packages', 'dsh-market', 'src', 'core', 'installer.ts')],
   ]
-  // Copy family package manifests and locale metadata used by the official
-  // Format 1 plugin-market-index.json generator.
+  // Copy family package manifests, locale metadata and the icon the official
+  // Format 1 plugin-market-index.json generator inlines for each entry.
   for (const entry of readdirSync(join(ROOT, 'packages'))) {
     const pkgJson = join(ROOT, 'packages', entry, 'package.json')
     if (existsSync(pkgJson)) {
       pairs.push([pkgJson, join(dir, 'packages', entry, 'package.json')])
+    }
+    const iconSvg = join(ROOT, 'packages', entry, 'icon.svg')
+    if (existsSync(iconSvg)) {
+      pairs.push([iconSvg, join(dir, 'packages', entry, 'icon.svg')])
     }
     for (const lang of ['en.json', 'zh.json']) {
       const localeFile = join(ROOT, 'packages', entry, 'locale', lang)

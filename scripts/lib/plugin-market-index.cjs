@@ -29,6 +29,26 @@ const SEMVER_RE = new RegExp(
 
 const DEFAULT_REPO_URL = 'https://github.com/zhu1090093659/dsh-web'
 
+/** Largest decoded payload of an inline `data:` icon the format accepts, in bytes. */
+const MAX_INLINE_ICON_BYTES = 32 * 1024
+
+/**
+ * Read a package's own `icon.svg` as an inline `data:` URL.
+ *
+ * The format resolves a relative icon against the index URL and caps an inline
+ * payload at 32 KiB; every family package ships a 1-4 KiB SVG, so inlining keeps
+ * the artwork offline and independent of the market site's asset layout.
+ * @param pkgDir - directory holding the package.json that was just read.
+ * @returns the data URL, or undefined when the package has no usable icon.
+ */
+function readInlineIcon(pkgDir) {
+  const filePath = path.join(pkgDir, 'icon.svg')
+  if (!fs.existsSync(filePath)) return undefined
+  const svg = fs.readFileSync(filePath)
+  if (svg.length === 0 || svg.length > MAX_INLINE_ICON_BYTES) return undefined
+  return 'data:image/svg+xml;base64,' + svg.toString('base64')
+}
+
 const CATEGORY_DECLARATIONS = {
   bundle: { title: { en: 'Bundles', zh: '全家桶与整合包' } },
   ui: { title: { en: 'UI & Interface', zh: '界面与交互' } },
@@ -141,6 +161,7 @@ function scanFamilyMarketPackages(rootDir) {
       dshRange: dshRange && !dshRange.startsWith('workspace:') ? dshRange : undefined,
       title,
       description,
+      icon: readInlineIcon(pkgDir),
       repository: { url: repoUrl, directory: `packages/${dirName}` },
       category: inferFamilyCategory(dirName),
     })
@@ -179,6 +200,7 @@ function buildPluginMarketIndex({ rootDir, communityPlugins = [], generatedDate 
       name: pkg.name,
       title: pkg.title,
       ...(pkg.description ? { description: pkg.description } : {}),
+      ...(pkg.icon ? { icon: pkg.icon } : {}),
       author: 'zhu1090093659',
       repository: pkg.repository,
       metadata: {

@@ -21,11 +21,16 @@ const AUTH_PAGE_TEXT = 'dsh web authentication required; reopen the URL printed 
 /** Body of the bare refusal a post-#8266 Host answers when route admission denies the request. */
 const ADMISSION_REJECTION_TEXT = 'unauthorized'
 
+/** Visible text of the remote-connection sign-in page the Host serves at its root. */
+const LOGIN_PAGE_TEXT = 'Connect to this Host\nUse one of the methods below to sign in.\nEnter a login token or link\nContinue'
+
 /** The page one navigation request results in. */
 interface ScriptedPage {
   url: string
   title: string
   text: string
+  /** Whether the document has the remote-connection sign-in structure. */
+  loginPage?: boolean
 }
 
 /** How the fake GUI answers a navigation. */
@@ -65,6 +70,7 @@ function createAuthBrowser(options: AuthBrowserOptions): AuthBrowser {
   transport.responses.set('Runtime.evaluate', (params: Record<string, unknown>) => {
     const expression = String(params.expression ?? '')
     if (expression.includes('innerText')) return { result: { value: page.text } }
+    if (expression.includes('token-form')) return { result: { value: page.loginPage === true } }
     return { result: { value: JSON.stringify({ url: page.url, title: page.title }) } }
   })
   transport.onSend = (call: RecordedCall) => {
@@ -256,6 +262,45 @@ describe('auth top-up', () => {
     expect(browser.tickets()).toEqual([])
     expect(browser.navigations()).toEqual(['http://127.0.0.1:3080/'])
     expect(navigated.tab.title).toBe('401')
+  })
+
+  it('operator opens the GUI on a host that serves the remote-connection sign-in page and one ticketed navigation replaces it', async () => {
+    // Given a host whose root answers with the localized Connect to this Host page instead of the challenge sentence
+    // When the operator navigates to the GUI root
+    // Then the page is recognized by its structure, exactly one token is minted and the ticketed page loads
+    const browser = createAuthBrowser({
+      hostOrigin: 'http://127.0.0.1:3080',
+      resolve: url => url.includes('token=')
+        ? { url: 'http://127.0.0.1:3080/', title: 'DeepSeek Harness', text: 'Conversations' }
+        : { url, title: 'Connect to this Host', text: LOGIN_PAGE_TEXT, loginPage: true },
+      mintTicket: withTicket,
+    })
+
+    const navigated = await browser.service.navigate('session-a', 'http://127.0.0.1:3080/')
+
+    expect(browser.tickets()).toEqual(['http://127.0.0.1:3080/'])
+    expect(browser.navigations()).toEqual([
+      'http://127.0.0.1:3080/',
+      'http://127.0.0.1:3080/?token=process-token',
+    ])
+    expect(navigated.tab.title).toBe('DeepSeek Harness')
+  })
+
+  it('operator opens another local service with the same sign-in structure and no token is minted', async () => {
+    // Given a different loopback port whose page also has a title heading and a token form
+    // When the operator navigates to it, and to a non-root path of this host
+    // Then neither page is this host's root, so nothing is re-ticketed
+    const browser = createAuthBrowser({
+      hostOrigin: 'http://127.0.0.1:3080',
+      resolve: url => ({ url, title: 'Sign in', text: LOGIN_PAGE_TEXT, loginPage: true }),
+      mintTicket: withTicket,
+    })
+
+    await browser.service.navigate('session-a', 'http://127.0.0.1:5173/')
+    await browser.service.navigate('session-a', 'http://127.0.0.1:3080/settings')
+
+    expect(browser.tickets()).toEqual([])
+    expect(browser.navigations()).toEqual(['http://127.0.0.1:5173/', 'http://127.0.0.1:3080/settings'])
   })
 
   it('operator opens the GUI when minting the token throws and the navigation result is untouched', async () => {

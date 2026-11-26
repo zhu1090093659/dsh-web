@@ -28,6 +28,7 @@ import { buildSnapshot, type SnapshotResult } from '../core/snapshot.ts'
 import { planScreenshot, type ScreenshotPlan, type ScreenshotRequest } from '../core/screenshot.ts'
 import {
   DOCUMENT_TEXT_EXPRESSION,
+  LOGIN_PAGE_EXPRESSION,
   isAdmissionRejectionText,
   isAuthChallengeText,
   isHostRootUrl,
@@ -743,12 +744,13 @@ export class BrowserViewService implements BrowserViewBackend {
   }
 
   /**
-   * Whether the tab's current document is DSH's authentication page. Two
-   * pages count: the token exchange's own sentence, and the bare
-   * `unauthorized` a post-#8266 Host answers when route admission refuses the
-   * site root before that exchange runs. The bare refusal is generic to every
-   * local service, so it only counts when the requested URL names this host's
-   * own listener.
+   * Whether the tab's current document is DSH's authentication page. Three
+   * pages count: the token exchange's own sentence, the bare `unauthorized` a
+   * post-#8266 Host answers when route admission refuses the site root before
+   * that exchange runs, and the "Connect to this Host" sign-in page the
+   * official remote-connection plugin renders at the root. The last two are
+   * generic to any local service, so they only count when the requested URL
+   * is the root of this host's own listener.
    * @param tabId - tab to read.
    * @param url - the URL the caller asked to open.
    * @returns true when the page body is the challenge.
@@ -764,9 +766,17 @@ export class BrowserViewService implements BrowserViewBackend {
       const text = result.result?.value
       if (typeof text !== 'string') return false
       if (isAuthChallengeText(text)) return true
-      if (!isAdmissionRejectionText(text)) return false
+      // The remaining two shapes are generic to any local service, so both
+      // count only when the requested URL is this host's own root.
       const origin = this.hostOrigin?.()
-      return origin !== undefined && isSameLoopbackOrigin(url, origin) && isHostRootUrl(url)
+      if (origin === undefined || !isSameLoopbackOrigin(url, origin) || !isHostRootUrl(url)) return false
+      if (isAdmissionRejectionText(text)) return true
+      const login = await scope.transport.send<{ result?: { value?: unknown } }>(
+        'Runtime.evaluate',
+        { expression: LOGIN_PAGE_EXPRESSION, returnByValue: true },
+        scope.tabs.sessionOf(tabId),
+      )
+      return login.result?.value === true
     } catch {
       return false
     }

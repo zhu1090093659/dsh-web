@@ -13,6 +13,10 @@
  * (`ctx.connection.authenticatedUrl`), which is what makes the retry possible
  * without this package depending on that SDK.
  *
+ * With the official remote-connection plugin mounted, the same 401 renders
+ * that plugin's localized sign-in page instead of the sentence; it is
+ * recognized by {@link LOGIN_PAGE_EXPRESSION}.
+ *
  * If DSH rewords the challenge, {@link AUTH_CHALLENGE_TEXT} simply stops
  * matching: the capability degrades to showing the authentication page exactly
  * as before, and no other site's page is ever mistaken for ours.
@@ -41,6 +45,19 @@ const ADMISSION_REJECTION_TEXT = /^\s*unauthorized\s*$/i
  * a document that has no body yet, and `innerText` needs one.
  */
 export const DOCUMENT_TEXT_EXPRESSION = "document.body ? document.body.innerText : ''"
+
+/**
+ * Script that recognizes the sign-in page a Host serves at its root once the
+ * official remote-connection plugin is mounted ("Connect to this Host"). Its
+ * copy is localized and has no fixed sentence to match, so the page is read
+ * by structure instead: the `h1#title` heading plus at least one sign-in
+ * method, the token form or the device-pairing element. Rendering one without
+ * the other is possible when the operator disables a method, which is why
+ * either counts. Like the bare refusal, this shape is not unique on its own,
+ * so a caller must also know the page came from this host's own listener.
+ */
+export const LOGIN_PAGE_EXPRESSION
+  = "document.querySelector('h1#title') !== null && document.querySelector('form#token-form, dsh-device-pairing') !== null"
 
 /**
  * The host seam that turns one clean URL into the same URL carrying the

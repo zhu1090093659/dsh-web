@@ -19,7 +19,7 @@ DSH Web GUI 的**技能中心**插件：侧边栏「技能中心」入口打开�
   `@deepseek-ai/dsh-home-paths` 的 `$DSH_AGENTS_HOME`）+ `ctx.skills` 注册表合并。
 - **导入是独立的创建面**（`import.ts`）：它只能读用户指名的目录一层
   （`<名>/SKILL.md` 或 `<名>.md`，跳过符号链接与点目录）或浏览器提交的
-  `.zip`，只往用户/项目根新建 `<名>/SKILL.md`，从不改写已有文件；冲突用
+  `.zip`，只往用户/共享用户（`~/.agents/skills`）/项目根新建 `<名>/SKILL.md`，从不改写已有文件；冲突用
   `SKILL_SOURCE_RANK`（同级 `exists`、更强来源 `shadowed`）裁决，候选校验
   复用 `isSkillName` 与 `parseFrontmatter`。请求形状错误用
   `ImportRequestError`（路由映射为 400），不要退化成 500。现有写路由的

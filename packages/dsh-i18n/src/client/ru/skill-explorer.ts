@@ -24,6 +24,7 @@ export const ru: Record<string, string> = {
   'create.root': 'Расположение',
   'create.root.project': 'Навыки проекта (.dsh/skills текущего проекта)',
   'create.root.user': 'Навыки пользователя (~/.dsh/skills, доступны во всех проектах)',
+  'create.root.agents': 'Общие пользовательские навыки (~/.agents/skills, доступны во всех проектах)',
   'create.submit': 'Создать навык',
   'create.whenToUse': 'Когда использовать (необязательно)',
   'create.template': 'Скопировано из шаблона «{name}»: измените название и поля перед созданием.',

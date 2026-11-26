@@ -20,7 +20,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
 import { isSkillExplorerAllowed, type HostConnectionService } from './access.ts'
-import { buildPayload, collectSkills, findProjectRoot, isSkillName, overwriteSkillFile, projectSkillRoot, trashSkillFile, userSkillRoot, writeSkillFile, type CollectOptions, type SkillEntry } from './collect.ts'
+import { agentsSkillRoot, buildPayload, collectSkills, findProjectRoot, isSkillName, overwriteSkillFile, projectSkillRoot, trashSkillFile, userSkillRoot, writeSkillFile, type CollectOptions, type SkillEntry } from './collect.ts'
 import { parseFrontmatter, setFrontmatterField, stripFrontmatter } from './frontmatter.ts'
 import { readJsonBody, writeJson } from './http.ts'
 import { IMPORT_LIMITS, ImportRequestError, importSkills, type ImportSource } from './import.ts'
@@ -440,8 +440,8 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
           }
           const payload = body as Record<string, unknown>
           const { root, name, description, whenToUse, content, cwd } = payload
-          if (root !== 'user' && root !== 'project') {
-            writeJson(res, 400, { error: 'root must be user (~/.dsh/skills) or project (project .dsh/skills)' })
+          if (root !== 'user' && root !== 'project' && root !== 'agents') {
+            writeJson(res, 400, { error: 'root must be user (~/.dsh/skills), agents (~/.agents/skills) or project (project .dsh/skills)' })
             return
           }
           if (typeof cwd !== 'string' || cwd.trim() === '') {
@@ -466,7 +466,9 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
           }
           const baseDir = root === 'user'
             ? userSkillRoot(dshHome)
-            : projectSkillRoot(findProjectRoot(cwd))
+            : root === 'agents'
+              ? agentsSkillRoot(agentsHome)
+              : projectSkillRoot(findProjectRoot(cwd))
           const target = await writeSkillFile(baseDir, name, description, typeof whenToUse === 'string' ? whenToUse : undefined, content)
           notifySkillCatalogChanged()
           writeJson(res, 200, { ok: true, name, path: target })
@@ -493,8 +495,8 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
           }
           const payload = body as Record<string, unknown>
           const { root, cwd, source } = payload
-          if (root !== 'user' && root !== 'project') {
-            writeJson(res, 400, { error: 'root must be user (~/.dsh/skills) or project (project .dsh/skills)' })
+          if (root !== 'user' && root !== 'project' && root !== 'agents') {
+            writeJson(res, 400, { error: 'root must be user (~/.dsh/skills), agents (~/.agents/skills) or project (project .dsh/skills)' })
             return
           }
           if (typeof cwd !== 'string' || cwd.trim() === '') {
@@ -511,8 +513,12 @@ export function makeRoutes(ctx: Context, deps: SkillRoutesDeps): WebRoute[] {
           // a different base workspace would rank a project skill against the
           // wrong root and import a file that is immediately shadowed.
           const workspace = panelCwd(cwd)
-          const targetLevel = root === 'user' ? 'user-dsh' : 'project-dsh'
-          const baseDir = root === 'user' ? userSkillRoot(dshHome) : projectSkillRoot(findProjectRoot(cwd))
+          const targetLevel = root === 'user' ? 'user-dsh' : root === 'agents' ? 'user-agents' : 'project-dsh'
+          const baseDir = root === 'user'
+            ? userSkillRoot(dshHome)
+            : root === 'agents'
+              ? agentsSkillRoot(agentsHome)
+              : projectSkillRoot(findProjectRoot(cwd))
           const { skills } = await collectSkills(await collectOptions(workspace))
           const report = await importSkills({ baseDir, targetLevel, source: resolved, existing: skills })
           notifySkillCatalogChanged()

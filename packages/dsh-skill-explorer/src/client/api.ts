@@ -150,8 +150,8 @@ export class SkillApi {
     return this.request(API.setProviderEnabled, { method: 'POST', body: { name, provider, enabled } })
   }
 
-  /** Create a skill file under the user or project root. */
-  async create(payload: { root: 'user' | 'project'; name: string; description: string; whenToUse?: string; content: string; cwd: string }): Promise<{ ok: true; name: string; path: string }> {
+  /** Create a skill file under the user (~/.dsh/skills), agents (~/.agents/skills) or project root. */
+  async create(payload: { root: 'user' | 'agents' | 'project'; name: string; description: string; whenToUse?: string; content: string; cwd: string }): Promise<{ ok: true; name: string; path: string }> {
     return this.request(API.create, { method: 'POST', body: payload })
   }
 
@@ -175,7 +175,7 @@ export class SkillApi {
    * create new files under the chosen root; a name that already resolves at
    * the same or a stronger source comes back skipped with its reason.
    */
-  async importSkills(payload: { root: 'user' | 'project'; cwd: string; source: ImportSourceRequest }): Promise<ImportReport> {
+  async importSkills(payload: { root: 'user' | 'agents' | 'project'; cwd: string; source: ImportSourceRequest }): Promise<ImportReport> {
     return this.request(API.import, { method: 'POST', body: payload })
   }
 

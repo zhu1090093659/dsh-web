@@ -1,5 +1,5 @@
 /**
- * Create tab: the new-skill form (user or project root).
+ * Create tab: the new-skill form (user, shared agents or project root).
  *
  * The host's create route needs the workspace the panel is showing, which the
  * list payload carries. The inactive tab unmounts, so a user who opens this
@@ -23,7 +23,7 @@ type Feedback = { text: string; kind: 'ok' | 'error' }
 /** The create tab body. */
 export function CreateTab({ api, controller }: { api: SkillApi; controller: PanelController }): React.JSX.Element {
   const [template, setTemplate] = useState<SkillDraft | undefined>(() => controller.getSnapshot().template)
-  const [root, setRoot] = useState<'user' | 'project'>('user')
+  const [root, setRoot] = useState<'user' | 'agents' | 'project'>('user')
   const [name, setName] = useState(template?.name ?? '')
   const [description, setDescription] = useState(template?.description ?? '')
   const [whenToUse, setWhenToUse] = useState(template?.whenToUse ?? '')
@@ -80,8 +80,9 @@ export function CreateTab({ api, controller }: { api: SkillApi; controller: Pane
         )}
         <label className={css.field}>
           <span className={css.fieldLabel}>{tt('create.root')}</span>
-          <select className={css.select} value={root} onChange={(event) => { setRoot(event.target.value as 'user' | 'project') }}>
+          <select className={css.select} value={root} onChange={(event) => { setRoot(event.target.value as 'user' | 'agents' | 'project') }}>
             <option value="user">{tt('create.root.user')}</option>
+            <option value="agents">{tt('create.root.agents')}</option>
             <option value="project">{tt('create.root.project')}</option>
           </select>
         </label>

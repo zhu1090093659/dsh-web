@@ -328,6 +328,19 @@ describe('create', () => {
     expect(existsSync(target)).toBe(true)
   })
 
+  it('operator creating a skill under the shared agents root gets the file in ~/.agents/skills', async () => {
+    // Given the create route and the deployment's resolved agents home
+    const { res, status, body } = response()
+    // When the operator posts root 'agents'
+    await find(ROUTES.create)!.handler(request(ROUTES.create, 'POST', { body: { root: 'agents', name: 'agents-skill', description: '共享技能', content: '正文', cwd: PROJ } }), res)
+    // Then the file lands under the resolved agents home, not the dsh home
+    expect(status()).toBe(200)
+    const target = join(deps.agentsHome, 'skills', 'agents-skill', 'SKILL.md')
+    expect(JSON.parse(body()).path).toBe(target)
+    expect(existsSync(target)).toBe(true)
+    expect(existsSync(join(HOME, 'skills', 'agents-skill'))).toBe(false)
+  })
+
   it('rejects a missing cwd with 400', async () => {
     const { res, status } = response()
     await find(ROUTES.create)!.handler(request(ROUTES.create, 'POST', { body: { root: 'project', name: 'no-cwd-skill', description: 'x', content: 'y' } }), res)
@@ -1196,6 +1209,51 @@ describe('import (#1881)', () => {
       // Then the file lands under the workspace's own .dsh/skills
       expect(result.status).toBe(200)
       expect(existsSync(join(fixture.project, '.dsh', 'skills', 'beta-skill', 'SKILL.md'))).toBe(true)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('operator importing a directory into the agents root creates the skill under ~/.agents/skills', async () => {
+    // Given a source directory holding one skill
+    const fixture = importFixture()
+    try {
+      const source = sourceDir(fixture.root, 'gamma-skill', 'gamma-skill')
+      // When the operator posts the import into the shared agents root
+      const result = await postImport(fixture.mount(), {
+        root: 'agents',
+        cwd: fixture.project,
+        source: { kind: 'directory', path: source },
+      })
+      // Then the file lands under the agents home and never under ~/.dsh/skills
+      expect(result.status).toBe(200)
+      expect(result.payload.imported).toBe(1)
+      expect(existsSync(join(fixture.root, 'agents', 'skills', 'gamma-skill', 'SKILL.md'))).toBe(true)
+      expect(existsSync(join(fixture.home, 'skills', 'gamma-skill'))).toBe(false)
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true })
+    }
+  })
+
+  it('operator importing a name the user dsh root already owns into the agents root is reported shadowed', async () => {
+    // Given a user skill that already owns the name at a stronger rank (400 < 500)
+    const fixture = importFixture()
+    try {
+      const userSkill = join(fixture.home, 'skills', 'shared-skill', 'SKILL.md')
+      mkdirSync(join(userSkill, '..'), { recursive: true })
+      writeFileSync(userSkill, '---\nname: shared-skill\ndescription: user copy\n---\n', 'utf8')
+      const source = sourceDir(fixture.root, 'shared-skill', 'shared-skill')
+      // When the same name is imported into the agents root
+      const result = await postImport(fixture.mount(), {
+        root: 'agents',
+        cwd: fixture.project,
+        source: { kind: 'directory', path: source },
+      })
+      // Then nothing is written there, because the user dsh copy outranks it
+      expect(result.status).toBe(200)
+      expect(result.payload.imported).toBe(0)
+      expect((result.payload.outcomes as Array<{ reason?: string }>)[0].reason).toBe('shadowed')
+      expect(existsSync(join(fixture.root, 'agents', 'skills', 'shared-skill', 'SKILL.md'))).toBe(false)
     } finally {
       rmSync(fixture.root, { recursive: true, force: true })
     }

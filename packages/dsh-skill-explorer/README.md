@@ -46,14 +46,16 @@ A visual Skill Explorer for DeepSeek Harness (DSH) Web GUI and desktop client: b
   facets and the fold decisions are view preferences stored in `localStorage`;
   a browser that refuses storage simply does not remember them.
 - **Import tab**: batch-create skills from a directory on the host or from a
-  `.zip` archive read by the browser. Every candidate is validated against the
+  `.zip` archive read by the browser, into the user root (`~/.dsh/skills`), the
+  shared agents root (`~/.agents/skills`) or the project root (`.dsh/skills`).
+  Every candidate is validated against the
   official acceptance rule and resolved by the same source rank the list uses,
   so a candidate a stronger source already provides is reported as skipped
   instead of creating a file the model would never receive. An import only ever
   creates files: an existing skill is never overwritten.
 - **Create tab**: a form to create a new skill under the user root
-  (`~/.dsh/skills`) or the project root (`.dsh/skills`), generating a
-  standard SKILL.md.
+  (`~/.dsh/skills`), the shared agents root (`~/.agents/skills`) or the project
+  root (`.dsh/skills`), generating a standard SKILL.md.
 - **Edit tab**: opens from a row's edit action, reads the skill through the
   host (the list carries metadata only) and rewrites its description,
   when-to-use and body in place; the name, location and enabled state stay as
@@ -116,7 +118,7 @@ sidebar.
 | `/api/dsh-skill-explorer/read` | GET | One skill's editable fields and body (`?name=&path=`) |
 | `/api/dsh-skill-explorer/set-enabled` | POST | Enable/disable (rewrites frontmatter) |
 | `/api/dsh-skill-explorer/set-provider-enabled` | POST | Enable/disable a plugin-provided skill (recorded in the panel's own store) |
-| `/api/dsh-skill-explorer/create` | POST | Create a skill (user/project root) |
+| `/api/dsh-skill-explorer/create` | POST | Create a skill (user, agents or project root) |
 | `/api/dsh-skill-explorer/import` | POST | Batch-create skills from a directory or a .zip archive |
 | `/api/dsh-skill-explorer/update` | POST | Edit an existing skill in place (name and location unchanged) |
 | `/api/dsh-skill-explorer/delete` | POST | Delete (move into .trash) |
@@ -161,7 +163,7 @@ sidebar.
   scanned one level for `<name>/SKILL.md` or `<name>.md`, symbolic links and dot
   entries there are skipped rather than followed, or the browser posts an
   archive it read. It writes only new `<skill root>/<name>/SKILL.md` files under
-  the documented user/project root, never rewriting an existing one, and the
+  the documented user, agents or project root, never rewriting an existing one, and the
   request is bounded (archive 4MB, entries 512, one SKILL.md 64KB, 4MB of
   expanded text). A malformed or unsupported archive (zip64, encrypted entries,
   an unknown compression method, a path escaping the archive) is answered with

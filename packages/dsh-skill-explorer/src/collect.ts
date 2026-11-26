@@ -608,6 +608,11 @@ export function userSkillRoot(dshHome: string): string {
   return join(dshHome, 'skills')
 }
 
+/** Shared user skill root convention (agents home + skills, i.e. ~/.agents/skills). */
+export function agentsSkillRoot(agentsHome: string): string {
+  return join(agentsHome, 'skills')
+}
+
 /** Project skill root convention (project root + .dsh/skills). */
 export function projectSkillRoot(projectRoot: string): string {
   return `${projectRoot}${sep}.dsh${sep}skills`

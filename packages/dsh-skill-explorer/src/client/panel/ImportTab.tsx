@@ -35,7 +35,7 @@ function reasonLabel(outcome: ImportOutcome): string {
 
 /** The import tab body. */
 export function ImportTab({ api }: { api: SkillApi }): React.JSX.Element {
-  const [root, setRoot] = useState<'user' | 'project'>('user')
+  const [root, setRoot] = useState<'user' | 'agents' | 'project'>('user')
   const [mode, setMode] = useState<ImportMode>('directory')
   const [dir, setDir] = useState('')
   const [archive, setArchive] = useState<{ name: string; data: string } | undefined>(undefined)
@@ -106,8 +106,9 @@ export function ImportTab({ api }: { api: SkillApi }): React.JSX.Element {
       <form className={css.form} onSubmit={(event) => { void submit(event) }}>
         <label className={css.field}>
           <span className={css.fieldLabel}>{tt('import.root')}</span>
-          <select className={css.select} value={root} onChange={(event) => { setRoot(event.target.value as 'user' | 'project') }}>
+          <select className={css.select} value={root} onChange={(event) => { setRoot(event.target.value as 'user' | 'agents' | 'project') }}>
             <option value="user">{tt('create.root.user')}</option>
+            <option value="agents">{tt('create.root.agents')}</option>
             <option value="project">{tt('create.root.project')}</option>
           </select>
         </label>

@@ -38,12 +38,14 @@ DSH Web GUI 与官方桌面客户端的**技能中心**：按来源分级浏览�
   展开/收起；首次使用时只展开项目与用户根，因此全局来源不会一次铺满所有行。
   筛选维度与折叠决定都是存在 `localStorage` 的视图偏好；拒绝存储的浏览器
   只是不记忆它们。
-- **导入 tab**：从宿主机上的目录或浏览器读取的 `.zip` 压缩包批量创建技能。
-  每个候选都按官方接受规则校验，并按与列表相同的来源 rank 裁决，因此更强来源
+- **导入 tab**：从宿主机上的目录或浏览器读取的 `.zip` 压缩包批量创建技能，
+  可写入用户根（`~/.dsh/skills`）、共享用户根（`~/.agents/skills`）或项目根
+  （`.dsh/skills`）。每个候选都按官方接受规则校验，并按与列表相同的来源 rank
+  裁决，因此更强来源
   已提供的同名候选会报告为跳过，而不是创建一个模型收不到的文件。导入只新建
   文件：已有技能不会被覆盖。
-- **创建 tab**：表单创建新技能，可写入用户根（`~/.dsh/skills`）或项目根
-  （`.dsh/skills`），生成标准 SKILL.md。
+- **创建 tab**：表单创建新技能，可写入用户根（`~/.dsh/skills`）、共享用户根
+  （`~/.agents/skills`）或项目根（`.dsh/skills`），生成标准 SKILL.md。
 - **编辑 tab**：从行内编辑入口打开，先经宿主读取该技能（列表只带元数据），
   再就地改写描述、适用场景与正文；技能名、位置与启用状态保持不变。
 - 数据来自按官方 dsh-skill-filesystem 根约定的文件系统扫描（用户
@@ -95,7 +97,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
 | `/api/dsh-skill-explorer/read` | GET | 单个技能的可编辑字段与正文（`?name=&path=`） |
 | `/api/dsh-skill-explorer/set-enabled` | POST | 启用/禁用（改写 frontmatter） |
 | `/api/dsh-skill-explorer/set-provider-enabled` | POST | 启用/禁用插件提供的技能（记入面板自己的存储） |
-| `/api/dsh-skill-explorer/create` | POST | 创建技能（user/project 根） |
+| `/api/dsh-skill-explorer/create` | POST | 创建技能（user/agents/project 根） |
 | `/api/dsh-skill-explorer/import` | POST | 从目录或 .zip 压缩包批量创建技能 |
 | `/api/dsh-skill-explorer/update` | POST | 原地修改已有技能（名称与位置不变） |
 | `/api/dsh-skill-explorer/delete` | POST | 删除（移入 .trash） |
@@ -128,7 +130,7 @@ dsh plugin --profile web add link:$(pwd)/packages/dsh-skill-explorer
 - 导入路由是唯一会读取技能根之外内容的创建入口，其读取面很窄：用户指定的
   宿主机目录只扫描一层 `<名称>/SKILL.md` 或 `<名称>.md`，其中的符号链接与
   点目录被跳过而非跟随；压缩包则由浏览器读取后提交。写入只新建文档所述
-  用户/项目根下的 `<技能根>/<名称>/SKILL.md`，绝不改写已有文件；请求有上限
+  用户/共享用户/项目根下的 `<技能根>/<名称>/SKILL.md`，绝不改写已有文件；请求有上限
   （压缩包 4MB、条目 512、单个 SKILL.md 64KB、展开文本 4MB）。损坏或不支持的
   压缩包（zip64、加密条目、未知压缩方法、越出压缩包的路径）以 400 加原因
   作答，且每条拒绝都会点名出问题的条目。

@@ -11,7 +11,7 @@ import { PanelController } from '../src/client/panel/controller.ts'
 import { SkillPanel } from '../src/client/panel/SkillPanel.tsx'
 
 interface CreateArgs {
-  root: 'user' | 'project'
+  root: 'user' | 'agents' | 'project'
   name: string
   description: string
   whenToUse?: string

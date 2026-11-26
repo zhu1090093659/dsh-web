@@ -411,6 +411,89 @@ describe('TaskBoardHostService scheduling without a browser', () => {
     service.dispose()
   })
 
+  it('user whose recurring rule fires a millisecond early still sees the occurrence run', async () => {
+    // Given a recurring rule armed for the next minute boundary
+    let now = new Date(2026, 7, 16, 10, 0, 30).getTime()
+    const ledger = new HostTaskLedger(root(), () => now)
+    ledger.applyRequest('create', {
+      kind: 'create', id: 'early', input: {
+        title: 'Early', description: '', prompt: 'work', schedule: { enabled: true, cron: '* * * * *' },
+      },
+    })
+    const create = vi.fn(async (_request: GatewayRequest) => ({ sessionId: 'session-early' }))
+    const prompt = vi.fn(async (_request: GatewayRequest) => ({ accepted: true }))
+    const { gateway } = makeGateway(request => {
+      if (request.namespace !== 'session') throw new Error('unexpected namespace')
+      if (request.method === 'create') return create(request)
+      if (request.method === 'rename') return { title: 'Early', seq: 1 }
+      if (request.method === 'prompt') return prompt(request)
+      throw new Error('unexpected gateway call')
+    })
+    const probe = timerProbe()
+    const service = new TaskBoardHostService(gateway, {
+      ledger,
+      power: new PowerInhibitor({ platform: 'linux' }),
+      timers: probe.timers,
+      now: () => now,
+      workspaceRegistry: fixtureWorkspaces(),
+    })
+    service.start()
+    const target = new Date(2026, 7, 16, 10, 1, 0).getTime()
+    expect(probe.delay).toBe(30_000)
+
+    // When the armed timer fires one millisecond before the instant it covers
+    now = target - 1
+    await probe.trigger()
+
+    // Then the occurrence still runs exactly once and the rule rolls forward
+    expect(create).toHaveBeenCalledOnce()
+    expect(prompt).toHaveBeenCalledOnce()
+    expect(ledger.state().tasks[0].executions).toHaveLength(1)
+    expect(ledger.state().tasks[0].schedule).toMatchObject({ enabled: true, runCount: 1 })
+    expect(ledger.state().tasks[0].schedule?.nextRunAt).toBe(new Date(2026, 7, 16, 10, 2, 0).getTime())
+    // The next target was computed from a clock that owns this firing, so the
+    // rule is armed again instead of being stranded in the past.
+    expect(probe.delay).toBe(60_001)
+    service.dispose()
+  })
+
+  it('user whose recurring rule lands far past its target sees it recorded as missed', async () => {
+    // Given a recurring rule armed for the next minute boundary
+    let now = new Date(2026, 7, 16, 10, 0, 30).getTime()
+    const ledger = new HostTaskLedger(root(), () => now)
+    ledger.applyRequest('create', {
+      kind: 'create', id: 'late', input: {
+        title: 'Late', description: '', prompt: 'work', schedule: { enabled: true, cron: '* * * * *' },
+      },
+    })
+    const create = vi.fn(async (_request: GatewayRequest) => ({ sessionId: 'session-late' }))
+    const { gateway } = makeGateway(request => {
+      if (request.namespace !== 'session') throw new Error('unexpected namespace')
+      if (request.method === 'create') return create(request)
+      throw new Error('unexpected gateway call')
+    })
+    const probe = timerProbe()
+    const service = new TaskBoardHostService(gateway, {
+      ledger,
+      power: new PowerInhibitor({ platform: 'linux' }),
+      timers: probe.timers,
+      now: () => now,
+      workspaceRegistry: fixtureWorkspaces(),
+    })
+    service.start()
+    const target = new Date(2026, 7, 16, 10, 1, 0).getTime()
+
+    // When the callback lands just beyond the recovery tolerance
+    now = target + 60_001
+    await probe.trigger()
+
+    // Then the stale occurrence is skipped rather than launched
+    expect(create).not.toHaveBeenCalled()
+    expect(ledger.state().tasks[0].executions).toHaveLength(0)
+    expect(ledger.state().tasks[0].schedule?.nextRunAt).toBe(new Date(2026, 7, 16, 10, 3, 0).getTime())
+    service.dispose()
+  })
+
   it('user arming a one-shot sees it fire once and arm no further timer', async () => {
     let now = new Date(2026, 7, 16, 10, 0, 30).getTime()
     const ledger = new HostTaskLedger(root(), () => now)

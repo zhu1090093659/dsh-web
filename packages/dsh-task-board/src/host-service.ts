@@ -1209,7 +1209,12 @@ export class TaskBoardHostService {
    */
   private onScheduleFire(target: number): void {
     if (this.disposed || !this.active) return
-    const now = this.now()
+    // The timer covers the instant it was armed for: a callback that reads the
+    // wall clock a hair before its target (early timer tick, coarse clock) must
+    // still deliver that occurrence. Left at this.now() alone, dueSchedules()
+    // would see a not-yet-due rule and the re-arm would skip a nextRunAt that
+    // is already in the past, stranding the rule for good.
+    const now = Math.max(this.now(), target)
     this.scheduleTarget = undefined
     this.ledger.setScheduler({ lastTickAt: now })
     if (now - target > RECOVERY_TOLERANCE_MS) {

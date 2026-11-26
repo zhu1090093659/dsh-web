@@ -26,6 +26,7 @@ body:
         - 任务看板 (dsh-task-board)
         - 右侧面板 (dsh-aionui-panel)
         - SSH 远程运维 (dsh-ssh)
+        - Windows Bash 外壳 (dsh-win-bash)
         - 宠物 (dsh-pet)
         - 皮肤 / 皮肤中心 (dsh-skins)
         - 创意工坊 / 市场 (dsh-market)

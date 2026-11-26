@@ -172,17 +172,22 @@ function hostContext(
 /**
  * Switch one session's sandbox mode the way the host does: one sandbox/mode
  * event on that session's log, announced through the dispatch seam the module
- * listens on. The policy service reads the session's new mode from then on.
+ * listens on. The host announces the dispatch BEFORE the log and the mode
+ * projection commit the event, so the policy still answers with the old mode
+ * while the listener runs and only reads the new one once the synchronous
+ * append has finished; the stand-in keeps exactly that order.
  * @param state - the session being switched.
  * @param recorded - the sink carrying the installed listener.
  * @param mode - the mode the session moves to.
+ * @returns once the append has committed and queued work has drained.
  */
-function switchMode(state: Session, recorded: Recorded, mode: SandboxMode): void {
-  state.mode = mode
+async function switchMode(state: Session, recorded: Recorded, mode: SandboxMode): Promise<void> {
   recorded.handlers.get('internal/dispatch')?.('emit', 'session/event', [
     state.session,
     { type: 'sandbox/mode', data: { mode } },
   ])
+  state.mode = mode
+  await Promise.resolve()
 }
 
 describe('the host pwsh replacement on Windows', () => {
@@ -420,8 +425,57 @@ describe('the replacement follows whether win_bash can serve the session', () =>
   })
 })
 
-describe('the replacement follows a mode switch made mid-session', () => {
-  it('operator restricting a running session gets the host shell back immediately', () => {
+describe('the replacement on a cold start, before the policy service exists', () => {
+  it('operator creating a full-access session after the policy service registers gets pwsh withdrawn', () => {
+    // Given a cold start where win_bash mounts before the sandbox policy
+    // service is registered, so the session known at mount cannot be decided,
+    const { agent, state } = session(['win_bash', 'pwsh'])
+    const deployment: { policy: PolicyShape } = { policy: 'absent' }
+    const { ctx, recorded } = hostContext([{ agent, state }], deployment)
+    installPwshReplacement(ctx, { platform: 'win32', warn: () => {} })
+    expect(state.restrictions).toEqual([])
+    // When the service registers and the host announces a session afterwards,
+    deployment.policy = 'service'
+    recorded.handlers.get('agent/created')?.({ agent })
+    // Then the policy is read at that moment rather than from the mount-time
+    // snapshot, and pwsh comes off the full-access session.
+    expect(recorded.policyReads).toBeGreaterThan(0)
+    expect(state.restrictions).toEqual([['pwsh']])
+    expect(state.names).toEqual(['win_bash'])
+  })
+
+  it('operator whose session was open before the policy service registered gets pwsh withdrawn when it lands', () => {
+    // Given a full-access session already running when win_bash mounted
+    // without a policy service,
+    const { agent, state } = session(['win_bash', 'pwsh'])
+    const deployment: { policy: PolicyShape } = { policy: 'absent' }
+    const { ctx, recorded } = hostContext([{ agent, state }], deployment)
+    installPwshReplacement(ctx, { platform: 'win32', warn: () => {} })
+    expect(state.names).toEqual(['win_bash', 'pwsh'])
+    // When the sandbox policy service registers,
+    deployment.policy = 'service'
+    recorded.handlers.get('internal/service')?.('sandboxPolicy')
+    // Then that registration alone decides the open session, with no session
+    // event, mode switch, or surface change needed.
+    expect(state.restrictions).toEqual([['pwsh']])
+    expect(state.names).toEqual(['win_bash'])
+  })
+
+  it('operator sees an unrelated service registration change nothing', () => {
+    // Given a session left undecided because no policy service exists yet,
+    const { agent, state } = session(['win_bash', 'pwsh'])
+    const { ctx, recorded } = hostContext([{ agent, state }], { policy: 'absent' })
+    installPwshReplacement(ctx, { platform: 'win32', warn: () => {} })
+    // When some other service registers,
+    recorded.handlers.get('internal/service')?.('terminals')
+    // Then the session keeps its host shell.
+    expect(state.restrictions).toEqual([])
+    expect(state.names).toEqual(['win_bash', 'pwsh'])
+  })
+})
+
+describe('the replacement follows a mode switch made mid-session', async () => {
+  it('operator restricting a running session gets the host shell back immediately', async () => {
     // Given a full-access session whose pwsh was already withdrawn,
     const { agent, state } = session(['win_bash', 'pwsh'])
     const { ctx, recorded } = hostContext([{ agent, state }])
@@ -429,7 +483,7 @@ describe('the replacement follows a mode switch made mid-session', () => {
     expect(state.names).toEqual(['win_bash'])
     // When the user switches that session to read-only, which the host records
     // as one sandbox/mode event on that session's log,
-    switchMode(state, recorded, 'read-only')
+    await switchMode(state, recorded, 'read-only')
     // Then the restriction is lifted at once: the session has its shell back
     // for the whole time win_bash refuses it.
     expect(state.lifts).toBe(1)
@@ -437,28 +491,28 @@ describe('the replacement follows a mode switch made mid-session', () => {
     expect(state.restrictions).toEqual([['pwsh']])
   })
 
-  it('operator returning a session to full access gets the host shell withdrawn again', () => {
+  it('operator returning a session to full access gets the host shell withdrawn again', async () => {
     // Given a session that started restricted, so pwsh was never withdrawn,
     const { agent, state } = session(['win_bash', 'pwsh'], 'read-only')
     const { ctx, recorded } = hostContext([{ agent, state }])
     installPwshReplacement(ctx, { platform: 'win32' })
     expect(state.restrictions).toEqual([])
     // When the user grants that session danger-full-access,
-    switchMode(state, recorded, 'danger-full-access')
+    await switchMode(state, recorded, 'danger-full-access')
     // Then win_bash can serve it from that moment, and pwsh comes off the
     // surface without waiting for a remount.
     expect(state.restrictions).toEqual([['pwsh']])
     expect(state.names).toEqual(['win_bash'])
   })
 
-  it('operator switching one session leaves another session of the same host alone', () => {
+  it('operator switching one session leaves another session of the same host alone', async () => {
     // Given two full-access sessions whose pwsh was withdrawn,
     const a = session(['win_bash', 'pwsh'])
     const b = session(['win_bash', 'pwsh'])
     const { ctx, recorded } = hostContext([a, b])
     installPwshReplacement(ctx, { platform: 'win32' })
     // When only the first is restricted,
-    switchMode(a.state, recorded, 'read-only')
+    await switchMode(a.state, recorded, 'read-only')
     // Then only that session's shell came back: the mode event belongs to one
     // session, and so does the restriction.
     expect(a.state.names).toEqual(['win_bash', 'pwsh'])
@@ -466,7 +520,7 @@ describe('the replacement follows a mode switch made mid-session', () => {
     expect(b.state.lifts).toBe(0)
   })
 
-  it('operator switching modes on an unrelated session leaves this one untouched', () => {
+  it('operator switching modes on an unrelated session leaves this one untouched', async () => {
     // Given a withdrawn full-access session and a different session's log,
     const { agent, state } = session(['win_bash', 'pwsh'])
     const other = session(['win_bash', 'pwsh'], 'read-only')
@@ -474,19 +528,19 @@ describe('the replacement follows a mode switch made mid-session', () => {
     installPwshReplacement(ctx, { platform: 'win32' })
     expect(state.names).toEqual(['win_bash'])
     // When that other session switches mode,
-    switchMode(other.state, recorded, 'danger-full-access')
+    await switchMode(other.state, recorded, 'danger-full-access')
     // Then this session's restriction is neither lifted nor re-installed.
     expect(state.names).toEqual(['win_bash'])
     expect(state.lifts).toBe(0)
   })
 
-  it('operator switching a session that win_bash still cannot serve changes nothing', () => {
+  it('operator switching a session that win_bash still cannot serve changes nothing', async () => {
     // Given a restricted session whose pwsh was deliberately kept,
     const { agent, state } = session(['win_bash', 'pwsh'], 'read-only')
     const { ctx, recorded } = hostContext([{ agent, state }])
     installPwshReplacement(ctx, { platform: 'win32' })
     // When it switches to the other restricted mode,
-    switchMode(state, recorded, 'workspace-write')
+    await switchMode(state, recorded, 'workspace-write')
     // Then nothing is withdrawn and nothing is lifted: both restricted modes
     // are sessions win_bash refuses.
     expect(state.restrictions).toEqual([])
@@ -494,7 +548,7 @@ describe('the replacement follows a mode switch made mid-session', () => {
     expect(state.names).toEqual(['win_bash', 'pwsh'])
   })
 
-  it('operator relies on a global mode listener, because the log event is not scoped to this plugin', () => {
+  it('operator relies on a global mode listener, because the log event is not scoped to this plugin', async () => {
     // Given an installed replacement,
     const { agent, state } = session(['win_bash', 'pwsh'])
     const { ctx, recorded } = hostContext([{ agent, state }])
@@ -507,21 +561,42 @@ describe('the replacement follows a mode switch made mid-session', () => {
     expect(recorded.globalListeners).toEqual(['internal/dispatch'])
   })
 
-  it('operator restarting a session leaves no stale restriction behind', () => {
+  it('operator restarting a session leaves no stale restriction behind', async () => {
     // Given a full-access session whose pwsh was withdrawn and then restored by
     // a switch to read-only,
     const { agent, state } = session(['win_bash', 'pwsh'])
     const { ctx, recorded } = hostContext([{ agent, state }])
     installPwshReplacement(ctx, { platform: 'win32' })
-    switchMode(state, recorded, 'read-only')
+    await switchMode(state, recorded, 'read-only')
     expect(state.lifts).toBe(1)
     // When the user grants full access again,
-    switchMode(state, recorded, 'danger-full-access')
+    await switchMode(state, recorded, 'danger-full-access')
     // Then exactly one new restriction was installed, and the session is back
     // to the hidden state with no double restriction and no leaked disposer.
     expect(state.restrictions).toEqual([['pwsh'], ['pwsh']])
     expect(state.names).toEqual(['win_bash'])
     expect(state.lifts).toBe(1)
+  })
+
+  it('operator whose mode switch is observed before it commits still gets the new mode applied', async () => {
+    // Given a read-only session whose pwsh was kept,
+    const { agent, state } = session(['win_bash', 'pwsh'], 'read-only')
+    const { ctx, recorded } = hostContext([{ agent, state }])
+    installPwshReplacement(ctx, { platform: 'win32' })
+    // When the dispatch of a switch to full access is observed, while the
+    // policy still answers with the old mode because the append has not
+    // committed yet,
+    recorded.handlers.get('internal/dispatch')?.('emit', 'session/event', [
+      state.session,
+      { type: 'sandbox/mode', data: { mode: 'danger-full-access' } },
+    ])
+    // Then nothing is decided from that stale read,
+    expect(state.restrictions).toEqual([])
+    // And once the append commits, the new mode is what withdraws pwsh.
+    state.mode = 'danger-full-access'
+    await Promise.resolve()
+    expect(state.restrictions).toEqual([['pwsh']])
+    expect(state.names).toEqual(['win_bash'])
   })
 })
 

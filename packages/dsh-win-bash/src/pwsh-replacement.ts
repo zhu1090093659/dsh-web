@@ -37,8 +37,18 @@
  * entering a restricted mode releases the restriction immediately, and
  * returning to danger-full-access withdraws again. The listener is registered
  * with `{ global: true }` because a session's own log event is not dispatched to
- * this plugin's scope, and it re-evaluates synchronously — no poll, no timer,
- * nothing on a boot path.
+ * this plugin's scope. `internal/dispatch` fires while the event is still being
+ * validated, BEFORE the session log and the policy's mode projection see it, so
+ * a read made inside the listener answers with the OLD mode (issue #2096); the
+ * re-evaluation is therefore queued as one microtask, which runs once the
+ * synchronous append has committed — no poll, no timer, nothing on a boot path.
+ *
+ * THE POLICY SERVICE CAN ARRIVE AFTER THIS MODULE. On a cold start the
+ * `sandboxPolicy` service may not be registered yet when win_bash mounts, so
+ * the authority is resolved on every evaluation instead of being captured
+ * once at install time (a captured `undefined` made every later verdict
+ * 'unknown' forever, issue #2096), and its registration (`internal/service`)
+ * re-evaluates every watched scope.
  *
  * WINDOWS ONLY. The ladder this module encodes is a Windows fact: win_bash is
  * the pinned MSYS2 shell a Windows session gets, and the host shell beside it
@@ -140,8 +150,10 @@ export interface PwshReplacementOptions {
   /** Tool names to withdraw; defaults to {@link HOST_PWSH_TOOL}. */
   readonly denied?: readonly string[]
   /**
-   * One-time warning sink. The default writes through the plugin logger; a
-   * caller may replace it so a host with no logger still sees the message.
+   * One-time warning sink. The default writes through the plugin logger AND to
+   * stderr: the `dsh web` boot exporter keeps logger warnings in memory only, so
+   * a logger-only warning never reaches the operator's terminal (issue #2096).
+   * A caller may replace it.
    */
   readonly warn?: (message: string) => void
   /**
@@ -259,7 +271,9 @@ export function installPwshReplacement(ctx: Context, options: PwshReplacementOpt
   if ((options.platform ?? process.platform) !== 'win32') return
 
   const denied = [...(options.denied ?? [HOST_PWSH_TOOL])]
-  const read = policyReader(ctx, options.policy)
+  // Resolved per evaluation, never captured: see "THE POLICY SERVICE CAN ARRIVE
+  // AFTER THIS MODULE" in the module head.
+  const read = (): SessionPolicyReader | undefined => policyReader(ctx, options.policy)
   /** Agent scope -> the session it owns and the live restriction, if any. */
   const watched = new Map<AgentScopeLike, WatchedScope>()
   let warned = false
@@ -273,6 +287,11 @@ export function installPwshReplacement(ctx: Context, options: PwshReplacementOpt
       return
     }
     ctx.logger?.warn?.(message)
+    try {
+      process.stderr.write(message + '\n')
+    } catch {
+      // A closed stream must not become a new failure.
+    }
   }
   const warnOnce = (message: string): void => {
     if (warned) return
@@ -338,7 +357,7 @@ export function installPwshReplacement(ctx: Context, options: PwshReplacementOpt
   const evaluate = (scope: AgentScopeLike): void => {
     if (scope === null || typeof scope !== 'object') return
     const record = watch(scope)
-    const verdict = servingVerdict(read, record.session)
+    const verdict = servingVerdict(read(), record.session)
     if (verdict === 'unknown') {
       // Not a per-session defect worth repeating: the cause is deployment-wide
       // (no policy service, or one that cannot answer), and the effect is that
@@ -405,16 +424,24 @@ export function installPwshReplacement(ctx: Context, options: PwshReplacementOpt
   ctx.on('tools/change', () => {
     for (const scope of [...watched.keys()]) evaluate(scope)
   })
+  // A cold start can mount this row before the sandbox policy service exists;
+  // its registration is the moment every watched scope can first be decided.
+  ctx.on('internal/service', (name: unknown) => {
+    if (options.policy !== undefined || name !== 'sandboxPolicy') return
+    for (const scope of [...watched.keys()]) evaluate(scope)
+  })
   // A permission-preset switch writes sandbox/mode into the session's own log,
   // and that is not dispatched to this plugin's scope, so this listener must be
-  // global to see it. It re-evaluates synchronously and installs no timer: the
+  // global to see it. The dispatch is observed before the log and the mode
+  // projection commit the event, so the re-evaluation runs one microtask later,
+  // once the synchronous append has finished; no timer is installed and the
   // restriction follows the mode as it is switched, in both directions.
   ctx.on('internal/dispatch', (_mode, eventName, args) => {
     if (eventName !== 'session/event') return
     if (!Array.isArray(args)) return
     const [session, event] = args as [unknown, { type?: unknown } | undefined]
     if (event?.type !== 'sandbox/mode') return
-    reevaluate(session)
+    queueMicrotask(() => { reevaluate(session) })
   }, { global: true })
 
   // Sessions that were already running when this plugin mounted.

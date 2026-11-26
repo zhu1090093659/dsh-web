@@ -90,6 +90,10 @@ packages/AGENTS.md 的全局/包级规则。
   这条，会话读作 full-access 却一条命令都跑不了）。判定为 `unknown`（读不到策略服务、
   无会话、`resolve` 抛错、模式不在词表内）时与 `refuses` 同样处理，绝不撤下。
   漏掉任一条 = 会话既看不到 pwsh 又用不了 win_bash，一个 shell 都没有。
+  策略读取的时序同样属于这一层（#2096）：`sandboxPolicy` 在冷启动时可能晚于本行注册，
+  所以每次评估现取、不在挂载时缓存，并在其 `internal/service` 注册时重评所有会话；
+  `internal/dispatch` 早于日志与 mode 投影提交，`sandbox/mode` 的重评必须排到一个
+  microtask 之后，否则读到的是旧模式。
   ② **消息层**——每一条模型可见的拒绝/失败（`SANDBOX_UNSUPPORTED`、
   `BACKGROUND_UNAVAILABLE`、无策略服务、`ShellUnavailableError` 的握手类）都必须指明退路
   （`src/shell.ts` 的 `NATIVE_FALLBACK_HINT`），否则模型会反复重试一个不会恢复的 shell。

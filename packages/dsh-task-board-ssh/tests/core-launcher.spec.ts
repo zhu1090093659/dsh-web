@@ -21,6 +21,7 @@ import {
   stateDirForHome,
 } from '../src/core/launcher.ts'
 import { LAUNCHER_SCRIPT } from '../src/core/launcher-script.ts'
+import { noPosixHost } from './support/posix-host.ts'
 
 const scratch = mkdtempSync(join(tmpdir(), 'dsh-task-board-ssh-launcher-'))
 
@@ -28,7 +29,7 @@ afterAll(() => {
   rmSync(scratch, { recursive: true, force: true })
 })
 
-describe('launcher script text', () => {
+describe.skipIf(noPosixHost)('launcher script text', () => {
   it('operator installing the launcher on a POSIX host gets a script sh parses', () => {
     // Given the shipped script installed where the provider installs it
     const path = launcherScriptPath(scratch)

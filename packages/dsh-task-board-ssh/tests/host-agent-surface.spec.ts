@@ -18,6 +18,7 @@ import { mountEngine, runTool, type Mounted } from './support/engine.ts'
 import { createLocalSsh } from './support/fake-ssh.ts'
 import { dshLines, printingPrompt, waitingLoop } from './support/output.ts'
 import { fakeWorkspaces } from './support/workspaces.ts'
+import { noPosixHost } from './support/posix-host.ts'
 
 const cleanups: Array<() => void> = []
 
@@ -58,7 +59,7 @@ function cardCount(board: BoardHarness): number {
 
 const create = (mounted: Mounted, args: Record<string, unknown>) => runTool(mounted, 'task_board_ssh', { action: 'create', ...args })
 
-describe('creating a card with its target', () => {
+describe.skipIf(noPosixHost)('creating a card with its target', () => {
   it('operator naming a directory that does not exist is refused before any card exists', async () => {
     // Given a reachable host and a directory that is not there
     const { mounted, board, work } = setup()
@@ -147,7 +148,7 @@ describe('creating a card with its target', () => {
   })
 })
 
-describe('running a card through one call', () => {
+describe.skipIf(noPosixHost)('running a card through one call', () => {
   it('operator creating with run and wait gets the handle, the settled verdict and a summary that is not an error', async () => {
     // Given a card whose prompt prints a finished dsh run
     const { mounted, board, work } = setup()
@@ -307,4 +308,3 @@ describe('the filtered log', () => {
     expect(answer.text).toBe('')
   })
 })
-

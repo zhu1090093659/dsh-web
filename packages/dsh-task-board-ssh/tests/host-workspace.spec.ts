@@ -28,6 +28,7 @@ import { mountEngine, type Mounted } from './support/engine.ts'
 import { createScriptedSsh } from './support/fake-ssh.ts'
 import { dshOutput } from './support/output.ts'
 import { fakeWorkspaces } from './support/workspaces.ts'
+import { noPosixHost } from './support/posix-host.ts'
 
 const cleanups: Array<() => void> = []
 
@@ -117,7 +118,7 @@ async function runningFromWorkspace(options: {
   return { ssh, board, mounted, taskId, runId: payloadOf(board, taskId)?.activeRun?.runId ?? '' }
 }
 
-describe('a run whose repository is the local workspace', () => {
+describe.skipIf(noPosixHost)('a run whose repository is the local workspace', () => {
   it('operator running a card from a local workspace gets the repository resolved, and the untracked note on the verdict', async () => {
     // Given a real local repository with one file nobody committed, and a
     // deployment whose workspace registry knows it

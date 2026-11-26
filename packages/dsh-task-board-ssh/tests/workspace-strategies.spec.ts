@@ -31,6 +31,7 @@ import type { DshSshService } from '../src/core/contract.ts'
 import type { SshGitSource } from '../src/core/target.ts'
 import type { SshWorkspaceRun } from '../src/core/workspace.ts'
 import { createSshWorkspaceStrategy, SshWorkspaceError } from '../src/host/workspace/index.ts'
+import { noPosixHost } from './support/posix-host.ts'
 
 const scratch = mkdtempSync(join(tmpdir(), 'dsh-task-board-ssh-workspace-'))
 
@@ -185,7 +186,7 @@ async function rejection(promise: Promise<unknown>): Promise<unknown> {
   return await promise.then(() => undefined, (error: unknown) => error)
 }
 
-describe('in-place workspace', () => {
+describe.skipIf(noPosixHost)('in-place workspace', () => {
   it('operator preparing a card pinned to an existing remote directory gets that directory back', async () => {
     // Given a remote directory whose name has a space and a quote
     const pinned = join(scratch, "in place 'pinned'")
@@ -250,7 +251,7 @@ describe('in-place workspace', () => {
   })
 })
 
-describe('git workspace from a url', () => {
+describe.skipIf(noPosixHost)('git workspace from a url', () => {
   it('operator whose run commits in its worktree gets the branch pushed to that repository', async () => {
     // Given a bare repository the host reaches by path, with one commit on main
     const source = seedRepository(join(scratch, 'url-source'), 'README.md', 'one\n')
@@ -413,7 +414,7 @@ describe('git workspace from a url', () => {
   })
 })
 
-describe('git workspace from the local workspace', () => {
+describe.skipIf(noPosixHost)('git workspace from the local workspace', () => {
   it('operator whose local repository has an uncommitted change gets it on the host and a branch back', async () => {
     // Given a local repository with one tracked change and one untracked file
     const repository = seedRepository(join(scratch, 'local-source'), 'app.txt', 'first\n')
@@ -618,7 +619,7 @@ describe('git workspace from the local workspace', () => {
   })
 })
 
-describe('dash-leading card values', () => {
+describe.skipIf(noPosixHost)('dash-leading card values', () => {
   it('operator whose repository address looks like an option gets it read as a path', async () => {
     // Given a script that records being run as git's upload-pack
     const marker = join(scratch, 'upload-pack-ran')

@@ -19,6 +19,7 @@ import { mountEngine, type Mounted } from './support/engine.ts'
 import { createLocalSsh, createScriptedSsh, type LocalSsh, type ScriptedSsh } from './support/fake-ssh.ts'
 import { dshLines, dshOutput, printingPrompt, waitingLoop } from './support/output.ts'
 import { fakeWorkspaces } from './support/workspaces.ts'
+import { noPosixHost } from './support/posix-host.ts'
 
 const cleanups: Array<() => void> = []
 
@@ -81,7 +82,7 @@ async function pinCard(options: {
   return { mounted, taskId }
 }
 
-describe('a direct card', () => {
+describe.skipIf(noPosixHost)('a direct card', () => {
   it('operator running a pinned card gets a run on the host, no local session and the adapter summary', async () => {
     // Given a stand-in remote home, a pinned direct card, and a card prompt that
     // really prints the event stream the dsh adapter parses

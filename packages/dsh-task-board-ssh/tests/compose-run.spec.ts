@@ -30,6 +30,7 @@ import { mountEngine } from './support/engine.ts'
 import { createLocalSsh } from './support/fake-ssh.ts'
 import { dshLines, printingPrompt } from './support/output.ts'
 import { fakeWorkspaces } from './support/workspaces.ts'
+import { noPosixHost } from './support/posix-host.ts'
 
 const cleanups: Array<() => void> = []
 
@@ -49,7 +50,7 @@ function scratch(prefix: string): string {
 /** The agent override that runs a prompt as a script, because no account is logged in here. */
 const SCRIPTED_AGENT = { agentCommands: { dsh: { command: 'sh {prompt_file}' } } }
 
-describe('a card created with its target already chosen', () => {
+describe.skipIf(noPosixHost)('a card created with its target already chosen', () => {
   it('operator creating a pinned card sees the run taken over on the host, with no local session and no detail-seat write', async () => {
     // Given a mounted provider whose published summary is the board's own
     const home = scratch('dsh-ssh-home-')

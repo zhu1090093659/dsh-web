@@ -14,6 +14,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 import { buildLauncherInstallCommand, launcherScriptPath, parseLauncherStatus, runDirectory, runFilePath } from '../src/core/launcher.ts'
+import { noPosixHost } from './support/posix-host.ts'
 
 const scratch = mkdtempSync(join(tmpdir(), 'dsh-task-board-ssh-process-'))
 const startedGroups: number[] = []
@@ -68,7 +69,7 @@ function remember(pid: number | undefined): void {
   if (pid !== undefined) startedGroups.push(pid)
 }
 
-describe('launcher start', () => {
+describe.skipIf(noPosixHost)('launcher start', () => {
   it('operator starting the same run twice gets one agent, not two', async () => {
     // Given a run whose agent writes one line and then stays alive
     const stateDir = installedState('start-twice')
@@ -94,7 +95,7 @@ describe('launcher start', () => {
   })
 })
 
-describe('launcher status', () => {
+describe.skipIf(noPosixHost)('launcher status', () => {
   it('operator watching a run in flight gets its state and process group', () => {
     // Given a run that keeps running
     const stateDir = installedState('status-running')
@@ -141,7 +142,7 @@ describe('launcher status', () => {
   })
 })
 
-describe('launcher tail', () => {
+describe.skipIf(noPosixHost)('launcher tail', () => {
   it('operator tailing from a byte offset gets only the bytes past it', async () => {
     // Given a run whose agent wrote a known ten-character line
     const stateDir = installedState('tail-offset')
@@ -174,7 +175,7 @@ describe('launcher tail', () => {
   })
 })
 
-describe('launcher cancel', () => {
+describe.skipIf(noPosixHost)('launcher cancel', () => {
   it('operator cancelling a run stops every process in its group', async () => {
     // Given a run whose agent started two children of its own
     const stateDir = installedState('cancel-group')
@@ -200,7 +201,7 @@ describe('launcher cancel', () => {
   })
 })
 
-describe('launcher input validation', () => {
+describe.skipIf(noPosixHost)('launcher input validation', () => {
   it('operator passing a run id that could escape the state directory is refused by the script too', () => {
     // Given an installed launcher
     const stateDir = installedState('validate')
@@ -239,7 +240,7 @@ describe('launcher input validation', () => {
   })
 })
 
-describe('launcher hardening and diagnostics', () => {
+describe.skipIf(noPosixHost)('launcher hardening and diagnostics', () => {
   it('operator starting a command that exits immediately observes state=exited rather than lost', async () => {
     // Given a run whose agent prints and exits instantaneously
     const stateDir = installedState('fast-exit')

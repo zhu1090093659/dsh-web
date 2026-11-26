@@ -10,7 +10,7 @@
 import { closeSync, createReadStream, createWriteStream, mkdirSync, openSync } from 'node:fs'
 import { unlink } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { basename, join } from 'node:path'
+import { join, posix } from 'node:path'
 import { tmpdir } from 'node:os'
 import { randomBytes } from 'node:crypto'
 import { WebSocketServer } from 'ws'
@@ -499,7 +499,7 @@ const maxUploadBytes = deps.maxUploadBytes ?? MAX_UPLOAD_BYTES
           res.writeHead(200, {
             'content-type': 'application/octet-stream',
             'content-length': String(outcome.bytes),
-            'content-disposition': `attachment; filename="${safeAttachmentFilename(basename(remotePath))}"`,
+            'content-disposition': `attachment; filename="${safeAttachmentFilename(posix.basename(remotePath))}"`,
             'referrer-policy': 'no-referrer',
           })
           await new Promise<void>((resolve, reject) => {

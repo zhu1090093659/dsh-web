@@ -82,6 +82,8 @@ export async function startTunnel(
   const onLinkClosed = (): void => { abortTunnel(engine, id) }
   const detachLink = (): void => { client.off('close', onLinkClosed) }
   const server = createServer((socket) => {
+    // Install this before requesting the SSH channel so early errors stay local.
+    socket.on('error', () => { destroyQuietly(socket) })
     sockets.add(socket)
     socket.on('close', () => { sockets.delete(socket) })
     // The link can die between taking the record above and this connection.
@@ -103,14 +105,13 @@ export async function startTunnel(
           destroyQuietly(stream)
           return
         }
-        // Both ends of the pipe can die independently; destroy the pair so an
-        // unhandled 'error' event can never crash the host process.
+        // Either close or a channel error tears down the pair. A socket error
+        // destroys the socket and triggers the same cleanup through close.
         const destroy = (): void => {
           destroyQuietly(socket)
           try { stream.close() } catch { /* gone */ }
         }
         stream.on('error', destroy)
-        socket.on('error', destroy)
         stream.on('close', destroy)
         socket.on('close', destroy)
         stream.pipe(socket).pipe(stream)

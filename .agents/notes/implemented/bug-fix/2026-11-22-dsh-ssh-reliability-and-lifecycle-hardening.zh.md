@@ -23,7 +23,7 @@ Status: implemented
 - **WebSocket 排空恢复与扁平数组 O(1) 队列**：在 `terminal-sessions.ts` 通过 `ws.send(payload, session.onDrain)` 触发背压恢复；服务端与 `PanelController` 均以平铺数组加头指针实现 O(1) 缓冲淘汰与超限单块按码点对齐的尾部裁剪。
 - **POSIX SFTP 目录缓存与窗口速率**：SFTP 统一走 `posix` 路径、`ensureRemoteDir` 单次 `stat` 快路径及单次上传前缀 `Set<string>` 缓存；`fastTransfer` 按相邻两次上报的时间窗计算 `speedBps`。
 - **不可变存储写入与批量导入**：`HostStore` 全部写操作先完成全字段校验再构造新不可变对象与 `StoreFile` 快照（严格保持旧格式无 `keys` 字段）；`listKeys` 单遍 `Map` 构建反查表；`importFromSshConfig` 内存累加后单次 `save()` 并采用带进程号与随机后缀的临时文件；`routes.ts` 基于 `resolved` 判断连接失效，用无控制字符正则字面量的逐字符函数净化下载文件名，并在客户端提前断开时等待 `ReadStream` 关闭后再清理临时文件。
-- **共享集群选择器与隧道 / ProxyCommand 守卫**：在 `src/engine/cluster.ts` 导出 `hasClusterSelector` 统一三处校验并保留 `result.error`；`ssh_tunnel` 与 `TunnelsTab` 正确识别 `state: 'failed'`；`tunnel.ts` 在 `forwardOut`、绑定窗口及 `stopTunnel` 检查 `socket.destroyed` 与 `record.inFlight`；`proxy-command.ts` 退出时清理升级定时器并防抖 `stdin` 错误监听。
+- **共享集群选择器与隧道 / ProxyCommand 守卫**：在 `src/engine/cluster.ts` 导出 `hasClusterSelector` 统一三处校验并保留 `result.error`；`ssh_tunnel` 与 `TunnelsTab` 正确识别 `state: 'failed'`；`tunnel.ts` 在 `forwardOut`、绑定窗口及 `stopTunnel` 检查 `socket.destroyed` 与 `record.inFlight`；`proxy-command.ts` 退出时清理升级定时器并防抖 `stdin` 错误监听。（#2097）监听器在接入本地 socket 时即处理其 `error` 事件。本地报错只关闭当前连接，随后到达的 SSH 通道由 `socket.destroyed` 守卫回收。
 - **客户端状态单向收敛**：`TerminalTab` 重连前无条件清 `retainedScreens`；`HostsTab` 合并挂载加载并按别名独立追踪测试态、保留搜索词；`HostFormDialog` 显式提交空串以清除可选字段；`SshApi` 与 `TunnelsTab` 保证 `onExit` 单次触发并正确中止/清理未完成传输流。
 
 ## Alternatives considered

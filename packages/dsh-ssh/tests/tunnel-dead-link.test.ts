@@ -9,7 +9,7 @@
  * through the callback, and it emits `close` when the transport goes away.
  */
 
-import { connect } from 'node:net'
+import { connect, Socket } from 'node:net'
 import { Duplex } from 'node:stream'
 import { EventEmitter } from 'node:events'
 import { describe, expect, it } from 'vitest'
@@ -313,6 +313,33 @@ describe('tunnel dead link', () => {
     // Then the delivered remote channel is closed immediately instead of leaking
     expect(client.closedChannels).toBe(1)
     expect(stopTunnel(engine, tunnel.id)).toBe(true)
+  })
+
+  it('operator: a local socket error before the channel opens only closes that connection', async () => {
+    // Given a local connection with a pending SSH channel request
+    const client = new FakeClient('healthy')
+    client.deferChannelCallback = true
+    const { engine } = tunnelEngine(client)
+    const tunnel = await startTunnel(engine, ALIAS, { remotePort: 5432 })
+    const listener = engine.tunnels.get(tunnel.id)!.server
+    const socket = new Socket()
+    try {
+      listener.emit('connection', socket)
+      expect(client.pendingChannelCallbacks).toHaveLength(1)
+
+      // When the accepted socket errors before the channel is delivered
+      const error = Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' })
+      expect(() => { socket.emit('error', error) }).not.toThrow()
+      expect(socket.destroyed).toBe(true)
+      for (const deliver of client.pendingChannelCallbacks.splice(0)) deliver()
+
+      // Then the late channel is closed and the tunnel remains available
+      expect(client.closedChannels).toBe(1)
+      expect(listener.listening).toBe(true)
+      expect(listTunnels(engine)).toEqual([expect.objectContaining({ id: tunnel.id, state: 'forwarding' })])
+    } finally {
+      stopTunnel(engine, tunnel.id)
+    }
   })
 
   it('operator: stopping a tunnel while in-flight work shares the pooled link unpins without ending it', async () => {

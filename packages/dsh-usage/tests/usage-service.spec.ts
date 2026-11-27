@@ -60,18 +60,23 @@ const CREDENTIALS_KIMI_KEY = {
 }
 
 function makeCtx(services: Record<string, unknown> = {}) {
-  const sessionListeners: Array<(session: object, event: unknown) => void> = []
+  const listeners = new Map<string, Array<(...args: never[]) => void>>()
   const ctx = {
-    on: (event: string, cb: (session: object, event: unknown) => void) => {
-      if (event === 'session/event') sessionListeners.push(cb)
+    on: (event: string, cb: (...args: never[]) => void) => {
+      const registered = listeners.get(event) ?? []
+      registered.push(cb)
+      listeners.set(event, registered)
       return () => {}
     },
     get: (name: string) => services[name],
   }
   return {
     ctx: ctx as never,
+    fire(event: string, ...args: unknown[]): void {
+      for (const cb of listeners.get(event) ?? []) (cb as (...fired: unknown[]) => void)(...args)
+    },
     fireSessionEvent(session: object, event: unknown): void {
-      for (const cb of sessionListeners) cb(session, event)
+      for (const cb of listeners.get('session/event') ?? []) (cb as (s: object, e: unknown) => void)(session, event)
     },
   }
 }
@@ -907,6 +912,95 @@ describe('DSH 0.1.7 foreign settings resolution (#1739)', () => {
     expect(row?.balance).toBeUndefined()
     expect(row?.error).toBeUndefined()
     await service.stop()
+  })
+})
+
+/**
+ * The host settings service resolves every profile entry's schema on each
+ * describe() call (issue #2100: 25% of host CPU on a 42-entry profile) and a
+ * modern host exposes no settings.get(). The service therefore keeps one
+ * describe() snapshot per window and shares it across every namespace read.
+ */
+describe('settings descriptor snapshot (#2100)', () => {
+  /** Two live routes: the overview resolves the pi-ai namespace once per route. */
+  const LLM_TWO_ROUTES = {
+    listProviders: () => [
+      { id: 'deepseek-official', name: 'DeepSeek' },
+      { id: 'kimi-coding', name: 'Kimi For Coding' },
+    ],
+    listConfigurableProviders: () => [],
+  }
+
+  const PI_AI_ROW = { ns: 'llm-pi-ai', value: { providers: { 'kimi-coding': { baseURL: 'https://api.kimi.com/coding/v1' } } } }
+
+  it('operator sees every route of an overview resolved from one profile scan', () => {
+    // Given a host whose settings service offers describe() only (no legacy get())
+    const describe = vi.fn(() => [PI_AI_ROW])
+    const { ctx } = makeCtx({ llm: LLM_TWO_ROUTES, settings: { describe } })
+    const service = new UsageService(ctx, OPTIONS)
+
+    // When the section card and the foot card each assemble an overview
+    const providers = service.overview().providers.map((row) => row.provider)
+    const again = service.overview().providers.map((row) => row.provider)
+
+    // Then both documents carry the same routes off a single profile-wide scan
+    expect(providers).toEqual(['deepseek-official', 'kimi-coding'])
+    expect(again).toEqual(providers)
+    expect(describe).toHaveBeenCalledTimes(1)
+  })
+
+  it('operator sees a changed profile once the host announces it', async () => {
+    // Given a deepseek route resolved before the profile changes
+    let rows: Array<{ ns: string; value: unknown }> = []
+    const describe = vi.fn(() => rows)
+    const { ctx, fire } = makeCtx({ llm: LLM_DEEPSEEK, settings: { describe } })
+    const service = new UsageService(ctx, OPTIONS)
+    service.start()
+    expect(service.overview().providers[0]?.balanceSupported).toBe(true)
+
+    // When the host announces a custom gateway for llm-deepseek
+    rows = [{ ns: 'llm-deepseek', value: { baseURL: 'https://custom-gateway.example/v1' } }]
+    fire('settings/document-updated', 'llm-deepseek', 2)
+
+    // Then the next overview serves the new profile instead of the snapshot
+    expect(service.overview().providers[0]?.balanceSupported).toBe(false)
+    await service.stop()
+  })
+
+  it('operator sees a profile change after the window even without an event', () => {
+    vi.useFakeTimers()
+    try {
+      // Given a deepseek route resolved at one instant
+      let rows: Array<{ ns: string; value: unknown }> = []
+      const describe = vi.fn(() => rows)
+      const { ctx } = makeCtx({ llm: LLM_DEEPSEEK, settings: { describe } })
+      const service = new UsageService(ctx, OPTIONS)
+      expect(service.overview().providers[0]?.balanceSupported).toBe(true)
+
+      // When the profile changes and the snapshot window passes unannounced
+      rows = [{ ns: 'llm-deepseek', value: { baseURL: 'https://custom-gateway.example/v1' } }]
+      vi.advanceTimersByTime(30_001)
+
+      // Then the service scans again instead of serving the stale snapshot
+      expect(service.overview().providers[0]?.balanceSupported).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('operator sees a late profile land because an empty scan is retried', () => {
+    // Given a host whose settings are not ready on the first read
+    let rows: Array<{ ns: string; value: unknown }> = []
+    const describe = vi.fn(() => rows)
+    const { ctx } = makeCtx({ llm: LLM_DEEPSEEK, settings: { describe } })
+    const service = new UsageService(ctx, OPTIONS)
+    expect(service.overview().providers[0]?.balanceSupported).toBe(true)
+
+    // When the profile comes up inside the same window
+    rows = [{ ns: 'llm-deepseek', value: { baseURL: 'https://custom-gateway.example/v1' } }]
+
+    // Then the next read resolves it instead of caching the empty profile
+    expect(service.overview().providers[0]?.balanceSupported).toBe(false)
   })
 })
 

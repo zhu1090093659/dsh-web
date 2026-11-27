@@ -150,6 +150,14 @@ const FLUSH_DEBOUNCE_MS = 3_000
 /** How many trend days the overview serves. */
 const TREND_DAYS = 30
 
+/**
+ * Lifetime of one settings.describe() snapshot. describe() resolves every
+ * profile entry's schema, which is the most expensive call on the poll path
+ * (issue #2100); a settings change invalidates the snapshot immediately, so
+ * the TTL only bounds staleness for changes no event announces.
+ */
+const DESCRIPTOR_CACHE_TTL_MS = 30_000
+
 /** Best-effort typed service read: absent services resolve to undefined at runtime. */
 function service<T>(ctx: Context, name: string): T | undefined {
   try {
@@ -220,34 +228,30 @@ function deepMerge(base: unknown, patch: unknown): unknown {
  * 0.1.7 SettingsForms.describe(), live loader entries, and configEditor.
  * Unregistered namespaces read as undefined; nothing here throws into the poll loop.
  */
-function readNamespace(ctx: Context, ns: string): unknown {
+function readSettingsNamespace(
+  ctx: Context,
+  ns: string,
+  descriptors: () => Array<{ ns: string; value: unknown }>,
+): unknown {
   try {
-    // 1. Try legacy settings.get(ns) or 0.1.7 settings.describe()
-    const settings = service<{
-      get?(ns: unknown): unknown
-      describe?(options?: unknown): Array<{ ns: string; value: unknown }>
-    }>(ctx, 'settings')
-    if (settings !== undefined) {
-      if (typeof settings.get === 'function') {
-        const value = settings.get(ns)
-        if (value !== undefined) return unwrapVolatiles(value)
-      }
-      if (typeof settings.describe === 'function') {
-        const descriptors = settings.describe({ redactSecrets: false })
-        if (Array.isArray(descriptors)) {
-          const match = descriptors.find((d) =>
-            d.ns === ns
-            || (ns === 'llm-pi-ai' && (d.ns === 'llm' || isPlainObject((d.value as { providers?: unknown })?.providers)))
-            || (ns === 'llm-deepseek' && (d.ns === 'llm-deepseek' || d.ns === 'llm-deepseek-api-key'))
-          )
-          if (match !== undefined && match.value !== undefined) {
-            return unwrapVolatiles(match.value)
-          }
-        }
-      }
+    // 1. A pre-0.1.7 settings.get(ns) answers one section without resolving schemas
+    const settings = service<{ get?(ns: unknown): unknown }>(ctx, 'settings')
+    if (settings !== undefined && typeof settings.get === 'function') {
+      const value = settings.get(ns)
+      if (value !== undefined) return unwrapVolatiles(value)
     }
 
-    // 2. Try ctx.root.loader or ctx.loader entries
+    // 2. The caller's shared SettingsForms.describe() snapshot
+    const match = descriptors().find((d) =>
+      d.ns === ns
+      || (ns === 'llm-pi-ai' && (d.ns === 'llm' || isPlainObject((d.value as { providers?: unknown })?.providers)))
+      || (ns === 'llm-deepseek' && (d.ns === 'llm-deepseek' || d.ns === 'llm-deepseek-api-key'))
+    )
+    if (match !== undefined && match.value !== undefined) {
+      return unwrapVolatiles(match.value)
+    }
+
+    // 3. Try ctx.root.loader or ctx.loader entries
     const loader = (ctx as unknown as {
       root?: { loader?: { entries(): Iterable<{ options: { id: string; name?: string }; fiber?: { config?: unknown } }> } }
       loader?: { entries(): Iterable<{ options: { id: string; name?: string }; fiber?: { config?: unknown } }> }
@@ -273,7 +277,7 @@ function readNamespace(ctx: Context, ns: string): unknown {
       }
     }
 
-    // 3. Try configEditor service
+    // 4. Try configEditor service
     const editor = service<{
       configuration?(): Array<{
         entry: { options: { id: string; name?: string }; fiber?: { config?: unknown } }
@@ -336,6 +340,10 @@ export class UsageService {
   private disposed = false
   /** Last prune guard: once per local day, and whenever retention shrinks. */
   private lastPrune: { dayKey: string; retainDays: number } | undefined
+  /** One describe() snapshot shared by every namespace read in a window (issue #2100). */
+  private descriptorSnapshot: { at: number; rows: Array<{ ns: string; value: unknown }> } | undefined
+  /** Unsubscribes the settings-change invalidation armed by start(). */
+  private settingsDisposer: (() => void) | undefined
 
   constructor(ctx: Context, options: UsageServiceOptions) {
     this.ctx = ctx
@@ -348,6 +356,10 @@ export class UsageService {
   /** Start the listeners, load persisted state, and arm the first poll. */
   start(): void {
     this.sessionListenerDisposer = this.ctx.on('session/event', (session, event) => this.onSessionEvent(session, event))
+    // A descriptor snapshot never outlives the change that invalidates it.
+    this.settingsDisposer = this.ctx.on('settings/document-updated', () => {
+      this.descriptorSnapshot = undefined
+    })
     void this.loadPersisted()
     this.rearmPoll(2_000)
   }
@@ -363,6 +375,7 @@ export class UsageService {
     if (this.pollTimer !== undefined) clearTimeout(this.pollTimer)
     if (this.flushTimer !== undefined) clearTimeout(this.flushTimer)
     this.sessionListenerDisposer?.()
+    this.settingsDisposer?.()
     return this.flushLedger()
   }
 
@@ -916,21 +929,56 @@ export class UsageService {
     return { kind: 'none' }
   }
 
+  /**
+   * Read a foreign settings namespace through this service's cached describe()
+   * snapshot, so one poll or overview shares one profile-wide scan.
+   */
+  private readNamespace(ns: string): unknown {
+    return readSettingsNamespace(this.ctx, ns, () => this.settingsDescriptors())
+  }
+
+  /**
+   * The profile-wide settings descriptors, snapshotted (issue #2100).
+   * `describe()` resolves every profile entry's schema — measured at 25% of
+   * host CPU on a 42-entry profile, because the overview reads namespaces once
+   * per provider route — while the host emits `settings/document-updated` on
+   * every change. An empty list is never cached: settings that are not ready
+   * yet must not pin an empty profile for the whole window.
+   */
+  private settingsDescriptors(): Array<{ ns: string; value: unknown }> {
+    const now = Date.now()
+    const cached = this.descriptorSnapshot
+    if (cached !== undefined && now - cached.at < DESCRIPTOR_CACHE_TTL_MS) return cached.rows
+    const settings = service<{ describe?(options?: unknown): unknown }>(this.ctx, 'settings')
+    if (settings === undefined || typeof settings.describe !== 'function') return []
+    let rows: Array<{ ns: string; value: unknown }>
+    try {
+      const described = settings.describe({ redactSecrets: false })
+      rows = Array.isArray(described) ? (described as Array<{ ns: string; value: unknown }>) : []
+    } catch {
+      this.descriptorSnapshot = undefined
+      return []
+    }
+    if (rows.length === 0) return rows
+    this.descriptorSnapshot = { at: now, rows }
+    return rows
+  }
+
   /** The llm-pi-ai profile object for one provider route, when configured. */
   private piAiProfile(provider: string): { apiKeyEnv?: string; baseURL?: string } | undefined {
-    const section = readNamespace(this.ctx, 'llm-pi-ai') as { providers?: Record<string, { apiKeyEnv?: string; baseURL?: string }> } | undefined
+    const section = this.readNamespace('llm-pi-ai') as { providers?: Record<string, { apiKeyEnv?: string; baseURL?: string }> } | undefined
     return section?.providers?.[provider]
   }
 
   /** The DeepSeek official adapter's credential reference name. */
   private deepseekApiKeyEnv(): string {
-    const section = readNamespace(this.ctx, 'llm-deepseek') as { apiKeyEnv?: string } | undefined
+    const section = this.readNamespace('llm-deepseek') as { apiKeyEnv?: string } | undefined
     return section?.apiKeyEnv ?? 'DEEPSEEK_API_KEY'
   }
 
   /** The DeepSeek official adapter's configured baseURL. */
   private deepseekBaseUrl(): string | undefined {
-    const section = readNamespace(this.ctx, 'llm-deepseek') as { baseURL?: string } | undefined
+    const section = this.readNamespace('llm-deepseek') as { baseURL?: string } | undefined
     return section?.baseURL
   }
 
